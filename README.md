@@ -17,7 +17,7 @@ cd backend
 ./mvnw spring-boot:run
 ```
 
-Needs Java 25 and a Postgres instance, either `docker-compose up -d` or your own. Environment variables: `DB_URL`, `DB_USERNAME`, `DB_PASSWORD`, `JWT_SECRET`, `OPENAI_API_KEY`, `YOUTUBE_API_KEY`, `OAUTH2_CLIENT_ID`, `OAUTH2_CLIENT_SECRET`.
+Needs Java 25 and a Postgres instance, either `docker-compose up -d` or your own. Copy `backend/.env.example` to `backend/.env` and fill in real values, or otherwise get its variables into your environment before running.
 
 Frontend:
 
@@ -27,6 +27,6 @@ npm install
 npm run dev
 ```
 
-Needs `NEXT_PUBLIC_API_URL` pointing at the backend.
+Copy `frontend/.env.example` to `frontend/.env.local` and point `NEXT_PUBLIC_API_URL` at the backend.
 
 The `mobile/` Flutter app is standalone and doesn't connect to the backend.
