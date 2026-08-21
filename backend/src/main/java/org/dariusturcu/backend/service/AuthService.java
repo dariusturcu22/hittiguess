@@ -11,6 +11,7 @@ import org.dariusturcu.backend.model.user.User;
 import org.dariusturcu.backend.repository.RefreshTokenRepository;
 import org.dariusturcu.backend.repository.UserRepository;
 import org.dariusturcu.backend.security.util.JwtUtil;
+import org.dariusturcu.backend.security.util.TokenHasher;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -31,13 +32,11 @@ public class AuthService {
     private final AuthenticationManager authenticationManager;
 
     public AuthResult register(RegisterRequest request) {
-        if (userRepository.existsUserByUsername(request.username())) {
-            throw new RuntimeException("Username already exists");
-            // TODO change to custom exception
-        }
+        boolean usernameOrEmailTaken = userRepository.existsUserByUsername(request.username())
+                || userRepository.existsUserByEmail(request.email());
 
-        if (userRepository.existsUserByEmail(request.email())) {
-            throw new RuntimeException("Email already exists");
+        if (usernameOrEmailTaken) {
+            throw new RuntimeException("Username or email already in use");
             // TODO change to custom exception
         }
 
@@ -87,7 +86,7 @@ public class AuthService {
     }
 
     public AuthResult refreshTokens(String refreshToken) {
-        RefreshToken storedToken = refreshTokenRepository.findByToken(refreshToken)
+        RefreshToken storedToken = refreshTokenRepository.findByToken(TokenHasher.hash(refreshToken))
                 .orElseThrow(() -> new RuntimeException("Invalid refresh accessToken"));
 
         if (storedToken.isExpired()) {
@@ -111,7 +110,7 @@ public class AuthService {
     }
 
     public void revokeRefreshToken(String refreshToken) {
-        refreshTokenRepository.findByToken(refreshToken)
+        refreshTokenRepository.findByToken(TokenHasher.hash(refreshToken))
                 .ifPresent(refreshTokenRepository::delete);
     }
 
@@ -121,7 +120,7 @@ public class AuthService {
         refreshTokenRepository.flush();
         String tokenValue = jwtUtil.generateRefreshToken();
         RefreshToken newToken = new RefreshToken();
-        newToken.setToken(tokenValue);
+        newToken.setToken(TokenHasher.hash(tokenValue));
         newToken.setUser(user);
         newToken.setExpiresAt(Instant.now().plusSeconds(jwtUtil.getRefreshExpirationSeconds()));
         refreshTokenRepository.save(newToken);
