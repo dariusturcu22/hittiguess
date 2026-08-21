@@ -35,17 +35,28 @@ interface SongDetails {
   country: CreateSongRequestCountry;
 }
 
-function extractYoutubeId(input: string): string | null {
-  if (/^[a-zA-Z0-9_-]{11}$/.test(input.trim())) return input.trim();
+const YOUTUBE_ID_PATTERN = /^[a-zA-Z0-9_-]{11}$/;
+const HEX_COLOR_PATTERN = /^#[0-9a-fA-F]{6}$/;
+const MIN_RELEASE_YEAR = 1000;
 
-  try {
-    const url = new URL(input);
-    if (url.searchParams.get("v")) return url.searchParams.get("v");
-    if (url.hostname === "youtu.be") return url.pathname.slice(1).split("?")[0];
-    if (url.pathname.startsWith("/embed/"))
-      return url.pathname.split("/embed/")[1].split("?")[0];
-  } catch {}
-  return null;
+function extractYoutubeId(input: string): string | null {
+  const trimmed = input.trim();
+  let candidate: string | null = null;
+
+  if (YOUTUBE_ID_PATTERN.test(trimmed)) {
+    candidate = trimmed;
+  } else {
+    try {
+      const url = new URL(trimmed);
+      if (url.searchParams.get("v")) candidate = url.searchParams.get("v");
+      else if (url.hostname === "youtu.be")
+        candidate = url.pathname.slice(1).split("?")[0];
+      else if (url.pathname.startsWith("/embed/"))
+        candidate = url.pathname.split("/embed/")[1].split("?")[0];
+    } catch {}
+  }
+
+  return candidate && YOUTUBE_ID_PATTERN.test(candidate) ? candidate : null;
 }
 
 export function AddSongForm({
@@ -65,6 +76,7 @@ export function AddSongForm({
   const [youtubeError, setYoutubeError] = useState("");
   const [isLoadingAI, setIsLoadingAI] = useState(false);
   const [aiError, setAiError] = useState("");
+  const [submitError, setSubmitError] = useState("");
   const [formData, setFormData] = useState<SongDetails>({
     title: "",
     artist: "",
@@ -129,16 +141,36 @@ export function AddSongForm({
   };
 
   const handleSubmit = () => {
-    console.log("submit", { youtubeId, formData, playlistId });
-    if (
-      !youtubeId ||
-      !formData.title ||
-      !formData.artist ||
-      !formData.releaseYear
-    ) {
-      console.log("validation failed");
+    setSubmitError("");
+
+    const releaseYear =
+      typeof formData.releaseYear === "string"
+        ? parseInt(formData.releaseYear)
+        : formData.releaseYear;
+    const currentYear = new Date().getFullYear();
+
+    if (!youtubeId || !formData.title || !formData.artist) {
+      setSubmitError("Fill in the YouTube link, title, and artist.");
       return;
     }
+    if (
+      !Number.isFinite(releaseYear) ||
+      releaseYear < MIN_RELEASE_YEAR ||
+      releaseYear > currentYear
+    ) {
+      setSubmitError(
+        `Release year must be between ${MIN_RELEASE_YEAR} and ${currentYear}.`,
+      );
+      return;
+    }
+    if (
+      !HEX_COLOR_PATTERN.test(formData.gradientColor1) ||
+      !HEX_COLOR_PATTERN.test(formData.gradientColor2)
+    ) {
+      setSubmitError("Both gradient colors must be a 6-character hex value.");
+      return;
+    }
+
     addSong(
       {
         playlistId,
@@ -146,10 +178,7 @@ export function AddSongForm({
           youtubeId,
           title: formData.title,
           artist: formData.artist,
-          releaseYear:
-            typeof formData.releaseYear === "string"
-              ? parseInt(formData.releaseYear)
-              : formData.releaseYear,
+          releaseYear,
           gradientColor1: formData.gradientColor1.replace("#", ""),
           gradientColor2: formData.gradientColor2.replace("#", ""),
           songTag: formData.songTag,
@@ -163,7 +192,9 @@ export function AddSongForm({
           });
           router.push(`/playlists/${playlistId}`);
         },
-        onError: () => {},
+        onError: () => {
+          setSubmitError("Couldn't add the song. Try again.");
+        },
       },
     );
   };
@@ -303,6 +334,8 @@ export function AddSongForm({
             <Input
               id="releaseYear"
               type="number"
+              min={MIN_RELEASE_YEAR}
+              max={new Date().getFullYear()}
               value={formData.releaseYear}
               onChange={handleChange}
             />
@@ -426,8 +459,14 @@ export function AddSongForm({
             </div>
           </div>
 
+          {submitError && (
+            <p className="text-sm text-destructive text-center">
+              {submitError}
+            </p>
+          )}
+
           <div className="flex gap-3 justify-center">
-            <Button onClick={handleSubmit} className="px-10">
+            <Button onClick={handleSubmit} className="px-10" disabled={isAdding}>
               {isAdding ? "Adding..." : "Add Song"}
             </Button>
             <Button variant="outline" className="px-10" asChild>
