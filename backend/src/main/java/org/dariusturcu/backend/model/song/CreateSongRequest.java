@@ -1,9 +1,9 @@
 package org.dariusturcu.backend.model.song;
 
-import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
+import org.dariusturcu.backend.validation.NotFutureYear;
 
 public record CreateSongRequest(
         @NotBlank(message = "Artist name is required")
@@ -12,8 +12,8 @@ public record CreateSongRequest(
         @NotBlank(message = "Song title is required")
         String title,
 
-        @Min(value = 1860, message = "Release year must be 1860 or later")
-        @Max(value = 2100, message = "Release year must be 2100 or earlier")
+        @Min(value = 1000, message = "Release year must be 1000 or later")
+        @NotFutureYear
         int releaseYear,
 
         @NotBlank(message = "YouTube link is required")
