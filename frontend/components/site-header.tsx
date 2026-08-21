@@ -20,7 +20,7 @@ export function SiteHeader({
 }) {
   const [isEditing, setIsEditing] = React.useState(false);
   const [titleValue, setTitleValue] = React.useState(title);
-  const [colorValue, setColorValue] = React.useState(title);
+  const [colorValue, setColorValue] = React.useState(color ?? "#000000");
   const inputRef = React.useRef<HTMLInputElement>(null);
 
   React.useEffect(() => {
