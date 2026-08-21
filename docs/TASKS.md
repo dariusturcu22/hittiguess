@@ -71,7 +71,7 @@ No story required, this is fix/chore work. Goal: the base game goes from working
 - [x] Fix all frontend lint errors and warnings (`npm run lint`), done as part of the Next.js upgrade.
 - [x] Eliminate all backend build warnings, confirmed clean as part of the Spring Boot 4 upgrade (only pre-existing Maven-tooling JVM noise remains, unrelated to project code).
 - [x] Eliminate all frontend build warnings, confirmed clean as part of the Next.js upgrade.
-- [ ] Remove unused dependencies and unused imports flagged across the frontend and backend, confirmed with the project owner before removal.
+- [x] Remove unused dependencies and unused imports flagged across the frontend and backend, confirmed with the project owner before removal. Frontend: `@dnd-kit/*` (4 packages, unused), `recharts` and `vaul` (each only used by a dead shadcn scaffold component, both removed together). Backend: 5 files had unused imports; while in the metadata pipeline files, also caught and fixed `JsonNode.asText()`/`asText(String)` calls left over from the Jackson 3 migration, deprecated in favor of `asString()`/`asString(String)`, which the compiler only flags as a warning when deprecation warnings are shown explicitly.
 - [ ] Hands-on QA pass through the full game flow (auth, playlist CRUD, song submission, session play, export) to find bugs, rough edges, and incomplete features; log findings here as a batched list once done, same pattern as the audit fixes above
 - [ ] Fix everything found in the QA pass
 - [ ] Remove comments that just restate the code they sit on, across backend and frontend
