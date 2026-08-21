@@ -46,6 +46,7 @@ This applies everywhere: every markdown file in this repo, chat responses to the
 ## Git workflow
 
 - Branches: `main`, `dev`, `legacy`. Work only happens on `dev`, through pull requests from `feature/*`, `fix/*`, `chore/*`, or `docs/*` branches. `main` and `legacy` are not touched directly.
+- PRs are reviewed on GitHub by the project owner, never merged automatically. Merge only when explicitly told to for a named PR. When merging, use a regular merge, never squash, so the individual commits survive. Immediately after merging, delete both the remote and local copies of the merged branch.
 - Never include a `Co-Authored-By` trailer or any AI-attribution footer on commits or pull requests.
 - Commit granularly. Each commit represents one coherent change, not a batch of unrelated changes.
 
