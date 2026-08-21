@@ -5,6 +5,8 @@ import { SiteHeader } from "@/components/site-header";
 import { SidebarInset, SidebarProvider } from "@/components/shadcn/sidebar";
 import React, { use } from "react";
 
+import { toast } from "sonner";
+
 import PlaylistContent from "./PlaylistContent";
 import {
   getGetUserPlaylistsQueryKey,
@@ -39,6 +41,9 @@ export default function PlaylistPage({ params }: PageProps) {
             queryKey: getGetPlaylistQueryKey(playlistId),
           });
         },
+        onError: () => {
+          toast.error("Couldn't rename the playlist. Try again.");
+        },
       },
     );
   };
@@ -51,6 +56,9 @@ export default function PlaylistPage({ params }: PageProps) {
           queryClient.invalidateQueries({
             queryKey: getGetPlaylistQueryKey(playlistId),
           });
+        },
+        onError: () => {
+          toast.error("Couldn't update the playlist color. Try again.");
         },
       },
     );
