@@ -15,9 +15,11 @@ import org.dariusturcu.backend.repository.PlaylistRepository;
 import org.dariusturcu.backend.security.util.SecurityUtils;
 import org.dariusturcu.backend.util.CardGenerator;
 import org.dariusturcu.backend.util.QRGenerator;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
@@ -30,16 +32,9 @@ import java.util.List;
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class ExportService {
-    private final PlaylistRepository playlistRepository;
+    private static final int MAX_SONGS_PER_EXPORT = 500;
 
-    public byte[] generatePdf(Long playlistId) {
-        List<Song> songs = getValidatedSongs(playlistId);
-        try {
-            return buildPdf(songs, false);
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to generate PDF: " + e.getMessage());
-        }
-    }
+    private final PlaylistRepository playlistRepository;
 
     private byte[] buildPdf(List<Song> songs, boolean isQr) throws IOException {
         PDDocument document = new PDDocument();
@@ -113,6 +108,10 @@ public class ExportService {
 
         if (songs.isEmpty()) {
             throw new RuntimeException("Playlist has no songs to generate PDF for");
+        }
+        if (songs.size() > MAX_SONGS_PER_EXPORT) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Playlist has more than " + MAX_SONGS_PER_EXPORT + " songs, too many to export at once");
         }
         return songs;
     }
