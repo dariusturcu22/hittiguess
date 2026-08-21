@@ -5,8 +5,9 @@ import java.nio.charset.StandardCharsets;
 
 public class UrlBuilder {
     public static String buildYoutubeApiLink(String videoId, String apiKey) {
+        String encodedId = URLEncoder.encode(videoId, StandardCharsets.UTF_8);
         return "https://www.googleapis.com/youtube/v3/videos?part=snippet,contentDetails&id=" +
-                videoId + "&key=" + apiKey;
+                encodedId + "&key=" + apiKey;
     }
 
     public static String buildMusicBrainzApiLink(String query) {
