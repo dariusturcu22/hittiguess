@@ -5,7 +5,6 @@ const PUBLIC_ROUTES = [
   "/register",
   "/forgot-password",
   "/oauth2/redirect",
-  "/backend",
 ];
 
 export default function proxy(request: NextRequest) {

@@ -4,7 +4,6 @@ import * as React from "react";
 import {
   IconDotsVertical,
   IconLogout,
-  IconUserCircle,
   IconMoon,
   IconSun,
 } from "@tabler/icons-react";
@@ -125,10 +124,6 @@ export function NavUser() {
                     <span>Loading...</span>
                   </>
                 )}
-              </DropdownMenuItem>
-              <DropdownMenuItem className="cursor-pointer">
-                <IconUserCircle />
-                Account
               </DropdownMenuItem>
             </DropdownMenuGroup>
             <DropdownMenuSeparator />

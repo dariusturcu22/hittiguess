@@ -4,6 +4,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import Link from "next/link";
+import { toast } from "sonner";
 
 import { Button } from "@/components/shadcn/button";
 import { Input } from "@/components/shadcn/input";
@@ -40,7 +41,7 @@ export default function RegisterPage() {
         setTimeout(() => router.push("/playlists"), 1000);
       },
       onError: () => {
-        // handle error with toast
+        toast.error("Couldn't create account. Username or email may already be in use.");
       },
     },
   });

@@ -26,6 +26,7 @@ import {
 } from "@tanstack/react-table";
 import { z } from "zod";
 import Link from "next/link";
+import { toast } from "sonner";
 
 import { Button } from "@/components/shadcn/button";
 import { Checkbox } from "@/components/shadcn/checkbox";
@@ -88,11 +89,15 @@ export function DataTable({
         `${process.env.NEXT_PUBLIC_API_URL}/api/playlists/${playlistId}/export/${type}`,
         { credentials: "include" },
       );
+      if (!response.ok) {
+        toast.error(`Couldn't export the ${type} cards. Try again.`);
+        continue;
+      }
       const blob = await response.blob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `playlist-${playlistId}.pdf`;
+      a.download = `playlist-${playlistId}-${type}.pdf`;
       a.click();
       URL.revokeObjectURL(url);
     }
