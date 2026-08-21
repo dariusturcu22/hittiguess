@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { Suspense, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -9,7 +9,6 @@ import { toast } from "sonner";
 
 import { Button } from "@/components/shadcn/button";
 import { Input } from "@/components/shadcn/input";
-import { Label } from "@/components/shadcn/label";
 import {
   Form,
   FormControl,
@@ -27,8 +26,7 @@ const LoginFormSchema = loginBody;
 
 type LoginFormValues = z.infer<typeof LoginFormSchema>;
 
-export default function LoginPage() {
-  const router = useRouter();
+function OAuthErrorToast() {
   const searchParams = useSearchParams();
 
   useEffect(() => {
@@ -37,6 +35,12 @@ export default function LoginPage() {
       toast.error("Google sign-in failed. Try again or use email and password.");
     }
   }, [searchParams]);
+
+  return null;
+}
+
+export default function LoginPage() {
+  const router = useRouter();
 
   const { mutate, isPending } = useLogin({
     mutation: {
@@ -68,6 +72,9 @@ export default function LoginPage() {
 
   return (
     <section className="flex px-4 py-8">
+      <Suspense fallback={null}>
+        <OAuthErrorToast />
+      </Suspense>
       <Form {...form}>
         <form
           onSubmit={form.handleSubmit(onSubmit)}
@@ -181,7 +188,7 @@ export default function LoginPage() {
           </div>
 
           <p className="text-muted-foreground text-center text-sm">
-            Don't have an account?
+            Don&apos;t have an account?
             <Button asChild variant="link" className="px-2">
               <Link href="/register">Create one</Link>
             </Button>
