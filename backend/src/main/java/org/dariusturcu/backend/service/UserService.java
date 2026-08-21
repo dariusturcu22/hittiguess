@@ -1,6 +1,7 @@
 package org.dariusturcu.backend.service;
 
 
+import org.dariusturcu.backend.exception.ConflictException;
 import org.dariusturcu.backend.exception.ResourceNotFoundException;
 import org.dariusturcu.backend.exception.ResourceType;
 import org.dariusturcu.backend.model.mapper.PlaylistMapper;
@@ -15,6 +16,7 @@ import org.dariusturcu.backend.repository.PlaylistRepository;
 import org.dariusturcu.backend.repository.UserRepository;
 
 import org.dariusturcu.backend.security.util.SecurityUtils;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import lombok.RequiredArgsConstructor;
 import org.springframework.transaction.annotation.Transactional;
@@ -43,8 +45,7 @@ public class UserService {
     @Transactional(readOnly = true)
     public UserDetailDTO getUserById(Long userId) {
         if (!SecurityUtils.isCurrentUser(userId)) {
-            throw new RuntimeException("Access denied");
-            // TODO custom exception
+            throw new AccessDeniedException("Access denied");
         }
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException(ResourceType.USER, userId));
@@ -58,13 +59,13 @@ public class UserService {
         if (request.username() != null
                 && userRepository.existsUserByUsername(request.username())
                 && !user.getUsername().equals(request.username())) {
-            throw new RuntimeException("Username or email already in use");
+            throw new ConflictException("Username or email already in use");
         }
 
         if (request.email() != null
                 && userRepository.existsUserByEmail(request.email())
                 && !user.getEmail().equals(request.email())) {
-            throw new RuntimeException("Username or email already in use");
+            throw new ConflictException("Username or email already in use");
         }
 
         if (request.username() != null) {

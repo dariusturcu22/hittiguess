@@ -1,6 +1,8 @@
 package org.dariusturcu.backend.service;
 
 import lombok.RequiredArgsConstructor;
+import org.dariusturcu.backend.exception.ConflictException;
+import org.dariusturcu.backend.exception.ResourceNotFoundException;
 import org.dariusturcu.backend.model.RefreshToken;
 import org.dariusturcu.backend.model.auth.AuthResult;
 import org.dariusturcu.backend.model.auth.LoginRequest;
@@ -14,6 +16,7 @@ import org.dariusturcu.backend.security.util.JwtUtil;
 import org.dariusturcu.backend.security.util.TokenHasher;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -36,8 +39,7 @@ public class AuthService {
                 || userRepository.existsUserByEmail(request.email());
 
         if (usernameOrEmailTaken) {
-            throw new RuntimeException("Username or email already in use");
-            // TODO change to custom exception
+            throw new ConflictException("Username or email already in use");
         }
 
         User user = new User();
@@ -62,16 +64,22 @@ public class AuthService {
     }
 
     public AuthResult login(LoginRequest request) {
-        authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(
-                        request.email(),
-                        request.password()
-                )
-        );
+        try {
+            authenticationManager.authenticate(
+                    new UsernamePasswordAuthenticationToken(
+                            request.email(),
+                            request.password()
+                    )
+            );
+        } catch (IllegalArgumentException e) {
+            // BCrypt throws this for an account with no password set, a Google-only account
+            // trying to log in with a password. Same response as any other wrong credentials,
+            // so this doesn't become a second way to tell accounts apart.
+            throw new BadCredentialsException("Invalid username or password");
+        }
 
         User user = userRepository.findUserByEmail(request.email())
-                .orElseThrow(() -> new RuntimeException("User not found"));
-        // TODO change to custom exception
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
         String accessToken = jwtUtil.generateToken(user);
         String refreshToken = createAndSaveRefreshToken(user);
