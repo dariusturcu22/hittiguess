@@ -81,3 +81,4 @@ No story required, this is fix/chore work. Goal: the base game goes from working
 No story required for these. Fix on a `fix` or `chore` branch.
 
 - [x] Remove leftover `console.log` in `AddSongForm.tsx` (done as part of batch 5)
+- [x] Fix `UpdatePlaylistRequest` requiring both `name` and `color` as `@NotBlank`, breaking both the playlist rename and color-change features (found during the QA pass, see below). Also adds error toasts to both, previously silent failures.
