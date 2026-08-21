@@ -66,7 +66,9 @@ public class SongMetadataService {
                     .call()
                     .content();
 
-            assert raw != null;
+            // A null raw here throws NPE on the next line, caught below same as any other
+            // parse failure. Java assertions are disabled by default, so an assert here
+            // wouldn't actually run.
             String clean = raw.replaceAll("```json|```", "").trim();
             log.debug("AI raw response: {}", clean);
             SongMetadataResponse parsed = objectMapper.readValue(clean, SongMetadataResponse.class);

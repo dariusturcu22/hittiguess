@@ -6,6 +6,7 @@ import org.dariusturcu.backend.model.user.User;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
+import org.hibernate.annotations.BatchSize;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -29,6 +30,7 @@ public class Playlist {
     private String inviteCode;
 
     @OneToMany(mappedBy = "playlist", cascade = CascadeType.ALL, orphanRemoval = true)
+    @BatchSize(size = 20)
     private List<Song> songs = new ArrayList<>();
 
     @ManyToMany(mappedBy = "playlists")

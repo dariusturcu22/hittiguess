@@ -46,9 +46,9 @@ public class SongMapper {
         if (request.title() != null) {
             song.setTitle(request.title());
         }
-        if (request.releaseYear() != 0) {
-            song.setReleaseYear(request.releaseYear());
-        }
+        // releaseYear is required and @Min-validated on the request, always present by the time
+        // it gets here, no need to guess whether it was omitted the way a 0 check would.
+        song.setReleaseYear(request.releaseYear());
         if (request.youtubeId() != null) {
             song.setYoutubeId(request.youtubeId());
         }

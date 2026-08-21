@@ -35,8 +35,4 @@ public class UserMapper {
 
         );
     }
-
-    public User updateEntity(User user, UpdateUserRequest request) {
-        return user;
-    }
 }
