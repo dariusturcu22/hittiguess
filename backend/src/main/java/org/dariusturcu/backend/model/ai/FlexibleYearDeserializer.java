@@ -5,11 +5,17 @@ import com.fasterxml.jackson.databind.DeserializationContext;
 import com.fasterxml.jackson.databind.JsonDeserializer;
 
 import java.io.IOException;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class FlexibleYearDeserializer extends JsonDeserializer<Integer> {
+    private static final Pattern YEAR_PATTERN = Pattern.compile("-?\\d{1,4}");
+
     @Override
     public Integer deserialize(JsonParser p, DeserializationContext ctx) throws IOException {
-        String value = p.getText().trim().replaceAll("[^0-9]", "");
-        return value.isEmpty() ? 0 : Integer.parseInt(value.substring(0, Math.min(4, value.length())));
+        String raw = p.getText().trim();
+        Matcher matcher = YEAR_PATTERN.matcher(raw);
+        // No plausible year found, null instead of silently defaulting to a wrong one.
+        return matcher.find() ? Integer.parseInt(matcher.group()) : null;
     }
 }
