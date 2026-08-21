@@ -49,15 +49,11 @@ The tasks below, under stories 6, 7, 9, and 12, are drafts written during planni
 A full security and bug audit of the pre-split monolith found 51 findings, batched into reviewable groups below. No story needed, this is fix work on the current codebase, same as any other bug. Each batch is its own PR.
 
 - [x] Batch 1: auth cookie and token security, CSRF, refresh token storage, login and registration enumeration
-- [ ] Batch 2: OAuth2 hardening, insecure deserialization, account linking, missing-photo crash
-- [ ] Batch 3: exception handling and logging, replace System.out/System.err/IO.println with real SLF4J logging (`@Slf4j` from Lombok, already a dependency), stop leaking internal errors, fix wrong status codes
-- [ ] Batch 4: input validation and injection hardening on the backend
-- [ ] Batch 5: metadata pipeline safety, rate limiting, prompt injection surface
-- [ ] Batch 6: export/PDF fixes
-- [ ] Batch 7: backend dead code and minor correctness
-- [ ] Batch 8: frontend auth/routing, the token refresh hang, the no-op route guard
-- [ ] Batch 9: frontend forms and data quality
-- [ ] Batch 10: frontend small bugs and cleanup
+- [ ] Batch 2: OAuth2 hardening plus backend exception handling and logging, insecure deserialization, account linking, missing-photo crash, replace System.out/System.err/IO.println with real SLF4J logging (`@Slf4j` from Lombok, already a dependency), stop leaking internal errors, fix wrong status codes
+- [ ] Batch 3: backend input validation, injection hardening, and metadata pipeline safety, rate limiting, prompt injection surface
+- [ ] Batch 4: export/PDF fixes plus backend dead code and minor correctness
+- [ ] Batch 5: frontend auth/routing plus forms and data quality, the token refresh hang, the no-op route guard, form validation gaps
+- [ ] Batch 6: frontend small bugs and cleanup
 
 ## Bugs and minor fixes
 
