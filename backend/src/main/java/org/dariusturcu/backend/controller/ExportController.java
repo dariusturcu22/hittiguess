@@ -3,7 +3,6 @@ package org.dariusturcu.backend.controller;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
-import org.dariusturcu.backend.repository.PlaylistRepository;
 import org.dariusturcu.backend.service.ExportService;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;

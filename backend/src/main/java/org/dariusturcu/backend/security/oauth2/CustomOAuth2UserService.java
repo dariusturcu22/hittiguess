@@ -1,6 +1,5 @@
 package org.dariusturcu.backend.security.oauth2;
 
-import lombok.RequiredArgsConstructor;
 import org.dariusturcu.backend.model.user.AuthProvider;
 import org.dariusturcu.backend.model.user.Role;
 import org.dariusturcu.backend.model.user.User;
