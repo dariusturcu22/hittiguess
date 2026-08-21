@@ -59,11 +59,11 @@ export function SongForm({ song, backPath, playlistId }: SongFormProps) {
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { id, value } = e.target;
-    setFormData((prev: any) => ({ ...prev, [id]: value }));
+    setFormData((prev: SongFormData) => ({ ...prev, [id]: value }));
   };
 
   const handleColorChange = (id: string, value: string) => {
-    setFormData((prev: any) => ({ ...prev, [id]: value }));
+    setFormData((prev: SongFormData) => ({ ...prev, [id]: value }));
   };
 
   const handleSubmit = () => {
