@@ -43,9 +43,7 @@ AXIOS_INSTANCE.interceptors.response.use(
       if (isRefreshing) {
         return new Promise((resolve, reject) => {
           failedQueue.push({ resolve, reject });
-        })
-          .then(() => AXIOS_INSTANCE(originalRequest))
-          .catch((error) => Promise.reject(error));
+        }).then(() => AXIOS_INSTANCE(originalRequest));
       }
       originalRequest._retry = true;
       isRefreshing = true;
@@ -57,8 +55,10 @@ AXIOS_INSTANCE.interceptors.response.use(
           { withCredentials: true },
         );
 
+        processQueue(null);
         return AXIOS_INSTANCE(originalRequest);
       } catch (refreshError) {
+        processQueue(refreshError);
         window.location.href = "/login";
         return Promise.reject(refreshError);
       } finally {
