@@ -14,9 +14,6 @@
 # --- Backend (Spring Boot / Java) ---
 backend/target/
 backend/build/
-backend/.mvn/
-backend/mvnw
-backend/mvnw.cmd
 *.class
 *.jar
 *.war
