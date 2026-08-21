@@ -61,6 +61,8 @@ If asked to work on a story that's `Needs Definition`, stop and either confirm t
 
 This gate applies to `feature` work only. `fix`, `chore`, and `docs` branches, including bug fixes listed directly in `TASKS.md`, don't need a story or the `Ready` status.
 
+Any multi-step or batched piece of work, whatever kind of branch it lands on, gets written into `TASKS.md` before the first step starts, not backfilled afterward. An external document, a report, an audit, a plan discussed in conversation, is not a substitute for `TASKS.md`. `TASKS.md` is the historical record of what was planned and what got done, and it only stays accurate if work starts there instead of starting somewhere else and getting written down later, or not at all.
+
 ## Documentation
 
 - Product vision and goals: [docs/VISION.md](docs/VISION.md)
