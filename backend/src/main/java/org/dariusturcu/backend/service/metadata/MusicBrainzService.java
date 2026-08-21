@@ -53,12 +53,20 @@ public class MusicBrainzService {
     }
 
     private List<String> buildQueries(String title, String artist) {
+        String safeTitle = escapeLucene(title);
+        String safeArtist = escapeLucene(artist);
+
         List<String> queries = new ArrayList<>();
-        queries.add(String.format("recording:\"%s\" AND artist:\"%s\"", title, artist));
-        queries.add(String.format("recording:\"%s\"", title));
-        queries.add(String.format("\"%s\" \"%s\"", title, artist));
-        queries.add(title + " " + artist);
+        queries.add(String.format("recording:\"%s\" AND artist:\"%s\"", safeTitle, safeArtist));
+        queries.add(String.format("recording:\"%s\"", safeTitle));
+        queries.add(String.format("\"%s\" \"%s\"", safeTitle, safeArtist));
+        queries.add(safeTitle + " " + safeArtist);
         return queries;
+    }
+
+    private String escapeLucene(String value) {
+        if (value == null) return "";
+        return value.replaceAll("([+\\-!(){}\\[\\]^\"~*?:\\\\&|/])", "\\\\$1");
     }
 
     private Map<String, String> parseRecording(JsonNode rec) {
