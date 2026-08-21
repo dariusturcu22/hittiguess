@@ -15,6 +15,7 @@ import org.dariusturcu.backend.repository.PlaylistRepository;
 import org.dariusturcu.backend.security.util.SecurityUtils;
 import org.dariusturcu.backend.util.CardGenerator;
 import org.dariusturcu.backend.util.QRGenerator;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -104,9 +105,8 @@ public class ExportService {
         boolean hasAccess = playlist.getUsers().stream()
                 .anyMatch(user -> user.getId().equals(SecurityUtils.getCurrentUserId()));
 
-        // TODO custom exception
         if (!hasAccess) {
-            throw new RuntimeException("Access denied: You are not a member of this playlist");
+            throw new AccessDeniedException("You are not a member of this playlist");
         }
 
         List<Song> songs = playlist.getSongs();

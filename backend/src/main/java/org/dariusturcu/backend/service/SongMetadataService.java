@@ -2,6 +2,7 @@ package org.dariusturcu.backend.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.dariusturcu.backend.model.ai.AiResponse;
 import org.dariusturcu.backend.model.ai.SongMetadataResponse;
 import org.dariusturcu.backend.service.metadata.GeniusService;
@@ -19,6 +20,7 @@ import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class SongMetadataService {
@@ -51,7 +53,7 @@ public class SongMetadataService {
 
             assert raw != null;
             String clean = raw.replaceAll("```json|```", "").trim();
-            System.out.println("AI RAW RESPONSE: " + clean);
+            log.debug("AI raw response: {}", clean);
             SongMetadataResponse parsed = objectMapper.readValue(clean, SongMetadataResponse.class);
 
             long duration = System.currentTimeMillis() - startTime;

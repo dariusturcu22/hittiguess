@@ -16,6 +16,7 @@ import org.dariusturcu.backend.repository.PlaylistRepository;
 
 import org.dariusturcu.backend.repository.SongRepository;
 import org.dariusturcu.backend.security.util.SecurityUtils;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
@@ -48,7 +49,7 @@ public class PlaylistService {
                 .anyMatch(user -> user.getId().equals(currentUser.getId()));
 
         if (!hasAccess) {
-            throw new RuntimeException("Access denied: You are not a member of this playlist");
+            throw new AccessDeniedException("You are not a member of this playlist");
         }
     }
 

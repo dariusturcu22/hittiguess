@@ -1,6 +1,7 @@
 package org.dariusturcu.backend.service.metadata;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import lombok.extern.slf4j.Slf4j;
 import org.dariusturcu.backend.util.HttpUtils;
 import org.dariusturcu.backend.util.MetadataParser;
 import org.dariusturcu.backend.util.UrlBuilder;
@@ -14,6 +15,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Map;
 
+@Slf4j
 @Component
 public class WikipediaService {
     public Map<String, String> search(String title, String artist) {
@@ -45,7 +47,7 @@ public class WikipediaService {
                 Thread.sleep(500);
             }
         } catch (Exception e) {
-            System.err.println("Wikipedia error: " + e.getMessage());
+            log.warn("Wikipedia error: {}", e.getMessage());
         }
         return null;
     }
@@ -73,7 +75,7 @@ public class WikipediaService {
                 }
             }
         } catch (Exception e) {
-            System.err.println("Wikipedia page fetch error: " + e.getMessage());
+            log.warn("Wikipedia page fetch error: {}", e.getMessage());
         }
         return null;
     }

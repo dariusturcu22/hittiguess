@@ -8,6 +8,7 @@ import org.dariusturcu.backend.repository.UserRepository;
 import org.springframework.security.oauth2.client.userinfo.DefaultOAuth2UserService;
 import org.springframework.security.oauth2.client.userinfo.OAuth2UserRequest;
 import org.springframework.security.oauth2.core.OAuth2AuthenticationException;
+import org.springframework.security.oauth2.core.OAuth2Error;
 import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.stereotype.Service;
 
@@ -42,22 +43,44 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
                 oAuth2UserInfo.getId()
         );
 
-        User user;
         if (userOptional.isPresent()) {
-            user = userOptional.get();
+            User user = userOptional.get();
             user.setEmail(oAuth2UserInfo.getEmail());
-            user.setUsername(oAuth2UserInfo.getName());
+            if (!user.getUsername().equals(oAuth2UserInfo.getName())) {
+                user.setUsername(resolveUniqueUsername(oAuth2UserInfo.getName()));
+            }
             user.setImageUrl(oAuth2UserInfo.getImageUrl());
-        } else {
-            user = new User();
-            user.setAuthProvider(provider);
-            user.setAuthProviderId(oAuth2UserInfo.getId());
-            user.setUsername(oAuth2UserInfo.getName());
-            user.setEmail(oAuth2UserInfo.getEmail());
-            user.setImageUrl(oAuth2UserInfo.getImageUrl());
-            user.setRole(Role.USER);
+            return userRepository.save(user);
         }
 
+        if (userRepository.existsUserByEmail(oAuth2UserInfo.getEmail())) {
+            throw new OAuth2AuthenticationException(
+                    new OAuth2Error("account_exists"),
+                    "An account with this email already exists, log in with your password instead"
+            );
+        }
+
+        User user = new User();
+        user.setAuthProvider(provider);
+        user.setAuthProviderId(oAuth2UserInfo.getId());
+        user.setUsername(resolveUniqueUsername(oAuth2UserInfo.getName()));
+        user.setEmail(oAuth2UserInfo.getEmail());
+        user.setImageUrl(oAuth2UserInfo.getImageUrl());
+        user.setRole(Role.USER);
+
         return userRepository.save(user);
+    }
+
+    private String resolveUniqueUsername(String desired) {
+        if (!userRepository.existsUserByUsername(desired)) {
+            return desired;
+        }
+        String candidate;
+        int suffix = 1;
+        do {
+            candidate = desired + suffix;
+            suffix++;
+        } while (userRepository.existsUserByUsername(candidate));
+        return candidate;
     }
 }

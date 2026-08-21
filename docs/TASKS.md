@@ -46,11 +46,11 @@ The tasks below, under stories 6, 7, 9, and 12, are drafts written during planni
 
 ## Audit fixes
 
-A full security and bug audit of the pre-split monolith found 51 findings, batched into reviewable groups below. No story needed, this is fix work on the current codebase, same as any other bug. Each batch is its own PR.
+A full security and bug audit of the pre-split monolith found 51 findings, batched into reviewable groups below. No story needed, this is fix work on the current codebase, same as any other bug. Each batch is its own PR. Every `// TODO` and `// FIXME` comment found in the backend during the audit gets resolved somewhere in these batches too, either fixed or, where the code was already correct, replaced with a real explanation. None should be left by the time batch 6 is done.
 
 - [x] Batch 1: auth cookie and token security, CSRF, refresh token storage, login and registration enumeration
-- [ ] Batch 2: OAuth2 hardening plus backend exception handling and logging, insecure deserialization, account linking, missing-photo crash, replace System.out/System.err/IO.println with real SLF4J logging (`@Slf4j` from Lombok, already a dependency), stop leaking internal errors, fix wrong status codes
-- [ ] Batch 3: backend input validation, injection hardening, and metadata pipeline safety, rate limiting, prompt injection surface
+- [ ] Batch 2: OAuth2 hardening plus backend exception handling and logging, insecure deserialization, account linking, missing-photo crash, replace System.out/System.err/IO.println with real SLF4J logging (`@Slf4j` from Lombok, already a dependency), stop leaking internal errors, fix wrong status codes. Also closes out every `// TODO`/`// FIXME` in the backend exception-handling and security code: replaces the generic `RuntimeException` throws with a proper `ConflictException` for already-exists cases and Spring Security's own `AccessDeniedException` for access-denied cases (both then need no custom handler for the 403 case, Spring's `ExceptionTranslationFilter` already does that), fixes the deprecated `DaoAuthenticationProvider` constructor usage in `SecurityConfig`, and replaces the two confused TODOs in `JwtAuthenticationFilter` with a short explanation now that they're understood, both turned out to be correct code.
+- [ ] Batch 3: backend input validation, injection hardening, and metadata pipeline safety, rate limiting, prompt injection surface. Closes the last remaining TODO, the `youtubeId` fallback in `MetadataParser`.
 - [ ] Batch 4: export/PDF fixes plus backend dead code and minor correctness
 - [ ] Batch 5: frontend auth/routing plus forms and data quality, the token refresh hang, the no-op route guard, form validation gaps
 - [ ] Batch 6: frontend small bugs and cleanup
