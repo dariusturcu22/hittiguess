@@ -30,12 +30,12 @@ public class YouTubeMetadataService {
             if (items.isArray() && !items.isEmpty()) {
                 JsonNode snippet = items.get(0).path("snippet");
 
-                result.put("channel_title", snippet.path("channelTitle").asText("unknown"));
-                result.put("video_title", snippet.path("title").asText("unknown"));
-                result.put("description", snippet.path("description").asText(""));
+                result.put("channel_title", snippet.path("channelTitle").asString("unknown"));
+                result.put("video_title", snippet.path("title").asString("unknown"));
+                result.put("description", snippet.path("description").asString(""));
                 result.put("tags", snippet.path("tags").toString());
 
-                String publishedAt = snippet.path("publishedAt").asText("unknown");
+                String publishedAt = snippet.path("publishedAt").asString("unknown");
                 result.put("upload_date", publishedAt.length() >= 10 ? publishedAt.substring(0, 10) : "unknown");
                 result.put("upload_year", publishedAt.length() >= 4 ? publishedAt.substring(0, 4) : "unknown");
 

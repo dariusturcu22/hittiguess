@@ -9,9 +9,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
 
 import java.net.HttpURLConnection;
-import java.net.URL;
-import java.net.URLEncoder;
-import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -38,7 +35,7 @@ public class WikipediaService {
                     JsonNode searchResults = root.path("query").path("search");
 
                     if (searchResults.isArray() && !searchResults.isEmpty()) {
-                        String pageTitle = searchResults.get(0).path("title").asText();
+                        String pageTitle = searchResults.get(0).path("title").asString();
                         Map<String, String> result = fetchPageContent(pageTitle);
                         if (result != null) return result;
                     }
@@ -64,7 +61,7 @@ public class WikipediaService {
 
             if (!pages.isEmpty()) {
                 JsonNode page = pages.iterator().next();
-                String extract = page.path("extract").asText("");
+                String extract = page.path("extract").asString("");
                 String releaseInfo = MetadataParser.extractReleaseDateFromText(extract);
 
                 if (!releaseInfo.equals("No release date found")) {

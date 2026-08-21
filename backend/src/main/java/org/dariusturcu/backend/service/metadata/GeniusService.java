@@ -32,9 +32,9 @@ public class GeniusService {
                         JsonNode firstHit = hits.get(0).path("result");
 
                         Map<String, String> result = new HashMap<>();
-                        result.put("title", firstHit.path("title").asText("unknown"));
-                        result.put("artist", firstHit.path("primary_artist").path("name").asText("unknown"));
-                        result.put("release_date", firstHit.path("release_date_for_display").asText("unknown"));
+                        result.put("title", firstHit.path("title").asString("unknown"));
+                        result.put("artist", firstHit.path("primary_artist").path("name").asString("unknown"));
+                        result.put("release_date", firstHit.path("release_date_for_display").asString("unknown"));
                         return result;
                     }
                 }
