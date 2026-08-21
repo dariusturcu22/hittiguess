@@ -1,6 +1,6 @@
 package org.dariusturcu.backend.service.metadata;
 
-import com.fasterxml.jackson.databind.JsonNode;
+import tools.jackson.databind.JsonNode;
 import org.dariusturcu.backend.util.HttpUtils;
 import org.dariusturcu.backend.util.MetadataParser;
 import org.dariusturcu.backend.util.UrlBuilder;

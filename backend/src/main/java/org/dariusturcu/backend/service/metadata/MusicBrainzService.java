@@ -1,6 +1,6 @@
 package org.dariusturcu.backend.service.metadata;
 
-import com.fasterxml.jackson.databind.JsonNode;
+import tools.jackson.databind.JsonNode;
 import lombok.extern.slf4j.Slf4j;
 import org.dariusturcu.backend.util.HttpUtils;
 import org.dariusturcu.backend.util.MetadataParser;
