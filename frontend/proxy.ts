@@ -1,7 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 
-// "/landing" doesn't correspond to a real route, (landing) is a route group,
-// stripped from the URL, the actual landing page is at "/".
 const PUBLIC_ROUTES = [
   "/login",
   "/register",
