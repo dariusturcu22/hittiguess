@@ -48,7 +48,7 @@ This applies everywhere: every markdown file in this repo, chat responses to the
 
 - Branches: `main`, `dev`, `legacy`. Work only happens on `dev`, through pull requests from `feature/*`, `fix/*`, `chore/*`, or `docs/*` branches. `main` and `legacy` are not touched directly.
 - No direct commits to `dev`, `main`, or `legacy`, ever, full stop. This includes documentation, tooling and MCP config (`.mcp.json`, `.claude/`), one-line fixes, and anything that feels too small to bother branching for. If it's a file change, it gets its own branch off `dev` and lands through a PR. There is no exception for "just this once" or "it's not really code." Size or category is never a reason to skip a branch.
-- PRs are reviewed on GitHub by the project owner, never merged automatically. Merge only when explicitly told to for a named PR. When merging, use a regular merge, never squash, so the individual commits survive. Immediately after merging, delete both the remote and local copies of the merged branch.
+- PRs are reviewed on GitHub by the project owner, never merged automatically. Merge only when explicitly told to for a named PR. When merging, use a regular merge, never squash, so the individual commits survive. GitHub auto-deletes the remote branch on merge. Immediately after merging, delete the local copy of the branch.
 - Never include a `Co-Authored-By` trailer or any AI-attribution footer on commits or pull requests.
 - Commit granularly. Each commit represents one coherent change, not a batch of unrelated changes.
 
