@@ -36,6 +36,7 @@ This applies everywhere: every markdown file in this repo, chat responses to the
 - No inflated or overly formal vocabulary. Write the way a person would explain something to a colleague, plainly.
 - No filler transition words like "furthermore," "moreover," "additionally."
 - Say things directly. If something is a decision that's already been made, state it as a fact, don't re-justify it every time it comes up.
+- Never write in the first person, and never put process narration, confessions, opinions, or self-commentary into anything that lands in the repo or on GitHub: code comments, commit messages, PR descriptions, docs, issue text, all of it. Describe what the code does and why, as fact. If something went wrong, say so to the user in chat. It does not belong in a permanent project artifact, ever, no exceptions. This was violated twice in one session: a PR description that opened by confessing a process mistake, and a code comment that narrated reasoning about a past version instead of documenting the code as it stands. Both are exactly what this rule forbids.
 
 ## Code conventions
 
