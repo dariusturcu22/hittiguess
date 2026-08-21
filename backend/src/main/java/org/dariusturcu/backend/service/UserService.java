@@ -55,19 +55,23 @@ public class UserService {
     public UserDetailDTO updateUser(UpdateUserRequest request) {
         User user = SecurityUtils.getCurrentUser();
 
+        if (request.username() != null
+                && userRepository.existsUserByUsername(request.username())
+                && !user.getUsername().equals(request.username())) {
+            throw new RuntimeException("Username or email already in use");
+        }
+
+        if (request.email() != null
+                && userRepository.existsUserByEmail(request.email())
+                && !user.getEmail().equals(request.email())) {
+            throw new RuntimeException("Username or email already in use");
+        }
+
         if (request.username() != null) {
-            if (userRepository.existsUserByUsername(request.username()) &&
-                    !user.getUsername().equals(request.username())) {
-                throw new RuntimeException("Username already exists");
-            }
             user.setUsername(request.username());
         }
 
         if (request.email() != null) {
-            if (userRepository.existsUserByEmail(request.email()) &&
-                    !user.getEmail().equals(request.email())) {
-                throw new RuntimeException("Email already exists");
-            }
             user.setEmail(request.email());
         }
 

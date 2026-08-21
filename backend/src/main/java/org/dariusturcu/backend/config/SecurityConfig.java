@@ -56,8 +56,7 @@ public class SecurityConfig {
                                 "/auth/**",
                                 "/error",
                                 "/oauth2/**",
-                                "/login/oauth2/**",
-                                "/api/**"
+                                "/login/oauth2/**"
                         )
                 )
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
