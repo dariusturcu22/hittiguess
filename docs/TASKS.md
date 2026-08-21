@@ -57,20 +57,21 @@ A full security and bug audit of the pre-split monolith found 51 findings, batch
 
 ## Dependency upgrades
 
-No story required, this is maintenance on the current monolith before the two-service split. Each item is its own chore branch.
+No story required for these. Each upgrade is its own `chore` branch.
 
-- [ ] Backend: Spring Boot 3.5.10 → 4.1.x (3.5.x reached OSS end of life 2026-06-30). Re-verify Spring Security, springdoc-openapi, and Spring AI compatibility, resolve any breaking changes from the 3.x → 4.x migration guide
-- [ ] Frontend: Next.js 16.1.6 → 16.3.0
-- [ ] Re-check other frontend deps (React, TanStack Query, axios, zod) against current versions, since the last check was during the audit
-- [ ] Full build and test pass on both services after upgrading, before moving on
+- [x] Backend: Spring Boot 3.5.10 → 4.1.1 (3.5.x reached OSS end of life 2026-06-30): bump `spring-boot-starter-parent`, `spring-ai.version` (Spring AI 2.0.x), and `springdoc-openapi-starter-webmvc-ui` (3.0.x); swap `jjwt-jackson` for `jjwt-gson` since jjwt doesn't support Jackson 3 yet; migrate the ten files that import Jackson directly from `com.fasterxml.jackson.*` to the Jackson 3 `tools.jackson.*` API; confirm the Spring Security 7 OAuth2 client property namespace still resolves. Also renamed the two starters Boot 4 deprecated (`spring-boot-starter-oauth2-client`, `spring-boot-starter-web`), updated `BackendApplication`'s `SecurityAutoConfiguration` import for Boot 4's autoconfigure package split, and adjusted a Spring AI 2.0 `ChatClient.options()` call to its new builder-accepting signature. The OAuth2 client property namespace is unchanged in Boot 4, confirmed against Spring Boot's own configuration changelog, only the starter artifact id was renamed.
+- [x] Frontend: Next.js 16.1.6 → 16.3.2, plus minor/patch bumps across `@hookform/resolvers`, `@tabler/icons-react`, `@tanstack/react-query`, `axios`, `lucide-react` (0.x → 1.x), `radix-ui`, `react-hook-form`, `sonner`, `tailwind-merge`, and `zod`. `@tanstack/react-table` stayed pinned to 8.21.3 (v9 still in beta as of mid-2026), `recharts` stayed on 2.15.4 (its only importer is unused shadcn scaffolding).
+- [x] Re-check other frontend deps against current versions, done as part of the Next.js upgrade above.
+- [ ] Full build and test pass on both services after upgrading, before moving on.
 
 ## Pre-split polish
 
 No story required, this is fix/chore work. Goal: the base game goes from working-but-buggy to fully polished before the two-service split (story 6) starts, so the split has a solid baseline to carry over instead of carrying bugs into two codebases. Each item is its own branch unless noted.
 
-- [ ] Fix all frontend lint errors and warnings (`npm run lint`)
-- [ ] Eliminate all backend build warnings
-- [ ] Eliminate all frontend build warnings
+- [x] Fix all frontend lint errors and warnings (`npm run lint`), done as part of the Next.js upgrade.
+- [x] Eliminate all backend build warnings, confirmed clean as part of the Spring Boot 4 upgrade (only pre-existing Maven-tooling JVM noise remains, unrelated to project code).
+- [x] Eliminate all frontend build warnings, confirmed clean as part of the Next.js upgrade.
+- [ ] Remove unused dependencies and unused imports flagged across the frontend and backend, confirmed with the project owner before removal.
 - [ ] Hands-on QA pass through the full game flow (auth, playlist CRUD, song submission, session play, export) to find bugs, rough edges, and incomplete features; log findings here as a batched list once done, same pattern as the audit fixes above
 - [ ] Fix everything found in the QA pass
 - [ ] Remove comments that just restate the code they sit on, across backend and frontend

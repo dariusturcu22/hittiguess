@@ -1,6 +1,6 @@
 package org.dariusturcu.backend.service;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.dariusturcu.backend.model.ai.AiResponse;
@@ -61,8 +61,7 @@ public class SongMetadataService {
                     .user(prompt)
                     .options(OpenAiChatOptions.builder()
                             .model(aiModel)
-                            .temperature(0.1)
-                            .build())
+                            .temperature(0.1))
                     .call()
                     .content();
 

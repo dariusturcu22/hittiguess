@@ -1,6 +1,6 @@
 package org.dariusturcu.backend.service.metadata;
 
-import com.fasterxml.jackson.databind.JsonNode;
+import tools.jackson.databind.JsonNode;
 import lombok.extern.slf4j.Slf4j;
 import org.dariusturcu.backend.util.HttpUtils;
 import org.dariusturcu.backend.util.MetadataParser;
@@ -63,7 +63,7 @@ public class WikipediaService {
             JsonNode pages = contentRoot.path("query").path("pages");
 
             if (!pages.isEmpty()) {
-                JsonNode page = pages.elements().next();
+                JsonNode page = pages.iterator().next();
                 String extract = page.path("extract").asText("");
                 String releaseInfo = MetadataParser.extractReleaseDateFromText(extract);
 

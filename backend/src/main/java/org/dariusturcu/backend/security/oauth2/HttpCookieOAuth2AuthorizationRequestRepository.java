@@ -1,15 +1,16 @@
 package org.dariusturcu.backend.security.oauth2;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import org.springframework.security.oauth2.client.jackson2.OAuth2ClientJackson2Module;
+import org.springframework.security.oauth2.client.jackson.OAuth2ClientJacksonModule;
 import org.springframework.security.oauth2.client.web.AuthorizationRequestRepository;
 import org.springframework.security.oauth2.core.endpoint.OAuth2AuthorizationRequest;
 import org.springframework.stereotype.Component;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.json.JsonMapper;
 
-import java.io.IOException;
 import java.util.Arrays;
 import java.util.Base64;
 import java.util.Optional;
@@ -20,8 +21,9 @@ public class HttpCookieOAuth2AuthorizationRequestRepository
 
     private static final String COOKIE_NAME = "oauth2_auth_request";
     private static final int COOKIE_EXPIRE_SECONDS = 180;
-    private final ObjectMapper objectMapper = new ObjectMapper()
-            .registerModule(new OAuth2ClientJackson2Module());
+    private final ObjectMapper objectMapper = JsonMapper.builder()
+            .addModule(new OAuth2ClientJacksonModule())
+            .build();
 
     @Override
     public OAuth2AuthorizationRequest loadAuthorizationRequest(HttpServletRequest request) {
@@ -80,7 +82,7 @@ public class HttpCookieOAuth2AuthorizationRequestRepository
         try {
             String json = objectMapper.writeValueAsString(request);
             return Base64.getUrlEncoder().encodeToString(json.getBytes());
-        } catch (IOException e) {
+        } catch (JacksonException e) {
             throw new RuntimeException("Failed to serialize OAuth2AuthorizationRequest", e);
         }
     }
@@ -89,7 +91,7 @@ public class HttpCookieOAuth2AuthorizationRequestRepository
         try {
             byte[] decoded = Base64.getUrlDecoder().decode(value);
             return objectMapper.readValue(decoded, OAuth2AuthorizationRequest.class);
-        } catch (IOException e) {
+        } catch (JacksonException e) {
             throw new RuntimeException("Failed to deserialize OAuth2AuthorizationRequest", e);
         }
     }

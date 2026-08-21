@@ -1,6 +1,6 @@
 package org.dariusturcu.backend.config;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import org.dariusturcu.backend.exception.ErrorResponse;
 import org.dariusturcu.backend.security.JwtAuthenticationFilter;

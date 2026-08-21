@@ -1,7 +1,8 @@
 package org.dariusturcu.backend.util;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.json.JsonMapper;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -82,7 +83,7 @@ public class MetadataParser {
     }
 
     public static JsonNode getJsonRoot(HttpURLConnection connection) throws IOException {
-        ObjectMapper mapper = new ObjectMapper();
+        ObjectMapper mapper = JsonMapper.builder().build();
         String response = MetadataParser.readInputStream(connection.getInputStream());
         return mapper.readTree(response);
     }
