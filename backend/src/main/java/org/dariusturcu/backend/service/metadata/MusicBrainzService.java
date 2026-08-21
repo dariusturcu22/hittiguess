@@ -9,8 +9,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
 
 import java.net.HttpURLConnection;
-import java.net.URLEncoder;
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -74,18 +72,18 @@ public class MusicBrainzService {
 
         JsonNode artistCredit = rec.path("artist-credit");
         item.put("artist", artistCredit.isArray() && !artistCredit.isEmpty()
-                ? artistCredit.get(0).path("name").asText("unknown")
+                ? artistCredit.get(0).path("name").asString("unknown")
                 : "unknown");
 
-        item.put("title", rec.path("title").asText("unknown"));
-        item.put("release_date", rec.path("first-release-date").asText("unknown"));
+        item.put("title", rec.path("title").asString("unknown"));
+        item.put("release_date", rec.path("first-release-date").asString("unknown"));
         item.put("score", String.valueOf(rec.path("score").asInt(0)));
 
         JsonNode tags = rec.path("tags");
         if (tags.isArray() && !tags.isEmpty()) {
             StringBuilder tagStr = new StringBuilder();
             for (int j = 0; j < Math.min(3, tags.size()); j++) {
-                tagStr.append(tags.get(j).path("name").asText("")).append(", ");
+                tagStr.append(tags.get(j).path("name").asString("")).append(", ");
             }
             item.put("tags", tagStr.toString());
         }
