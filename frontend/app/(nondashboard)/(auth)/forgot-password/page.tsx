@@ -24,7 +24,7 @@ export default function ForgotPasswordPage() {
               Reset your password
             </h1>
             <p className="text-muted-foreground text-sm">
-              Enter your email and we'll send you a link to reset your password.
+              Enter your email and we&apos;ll send you a link to reset your password.
             </p>
           </div>
 
@@ -44,8 +44,8 @@ export default function ForgotPasswordPage() {
 
             {submitted ? (
               <p className="text-sm text-muted-foreground text-center">
-                Password reset isn't available yet. Contact the person who
-                set up your account for help signing in.
+                Password reset isn&apos;t available yet. Contact the person
+                who set up your account for help signing in.
               </p>
             ) : (
               <Button type="submit" className="w-full">

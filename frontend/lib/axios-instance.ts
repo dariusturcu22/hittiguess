@@ -59,6 +59,9 @@ AXIOS_INSTANCE.interceptors.response.use(
         return AXIOS_INSTANCE(originalRequest);
       } catch (refreshError) {
         processQueue(refreshError);
+        // Outside React here, no router available; a hard redirect also
+        // clears all in-memory app state on session expiry.
+        // eslint-disable-next-line @next/next/no-location-assign-relative-destination
         window.location.href = "/login";
         return Promise.reject(refreshError);
       } finally {
