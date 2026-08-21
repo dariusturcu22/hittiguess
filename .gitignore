@@ -16,6 +16,7 @@ backend/target/
 backend/build/
 *.class
 *.jar
+!backend/.mvn/wrapper/maven-wrapper.jar
 *.war
 
 # --- Mobile (Flutter) ---
