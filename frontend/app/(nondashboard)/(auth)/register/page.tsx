@@ -8,7 +8,6 @@ import { toast } from "sonner";
 
 import { Button } from "@/components/shadcn/button";
 import { Input } from "@/components/shadcn/input";
-import { Label } from "@/components/shadcn/label";
 import {
   Form,
   FormControl,

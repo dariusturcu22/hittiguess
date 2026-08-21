@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React from "react";
 import Link from "next/link";
 
 const cards = [
@@ -95,12 +95,6 @@ const features = [
 ];
 
 export default function LandingPage() {
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
   const cardPositions = [
     { top: "5%", left: "3%", rotate: "-14deg", animDuration: "4.2s" },
     { top: "60%", left: "1%", rotate: "7deg", animDuration: "5.1s" },
@@ -231,8 +225,8 @@ export default function LandingPage() {
               Beautiful cards, every time
             </h2>
             <p className="text-muted-foreground mb-12 text-sm">
-              Each card gets a unique AI-generated gradient based on the song's
-              mood.
+              Each card gets a unique AI-generated gradient based on the
+              song&apos;s mood.
             </p>
             <div className="flex flex-wrap justify-center gap-6">
               {cards.map((card, i) => (

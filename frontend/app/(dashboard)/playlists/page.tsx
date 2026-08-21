@@ -8,7 +8,7 @@ import React from "react";
 import { useGetUserPlaylists } from "@/hooks/generated/user-management/user-management";
 
 export default function PlaylistPage() {
-  const { data: playlists, isLoading, isError, error } = useGetUserPlaylists();
+  const { data: playlists, isLoading, isError } = useGetUserPlaylists();
 
   if (isLoading) {
     return <div>Loading playlists...</div>;

@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import axios from "axios";
 import { AudioWaveform, Music, Plus, LogIn } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -91,8 +92,11 @@ export function AppSidebar({
           setJoinExpanded(false);
           router.push(`/playlists/${playlist.id}`);
         },
-        onError: (error: any) => {
-          setJoinError(error?.response?.data?.message || "Playlist not found");
+        onError: (error: unknown) => {
+          const message = axios.isAxiosError<{ message?: string }>(error)
+            ? error.response?.data?.message
+            : undefined;
+          setJoinError(message || "Playlist not found");
         },
       },
     );

@@ -24,7 +24,6 @@ import {
   type ColumnDef,
   type ColumnFiltersState,
 } from "@tanstack/react-table";
-import { z } from "zod";
 import Link from "next/link";
 import { toast } from "sonner";
 
@@ -205,8 +204,8 @@ export function DataTable({
             <AlertDialogHeader>
               <AlertDialogTitle>Delete song?</AlertDialogTitle>
               <AlertDialogDescription>
-                This will permanently remove "{row.original.title}" from the
-                playlist.
+                This will permanently remove &quot;{row.original.title}&quot;
+                from the playlist.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
@@ -357,8 +356,8 @@ export function DataTable({
                 <AlertDialogHeader>
                   <AlertDialogTitle>Leave playlist?</AlertDialogTitle>
                   <AlertDialogDescription>
-                    You'll lose access to this playlist. You can rejoin later
-                    with an invite link.
+                    You&apos;ll lose access to this playlist. You can rejoin
+                    later with an invite link.
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>

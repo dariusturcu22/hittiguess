@@ -23,7 +23,7 @@ interface PageProps {
 export default function PlaylistPage({ params }: PageProps) {
   const { playlistId: rawId } = use(params);
   const playlistId = parseInt(rawId);
-  const { data: playlists, isLoading, isError, error } = useGetUserPlaylists();
+  const { data: playlists, isLoading, isError } = useGetUserPlaylists();
   const { mutate: updatePlaylist } = useUpdatePlaylist();
   const queryClient = useQueryClient();
 
