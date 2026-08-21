@@ -1,3 +1,6 @@
+"use client";
+
+import { useState } from "react";
 import { Button } from "@/components/shadcn/button";
 import { Input } from "@/components/shadcn/input";
 import { Label } from "@/components/shadcn/label";
@@ -5,9 +8,16 @@ import { IconArrowLeft } from "@tabler/icons-react";
 import Link from "next/link";
 
 export default function ForgotPasswordPage() {
+  const [submitted, setSubmitted] = useState(false);
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setSubmitted(true);
+  };
+
   return (
     <section className="flex px-4 py-8">
-      <form className="max-w-92 m-auto h-fit w-full">
+      <form className="max-w-92 m-auto h-fit w-full" onSubmit={handleSubmit}>
         <div className="p-6">
           <div>
             <h1 className="mb-1 mt-4 text-xl font-semibold">
@@ -32,7 +42,16 @@ export default function ForgotPasswordPage() {
               />
             </div>
 
-            <Button className="w-full">Send Reset Link</Button>
+            {submitted ? (
+              <p className="text-sm text-muted-foreground text-center">
+                Password reset isn't available yet. Contact the person who
+                set up your account for help signing in.
+              </p>
+            ) : (
+              <Button type="submit" className="w-full">
+                Send Reset Link
+              </Button>
+            )}
           </div>
         </div>
 
