@@ -48,5 +48,8 @@ A story can have draft tasks written against it in TASKS.md while still marked N
 
 ## Open questions
 
-- Where is the current Postgres instance hosted? Needed before story 8 can proceed.
 - Flutter app: keep, repurpose, or drop? Must follow the same real-link-out rule as the rest of the product in the meantime, no exceptions.
+
+## Resolved questions
+
+- Where is the current Postgres instance hosted? Supabase, confirmed. Story 8 (Azure Database for PostgreSQL migration) is a move off Supabase, not off an unknown host.
