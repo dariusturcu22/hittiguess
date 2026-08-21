@@ -1,6 +1,7 @@
 package org.dariusturcu.backend.service.metadata;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import lombok.extern.slf4j.Slf4j;
 import org.dariusturcu.backend.util.HttpUtils;
 import org.dariusturcu.backend.util.MetadataParser;
 import org.dariusturcu.backend.util.UrlBuilder;
@@ -15,6 +16,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+@Slf4j
 @Component
 public class MusicBrainzService {
     public List<Map<String, String>> search(String title, String artist) {
@@ -45,7 +47,7 @@ public class MusicBrainzService {
                 Thread.sleep(1000);
             }
         } catch (Exception e) {
-            System.err.println("MusicBrainz error: " + e.getMessage());
+            log.warn("MusicBrainz error: {}", e.getMessage());
         }
         return results;
     }

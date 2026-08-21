@@ -1,6 +1,7 @@
 package org.dariusturcu.backend.service.metadata;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import lombok.extern.slf4j.Slf4j;
 import org.dariusturcu.backend.util.HttpUtils;
 import org.dariusturcu.backend.util.MetadataParser;
 import org.dariusturcu.backend.util.UrlBuilder;
@@ -11,6 +12,7 @@ import java.net.HttpURLConnection;
 import java.util.HashMap;
 import java.util.Map;
 
+@Slf4j
 @Component
 public class GeniusService {
     public Map<String, String> search(String title, String artist) {
@@ -38,7 +40,7 @@ public class GeniusService {
                 }
             }
         } catch (Exception e) {
-            System.err.println("Genius error: " + e.getMessage());
+            log.warn("Genius error: {}", e.getMessage());
         }
         return null;
     }
