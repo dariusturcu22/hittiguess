@@ -1,16 +1,15 @@
 package org.dariusturcu.backend.security.oauth2;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import io.micrometer.core.instrument.config.MeterFilter;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.security.oauth2.client.jackson2.OAuth2ClientJackson2Module;
 import org.springframework.security.oauth2.client.web.AuthorizationRequestRepository;
 import org.springframework.security.oauth2.core.endpoint.OAuth2AuthorizationRequest;
 import org.springframework.stereotype.Component;
 
-import java.io.*;
+import java.io.IOException;
 import java.util.Arrays;
 import java.util.Base64;
 import java.util.Optional;
@@ -21,7 +20,8 @@ public class HttpCookieOAuth2AuthorizationRequestRepository
 
     private static final String COOKIE_NAME = "oauth2_auth_request";
     private static final int COOKIE_EXPIRE_SECONDS = 180;
-    private final ObjectMapper objectMapper = new ObjectMapper();
+    private final ObjectMapper objectMapper = new ObjectMapper()
+            .registerModule(new OAuth2ClientJackson2Module());
 
     @Override
     public OAuth2AuthorizationRequest loadAuthorizationRequest(HttpServletRequest request) {
@@ -77,20 +77,19 @@ public class HttpCookieOAuth2AuthorizationRequestRepository
     }
 
     private String serialize(OAuth2AuthorizationRequest request) {
-        try (ByteArrayOutputStream baos = new ByteArrayOutputStream();
-             ObjectOutputStream oos = new ObjectOutputStream(baos)) {
-            oos.writeObject(request);
-            return Base64.getUrlEncoder().encodeToString(baos.toByteArray());
+        try {
+            String json = objectMapper.writeValueAsString(request);
+            return Base64.getUrlEncoder().encodeToString(json.getBytes());
         } catch (IOException e) {
             throw new RuntimeException("Failed to serialize OAuth2AuthorizationRequest", e);
         }
     }
 
     private OAuth2AuthorizationRequest deserialize(String value) {
-        try (ByteArrayInputStream bais = new ByteArrayInputStream(Base64.getUrlDecoder().decode(value));
-             ObjectInputStream ois = new ObjectInputStream(bais)) {
-            return (OAuth2AuthorizationRequest) ois.readObject();
-        } catch (IOException | ClassNotFoundException e) {
+        try {
+            byte[] decoded = Base64.getUrlDecoder().decode(value);
+            return objectMapper.readValue(decoded, OAuth2AuthorizationRequest.class);
+        } catch (IOException e) {
             throw new RuntimeException("Failed to deserialize OAuth2AuthorizationRequest", e);
         }
     }
