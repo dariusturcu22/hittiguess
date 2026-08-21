@@ -61,8 +61,7 @@ public class SongMetadataService {
                     .user(prompt)
                     .options(OpenAiChatOptions.builder()
                             .model(aiModel)
-                            .temperature(0.1)
-                            .build())
+                            .temperature(0.1))
                     .call()
                     .content();
 
