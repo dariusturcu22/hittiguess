@@ -32,6 +32,7 @@ import {
 } from "@/components/shadcn/sidebar";
 import { useLogout } from "@/hooks/generated/authentication-management/authentication-management";
 import { useRouter } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
 import { useGetCurrentUser } from "@/hooks/generated/user-management/user-management";
 
 export function NavUser() {
@@ -44,10 +45,12 @@ export function NavUser() {
   }, []);
 
   const router = useRouter();
+  const queryClient = useQueryClient();
 
   const { mutate: logout } = useLogout({
     mutation: {
       onSuccess: () => {
+        queryClient.clear();
         router.push("/login");
       },
     },
