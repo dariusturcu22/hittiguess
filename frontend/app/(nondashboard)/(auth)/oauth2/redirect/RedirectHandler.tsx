@@ -11,7 +11,7 @@ export default function OAuth2RedirectHandler() {
     const error = searchParams.get("error");
 
     if (error) {
-      router.push("/login?error=" + error);
+      router.push("/login?error=" + encodeURIComponent(error));
     } else {
       router.push("/playlists");
     }

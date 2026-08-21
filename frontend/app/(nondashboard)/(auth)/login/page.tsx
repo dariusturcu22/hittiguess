@@ -1,9 +1,11 @@
 "use client";
 
+import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import Link from "next/link";
+import { toast } from "sonner";
 
 import { Button } from "@/components/shadcn/button";
 import { Input } from "@/components/shadcn/input";
@@ -19,7 +21,7 @@ import {
 
 import { useLogin } from "@/hooks/generated/authentication-management/authentication-management";
 import { loginBody } from "@/hooks/zod/authentication-management/authentication-management";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 
 const LoginFormSchema = loginBody;
 
@@ -27,13 +29,22 @@ type LoginFormValues = z.infer<typeof LoginFormSchema>;
 
 export default function LoginPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+
+  useEffect(() => {
+    const error = searchParams.get("error");
+    if (error) {
+      toast.error("Google sign-in failed. Try again or use email and password.");
+    }
+  }, [searchParams]);
+
   const { mutate, isPending } = useLogin({
     mutation: {
       onSuccess: () => {
         setTimeout(() => router.push("/playlists"), 1000);
       },
       onError: () => {
-        // add toast
+        toast.error("Invalid email or password.");
       },
     },
   });
