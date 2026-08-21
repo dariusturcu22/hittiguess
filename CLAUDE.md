@@ -46,6 +46,7 @@ This applies everywhere: every markdown file in this repo, chat responses to the
 ## Git workflow
 
 - Branches: `main`, `dev`, `legacy`. Work only happens on `dev`, through pull requests from `feature/*`, `fix/*`, `chore/*`, or `docs/*` branches. `main` and `legacy` are not touched directly.
+- No direct commits to `dev`, `main`, or `legacy`, ever, full stop. This includes documentation, tooling and MCP config (`.mcp.json`, `.claude/`), one-line fixes, and anything that feels too small to bother branching for. If it's a file change, it gets its own branch off `dev` and lands through a PR. There is no exception for "just this once" or "it's not really code" — the size or category of the change is never the justification for skipping a branch.
 - Never include a `Co-Authored-By` trailer or any AI-attribution footer on commits or pull requests.
 - Commit granularly. Each commit represents one coherent change, not a batch of unrelated changes.
 
