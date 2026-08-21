@@ -13,44 +13,34 @@ import java.util.regex.Pattern;
 
 public class MetadataParser {
 
+    private static final Pattern YOUTUBE_ID_PATTERN = Pattern.compile("^[a-zA-Z0-9_-]{11}$");
+
     public static String extractYouTubeVideoId(String url) {
         if (url == null || url.isEmpty()) {
             return null;
         }
 
         url = url.trim();
+        String candidate = null;
 
         if (url.contains("youtu.be/")) {
-            String videoId = url.substring(url.lastIndexOf("/") + 1);
-            // Remove query params and fragments
-            return videoId.split("[?&#]")[0];
-        }
-
-        if (url.contains("youtube.com/watch")) {
+            candidate = url.substring(url.lastIndexOf("/") + 1).split("[?&#]")[0];
+        } else if (url.contains("youtube.com/watch")) {
             int vIndex = url.indexOf("v=");
             if (vIndex != -1) {
-                String videoId = url.substring(vIndex + 2);
-                return videoId.split("&")[0];
+                candidate = url.substring(vIndex + 2).split("&")[0];
             }
+        } else if (url.contains("youtube.com/embed/")) {
+            candidate = url.substring(url.indexOf("/embed/") + 7).split("[?&#]")[0];
+        } else if (url.contains("youtube.com/v/")) {
+            candidate = url.substring(url.indexOf("/v/") + 3).split("[?&#]")[0];
+        } else if (url.contains("youtube.com/shorts/")) {
+            candidate = url.substring(url.indexOf("/shorts/") + 8).split("[?&#]")[0];
+        } else {
+            candidate = url;
         }
 
-        if (url.contains("youtube.com/embed/")) {
-            String videoId = url.substring(url.indexOf("/embed/") + 7);
-            return videoId.split("[?&#]")[0];
-        }
-
-        if (url.contains("youtube.com/v/")) {
-            String videoId = url.substring(url.indexOf("/v/") + 3);
-            return videoId.split("[?&#]")[0];
-        }
-
-        if (url.contains("youtube.com/shorts/")) {
-            String videoId = url.substring(url.indexOf("/shorts/") + 8);
-            return videoId.split("[?&#]")[0];
-        }
-
-        // TODO maybe add exception
-        return url;
+        return candidate != null && YOUTUBE_ID_PATTERN.matcher(candidate).matches() ? candidate : null;
     }
 
     public static String cleanYouTubeText(String text) {

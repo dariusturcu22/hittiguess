@@ -8,17 +8,22 @@ import org.dariusturcu.backend.model.ai.SongMetadataResponse;
 import org.dariusturcu.backend.service.metadata.GeniusService;
 import org.dariusturcu.backend.service.metadata.MusicBrainzService;
 import org.dariusturcu.backend.service.metadata.WikipediaService;
+import org.dariusturcu.backend.security.util.SecurityUtils;
 import org.dariusturcu.backend.service.metadata.YouTubeMetadataService;
 import org.dariusturcu.backend.util.MetadataParser;
 import org.dariusturcu.backend.util.MetadataPromptBuilder;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.openai.OpenAiChatOptions;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 @Slf4j
 @Service
@@ -31,10 +36,20 @@ public class SongMetadataService {
     private final GeniusService geniusService;
     private final ObjectMapper objectMapper;
 
+    // The metadata pipeline chains several rate-limited external calls plus a paid LLM call,
+    // so one user queuing many concurrent requests can tie up threads and run up cost. Capping
+    // it at one in-flight request per user, rather than a time window, matches the actual risk.
+    private final Set<Long> usersWithRequestInFlight = ConcurrentHashMap.newKeySet();
+
     @Value("${spring.ai.openai.chat.options.model:gpt-5.1}")
     private String aiModel;
 
     public AiResponse fetchMetadata(String youtubeUrl) {
+        Long userId = SecurityUtils.getCurrentUserId();
+        if (!usersWithRequestInFlight.add(userId)) {
+            throw new ResponseStatusException(HttpStatus.TOO_MANY_REQUESTS, "A metadata request is already in progress");
+        }
+
         long startTime = System.currentTimeMillis();
 
         try {
@@ -68,6 +83,8 @@ public class SongMetadataService {
                     LocalDateTime.now(),
                     "ERROR"
             );
+        } finally {
+            usersWithRequestInFlight.remove(userId);
         }
     }
 
