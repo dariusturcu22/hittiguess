@@ -19,6 +19,10 @@ import {
   useUpdateSong,
 } from "@/hooks/generated/playlist-management/playlist-management";
 
+const YOUTUBE_ID_PATTERN = /^[a-zA-Z0-9_-]{11}$/;
+const HEX_COLOR_PATTERN = /^#[0-9a-fA-F]{6}$/;
+const MIN_RELEASE_YEAR = 1000;
+
 interface SongFormProps {
   song: SongDTO;
   backPath: string;
@@ -40,6 +44,7 @@ export function SongForm({ song, backPath, playlistId }: SongFormProps) {
   const router = useRouter();
   const queryClient = useQueryClient();
   const { mutate: updateSong, isPending } = useUpdateSong();
+  const [submitError, setSubmitError] = useState("");
 
   const [formData, setFormData] = useState<SongFormData>({
     youtubeId: song.youtubeId,
@@ -62,6 +67,40 @@ export function SongForm({ song, backPath, playlistId }: SongFormProps) {
   };
 
   const handleSubmit = () => {
+    setSubmitError("");
+
+    const releaseYear =
+      typeof formData.releaseYear === "string"
+        ? parseInt(formData.releaseYear)
+        : formData.releaseYear;
+    const currentYear = new Date().getFullYear();
+
+    if (!formData.youtubeId || !formData.title || !formData.artist) {
+      setSubmitError("Fill in the YouTube ID, title, and artist.");
+      return;
+    }
+    if (!YOUTUBE_ID_PATTERN.test(formData.youtubeId)) {
+      setSubmitError("YouTube ID must be 11 characters.");
+      return;
+    }
+    if (
+      !Number.isFinite(releaseYear) ||
+      releaseYear < MIN_RELEASE_YEAR ||
+      releaseYear > currentYear
+    ) {
+      setSubmitError(
+        `Release year must be between ${MIN_RELEASE_YEAR} and ${currentYear}.`,
+      );
+      return;
+    }
+    if (
+      !HEX_COLOR_PATTERN.test(formData.gradientColor1) ||
+      !HEX_COLOR_PATTERN.test(formData.gradientColor2)
+    ) {
+      setSubmitError("Both gradient colors must be a 6-character hex value.");
+      return;
+    }
+
     updateSong(
       {
         playlistId,
@@ -70,10 +109,7 @@ export function SongForm({ song, backPath, playlistId }: SongFormProps) {
           youtubeId: formData.youtubeId,
           title: formData.title,
           artist: formData.artist,
-          releaseYear:
-            typeof formData.releaseYear === "string"
-              ? parseInt(formData.releaseYear)
-              : formData.releaseYear,
+          releaseYear,
           gradientColor1: formData.gradientColor1.replace("#", ""),
           gradientColor2: formData.gradientColor2.replace("#", ""),
           songTag: formData.songTag,
@@ -89,6 +125,9 @@ export function SongForm({ song, backPath, playlistId }: SongFormProps) {
             queryKey: getGetPlaylistQueryKey(playlistId),
           });
           router.push(backPath);
+        },
+        onError: () => {
+          setSubmitError("Couldn't save changes. Try again.");
         },
       },
     );
@@ -156,6 +195,8 @@ export function SongForm({ song, backPath, playlistId }: SongFormProps) {
         <Input
           id="releaseYear"
           type="number"
+          min={MIN_RELEASE_YEAR}
+          max={new Date().getFullYear()}
           value={formData.releaseYear}
           onChange={handleChange}
           className="text-left"
@@ -278,6 +319,10 @@ export function SongForm({ song, backPath, playlistId }: SongFormProps) {
           </div>
         </div>
       </div>
+
+      {submitError && (
+        <p className="text-sm text-destructive text-center">{submitError}</p>
+      )}
 
       <div className="flex gap-3 justify-center">
         <Button className="px-10" onClick={handleSubmit} disabled={isPending}>
