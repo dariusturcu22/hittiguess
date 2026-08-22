@@ -109,6 +109,10 @@ export function AddSongForm({
         youtubeUrl: `youtube.com/watch?v=${youtubeId}`,
       });
 
+      if (songData.status === "ERROR") {
+        throw new Error("Metadata pipeline returned an error status");
+      }
+
       setFormData({
         title: songData.content?.title ?? "",
         artist: songData.content?.artist ?? "",
