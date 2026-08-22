@@ -1,5 +1,4 @@
 from app.metadata.sources.util import (
-    build_genius_search_url,
     build_musicbrainz_api_url,
     build_wikipedia_page_url,
     build_wikipedia_search_url,
@@ -116,9 +115,3 @@ def test_build_wikipedia_page_url_encodes_title():
     url = build_wikipedia_page_url("Blinding Lights")
     assert "titles=Blinding%20Lights" in url
     assert "prop=extracts" in url
-
-
-def test_build_genius_search_url_orders_artist_then_title():
-    url = build_genius_search_url("The Weeknd", "Blinding Lights")
-    assert url.startswith("https://genius.com/api/search/multi?q=")
-    assert "The%20Weeknd%20Blinding%20Lights" in url

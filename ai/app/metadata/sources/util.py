@@ -94,7 +94,3 @@ def build_wikipedia_page_url(page_title: str) -> str:
         f"https://en.wikipedia.org/w/api.php?action=query&titles={quote(page_title)}"
         "&prop=extracts&exintro=true&format=json"
     )
-
-
-def build_genius_search_url(artist: str, title: str) -> str:
-    return f"https://genius.com/api/search/multi?q={quote(f'{artist} {title}')}"
