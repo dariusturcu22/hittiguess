@@ -151,12 +151,13 @@ Results become downloadable; the session and its chat are gone
 
 ## What's built
 
-- Spring Boot backend: auth, playlist CRUD, song CRUD, currently a single service, split not yet done.
-- Multi-source metadata pipeline, currently inside the Spring Boot app, migrating to the AI microservice.
+- Two-service split: Spring Boot core service (`backend/`) and Python/FastAPI AI microservice (`ai/`).
+- Multi-source metadata pipeline in the AI microservice, LLM synthesis with structured output through Pydantic; only the YouTube source is live, MusicBrainz, Wikipedia, and Genius are paused pending an API compliance and cost review.
+- Spring Boot backend: auth, playlist CRUD, song CRUD.
 - Next.js frontend with AI-assisted song submission, deployed on Vercel.
 - PDF/QR card generation.
 - OAuth2 + JWT auth.
 
 ## Not yet built
 
-Two-service split, Azure deployment, database migration, game session model, WebSocket layer, DJ link-out playback flow, voice and text chat, song search by link or keyword, community reporting flow, pgvector deduplication, playlist/song relational fix, Discogs integration, confidence-gating UI, admin bulk import, admin review queue, scheduled re-verification, rate limiting, UI redesign, auto-generated featured playlists, test coverage.
+Azure deployment, database migration, game session model, WebSocket layer, DJ link-out playback flow, voice and text chat, song search by link or keyword, community reporting flow, pgvector deduplication, playlist/song relational fix, Discogs integration, confidence-gating UI, admin bulk import, admin review queue, scheduled re-verification, rate limiting, UI redesign, auto-generated featured playlists, test coverage.
