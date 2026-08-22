@@ -1,4 +1,4 @@
-# PROJECT_STATE.md — Stories and Status
+# PROJECT_STATE.md: Stories and Status
 
 This file is the backlog. Every planned or completed piece of functionality is a story with a stable ID. IDs reflect the order stories were written down, not priority; the order to work on stories is decided separately.
 

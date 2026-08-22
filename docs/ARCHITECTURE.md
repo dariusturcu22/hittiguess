@@ -1,4 +1,4 @@
-# ARCHITECTURE.md — Technical Blueprint
+# ARCHITECTURE.md: Technical Blueprint
 
 ## Stack
 
