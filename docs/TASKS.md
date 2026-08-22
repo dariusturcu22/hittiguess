@@ -1,4 +1,4 @@
-# TASKS.md — What To Actually Work On
+# TASKS.md: What To Actually Work On
 
 This is the source of truth for day-to-day work. Consult PROJECT_STATE.md only when you need the bigger picture behind one of these.
 
@@ -6,7 +6,7 @@ The tasks below, under stories 7, 9, and 12, are drafts written during planning,
 
 "Next available task" means the earliest unchecked box under a Ready or In Progress story.
 
-## Story 6 — Two-service split
+## Story 6: Two-service split
 
 Tasks confirmed against the current codebase on 2026-08-22 by reading the full metadata pipeline (`SongMetadataService`, the four source integrations, `MetadataParser`, `UrlBuilder`, `HttpUtils`, `MetadataPromptBuilder`, the controller and DTOs). The AI microservice never touches the database in this design; song creation is a separate call the frontend makes after previewing AI-suggested details, so "no migrations in the AI microservice" is already true by construction, not something to implement.
 
@@ -30,7 +30,7 @@ Core service:
 Frontend fix (found while confirming these tasks, not a pre-existing tracked bug):
 - [ ] `AddSongForm.tsx`'s `handleGetDetails` only catches thrown errors; a 200 response with `status: "ERROR"` (which `SongMetadataService` returns on any pipeline failure) falls through the success path and silently populates an empty form with no indication anything failed. Treat it the same as a thrown error.
 
-## Story 7 — Azure migration
+## Story 7: Azure migration
 
 - [ ] Confirm the current Postgres host (see story 23, may need the schema reconciliation done first)
 - [ ] Provision an Azure Container Apps environment
@@ -41,7 +41,7 @@ Frontend fix (found while confirming these tasks, not a pre-existing tracked bug
 - [ ] Verify both services and the frontend work end to end against Azure
 - [ ] Decommission Fly.io once verified
 
-## Story 9 — DJ real YouTube link-out
+## Story 9: DJ real YouTube link-out
 
 - [ ] Remove the current embedded/hidden iframe from the DJ view
 - [ ] Add an "open in YouTube" link-out for remote sessions, opening a new browser tab
@@ -50,7 +50,7 @@ Frontend fix (found while confirming these tasks, not a pre-existing tracked bug
 - [ ] Update QR code generation to point at the real YouTube URL
 - [ ] Replace the automatic reveal-on-song-end behavior with the manual WebSocket reveal trigger
 
-## Story 12 — Voice chat
+## Story 12: Voice chat
 
 - [ ] Implement WebRTC signaling over the existing WebSocket layer
 - [ ] Implement mesh peer connection setup between session participants
@@ -105,4 +105,4 @@ No story required for these. Fix on a `fix` or `chore` branch.
 
 No story required for these. Docs branch.
 
-- [ ] Replace the em dash in every doc file's H1 title (`# FILE.md — Description`) and in `TASKS.md`'s `## Story N — Name` headings with a colon, the writing-style rule against em dashes applies to every markdown file in the repo and these headers are the only place it had slipped through.
+- [x] Replace the em dash in every doc file's H1 title (`# FILE.md — Description`) and in `TASKS.md`'s `## Story N — Name` headings with a colon, the writing-style rule against em dashes applies to every markdown file in the repo and these headers are the only place it had slipped through.

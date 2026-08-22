@@ -1,4 +1,4 @@
-# VISION.md — Product Vision
+# VISION.md: Product Vision
 
 ## What is this?
 

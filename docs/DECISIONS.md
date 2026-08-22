@@ -1,4 +1,4 @@
-# DECISIONS.md — Decision Log
+# DECISIONS.md: Decision Log
 
 Append-only. Never edit or delete past entries. New decisions go at the bottom.
 
