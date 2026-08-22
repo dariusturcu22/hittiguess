@@ -1,9 +1,5 @@
-# Disabled: the reference implementation this was ported from called
-# genius.com/api/search/multi, the undocumented endpoint the Genius website's
-# own search bar uses, with a browser-spoofed User-Agent. That's not Genius's
-# official API (api.genius.com, which requires a registered client and a
-# bearer token) and violates CLAUDE.md's official-APIs-only rule. Pending a
-# real integration against api.genius.com.
+# Paused pending a review of this source's API usage; see the 2026-08
+# "Pause MusicBrainz, Wikipedia, and Genius" entry in docs/DECISIONS.md.
 
 
 def search(title: str, artist: str) -> dict[str, str] | None:
