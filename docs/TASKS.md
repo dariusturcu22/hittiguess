@@ -81,3 +81,4 @@ No story required, this is fix/chore work. Goal: the base game goes from working
 No story required for these. Fix on a `fix` or `chore` branch.
 
 - [x] Remove leftover `console.log` in `AddSongForm.tsx` (done as part of batch 5)
+- [x] Fix `docker-compose.yml`'s Postgres volume mount for the `postgres:18-alpine` image, which crash-looped on every start under the old pre-18 mount path
