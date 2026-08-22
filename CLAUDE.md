@@ -76,4 +76,4 @@ Any multi-step or batched piece of work, whatever kind of branch it lands on, ge
 
 ## Session-end habit
 
-When a story reaches `Implemented` and every task under it is checked off, move it from [docs/PROJECT_STATE.md](docs/PROJECT_STATE.md) and [docs/TASKS.md](docs/TASKS.md) into [docs/ARCHIVE.md](docs/ARCHIVE.md). Append any new architectural decision to [docs/DECISIONS.md](docs/DECISIONS.md).
+Run `python scripts/archive_completed_tasks.py` to move every fully-checked-off `TASKS.md` section into `ARCHIVE.md`. For a story section this only happens once `PROJECT_STATE.md` also has that story's status as `Implemented`, and its row there is removed too; other fully-checked sections (audit batches, dependency upgrades, chore lists) move on their own once every box under them is checked. Append any new architectural decision to [docs/DECISIONS.md](docs/DECISIONS.md).
