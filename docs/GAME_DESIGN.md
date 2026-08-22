@@ -1,4 +1,4 @@
-# GAME_DESIGN.md — Game Rules and Mechanics
+# GAME_DESIGN.md: Game Rules and Mechanics
 
 ## Core concept
 
