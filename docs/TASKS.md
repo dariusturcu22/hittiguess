@@ -6,30 +6,6 @@ The tasks below, under stories 7, 9, and 12, are drafts written during planning,
 
 "Next available task" means the earliest unchecked box under a Ready or In Progress story.
 
-## Story 6 — Two-service split
-
-Tasks confirmed against the current codebase on 2026-08-22 by reading the full metadata pipeline (`SongMetadataService`, the four source integrations, `MetadataParser`, `UrlBuilder`, `HttpUtils`, `MetadataPromptBuilder`, the controller and DTOs). The AI microservice never touches the database in this design; song creation is a separate call the frontend makes after previewing AI-suggested details, so "no migrations in the AI microservice" is already true by construction, not something to implement.
-
-AI microservice:
-- [ ] Scaffold the FastAPI project structure, with pytest configured
-- [ ] Port the four metadata source integrations (YouTube Data API, MusicBrainz, Wikipedia, Genius) to Python; the current `YouTubeMetadataService`/`MusicBrainzService`/`WikipediaService`/`GeniusService` and their `UrlBuilder`/`MetadataParser` helpers are the reference, all plain HTTP calls with no Spring-specific coupling
-- [ ] Port `MetadataPromptBuilder`'s prompt-construction logic
-- [ ] Replace the current regex-stripped LLM response parsing (`raw.replaceAll("```json|```", "")` then a manual Jackson parse) with OpenAI's structured output / JSON schema mode and Pydantic model validation, per CLAUDE.md's rule against parsing LLM output with regex
-- [ ] Add an internal endpoint, for example `POST /metadata/resolve`, that gathers all four sources and returns the synthesized result
-- [ ] Add basic tests: prompt building, URL building, response parsing/validation
-- [ ] Own `OPENAI_API_KEY` and `YOUTUBE_API_KEY` in its own config
-
-Core service:
-- [ ] Rewrite `SongMetadataService` to call the AI microservice's internal endpoint over HTTP instead of doing the work itself, keeping `SongMetadataController`'s public contract (`GET /api/metadata/song`, the `AiResponse` shape) unchanged so the frontend needs no changes
-- [ ] Keep the one-in-flight-request-per-user rate limit in the core service; it already has the authenticated user via Spring Security, and the AI microservice has no reason to know about per-user concurrency. Reject before ever calling the AI microservice
-- [ ] Decide and implement authentication between the two services (shared secret header or network-level restriction), so the AI microservice's endpoint isn't openly callable by anything else inside the Container Apps environment
-- [ ] Remove the Spring AI dependency (`spring-ai-starter-model-openai`, the `spring-ai.version` property, the BOM import) once nothing in the core service uses it
-- [ ] Delete the files whose logic moves entirely to the AI microservice: `YouTubeMetadataService`, `MusicBrainzService`, `WikipediaService`, `GeniusService`, `MetadataParser`, `MetadataPromptBuilder`, `UrlBuilder`, `HttpUtils`, `FlexibleYearDeserializer`. Confirmed none of them are used anywhere else in the core service
-- [ ] Drop `OPENAI_API_KEY` and `YOUTUBE_API_KEY` from the core service's env once nothing there needs them
-
-Frontend fix (found while confirming these tasks, not a pre-existing tracked bug):
-- [ ] `AddSongForm.tsx`'s `handleGetDetails` only catches thrown errors; a 200 response with `status: "ERROR"` (which `SongMetadataService` returns on any pipeline failure) falls through the success path and silently populates an empty form with no indication anything failed. Treat it the same as a thrown error.
-
 ## Story 7 — Azure migration
 
 - [ ] Confirm the current Postgres host (see story 23, may need the schema reconciliation done first)

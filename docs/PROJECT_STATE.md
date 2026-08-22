@@ -20,9 +20,8 @@ A story can have draft tasks written against it in TASKS.md while still marked N
 | 1 | User authentication with refresh tokens | Backend | Implemented |
 | 2 | Playlist creation and management | Backend | Implemented |
 | 3 | Song submission and CRUD | Backend | Implemented |
-| 4 | Multi-source metadata pipeline (YouTube, MusicBrainz, Wikipedia, Genius) synthesized by an LLM | Backend / AI | Implemented, currently in the Spring Boot service, migrating under story 6 |
+| 4 | Multi-source metadata pipeline (YouTube, MusicBrainz, Wikipedia, Genius) synthesized by an LLM | Backend / AI | Implemented, in the AI microservice since story 6 |
 | 5 | Printable PDF/QR card generation | Backend | Implemented |
-| 6 | Two-service split: core service (Spring Boot) and AI microservice (FastAPI) | Infra | Ready |
 | 7 | Hosting migration from Fly.io to Azure Container Apps | Infra | Needs Definition, draft tasks exist |
 | 8 | Database migration to Azure Database for PostgreSQL Flexible Server, pgvector enabled | Infra | Needs Definition, depends on story 23 |
 | 9 | DJ opens the real YouTube page or app instead of an embedded player | Game / Compliance | Needs Definition, draft tasks exist |

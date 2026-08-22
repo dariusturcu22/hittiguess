@@ -145,3 +145,11 @@ Why: without a defined-before-built gate, an AI coding agent will happily start 
 Decision: three persistent branches. `legacy` is frozen at the current implementation and stays live in production while the new architecture is built. `dev` is the active integration branch, worked on exclusively through pull requests from `feature/*`, `fix/*`, `chore/*`, and `docs/*` branches. `main` is not touched until the new architecture is ready to replace what `legacy` is currently serving.
 
 Why: this keeps the current, working deployment available to actual players throughout the rework, rather than breaking it mid-refactor.
+
+---
+
+## 2026-08 | Core-to-AI-microservice auth: shared secret header
+
+Decision: the core service authenticates to the AI microservice's internal endpoint with a shared secret header, `X-Internal-Api-Key`, checked against `INTERNAL_SERVICE_API_KEY` on both sides.
+
+Why: the original split decision left the mechanism open, shared secret header or network-level restriction. A header works identically in local dev and in Azure Container Apps, with no dependency on Container Apps-specific network configuration, and needs no extra infrastructure to set up.
