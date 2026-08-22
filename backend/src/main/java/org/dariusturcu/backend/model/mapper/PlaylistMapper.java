@@ -46,7 +46,7 @@ public class PlaylistMapper {
     }
 
     public Playlist updateEntity(Playlist playlist, UpdatePlaylistRequest request) {
-        if (request.name() != null) {
+        if (request.name() != null && !request.name().isBlank()) {
             playlist.setName(request.name());
         }
         if (request.color() != null) {

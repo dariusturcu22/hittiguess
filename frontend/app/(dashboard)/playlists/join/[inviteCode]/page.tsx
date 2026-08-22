@@ -17,30 +17,24 @@ export default function JoinPlaylistPage({ params }: PageProps) {
   const { inviteCode } = use(params);
   const router = useRouter();
   const queryClient = useQueryClient();
-  const { mutate: joinPlaylist } = useJoinPlaylist();
+  const { mutateAsync: joinPlaylist } = useJoinPlaylist();
   const hasAttempted = React.useRef(false);
 
   React.useEffect(() => {
     if (hasAttempted.current) return;
     hasAttempted.current = true;
 
-    joinPlaylist(
-      {
-        playlistInviteCode: inviteCode,
-      },
-      {
-        onSuccess: (playlist) => {
-          queryClient.invalidateQueries({
-            queryKey: getGetUserPlaylistsQueryKey(),
-          });
-          router.push(`/playlists/${playlist.id}`);
-        },
-        onError: () => {
-          toast.error("That invite link isn't valid.");
-          router.push("/playlists");
-        },
-      },
-    );
+    joinPlaylist({ playlistInviteCode: inviteCode })
+      .then((playlist) => {
+        queryClient.invalidateQueries({
+          queryKey: getGetUserPlaylistsQueryKey(),
+        });
+        router.push(`/playlists/${playlist.id}`);
+      })
+      .catch(() => {
+        toast.error("That invite link isn't valid.");
+        router.push("/playlists");
+      });
   }, [inviteCode, joinPlaylist, queryClient, router]);
 
   return (

@@ -97,7 +97,7 @@ export function SiteHeader({
             <Button
               variant="ghost"
               size="icon"
-              className="size-7 opacity-0 group-hover/title:opacity-100 transition-opacity"
+              className="size-7 opacity-60 hover:opacity-100 transition-opacity"
               onClick={() => setIsEditing(true)}
             >
               <IconPencil className="size-3.5" />
