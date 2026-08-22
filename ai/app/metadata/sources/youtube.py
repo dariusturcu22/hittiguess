@@ -1,7 +1,7 @@
 import httpx
 
 from app.config import settings
-from app.sources.util import build_youtube_api_url, extract_youtube_video_id
+from app.metadata.sources.util import build_youtube_api_url, extract_youtube_video_id
 
 UNKNOWN_DEFAULTS = {
     "channel_title": "unknown",

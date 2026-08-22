@@ -1,4 +1,4 @@
-from app.sources.util import (
+from app.metadata.sources.util import (
     build_genius_search_url,
     build_musicbrainz_api_url,
     build_wikipedia_page_url,

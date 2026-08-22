@@ -2,8 +2,9 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from app import llm
-from app.schemas import SongMetadataResult
+from app.clients.openai_client import client
+from app.metadata import llm
+from app.metadata.schemas import SongMetadataResult
 
 
 def _expected_result() -> SongMetadataResult:
@@ -25,7 +26,7 @@ def _mock_completion(parsed):
 
 def test_synthesize_returns_parsed_result(mocker):
     expected = _expected_result()
-    mocker.patch.object(llm._client.chat.completions, "parse", return_value=_mock_completion(expected))
+    mocker.patch.object(client.chat.completions, "parse", return_value=_mock_completion(expected))
 
     result = llm.synthesize("some prompt")
 
@@ -33,7 +34,7 @@ def test_synthesize_returns_parsed_result(mocker):
 
 
 def test_synthesize_raises_when_response_does_not_match_schema(mocker):
-    mocker.patch.object(llm._client.chat.completions, "parse", return_value=_mock_completion(None))
+    mocker.patch.object(client.chat.completions, "parse", return_value=_mock_completion(None))
 
     with pytest.raises(ValueError):
         llm.synthesize("some prompt")

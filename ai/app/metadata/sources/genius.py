@@ -2,7 +2,7 @@ import logging
 
 import httpx
 
-from app.sources.util import build_genius_search_url
+from app.metadata.sources.util import build_genius_search_url
 
 logger = logging.getLogger(__name__)
 

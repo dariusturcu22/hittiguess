@@ -3,7 +3,7 @@ import time
 
 import httpx
 
-from app.sources.util import build_musicbrainz_api_url, escape_lucene
+from app.metadata.sources.util import build_musicbrainz_api_url, escape_lucene
 
 logger = logging.getLogger(__name__)
 

@@ -3,7 +3,7 @@ import time
 
 import httpx
 
-from app.sources.util import (
+from app.metadata.sources.util import (
     build_wikipedia_page_url,
     build_wikipedia_search_url,
     extract_release_date_from_text,

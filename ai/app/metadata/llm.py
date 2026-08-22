@@ -1,13 +1,10 @@
-from openai import OpenAI
-
+from app.clients.openai_client import client
 from app.config import settings
-from app.schemas import SongMetadataResult
-
-_client = OpenAI(api_key=settings.openai_api_key)
+from app.metadata.schemas import SongMetadataResult
 
 
 def synthesize(prompt: str) -> SongMetadataResult:
-    completion = _client.chat.completions.parse(
+    completion = client.chat.completions.parse(
         model=settings.openai_model,
         temperature=0.1,
         messages=[{"role": "user", "content": prompt}],

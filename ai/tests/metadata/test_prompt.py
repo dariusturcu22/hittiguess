@@ -1,4 +1,4 @@
-from app import prompt
+from app.metadata import prompt
 
 
 def _base_metadata(**overrides):
