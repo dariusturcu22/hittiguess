@@ -58,24 +58,20 @@ public class CardGenerator {
 
         int padding = 67;
 
-        // Artist
         graphics2D.setFont(artistFont);
         drawCentered(graphics2D, song.getArtist(), x + padding, y + (int) (size * 0.22), size - padding * 2, 70);
 
-        // Year
         graphics2D.setFont(yearFont);
         FontMetrics yearMetrics = graphics2D.getFontMetrics(yearFont);
         int yearY = y + (size / 2) + (yearMetrics.getAscent() / 3);
         drawCentered(graphics2D, String.valueOf(song.getReleaseYear()), x + padding, yearY, size - padding * 2, 50);
 
-        // Title
         graphics2D.setFont(titleFont);
         drawCentered(graphics2D, song.getTitle(), x + padding, y + (int) (size * 0.88), size - padding * 2, 65);
 
         drawTagTriangle(graphics2D, x, y, size, song);
         drawCountryFlag(graphics2D, x, y, size, song);
 
-        // Border
         graphics2D.setColor(new Color(0, 0, 0, 40));
         graphics2D.drawRect(x, y, size, size);
     }
