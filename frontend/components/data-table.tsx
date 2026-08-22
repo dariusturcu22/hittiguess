@@ -416,7 +416,9 @@ export function DataTable({
                       colSpan={columns.length}
                       className="h-24 text-center"
                     >
-                      No songs in this playlist yet.
+                      {data.length === 0
+                        ? "No songs in this playlist yet."
+                        : "No songs match your search."}
                     </TableCell>
                   </TableRow>
                 )}
