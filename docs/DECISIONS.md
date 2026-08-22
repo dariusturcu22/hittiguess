@@ -163,3 +163,21 @@ Decision: only the YouTube Data API source makes live calls in the metadata pipe
 Why: porting the pipeline to the AI microservice (story 6) carried these three integrations over unchanged from the pre-split code, without that review having happened yet. Reviewing all three together, deliberately, is preferred over reviewing them one at a time.
 
 Open item: what each of the three needs, and what the resulting integration looks like for each, is planned as the next thing to work through after story 6.
+
+---
+
+## 2026-08 | Metadata source set: MusicBrainz, Discogs, Wikidata; Genius, Last.fm, and live Wikipedia search dropped
+
+Decision: the metadata pipeline's structured sources are MusicBrainz, Discogs, and Wikidata. Genius, Last.fm, and Wikipedia's live search API are dropped, not paused.
+
+Why: reading each source's own current license and terms directly, not a summary of them, MusicBrainz's core fields (title, artist credit, release date) and Discogs's monthly data dumps are both CC0, public domain. Wikidata's entire structured dataset is CC0 and explicitly cleared for commercial or personal reuse, and it supersedes Wikipedia's live search entirely: same underlying project, cleaner license, structured data instead of a fact regex-matched out of article prose. Genius's terms restrict commercial use and broadly prohibit automated data gathering without a clear carve-out for their own API. Last.fm's license is non-commercial by default and explicitly terminable at their discretion. Both were only ever secondary sources for a release date; the license friction on both makes dropping them the cleaner call over trying to fix them.
+
+Note: MusicBrainz's release-group `first-release-date` field, not a specific release's date, is the correct field for an original release year; a plain recording or release search can return several results tied at the same confidence score with different dates (a genuine reissue vs. the original), verified against live queries during this review. Sources reduce how often the LLM has to guess a year, they don't remove the LLM's role reconciling disagreements between sources.
+
+---
+
+## 2026-08 | Product standard: professional-grade, not just working
+
+Decision: the project holds itself to the same standard for the product as for its external dependencies, official and compliant, not just functional. This includes a real privacy policy and terms of service, GDPR compliance, and production-grade observability (error tracking, monitoring).
+
+Why: prompted by finding an existing web-based Hitster clone with no visible terms of service, privacy policy, or GDPR compliance. Not a story yet, a standard the project is held to as stories get defined.
