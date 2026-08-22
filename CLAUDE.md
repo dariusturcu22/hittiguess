@@ -17,6 +17,7 @@ See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the full technical breakdow
 
 ## Commands
 
+- Everything at once: `make dev`, starts the local Postgres container, both backend services, and the frontend together.
 - Core service: `./mvnw spring-boot:run`, tests: `./mvnw test`
 - AI microservice: `uvicorn app.main:app --reload`, tests: `pytest`
 - Frontend: `npm run dev`, build: `npm run build`
