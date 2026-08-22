@@ -153,3 +153,13 @@ Why: this keeps the current, working deployment available to actual players thro
 Decision: the core service authenticates to the AI microservice's internal endpoint with a shared secret header, `X-Internal-Api-Key`, checked against `INTERNAL_SERVICE_API_KEY` on both sides.
 
 Why: the original split decision left the mechanism open, shared secret header or network-level restriction. A header works identically in local dev and in Azure Container Apps, with no dependency on Container Apps-specific network configuration, and needs no extra infrastructure to set up.
+
+---
+
+## 2026-08 | Pause MusicBrainz, Wikipedia, and Genius pending an API compliance and cost review
+
+Decision: only the YouTube Data API source makes live calls in the metadata pipeline right now. MusicBrainz, Wikipedia, and Genius all return no result until a deliberate review of API usage, cost, and User-Agent contact info happens across all three together.
+
+Why: porting the pipeline to the AI microservice (story 6) carried the Genius integration over unchanged, and it turned out to call an undocumented endpoint (`genius.com/api/search/multi`, the website's own search bar) with a browser-spoofed User-Agent, a direct violation of the official-APIs-only rule. MusicBrainz and Wikipedia call real, documented public APIs and aren't in violation, but their User-Agent strings use placeholder contact info rather than something real and reachable, and haven't had a cost/usage review either. Reviewing all three at once, deliberately, is preferred over fixing Genius in isolation and leaving the other two unexamined.
+
+Open item: what api.genius.com integration replaces the disabled Genius code, and what MusicBrainz's and Wikipedia's real contact info and usage limits should be, is planned as the next thing to work through after story 6.

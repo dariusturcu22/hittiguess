@@ -152,7 +152,7 @@ Results become downloadable; the session and its chat are gone
 ## What's built
 
 - Two-service split: Spring Boot core service (`backend/`) and Python/FastAPI AI microservice (`ai/`).
-- Multi-source metadata pipeline (YouTube, MusicBrainz, Wikipedia; Genius disabled pending a real API integration) with LLM synthesis, in the AI microservice, structured output through Pydantic.
+- Multi-source metadata pipeline in the AI microservice, LLM synthesis with structured output through Pydantic; only the YouTube source is live, MusicBrainz, Wikipedia, and Genius are paused pending an API compliance and cost review.
 - Spring Boot backend: auth, playlist CRUD, song CRUD.
 - Next.js frontend with AI-assisted song submission, deployed on Vercel.
 - PDF/QR card generation.
