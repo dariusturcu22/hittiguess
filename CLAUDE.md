@@ -17,6 +17,7 @@ See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the full technical breakdow
 
 ## Commands
 
+- Everything at once: `make dev`, starts the local Postgres container, both backend services, and the frontend together.
 - Core service: `./mvnw spring-boot:run`, tests: `./mvnw test`
 - AI microservice: `uvicorn app.main:app --reload`, tests: `pytest`
 - Frontend: `npm run dev`, build: `npm run build`
@@ -74,6 +75,6 @@ Any multi-step or batched piece of work, whatever kind of branch it lands on, ge
 - Decision history and reasoning: [docs/DECISIONS.md](docs/DECISIONS.md), append-only, never edit or delete past entries
 - Completed stories: [docs/ARCHIVE.md](docs/ARCHIVE.md)
 
-## Session-end habit
+## Task archiving
 
-When a story reaches `Implemented` and every task under it is checked off, move it from [docs/PROJECT_STATE.md](docs/PROJECT_STATE.md) and [docs/TASKS.md](docs/TASKS.md) into [docs/ARCHIVE.md](docs/ARCHIVE.md). Append any new architectural decision to [docs/DECISIONS.md](docs/DECISIONS.md).
+Before opening a PR from a branch whose changes touch `TASKS.md`, run `python scripts/archive_completed_tasks.py` to move every fully-checked-off section into `ARCHIVE.md`. For a story section this only happens once `PROJECT_STATE.md` also has that story's status as `Implemented`, and its row there is removed too; other fully-checked sections (audit batches, dependency upgrades, chore lists) move on their own once every box under them is checked. Append any new architectural decision to [docs/DECISIONS.md](docs/DECISIONS.md) at the same time.
