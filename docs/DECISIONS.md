@@ -156,10 +156,10 @@ Why: the original split decision left the mechanism open, shared secret header o
 
 ---
 
-## 2026-08 | Pause MusicBrainz, Wikipedia, and Genius pending an API compliance and cost review
+## 2026-08 | Pause MusicBrainz, Wikipedia, and Genius pending an API usage review
 
-Decision: only the YouTube Data API source makes live calls in the metadata pipeline right now. MusicBrainz, Wikipedia, and Genius all return no result until a deliberate review of API usage, cost, and User-Agent contact info happens across all three together.
+Decision: only the YouTube Data API source makes live calls in the metadata pipeline right now. MusicBrainz, Wikipedia, and Genius all return no result until a deliberate review confirms each one's API usage is official, legal, and ethical.
 
-Why: porting the pipeline to the AI microservice (story 6) carried the Genius integration over unchanged, and it turned out to call an undocumented endpoint (`genius.com/api/search/multi`, the website's own search bar) with a browser-spoofed User-Agent, a direct violation of the official-APIs-only rule. MusicBrainz and Wikipedia call real, documented public APIs and aren't in violation, but their User-Agent strings use placeholder contact info rather than something real and reachable, and haven't had a cost/usage review either. Reviewing all three at once, deliberately, is preferred over fixing Genius in isolation and leaving the other two unexamined.
+Why: porting the pipeline to the AI microservice (story 6) carried these three integrations over unchanged from the pre-split code, without that review having happened yet. Reviewing all three together, deliberately, is preferred over reviewing them one at a time.
 
-Open item: what api.genius.com integration replaces the disabled Genius code, and what MusicBrainz's and Wikipedia's real contact info and usage limits should be, is planned as the next thing to work through after story 6.
+Open item: what each of the three needs, and what the resulting integration looks like for each, is planned as the next thing to work through after story 6.

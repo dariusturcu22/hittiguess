@@ -8,7 +8,7 @@ Area: Infra. Split the backend into a Spring Boot core service and a Python/Fast
 
 AI microservice:
 - [x] Scaffold the FastAPI project structure, with pytest configured
-- [x] Port the four metadata source integrations (YouTube Data API, MusicBrainz, Wikipedia, Genius) to Python. Only YouTube makes live calls right now. Genius called an undocumented endpoint with a browser-spoofed User-Agent, which violates CLAUDE.md's official-APIs-only rule, its official API needs a registered client and bearer token the project doesn't have yet. MusicBrainz and Wikipedia call real, documented APIs with no rule violation, but were paused alongside Genius pending one deliberate review of API usage, cost, and User-Agent contact info across all three, rather than reviewing them piecemeal. All three `search()` functions return no result until that review happens; see the 2026-08 "Pause MusicBrainz, Wikipedia, and Genius" entry in `docs/DECISIONS.md`
+- [x] Port the four metadata source integrations (YouTube Data API, MusicBrainz, Wikipedia, Genius) to Python. Only YouTube makes live calls right now; MusicBrainz, Wikipedia, and Genius all return no result pending a review to confirm each one's API usage is official, legal, and ethical, see the 2026-08 "Pause MusicBrainz, Wikipedia, and Genius" entry in `docs/DECISIONS.md`
 - [x] Port `MetadataPromptBuilder`'s prompt-construction logic
 - [x] Replace the regex-stripped LLM response parsing with OpenAI's structured output / JSON schema mode and Pydantic model validation
 - [x] Add an internal endpoint, `POST /metadata/resolve`, that gathers the available sources and returns the synthesized result
