@@ -4,12 +4,5 @@ import tools.jackson.databind.PropertyNamingStrategies;
 import tools.jackson.databind.annotation.JsonNaming;
 
 @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
-public record SongMetadataResponse(
-        String title,
-        String artist,
-        Integer releaseYear,
-        String gradientColor1,
-        String gradientColor2
-) {
-
+public record MetadataResolveRequest(String youtubeUrl) {
 }
