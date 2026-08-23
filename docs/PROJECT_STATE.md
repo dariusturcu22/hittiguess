@@ -48,7 +48,8 @@ A story can have draft tasks written against it in TASKS.md while still marked N
 ## Open questions
 
 - Flutter app: keep, repurpose, or drop? Must follow the same real-link-out rule as the rest of the product in the meantime, no exceptions.
-- Metadata source API usage: MusicBrainz, Wikipedia, and Genius are all paused pending a review to confirm each one's API usage is official, legal, and ethical (see the 2026-08 "Pause MusicBrainz, Wikipedia, and Genius" entry in `docs/DECISIONS.md`). Next planned topic after story 6.
+- Metadata source API usage: resolved. Source set is MusicBrainz, Discogs, and Wikidata; Genius, Last.fm, and live Wikipedia search were reviewed and dropped rather than fixed (see `docs/DECISIONS.md`).
+- Compliance and production-readiness: privacy policy, terms of service, GDPR compliance, and observability (error tracking, monitoring) are a stated goal in `docs/VISION.md`, not yet broken into stories.
 
 ## Resolved questions
 

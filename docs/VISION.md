@@ -27,9 +27,13 @@ A working multiplayer game where:
 ## What makes this different?
 
 - Broad music coverage: mainstream and niche music are both first-class, not an afterthought.
-- AI-assisted metadata pipeline: multi-source verification (YouTube, MusicBrainz, Wikipedia, Genius, Discogs) synthesized by an LLM, with community reporting to catch errors.
+- AI-assisted metadata pipeline: multi-source verification (YouTube, MusicBrainz, Discogs, Wikidata) synthesized by an LLM, with community reporting to catch errors.
 - Online multiplayer that works: playback is fully compliant with YouTube's API policies by construction, and voice and text chat are built in for the session, no separate app needed.
 - Community-maintained database: users can submit songs, report incorrect years, and add sources. The database improves through play.
+
+## Built to a professional standard, not just a working one
+
+Every external dependency, official APIs only, licenses respected, no reverse-engineered or unofficial access. That standard extends to the product itself: a real privacy policy and terms of service, GDPR compliance, and production-grade observability (error tracking, monitoring) rather than a game that happens to run. None of this is scoped into stories yet; it's a standard the project is held to as stories get defined, not a checklist bolted on at the end.
 
 ## Sessions are temporary
 
