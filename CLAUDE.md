@@ -2,7 +2,7 @@
 
 ## Project
 
-`hitguessr` is a multiplayer music guessing game, inspired by Hitster. Players hear a song, guess when it was released, and place it on a chronological timeline. It works with both widely recognized, mainstream music and obscure or niche tracks, and supports both in-person and online play.
+`hittiguess` is a multiplayer music guessing game, inspired by Hitster. Players hear a song, guess when it was released, and place it on a chronological timeline. It works with both widely recognized, mainstream music and obscure or niche tracks, and supports both in-person and online play.
 
 ## Stack
 
