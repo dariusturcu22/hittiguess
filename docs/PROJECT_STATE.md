@@ -24,10 +24,10 @@ A story can have draft tasks written against it in TASKS.md while still marked N
 | 5 | Printable PDF/QR card generation | Backend | Implemented |
 | 7 | Hosting migration from Fly.io to Azure Container Apps | Infra | Needs Definition, draft tasks exist |
 | 8 | Database migration to Azure Database for PostgreSQL Flexible Server, pgvector enabled | Infra | Needs Definition, depends on story 23 |
-| 9 | DJ opens the real YouTube page or app instead of an embedded player | Game / Compliance | Needs Definition, draft tasks exist |
-| 10 | Ephemeral game session: invite link, live join only, no persistence beyond a downloadable results export at the end | Game | Needs Definition |
-| 11 | Real-time game sync over WebSocket | Realtime | Needs Definition |
-| 12 | Voice chat between players in a session, mesh peer-to-peer with Cloudflare TURN fallback | Realtime | Needs Definition, draft tasks exist |
+| 9 | DJ opens the real YouTube page or app instead of an embedded player | Game / Compliance | Needs Definition, draft tasks exist, confirmed blocked on stories 10 and 11 |
+| 10 | Ephemeral game session: invite link, live join only, no persistence beyond a downloadable results export at the end | Game | Needs Definition, draft tasks exist |
+| 11 | Real-time game sync over WebSocket | Realtime | Needs Definition, draft tasks exist |
+| 12 | Voice chat between players in a session, mesh peer-to-peer with Cloudflare TURN fallback | Realtime | Needs Definition, draft tasks exist, confirmed blocked on story 11 |
 | 13 | Session-scoped text chat, same lifetime as the session | Realtime | Needs Definition |
 | 14 | Song search by link or by keyword before submission | Frontend / Backend | Needs Definition |
 | 15 | Song/playlist relational fix, so one song can belong to multiple playlists | Backend | Needs Definition |
@@ -50,6 +50,8 @@ A story can have draft tasks written against it in TASKS.md while still marked N
 - Flutter app: keep, repurpose, or drop? Must follow the same real-link-out rule as the rest of the product in the meantime, no exceptions.
 - Metadata source API usage: resolved. Source set is MusicBrainz, Discogs, and Wikidata; Genius, Last.fm, and live Wikipedia search were reviewed and dropped rather than fixed (see `docs/DECISIONS.md`).
 - Compliance and production-readiness: privacy policy, terms of service, GDPR compliance, and observability (error tracking, monitoring) are a stated goal in `docs/VISION.md`, not yet broken into stories.
+- Story 10 session state: in-memory only, or ephemeral rows in Postgres cleaned up on session end? `ARCHITECTURE.md` doesn't say. Needs deciding before the `GameSession`/`Player`/`Round`/`Guess` entities are built.
+- Story 10 win condition: `GAME_DESIGN.md` says required timeline length "can scale with player count" but doesn't give the actual rule. Needs pinning down before the win-condition task can be implemented.
 
 ## Resolved questions
 
