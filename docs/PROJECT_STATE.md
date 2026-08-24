@@ -44,7 +44,7 @@ A story can have draft tasks written against it in TASKS.md while still marked N
 | 26 | Cache metadata pipeline results by artist/title or YouTube ID | Backend / AI | Needs Definition |
 | 27 | Rate limiting | Backend | Needs Definition |
 | 28 | UI redesign | Frontend | Needs Definition |
-| 29 | Content-based song recommender: Spotify audio-feature metadata (tempo, energy, valence), cosine similarity, works with zero user data | Backend / AI | Needs Definition, blocked on a Spotify API terms review |
+| 29 | Content-based song recommender: audio-feature metadata (tempo, energy, valence), cosine similarity, works with zero user data | Backend / AI | Needs Definition, audio-feature data source not chosen |
 | 30 | Collaborative filtering recommendations from real interaction data (ratings, or implicit signals like guess correctness and guess time) | Backend / AI | Needs Definition, blocked on enough real usage data existing |
 | 31 | "Similar songs" feature using pgvector embeddings over song title and artist | Backend / AI | Needs Definition |
 | 32 | LLM-as-judge catalog audit: periodic pass over the existing catalog flagging likely duplicate or mislabeled songs | Backend / AI | Needs Definition |
@@ -62,7 +62,7 @@ A story can have draft tasks written against it in TASKS.md while still marked N
 - Story 10 session state: in-memory only, or ephemeral rows in Postgres cleaned up on session end? `ARCHITECTURE.md` doesn't say. Needs deciding before the `GameSession`/`Player`/`Round`/`Guess` entities are built.
 - Story 10 win condition: `GAME_DESIGN.md` says required timeline length "can scale with player count" but doesn't give the actual rule. Needs pinning down before the win-condition task can be implemented.
 - Stories 29, 30, and 31 are the building blocks of one overall recommendation strategy, not one story, since they have very different data requirements and can ship independently. Content-based (29) and embeddings (31) need no user interaction data; collaborative filtering (30) does, and likely won't have enough of it at the 100-200 user target scale until real usage accumulates.
-- Story 29's Spotify audio-feature source needs its terms of use read directly before it's more than an idea, the same review MusicBrainz, Discogs, and Wikidata already got. Spotify restricted access to its audio-features endpoints for new API keys in late 2024; whether this project's use case still qualifies isn't confirmed.
+- Story 29 needs an audio-feature data source decided; Spotify was suggested but not approved, so it's not the source. Whatever source gets chosen needs the same terms-of-use review MusicBrainz, Discogs, and Wikidata already got before it's more than an idea.
 - Story 32 (LLM catalog audit) and story 18 (verification criteria) are related but distinct: 18 is the per-submission path to verified, 32 is a periodic pass over the whole existing catalog. Whether 32 feeds into 18's criteria or stays a separate audit tool isn't decided.
 - Story 35's data (artist/title/release_year triples, sourced from MusicBrainz/Discogs/Wikidata, all CC0) doesn't include anything sourced from the YouTube API, so it doesn't carry the redistribution risk a YouTube-link-inclusive version would have. Worth a final confirmation read of YouTube's terms before shipping regardless, since the catalog's provenance mixes sources.
 
