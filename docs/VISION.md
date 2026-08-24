@@ -2,7 +2,7 @@
 
 ## What is this?
 
-`hitguessr` is a Hitster-inspired multiplayer music game. Players hear a song, guess when it was released, and place it in chronological order on their personal timeline. The core loop: hear a song, guess the year, place the card, win or lose a token.
+`hittiguess` is a Hitster-inspired multiplayer music game. Players hear a song, guess when it was released, and place it in chronological order on their personal timeline. The core loop: hear a song, guess the year, place the card, win or lose a token.
 
 The library covers both widely recognized, mainstream music and obscure or niche tracks. Playlists can lean either way, or mix both, depending on who's playing.
 

@@ -1,4 +1,4 @@
-# hitguessr
+# hittiguess
 
 A multiplayer music guessing game, inspired by Hitster. Players hear a song, guess when it was released, and place it on a chronological timeline.
 
