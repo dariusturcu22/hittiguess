@@ -181,3 +181,11 @@ Note: MusicBrainz's release-group `first-release-date` field, not a specific rel
 Decision: the project holds itself to the same standard for the product as for its external dependencies, official and compliant, not just functional. This includes a real privacy policy and terms of service, GDPR compliance, and production-grade observability (error tracking, monitoring).
 
 Why: prompted by finding an existing web-based Hitster clone with no visible terms of service, privacy policy, or GDPR compliance. Not a story yet, a standard the project is held to as stories get defined.
+
+---
+
+## 2026-08 | Database split: not for capacity, only for workload shape
+
+Decision: splitting the database across multiple free-tier instances purely to gain storage capacity is rejected. A real split, separating transactional data (users, songs, ratings, OLTP-shaped) from usage-analytics event data (games played, session length, append-heavy and time-series-shaped), stays on the table for a different reason, see story 33 in `PROJECT_STATE.md`.
+
+Why: capacity was the only reason raised for a multi-instance split. Song metadata plus user, playlist, and ratings data is small enough to stay well under a single free-tier instance's limits even at the 100-200 user target scale, checked directly rather than assumed.

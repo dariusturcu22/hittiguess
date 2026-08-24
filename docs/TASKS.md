@@ -17,6 +17,8 @@ Story 9 and story 12 were checked against the real code and confirmed blocked: b
 - [ ] Provision Azure Database for PostgreSQL Flexible Server, enable pgvector
 - [ ] Migrate data to the new Postgres instance
 - [ ] Verify both services and the frontend work end to end against Azure
+- [ ] Point the hittiguess.com domain at the new deployment
+- [ ] Update OAuth2 redirect URIs for the new domain
 - [ ] Decommission Fly.io once verified
 
 ## Story 9: DJ real YouTube link-out
