@@ -4,11 +4,22 @@
 
 Players listen to a song and try to place it correctly on their personal chronological timeline. The player who completes their timeline first wins.
 
+## Groups
+
+Anyone can create a group; whoever creates one becomes its admin. A group is shared over an invite link, capped at 8 members, and a player can only belong to one group at a time.
+
+Chat and voice are open from the moment the group exists, voice is a standing room anyone can join or leave freely, not a call someone starts. Only the admin can configure the game settings, playlist(s), DJ mode, win-condition card count, everyone else sees them update live but can't change them.
+
+Only the admin can start a game session. Once started, the group is locked to new members. A group can play more than one game session over its lifetime, the admin can start another once one finishes.
+
+A group doesn't last forever: it's deleted if the admin doesn't start a game session within 30 minutes of creating it, or within 30 minutes of the previous one ending. If the admin leaves the group outright, another member takes over as admin; if no one's left, the group is deleted. Closing the app doesn't remove anyone, only leaving on purpose does, reopening the app points a player back to their still-active group if they have one.
+
 ## Setup
 
 - Each player starts with one card on their timeline, as a starting anchor.
-- A playlist, or a combination of playlists, is selected for the session.
-- Each group has a DJ setting: fixed, meaning one person stays DJ all game, or rotating, meaning the role passes each round. This is set when the session is created.
+- A playlist, or a combination of playlists, is selected by the group's admin.
+- Each group has a DJ setting: fixed, meaning one person stays DJ all game, or rotating, meaning the role passes each round. Set by the admin before the game session starts, changeable anytime up to then.
+- The admin sets how many cards a player needs to win: minimum 5 always, maximum 20 for a 2-3 player group, maximum 15 for a 4-8 player group.
 
 ## Roles
 
@@ -32,7 +43,7 @@ The DJ and the active player, whoever's turn it is, are separate roles.
 
 ## Winning
 
-The first player to correctly build a timeline of the required length wins. Timeline length can scale with player count.
+The first player to correctly build a timeline of the required length wins. Required length is the win-condition card count the admin set before starting, see Setup.
 
 ## Online play
 
@@ -40,7 +51,7 @@ The first player to correctly build a timeline of the required length wins. Time
 - For remote sessions, that browser tab is captured through WebRTC and streamed to the other players.
 - Non-DJ players never see a YouTube embed or the YouTube app, only the game UI.
 - Reveal is a manual trigger: any player can reveal once the song has played.
-- Players can voice chat and text chat with the rest of their session. See [ARCHITECTURE.md](ARCHITECTURE.md) for how this works.
+- Players can voice chat and text chat with the rest of their group, available from group creation, not just during a game session. See [ARCHITECTURE.md](ARCHITECTURE.md) for how this works.
 
 ## Ads
 

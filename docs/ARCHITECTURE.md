@@ -59,24 +59,47 @@ Quota note: YouTube's `search.list` costs 100 units per call against a 100-call 
 
 Search with `videoCategoryId=10` and look for a channel ending in `" - Topic"`, an official auto-generated upload. Suggest an upgrade when a high-confidence match is found.
 
+### Group (core service)
+
+A group is the persistent wrapper a game session lives inside. Anyone can create one, whoever does becomes its admin. Membership is invite-link based, capped at 8 members, and a user can belong to at most one group at a time.
+
+The admin controls the game settings (playlist(s), DJ mode, win-condition card count); every member sees those settings change in real time, non-admins see them read-only. Chat and voice are live from the moment the group is created. Only the admin can start a game session; once started, the group locks, no new members can join.
+
+Lifecycle runs on fixed timers, not activity tracking:
+
+- 30 minutes from group creation to the admin starting a game session, otherwise the group is deleted.
+- 30 minutes from a game session ending to the admin starting another, otherwise the group is deleted and every member removed.
+- A group isn't single-use: it can run any number of game sessions across its lifetime.
+
+A disconnect, closed tab, network drop, never ends membership, only an explicit leave does. If the admin explicitly leaves, the next-earliest-joined member is promoted to admin; if no members remain, the group is deleted. Reconnecting isn't link-based, the invite link is for joining a group for the first time. A logged-in user who's still a member of an active group is prompted on app load to return to it or leave it, checked against their account, not against the link.
+
+```
+Group
+  ├── id, adminUserId, inviteLink, status, settings (playlist(s), djMode, winConditionCards)
+  ├── members[] → Member (userId, isConnected)
+  └── gameSessions[] → GameSession (see below)
+```
+
 ### Game session (core service)
 
-Sessions are ephemeral, similar to a Gartic Phone round. A session is created with an invite link, players join it live, and everyone who joins is a full player, there's no spectating and no joining a session already in progress. When the session ends, nothing about it persists except a downloadable results export; the session, its roster, and its chat are all gone.
+A game session is the round-by-round gameplay itself, created only when the group's admin starts one. Ephemeral: purged entirely when it ends, except for a downloadable results export.
 
 ```
 GameSession
-  ├── id, playlist(s), status, inviteLink
+  ├── id, groupId, status
   ├── players[] → Player (userId, timeline[], tokenCount, isConnected)
   ├── currentRound → Round
   │     ├── activePlayerId (rotates each round)
-  │     ├── djPlayerId (fixed or rotating, per session setting)
+  │     ├── djPlayerId (fixed or rotating, per group setting)
   │     ├── currentSong
   │     ├── status
   │     └── guesses[] → Guess (playerId, guessedYear, placedPosition, isCorrect)
   └── history[]
 ```
 
-Sync through WebSocket/STOMP. REST for session creation and join; WebSocket for real-time state changes.
+If every player disconnects and none reconnect within 10 minutes, the session is torn down as abandoned and produces no results export. A single player's disconnect never ends the session while anyone else is still connected.
+
+Sync through WebSocket/STOMP for both the group and the game session. REST for group and session creation and join; WebSocket for real-time state changes.
 
 ### DJ playback
 
@@ -91,11 +114,11 @@ The DJ is never shown an embedded YouTube player.
 
 ### Voice and text chat
 
-Both are scoped to the session's lifetime: available from the moment someone joins through the invite link until the session ends, then gone along with the rest of the session.
+Both are scoped to the group's lifetime, not the game session's: available from the moment the group is created until the group is deleted, spanning any number of game sessions played inside it.
 
-Voice: mesh peer-to-peer, no media server. Signaling rides the existing WebSocket layer. Capped at 8 participants per session. Cloudflare TURN, pay-as-you-go, used only when a direct connection between two peers fails, most connections never touch it. Video is out of scope; mesh video's bandwidth and CPU cost breaks down at realistic group sizes, and a media server was ruled out on cost and operational grounds.
+Voice: mesh peer-to-peer, no media server, a standing room members can join or leave at any time, not a call anyone starts. Signaling rides the existing WebSocket layer. Capped at 8 participants per group. Cloudflare TURN, pay-as-you-go, used only when a direct connection between two peers fails, most connections never touch it. Video is out of scope; mesh video's bandwidth and CPU cost breaks down at realistic group sizes, and a media server was ruled out on cost and operational grounds.
 
-Text: plain messages over the same WebSocket connection, stored only for the life of the session, not persisted after it ends.
+Text: plain messages over the same WebSocket connection, stored for the life of the group, not persisted after it's deleted.
 
 ### Verification
 
@@ -136,17 +159,20 @@ Background: AI microservice checks for a Topic-channel upgrade
 ## Data flow: playing a game
 
 ```
-Host creates a session, selects playlist(s), shares an invite link
-Players join live, before the session starts
-Session starts, DJ and active player assigned for round 1
+A player creates a group and becomes its admin, shares the invite link
+Members join live; chat and voice are available immediately
+Admin configures settings (playlist(s), DJ mode, win-condition card count), members see changes live, read-only
+Admin starts a game session within 30 minutes of group creation, or the group is deleted
+DJ and active player assigned for round 1
 DJ opens the real YouTube page (remote) or app (in-person)
 Other players hear the stream (remote) or the room (in-person), see game UI only
 Active player guesses; other players may bet after the guess locks
 Any player triggers reveal manually
 Backend scores the round, updates tokens
-Next round: active player rotates, DJ follows the session's fixed or rotating setting
-Game ends when a player completes their timeline
-Results become downloadable; the session and its chat are gone
+Next round: active player rotates, DJ follows the group's fixed or rotating setting
+Game ends when a player completes their timeline, or the session is abandoned after 10 minutes with zero connected players
+A completed session's results become downloadable; an abandoned one produces none
+Group returns to its lobby state: admin starts another session within 30 minutes, or the group is deleted and every member removed
 ```
 
 ## What's built
@@ -160,4 +186,4 @@ Results become downloadable; the session and its chat are gone
 
 ## Not yet built
 
-Azure deployment, database migration, game session model, WebSocket layer, DJ link-out playback flow, voice and text chat, song search by link or keyword, community reporting flow, pgvector deduplication, playlist/song relational fix, Discogs integration, confidence-gating UI, admin bulk import, admin review queue, scheduled re-verification, rate limiting, UI redesign, auto-generated featured playlists, test coverage.
+Azure deployment, database migration, group model, game session model, WebSocket layer, DJ link-out playback flow, voice and text chat, song search by link or keyword, community reporting flow, pgvector deduplication, playlist/song relational fix, Discogs integration, confidence-gating UI, admin bulk import, admin review queue, scheduled re-verification, rate limiting, UI redesign, auto-generated featured playlists, test coverage.

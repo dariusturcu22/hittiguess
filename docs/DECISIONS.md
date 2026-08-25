@@ -189,3 +189,17 @@ Why: prompted by finding an existing web-based Hitster clone with no visible ter
 Decision: splitting the database across multiple free-tier instances purely to gain storage capacity is rejected. A real split, separating transactional data (users, songs, ratings, OLTP-shaped) from usage-analytics event data (games played, session length, append-heavy and time-series-shaped), stays on the table for a different reason, see story 33 in `PROJECT_STATE.md`.
 
 Why: capacity was the only reason raised for a multi-instance split. Song metadata plus user, playlist, and ratings data is small enough to stay well under a single free-tier instance's limits even at the 100-200 user target scale, checked directly rather than assumed.
+
+---
+
+## 2026-08 | Group and game session are separate entities
+
+Decision: what was one ephemeral "session" is now two entities. A group is the persistent lobby, invite-link membership, an admin role, live-synced game settings, chat, and voice, that a game session lives inside. The game session is the round-by-round gameplay itself, created only when the group's admin starts one, and still fully ephemeral, purged when it ends except for a downloadable results export. A group can run more than one game session over its lifetime.
+
+Why: a single-tier model (Gartic Phone's approach, in-memory, gone when the round ends) doesn't fit a product with persistent chat and voice, replay without recreating an invite link, or an admin able to configure settings before anyone commits to starting. Splitting the two lets chat and voice exist before, between, and after games without tying their lifetime to one round of play.
+
+Note: the group's lifecycle runs on fixed timers, not activity tracking, deliberately. An activity-based timer (reset by any interaction) was considered and rejected: it opens a loophole where starting and immediately abandoning a game session resets the clock indefinitely. Fixed timers: 30 minutes from group creation to the admin starting a session, 30 minutes from a session ending to the admin starting another, 10 minutes with zero connected players before an in-progress session is torn down as abandoned. Reconnecting to a still-active group happens through account state on app load, not by reusing the invite link, the link is for joining a group for the first time only.
+
+Note: the game session's win condition is an admin-configured setting, not an automatic formula: minimum 5 cards always, maximum 20 for a 2-3 player group, maximum 15 for a 4-8 player group.
+
+See story 10 (game session), story 39 (group), and stories 9, 12, and 13 in `PROJECT_STATE.md`, and `ARCHITECTURE.md` and `GAME_DESIGN.md` for the full shape.

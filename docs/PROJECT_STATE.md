@@ -24,11 +24,11 @@ A story can have draft tasks written against it in TASKS.md while still marked N
 | 5 | Printable PDF/QR card generation | Backend | Implemented |
 | 7 | Hosting migration from Fly.io to Azure Container Apps | Infra | Needs Definition, draft tasks exist |
 | 8 | Database migration to Azure Database for PostgreSQL Flexible Server, pgvector enabled | Infra | Needs Definition, depends on story 23 |
-| 9 | DJ opens the real YouTube page or app instead of an embedded player | Game / Compliance | Needs Definition, draft tasks exist, confirmed blocked on stories 10 and 11 |
-| 10 | Ephemeral game session: invite link, live join only, no persistence beyond a downloadable results export at the end | Game | Needs Definition, draft tasks exist |
+| 9 | DJ opens the real YouTube page or app instead of an embedded player | Game / Compliance | Needs Definition, draft tasks exist, confirmed blocked on stories 10, 11, and 39 |
+| 10 | Game session: round-by-round gameplay within a group, rounds, guesses, betting, scoring, win condition; ephemeral, purged when the session ends except for a downloadable results export | Game | Needs Definition, draft tasks exist |
 | 11 | Real-time game sync over WebSocket | Realtime | Needs Definition, draft tasks exist |
-| 12 | Voice chat between players in a session, mesh peer-to-peer with Cloudflare TURN fallback | Realtime | Needs Definition, draft tasks exist, confirmed blocked on story 11 |
-| 13 | Session-scoped text chat, same lifetime as the session | Realtime | Needs Definition |
+| 12 | Voice chat between players in a group, mesh peer-to-peer with Cloudflare TURN fallback, joinable and leavable anytime for the group's lifetime | Realtime | Needs Definition, draft tasks exist, confirmed blocked on stories 11 and 39 |
+| 13 | Group-scoped text chat, active from group creation until the group is deleted | Realtime | Needs Definition, blocked on stories 11 and 39 |
 | 14 | Song search by link or by keyword before submission | Frontend / Backend | Needs Definition |
 | 15 | Song/playlist relational fix, so one song can belong to multiple playlists | Backend | Needs Definition |
 | 16 | pgvector-based duplicate detection before running the metadata pipeline | Backend / AI | Needs Definition |
@@ -54,13 +54,12 @@ A story can have draft tasks written against it in TASKS.md while still marked N
 | 36 | Open-source collaboration readiness: `CONTRIBUTING.md`, `LICENSE`, `CODE_OF_CONDUCT.md`, issue/PR templates | Docs / Community | Needs Definition |
 | 37 | Privacy policy, terms of service, and GDPR compliance | Legal / Compliance | Needs Definition |
 | 38 | Observability: error tracking and monitoring | Infra / Quality | Needs Definition |
+| 39 | Group: persistent lobby a game session lives inside, invite-link membership, admin role, live-synced settings, chat and voice from creation, timer-based lifecycle | Game | Needs Definition, draft tasks exist |
 
 ## Open questions
 
 - Flutter app: keep, repurpose, or drop? Must follow the same real-link-out rule as the rest of the product in the meantime, no exceptions.
 - Metadata source API usage: resolved. Source set is MusicBrainz, Discogs, and Wikidata; Genius, Last.fm, and live Wikipedia search were reviewed and dropped rather than fixed (see `docs/DECISIONS.md`).
-- Story 10 session state: in-memory only, or ephemeral rows in Postgres cleaned up on session end? `ARCHITECTURE.md` doesn't say. Needs deciding before the `GameSession`/`Player`/`Round`/`Guess` entities are built.
-- Story 10 win condition: `GAME_DESIGN.md` says required timeline length "can scale with player count" but doesn't give the actual rule. Needs pinning down before the win-condition task can be implemented.
 - Stories 29, 30, and 31 are the building blocks of one overall recommendation strategy, not one story, since they have very different data requirements and can ship independently. Content-based (29) and embeddings (31) need no user interaction data; collaborative filtering (30) does, and likely won't have enough of it at the 100-200 user target scale until real usage accumulates.
 - Story 29 needs an audio-feature data source decided; Spotify was suggested but not approved, so it's not the source. Whatever source gets chosen needs the same terms-of-use review MusicBrainz, Discogs, and Wikidata already got before it's more than an idea.
 - Story 32 (LLM catalog audit) and story 18 (verification criteria) are related but distinct: 18 is the per-submission path to verified, 32 is a periodic pass over the whole existing catalog. Whether 32 feeds into 18's criteria or stays a separate audit tool isn't decided.
@@ -70,3 +69,4 @@ A story can have draft tasks written against it in TASKS.md while still marked N
 
 - Where is the current Postgres instance hosted? Supabase, confirmed. Story 8 (Azure Database for PostgreSQL migration) is a move off Supabase, not off an unknown host.
 - Compliance and production-readiness: privacy policy, terms of service, GDPR compliance, and observability were a stated goal in `docs/VISION.md` with no story attached. Now stories 37 and 38.
+- Story 10's session-state persistence and win-condition scaling were open questions. Both resolved: ephemeral Postgres rows, and an admin-configured card count bounded by player count. The group/game-session split that resolved them is documented in `ARCHITECTURE.md` and `GAME_DESIGN.md`, and logged in `DECISIONS.md`. Now story 39.
