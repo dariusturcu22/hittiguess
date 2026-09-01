@@ -86,3 +86,40 @@ Not yet checked against real code, no group model exists. Draft, based on `ARCHI
 - [ ] Explicit leave vs. disconnect: disconnect only flips `isConnected`, explicit leave removes membership
 - [ ] Admin explicitly leaves: promote the next-earliest-joined member to admin, or delete the group if none remain
 - [ ] On app load, check the logged-in user's active group membership and prompt to return or leave, no link-based reconnect
+
+## Story 31: "Similar songs" feature using pgvector embeddings over song title and artist
+
+- [ ] Reuse story 16's embedding infrastructure if it's landed first, same embedding step: normalize `artist + title`, generate an embedding via OpenAI's embeddings API
+- [ ] Add a similar-songs query using pgvector cosine similarity over title/artist embeddings
+- [ ] Add a frontend surface showing similar songs, for example on a song's detail view
+- [ ] Coordinate with story 16 to avoid embedding the same artist/title text twice under two separate pipelines
+
+## Story 29: Content-based song recommender
+
+Blocked on an unresolved open question (`PROJECT_STATE.md`): the audio-feature data source isn't chosen. Spotify was suggested and rejected, not approved as the source. This blocks everything below it; the rest of this story's shape is drafted, but can't start until a source is chosen and reviewed.
+
+- [ ] Choose an audio-feature data source (tempo, energy, valence); needs the same terms-of-use review MusicBrainz, Discogs, and Wikidata already got before it's more than an idea
+- [ ] Add feature-vector storage per song (pgvector, coordinate with stories 16 and 31 which also add pgvector usage)
+- [ ] Implement a cosine-similarity recommendation query
+- [ ] Add a recommendation endpoint and frontend surface
+
+## Story 30: Collaborative filtering recommendations
+
+Blocked on enough real usage data existing (`PROJECT_STATE.md`), and on story 10 (game session) actually shipping, since guess correctness and guess time, the likely implicit signals, only exist once real rounds are being played. Can't produce a real recommender without real interaction data, so only the shape is drafted here.
+
+- [ ] Design the interaction-signal schema (guess correctness, guess time, or explicit ratings) once story 10 is live and producing real data
+- [ ] Implement collaborative filtering (matrix factorization or item-item similarity) once enough interaction data has accumulated at the 100-200 user target scale
+
+## Story 33: Analytics data store
+
+- [ ] Choose and provision a separate append-heavy store for usage/event data, apart from the transactional Postgres database (a separate schema, or a dedicated event/time-series store)
+- [ ] Define the initial event schema (games played, session length) for story 34 to write to
+- [ ] Decide a retention policy
+
+## Story 34: First-party usage analytics
+
+Depends on story 33's store existing.
+
+- [ ] Instrument game session start/end (story 10) and login events to write to the analytics store
+- [ ] Build a simple internal dashboard or query surface over the collected events
+- [ ] No third-party trackers, matches this story's own scope and the "First-party usage analytics" framing
