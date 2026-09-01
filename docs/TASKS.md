@@ -2,7 +2,9 @@
 
 This is the source of truth for day-to-day work. Consult PROJECT_STATE.md only when you need the bigger picture behind one of these.
 
-The tasks below, under stories 7, 9, 10, 11, 12, and 39, are drafts and have not yet been confirmed against the real implementation, except where noted. Before starting any of them, check them against the current code: some tasks may already be done, some may not apply the way they're written, and some may be missing. Once a story's tasks are confirmed accurate, update its status to Ready in PROJECT_STATE.md.
+The tasks below, under stories 7, 9, and 12, are drafts and have not yet been confirmed against the real implementation, except where noted. Before starting any of them, check them against the current code: some tasks may already be done, some may not apply the way they're written, and some may be missing. Once a story's tasks are confirmed accurate, update its status to Ready in PROJECT_STATE.md.
+
+Stories 10, 11, and 39 were checked against the real code: no `Group`, `Session`, `Round`, `Guess`, or WebSocket/STOMP code exists anywhere in the backend, so their draft tasks stand as accurate greenfield work. Marked Ready in PROJECT_STATE.md.
 
 Story 9 and story 12 were checked against the real code and confirmed blocked: both assume a group (story 39), a game session (story 10), and a WebSocket layer (story 11) that don't exist yet. Neither can move to Ready until 10, 11, and 39 do.
 
@@ -32,7 +34,7 @@ Confirmed against the real code: there's no DJ view, no group, no session concep
 
 ## Story 10: Game session
 
-Not yet checked against real code, there's nothing to check against, no session model exists. Draft, based on the `GameSession` shape and round flow in `ARCHITECTURE.md`, and the group/game-session split logged in `DECISIONS.md`.
+Checked against real code: no session model exists, this is greenfield work. Based on the `GameSession` shape and round flow in `ARCHITECTURE.md`, and the group/game-session split logged in `DECISIONS.md`.
 
 - [ ] Implement `GameSession`, `Player`, `Round`, and `Guess` as ephemeral Postgres rows, purged when the session ends
 - [ ] Initialize a session from the group's current settings when the admin starts it (playlist(s), DJ mode, win-condition card count), snapshotting the group's connected members as the roster
@@ -48,7 +50,7 @@ Not yet checked against real code, there's nothing to check against, no session 
 
 ## Story 11: Real-time game sync over WebSocket
 
-Not yet checked against real code, no WebSocket layer exists yet. Draft, based on the sync model in `ARCHITECTURE.md` (REST for group/session creation and join, WebSocket for state changes). Covers both the group and the game session, not just the session.
+Checked against real code: no WebSocket layer exists, this is greenfield work. Based on the sync model in `ARCHITECTURE.md` (REST for group/session creation and join, WebSocket for state changes). Covers both the group and the game session, not just the session.
 
 - [ ] Add the Spring WebSocket/STOMP dependency and base config to the core service
 - [ ] Authenticate the WebSocket handshake against the existing JWT auth
@@ -71,7 +73,7 @@ Blocked on story 11 (WebSocket layer) and story 39 (group): voice is scoped to t
 
 ## Story 39: Group
 
-Not yet checked against real code, no group model exists. Draft, based on `ARCHITECTURE.md`'s Group shape and lifecycle, and `GAME_DESIGN.md`'s Groups section.
+Checked against real code: no group model exists, this is greenfield work. Based on `ARCHITECTURE.md`'s Group shape and lifecycle, and `GAME_DESIGN.md`'s Groups section.
 
 - [ ] Implement `Group` and `Member` as ephemeral Postgres rows
 - [ ] `POST` endpoint to create a group; creator becomes admin

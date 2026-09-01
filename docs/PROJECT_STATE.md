@@ -17,16 +17,11 @@ A story can have draft tasks written against it in TASKS.md while still marked N
 
 | ID | Story | Area | Status |
 |---|---|---|---|
-| 1 | User authentication with refresh tokens | Backend | Implemented |
-| 2 | Playlist creation and management | Backend | Implemented |
-| 3 | Song submission and CRUD | Backend | Implemented |
-| 4 | Multi-source metadata pipeline (YouTube, MusicBrainz, Wikipedia, Genius) synthesized by an LLM | Backend / AI | Implemented, in the AI microservice since story 6 |
-| 5 | Printable PDF/QR card generation | Backend | Implemented |
 | 7 | Hosting migration from Fly.io to Azure Container Apps | Infra | Needs Definition, draft tasks exist |
 | 8 | Database migration to Azure Database for PostgreSQL Flexible Server, pgvector enabled | Infra | Needs Definition, depends on story 23 |
 | 9 | DJ opens the real YouTube page or app instead of an embedded player | Game / Compliance | Needs Definition, draft tasks exist, confirmed blocked on stories 10, 11, and 39 |
-| 10 | Game session: round-by-round gameplay within a group, rounds, guesses, betting, scoring, win condition; ephemeral, purged when the session ends except for a downloadable results export | Game | Needs Definition, draft tasks exist |
-| 11 | Real-time game sync over WebSocket | Realtime | Needs Definition, draft tasks exist |
+| 10 | Game session: round-by-round gameplay within a group, rounds, guesses, betting, scoring, win condition; ephemeral, purged when the session ends except for a downloadable results export | Game | Ready |
+| 11 | Real-time game sync over WebSocket | Realtime | Ready |
 | 12 | Voice chat between players in a group, mesh peer-to-peer with Cloudflare TURN fallback, joinable and leavable anytime for the group's lifetime | Realtime | Needs Definition, draft tasks exist, confirmed blocked on stories 11 and 39 |
 | 13 | Group-scoped text chat, active from group creation until the group is deleted | Realtime | Needs Definition, blocked on stories 11 and 39 |
 | 14 | Song search by link or by keyword before submission | Frontend / Backend | Needs Definition |
@@ -54,7 +49,7 @@ A story can have draft tasks written against it in TASKS.md while still marked N
 | 36 | Open-source collaboration readiness: `CONTRIBUTING.md`, `LICENSE`, `CODE_OF_CONDUCT.md`, issue/PR templates | Docs / Community | Needs Definition |
 | 37 | Privacy policy, terms of service, and GDPR compliance | Legal / Compliance | Needs Definition |
 | 38 | Observability: error tracking and monitoring | Infra / Quality | Needs Definition |
-| 39 | Group: persistent lobby a game session lives inside, invite-link membership, admin role, live-synced settings, chat and voice from creation, timer-based lifecycle | Game | Needs Definition, draft tasks exist |
+| 39 | Group: persistent lobby a game session lives inside, invite-link membership, admin role, live-synced settings, chat and voice from creation, timer-based lifecycle | Game | Ready |
 
 ## Open questions
 

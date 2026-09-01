@@ -1,6 +1,6 @@
 """Moves fully-checked-off TASKS.md sections into ARCHIVE.md.
 
-A "## Story N - ..." section only moves once PROJECT_STATE.md also has that
+A "## Story N: ..." section only moves once PROJECT_STATE.md also has that
 story's status as Implemented, its row is removed there too. Any other
 "## " section (audit fixes, dependency upgrades, bug batches, ...) moves
 once every checkbox under it is checked, no PROJECT_STATE.md row involved.
@@ -20,7 +20,7 @@ ARCHIVE_PATH = DOCS_DIR / "ARCHIVE.md"
 PROJECT_STATE_PATH = DOCS_DIR / "PROJECT_STATE.md"
 
 SECTION_HEADING = re.compile(r"^## (.+)$", re.MULTILINE)
-STORY_HEADING = re.compile(r"^Story (\d+) — ")
+STORY_HEADING = re.compile(r"^Story (\d+): ")
 CHECKBOX = re.compile(r"^- \[([ x])] ", re.MULTILINE)
 PROJECT_STATE_ROW = re.compile(r"^\|\s*(\d+)\s*\|.*\|\s*([^|]*?)\s*\|\s*$", re.MULTILINE)
 ARCHIVE_PLACEHOLDER = "No stories archived yet."
