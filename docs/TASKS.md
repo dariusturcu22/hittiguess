@@ -86,3 +86,22 @@ Not yet checked against real code, no group model exists. Draft, based on `ARCHI
 - [ ] Explicit leave vs. disconnect: disconnect only flips `isConnected`, explicit leave removes membership
 - [ ] Admin explicitly leaves: promote the next-earliest-joined member to admin, or delete the group if none remain
 - [ ] On app load, check the logged-in user's active group membership and prompt to return or leave, no link-based reconnect
+
+## Story 35: Public ground-truth data API
+
+The final YouTube-terms confirmation read stays an open question (`PROJECT_STATE.md`), kept open deliberately; the build itself isn't blocked on it since the story's actual output data doesn't include anything YouTube-sourced, so it's placed as the last task before shipping rather than before starting.
+
+- [ ] Add a public read-only endpoint exposing verified `(artist, title, release_year)` triples only, no YouTube-sourced fields
+- [ ] Filter to verified songs only, depends on story 23's `verificationStatus` field existing
+- [ ] Add pagination and rate limiting for public consumption (coordinate with story 27)
+- [ ] Final confirmation read of YouTube's terms before shipping, since the catalog's overall provenance mixes sources even though this endpoint's own data doesn't include anything YouTube-sourced
+
+## Story 21: Auto-generated featured playlists
+
+Depends on story 14's catalog search existing, and on "validated" meaning something concrete once story 18's verification criteria are decided.
+
+- [ ] Depends on story 14's search existing, the agent needs to query the catalog by theme/keyword
+- [ ] Add genre/popularity fields to `Song` if story 23's reconciliation doesn't already cover them, today's `Song` has no genre field, only a single `songTag` enum
+- [ ] Build the agent flow: theme request → catalog search → metadata pipeline calls for any gaps → assemble a card set
+- [ ] What "validated" means here depends on story 18's verification criteria, currently undecided, don't invent a threshold
+- [ ] Add the UI for requesting a themed playlist and reviewing the generated set before it's saved

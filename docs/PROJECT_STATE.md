@@ -36,7 +36,7 @@ A story can have draft tasks written against it in TASKS.md while still marked N
 | 18 | Criteria for promoting a reported or newly submitted song to verified | Backend | Needs Definition |
 | 19 | Admin bulk song import | Backend | Needs Definition |
 | 20 | Local LLM option for lower-cost bulk metadata processing | AI | Needs Definition |
-| 21 | Auto-generated featured playlists: an agent takes a themed request (for example "90s rock"), searches the catalog, calls the metadata pipeline, and assembles a validated card set from extracted song metadata (genre, popularity, similar signals) | Backend / AI | Needs Definition |
+| 21 | Auto-generated featured playlists: an agent takes a themed request (for example "90s rock"), searches the catalog, calls the metadata pipeline, and assembles a validated card set from extracted song metadata (genre, popularity, similar signals) | Backend / AI | Needs Definition, draft tasks exist |
 | 22 | Test coverage for existing and new functionality | Quality | Needs Definition |
 | 23 | Song schema reconciliation against the current implementation | Backend | Needs Definition |
 | 24 | Parallelize metadata pipeline fetches across sources | Backend / AI | Needs Definition |
@@ -50,7 +50,7 @@ A story can have draft tasks written against it in TASKS.md while still marked N
 | 32 | LLM-as-judge catalog audit: periodic pass over the existing catalog flagging likely duplicate or mislabeled songs | Backend / AI | Needs Definition |
 | 33 | Analytics data store: separate append-heavy store for usage/event data (games played, session length), apart from the transactional Postgres database | Infra | Needs Definition |
 | 34 | First-party usage analytics: track games played and session length through a self-hosted or custom event pipeline, no third-party trackers | Backend / Frontend | Needs Definition, depends on story 33 |
-| 35 | Public ground-truth data API: verified `(artist, title, release_year)` triples only, no YouTube links or unverified entries | Backend | Needs Definition |
+| 35 | Public ground-truth data API: verified `(artist, title, release_year)` triples only, no YouTube links or unverified entries | Backend | Needs Definition, draft tasks exist |
 | 36 | Open-source collaboration readiness: `CONTRIBUTING.md`, `LICENSE`, `CODE_OF_CONDUCT.md`, issue/PR templates | Docs / Community | Needs Definition |
 | 37 | Privacy policy, terms of service, and GDPR compliance | Legal / Compliance | Needs Definition |
 | 38 | Observability: error tracking and monitoring | Infra / Quality | Needs Definition |
