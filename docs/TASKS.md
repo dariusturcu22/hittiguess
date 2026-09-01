@@ -86,3 +86,100 @@ Not yet checked against real code, no group model exists. Draft, based on `ARCHI
 - [ ] Explicit leave vs. disconnect: disconnect only flips `isConnected`, explicit leave removes membership
 - [ ] Admin explicitly leaves: promote the next-earliest-joined member to admin, or delete the group if none remain
 - [ ] On app load, check the logged-in user's active group membership and prompt to return or leave, no link-based reconnect
+
+## Story 15: Song/playlist relational fix
+
+Checked against real code: `Song.playlist` is a required singular `@ManyToOne`, one song belongs to exactly one playlist today. Touches the same table as story 23; sequencing or combining the two migrations avoids two separate schema changes to `Song`.
+
+- [ ] Introduce a join table between `Song` and `Playlist`, replacing the singular `@ManyToOne playlist` on `Song`
+- [ ] Migrate existing data: each song's current single playlist link becomes one row in the new join table
+- [ ] Update `PlaylistService`'s `checkPlaylistAccess` and `checkSongBelongsToPlaylist`, both currently assume one song belongs to exactly one playlist
+- [ ] Decide song deletion semantics once a song isn't playlist-exclusive: does removing a song from one playlist delete it outright, or only unlink it? `PlaylistController`'s current delete-song endpoint assumes deletion
+- [ ] Update `SongDTO`/`PlaylistDetailDTO` and the frontend to reflect a song appearing in multiple playlists
+- [ ] Coordinate with story 23 (schema reconciliation), both touch `Song`'s shape
+
+## Story 14: Song search by link or keyword before submission
+
+Checked against real code: `SongRepository` has zero custom query methods, no backend search capability exists. The only "search" today is `DataTable`'s client-side substring filter over an already-loaded playlist's songs, not a real query.
+
+- [ ] Add a backend search endpoint, `SongRepository` has no query methods to build on today
+- [ ] Support search by artist/title keyword and by YouTube link/ID (the link-parsing logic already exists client-side as `extractYoutubeId` in `AddSongForm.tsx`, currently not shared with the backend)
+- [ ] Decide search scope: within one playlist, across the user's playlists, or catalog-wide, affects both the query and which of `PlaylistService`'s access checks apply (catalog-wide search would need one, since it isn't a per-playlist access check)
+- [ ] Wire `AddSongForm.tsx`'s submission flow to check search results first, so a song already in the catalog isn't resubmitted as a near-duplicate (distinct from story 16's pgvector-based similarity check; this is a plain keyword/link pre-check)
+- [ ] Add the frontend search UI, replacing or extending the current client-side-only title filter in `DataTable`
+
+## Story 16: pgvector-based duplicate detection
+
+Checked against real code: no pgvector dependency in `pom.xml`, no vector-DB client or embedding code anywhere in `ai/app`, this is greenfield on both services. Based on `ARCHITECTURE.md`'s RAG/dedup section (line 127-129): normalize `artist + title`, embed, check similarity before running the full pipeline, reuse existing data on a high-confidence match.
+
+- [ ] Enable the pgvector Postgres extension (coordinate with story 8/23 if a migration tool lands around the same time)
+- [ ] Add an embedding step to the AI microservice: normalize `artist + title`, generate an embedding via OpenAI's embeddings API, no embedding client exists in `ai/app` today
+- [ ] Store embeddings for verified songs
+- [ ] Add a similarity-check step before the source fetch/LLM synthesis in `metadata/service.py`'s `resolve_metadata`, reuse existing data on a high-confidence match instead of re-running the pipeline
+- [ ] Decide and document the similarity threshold for "high-confidence match", flagged as still unresolved in `ARCHITECTURE.md`
+- [ ] Coordinate with story 15 if dedup needs to consider a song already existing under a different playlist relationship
+
+## Story 19: Admin bulk song import
+
+Checked against real code: `User.role` only has a `USER` value today, no `ADMIN` value or admin-only access check exists anywhere in the system. This is a prerequisite for this story, not something to assume already exists.
+
+- [ ] Add an `ADMIN` value to `User.role` and an admin-only access check, neither exists today
+- [ ] Add a bulk-import endpoint (CSV or JSON) that runs each entry through the existing metadata pipeline
+- [ ] Add a progress/result summary for a bulk import run, since a large batch calling the AI microservice per row takes time and can partially fail
+- [ ] Add the admin-only import UI
+
+## Story 17: Community song reports
+
+Depends on story 19 for the admin review surface, and references story 18's still-undecided verification criteria without depending on its implementation timeline.
+
+- [ ] Add a `SongReport` entity (reporter, song, message, suggested correct year, sources, status)
+- [ ] `POST` endpoint to submit a report, available to any authenticated user who can view the song
+- [ ] Add a report button to the song view/edit UI, no report UI exists today
+- [ ] Admin review surface to see open reports (needs story 19's admin role)
+- [ ] What a submitted report should do to `verificationStatus` is a story 18 dependency, currently undecided, don't invent behavior here
+
+## Story 18: Criteria for promoting a reported or newly submitted song to verified
+
+Still an open design question (see `PROJECT_STATE.md`'s open questions): whether verification is confidence-threshold-based, manual admin review, some combination, or something else isn't decided. No tasks drafted here, writing implementation tasks now would mean inventing the undecided design itself rather than reflecting a real decision. Stories 17, 19, 23, and 32 all reference this story's eventual outcome without depending on its implementation timeline.
+
+## Story 32: LLM-as-judge catalog audit
+
+Whether this feeds into story 18's verification criteria or stays a separate audit tool is still an open question (`PROJECT_STATE.md`); built here as a standalone flagging tool, integration with verification is a later decision.
+
+- [ ] Add a scheduled job runner: no `@Scheduled` usage or scheduling dependency exists anywhere in the backend today, `@EnableScheduling` isn't declared
+- [ ] Add a periodic pass over the catalog, calling the AI microservice with an LLM-as-judge prompt to flag likely duplicate or mislabeled entries
+- [ ] Surface flagged results on a reviewable surface (needs story 19's admin role)
+
+## Story 24: Parallelize metadata pipeline fetches across sources
+
+Checked against real code: `_gather_all_metadata` calls its sources sequentially with plain synchronous `httpx.get`, no `asyncio.gather`, no `httpx.AsyncClient`, no thread pool anywhere in the pipeline.
+
+- [ ] Convert the source fetch functions to async, using `httpx.AsyncClient`
+- [ ] Run the parallel-eligible sources concurrently with `asyncio.gather` in `_gather_all_metadata`
+- [ ] Parallelizing today's stubbed MusicBrainz/Wikipedia/Genius calls is wasted work, since the resolved source set is MusicBrainz, Discogs, and Wikidata (`PROJECT_STATE.md`); wait until the real three sources exist (Discogs via story 25, MusicBrainz/Wikidata still undecided) before parallelizing, rather than the current four
+- [ ] Add a per-source timeout so one slow source doesn't block the whole gather
+
+## Story 25: Add Discogs as a metadata source
+
+Checked against real code: `sources/musicbrainz.py`, `wikipedia.py`, and `genius.py` are stubs returning empty results, each commented with a reference to the 2026-08 pause decision. No `discogs.py` or `wikidata.py` file exists. The resolved source set is MusicBrainz, Discogs, and Wikidata (`PROJECT_STATE.md`), settled, not open. This story covers Discogs only: un-stubbing MusicBrainz and building Wikidata still need their own design pass (how the pipeline should actually shape those calls) before tasks can be drafted for them, not yet decided, so they're left untasked here rather than folded into this story's scope or guessed at.
+
+- [ ] Add `sources/discogs.py`, following `sources/youtube.py`'s pattern (the only currently-live source) for HTTP client usage, timeout, and broad-exception-to-`UNKNOWN_DEFAULTS` fallback
+- [ ] Add the Discogs API token to AI service config (`config.py`), following the existing `youtube_api_key`/`openai_api_key` pattern
+- [ ] Wire Discogs into `_gather_all_metadata` and add a `_append_discogs_data` function in `prompt.py`, matching the existing per-source prompt-section pattern
+- [ ] Confirm Discogs' API terms of use permit this usage, matching the review MusicBrainz and Wikidata already got per `PROJECT_STATE.md`
+
+## Story 26: Cache metadata pipeline results by artist/title or YouTube ID
+
+- [ ] Add a cache layer in front of `resolve_metadata`, no cache exists today, every call re-runs the full source-fetch and LLM pipeline
+- [ ] Decide cache backend: in-memory (simple, doesn't survive restarts or share across multiple AI service workers) vs. Redis/Postgres-backed
+- [ ] Set a TTL or invalidation policy, metadata for a given YouTube ID rarely changes, but upstream source data can be corrected
+- [ ] Coordinate with story 16: a pgvector similarity hit and a plain cache hit solve overlapping but different problems (near-duplicate vs. exact-repeat lookups), avoid building two redundant caching layers
+
+## Story 20: Local LLM option for lower-cost bulk metadata processing
+
+Checked against real code: `ai/app/clients/openai_client.py` is the only LLM client, a module-level `OpenAI` singleton, no other client exists.
+
+- [ ] Add a local LLM client (Ollama-compatible, for example) alongside the existing OpenAI client, matching the structured-output/Pydantic contract `metadata/llm.py` already relies on (the non-negotiable rule against regex-parsing LLM output applies here too)
+- [ ] Add a config toggle to choose local vs. OpenAI per environment or per request
+- [ ] Verify the chosen local model supports structured output/JSON schema mode, not every local model does
+- [ ] Benchmark local-model accuracy against current OpenAI results before defaulting bulk imports (story 19) to it

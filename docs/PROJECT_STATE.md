@@ -29,25 +29,25 @@ A story can have draft tasks written against it in TASKS.md while still marked N
 | 11 | Real-time game sync over WebSocket | Realtime | Needs Definition, draft tasks exist |
 | 12 | Voice chat between players in a group, mesh peer-to-peer with Cloudflare TURN fallback, joinable and leavable anytime for the group's lifetime | Realtime | Needs Definition, draft tasks exist, confirmed blocked on stories 11 and 39 |
 | 13 | Group-scoped text chat, active from group creation until the group is deleted | Realtime | Needs Definition, blocked on stories 11 and 39 |
-| 14 | Song search by link or by keyword before submission | Frontend / Backend | Needs Definition |
-| 15 | Song/playlist relational fix, so one song can belong to multiple playlists | Backend | Needs Definition |
-| 16 | pgvector-based duplicate detection before running the metadata pipeline | Backend / AI | Needs Definition |
-| 17 | Community song reports: report button, message, correct year, sources | Frontend / Backend | Needs Definition |
+| 14 | Song search by link or by keyword before submission | Frontend / Backend | Needs Definition, draft tasks exist |
+| 15 | Song/playlist relational fix, so one song can belong to multiple playlists | Backend | Needs Definition, draft tasks exist |
+| 16 | pgvector-based duplicate detection before running the metadata pipeline | Backend / AI | Needs Definition, draft tasks exist |
+| 17 | Community song reports: report button, message, correct year, sources | Frontend / Backend | Needs Definition, draft tasks exist |
 | 18 | Criteria for promoting a reported or newly submitted song to verified | Backend | Needs Definition |
-| 19 | Admin bulk song import | Backend | Needs Definition |
-| 20 | Local LLM option for lower-cost bulk metadata processing | AI | Needs Definition |
+| 19 | Admin bulk song import | Backend | Needs Definition, draft tasks exist |
+| 20 | Local LLM option for lower-cost bulk metadata processing | AI | Needs Definition, draft tasks exist |
 | 21 | Auto-generated featured playlists: an agent takes a themed request (for example "90s rock"), searches the catalog, calls the metadata pipeline, and assembles a validated card set from extracted song metadata (genre, popularity, similar signals) | Backend / AI | Needs Definition |
 | 22 | Test coverage for existing and new functionality | Quality | Needs Definition |
 | 23 | Song schema reconciliation against the current implementation | Backend | Needs Definition |
-| 24 | Parallelize metadata pipeline fetches across sources | Backend / AI | Needs Definition |
-| 25 | Add Discogs as a metadata source | Backend / AI | Needs Definition |
-| 26 | Cache metadata pipeline results by artist/title or YouTube ID | Backend / AI | Needs Definition |
+| 24 | Parallelize metadata pipeline fetches across sources | Backend / AI | Needs Definition, draft tasks exist |
+| 25 | Add Discogs as a metadata source | Backend / AI | Needs Definition, draft tasks exist |
+| 26 | Cache metadata pipeline results by artist/title or YouTube ID | Backend / AI | Needs Definition, draft tasks exist |
 | 27 | Rate limiting | Backend | Needs Definition |
 | 28 | UI redesign | Frontend | Needs Definition |
 | 29 | Content-based song recommender: audio-feature metadata (tempo, energy, valence), cosine similarity, works with zero user data | Backend / AI | Needs Definition, audio-feature data source not chosen |
 | 30 | Collaborative filtering recommendations from real interaction data (ratings, or implicit signals like guess correctness and guess time) | Backend / AI | Needs Definition, blocked on enough real usage data existing |
 | 31 | "Similar songs" feature using pgvector embeddings over song title and artist | Backend / AI | Needs Definition |
-| 32 | LLM-as-judge catalog audit: periodic pass over the existing catalog flagging likely duplicate or mislabeled songs | Backend / AI | Needs Definition |
+| 32 | LLM-as-judge catalog audit: periodic pass over the existing catalog flagging likely duplicate or mislabeled songs | Backend / AI | Needs Definition, draft tasks exist |
 | 33 | Analytics data store: separate append-heavy store for usage/event data (games played, session length), apart from the transactional Postgres database | Infra | Needs Definition |
 | 34 | First-party usage analytics: track games played and session length through a self-hosted or custom event pipeline, no third-party trackers | Backend / Frontend | Needs Definition, depends on story 33 |
 | 35 | Public ground-truth data API: verified `(artist, title, release_year)` triples only, no YouTube links or unverified entries | Backend | Needs Definition |
