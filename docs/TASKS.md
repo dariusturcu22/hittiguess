@@ -86,3 +86,69 @@ Not yet checked against real code, no group model exists. Draft, based on `ARCHI
 - [ ] Explicit leave vs. disconnect: disconnect only flips `isConnected`, explicit leave removes membership
 - [ ] Admin explicitly leaves: promote the next-earliest-joined member to admin, or delete the group if none remain
 - [ ] On app load, check the logged-in user's active group membership and prompt to return or leave, no link-based reconnect
+
+## Story 23: Song schema reconciliation
+
+Checked against real code and `ARCHITECTURE.md`'s target shape (line 36): `Song` today has a single `releaseYear` int, a single `songTag` enum, and no `verificationStatus`, `confidence`, or `metadataRaw` fields. No Flyway/Liquibase exists (see story 8), so schema changes today happen only through Hibernate's `ddl-auto=update`; this story should introduce real migrations rather than add another layer of auto-DDL. Story 18 (verification criteria) is still an open, undecided question, so `verificationStatus`'s exact set of values can't be fully pinned down yet; this story adds the field and a minimal two-state placeholder, story 18 refines it later.
+
+- [ ] Introduce a schema migration tool (Flyway or Liquibase) if story 8 hasn't already, since reconciling the schema is exactly the kind of change that needs a reviewable, repeatable migration rather than relying on `ddl-auto=update`
+- [ ] Split `releaseYear` into `submittedYear` and `verifiedYear`
+- [ ] Add a `verificationStatus` field, `UNVERIFIED`/`VERIFIED` as a placeholder pair pending story 18
+- [ ] Persist `confidence` on `Song` (currently returned by the AI service's `SongMetadataResult` but silently dropped, since the Java `SongMetadataResponse` record doesn't declare a `confidence` field at all)
+- [ ] Persist `metadataRaw`, the full pipeline output, for auditability
+- [ ] Replace the single `songTag` enum with a multi-value `tags` relation
+- [ ] Data migration for existing rows: backfill `submittedYear`/`verifiedYear` from the current `releaseYear`, default `verificationStatus`
+- [ ] Update `SongDTO`, `CreateSongRequest`, `UpdateSongRequest`, and regenerate the frontend's orval client and song forms for the new shape
+
+## Story 22: Test coverage
+
+Checked against real code: the backend has exactly one test file, an empty `contextLoads()` smoke test, zero controller/service/security coverage. The AI microservice has unit tests only for pure functions (`llm.synthesize`, `prompt.build`, `sources/util.py` helpers), nothing for `router.py`, `service.py`'s orchestration, or `auth.py`. The frontend has no test runner installed at all. `.github/workflows/pr-checks.yml` runs `mvnw compile` and `npm run lint && npm run build`, no test execution step for either service, and no job at all for the AI microservice, so even its existing pytest tests never run in CI today.
+
+- [ ] Add a CI job for the AI microservice (none exists today) running its existing `pytest` suite
+- [ ] Add a `mvnw test` step to the backend CI job (currently compile-only)
+- [ ] Add JUnit/Mockito tests for every backend service (`PlaylistService`, `SongMetadataService`, `UserService`, `AuthService`, `ExportService`), covering the access-control checks in `PlaylistService`, the rate limiter in `SongMetadataService`, and the account-enumeration-avoidance logic in `AuthService`
+- [ ] Add `@WebMvcTest`/MockMvc tests for every controller
+- [ ] Add a Spring Security test covering JWT auth, refresh-token rotation, and CSRF
+- [ ] Add tests for `ai/app/metadata/router.py`, `service.py`'s orchestration, and `auth.py`'s internal-key check, using FastAPI's `TestClient`
+- [ ] Add a frontend test runner (Vitest or Jest, neither installed today) plus React Testing Library, and a `test` script in `package.json`
+- [ ] Add frontend tests for the song forms' hand-written validation (`AddSongForm.tsx`, `SongForm.tsx`) and the auth forms
+- [ ] Add the new test steps to `.github/workflows/pr-checks.yml` for all three services
+
+## Story 27: Rate limiting
+
+Checked against real code: the only rate limiting anywhere is `SongMetadataService`'s single in-flight-request-per-user gate on `/api/metadata/song`, a `ConcurrentHashMap`-backed set, not a time-window limiter. No rate-limiting library (Bucket4j, resilience4j) exists in `pom.xml`. `/auth/login` and `/auth/register` have no rate limiting at all today.
+
+- [ ] Add a rate-limiting library (Bucket4j is the standard Spring choice) to `pom.xml`
+- [ ] Add per-user or per-IP request-window rate limits across public-facing endpoints, not just the existing single in-flight gate
+- [ ] Rate-limit `/auth/login` and `/auth/register` specifically, to blunt credential-stuffing and enumeration attempts
+- [ ] Standardize the 429 response shape; the metadata endpoint's current 429 uses Spring's default `ProblemDetail`, not the app's own `ErrorResponse` record used elsewhere in `GlobalExceptionHandler`
+- [ ] Rate-limit the AI microservice's `/metadata/resolve` endpoint directly, not just the core service's call into it, since anything holding the shared `X-Internal-Api-Key` secret can call it directly
+
+## Story 36: Open-source collaboration readiness
+
+- [ ] Add `CONTRIBUTING.md`: local dev setup (`make dev`), the branch/PR workflow already defined in `CLAUDE.md` written for an external audience, how to pick up a story from `TASKS.md`
+- [ ] Add `LICENSE` (needs a license choice from the project owner first)
+- [ ] Add `CODE_OF_CONDUCT.md`
+- [ ] Add GitHub issue templates (bug report, feature request) and a PR template matching the repo's actual PR description style (plain prose, no `## Summary`/`## Test plan`, see `CLAUDE.md`'s writing-style rules)
+- [ ] Document which secrets a new contributor needs (`YOUTUBE_API_KEY`, `OPENAI_API_KEY`, `INTERNAL_SERVICE_API_KEY`) and how they get sandbox-safe values, since both external API keys carry real cost/quota implications
+
+## Story 37: Privacy policy, terms of service, and GDPR compliance
+
+Checked against real code: `DELETE /me` (`UserController` → `UserService.deleteUser()`) already does a real hard delete of the `User` row, not a deactivation, but hasn't been checked for what happens to `Song.addedBy` references or shared playlists on deletion. No analytics exist yet (story 34), so there's nothing to disclose there until it ships.
+
+- [ ] Draft a privacy policy covering what's actually collected today: auth data (username, email, OAuth provider ID), playlist/song data
+- [ ] Draft terms of service
+- [ ] Add a GDPR data-export endpoint: a logged-in user can download their own account, playlist, and song data
+- [ ] Audit and harden the existing `DELETE /me` flow for `Song.addedBy` references and shared-playlist edge cases, so account deletion doesn't leave orphaned references or unexpectedly delete other members' shared playlists
+- [ ] Add a cookie/consent notice, only needed once story 34 (first-party analytics) ships; skip until then since no third-party trackers are planned
+
+## Story 38: Observability
+
+Checked against real code: no Spring Boot Actuator dependency exists in `pom.xml`, no health-check endpoint exists today. The backend already uses SLF4J logging (from the story-6-era audit fixes), but there's no request-id/correlation-id to trace one user action across both services. The AI microservice swallows every pipeline and OpenAI failure into a generic `status="ERROR"` response with no alerting.
+
+- [ ] Add Spring Boot Actuator to the core service for health/metrics endpoints
+- [ ] Add an equivalent health endpoint to the AI microservice (FastAPI has none today)
+- [ ] Add error tracking (Sentry or similar) to both services
+- [ ] Add a request-id/correlation-id filter so one user action can be traced across both services' logs
+- [ ] Add uptime/latency monitoring for the production deployment
+- [ ] Surface the AI microservice's per-source fetch failures and OpenAI call failures as visible alerts, rather than only the generic swallowed `status="ERROR"` response

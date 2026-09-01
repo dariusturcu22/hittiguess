@@ -37,12 +37,12 @@ A story can have draft tasks written against it in TASKS.md while still marked N
 | 19 | Admin bulk song import | Backend | Needs Definition |
 | 20 | Local LLM option for lower-cost bulk metadata processing | AI | Needs Definition |
 | 21 | Auto-generated featured playlists: an agent takes a themed request (for example "90s rock"), searches the catalog, calls the metadata pipeline, and assembles a validated card set from extracted song metadata (genre, popularity, similar signals) | Backend / AI | Needs Definition |
-| 22 | Test coverage for existing and new functionality | Quality | Needs Definition |
-| 23 | Song schema reconciliation against the current implementation | Backend | Needs Definition |
+| 22 | Test coverage for existing and new functionality | Quality | Needs Definition, draft tasks exist |
+| 23 | Song schema reconciliation against the current implementation | Backend | Needs Definition, draft tasks exist |
 | 24 | Parallelize metadata pipeline fetches across sources | Backend / AI | Needs Definition |
 | 25 | Add Discogs as a metadata source | Backend / AI | Needs Definition |
 | 26 | Cache metadata pipeline results by artist/title or YouTube ID | Backend / AI | Needs Definition |
-| 27 | Rate limiting | Backend | Needs Definition |
+| 27 | Rate limiting | Backend | Needs Definition, draft tasks exist |
 | 28 | UI redesign | Frontend | Needs Definition |
 | 29 | Content-based song recommender: audio-feature metadata (tempo, energy, valence), cosine similarity, works with zero user data | Backend / AI | Needs Definition, audio-feature data source not chosen |
 | 30 | Collaborative filtering recommendations from real interaction data (ratings, or implicit signals like guess correctness and guess time) | Backend / AI | Needs Definition, blocked on enough real usage data existing |
@@ -51,9 +51,9 @@ A story can have draft tasks written against it in TASKS.md while still marked N
 | 33 | Analytics data store: separate append-heavy store for usage/event data (games played, session length), apart from the transactional Postgres database | Infra | Needs Definition |
 | 34 | First-party usage analytics: track games played and session length through a self-hosted or custom event pipeline, no third-party trackers | Backend / Frontend | Needs Definition, depends on story 33 |
 | 35 | Public ground-truth data API: verified `(artist, title, release_year)` triples only, no YouTube links or unverified entries | Backend | Needs Definition |
-| 36 | Open-source collaboration readiness: `CONTRIBUTING.md`, `LICENSE`, `CODE_OF_CONDUCT.md`, issue/PR templates | Docs / Community | Needs Definition |
-| 37 | Privacy policy, terms of service, and GDPR compliance | Legal / Compliance | Needs Definition |
-| 38 | Observability: error tracking and monitoring | Infra / Quality | Needs Definition |
+| 36 | Open-source collaboration readiness: `CONTRIBUTING.md`, `LICENSE`, `CODE_OF_CONDUCT.md`, issue/PR templates | Docs / Community | Needs Definition, draft tasks exist |
+| 37 | Privacy policy, terms of service, and GDPR compliance | Legal / Compliance | Needs Definition, draft tasks exist |
+| 38 | Observability: error tracking and monitoring | Infra / Quality | Needs Definition, draft tasks exist |
 | 39 | Group: persistent lobby a game session lives inside, invite-link membership, admin role, live-synced settings, chat and voice from creation, timer-based lifecycle | Game | Needs Definition, draft tasks exist |
 
 ## Open questions
