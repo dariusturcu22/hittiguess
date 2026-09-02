@@ -36,6 +36,8 @@ Decision: store `submittedYear` and `verifiedYear` as separate fields, not a sin
 
 Why: without this distinction, there's no way to tell whether a year was changed after review, which the verification workflow depends on.
 
+Note, 2026-09: reopened as an undecided question rather than settled fact, see the 2026-09 "Reopen release-year field shape" entry below. The audit-trail reasoning here still stands as one option under consideration, it's no longer the final answer.
+
 ---
 
 ## 2026-06 | Persist metadata pipeline output
@@ -94,6 +96,8 @@ Why: Fly.io kept compute running regardless of actual traffic, which doesn't fit
 
 Open item: current Postgres host needs confirming before data migration. See PROJECT_STATE.md.
 
+Note, 2026-09: reversed, see the 2026-09 "Deployment platform reopened" entry below. Azure was chosen without comparing alternatives or setting a cost ceiling first; both the hosting platform and the database platform are undecided again.
+
 ---
 
 ## 2026-08 | Community verification through reports, not thumbs up or down
@@ -129,6 +133,8 @@ Why: this matches the official Hitster ruling for the equivalent situation. A sa
 Decision: a game session is created with an invite link and exists only while it's being played, the same way a Gartic Phone round works. Everyone who joins is a full player. There's no spectating and no joining a session already in progress. Voice and text chat are scoped to the session's lifetime. When the session ends, nothing persists except a downloadable results export.
 
 Why: an earlier idea involved persistent groups, similar to Discord servers, that would stick around between games. Given the actual usage pattern, friends starting a game together and playing it through, that persistence adds storage and complexity without a clear benefit. The simpler model also removes an entire category of open questions about group membership, moderation, and long-term data retention.
+
+Note, 2026-08: superseded by the "Group and game session are separate entities" entry below. Persistent groups came back once chat/voice persistence and replay without a new invite link turned out to matter more than the complexity this entry was trying to avoid.
 
 ---
 
@@ -203,3 +209,59 @@ Note: the group's lifecycle runs on fixed timers, not activity tracking, deliber
 Note: the game session's win condition is an admin-configured setting, not an automatic formula: minimum 5 cards always, maximum 20 for a 2-3 player group, maximum 15 for a 4-8 player group.
 
 See story 10 (game session), story 39 (group), and stories 9, 12, and 13 in `PROJECT_STATE.md`, and `ARCHITECTURE.md` and `GAME_DESIGN.md` for the full shape.
+
+---
+
+## 2026-09 | Open source, non-commercial, no monetization or third-party tracking
+
+Decision: the project is open source with no monetization plan, ever. No ads, no third-party trackers, no selling user data. First-party analytics (stories 33, 34) stay in scope, they're for improving the product for the people playing it, not for anyone else's benefit.
+
+Why: built for friends and family, not to compete for users or ad revenue. Reaching the ~100-200 user scale of that group is a complete win, not a floor to grow past.
+
+---
+
+## 2026-09 | Whole-deployment cost ceiling: target $0, tolerate up to ~$20/month total
+
+Decision: cost stays low deliberately. The entire deployment, every service combined (backend, AI microservice, frontend, database, observability, everything), targets $0/month and tolerates up to roughly $20/month total if there's a real reason, such as a genuine skills investment, not convenience. That ceiling applies to the whole stack, not per service. If real usage outgrows what fits the budget, the response is gameplay balancing, capping concurrent sessions, queuing players, or similar, not paying for more infrastructure.
+
+Why: the project is non-commercial and small-scale by design (see the open-source decision above); infrastructure spend should match that, not creep upward service by service across a multi-service architecture.
+
+---
+
+## 2026-09 | Deployment platform reopened
+
+Decision: the earlier choice of Azure Container Apps and Azure Database for PostgreSQL is reversed. Deployment platform, both compute and database, is undecided again, deliberately deferred until the app is close to feature-complete locally rather than decided now. Leaving Fly.io for backend hosting stays decided; where it moves to doesn't. Whether to migrate off Supabase at all, and to what, is also undecided; Azure Database for PostgreSQL and Neon have both come up as candidates, neither chosen.
+
+Why: the original Azure decision was made without comparing real alternatives or the whole-deployment cost ceiling now in place (see above). Revisiting once, closer to feature-complete, avoids re-deciding hosting multiple times as the app's actual resource needs become clearer.
+
+---
+
+## 2026-09 | Reopen release-year field shape, defer artist modeling entirely
+
+Decision: whether release year is `submittedYear` plus `verifiedYear` (preserves the original submission after a correction) or one mutable field plus `verificationStatus` (simpler) is reopened as undecided. Separately, how a song with multiple or featured artists is stored and guessed, today's schema assumes a single `artist` string, is new, undecided scope: whether storage is an array, whether every featured artist must be guessed correctly, and what the guess-box UI looks like for more than one artist are all open.
+
+Why: the year-field question was settled without weighing the two options against each other explicitly. The artist question was never considered at all in the original schema design, surfaced only once a real "feat." credit was worked through concretely.
+
+---
+
+## 2026-09 | Game session mechanics: reconnect, leave, token earning, betting timing
+
+Decision: a disconnected player keeps their timeline, tokens, and turn order untouched, marked only `isConnected: false`. An explicit leave, or a disconnected active player's turn going unanswered for 90 seconds, marks them `Left`: excluded from future turns and DJ rotation, but their existing timeline cards still count toward the final results. Guessing a song's artist and title is a separate action from timeline placement, available to the active player for the whole turn; a fully correct guess earns a token. After timeline placement locks in (with a sound effect), a 3-5 second countdown leads into a 15-second betting window, skipped entirely if no player holds a token, endable early with a skip-betting action, and concurrency-safe so only the first bet is accepted and a losing attempt doesn't cost a token.
+
+Why: mirrors the same disconnect-versus-leave distinction already decided for groups, applied down to the player level inside a session, rather than leaving session-level reconnect behavior unspecified. The betting sequence's timing gives players who already heard the song enough time to act without dead air.
+
+---
+
+## 2026-09 | Group additions: join code, per-group identity, voluntary admin transfer
+
+Decision: a group can be joined by a 4-letter code as well as the existing invite link. On joining, a member is prompted for a per-group display name and avatar, defaulting to their account's own but editable and private to that group, other members never see the real account profile. The admin can voluntarily promote another member to admin at any time, independent of the existing auto-promote-on-leave path.
+
+Why: a join code is easier to share verbally or in person than a link. Per-group identity lets someone play under a different name or avatar with people they don't want to share their main profile with, coworkers versus close friends, for example.
+
+---
+
+## 2026-09 | Every story's tasks carry their own tests
+
+Decision: every task breakdown in `TASKS.md` must include explicit test tasks alongside the feature tasks, not deferred to a separate test-coverage story. Story 22 stays scoped to backfilling tests for code that predates this rule.
+
+Why: stories get implemented autonomously from `TASKS.md`; a story needs a real completion criterion beyond "the feature code works."

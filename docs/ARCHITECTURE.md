@@ -25,7 +25,7 @@ Auth, playlist and song CRUD, the Song table (schema owner), game session and ro
 
 ### AI microservice (FastAPI)
 
-Multi-source metadata fetch (YouTube, MusicBrainz, Wikipedia, Genius, Discogs), LLM synthesis with structured output, embedding generation and pgvector similarity search. Exposes a small internal API, for example `POST /metadata/resolve`, consumed only by the core service, not exposed publicly.
+Multi-source metadata fetch (YouTube, MusicBrainz, Discogs, Wikidata), LLM synthesis with structured output, embedding generation and pgvector similarity search. Exposes a small internal API, for example `POST /metadata/resolve`, consumed only by the core service, not exposed publicly.
 
 The two services run in the same hosting environment and reach each other over internal networking, wherever that ends up being, see the Deployment section. The core service owns all database migrations; the AI microservice reads and writes rows but never alters schema.
 
@@ -33,7 +33,7 @@ The two services run in the same hosting environment and reach each other over i
 
 ### Song and playlist database
 
-Every song has: `youtubeId`, `artist`, `title`, `releaseYear`, `submittedYear` and `verifiedYear` as separate fields, `verificationStatus`, `confidence` (persisted), `metadataRaw` (full pipeline output, for auditability), multi-value `tags`. The exact current shape of this table needs reconciling against the real implementation, see [PROJECT_STATE.md](PROJECT_STATE.md).
+Every song has: `youtubeId`, `title`, `releaseYear`, `verificationStatus`, `confidence` (persisted), `metadataRaw` (full pipeline output, for auditability), multi-value `tags`. Two parts of the target shape are undecided, not just unconfirmed against code: whether release year is one field or split into `submittedYear`/`verifiedYear`, and how multiple or featured artists are stored and guessed, today's schema still assumes a single `artist` string. See [PROJECT_STATE.md](PROJECT_STATE.md)'s open questions for both.
 
 ### Metadata pipeline (AI microservice)
 
