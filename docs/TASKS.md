@@ -89,20 +89,29 @@ Not yet checked against real code, no group model exists. Draft, based on `ARCHI
 
 ## Story 23: Song schema reconciliation
 
-Checked against real code and `ARCHITECTURE.md`'s target shape (line 36): `Song` today has a single `releaseYear` int, a single `songTag` enum, and no `verificationStatus`, `confidence`, or `metadataRaw` fields. No Flyway/Liquibase exists (see story 8), so schema changes today happen only through Hibernate's `ddl-auto=update`; this story should introduce real migrations rather than add another layer of auto-DDL. Story 18 (verification criteria) is still an open, undecided question, so `verificationStatus`'s exact set of values can't be fully pinned down yet; this story adds the field and a minimal two-state placeholder, story 18 refines it later.
+Checked against real code and `ARCHITECTURE.md`'s target shape (line 36): `Song` today has a single `releaseYear` int, a single `songTag` enum, a single `artist` string, and no `verificationStatus`, `confidence`, or `metadataRaw` fields. No migration tool exists yet, schema changes today happen only through Hibernate's `ddl-auto=update`; this story introduces Flyway rather than add another layer of auto-DDL.
 
-- [ ] Introduce a schema migration tool (Flyway or Liquibase) if story 8 hasn't already, since reconciling the schema is exactly the kind of change that needs a reviewable, repeatable migration rather than relying on `ddl-auto=update`
-- [ ] Split `releaseYear` into `submittedYear` and `verifiedYear`
+Two parts of the target shape are genuinely undecided, not just unconfirmed against code, so this story doesn't cover them yet:
+- Whether release year should be two fields (`submittedYear`, immutable, and `verifiedYear`, null until verification) or one mutable field plus `verificationStatus`. The two-field version preserves what was originally submitted even after a correction, useful for auditing bad sources over time, closer in spirit to why `metadataRaw` exists at all. The one-field version is simpler. Neither is chosen.
+- How multiple artists are stored and guessed. A song can have a main artist plus one or more featured artists (for example, an "artist A feat. artist B" credit); today's single `artist` string can't represent that, and it's undecided whether featured artists need to be guessed correctly too for a round to count as correct, whether storage should be an array of artist entries, and what the guess-box UI looks like for more than one artist (multiple text boxes, or something else). Affects story 10's artist/title guess box, this story's schema, and the AI microservice's extraction logic, none of which assume multiple artists today.
+
+- [ ] Introduce Flyway as the schema migration tool
 - [ ] Add a `verificationStatus` field, `UNVERIFIED`/`VERIFIED` as a placeholder pair pending story 18
-- [ ] Persist `confidence` on `Song` (currently returned by the AI service's `SongMetadataResult` but silently dropped, since the Java `SongMetadataResponse` record doesn't declare a `confidence` field at all)
+- [ ] Persist `confidence` on `Song`, depends on the `SongMetadataResponse` fix below existing first
 - [ ] Persist `metadataRaw`, the full pipeline output, for auditability
 - [ ] Replace the single `songTag` enum with a multi-value `tags` relation
-- [ ] Data migration for existing rows: backfill `submittedYear`/`verifiedYear` from the current `releaseYear`, default `verificationStatus`
+- [ ] Data migration for existing rows: default `verificationStatus`
 - [ ] Update `SongDTO`, `CreateSongRequest`, `UpdateSongRequest`, and regenerate the frontend's orval client and song forms for the new shape
 
 Tests:
-- [ ] Unit tests for the data migration: `submittedYear`/`verifiedYear` backfilled correctly from the existing `releaseYear`, `verificationStatus` defaulted correctly
+- [ ] Unit tests for the data migration: `verificationStatus` defaulted correctly for existing rows
 - [ ] Integration test: existing API responses (`SongDTO`) don't break for rows migrated from the old shape
+
+## Bug fixes
+
+No story required for these. Fix on a `fix` branch.
+
+- [ ] `SongMetadataResponse` (Java) silently drops the AI microservice's `confidence`, `source`, and `reasoning` fields: `SongMetadataResult` (Python) computes and returns all three today, but the Java record deserializing that response only declares `title/artist/releaseYear/gradientColor1/gradientColor2`, so the other three are read off the wire and discarded on every metadata call. Extend the record to keep them.
 
 ## Story 22: Test coverage
 

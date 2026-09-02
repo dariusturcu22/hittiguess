@@ -64,6 +64,8 @@ A story can have draft tasks written against it in TASKS.md while still marked N
 - Story 29 needs an audio-feature data source decided; Spotify was suggested but not approved, so it's not the source. Whatever source gets chosen needs the same terms-of-use review MusicBrainz, Discogs, and Wikidata already got before it's more than an idea.
 - Story 32 (LLM catalog audit) and story 18 (verification criteria) are related but distinct: 18 is the per-submission path to verified, 32 is a periodic pass over the whole existing catalog. Whether 32 feeds into 18's criteria or stays a separate audit tool isn't decided.
 - Story 35's data (artist/title/release_year triples, sourced from MusicBrainz/Discogs/Wikidata, all CC0) doesn't include anything sourced from the YouTube API, so it doesn't carry the redistribution risk a YouTube-link-inclusive version would have. Worth a final confirmation read of YouTube's terms before shipping regardless, since the catalog's provenance mixes sources.
+- Story 23: whether release year should be `submittedYear` (immutable) plus `verifiedYear` (null until verified), or one mutable field plus `verificationStatus`. The two-field version preserves the original submission after a correction; the one-field version is simpler. Undecided.
+- Story 23: how multiple artists (a main artist plus one or more featured artists) are stored and guessed. Today's `Song.artist` is a single string. Undecided whether storage should be an array, whether featured artists must be guessed correctly too, and what the guess-box UI looks like for more than one artist. Affects story 10's artist/title guess box and the AI microservice's extraction logic too, not just this story's schema.
 
 ## Resolved questions
 
