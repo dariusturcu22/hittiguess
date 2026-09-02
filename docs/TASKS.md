@@ -98,6 +98,11 @@ Checked against real code: `Song.playlist` is a required singular `@ManyToOne`, 
 - [ ] Update `SongDTO`/`PlaylistDetailDTO` and the frontend to reflect a song appearing in multiple playlists
 - [ ] Coordinate with story 23 (schema reconciliation), both touch `Song`'s shape
 
+Tests:
+- [ ] Unit tests for `checkPlaylistAccess` and `checkSongBelongsToPlaylist` against the new many-to-many relation
+- [ ] Integration test: migrating existing data preserves each song's original playlist link
+- [ ] Integration test: a song in multiple playlists behaves correctly for access checks and the decided deletion semantics
+
 ## Story 14: Song search by link or keyword before submission
 
 Checked against real code: `SongRepository` has zero custom query methods, no backend search capability exists. The only "search" today is `DataTable`'s client-side substring filter over an already-loaded playlist's songs, not a real query.
@@ -107,6 +112,11 @@ Checked against real code: `SongRepository` has zero custom query methods, no ba
 - [ ] Decide search scope: within one playlist, across the user's playlists, or catalog-wide, affects both the query and which of `PlaylistService`'s access checks apply (catalog-wide search would need one, since it isn't a per-playlist access check)
 - [ ] Wire `AddSongForm.tsx`'s submission flow to check search results first, so a song already in the catalog isn't resubmitted as a near-duplicate (distinct from story 16's pgvector-based similarity check; this is a plain keyword/link pre-check)
 - [ ] Add the frontend search UI, replacing or extending the current client-side-only title filter in `DataTable`
+
+Tests:
+- [ ] Unit tests for the search query: keyword matching and YouTube link/ID matching
+- [ ] Integration test: search results respect the chosen scope's access checks
+- [ ] Frontend test: the search UI returns and displays results correctly
 
 ## Story 16: pgvector-based duplicate detection
 
@@ -119,6 +129,10 @@ Checked against real code: no pgvector dependency in `pom.xml`, no vector-DB cli
 - [ ] Decide and document the similarity threshold for "high-confidence match", flagged as still unresolved in `ARCHITECTURE.md`
 - [ ] Coordinate with story 15 if dedup needs to consider a song already existing under a different playlist relationship
 
+Tests:
+- [ ] Unit tests for the similarity-check step (mocked embedding client): a high-confidence match reuses existing data, a low-confidence match proceeds to the full pipeline
+- [ ] Integration test: submitting a near-duplicate song reuses existing verified data instead of re-running the LLM
+
 ## Story 19: Admin bulk song import
 
 Checked against real code: `User.role` only has a `USER` value today, no `ADMIN` value or admin-only access check exists anywhere in the system. This is a prerequisite for this story, not something to assume already exists.
@@ -127,6 +141,10 @@ Checked against real code: `User.role` only has a `USER` value today, no `ADMIN`
 - [ ] Add a bulk-import endpoint (CSV or JSON) that runs each entry through the existing metadata pipeline
 - [ ] Add a progress/result summary for a bulk import run, since a large batch calling the AI microservice per row takes time and can partially fail
 - [ ] Add the admin-only import UI
+
+Tests:
+- [ ] Unit tests for the admin-only access check, including a non-admin request rejected
+- [ ] Integration test: bulk import processes multiple rows and reports per-row success/failure
 
 ## Story 17: Community song reports
 
@@ -137,6 +155,10 @@ Depends on story 19 for the admin review surface, and references story 18's stil
 - [ ] Add a report button to the song view/edit UI, no report UI exists today
 - [ ] Admin review surface to see open reports (needs story 19's admin role)
 - [ ] What a submitted report should do to `verificationStatus` is a story 18 dependency, currently undecided, don't invent behavior here
+
+Tests:
+- [ ] Unit tests for `SongReport` validation
+- [ ] Integration test: submitting a report end to end, visible on the admin review surface
 
 ## Story 18: Criteria for promoting a reported or newly submitted song to verified
 
@@ -150,6 +172,10 @@ Whether this feeds into story 18's verification criteria or stays a separate aud
 - [ ] Add a periodic pass over the catalog, calling the AI microservice with an LLM-as-judge prompt to flag likely duplicate or mislabeled entries
 - [ ] Surface flagged results on a reviewable surface (needs story 19's admin role)
 
+Tests:
+- [ ] Unit tests for the flagging logic (mocked LLM call)
+- [ ] Integration test: the scheduled job runs and produces flagged results on the review surface
+
 ## Story 24: Parallelize metadata pipeline fetches across sources
 
 Checked against real code: `_gather_all_metadata` calls its sources sequentially with plain synchronous `httpx.get`, no `asyncio.gather`, no `httpx.AsyncClient`, no thread pool anywhere in the pipeline.
@@ -158,6 +184,10 @@ Checked against real code: `_gather_all_metadata` calls its sources sequentially
 - [ ] Run the parallel-eligible sources concurrently with `asyncio.gather` in `_gather_all_metadata`
 - [ ] Parallelizing today's stubbed MusicBrainz/Wikipedia/Genius calls is wasted work, since the resolved source set is MusicBrainz, Discogs, and Wikidata (`PROJECT_STATE.md`); wait until the real three sources exist (Discogs via story 25, MusicBrainz/Wikidata still undecided) before parallelizing, rather than the current four
 - [ ] Add a per-source timeout so one slow source doesn't block the whole gather
+
+Tests:
+- [ ] Unit test confirming sources are fetched concurrently, not sequentially (mock call-order/timing assertion)
+- [ ] Unit test for the per-source timeout: a slow source doesn't block the others
 
 ## Story 25: Add Discogs as a metadata source
 
@@ -168,12 +198,20 @@ Checked against real code: `sources/musicbrainz.py`, `wikipedia.py`, and `genius
 - [ ] Wire Discogs into `_gather_all_metadata` and add a `_append_discogs_data` function in `prompt.py`, matching the existing per-source prompt-section pattern
 - [ ] Confirm Discogs' API terms of use permit this usage, matching the review MusicBrainz and Wikidata already got per `PROJECT_STATE.md`
 
+Tests:
+- [ ] Unit tests for `discogs.py`'s request building and response parsing, mirroring `youtube.py`'s existing test pattern
+- [ ] Unit test for the fallback behavior on a failed Discogs call
+
 ## Story 26: Cache metadata pipeline results by artist/title or YouTube ID
 
 - [ ] Add a cache layer in front of `resolve_metadata`, no cache exists today, every call re-runs the full source-fetch and LLM pipeline
 - [ ] Decide cache backend: in-memory (simple, doesn't survive restarts or share across multiple AI service workers) vs. Redis/Postgres-backed
 - [ ] Set a TTL or invalidation policy, metadata for a given YouTube ID rarely changes, but upstream source data can be corrected
 - [ ] Coordinate with story 16: a pgvector similarity hit and a plain cache hit solve overlapping but different problems (near-duplicate vs. exact-repeat lookups), avoid building two redundant caching layers
+
+Tests:
+- [ ] Unit tests for cache hit/miss behavior
+- [ ] Unit test for TTL expiration
 
 ## Story 20: Local LLM option for lower-cost bulk metadata processing
 
@@ -183,3 +221,7 @@ Checked against real code: `ai/app/clients/openai_client.py` is the only LLM cli
 - [ ] Add a config toggle to choose local vs. OpenAI per environment or per request
 - [ ] Verify the chosen local model supports structured output/JSON schema mode, not every local model does
 - [ ] Benchmark local-model accuracy against current OpenAI results before defaulting bulk imports (story 19) to it
+
+Tests:
+- [ ] Unit tests for the local LLM client, mirroring the existing OpenAI client's test pattern
+- [ ] Unit test for the config toggle selecting the correct client
