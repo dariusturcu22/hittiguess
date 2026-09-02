@@ -265,3 +265,11 @@ Why: a join code is easier to share verbally or in person than a link. Per-group
 Decision: every task breakdown in `TASKS.md` must include explicit test tasks alongside the feature tasks, not deferred to a separate test-coverage story. Story 22 stays scoped to backfilling tests for code that predates this rule.
 
 Why: stories get implemented autonomously from `TASKS.md`; a story needs a real completion criterion beyond "the feature code works."
+
+---
+
+## 2026-09 | License: MIT
+
+Decision: the project is licensed MIT, a permissive license anyone can fork, redistribute, and self-host, including a competing hosted instance, with no restriction.
+
+Why: AGPLv3 and the Business Source License were both considered first, on the assumption that a hosted fork by someone else was worth guarding against. Neither actually protects anything real here: there's no revenue or user base to lose to a competing fork, since the project has no monetization plan and isn't being marketed for growth (see the open-source/non-commercial decision above). MIT is also the stronger choice for the project's actual purpose, a portfolio piece: it's the license every engineer and recruiter recognizes instantly with zero friction to clone and evaluate, where a non-standard restrictive license would need explaining and could read as mismatched against a project that describes itself as small-scale and non-commercial.
