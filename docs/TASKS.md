@@ -113,7 +113,7 @@ Checked against real code: no chat model or endpoint exists. Blocked on story 11
 - [ ] Broadcast new messages to the group's STOMP topic
 - [ ] Load message history when a client joins or reconnects to a group
 - [ ] Purge chat history when the group is deleted, matching the group's ephemeral lifecycle
-- [ ] Message length limit and a basic per-user send rate limit to prevent spam within a group
+- [ ] Message length limit (500 characters) and a per-user send rate limit (5 messages per 10 seconds) to prevent spam within a group
 - [ ] Frontend: semi-transparent bottom-left overlay, toggled by a keybind rather than a persistent input field, plain username-and-message lines, no threading (see `GAME_DESIGN.md`'s Interaction and animation section)
 
 Tests:
