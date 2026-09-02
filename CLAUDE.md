@@ -9,8 +9,8 @@
 - Backend, core: Spring Boot (Java). Auth, playlist/song CRUD, game session, WebSocket/STOMP. Owns the database schema.
 - Backend, AI microservice: Python + FastAPI. Metadata pipeline, LLM synthesis, embeddings. Calls OpenAI directly.
 - Frontend: Next.js (TypeScript), deployed on Vercel.
-- Database: PostgreSQL + pgvector. Target host: Azure Database for PostgreSQL Flexible Server.
-- Hosting, backend: Azure Container Apps, both services in the same environment.
+- Database: PostgreSQL + pgvector. Currently hosted on Supabase; migration target undecided, see docs/PROJECT_STATE.md.
+- Hosting, backend: currently Fly.io, migrating away; target platform undecided, see docs/PROJECT_STATE.md.
 - Mobile: Flutter, deprioritized.
 
 See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the full technical breakdown.
@@ -65,6 +65,8 @@ If asked to work on a story that's `Needs Definition`, stop and either confirm t
 This gate applies to `feature` work only. `fix`, `chore`, and `docs` branches, including bug fixes listed directly in `TASKS.md`, don't need a story or the `Ready` status.
 
 Any multi-step or batched piece of work, whatever kind of branch it lands on, gets written into `TASKS.md` before the first step starts, not backfilled afterward. An external document, a report, an audit, a plan discussed in conversation, is not a substitute for `TASKS.md`. `TASKS.md` is the historical record of what was planned and what got done, and it only stays accurate if work starts there instead of starting somewhere else and getting written down later, or not at all.
+
+Every task breakdown in `TASKS.md` must include explicit test tasks alongside the feature tasks: unit tests for new services or functions, integration tests for new endpoints, and any test infrastructure a story is the first to need. A story isn't done when the feature code works, it's done when its own tests exist and pass too. This isn't deferred to story 22 (test coverage). That story backfills tests for code that predates this rule; every story from here on carries its own.
 
 ## Documentation
 

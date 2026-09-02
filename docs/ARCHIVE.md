@@ -2,6 +2,26 @@
 
 Stories move here from [PROJECT_STATE.md](PROJECT_STATE.md) once their status reaches Implemented and every task under them in [TASKS.md](TASKS.md) is checked off. Kept for history, not read during normal sessions.
 
+## Story 1: User authentication with refresh tokens
+
+Area: Backend. JWT-based authentication with refresh tokens, plus OAuth2 login, in `AuthController`, `AuthResult`, and `AuthResponse`. Predates `TASKS.md` tracking, no original task breakdown exists to archive alongside it.
+
+## Story 2: Playlist creation and management
+
+Area: Backend. Playlist CRUD and invite-link joining in `PlaylistController`, backed by `Playlist`, `PlaylistDetailDTO`, and `PlaylistSummaryDTO`. Predates `TASKS.md` tracking.
+
+## Story 3: Song submission and CRUD
+
+Area: Backend. Playlist-scoped song submission and editing in `PlaylistController`, backed by `Song`, `CreateSongRequest`, and `UpdateSongRequest`. Predates `TASKS.md` tracking.
+
+## Story 4: Multi-source metadata pipeline synthesized by an LLM
+
+Area: Backend / AI. Originally implemented in the core service, later moved to the AI microservice by story 6's two-service split below. Predates `TASKS.md` tracking.
+
+## Story 5: Printable PDF/QR card generation
+
+Area: Backend. PDF and QR export in `ExportController` and `CardGenerator`. Predates `TASKS.md` tracking.
+
 ## Story 6: Two-service split
 
 Area: Infra. Split the backend into a Spring Boot core service and a Python/FastAPI AI microservice (`ai/`). The AI microservice owns the full metadata pipeline: the source integrations (YouTube live; MusicBrainz, Wikipedia, and Genius all paused, see below), prompt construction, and LLM synthesis through OpenAI's structured output mode with Pydantic validation, replacing the previous regex-stripped manual JSON parse. It exposes a single internal endpoint, `POST /metadata/resolve`, gated by a shared secret header (`X-Internal-Api-Key`). The core service's `SongMetadataService` calls that endpoint over a `RestClient`, keeping `SongMetadataController`'s public contract, `GET /api/metadata/song` and the `AiResponse` shape, unchanged. The one-in-flight-request-per-user rate limit stays in the core service. Nine files whose logic moved to the AI microservice were deleted from the core service, along with the Spring AI dependency.
