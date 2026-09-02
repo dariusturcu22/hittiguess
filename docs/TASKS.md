@@ -2,7 +2,9 @@
 
 This is the source of truth for day-to-day work. Consult PROJECT_STATE.md only when you need the bigger picture behind one of these.
 
-The tasks below, under stories 7, 9, 10, 11, 12, and 39, are drafts and have not yet been confirmed against the real implementation, except where noted. Before starting any of them, check them against the current code: some tasks may already be done, some may not apply the way they're written, and some may be missing. Once a story's tasks are confirmed accurate, update its status to Ready in PROJECT_STATE.md.
+The tasks below, under stories 7, 9, and 12, are drafts and have not yet been confirmed against the real implementation, except where noted. Before starting any of them, check them against the current code: some tasks may already be done, some may not apply the way they're written, and some may be missing. Once a story's tasks are confirmed accurate, update its status to Ready in PROJECT_STATE.md.
+
+Stories 10, 11, and 39 were checked against the real code: no `Group`, `Session`, `Round`, `Guess`, or WebSocket/STOMP code exists anywhere in the backend, so their draft tasks stand as accurate greenfield work. Marked Ready in PROJECT_STATE.md.
 
 Story 9 and story 12 were checked against the real code and confirmed blocked: both assume a group (story 39), a game session (story 10), and a WebSocket layer (story 11) that don't exist yet. Neither can move to Ready until 10, 11, and 39 do.
 
@@ -32,23 +34,41 @@ Confirmed against the real code: there's no DJ view, no group, no session concep
 
 ## Story 10: Game session
 
-Not yet checked against real code, there's nothing to check against, no session model exists. Draft, based on the `GameSession` shape and round flow in `ARCHITECTURE.md`, and the group/game-session split logged in `DECISIONS.md`.
+Checked against real code: no session model exists, this is greenfield work. Based on the `GameSession` shape and round flow in `ARCHITECTURE.md`, and the round/token/reconnect rules in `GAME_DESIGN.md`.
 
 - [ ] Implement `GameSession`, `Player`, `Round`, and `Guess` as ephemeral Postgres rows, purged when the session ends
 - [ ] Initialize a session from the group's current settings when the admin starts it (playlist(s), DJ mode, win-condition card count), snapshotting the group's connected members as the roster
 - [ ] Assign round 1's active player and DJ
-- [ ] Round rotation: active player rotates each round, DJ stays fixed or rotates per the group's setting
-- [ ] Guess placement and lock-in: before/after/between on the active player's timeline
-- [ ] Betting: other token-holding players may bet after the guess locks, first come first served
+- [ ] Round rotation: active player rotates each round, DJ stays fixed or rotates per the group's setting, skipping players marked `Left`
+- [ ] Guess placement and lock-in: before/after/between on the active player's timeline, with a lock-in sound effect
+- [ ] 3-5 second countdown after lock-in, then a 15-second betting window; skip the window entirely if no player holds a token
+- [ ] Betting: token-holding players may bet during the window, first come first served, concurrency-safe so only the first bet is accepted and a losing attempt doesn't cost a token; a skip-betting action ends the window early
+- [ ] Artist/title guess box, available to the active player for the whole turn, independent of timeline placement; a fully correct guess awards a token (matching tolerance is an open question, see `PROJECT_STATE.md`)
 - [ ] Scoring: apply the four outcome rules in `GAME_DESIGN.md` (correct placement keeps the card even on a tied release year; a correct guess beats any bet; a wrong guess with a correct bet gives the card to the bettor; a wrong guess with no bet discards it)
 - [ ] Win condition: first player to reach the group's configured card count wins, bounded 5-20 for a 2-3 player group or 5-15 for a 4-8 player group
+- [ ] Player disconnect: mark `isConnected` false, leave timeline/tokens/turn order untouched
+- [ ] Player explicit leave: mark `Left`, exclude from future turns and DJ rotation, existing timeline cards still count toward the final results
+- [ ] Active-player turn timeout: if the active player is disconnected when their turn comes, or disconnects mid-turn, auto-skip after 90 seconds and mark them `Left`
 - [ ] Auto-abandon the session after 10 minutes with zero connected players, no results export in that case
 - [ ] Downloadable results export when a session completes normally
 - [ ] Purge all session state (roster, rounds, guesses) once the session ends or is abandoned, hand control back to the group
+- [ ] Frontend: drag-and-drop timeline placement, cards animate apart to open a gap with no overlap, animate back into place once placed
+- [ ] Frontend: artist/title guess box gives immediate animated feedback, a correct guess animates a token dropping into the player's count, distinct animation for incorrect
+
+Tests:
+- [ ] Unit tests for scoring: all four outcome rules, including the tied-release-year case
+- [ ] Unit tests for win-condition bounds: 5-20 (2-3 players) and 5-15 (4-8 players), including the boundary values
+- [ ] Unit tests for round rotation, both fixed and rotating DJ settings, and rotation skipping `Left` players
+- [ ] Unit tests for the active-player turn timeout, including the boundary at 90 seconds
+- [ ] Integration test: full session lifecycle, admin starts, roster snapshot, several rounds, win condition hit, results export generated, state purged
+- [ ] Integration test: auto-abandon path, session torn down after 10 minutes with zero connected players, confirms no export is generated
+- [ ] Integration test: betting concurrency, multiple simultaneous bet attempts on the same guess, exactly one accepted, no token lost by the others
+- [ ] Integration test: betting window skipped entirely when no player holds a token
+- [ ] Integration test: player disconnects mid-turn, doesn't reconnect within 90 seconds, ends up `Left`, and a later reconnect attempt after that point doesn't restore active status
 
 ## Story 11: Real-time game sync over WebSocket
 
-Not yet checked against real code, no WebSocket layer exists yet. Draft, based on the sync model in `ARCHITECTURE.md` (REST for group/session creation and join, WebSocket for state changes). Covers both the group and the game session, not just the session.
+Checked against real code: no WebSocket layer exists, this is greenfield work. Based on the sync model in `ARCHITECTURE.md` (REST for group/session creation and join, WebSocket for state changes). Covers both the group and the game session, not just the session.
 
 - [ ] Add the Spring WebSocket/STOMP dependency and base config to the core service
 - [ ] Authenticate the WebSocket handshake against the existing JWT auth
@@ -58,6 +78,13 @@ Not yet checked against real code, no WebSocket layer exists yet. Draft, based o
 - [ ] Broadcast round events: round started, guess locked, bet placed, reveal triggered, round scored, next round
 - [ ] Handle disconnect: mark the member's or player's `isConnected` flag false without ending the group or the session
 - [ ] Wire group creation/join (story 39) to register the joining client on the group's topic, and game session start (story 10) to register on the session's topic
+- [ ] Frontend: keep the group/session WebSocket connection alive while navigating to other parts of the app, minimize the game to a small persistent widget instead of requiring the player stay on the game screen
+- [ ] Frontend: turn notification, a sound plus a clickable visual banner when it's the player's turn and the game screen isn't focused, clicking either returns them to the game
+
+Tests:
+- [ ] Integration test: WebSocket connection and session state survive navigating away from the game route and back
+- [ ] Integration test: turn notification fires when the player's turn starts while they're on a different route, and doesn't fire when they're already on the game screen
+- [ ] Unit tests for the disconnect handler: flag flips without ending the group or session, for both a group member and an in-session player
 
 ## Story 12: Voice chat
 
@@ -68,15 +95,25 @@ Blocked on story 11 (WebSocket layer) and story 39 (group): voice is scoped to t
 - [ ] Enforce the 8-participant cap per group
 - [ ] Integrate Cloudflare TURN, pay-as-you-go, as the ICE server fallback
 - [ ] Add join/leave voice UI, joinable and leavable at any time, not tied to starting a call
+- [ ] Frontend: persistent, collapsible right-hand sidebar, vertically stacked circular avatars with names, speaking indicator ring, mute/deafen icon overlays, a trailing join-call button; visible with no speaking indicators when not in the call
+- [ ] Frontend: leave animation on a participant departing, remaining avatars animate into the gap
+- [ ] Frontend: sidebar stays available during story 11's minimized "playing while away" widget state
+
+Tests:
+- [ ] Unit tests for the 8-participant cap, including the boundary
+- [ ] Integration test: TURN fallback engages when a direct peer connection fails
+- [ ] Integration test: join/leave voice at arbitrary times, independent of whether a game session is active
 
 ## Story 39: Group
 
-Not yet checked against real code, no group model exists. Draft, based on `ARCHITECTURE.md`'s Group shape and lifecycle, and `GAME_DESIGN.md`'s Groups section.
+Checked against real code: no group model exists, this is greenfield work. Based on `ARCHITECTURE.md`'s Group shape and lifecycle, and `GAME_DESIGN.md`'s Groups section.
 
-- [ ] Implement `Group` and `Member` as ephemeral Postgres rows
+- [ ] Implement `Group` and `Member` as ephemeral Postgres rows; `Member` carries a per-group display name and avatar, separate from the user's account profile
 - [ ] `POST` endpoint to create a group; creator becomes admin
 - [ ] Enforce one active group membership per user
-- [ ] `POST` endpoint to join a group via invite link, only while the group hasn't started a game session yet
+- [ ] Generate a unique 4-letter join code alongside the existing invite link when a group is created
+- [ ] `POST` endpoint to join a group via invite link or join code, only while the group hasn't started a game session yet
+- [ ] On join, prompt for a per-group display name and avatar, defaulting to the user's account values but editable; other members only ever see this per-group identity, never the account profile
 - [ ] Settings (playlist(s), DJ mode, win-condition card count), editable by the admin only, broadcast to all members in real time
 - [ ] Chat available from group creation, stored for the life of the group
 - [ ] Voice joinable and leavable at any time (see story 12 for the WebRTC mechanics)
@@ -85,4 +122,15 @@ Not yet checked against real code, no group model exists. Draft, based on `ARCHI
 - [ ] 30-minute timer from a game session ending to the admin starting another, delete the group and remove every member if it fires
 - [ ] Explicit leave vs. disconnect: disconnect only flips `isConnected`, explicit leave removes membership
 - [ ] Admin explicitly leaves: promote the next-earliest-joined member to admin, or delete the group if none remain
+- [ ] Admin action to voluntarily promote another member to admin at any time, independent of leaving
 - [ ] On app load, check the logged-in user's active group membership and prompt to return or leave, no link-based reconnect
+- [ ] Frontend: visually mark the admin, a crown icon, distinct from regular members
+
+Tests:
+- [ ] Unit tests for join-code generation: uniqueness, and the 4-letter format
+- [ ] Unit tests for the one-active-group-per-user constraint
+- [ ] Unit tests for per-group profile isolation: a member's account profile is never exposed through group-scoped endpoints, only their per-group identity
+- [ ] Unit tests for admin transfer: both the explicit-promote action and the auto-promote-on-leave path, including the no-members-remain deletion case
+- [ ] Integration test: full group lifecycle, create, join via both invite link and join code, settings broadcast live, admin starts a session, group locks to new members
+- [ ] Integration test: both 30-minute timers, pre-session and between-sessions, including that they don't fire early or fail to fire
+- [ ] Integration test: explicit leave removes membership while disconnect only flips the connection flag
