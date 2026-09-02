@@ -42,7 +42,7 @@ YouTube URL
     ↓
 YouTube Data API, title, artist, channel info
     ↓
-Parallel: MusicBrainz, Wikipedia, Genius, Discogs
+Parallel: MusicBrainz, Discogs, Wikidata
     ↓
 pgvector similarity check, if a high-confidence match exists, skip the LLM call
     ↓
