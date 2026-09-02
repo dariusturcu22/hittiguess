@@ -170,13 +170,21 @@ Tests:
 
 Checked against real code: no Spring Boot Actuator dependency exists in `pom.xml`, no health-check endpoint exists today. The backend already uses SLF4J logging (from the story-6-era audit fixes), but there's no request-id/correlation-id to trace one user action across both services. The AI microservice swallows every pipeline and OpenAI failure into a generic `status="ERROR"` response with no alerting.
 
-- [ ] Add Spring Boot Actuator to the core service for health/metrics endpoints
-- [ ] Add an equivalent health endpoint to the AI microservice (FastAPI has none today)
-- [ ] Add error tracking (Sentry or similar) to both services
-- [ ] Add a request-id/correlation-id filter so one user action can be traced across both services' logs
-- [ ] Add uptime/latency monitoring for the production deployment
+Goes deeper than a minimal setup, deliberately: metrics, logs, and traces together (Prometheus, Loki, Tempo), not just health checks and error tracking. All consumed through Grafana Cloud's free tier rather than self-hosted, self-hosting any of these means an always-on VM that doesn't fit the project's whole-deployment cost ceiling (see `DECISIONS.md`), while the free tier covers this project's scale at $0. Instrumentation itself is OpenTelemetry, the vendor-neutral standard, so nothing here locks the project into Grafana Cloud specifically.
+
+- [ ] Add Spring Boot Actuator to the core service for health/metrics endpoints, expose `/actuator/prometheus`
+- [ ] Add an equivalent health endpoint to the AI microservice (FastAPI has none today), expose metrics via `prometheus-fastapi-instrumentator`
+- [ ] Set up a Grafana Cloud free-tier account, point both services' Prometheus metrics at it
+- [ ] Add OpenTelemetry auto-instrumentation to both services for distributed tracing, viewable in Grafana Cloud's Tempo
+- [ ] Ship both services' structured logs to Grafana Cloud's Loki
+- [ ] Add error tracking (Sentry, free tier) to both services
+- [ ] Add a request-id/correlation-id filter so one user action can be traced across both services' logs, and correlates with the OpenTelemetry trace for the same request
+- [ ] Build a basic Grafana dashboard: request rate, error rate, latency percentiles for both services
+- [ ] Add uptime monitoring for the production deployment
 - [ ] Surface the AI microservice's per-source fetch failures and OpenAI call failures as visible alerts, rather than only the generic swallowed `status="ERROR"` response
+- [ ] Add a periodic check against Grafana Cloud's and Sentry's free-tier usage limits, so approaching them is noticed before either starts silently dropping data or asking for payment
 
 Tests:
 - [ ] Integration test: Actuator health endpoint reports correctly both when healthy and when a dependency (the database) is down
-- [ ] Integration test: a request-id set on an incoming request propagates through a core-service-to-AI-service call and appears in both services' logs
+- [ ] Integration test: a request-id set on an incoming request propagates through a core-service-to-AI-service call, appears in both services' logs, and correlates with a single OpenTelemetry trace
+- [ ] Integration test: a metrics scrape and a log line both actually reach Grafana Cloud in a real (non-mocked) call
