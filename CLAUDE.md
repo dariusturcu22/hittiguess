@@ -66,6 +66,8 @@ This gate applies to `feature` work only. `fix`, `chore`, and `docs` branches, i
 
 Any multi-step or batched piece of work, whatever kind of branch it lands on, gets written into `TASKS.md` before the first step starts, not backfilled afterward. An external document, a report, an audit, a plan discussed in conversation, is not a substitute for `TASKS.md`. `TASKS.md` is the historical record of what was planned and what got done, and it only stays accurate if work starts there instead of starting somewhere else and getting written down later, or not at all.
 
+Every task breakdown in `TASKS.md` must include explicit test tasks alongside the feature tasks: unit tests for new services or functions, integration tests for new endpoints, and any test infrastructure a story is the first to need. A story isn't done when the feature code works, it's done when its own tests exist and pass too. This isn't deferred to story 22 (test coverage). That story backfills tests for code that predates this rule; every story from here on carries its own.
+
 ## Documentation
 
 - Product vision and goals: [docs/VISION.md](docs/VISION.md)
