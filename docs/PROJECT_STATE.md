@@ -10,6 +10,7 @@ This file is the backlog. Every planned or completed piece of functionality is a
 - Ready: has confirmed tasks in TASKS.md, checked against the real code, can be worked on.
 - In Progress: actively being worked on.
 - Needs Definition: confirmed as wanted, tasks may exist as a draft, but not yet checked against the real code.
+- Dropped: considered and explicitly rejected, distinct from Needs Definition, which just means not yet gotten to.
 
 A story can have draft tasks written against it in TASKS.md while still marked Needs Definition. That alone doesn't unlock work. A story only becomes Ready once those tasks are confirmed accurate against the real codebase.
 
@@ -39,12 +40,12 @@ A story can have draft tasks written against it in TASKS.md while still marked N
 | 26 | Cache metadata pipeline results by artist/title or YouTube ID | Backend / AI | Needs Definition, draft tasks exist |
 | 27 | Rate limiting | Backend | Needs Definition, draft tasks exist |
 | 28 | UI redesign | Frontend | Needs Definition |
-| 29 | Content-based song recommender: audio-feature metadata (tempo, energy, valence), cosine similarity, works with zero user data | Backend / AI | Needs Definition, audio-feature data source not chosen |
-| 30 | Collaborative filtering recommendations from real interaction data (ratings, or implicit signals like guess correctness and guess time) | Backend / AI | Needs Definition, blocked on enough real usage data existing |
-| 31 | "Similar songs" feature using pgvector embeddings over song title and artist | Backend / AI | Needs Definition |
+| 29 | Content-based song recommender: audio-feature metadata (tempo, energy, valence), cosine similarity, works with zero user data | Backend / AI | Dropped, no viable audio-feature data source found (researched, see `TASKS.md`) |
+| 30 | Difficulty-tuned game session generation: on-the-spot card sets scored to a group's actual players, easy/medium/hard, absorbs story 21's card-assembly mechanics | Backend / AI / Frontend | Needs Definition, draft tasks exist, personalized layer blocked on enough real usage data existing |
+| 31 | "Similar songs" feature using pgvector embeddings over song title and artist | Backend / AI | Dropped, only the audio-based version was worth building, see story 29 |
 | 32 | LLM-as-judge catalog audit: periodic pass over the existing catalog flagging likely duplicate or mislabeled songs | Backend / AI | Needs Definition, draft tasks exist |
-| 33 | Analytics data store: separate append-heavy store for usage/event data (games played, session length), apart from the transactional Postgres database | Infra | Needs Definition |
-| 34 | First-party usage analytics: track games played and session length through a self-hosted or custom event pipeline, no third-party trackers | Backend / Frontend | Needs Definition, depends on story 33 |
+| 33 | Analytics data store: separate append-heavy store for usage/event data (games played, session length), apart from the transactional Postgres database | Infra | Needs Definition, draft tasks exist |
+| 34 | First-party usage analytics: track games played and session length through a self-hosted or custom event pipeline, no third-party trackers | Backend / Frontend | Needs Definition, draft tasks exist, confirmed blocked on story 33 |
 | 35 | Public ground-truth data API: verified `(artist, title, release_year)` triples only, no YouTube links or unverified entries | Backend | Needs Definition |
 | 36 | Open-source collaboration readiness: `CONTRIBUTING.md`, `LICENSE`, `CODE_OF_CONDUCT.md`, issue/PR templates | Docs / Community | Needs Definition, draft tasks exist |
 | 37 | Privacy policy, terms of service, and GDPR compliance | Legal / Compliance | Needs Definition, draft tasks exist |
@@ -55,8 +56,7 @@ A story can have draft tasks written against it in TASKS.md while still marked N
 
 - Flutter app: keep, repurpose, or drop? Must follow the same real-link-out rule as the rest of the product in the meantime, no exceptions.
 - Metadata source API usage: resolved. Source set is MusicBrainz, Discogs, and Wikidata; Genius, Last.fm, and live Wikipedia search were reviewed and dropped rather than fixed (see `docs/DECISIONS.md`).
-- Stories 29, 30, and 31 are the building blocks of one overall recommendation strategy, not one story, since they have very different data requirements and can ship independently. Content-based (29) and embeddings (31) need no user interaction data; collaborative filtering (30) does, and likely won't have enough of it at the 100-200 user target scale until real usage accumulates.
-- Story 29 needs an audio-feature data source decided; Spotify was suggested but not approved, so it's not the source. Whatever source gets chosen needs the same terms-of-use review MusicBrainz, Discogs, and Wikidata already got before it's more than an idea.
+- Story 30's personalized difficulty layer needs real interaction data to beat its own aggregate baseline; the aggregate baseline itself works from day one, only the collaborative-filtering enhancement is blocked, and likely won't clearly beat the baseline at the 100-200 user target scale until real usage accumulates over months of casual play.
 - Story 32 (LLM catalog audit) and story 18 (verification criteria) are related but distinct: 18 is the per-submission path to verified, 32 is a periodic pass over the whole existing catalog. Whether 32 feeds into 18's criteria or stays a separate audit tool isn't decided.
 - Story 35's data (artist/title/release_year triples, sourced from MusicBrainz/Discogs/Wikidata, all CC0) doesn't include anything sourced from the YouTube API, so it doesn't carry the redistribution risk a YouTube-link-inclusive version would have. Worth a final confirmation read of YouTube's terms before shipping regardless, since the catalog's provenance mixes sources.
 - Story 23: whether release year should be `submittedYear` (immutable) plus `verifiedYear` (null until verified), or one mutable field plus `verificationStatus`. The two-field version preserves the original submission after a correction; the one-field version is simpler. Undecided.
