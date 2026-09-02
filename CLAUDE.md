@@ -9,8 +9,8 @@
 - Backend, core: Spring Boot (Java). Auth, playlist/song CRUD, game session, WebSocket/STOMP. Owns the database schema.
 - Backend, AI microservice: Python + FastAPI. Metadata pipeline, LLM synthesis, embeddings. Calls OpenAI directly.
 - Frontend: Next.js (TypeScript), deployed on Vercel.
-- Database: PostgreSQL + pgvector. Target host: Azure Database for PostgreSQL Flexible Server.
-- Hosting, backend: Azure Container Apps, both services in the same environment.
+- Database: PostgreSQL + pgvector. Currently hosted on Supabase; migration target undecided, see docs/PROJECT_STATE.md.
+- Hosting, backend: currently Fly.io, migrating away; target platform undecided, see docs/PROJECT_STATE.md.
 - Mobile: Flutter, deprioritized.
 
 See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the full technical breakdown.

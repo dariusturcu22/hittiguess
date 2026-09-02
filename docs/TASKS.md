@@ -2,26 +2,13 @@
 
 This is the source of truth for day-to-day work. Consult PROJECT_STATE.md only when you need the bigger picture behind one of these.
 
-The tasks below, under stories 7, 9, and 12, are drafts and have not yet been confirmed against the real implementation, except where noted. Before starting any of them, check them against the current code: some tasks may already be done, some may not apply the way they're written, and some may be missing. Once a story's tasks are confirmed accurate, update its status to Ready in PROJECT_STATE.md.
+The tasks below, under stories 9 and 12, are drafts and have not yet been confirmed against the real implementation, except where noted. Before starting any of them, check them against the current code: some tasks may already be done, some may not apply the way they're written, and some may be missing. Once a story's tasks are confirmed accurate, update its status to Ready in PROJECT_STATE.md.
 
 Stories 10, 11, and 39 were checked against the real code: no `Group`, `Session`, `Round`, `Guess`, or WebSocket/STOMP code exists anywhere in the backend, so their draft tasks stand as accurate greenfield work. Marked Ready in PROJECT_STATE.md.
 
 Story 9 and story 12 were checked against the real code and confirmed blocked: both assume a group (story 39), a game session (story 10), and a WebSocket layer (story 11) that don't exist yet. Neither can move to Ready until 10, 11, and 39 do.
 
 "Next available task" means the earliest unchecked box under a Ready or In Progress story.
-
-## Story 7: Azure migration
-
-- [ ] Confirm the current Postgres host (see story 23, may need the schema reconciliation done first)
-- [ ] Provision an Azure Container Apps environment
-- [ ] Deploy the core service container
-- [ ] Deploy the AI microservice container, same environment, for internal networking
-- [ ] Provision Azure Database for PostgreSQL Flexible Server, enable pgvector
-- [ ] Migrate data to the new Postgres instance
-- [ ] Verify both services and the frontend work end to end against Azure
-- [ ] Point the hittiguess.com domain at the new deployment
-- [ ] Update OAuth2 redirect URIs for the new domain
-- [ ] Decommission Fly.io once verified
 
 ## Story 9: DJ real YouTube link-out
 

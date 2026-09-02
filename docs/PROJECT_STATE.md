@@ -17,8 +17,8 @@ A story can have draft tasks written against it in TASKS.md while still marked N
 
 | ID | Story | Area | Status |
 |---|---|---|---|
-| 7 | Hosting migration from Fly.io to Azure Container Apps | Infra | Needs Definition, draft tasks exist |
-| 8 | Database migration to Azure Database for PostgreSQL Flexible Server, pgvector enabled | Infra | Needs Definition, depends on story 23 |
+| 7 | Hosting migration off Fly.io, target platform undecided | Infra | Needs Definition |
+| 8 | Database migration off Supabase, whether to migrate at all and to what platform both undecided | Infra | Needs Definition |
 | 9 | DJ opens the real YouTube page or app instead of an embedded player | Game / Compliance | Needs Definition, draft tasks exist, confirmed blocked on stories 10, 11, and 39 |
 | 10 | Game session: round-by-round gameplay within a group, rounds, guesses, betting, scoring, win condition; ephemeral, purged when the session ends except for a downloadable results export | Game | Ready |
 | 11 | Real-time game sync over WebSocket | Realtime | Ready |
@@ -60,9 +60,10 @@ A story can have draft tasks written against it in TASKS.md while still marked N
 - Story 32 (LLM catalog audit) and story 18 (verification criteria) are related but distinct: 18 is the per-submission path to verified, 32 is a periodic pass over the whole existing catalog. Whether 32 feeds into 18's criteria or stays a separate audit tool isn't decided.
 - Story 35's data (artist/title/release_year triples, sourced from MusicBrainz/Discogs/Wikidata, all CC0) doesn't include anything sourced from the YouTube API, so it doesn't carry the redistribution risk a YouTube-link-inclusive version would have. Worth a final confirmation read of YouTube's terms before shipping regardless, since the catalog's provenance mixes sources.
 - How much typo tolerance an in-round artist/title guess gets before counting as correct (see `GAME_DESIGN.md`'s Earning tokens section) is undecided, needs testing to balance against false positives. Distinct from story 18's song-verification criteria, this is about matching a player's guess text during a round, not about trusting a submitted song's metadata.
+- Deployment target (story 7) and database target (story 8) are both undecided pending more research, deliberately deferred until the app is close to feature-complete locally. Leaving Fly.io is confirmed; Azure Container Apps as the replacement is not. Migrating off Supabase at all is undecided, let alone a target; Azure Database for PostgreSQL and Neon have both come up but neither is chosen.
 
 ## Resolved questions
 
-- Where is the current Postgres instance hosted? Supabase, confirmed. Story 8 (Azure Database for PostgreSQL migration) is a move off Supabase, not off an unknown host.
+- Where is the current Postgres instance hosted? Supabase, confirmed.
 - Compliance and production-readiness: privacy policy, terms of service, GDPR compliance, and observability were a stated goal in `docs/VISION.md` with no story attached. Now stories 37 and 38.
 - Story 10's session-state persistence and win-condition scaling were open questions. Both resolved: ephemeral Postgres rows, and an admin-configured card count bounded by player count. The group/game-session split that resolved them is documented in `ARCHITECTURE.md` and `GAME_DESIGN.md`, and logged in `DECISIONS.md`. Now story 39.
