@@ -87,25 +87,13 @@ Not yet checked against real code, no group model exists. Draft, based on `ARCHI
 - [ ] Admin explicitly leaves: promote the next-earliest-joined member to admin, or delete the group if none remain
 - [ ] On app load, check the logged-in user's active group membership and prompt to return or leave, no link-based reconnect
 
-## Story 31: "Similar songs" feature using pgvector embeddings over song title and artist
+## Story 31: Dropped
 
-- [ ] Reuse story 16's embedding infrastructure if it's landed first, same embedding step: normalize `artist + title`, generate an embedding via OpenAI's embeddings API
-- [ ] Add a similar-songs query using pgvector cosine similarity over title/artist embeddings
-- [ ] Add a frontend surface showing similar songs, for example on a song's detail view
-- [ ] Coordinate with story 16 to avoid embedding the same artist/title text twice under two separate pipelines
+Was: a "similar songs" feature using text embeddings over song title and artist. Dropped: the only version of "similar songs" worth building is audio-based (how a song actually sounds), not text-based (which mostly just catches same-artist or similarly-worded matches). See story 29 for why the audio-based version doesn't have a viable data source either.
 
-Tests:
-- [ ] Unit tests for the cosine-similarity query (mocked embeddings): known-similar pairs rank above known-dissimilar pairs
-- [ ] Integration test: the similar-songs endpoint returns results for a song with existing embeddings
+## Story 29: Dropped, no viable audio-feature source found
 
-## Story 29: Content-based song recommender
-
-Blocked on an unresolved open question (`PROJECT_STATE.md`): the audio-feature data source isn't chosen. Spotify was suggested and rejected, not approved as the source. This blocks everything below it; the rest of this story's shape is drafted, but can't start until a source is chosen and reviewed.
-
-- [ ] Choose an audio-feature data source (tempo, energy, valence); needs the same terms-of-use review MusicBrainz, Discogs, and Wikidata already got before it's more than an idea
-- [ ] Add feature-vector storage per song (pgvector, coordinate with stories 16 and 31 which also add pgvector usage)
-- [ ] Implement a cosine-similarity recommendation query
-- [ ] Add a recommendation endpoint and frontend surface
+Researched directly rather than left open: AcousticBrainz, the obvious free option, shut down its live API and submission pipeline in February 2022; only a frozen dataset remains, dated June 2022, with coverage skewed toward mainstream music already analyzed before the shutdown, exactly the opposite of the niche/underground coverage this project cares about. Self-hosting Essentia (the toolkit AcousticBrainz itself used) would work on any song, but needs the actual audio file, and the only way to get that for a YouTube-sourced song is unofficial downloading, which violates `CLAUDE.md`'s non-negotiable official-APIs-only rule and the DJ-link-out architecture built specifically to avoid touching YouTube's media stream. Paid catalog APIs (Apple Music at $99/year, various smaller commercial ones) are real ongoing cost for a nice-to-have feature and still don't reliably cover niche YouTube-only tracks. No option clears the bar. Dropped rather than left blocked indefinitely.
 
 ## Story 30: Collaborative filtering recommendations
 
@@ -117,7 +105,7 @@ Blocked on enough real usage data existing (`PROJECT_STATE.md`), and on story 10
 ## Story 33: Analytics data store
 
 - [ ] Choose and provision a separate append-heavy store for usage/event data, apart from the transactional Postgres database (a separate schema, or a dedicated event/time-series store)
-- [ ] Define the initial event schema (games played, session length) for story 34 to write to
+- [ ] Define the event schema: game session start/end (with a compact per-game summary, group, players, win/loss, cards won, final score, for story 34's game history feature), login, playlist created, song submitted, rate-limit-exceeded (user, endpoint), report submitted, failed login attempt
 - [ ] Decide a retention policy
 
 Tests:
@@ -126,12 +114,15 @@ Tests:
 
 ## Story 34: First-party usage analytics
 
-Depends on story 33's store existing.
+Depends on story 33's store existing. Event scope is deliberately count/aggregate-based, not behavioral click-tracking: usage stats for the project's own understanding (games played, session length, playlists created, songs submitted, login activity), and abuse-visibility signals that turn existing enforcement into something reviewable (rate-limit-exceeded events from stories 13/27, report submissions from story 17, failed login attempts), not a new detection mechanism of its own.
 
-- [ ] Instrument game session start/end (story 10) and login events to write to the analytics store
-- [ ] Build a simple internal dashboard or query surface over the collected events
+- [ ] Instrument game session start/end (with the per-game summary), login, playlist creation, and song submission events to write to the analytics store
+- [ ] Instrument rate-limit-exceeded, report-submitted, and failed-login-attempt events, for abuse visibility, not enforcement, stories 13/27/17 already enforce
+- [ ] Build a simple internal dashboard or query surface over the collected events, including a simple way to flag a user who's crossed a rate-limit or report threshold repeatedly
+- [ ] Build a per-user game history page in the frontend, querying the current user's own game-summary events from the analytics store; the transactional `GameSession`/`Round`/`Guess` rows still purge exactly as story 10 already specifies, this reads only from the separate analytics store
 - [ ] No third-party trackers, matches this story's own scope and the "First-party usage analytics" framing
 
 Tests:
-- [ ] Integration test: a game session start/end and a login each produce the expected event in the analytics store
+- [ ] Integration test: each instrumented event type produces the expected record in the analytics store
 - [ ] Integration test: the dashboard/query surface returns correct aggregates for known event data
+- [ ] Integration test: a user's game history page returns only their own game summaries, not other users'

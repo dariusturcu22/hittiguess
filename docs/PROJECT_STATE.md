@@ -10,6 +10,7 @@ This file is the backlog. Every planned or completed piece of functionality is a
 - Ready: has confirmed tasks in TASKS.md, checked against the real code, can be worked on.
 - In Progress: actively being worked on.
 - Needs Definition: confirmed as wanted, tasks may exist as a draft, but not yet checked against the real code.
+- Dropped: considered and explicitly rejected, distinct from Needs Definition, which just means not yet gotten to.
 
 A story can have draft tasks written against it in TASKS.md while still marked Needs Definition. That alone doesn't unlock work. A story only becomes Ready once those tasks are confirmed accurate against the real codebase.
 
@@ -44,9 +45,9 @@ A story can have draft tasks written against it in TASKS.md while still marked N
 | 26 | Cache metadata pipeline results by artist/title or YouTube ID | Backend / AI | Needs Definition |
 | 27 | Rate limiting | Backend | Needs Definition |
 | 28 | UI redesign | Frontend | Needs Definition |
-| 29 | Content-based song recommender: audio-feature metadata (tempo, energy, valence), cosine similarity, works with zero user data | Backend / AI | Needs Definition, audio-feature data source not chosen |
+| 29 | Content-based song recommender: audio-feature metadata (tempo, energy, valence), cosine similarity, works with zero user data | Backend / AI | Dropped, no viable audio-feature data source found (researched, see `TASKS.md`) |
 | 30 | Collaborative filtering recommendations from real interaction data (ratings, or implicit signals like guess correctness and guess time) | Backend / AI | Needs Definition, blocked on enough real usage data existing |
-| 31 | "Similar songs" feature using pgvector embeddings over song title and artist | Backend / AI | Needs Definition, draft tasks exist |
+| 31 | "Similar songs" feature using pgvector embeddings over song title and artist | Backend / AI | Dropped, only the audio-based version was worth building, see story 29 |
 | 32 | LLM-as-judge catalog audit: periodic pass over the existing catalog flagging likely duplicate or mislabeled songs | Backend / AI | Needs Definition |
 | 33 | Analytics data store: separate append-heavy store for usage/event data (games played, session length), apart from the transactional Postgres database | Infra | Needs Definition, draft tasks exist |
 | 34 | First-party usage analytics: track games played and session length through a self-hosted or custom event pipeline, no third-party trackers | Backend / Frontend | Needs Definition, draft tasks exist, confirmed blocked on story 33 |
