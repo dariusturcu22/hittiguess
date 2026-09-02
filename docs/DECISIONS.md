@@ -273,3 +273,19 @@ Why: stories get implemented autonomously from `TASKS.md`; a story needs a real 
 Decision: the project is licensed MIT, a permissive license anyone can fork, redistribute, and self-host, including a competing hosted instance, with no restriction.
 
 Why: AGPLv3 and the Business Source License were both considered first, on the assumption that a hosted fork by someone else was worth guarding against. Neither actually protects anything real here: there's no revenue or user base to lose to a competing fork, since the project has no monetization plan and isn't being marketed for growth (see the open-source/non-commercial decision above). MIT is also the stronger choice for the project's actual purpose, a portfolio piece: it's the license every engineer and recruiter recognizes instantly with zero friction to clone and evaluate, where a non-standard restrictive license would need explaining and could read as mismatched against a project that describes itself as small-scale and non-commercial.
+
+---
+
+## 2026-09 | Drop stories 29 and 31, no viable audio-feature source
+
+Decision: story 29 (content-based recommender using audio features like tempo, energy, valence) and story 31 (similar-songs feature) are both dropped, not left open.
+
+Why: researched directly rather than assumed. AcousticBrainz, the obvious free source, shut down its live API and submission pipeline in February 2022; only a frozen 2022 dataset remains, with coverage skewed toward mainstream music already analyzed before the shutdown, the opposite of the niche and underground coverage this project prioritizes. Self-hosting Essentia (the toolkit AcousticBrainz itself used) works on any song but needs the actual audio file, and the only way to get that for a YouTube-sourced song is unofficial downloading, which violates the project's non-negotiable official-APIs-only rule and the DJ-link-out architecture built specifically to avoid touching YouTube's media stream. Paid catalog APIs are real ongoing cost for a nice-to-have feature and still don't solve the niche-track coverage gap. Story 31's only version worth building, audio-based similarity, depends on the same missing data; its fallback (text-embedding similarity over artist/title) was explicitly rejected as not a real substitute, it mostly catches same-artist or similarly-worded matches, not "sounds like."
+
+---
+
+## 2026-09 | Per-user game history, reopened and reversed
+
+Decision: a per-user game history page is added (story 34), reading compact per-game summaries (group, players, win/loss, cards won, final score) from the separate analytics store (story 33). The transactional `GameSession`/`Round`/`Guess` rows still purge exactly as story 10 specifies; the history page reads only from the analytics store, never from session state that no longer exists.
+
+Why: an earlier planning session explicitly decided against a persistent per-user game-history tab, staying purge-only to match the ephemeral session framing, but that decision was only ever said in conversation, never written into this log or any doc. Revisited once story 33's separate analytics store made it effectively free: the store already needs to exist for usage stats, and a compact game summary costs nothing extra to retain there, without touching the core session model's ephemerality at all.
