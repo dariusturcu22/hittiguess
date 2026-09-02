@@ -95,12 +95,31 @@ Was: a "similar songs" feature using text embeddings over song title and artist.
 
 Researched directly rather than left open: AcousticBrainz, the obvious free option, shut down its live API and submission pipeline in February 2022; only a frozen dataset remains, dated June 2022, with coverage skewed toward mainstream music already analyzed before the shutdown, exactly the opposite of the niche/underground coverage this project cares about. Self-hosting Essentia (the toolkit AcousticBrainz itself used) would work on any song, but needs the actual audio file, and the only way to get that for a YouTube-sourced song is unofficial downloading, which violates `CLAUDE.md`'s non-negotiable official-APIs-only rule and the DJ-link-out architecture built specifically to avoid touching YouTube's media stream. Paid catalog APIs (Apple Music at $99/year, various smaller commercial ones) are real ongoing cost for a nice-to-have feature and still don't reliably cover niche YouTube-only tracks. No option clears the bar. Dropped rather than left blocked indefinitely.
 
-## Story 30: Collaborative filtering recommendations
+## Story 30: Difficulty-tuned game session generation
 
-Blocked on enough real usage data existing (`PROJECT_STATE.md`), and on story 10 (game session) actually shipping, since guess correctness and guess time, the likely implicit signals, only exist once real rounds are being played. Can't produce a real recommender without real interaction data, so only the shape is drafted here.
+Redefined from a generic "collaborative filtering recommendations" idea into a concrete feature: generating a game session's card set tuned to a chosen difficulty (easy/medium/hard) for the actual players in the group, instead of only playing from an admin-picked playlist. Absorbs story 21's "assemble a card set" mechanics; difficulty becomes one more selection criterion alongside theme, not a separate system. Story 21's theme-search and metadata-pipeline-gap-filling tasks stay as written there.
 
-- [ ] Design the interaction-signal schema (guess correctness, guess time, or explicit ratings) once story 10 is live and producing real data
-- [ ] Implement collaborative filtering (matrix factorization or item-item similarity) once enough interaction data has accumulated at the 100-200 user target scale
+Two tiers, so this works from day one rather than waiting months for enough data:
+- A per-song aggregate difficulty score (percentage of all guesses on that song that were correct, across everyone) works immediately, even with a handful of plays per song, and covers first-time players with no personal history.
+- A personalized layer (collaborative filtering: for a given player and song, predict correct-or-not and roughly how fast, learned from patterns across all players and songs, same technique Netflix-style recommenders use, applied to interaction outcomes instead of ratings) only adds value once there's enough per-player history to beat the aggregate baseline. Depends on story 10 shipping and real rounds accumulating; realistically months of casual play before the personalized layer clearly outperforms the simple aggregate at this project's 100-200 user scale, see `PROJECT_STATE.md`.
+
+Inference is cheap and local: scoring the whole catalog against a specific group's players is a small numeric comparison per song, no external API call, runs in well under a second even for a full catalog, unlike the metadata pipeline which costs money per call. The only real cost is periodic retraining, a scheduled batch job, cheap at this data scale.
+
+- [ ] Add a `SongDifficulty` aggregate view or table: per-song correct-guess percentage across all historical guesses, updated as new rounds complete
+- [ ] Add group-level difficulty scoring for "easy": the lowest individual predicted score among the group's actual players, not the average, so the least experienced player is protected rather than left behind by a group average that looks easy on paper
+- [ ] Add group-level difficulty scoring for "hard": a plain average across the group's players, no floor to protect since hard mode is opt-in
+- [ ] Add the on-the-spot generation endpoint: given a group, a difficulty tier, and a target card count, score the full verified catalog for the group's actual players (blending personalized predictions where available with the aggregate baseline for first-time players), filter to the requested tier, return enough songs with headroom above the win-condition card count so a session doesn't run out or repeat
+- [ ] Train the personalized collaborative-filtering model on accumulated `Guess` data (story 10) once there's enough of it to evaluate
+- [ ] Add a scheduled retraining job for the personalized model
+- [ ] Add a monitoring check comparing the personalized model's prediction accuracy against the simple aggregate baseline; if the personalized model stops beating the baseline, that's the signal it's stale and needs retraining, not just a fixed schedule
+- [ ] Add the frontend: a difficulty selector (easy/medium/hard) alongside story 21's theme request, generating the session's card set from the combined criteria
+
+Tests:
+- [ ] Unit tests for the aggregate difficulty score calculation
+- [ ] Unit tests for both group-scoring strategies (worst-case-protected for easy, average for hard), including groups with a mix of experienced and first-time players
+- [ ] Unit tests for the personalized model's predictions against a held-out set of real guesses
+- [ ] Integration test: on-the-spot generation for a full-sized group (up to 8 players) returns a scored, filtered card set in well under a second
+- [ ] Integration test: the retraining job runs and the monitoring check correctly flags a model that's stopped beating the baseline
 
 ## Story 33: Analytics data store
 
