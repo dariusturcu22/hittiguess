@@ -297,3 +297,11 @@ Why: an earlier planning session explicitly decided against a persistent per-use
 Decision: story 30 changes from a generic "collaborative filtering recommendations" placeholder into a concrete feature: generating a game session's card set on the spot, scored to a chosen difficulty (easy/medium/hard) for the group's actual players, instead of only playing from an admin-picked playlist. Absorbs story 21's card-assembly mechanics rather than keeping two stories doing adjacent things; difficulty becomes one more selection criterion alongside theme. Built in two tiers: a per-song aggregate correct-guess-rate score that works immediately and covers first-time players, and a personalized collaborative-filtering layer on top that only ships once it demonstrably beats that aggregate baseline. Group-level scoring for easy mode uses the group's lowest individual predicted score, not an average, so the least experienced player is protected rather than averaged away; hard mode uses a plain average, since it's opt-in.
 
 Why: the original framing, "recommend songs a user might like," doesn't fit how the game actually works, players don't browse and pick songs individually. Reframed around what collaborative filtering can genuinely predict here: whether a given player would get a given song right, which directly powers something the game already wants, curated playlists tuned to a group's skill, rather than an abstract recommendation feature with no clear place to surface it. The personalized-vs-baseline comparison also gives the retraining pipeline a real signal to act on (the model degrading relative to the simple baseline) instead of a fixed schedule with no actual quality check behind it.
+
+---
+
+## 2026-09 | Story 21 folded into story 30, not just cross-referenced
+
+Decision: story 21's tasks (theme-based catalog search, genre/popularity fields, metadata-pipeline gap-filling, the review UI) move into story 30's task list directly. Story 21's row in `PROJECT_STATE.md` points to story 30 instead of carrying its own tasks.
+
+Why: both stories generate a game session's card set, one from a theme, one from a difficulty tier; keeping them as two separate stories with two separate generation endpoints would mean building the same underlying mechanism twice instead of once with two combinable selection criteria.
