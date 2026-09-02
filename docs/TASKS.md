@@ -215,13 +215,4 @@ Tests:
 
 ## Story 20: Local LLM option for lower-cost bulk metadata processing
 
-Checked against real code: `ai/app/clients/openai_client.py` is the only LLM client, a module-level `OpenAI` singleton, no other client exists.
-
-- [ ] Add a local LLM client (Ollama-compatible, for example) alongside the existing OpenAI client, matching the structured-output/Pydantic contract `metadata/llm.py` already relies on (the non-negotiable rule against regex-parsing LLM output applies here too)
-- [ ] Add a config toggle to choose local vs. OpenAI per environment or per request
-- [ ] Verify the chosen local model supports structured output/JSON schema mode, not every local model does
-- [ ] Benchmark local-model accuracy against current OpenAI results before defaulting bulk imports (story 19) to it
-
-Tests:
-- [ ] Unit tests for the local LLM client, mirroring the existing OpenAI client's test pattern
-- [ ] Unit test for the config toggle selecting the correct client
+Checked against real code: `ai/app/clients/openai_client.py` is the only LLM client, a module-level `OpenAI` singleton, no other client exists. Which local model or technique to use is undecided, and stays undecided until a separate exploration pass, on its own branch, tests structured-output support and accuracy against real cases first. No implementation tasks drafted here yet, same treatment as the pipeline-gathering questions: deciding now would mean guessing at a model choice instead of testing it.

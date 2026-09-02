@@ -35,7 +35,7 @@ A story can have draft tasks written against it in TASKS.md while still marked N
 | 17 | Community song reports: report button, message, correct year, sources | Frontend / Backend | Needs Definition, draft tasks exist |
 | 18 | Criteria for promoting a reported or newly submitted song to verified | Backend | Needs Definition |
 | 19 | Admin bulk song import | Backend | Needs Definition, draft tasks exist |
-| 20 | Local LLM option for lower-cost bulk metadata processing | AI | Needs Definition, draft tasks exist |
+| 20 | Local LLM option for lower-cost bulk metadata processing | AI | Needs Definition, model/technique choice needs a separate exploration pass first |
 | 21 | Auto-generated featured playlists: an agent takes a themed request (for example "90s rock"), searches the catalog, calls the metadata pipeline, and assembles a validated card set from extracted song metadata (genre, popularity, similar signals) | Backend / AI | Needs Definition |
 | 22 | Test coverage for existing and new functionality | Quality | Needs Definition |
 | 23 | Song schema reconciliation against the current implementation | Backend | Needs Definition |
