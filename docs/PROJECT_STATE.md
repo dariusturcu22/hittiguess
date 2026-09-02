@@ -48,7 +48,7 @@ A story can have draft tasks written against it in TASKS.md while still marked N
 | 33 | Analytics data store: separate append-heavy store for usage/event data (games played, session length), apart from the transactional Postgres database | Infra | Needs Definition, draft tasks exist |
 | 34 | First-party usage analytics: track games played and session length through a self-hosted or custom event pipeline, no third-party trackers | Backend / Frontend | Needs Definition, draft tasks exist, confirmed blocked on story 33 |
 | 35 | Public ground-truth data API: verified `(artist, title, release_year)` triples only, no YouTube links or unverified entries | Backend | Needs Definition, draft tasks exist |
-| 36 | Open-source collaboration readiness: `CONTRIBUTING.md`, `LICENSE`, `CODE_OF_CONDUCT.md`, issue/PR templates | Docs / Community | Needs Definition, draft tasks exist |
+| 36 | Open-source collaboration readiness: `CONTRIBUTING.md`, `LICENSE`, `CODE_OF_CONDUCT.md`, issue/PR templates | Docs / Community | Ready |
 | 37 | Privacy policy, terms of service, and GDPR compliance | Legal / Compliance | Needs Definition, draft tasks exist |
 | 38 | Observability: error tracking and monitoring | Infra / Quality | Needs Definition, draft tasks exist |
 | 39 | Group: persistent lobby a game session lives inside, invite-link membership, admin role, live-synced settings, chat and voice from creation, timer-based lifecycle | Game | Ready |

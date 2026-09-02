@@ -14,9 +14,9 @@ Story 9 and story 12 were checked against the real code and confirmed blocked: b
 
 Every story below with draft tasks was drafted in a large batch from a single early codebase-mapping pass, then refined through design conversation, not re-verified individually against live code the way stories 10, 11, and 39 originally were before going Ready. This audit goes through each one, checkbox by checkbox, confirms it against the current code, fixes anything wrong or missing, and only then flips the story to Ready in `PROJECT_STATE.md`.
 
-- [ ] Story 9
-- [ ] Story 12
-- [ ] Story 13
+- [x] Story 9
+- [x] Story 12
+- [x] Story 13
 - [ ] Story 14
 - [ ] Story 15
 - [ ] Story 16
@@ -33,7 +33,7 @@ Every story below with draft tasks was drafted in a large batch from a single ea
 - [ ] Story 33
 - [ ] Story 34
 - [ ] Story 35
-- [ ] Story 36
+- [x] Story 36
 - [ ] Story 37
 - [ ] Story 38
 
