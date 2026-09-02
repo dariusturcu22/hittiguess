@@ -138,3 +138,105 @@ Tests:
 - [ ] Integration test: full group lifecycle, create, join via both invite link and join code, settings broadcast live, admin starts a session, group locks to new members
 - [ ] Integration test: both 30-minute timers, pre-session and between-sessions, including that they don't fire early or fail to fire
 - [ ] Integration test: explicit leave removes membership while disconnect only flips the connection flag
+
+## Story 23: Song schema reconciliation
+
+Checked against real code and `ARCHITECTURE.md`'s target shape (line 36): `Song` today has a single `releaseYear` int, a single `songTag` enum, a single `artist` string, and no `verificationStatus`, `confidence`, or `metadataRaw` fields. No migration tool exists yet, schema changes today happen only through Hibernate's `ddl-auto=update`; this story introduces Flyway rather than add another layer of auto-DDL.
+
+Two parts of the target shape are genuinely undecided, not just unconfirmed against code, so this story doesn't cover them yet:
+- Whether release year should be two fields (`submittedYear`, immutable, and `verifiedYear`, null until verification) or one mutable field plus `verificationStatus`. The two-field version preserves what was originally submitted even after a correction, useful for auditing bad sources over time, closer in spirit to why `metadataRaw` exists at all. The one-field version is simpler. Neither is chosen.
+- How multiple artists are stored and guessed. A song can have a main artist plus one or more featured artists (for example, an "artist A feat. artist B" credit); today's single `artist` string can't represent that, and it's undecided whether featured artists need to be guessed correctly too for a round to count as correct, whether storage should be an array of artist entries, and what the guess-box UI looks like for more than one artist (multiple text boxes, or something else). Affects story 10's artist/title guess box, this story's schema, and the AI microservice's extraction logic, none of which assume multiple artists today.
+
+- [ ] Introduce Flyway as the schema migration tool
+- [ ] Add a `verificationStatus` field, `UNVERIFIED`/`VERIFIED` as a placeholder pair pending story 18
+- [ ] Persist `confidence` on `Song`, depends on the `SongMetadataResponse` fix below existing first
+- [ ] Persist `metadataRaw`, the full pipeline output, for auditability
+- [ ] Replace the single `songTag` enum with a multi-value `tags` relation
+- [ ] Data migration for existing rows: default `verificationStatus`
+- [ ] Update `SongDTO`, `CreateSongRequest`, `UpdateSongRequest`, and regenerate the frontend's orval client and song forms for the new shape
+
+Tests:
+- [ ] Unit tests for the data migration: `verificationStatus` defaulted correctly for existing rows
+- [ ] Integration test: existing API responses (`SongDTO`) don't break for rows migrated from the old shape
+
+## Bug fixes
+
+No story required for these. Fix on a `fix` branch.
+
+- [ ] `SongMetadataResponse` (Java) silently drops the AI microservice's `confidence`, `source`, and `reasoning` fields: `SongMetadataResult` (Python) computes and returns all three today, but the Java record deserializing that response only declares `title/artist/releaseYear/gradientColor1/gradientColor2`, so the other three are read off the wire and discarded on every metadata call. Extend the record to keep them.
+
+## Story 22: Test coverage
+
+Checked against real code: the backend has exactly one test file, an empty `contextLoads()` smoke test, zero controller/service/security coverage. The AI microservice has unit tests only for pure functions (`llm.synthesize`, `prompt.build`, `sources/util.py` helpers), nothing for `router.py`, `service.py`'s orchestration, or `auth.py`. The frontend has no test runner installed at all. `.github/workflows/pr-checks.yml` runs `mvnw compile` and `npm run lint && npm run build`, no test execution step for either service, and no job at all for the AI microservice, so even its existing pytest tests never run in CI today.
+
+- [ ] Add a CI job for the AI microservice (none exists today) running its existing `pytest` suite
+- [ ] Add a `mvnw test` step to the backend CI job (currently compile-only)
+- [ ] Add JUnit/Mockito tests for every backend service (`PlaylistService`, `SongMetadataService`, `UserService`, `AuthService`, `ExportService`), covering the access-control checks in `PlaylistService`, the rate limiter in `SongMetadataService`, and the account-enumeration-avoidance logic in `AuthService`
+- [ ] Add `@WebMvcTest`/MockMvc tests for every controller
+- [ ] Add a Spring Security test covering JWT auth, refresh-token rotation, and CSRF
+- [ ] Add tests for `ai/app/metadata/router.py`, `service.py`'s orchestration, and `auth.py`'s internal-key check, using FastAPI's `TestClient`
+- [ ] Add a frontend unit test runner (Vitest or Jest, neither installed today) plus React Testing Library, and a `test` script in `package.json`
+- [ ] Add frontend unit tests for the song forms' hand-written validation (`AddSongForm.tsx`, `SongForm.tsx`) and the auth forms
+- [ ] Add Playwright for frontend integration/end-to-end tests, none exist today; separate from the unit test runner above, drives the real browser against the real backend rather than mocking it
+- [ ] Add Playwright coverage for the core flows that exist today: login/register, playlist CRUD, song add/edit, export
+- [ ] Add the new test steps to `.github/workflows/pr-checks.yml` for all three services
+
+## Story 27: Rate limiting
+
+Checked against real code: the only rate limiting anywhere is `SongMetadataService`'s single in-flight-request-per-user gate on `/api/metadata/song`, a `ConcurrentHashMap`-backed set, not a time-window limiter. No rate-limiting library (Bucket4j, resilience4j) exists in `pom.xml`. `/auth/login` and `/auth/register` have no rate limiting at all today.
+
+- [ ] Add a rate-limiting library (Bucket4j is the standard Spring choice) to `pom.xml`
+- [ ] Add per-user or per-IP request-window rate limits across public-facing endpoints, not just the existing single in-flight gate
+- [ ] Rate-limit `/auth/login` and `/auth/register` specifically, to blunt credential-stuffing and enumeration attempts
+- [ ] Standardize the 429 response shape; the metadata endpoint's current 429 uses Spring's default `ProblemDetail`, not the app's own `ErrorResponse` record used elsewhere in `GlobalExceptionHandler`
+- [ ] Rate-limit the AI microservice's `/metadata/resolve` endpoint directly, not just the core service's call into it, since anything holding the shared `X-Internal-Api-Key` secret can call it directly
+
+Tests:
+- [ ] Unit tests for the rate limiter: requests under the limit pass, requests over the limit get rejected, including the boundary value
+- [ ] Integration test: `/auth/login` and `/auth/register` rate limiting specifically
+- [ ] Integration test: the AI microservice's `/metadata/resolve` rate limit triggers independent of the core service's own limiting
+
+## Story 36: Open-source collaboration readiness
+
+- [ ] Add `CONTRIBUTING.md`: local dev setup (`make dev`), the branch/PR workflow already defined in `CLAUDE.md` written for an external audience, how to pick up a story from `TASKS.md`
+- [x] Add `LICENSE`: MIT, chosen over AGPLv3/BSL since there's no revenue or scale to protect, and MIT is the stronger signal for a portfolio project, zero friction for anyone evaluating the code
+- [ ] Add `CODE_OF_CONDUCT.md`
+- [ ] Add GitHub issue templates (bug report, feature request) and a PR template matching the repo's actual PR description style (plain prose, no `## Summary`/`## Test plan`, see `CLAUDE.md`'s writing-style rules)
+- [ ] Document which secrets a new contributor needs (`YOUTUBE_API_KEY`, `OPENAI_API_KEY`, `INTERNAL_SERVICE_API_KEY`) and how they get sandbox-safe values, since both external API keys carry real cost/quota implications
+
+## Story 37: Privacy policy, terms of service, and GDPR compliance
+
+Checked against real code: `DELETE /me` (`UserController` → `UserService.deleteUser()`) already does a real hard delete of the `User` row, not a deactivation, but hasn't been checked for what happens to `Song.addedBy` references or shared playlists on deletion. No analytics exist yet (story 34), so there's nothing to disclose there until it ships.
+
+- [ ] Draft a privacy policy covering what's actually collected today: auth data (username, email, OAuth provider ID), playlist/song data
+- [ ] Draft terms of service
+- [ ] Add a GDPR data-export endpoint: a logged-in user can download their own account, playlist, and song data
+- [ ] Audit and harden the existing `DELETE /me` flow for `Song.addedBy` references and shared-playlist edge cases, so account deletion doesn't leave orphaned references or unexpectedly delete other members' shared playlists
+- [ ] Add a cookie/consent notice, only needed once story 34 (first-party analytics) ships; skip until then since no third-party trackers are planned
+
+Tests:
+- [ ] Integration test: GDPR export endpoint returns the user's complete account, playlist, and song data
+- [ ] Integration test: `DELETE /me` with existing `Song.addedBy` references and shared-playlist memberships behaves per the decided handling, no orphaned references, no other member's playlist unexpectedly deleted
+
+## Story 38: Observability
+
+Checked against real code: no Spring Boot Actuator dependency exists in `pom.xml`, no health-check endpoint exists today. The backend already uses SLF4J logging (from the story-6-era audit fixes), but there's no request-id/correlation-id to trace one user action across both services. The AI microservice swallows every pipeline and OpenAI failure into a generic `status="ERROR"` response with no alerting.
+
+Goes deeper than a minimal setup, deliberately: metrics, logs, and traces together (Prometheus, Loki, Tempo), not just health checks and error tracking. All consumed through Grafana Cloud's free tier rather than self-hosted, self-hosting any of these means an always-on VM that doesn't fit the project's whole-deployment cost ceiling (see `DECISIONS.md`), while the free tier covers this project's scale at $0. Instrumentation itself is OpenTelemetry, the vendor-neutral standard, so nothing here locks the project into Grafana Cloud specifically.
+
+- [ ] Add Spring Boot Actuator to the core service for health/metrics endpoints, expose `/actuator/prometheus`
+- [ ] Add an equivalent health endpoint to the AI microservice (FastAPI has none today), expose metrics via `prometheus-fastapi-instrumentator`
+- [ ] Set up a Grafana Cloud free-tier account, point both services' Prometheus metrics at it
+- [ ] Add OpenTelemetry auto-instrumentation to both services for distributed tracing, viewable in Grafana Cloud's Tempo
+- [ ] Ship both services' structured logs to Grafana Cloud's Loki
+- [ ] Add error tracking (Sentry, free tier) to both services
+- [ ] Add a request-id/correlation-id filter so one user action can be traced across both services' logs, and correlates with the OpenTelemetry trace for the same request
+- [ ] Build a basic Grafana dashboard: request rate, error rate, latency percentiles for both services
+- [ ] Add uptime monitoring for the production deployment
+- [ ] Surface the AI microservice's per-source fetch failures and OpenAI call failures as visible alerts, rather than only the generic swallowed `status="ERROR"` response
+- [ ] Add a periodic check against Grafana Cloud's and Sentry's free-tier usage limits, so approaching them is noticed before either starts silently dropping data or asking for payment
+
+Tests:
+- [ ] Integration test: Actuator health endpoint reports correctly both when healthy and when a dependency (the database) is down
+- [ ] Integration test: a request-id set on an incoming request propagates through a core-service-to-AI-service call, appears in both services' logs, and correlates with a single OpenTelemetry trace
+- [ ] Integration test: a metrics scrape and a log line both actually reach Grafana Cloud in a real (non-mocked) call
