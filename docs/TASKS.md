@@ -107,7 +107,7 @@ Inference is cheap and local: scoring the whole catalog against a specific group
 
 - [ ] Add a `SongDifficulty` aggregate view or table: per-song correct-guess percentage across all historical guesses, updated as new rounds complete
 - [ ] Add group-level difficulty scoring for "easy": the lowest individual predicted score among the group's actual players, not the average, so the least experienced player is protected rather than left behind by a group average that looks easy on paper
-- [ ] Add group-level difficulty scoring for "hard": a plain average across the group's players, no floor to protect since hard mode is opt-in
+- [ ] Add group-level difficulty scoring for "medium" and "hard": a plain average across the group's players for both, no floor to protect, medium and hard are both opt-in past the easy default
 - [ ] Add the on-the-spot generation endpoint: given a group, a difficulty tier, and a target card count, score the full verified catalog for the group's actual players (blending personalized predictions where available with the aggregate baseline for first-time players), filter to the requested tier, return enough songs with headroom above the win-condition card count so a session doesn't run out or repeat
 - [ ] Train the personalized collaborative-filtering model on accumulated `Guess` data (story 10) once there's enough of it to evaluate
 - [ ] Add a scheduled retraining job for the personalized model
