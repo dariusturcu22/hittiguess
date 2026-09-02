@@ -8,12 +8,12 @@
 | Backend, AI microservice | Python + FastAPI | Metadata pipeline, LLM synthesis, embeddings. Calls OpenAI directly. |
 | Frontend | Next.js (TypeScript) | Dashboard, playlist/song management, game UI. Deployed on Vercel. |
 | Mobile | Flutter | Deprioritized. |
-| Database | PostgreSQL + pgvector | Target host: Azure Database for PostgreSQL Flexible Server. Current host to be confirmed, see [PROJECT_STATE.md](PROJECT_STATE.md). |
+| Database | PostgreSQL + pgvector | Current host: Supabase. Migration target undecided, see [PROJECT_STATE.md](PROJECT_STATE.md). |
 | Auth | OAuth2 + JWT | Refresh tokens, owned by the core service. |
 | Realtime | Spring STOMP/WebSocket | Game session sync, voice signaling, and text chat, core service. |
 | AI/LLM | OpenAI API | Called directly from the AI microservice, structured output through Pydantic. |
 | Embeddings | text-embedding-3-small | Deduplication and RAG, generated in the AI microservice. |
-| Hosting, backend | Azure Container Apps | Both services, same environment. |
+| Hosting, backend | Currently Fly.io | Migrating away; target platform undecided, see [PROJECT_STATE.md](PROJECT_STATE.md). |
 | Hosting, frontend | Vercel | Unchanged. |
 | Voice | WebRTC, mesh topology | Cloudflare TURN as fallback. See Voice and Text Chat below. |
 
@@ -27,7 +27,7 @@ Auth, playlist and song CRUD, the Song table (schema owner), game session and ro
 
 Multi-source metadata fetch (YouTube, MusicBrainz, Wikipedia, Genius, Discogs), LLM synthesis with structured output, embedding generation and pgvector similarity search. Exposes a small internal API, for example `POST /metadata/resolve`, consumed only by the core service, not exposed publicly.
 
-The two services run in the same Azure Container Apps environment and reach each other over internal networking. The core service owns all database migrations; the AI microservice reads and writes rows but never alters schema.
+The two services run in the same hosting environment and reach each other over internal networking, wherever that ends up being, see the Deployment section. The core service owns all database migrations; the AI microservice reads and writes rows but never alters schema.
 
 ## System components
 
@@ -42,7 +42,7 @@ YouTube URL
     ↓
 YouTube Data API, title, artist, channel info
     ↓
-Parallel: MusicBrainz, Wikipedia, Genius, Discogs
+Parallel: MusicBrainz, Discogs, Wikidata
     ↓
 pgvector similarity check, if a high-confidence match exists, skip the LLM call
     ↓
@@ -134,11 +134,12 @@ Bulk import mechanism: to be designed. Admin-submitted songs skip the pipeline a
 
 ## Deployment
 
-- Core service and AI microservice: containerized, deployed to Azure Container Apps, same environment.
-- Database: Azure Database for PostgreSQL Flexible Server, pgvector enabled.
+Deployment platform is deliberately undecided until the app is close to feature-complete locally, see [PROJECT_STATE.md](PROJECT_STATE.md)'s open questions.
+
+- Core service and AI microservice: containerized, deployed together, same environment. Target platform not yet chosen.
+- Database: currently Supabase-hosted Postgres. Whether to migrate at all, and to what platform, is undecided; pgvector needs to be enabled wherever it ends up.
 - Frontend: Next.js on Vercel, unchanged.
-- Azure Container Apps scales to zero on the Consumption plan; AWS Fargate and App Runner don't. At the expected usage pattern, bursty and mostly idle, this is the better cost fit.
-- Migrating away from Fly.io. See [PROJECT_STATE.md](PROJECT_STATE.md) for current status.
+- Migrating away from Fly.io for backend hosting. See [PROJECT_STATE.md](PROJECT_STATE.md) for current status.
 
 ## Data flow: adding a song
 
@@ -186,4 +187,4 @@ Group returns to its lobby state: admin starts another session within 30 minutes
 
 ## Not yet built
 
-Azure deployment, database migration, group model, game session model, WebSocket layer, DJ link-out playback flow, voice and text chat, song search by link or keyword, community reporting flow, pgvector deduplication, playlist/song relational fix, Discogs integration, confidence-gating UI, admin bulk import, admin review queue, scheduled re-verification, rate limiting, UI redesign, auto-generated featured playlists, test coverage.
+Hosting migration, database migration, group model, game session model, WebSocket layer, DJ link-out playback flow, voice and text chat, song search by link or keyword, community reporting flow, pgvector deduplication, playlist/song relational fix, Discogs integration, confidence-gating UI, admin bulk import, admin review queue, scheduled re-verification, rate limiting, UI redesign, auto-generated featured playlists, test coverage.
