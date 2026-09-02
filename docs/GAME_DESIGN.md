@@ -68,7 +68,7 @@ Timeline placement is drag-and-drop: dragging a card between two existing cards 
 
 Voice chat renders as a persistent, collapsible right-hand sidebar: vertically stacked circular avatars with names underneath, a speaking indicator ring, and mute/deafen icon overlays when applicable. A join-call button appears as a trailing circle in the same list. A player leaving animates out, the remaining avatars animate into the gap. The sidebar stays available during the minimized "playing while away" state described above.
 
-Text chat renders as a semi-transparent overlay in the bottom-left corner, toggled by a keybind rather than requiring a persistent input field, plain username-and-message lines, no threading.
+Text chat renders as a semi-transparent overlay in the bottom-left corner, toggled by a keybind or a clickable button rather than requiring a persistent input field, plain username-and-message lines, no threading.
 
 ## Online play
 

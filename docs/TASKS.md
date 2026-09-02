@@ -91,6 +91,23 @@ Tests:
 - [ ] Integration test: TURN fallback engages when a direct peer connection fails
 - [ ] Integration test: join/leave voice at arbitrary times, independent of whether a game session is active
 
+## Story 13: Group-scoped text chat
+
+Checked against real code: no chat model or endpoint exists. Blocked on story 11 (WebSocket layer) and story 39 (group): chat is scoped to the group's lifetime, not the game session's, and rides the WebSocket layer, neither exists yet.
+
+- [ ] Implement `ChatMessage` as an ephemeral Postgres row (sender, group, body, timestamp)
+- [ ] Client-to-server STOMP channel to send a message, riding the WebSocket layer built in story 11
+- [ ] Broadcast new messages to the group's STOMP topic
+- [ ] Load message history when a client joins or reconnects to a group
+- [ ] Purge chat history when the group is deleted, matching the group's ephemeral lifecycle
+- [ ] Message length limit (500 characters) and a per-user send rate limit (5 messages per 10 seconds) to prevent spam within a group
+- [ ] Frontend: semi-transparent bottom-left overlay, toggled by a keybind or a clickable button, rather than a persistent input field, plain username-and-message lines, no threading (see `GAME_DESIGN.md`'s Interaction and animation section)
+
+Tests:
+- [ ] Unit tests for the message length limit and the per-user send rate limit, including the boundary values
+- [ ] Integration test: message history loads correctly on join and on reconnect
+- [ ] Integration test: chat history is gone once the group is deleted
+
 ## Story 39: Group
 
 Checked against real code: no group model exists, this is greenfield work. Based on `ARCHITECTURE.md`'s Group shape and lifecycle, and `GAME_DESIGN.md`'s Groups section.

@@ -23,7 +23,7 @@ A story can have draft tasks written against it in TASKS.md while still marked N
 | 10 | Game session: round-by-round gameplay within a group, rounds, guesses, betting, scoring, win condition; ephemeral, purged when the session ends except for a downloadable results export | Game | Ready |
 | 11 | Real-time game sync over WebSocket | Realtime | Ready |
 | 12 | Voice chat between players in a group, mesh peer-to-peer with Cloudflare TURN fallback, joinable and leavable anytime for the group's lifetime | Realtime | Needs Definition, draft tasks exist, confirmed blocked on stories 11 and 39 |
-| 13 | Group-scoped text chat, active from group creation until the group is deleted | Realtime | Needs Definition, blocked on stories 11 and 39 |
+| 13 | Group-scoped text chat, active from group creation until the group is deleted | Realtime | Needs Definition, draft tasks exist, confirmed blocked on stories 11 and 39 |
 | 14 | Song search by link or by keyword before submission | Frontend / Backend | Needs Definition |
 | 15 | Song/playlist relational fix, so one song can belong to multiple playlists | Backend | Needs Definition |
 | 16 | pgvector-based duplicate detection before running the metadata pipeline | Backend / AI | Needs Definition |
