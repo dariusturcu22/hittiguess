@@ -96,6 +96,11 @@ The final YouTube-terms confirmation read stays an open question (`PROJECT_STATE
 - [ ] Add pagination and rate limiting for public consumption (coordinate with story 27)
 - [ ] Final confirmation read of YouTube's terms before shipping, since the catalog's overall provenance mixes sources even though this endpoint's own data doesn't include anything YouTube-sourced
 
+Tests:
+- [ ] Integration test: the endpoint returns only verified songs, unverified songs never appear
+- [ ] Integration test: no YouTube-sourced field (`youtubeId` or anything derived from it) appears in the response shape
+- [ ] Unit tests for pagination and the rate limit, including boundary values
+
 ## Story 21: Auto-generated featured playlists
 
 Depends on story 14's catalog search existing, and on "validated" meaning something concrete once story 18's verification criteria are decided.
@@ -105,3 +110,7 @@ Depends on story 14's catalog search existing, and on "validated" meaning someth
 - [ ] Build the agent flow: theme request → catalog search → metadata pipeline calls for any gaps → assemble a card set
 - [ ] What "validated" means here depends on story 18's verification criteria, currently undecided, don't invent a threshold
 - [ ] Add the UI for requesting a themed playlist and reviewing the generated set before it's saved
+
+Tests:
+- [ ] Integration test: a themed request produces a card set assembled from real catalog search and metadata pipeline results
+- [ ] Frontend test: the review UI lets a user inspect and confirm the generated set before saving
