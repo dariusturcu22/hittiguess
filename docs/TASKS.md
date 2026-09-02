@@ -100,6 +100,10 @@ Checked against real code and `ARCHITECTURE.md`'s target shape (line 36): `Song`
 - [ ] Data migration for existing rows: backfill `submittedYear`/`verifiedYear` from the current `releaseYear`, default `verificationStatus`
 - [ ] Update `SongDTO`, `CreateSongRequest`, `UpdateSongRequest`, and regenerate the frontend's orval client and song forms for the new shape
 
+Tests:
+- [ ] Unit tests for the data migration: `submittedYear`/`verifiedYear` backfilled correctly from the existing `releaseYear`, `verificationStatus` defaulted correctly
+- [ ] Integration test: existing API responses (`SongDTO`) don't break for rows migrated from the old shape
+
 ## Story 22: Test coverage
 
 Checked against real code: the backend has exactly one test file, an empty `contextLoads()` smoke test, zero controller/service/security coverage. The AI microservice has unit tests only for pure functions (`llm.synthesize`, `prompt.build`, `sources/util.py` helpers), nothing for `router.py`, `service.py`'s orchestration, or `auth.py`. The frontend has no test runner installed at all. `.github/workflows/pr-checks.yml` runs `mvnw compile` and `npm run lint && npm run build`, no test execution step for either service, and no job at all for the AI microservice, so even its existing pytest tests never run in CI today.
@@ -124,6 +128,11 @@ Checked against real code: the only rate limiting anywhere is `SongMetadataServi
 - [ ] Standardize the 429 response shape; the metadata endpoint's current 429 uses Spring's default `ProblemDetail`, not the app's own `ErrorResponse` record used elsewhere in `GlobalExceptionHandler`
 - [ ] Rate-limit the AI microservice's `/metadata/resolve` endpoint directly, not just the core service's call into it, since anything holding the shared `X-Internal-Api-Key` secret can call it directly
 
+Tests:
+- [ ] Unit tests for the rate limiter: requests under the limit pass, requests over the limit get rejected, including the boundary value
+- [ ] Integration test: `/auth/login` and `/auth/register` rate limiting specifically
+- [ ] Integration test: the AI microservice's `/metadata/resolve` rate limit triggers independent of the core service's own limiting
+
 ## Story 36: Open-source collaboration readiness
 
 - [ ] Add `CONTRIBUTING.md`: local dev setup (`make dev`), the branch/PR workflow already defined in `CLAUDE.md` written for an external audience, how to pick up a story from `TASKS.md`
@@ -142,6 +151,10 @@ Checked against real code: `DELETE /me` (`UserController` → `UserService.delet
 - [ ] Audit and harden the existing `DELETE /me` flow for `Song.addedBy` references and shared-playlist edge cases, so account deletion doesn't leave orphaned references or unexpectedly delete other members' shared playlists
 - [ ] Add a cookie/consent notice, only needed once story 34 (first-party analytics) ships; skip until then since no third-party trackers are planned
 
+Tests:
+- [ ] Integration test: GDPR export endpoint returns the user's complete account, playlist, and song data
+- [ ] Integration test: `DELETE /me` with existing `Song.addedBy` references and shared-playlist memberships behaves per the decided handling, no orphaned references, no other member's playlist unexpectedly deleted
+
 ## Story 38: Observability
 
 Checked against real code: no Spring Boot Actuator dependency exists in `pom.xml`, no health-check endpoint exists today. The backend already uses SLF4J logging (from the story-6-era audit fixes), but there's no request-id/correlation-id to trace one user action across both services. The AI microservice swallows every pipeline and OpenAI failure into a generic `status="ERROR"` response with no alerting.
@@ -152,3 +165,7 @@ Checked against real code: no Spring Boot Actuator dependency exists in `pom.xml
 - [ ] Add a request-id/correlation-id filter so one user action can be traced across both services' logs
 - [ ] Add uptime/latency monitoring for the production deployment
 - [ ] Surface the AI microservice's per-source fetch failures and OpenAI call failures as visible alerts, rather than only the generic swallowed `status="ERROR"` response
+
+Tests:
+- [ ] Integration test: Actuator health endpoint reports correctly both when healthy and when a dependency (the database) is down
+- [ ] Integration test: a request-id set on an incoming request propagates through a core-service-to-AI-service call and appears in both services' logs
