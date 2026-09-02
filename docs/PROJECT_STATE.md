@@ -59,6 +59,7 @@ A story can have draft tasks written against it in TASKS.md while still marked N
 - Story 29 needs an audio-feature data source decided; Spotify was suggested but not approved, so it's not the source. Whatever source gets chosen needs the same terms-of-use review MusicBrainz, Discogs, and Wikidata already got before it's more than an idea.
 - Story 32 (LLM catalog audit) and story 18 (verification criteria) are related but distinct: 18 is the per-submission path to verified, 32 is a periodic pass over the whole existing catalog. Whether 32 feeds into 18's criteria or stays a separate audit tool isn't decided.
 - Story 35's data (artist/title/release_year triples, sourced from MusicBrainz/Discogs/Wikidata, all CC0) doesn't include anything sourced from the YouTube API, so it doesn't carry the redistribution risk a YouTube-link-inclusive version would have. Worth a final confirmation read of YouTube's terms before shipping regardless, since the catalog's provenance mixes sources.
+- How much typo tolerance an in-round artist/title guess gets before counting as correct (see `GAME_DESIGN.md`'s Earning tokens section) is undecided, needs testing to balance against false positives. Distinct from story 18's song-verification criteria, this is about matching a player's guess text during a round, not about trusting a submitted song's metadata.
 
 ## Resolved questions
 
