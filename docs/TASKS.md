@@ -94,6 +94,10 @@ Not yet checked against real code, no group model exists. Draft, based on `ARCHI
 - [ ] Add a frontend surface showing similar songs, for example on a song's detail view
 - [ ] Coordinate with story 16 to avoid embedding the same artist/title text twice under two separate pipelines
 
+Tests:
+- [ ] Unit tests for the cosine-similarity query (mocked embeddings): known-similar pairs rank above known-dissimilar pairs
+- [ ] Integration test: the similar-songs endpoint returns results for a song with existing embeddings
+
 ## Story 29: Content-based song recommender
 
 Blocked on an unresolved open question (`PROJECT_STATE.md`): the audio-feature data source isn't chosen. Spotify was suggested and rejected, not approved as the source. This blocks everything below it; the rest of this story's shape is drafted, but can't start until a source is chosen and reviewed.
@@ -116,6 +120,10 @@ Blocked on enough real usage data existing (`PROJECT_STATE.md`), and on story 10
 - [ ] Define the initial event schema (games played, session length) for story 34 to write to
 - [ ] Decide a retention policy
 
+Tests:
+- [ ] Integration test: an event write to the new store doesn't touch or block the transactional database
+- [ ] Unit test for the retention policy's cleanup logic
+
 ## Story 34: First-party usage analytics
 
 Depends on story 33's store existing.
@@ -123,3 +131,7 @@ Depends on story 33's store existing.
 - [ ] Instrument game session start/end (story 10) and login events to write to the analytics store
 - [ ] Build a simple internal dashboard or query surface over the collected events
 - [ ] No third-party trackers, matches this story's own scope and the "First-party usage analytics" framing
+
+Tests:
+- [ ] Integration test: a game session start/end and a login each produce the expected event in the analytics store
+- [ ] Integration test: the dashboard/query surface returns correct aggregates for known event data
