@@ -10,33 +10,6 @@ Story 9 and story 12 were checked against the real code and confirmed blocked: b
 
 "Next available task" means the earliest unchecked box under a Ready or In Progress story.
 
-## Backlog audit against the real codebase
-
-Every story below with draft tasks was drafted in a large batch from a single early codebase-mapping pass, then refined through design conversation, not re-verified individually against live code the way stories 10, 11, and 39 originally were before going Ready. This audit goes through each one, checkbox by checkbox, confirms it against the current code, fixes anything wrong or missing, and only then flips the story to Ready in `PROJECT_STATE.md`.
-
-- [x] Story 9
-- [x] Story 12
-- [x] Story 13
-- [ ] Story 14
-- [ ] Story 15
-- [ ] Story 16
-- [ ] Story 17
-- [ ] Story 19
-- [ ] Story 22
-- [ ] Story 23
-- [ ] Story 24
-- [ ] Story 25
-- [ ] Story 26
-- [ ] Story 27
-- [ ] Story 30
-- [ ] Story 32
-- [ ] Story 33
-- [ ] Story 34
-- [ ] Story 35
-- [x] Story 36
-- [ ] Story 37
-- [ ] Story 38
-
 ## Story 9: DJ real YouTube link-out
 
 Confirmed against the real code: there's no DJ view, no group, no session concept, and no WebSocket layer today, so this is new work, not a removal. The QR code task was split out and done separately, see `ARCHIVE.md`'s Bug fixes entry. Blocked on story 39 (group), story 10 (game session), and story 11 (WebSocket sync).
@@ -188,7 +161,8 @@ Theme side, from story 21: depends on story 14's catalog search existing, the ag
 
 - [ ] Add a `SongDifficulty` aggregate view or table: per-song correct-guess percentage across all historical guesses, updated as new rounds complete
 - [ ] Add group-level difficulty scoring for "easy": the lowest individual predicted score among the group's actual players, not the average, so the least experienced player is protected rather than left behind by a group average that looks easy on paper
-- [ ] Add group-level difficulty scoring for "medium" and "hard": a plain average across the group's players for both, no floor to protect, medium and hard are both opt-in past the easy default
+- [ ] Add group-level difficulty scoring for "hard": a plain average across the group's players, no floor to protect, opt-in past the easy default
+- [ ] Decide and add group-level difficulty scoring for "medium": `DECISIONS.md`'s story 30 entry only settles easy (lowest individual score) and hard (plain average); medium's formula isn't decided, don't assume it matches hard's
 - [ ] Add genre/popularity fields to `Song` if story 23's reconciliation doesn't already cover them, today's `Song` has no genre field, only a single `songTag` enum, needed for theme matching
 - [ ] Build the theme-matching flow: theme request → catalog search (story 14) → metadata pipeline calls to fill any gaps in genre/popularity data for candidate songs
 - [ ] Add the on-the-spot generation endpoint: given a group, an optional theme, an optional difficulty tier, and a target card count, score the full verified catalog for the group's actual players (blending personalized predictions where available with the aggregate baseline for first-time players), filter to whichever criteria were given, return enough songs with headroom above the win-condition card count so a session doesn't run out or repeat
@@ -217,10 +191,10 @@ Tests:
 
 ## Story 34: First-party usage analytics
 
-Depends on story 33's store existing. Event scope is deliberately count/aggregate-based, not behavioral click-tracking: usage stats for the project's own understanding (games played, session length, playlists created, songs submitted, login activity), and abuse-visibility signals that turn existing enforcement into something reviewable (rate-limit-exceeded events from stories 13/27, report submissions from story 17, failed login attempts), not a new detection mechanism of its own.
+Depends on story 33's store existing, and also on the events it instruments actually existing: story 10 (game session, no `GameSession` model exists yet), story 17 (reports, no `SongReport` entity exists yet), and story 27 (rate limiting, only a narrow one-in-flight-request-per-user concurrency gate exists today on `/api/metadata/song`, not the general per-user/per-IP time-window limiter this depends on for login/register or other endpoints). Login and playlist-creation events can be instrumented once story 33 lands, independent of the others. Event scope is deliberately count/aggregate-based, not behavioral click-tracking: usage stats for the project's own understanding (games played, session length, playlists created, songs submitted, login activity), and abuse-visibility signals that turn existing enforcement into something reviewable (rate-limit-exceeded events from stories 13/27, report submissions from story 17, failed login attempts), not a new detection mechanism of its own.
 
-- [ ] Instrument game session start/end (with the per-game summary), login, playlist creation, and song submission events to write to the analytics store
-- [ ] Instrument rate-limit-exceeded, report-submitted, and failed-login-attempt events, for abuse visibility, not enforcement, stories 13/27/17 already enforce
+- [ ] Instrument game session start/end (with the per-game summary), login, playlist creation, and song submission events to write to the analytics store; the game-session half depends on story 10, the rest can start once story 33 lands
+- [ ] Instrument rate-limit-exceeded, report-submitted, and failed-login-attempt events, for abuse visibility, not enforcement; depends on stories 13/27/17 actually shipping their enforcement first, none of which exist yet
 - [ ] Build a simple internal dashboard or query surface over the collected events, including a simple way to flag a user who's crossed a rate-limit or report threshold repeatedly
 - [ ] Build a per-user game history page in the frontend, querying the current user's own game-summary events from the analytics store; the transactional `GameSession`/`Round`/`Guess` rows still purge exactly as story 10 already specifies, this reads only from the separate analytics store
 - [ ] No third-party trackers, matches this story's own scope and the "First-party usage analytics" framing
@@ -235,14 +209,15 @@ Tests:
 Checked against real code: `Song.playlist` is a required singular `@ManyToOne`, one song belongs to exactly one playlist today. Touches the same table as story 23; sequencing or combining the two migrations avoids two separate schema changes to `Song`.
 
 - [ ] Introduce a join table between `Song` and `Playlist`, replacing the singular `@ManyToOne playlist` on `Song`
+- [ ] Rewrite `Playlist.songs`'s `@OneToMany(mappedBy = "playlist", cascade = CascadeType.ALL, orphanRemoval = true)` relation and its `addSong`/`removeSong` helpers, both of which assume the singular back-reference (`song.setPlaylist(this)`/`song.setPlaylist(null)`) that a join table removes
 - [ ] Migrate existing data: each song's current single playlist link becomes one row in the new join table
-- [ ] Update `PlaylistService`'s `checkPlaylistAccess` and `checkSongBelongsToPlaylist`, both currently assume one song belongs to exactly one playlist
-- [ ] Decide song deletion semantics once a song isn't playlist-exclusive: does removing a song from one playlist delete it outright, or only unlink it? `PlaylistController`'s current delete-song endpoint assumes deletion
-- [ ] Update `SongDTO`/`PlaylistDetailDTO` and the frontend to reflect a song appearing in multiple playlists
+- [ ] Update `PlaylistService`'s `checkSongBelongsToPlaylist`, which currently assumes one song belongs to exactly one playlist; `checkPlaylistAccess` doesn't need changing, it checks playlist-user membership and doesn't touch the song relation
+- [ ] Decide song deletion semantics once a song isn't playlist-exclusive: does removing a song from one playlist delete it outright, or only unlink it? `PlaylistController`'s current delete-song endpoint, via `Playlist.removeSong` and `orphanRemoval = true`, does a real delete today
+- [ ] Update `SongDTO`/`PlaylistDetailDTO`, `PlaylistMapper.toDetailDTO` (the code path that assembles a playlist's song list), and the frontend to reflect a song appearing in multiple playlists
 - [ ] Coordinate with story 23 (schema reconciliation), both touch `Song`'s shape
 
 Tests:
-- [ ] Unit tests for `checkPlaylistAccess` and `checkSongBelongsToPlaylist` against the new many-to-many relation
+- [ ] Unit tests for `checkSongBelongsToPlaylist` against the new many-to-many relation, plus a regression check that `checkPlaylistAccess` is unaffected
 - [ ] Integration test: migrating existing data preserves each song's original playlist link
 - [ ] Integration test: a song in multiple playlists behaves correctly for access checks and the decided deletion semantics
 
@@ -295,7 +270,7 @@ Depends on story 19 for the admin review surface, and references story 18's stil
 
 - [ ] Add a `SongReport` entity (reporter, song, message, suggested correct year, sources, status)
 - [ ] `POST` endpoint to submit a report, available to any authenticated user who can view the song
-- [ ] Add a report button to the song view/edit UI, no report UI exists today
+- [ ] Add a report button to the song detail page (`SongForm.tsx`), which has no report affordance today
 - [ ] Admin review surface to see open reports (needs story 19's admin role)
 - [ ] What a submitted report should do to `verificationStatus` is a story 18 dependency, currently undecided, don't invent behavior here
 
@@ -312,7 +287,7 @@ Still an open design question (see `PROJECT_STATE.md`'s open questions): whether
 Whether this feeds into story 18's verification criteria or stays a separate audit tool is still an open question (`PROJECT_STATE.md`); built here as a standalone flagging tool, integration with verification is a later decision.
 
 - [ ] Add a scheduled job runner: no `@Scheduled` usage or scheduling dependency exists anywhere in the backend today, `@EnableScheduling` isn't declared
-- [ ] Add a periodic pass over the catalog, calling the AI microservice with an LLM-as-judge prompt to flag likely duplicate or mislabeled entries
+- [ ] Add a periodic pass over the catalog, calling the AI microservice with an LLM-as-judge prompt to flag likely duplicate or mislabeled entries; the AI microservice has only one route today (`POST /metadata/resolve`, single YouTube URL in, one song's metadata out), so this needs a brand new batch/judge endpoint, not an extension of the existing one
 - [ ] Surface flagged results on a reviewable surface (needs story 19's admin role)
 
 Tests:
@@ -325,7 +300,7 @@ Checked against real code: `_gather_all_metadata` calls its sources sequentially
 
 - [ ] Convert the source fetch functions to async, using `httpx.AsyncClient`
 - [ ] Run the parallel-eligible sources concurrently with `asyncio.gather` in `_gather_all_metadata`
-- [ ] Parallelizing today's stubbed MusicBrainz/Wikipedia/Genius calls is wasted work, since the resolved source set is MusicBrainz, Discogs, and Wikidata (`PROJECT_STATE.md`); wait until the real three sources exist (Discogs via story 25, MusicBrainz/Wikidata still undecided) before parallelizing, rather than the current four
+- [ ] Parallelizing today's stubbed MusicBrainz/Wikipedia/Genius calls is wasted work, since the resolved source set is MusicBrainz, Discogs, and Wikidata (`PROJECT_STATE.md`); wait until the real three sources are actually implemented (Discogs via story 25, MusicBrainz un-stubbed, Wikidata built, none done yet) before parallelizing, rather than the current four stubbed/live sources
 - [ ] Add a per-source timeout so one slow source doesn't block the whole gather
 
 Tests:
@@ -370,11 +345,11 @@ Two parts of the target shape are genuinely undecided, not just unconfirmed agai
 
 - [ ] Introduce Flyway as the schema migration tool
 - [ ] Add a `verificationStatus` field, `UNVERIFIED`/`VERIFIED` as a placeholder pair pending story 18
-- [ ] Persist `confidence` on `Song`, depends on the `SongMetadataResponse` fix below existing first
+- [ ] Persist `confidence` on `Song`, depends on the `SongMetadataResponse` fix in this file's Bug fixes section existing first
 - [ ] Persist `metadataRaw`, the full pipeline output, for auditability
-- [ ] Replace the single `songTag` enum with a multi-value `tags` relation
+- [ ] Replace the single `songTag` enum with a multi-value `tags` relation, and update `SongMapper`'s default-to-`NONE` behavior in `toDTO`/`toEntity`, which won't map cleanly onto "no tags" vs. a tag literally named `NONE` once it's a collection
 - [ ] Data migration for existing rows: default `verificationStatus`
-- [ ] Update `SongDTO`, `CreateSongRequest`, `UpdateSongRequest`, and regenerate the frontend's orval client and song forms for the new shape
+- [ ] Update `SongDTO`, `CreateSongRequest`, `UpdateSongRequest`, `SongMapper`, and regenerate the frontend's orval client and song forms for the new shape
 
 Tests:
 - [ ] Unit tests for the data migration: `verificationStatus` defaulted correctly for existing rows
@@ -385,6 +360,7 @@ Tests:
 No story required for these. Fix on a `fix` branch.
 
 - [ ] `SongMetadataResponse` (Java) silently drops the AI microservice's `confidence`, `source`, and `reasoning` fields: `SongMetadataResult` (Python) computes and returns all three today, but the Java record deserializing that response only declares `title/artist/releaseYear/gradientColor1/gradientColor2`, so the other three are read off the wire and discarded on every metadata call. Extend the record to keep them.
+- [ ] `DELETE /me` (`UserService.deleteUser()`) throws an unhandled `DataIntegrityViolationException` for any user who has ever added a song: `Song.addedBy` (`Song.java:41-43`) is a non-nullable `@ManyToOne` with no inverse mapping on `User` and no cascade rule, so the FK Hibernate generates under `ddl-auto=update` has no `ON DELETE` clause. It also orphans a playlist when the deleting user is its last remaining member: unlike `leavePlaylist()` (`UserService.java`), which deletes a playlist once `getUserCount() == 0`, `deleteUser()` has no equivalent check.
 
 ## Story 22: Test coverage
 
@@ -427,12 +403,12 @@ Tests:
 
 ## Story 37: Privacy policy, terms of service, and GDPR compliance
 
-Checked against real code: `DELETE /me` (`UserController` → `UserService.deleteUser()`) already does a real hard delete of the `User` row, not a deactivation, but hasn't been checked for what happens to `Song.addedBy` references or shared playlists on deletion. No analytics exist yet (story 34), so there's nothing to disclose there until it ships.
+Checked against real code: `DELETE /me` (`UserController` → `UserService.deleteUser()`) already does a real hard delete of the `User` row, not a deactivation. It's not just unaudited for `Song.addedBy` references and shared playlists, both are confirmed live bugs, see this file's Bug fixes section. No analytics exist yet (story 34), so there's nothing to disclose there until it ships.
 
 - [ ] Draft a privacy policy covering what's actually collected today: auth data (username, email, OAuth provider ID), playlist/song data
 - [ ] Draft terms of service
-- [ ] Add a GDPR data-export endpoint: a logged-in user can download their own account, playlist, and song data
-- [ ] Audit and harden the existing `DELETE /me` flow for `Song.addedBy` references and shared-playlist edge cases, so account deletion doesn't leave orphaned references or unexpectedly delete other members' shared playlists
+- [ ] Add a GDPR data-export endpoint: a logged-in user can download their own account, playlist, and song data; `ExportController`/`ExportService` exist today but export playlist/song content, not a full personal-data dump, don't assume they already cover this
+- [ ] Fix the `DELETE /me` bug in this file's Bug fixes section (FK violation on `Song.addedBy`, orphaned playlists on last-member deletion), then confirm no other edge case leaves orphaned references or unexpectedly deletes other members' shared playlists
 - [ ] Add a cookie/consent notice, only needed once story 34 (first-party analytics) ships; skip until then since no third-party trackers are planned
 
 Tests:

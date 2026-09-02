@@ -106,3 +106,30 @@ No story required for these. Chore branch.
 No story required for these. Docs branch.
 
 - [x] Replace the em dash in every doc file's H1 title (`# FILE.md — Description`) and in `TASKS.md`'s `## Story N — Name` headings with a colon, the writing-style rule against em dashes applies to every markdown file in the repo and these headers are the only place it had slipped through.
+
+## Backlog audit against the real codebase
+
+Every story below with draft tasks was drafted in a large batch from a single early codebase-mapping pass, then refined through design conversation, not re-verified individually against live code the way stories 10, 11, and 39 originally were before going Ready. This audit goes through each one, checkbox by checkbox, confirms it against the current code, fixes anything wrong or missing, and only then flips the story to Ready in `PROJECT_STATE.md`.
+
+- [x] Story 9
+- [x] Story 12
+- [x] Story 13
+- [x] Story 14
+- [x] Story 15
+- [x] Story 16
+- [x] Story 17
+- [x] Story 19
+- [x] Story 22
+- [x] Story 23
+- [x] Story 24
+- [x] Story 25
+- [x] Story 26
+- [x] Story 27
+- [x] Story 30
+- [x] Story 32
+- [x] Story 33
+- [x] Story 34
+- [x] Story 35
+- [x] Story 36
+- [x] Story 37
+- [x] Story 38
