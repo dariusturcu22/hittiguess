@@ -10,6 +10,33 @@ Story 9 and story 12 were checked against the real code and confirmed blocked: b
 
 "Next available task" means the earliest unchecked box under a Ready or In Progress story.
 
+## Backlog audit against the real codebase
+
+Every story below with draft tasks was drafted in a large batch from a single early codebase-mapping pass, then refined through design conversation, not re-verified individually against live code the way stories 10, 11, and 39 originally were before going Ready. This audit goes through each one, checkbox by checkbox, confirms it against the current code, fixes anything wrong or missing, and only then flips the story to Ready in `PROJECT_STATE.md`.
+
+- [ ] Story 9
+- [ ] Story 12
+- [ ] Story 13
+- [ ] Story 14
+- [ ] Story 15
+- [ ] Story 16
+- [ ] Story 17
+- [ ] Story 19
+- [ ] Story 22
+- [ ] Story 23
+- [ ] Story 24
+- [ ] Story 25
+- [ ] Story 26
+- [ ] Story 27
+- [ ] Story 30
+- [ ] Story 32
+- [ ] Story 33
+- [ ] Story 34
+- [ ] Story 35
+- [ ] Story 36
+- [ ] Story 37
+- [ ] Story 38
+
 ## Story 9: DJ real YouTube link-out
 
 Confirmed against the real code: there's no DJ view, no group, no session concept, and no WebSocket layer today, so this is new work, not a removal. The QR code task was split out and done separately, see `ARCHIVE.md`'s Bug fixes entry. Blocked on story 39 (group), story 10 (game session), and story 11 (WebSocket sync).
