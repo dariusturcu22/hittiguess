@@ -147,31 +147,36 @@ Was: a "similar songs" feature using text embeddings over song title and artist.
 
 Researched directly rather than left open: AcousticBrainz, the obvious free option, shut down its live API and submission pipeline in February 2022; only a frozen dataset remains, dated June 2022, with coverage skewed toward mainstream music already analyzed before the shutdown, exactly the opposite of the niche/underground coverage this project cares about. Self-hosting Essentia (the toolkit AcousticBrainz itself used) would work on any song, but needs the actual audio file, and the only way to get that for a YouTube-sourced song is unofficial downloading, which violates `CLAUDE.md`'s non-negotiable official-APIs-only rule and the DJ-link-out architecture built specifically to avoid touching YouTube's media stream. Paid catalog APIs (Apple Music at $99/year, various smaller commercial ones) are real ongoing cost for a nice-to-have feature and still don't reliably cover niche YouTube-only tracks. No option clears the bar. Dropped rather than left blocked indefinitely.
 
-## Story 30: Difficulty-tuned game session generation
+## Story 30: Difficulty-tuned, theme-aware game session generation
 
-Redefined from a generic "collaborative filtering recommendations" idea into a concrete feature: generating a game session's card set tuned to a chosen difficulty (easy/medium/hard) for the actual players in the group, instead of only playing from an admin-picked playlist. Absorbs story 21's "assemble a card set" mechanics; difficulty becomes one more selection criterion alongside theme, not a separate system. Story 21's theme-search and metadata-pipeline-gap-filling tasks stay as written there.
+Redefined from a generic "collaborative filtering recommendations" idea into a concrete feature, and consolidates story 21 (auto-generated featured playlists) into it rather than keeping two stories doing adjacent "assemble a card set" work. Generates a game session's card set on the spot from a theme request, a difficulty tier (easy/medium/hard), or both together, scored against the actual players in the group, instead of only playing from an admin-picked playlist.
 
-Two tiers, so this works from day one rather than waiting months for enough data:
+Two tiers for difficulty, so this works from day one rather than waiting months for enough data:
 - A per-song aggregate difficulty score (percentage of all guesses on that song that were correct, across everyone) works immediately, even with a handful of plays per song, and covers first-time players with no personal history.
 - A personalized layer (collaborative filtering: for a given player and song, predict correct-or-not and roughly how fast, learned from patterns across all players and songs, same technique Netflix-style recommenders use, applied to interaction outcomes instead of ratings) only adds value once there's enough per-player history to beat the aggregate baseline. Depends on story 10 shipping and real rounds accumulating; realistically months of casual play before the personalized layer clearly outperforms the simple aggregate at this project's 100-200 user scale, see `PROJECT_STATE.md`.
 
 Inference is cheap and local: scoring the whole catalog against a specific group's players is a small numeric comparison per song, no external API call, runs in well under a second even for a full catalog, unlike the metadata pipeline which costs money per call. The only real cost is periodic retraining, a scheduled batch job, cheap at this data scale.
 
+Theme side, from story 21: depends on story 14's catalog search existing, the agent needs to query the catalog by theme/keyword. What "validated" means for a theme-generated set depends on story 18's verification criteria, currently undecided, don't invent a threshold; for now, generated sets draw from verified songs only, same as any other selection.
+
 - [ ] Add a `SongDifficulty` aggregate view or table: per-song correct-guess percentage across all historical guesses, updated as new rounds complete
 - [ ] Add group-level difficulty scoring for "easy": the lowest individual predicted score among the group's actual players, not the average, so the least experienced player is protected rather than left behind by a group average that looks easy on paper
 - [ ] Add group-level difficulty scoring for "medium" and "hard": a plain average across the group's players for both, no floor to protect, medium and hard are both opt-in past the easy default
-- [ ] Add the on-the-spot generation endpoint: given a group, a difficulty tier, and a target card count, score the full verified catalog for the group's actual players (blending personalized predictions where available with the aggregate baseline for first-time players), filter to the requested tier, return enough songs with headroom above the win-condition card count so a session doesn't run out or repeat
+- [ ] Add genre/popularity fields to `Song` if story 23's reconciliation doesn't already cover them, today's `Song` has no genre field, only a single `songTag` enum, needed for theme matching
+- [ ] Build the theme-matching flow: theme request → catalog search (story 14) → metadata pipeline calls to fill any gaps in genre/popularity data for candidate songs
+- [ ] Add the on-the-spot generation endpoint: given a group, an optional theme, an optional difficulty tier, and a target card count, score the full verified catalog for the group's actual players (blending personalized predictions where available with the aggregate baseline for first-time players), filter to whichever criteria were given, return enough songs with headroom above the win-condition card count so a session doesn't run out or repeat
 - [ ] Train the personalized collaborative-filtering model on accumulated `Guess` data (story 10) once there's enough of it to evaluate
 - [ ] Add a scheduled retraining job for the personalized model
 - [ ] Add a monitoring check comparing the personalized model's prediction accuracy against the simple aggregate baseline; if the personalized model stops beating the baseline, that's the signal it's stale and needs retraining, not just a fixed schedule
-- [ ] Add the frontend: a difficulty selector (easy/medium/hard) alongside story 21's theme request, generating the session's card set from the combined criteria
+- [ ] Add the frontend: a theme request field and a difficulty selector (easy/medium/hard), either or both, plus a review step to inspect and confirm the generated set before saving
 
 Tests:
 - [ ] Unit tests for the aggregate difficulty score calculation
 - [ ] Unit tests for both group-scoring strategies (worst-case-protected for easy, average for hard), including groups with a mix of experienced and first-time players
 - [ ] Unit tests for the personalized model's predictions against a held-out set of real guesses
-- [ ] Integration test: on-the-spot generation for a full-sized group (up to 8 players) returns a scored, filtered card set in well under a second
+- [ ] Integration test: on-the-spot generation for a full-sized group (up to 8 players) returns a scored, filtered card set in well under a second, for theme, difficulty, and both together
 - [ ] Integration test: the retraining job runs and the monitoring check correctly flags a model that's stopped beating the baseline
+- [ ] Frontend test: the review UI lets a user inspect and confirm the generated set before saving
 
 ## Story 33: Analytics data store
 
@@ -429,3 +434,17 @@ Tests:
 - [ ] Integration test: Actuator health endpoint reports correctly both when healthy and when a dependency (the database) is down
 - [ ] Integration test: a request-id set on an incoming request propagates through a core-service-to-AI-service call, appears in both services' logs, and correlates with a single OpenTelemetry trace
 - [ ] Integration test: a metrics scrape and a log line both actually reach Grafana Cloud in a real (non-mocked) call
+
+## Story 35: Public ground-truth data API
+
+The final YouTube-terms confirmation read stays an open question (`PROJECT_STATE.md`), kept open deliberately; the build itself isn't blocked on it since the story's actual output data doesn't include anything YouTube-sourced, so it's placed as the last task before shipping rather than before starting.
+
+- [ ] Add a public read-only endpoint exposing verified `(artist, title, release_year)` triples only, no YouTube-sourced fields
+- [ ] Filter to verified songs only, depends on story 23's `verificationStatus` field existing
+- [ ] Add pagination and rate limiting for public consumption (coordinate with story 27)
+- [ ] Final confirmation read of YouTube's terms before shipping, since the catalog's overall provenance mixes sources even though this endpoint's own data doesn't include anything YouTube-sourced
+
+Tests:
+- [ ] Integration test: the endpoint returns only verified songs, unverified songs never appear
+- [ ] Integration test: no YouTube-sourced field (`youtubeId` or anything derived from it) appears in the response shape
+- [ ] Unit tests for pagination and the rate limit, including boundary values

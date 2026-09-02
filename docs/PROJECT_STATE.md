@@ -11,6 +11,7 @@ This file is the backlog. Every planned or completed piece of functionality is a
 - In Progress: actively being worked on.
 - Needs Definition: confirmed as wanted, tasks may exist as a draft, but not yet checked against the real code.
 - Dropped: considered and explicitly rejected, distinct from Needs Definition, which just means not yet gotten to.
+- Consolidated: merged into another story's tasks rather than kept as its own, see the story it points to.
 
 A story can have draft tasks written against it in TASKS.md while still marked Needs Definition. That alone doesn't unlock work. A story only becomes Ready once those tasks are confirmed accurate against the real codebase.
 
@@ -32,7 +33,7 @@ A story can have draft tasks written against it in TASKS.md while still marked N
 | 18 | Criteria for promoting a reported or newly submitted song to verified | Backend | Needs Definition |
 | 19 | Admin bulk song import | Backend | Needs Definition, draft tasks exist |
 | 20 | Local LLM option for lower-cost bulk metadata processing | AI | Needs Definition, model/technique choice needs a separate exploration pass first |
-| 21 | Auto-generated featured playlists: an agent takes a themed request (for example "90s rock"), searches the catalog, calls the metadata pipeline, and assembles a validated card set from extracted song metadata (genre, popularity, similar signals) | Backend / AI | Needs Definition |
+| 21 | Auto-generated featured playlists: consolidated into story 30, see there for its card-assembly tasks | Backend / AI | Consolidated into story 30 |
 | 22 | Test coverage for existing and new functionality | Quality | Needs Definition, draft tasks exist |
 | 23 | Song schema reconciliation against the current implementation | Backend | Needs Definition, draft tasks exist |
 | 24 | Parallelize metadata pipeline fetches across sources | Backend / AI | Needs Definition, draft tasks exist |
@@ -46,7 +47,7 @@ A story can have draft tasks written against it in TASKS.md while still marked N
 | 32 | LLM-as-judge catalog audit: periodic pass over the existing catalog flagging likely duplicate or mislabeled songs | Backend / AI | Needs Definition, draft tasks exist |
 | 33 | Analytics data store: separate append-heavy store for usage/event data (games played, session length), apart from the transactional Postgres database | Infra | Needs Definition, draft tasks exist |
 | 34 | First-party usage analytics: track games played and session length through a self-hosted or custom event pipeline, no third-party trackers | Backend / Frontend | Needs Definition, draft tasks exist, confirmed blocked on story 33 |
-| 35 | Public ground-truth data API: verified `(artist, title, release_year)` triples only, no YouTube links or unverified entries | Backend | Needs Definition |
+| 35 | Public ground-truth data API: verified `(artist, title, release_year)` triples only, no YouTube links or unverified entries | Backend | Needs Definition, draft tasks exist |
 | 36 | Open-source collaboration readiness: `CONTRIBUTING.md`, `LICENSE`, `CODE_OF_CONDUCT.md`, issue/PR templates | Docs / Community | Needs Definition, draft tasks exist |
 | 37 | Privacy policy, terms of service, and GDPR compliance | Legal / Compliance | Needs Definition, draft tasks exist |
 | 38 | Observability: error tracking and monitoring | Infra / Quality | Needs Definition, draft tasks exist |
