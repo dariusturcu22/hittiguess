@@ -31,7 +31,7 @@ A story can have draft tasks written against it in TASKS.md while still marked N
 | 16 | pgvector-based duplicate detection before running the metadata pipeline | Backend / AI | Ready |
 | 17 | Community song reports: report button, message, correct year, sources | Frontend / Backend | Ready, admin review surface additionally needs story 19's admin role, not yet built |
 | 18 | Criteria for promoting a reported or newly submitted song to verified | Backend | Needs Definition |
-| 19 | Admin bulk song import | Backend | Ready |
+| 19 | Admin bulk song import | Backend | Consolidated into story 40 |
 | 20 | Local LLM option for lower-cost bulk metadata processing | AI | Needs Definition, model/technique choice needs a separate exploration pass first |
 | 21 | Auto-generated featured playlists: consolidated into story 30, see there for its card-assembly tasks | Backend / AI | Consolidated into story 30 |
 | 22 | Test coverage for existing and new functionality | Quality | Ready |
@@ -52,10 +52,13 @@ A story can have draft tasks written against it in TASKS.md while still marked N
 | 37 | Privacy policy, terms of service, and GDPR compliance | Legal / Compliance | Ready |
 | 38 | Observability: error tracking and monitoring | Infra / Quality | Ready |
 | 39 | Group: persistent lobby a game session lives inside, invite-link membership, admin role, live-synced settings, chat and voice from creation, timer-based lifecycle | Game | Ready |
+| 40 | Catalog seeding queue (admin, patient, backlog-based) and user-facing bulk import (any user, immediate), absorbs story 19 | Backend / AI | Needs Definition, draft tasks exist, blocked on story 20 (LLM tier choice), story 23 (schema), and the metadata-sourcing spike's real implementation landing |
+| 41 | Submission content safety: reject non-music and compilation submissions, defend LLM-facing steps against prompt injection in untrusted YouTube text | Backend / AI | Needs Definition, draft tasks exist, applies to every submission path, not just story 40, blocked on the same metadata-sourcing spike implementation |
 
 ## Open questions
 
 - Flutter app: keep, repurpose, or drop? Must follow the same real-link-out rule as the rest of the product in the meantime, no exceptions.
+- Future idea, not yet a story: once story 34's abuse-visibility events (rate-limit-exceeded, report-submitted, and now story 41's flagged-injection-attempt) accumulate real data, a user-moderation feature (warnings, bans) based on a pattern of that behavior over time. Deliberately not scoped now, noted so it isn't lost.
 - Metadata source API usage: resolved. Source set is MusicBrainz, Discogs, and Wikidata; Genius, Last.fm, and live Wikipedia search were reviewed and dropped rather than fixed (see `docs/DECISIONS.md`).
 - Story 30's personalized difficulty layer needs real interaction data to beat its own aggregate baseline; the aggregate baseline itself works as soon as story 10 ships and rounds start accumulating `Guess` rows, without needing months of data the way the collaborative-filtering enhancement does, but neither exists until story 10's `Guess` entity does. Likely won't clearly beat the baseline at the 100-200 user target scale until real usage accumulates over months of casual play.
 - Story 30: medium-difficulty group scoring formula is undecided. `DECISIONS.md`'s story 30 entry settles easy (the group's lowest individual predicted score) and hard (a plain average), but never states medium's, don't assume it matches hard's.

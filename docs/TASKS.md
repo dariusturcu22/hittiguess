@@ -264,6 +264,64 @@ Tests:
 - [ ] Unit tests for the admin-only access check, including a non-admin request rejected
 - [ ] Integration test: bulk import processes multiple rows and reports per-row success/failure
 
+Consolidated into story 40, which redefines bulk import as two separate paths (a slow admin backlog queue, and immediate on-the-spot resolution for any user) rather than one CSV/JSON endpoint. The `ADMIN` role and access-check prerequisite noted above still applies to story 40's admin-only backlog endpoints.
+
+## Story 40: Catalog seeding queue and user-facing bulk import
+
+Checked against real code: `Song` has a single `youtubeId` field and no lookup query for it, `SongRepository` has zero custom query methods. No `@Scheduled` usage or scheduling dependency exists anywhere in the backend (confirmed during story 32's audit), `@EnableScheduling` isn't declared. Absorbs story 19's admin bulk-import scope, redefined as two genuinely separate mechanisms, not one:
+
+- **Admin catalog seeding**: the admin (today, the sole developer) submits large batches of YouTube playlists or IDs to grow the catalog proactively, especially popular songs. This is patient, a multi-day backlog is fine, its whole point is reducing how often a normal user's own request needs to resolve a new song at all.
+- **User on-the-spot bulk import**: any user submitting their own YouTube playlist or a list of video IDs needs those songs resolved immediately, even if some of them happen to already be sitting in the admin's backlog awaiting their scheduled turn. The two never share a queue; a song in both places gets resolved twice if the timing lines up that way, that's fine, on-the-spot always wins on priority.
+
+Both paths depend on the same cheap first step: checking submitted YouTube IDs against the database before anything else happens. Both also depend on story 20's LLM choice for the admin backlog's scheduled drain (needs a daily quota to pace against) and on the metadata-sourcing spike's real implementation (`musicbrainz.py`, `wikidata.py`) actually existing, not just validated in `ai/spikes/`.
+
+Two things intentionally left undecided here, not assumed:
+- Which LLM tier an on-the-spot user request uses when the song isn't already in the database: always the existing paid OpenAI client (simplest, guaranteed available), or try the cheap/free tier first if that day's quota isn't exhausted by the admin backlog, falling back to paid only then. Depends on story 20's outcome.
+- Exactly how the alternate-YouTube-ID-to-Song mapping interacts with story 16's pgvector near-duplicate detection: this story's YouTube-ID check is a cheap, exact, pre-pipeline step; story 16's embedding check is a fallback for when the ID is genuinely new but the song might not be, both still apply, the sequencing between them (ID check, then embedding check, then full pipeline) needs confirming once story 16 actually exists.
+
+- [ ] Add a table mapping alternate YouTube video IDs to an existing `Song` (many YouTube IDs to one canonical song), separate from `Song`'s own primary `youtubeId`, so a different upload of an already-known track (a lyric video, a Topic-channel version, a re-upload) doesn't create a duplicate `Song` row or re-run the pipeline
+- [ ] Add a batch YouTube-ID lookup (`SongRepository` needs its first custom query methods for this): given a list of IDs, returns which are already known, checking both `Song.youtubeId` and the new alternate-ID table, no external API calls, this is the shared first step both paths below depend on
+- [ ] Add a `PendingImport` entity: a YouTube ID submitted by the admin for eventual processing, not yet resolved, with its own status (pending, processing, done, failed)
+- [ ] Add an admin-only endpoint to bulk-enqueue YouTube IDs (from a playlist link or a raw ID list) into the backlog, running the batch lookup first so already-known songs never get enqueued at all
+- [ ] Add a scheduled job that drains the backlog daily up to whatever the chosen LLM tier's daily free quota is (story 20), running the full metadata pipeline per item and persisting results; this is the first `@Scheduled` usage in the backend
+- [ ] Add an admin view over backlog status: how many pending, how many processed today, quota remaining
+- [ ] Add a bulk-import endpoint open to any user (not admin-only), accepting a YouTube playlist link or a list of video IDs
+- [ ] Run the same batch YouTube-ID lookup first; only unresolved IDs proceed
+- [ ] Any unresolved ID from this path is processed immediately, independent of the admin backlog's schedule, even when the same ID is also sitting in that backlog waiting its turn
+- [ ] Query MusicBrainz and Wikidata first with the title/channel-derived artist (per the existing metadata-sourcing spike's design); if both return zero matches, that's the trigger for an LLM extraction pass over the raw title, channel, and description, not a subjective "does this channel look like an artist" judgment, then retry the same source queries with the corrected artist
+- [ ] If the retry also comes up empty, route to manual review rather than guessing, title and artist need to be verified correct, never a confidence score the way the release year gets one
+- [ ] Coordinate with story 23: `metadataRaw` should persist the curated, actually-used subset of each source's response, not the full raw API response, Wikidata's own entity dumps alone ran into the tens of KB per song during this spike's testing; at that size the 500MB Supabase free-tier cap holds roughly 10,000-50,000 songs instead of 170,000+ with a curated version
+
+Tests:
+- [ ] Unit tests for the batch YouTube-ID lookup, including a mix of known, alternate-mapped, and unknown IDs in one batch
+- [ ] Unit tests for the alternate-YouTube-ID-to-`Song` mapping
+- [ ] Integration test: admin backlog enqueue skips already-known songs, only genuinely new IDs get added
+- [ ] Integration test: the scheduled drain job respects the daily quota and doesn't exceed it
+- [ ] Integration test: a user's on-the-spot request resolves immediately even when the same YouTube ID is also sitting in the admin backlog
+- [ ] Unit tests for the artist/title verification trigger: a zero-match escalates to LLM extraction, a successful retry clears verification, a failed retry routes to manual review rather than auto-approving
+
+## Story 41: Submission content safety, non-music rejection and prompt-injection defense
+
+Checked against real code: `_append_youtube_data` in `prompt.py` already delimits the video description and instructs the LLM to treat it as data, not instructions, the only defense that exists today, and only on the final synthesis call. Applies to every submission path, not just story 40's bulk import, story 40 just raises the exposure by opening submission to any user's arbitrary YouTube content instead of only what's manually added one at a time today.
+
+Two things settled through discussion:
+- Reject compilations outright, even genuinely musical ones, a compilation isn't a single song and has no one correct answer for a round.
+- Precision over recall on the non-music gate: a false reject is a cheap, recoverable resubmit or manual override; a false accept puts non-music content in front of a player mid-game, a worse and more visible failure. This project already holds itself to a "professional-grade, not just working" bar (`DECISIONS.md`).
+
+- [ ] Add a hard pre-pipeline filter, no LLM involved: reject when duration falls outside a generous song-length window (roughly 1-12 minutes) combined with YouTube's own `categoryId` not being Music (10), already-fetched data, no extra API cost
+- [ ] For the ambiguous remainder, non-Music category but song-length duration, add an LLM classification pass (structured output: `is_song`, `is_compilation`, confidence, reasoning) reading title, channel, and description for song-like versus gameplay-like signals
+- [ ] Use a match (or lack of one) against MusicBrainz/Discogs/Wikidata as a secondary signal for this same ambiguous tier, not a standalone gate: a real game-soundtrack track should resolve to an actual catalogued release, resolving to nothing across all three lowers confidence but doesn't reject outright on its own, this project explicitly wants niche/underground coverage, which also won't always resolve
+- [ ] Still-uncertain cases after all of the above route to manual review, not a hard reject, the same "escalate, don't guess" principle already set for artist/title verification
+- [ ] Add a dedicated structured-output prompt-injection check (`contains_injection_attempt`, plus reasoning) run over raw title/channel/description before any extraction or classification LLM call uses that text, separate from relying on the existing delimiting alone to both resist injection and do its actual job
+- [ ] Apply this injection check everywhere untrusted YouTube text reaches an LLM: the existing synthesis call, story 40's artist-extraction fallback, and this story's own classification pass, not just one of the three
+- [x] Decided: a flagged injection attempt writes an abuse-visibility event (story 34's scope, alongside rate-limit-exceeded and report-submitted events), an attempted injection is evidence of intent, not just an uncertain submission, so it's tracked, not silently handled the same as an honestly ambiguous song. Depends on story 34's event pipeline existing. Whether the submission itself is also outright rejected, versus routed to manual review, still needs a call, not yet made
+
+Tests:
+- [ ] Unit tests for the hard duration+category filter, including the boundary values of the song-length window
+- [ ] Unit tests for compilation rejection
+- [ ] Unit tests for the injection-detection check (mocked LLM call): flags known injection patterns, passes clean text through unaffected
+- [ ] Integration test: a submission through any path, single-song or bulk, that fails classification never reaches the full metadata pipeline
+
 ## Story 17: Community song reports
 
 Depends on story 19 for the admin review surface, and references story 18's still-undecided verification criteria without depending on its implementation timeline.
