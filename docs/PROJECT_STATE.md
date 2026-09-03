@@ -53,6 +53,7 @@ A story can have draft tasks written against it in TASKS.md while still marked N
 | 38 | Observability: error tracking and monitoring | Infra / Quality | Ready |
 | 39 | Group: persistent lobby a game session lives inside, invite-link membership, admin role, live-synced settings, chat and voice from creation, timer-based lifecycle | Game | Ready |
 | 40 | Catalog seeding queue (admin, patient, backlog-based) and user-facing bulk import (any user, immediate), absorbs story 19 | Backend / AI | Needs Definition, draft tasks exist, blocked on story 20 (LLM tier choice), story 23 (schema), and the metadata-sourcing spike's real implementation landing |
+| 41 | Submission content safety: reject non-music and compilation submissions, defend LLM-facing steps against prompt injection in untrusted YouTube text | Backend / AI | Needs Definition, draft tasks exist, applies to every submission path, not just story 40, blocked on the same metadata-sourcing spike implementation |
 
 ## Open questions
 
