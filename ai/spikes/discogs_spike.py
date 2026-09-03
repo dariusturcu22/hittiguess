@@ -72,7 +72,7 @@ if __name__ == "__main__":
         print("usage: discogs_spike.py <title> <artist>")
         sys.exit(1)
 
-    title, artist = sys.argv[1], sys.argv[2]
+    _script_path, title, artist = sys.argv
     results = search_release(title, artist)
     releases = results.get("results", [])
     total = results.get("pagination", {}).get("items", len(releases))

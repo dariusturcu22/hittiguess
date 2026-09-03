@@ -28,7 +28,7 @@ from _shared import (
 
 _env = dotenv_values(Path(__file__).resolve().parent.parent / ".env")
 
-RELEASED_ON_PATTERN = re.compile(r"Released on:\s*(\d{4})-\d{2}-\d{2}")
+RELEASED_ON_PATTERN = re.compile(r"Released on:\s*(?P<release_year>\d{4})-\d{2}-\d{2}")
 TOPIC_SUFFIX_PATTERN = re.compile(r"\s*-\s*Topic$")
 
 PLAYLIST_ITEMS_PAGE_SIZE = 50
@@ -63,7 +63,9 @@ def clean_artist(channel_title: str) -> str:
 
 def extract_youtube_released_on(description: str | None) -> int | None:
     match = RELEASED_ON_PATTERN.search(description or "")
-    return int(match.group(1)) if match else None
+    if not match:
+        return None
+    return int(match.group("release_year"))
 
 
 def check_musicbrainz(title: str, artist: str) -> int | None:
@@ -117,7 +119,8 @@ if __name__ == "__main__":
         print("usage: playlist_check.py <playlist_id>")
         sys.exit(1)
 
-    items = fetch_playlist_items(sys.argv[1])
+    _script_path, playlist_id = sys.argv
+    items = fetch_playlist_items(playlist_id)
     print(f"{len(items)} song(s) in playlist\n")
 
     mismatches = []

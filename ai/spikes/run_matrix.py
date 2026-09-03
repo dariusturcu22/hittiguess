@@ -42,7 +42,8 @@ def run_musicbrainz(title: str, artist: str, album: str | None) -> None:
             f"primary-type={best.get('primary-type')} tags={[tag['name'] for tag in best.get('tags', [])]}"
         )
 
-        artist_id = artist_credit[0].get("artist", {}).get("id") if artist_credit else None
+        primary_artist_credit = artist_credit[0] if artist_credit else None
+        artist_id = primary_artist_credit.get("artist", {}).get("id") if primary_artist_credit else None
         if artist_id:
             time.sleep(MUSICBRAINZ_DELAY_SECONDS)
             artist_data = musicbrainz_spike.get_artist(artist_id)
@@ -87,8 +88,9 @@ def _discogs_lookup(title: str, artist: str, label: str) -> int | None:
         return None
 
     master_ids = discogs_spike.find_master_ids(releases)
+    top_release = releases[0]
     print(
-        f"  Discogs ({label} query): {len(releases)} release(s) shown, top result year={releases[0].get('year')}, "
+        f"  Discogs ({label} query): {len(releases)} release(s) shown, top result year={top_release.get('year')}, "
         f"master_ids={master_ids}"
     )
     if not master_ids:
@@ -131,8 +133,9 @@ def _wikidata_lookup(title: str, artist: str, label: str) -> str | None:
         print(f"  Wikidata ({label} query): no entity match")
         return None
 
+    top_ranked_match = matches[0]
     best = wikidata_spike.pick_best_match(matches, artist)
-    disambiguated = best is not matches[0]
+    disambiguated = best is not top_ranked_match
     print(
         f"  Wikidata ({label} query): {len(matches)} match(es), picked={best['id']} ({best.get('description')})"
         f"{' [disambiguated away from top rank]' if disambiguated else ''}"

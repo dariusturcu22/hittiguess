@@ -88,10 +88,10 @@ def pick_best_match(matches: list[dict], artist: str) -> dict | None:
 
 def extract_publication_date(entity: dict) -> str | None:
     """A song entity can carry more than one P577 statement (the original
-    release plus a later reissue/compilation date), and taking claims[0]
-    isn't reliable, order isn't guaranteed to be earliest-first. Prefers a
-    statement explicitly ranked "preferred" over "normal", then takes the
-    earliest time value among whatever's left."""
+    release plus a later reissue/compilation date), and taking the first
+    one listed isn't reliable, order isn't guaranteed to be earliest-first.
+    Prefers a statement explicitly ranked "preferred" over "normal", then
+    takes the earliest time value among whatever's left."""
     claims = entity.get("claims", {})
     statements = claims.get(PUBLICATION_DATE_PROPERTY)
     if not statements:
@@ -116,7 +116,8 @@ def get_part_of(entity: dict) -> str | None:
     statements = claims.get(PART_OF_PROPERTY)
     if not statements:
         return None
-    return statements[0]["mainsnak"]["datavalue"]["value"]["id"]
+    first_statement = statements[0]
+    return first_statement["mainsnak"]["datavalue"]["value"]["id"]
 
 
 def get_sitelinks_count(entity_id: str) -> int:
@@ -141,7 +142,8 @@ def extract_entity_id_claim(entity: dict, property_id: str) -> str | None:
     matching_claims = claims.get(property_id)
     if not matching_claims:
         return None
-    return matching_claims[0]["mainsnak"]["datavalue"]["value"]["id"]
+    first_matching_claim = matching_claims[0]
+    return first_matching_claim["mainsnak"]["datavalue"]["value"]["id"]
 
 
 def resolve_labels(entity_ids: list[str]) -> dict[str, str]:
@@ -169,7 +171,7 @@ if __name__ == "__main__":
         print("usage: wikidata_spike.py <title> <artist>")
         sys.exit(1)
 
-    title, artist = sys.argv[1], sys.argv[2]
+    _script_path, title, artist = sys.argv
     matches = search_entity(title).get("search", [])
     print(f"{len(matches)} entity match(es) for {title!r}")
     for match in matches:
@@ -178,8 +180,9 @@ if __name__ == "__main__":
     best_match = pick_best_match(matches, artist)
     if best_match:
         top_id = best_match["id"]
-        if top_id != matches[0]["id"]:
-            print(f"(disambiguated to {top_id} over top-ranked {matches[0]['id']})")
+        top_ranked_match_id = matches[0]["id"]
+        if top_id != top_ranked_match_id:
+            print(f"(disambiguated to {top_id} over top-ranked {top_ranked_match_id})")
         entity = get_entity(top_id)["entities"][top_id]
         date = extract_publication_date(entity)
         country_id = extract_entity_id_claim(entity, COUNTRY_OF_ORIGIN_PROPERTY)

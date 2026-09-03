@@ -33,12 +33,14 @@ if __name__ == "__main__":
         print("usage: youtube_spike.py <video_id>")
         sys.exit(1)
 
-    items = fetch_video(sys.argv[1]).get("items", [])
+    _script_path, video_id = sys.argv
+    items = fetch_video(video_id).get("items", [])
     if not items:
         print("no video found")
         sys.exit(0)
 
-    snippet = items[0]["snippet"]
+    requested_video = items[0]
+    snippet = requested_video["snippet"]
     print(f"title: {snippet.get('title')}")
     print(f"channel: {snippet.get('channelTitle')}")
     print(f"published: {snippet.get('publishedAt')}")

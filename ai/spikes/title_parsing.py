@@ -6,7 +6,7 @@ See spikes/README.md.
 import re
 
 FEATURED_ARTIST_PATTERN = re.compile(
-    r"[\(\[]\s*(?:feat\.?|ft\.?|featuring)\s+(.+?)\s*[\)\]]",
+    r"[\(\[]\s*(?:feat\.?|ft\.?|featuring)\s+(?P<featured_artists>.+?)\s*[\)\]]",
     re.IGNORECASE,
 )
 ARTIST_SEPARATOR_PATTERN = re.compile(r"\s*(?:,|&|\band\b)\s*", re.IGNORECASE)
@@ -26,7 +26,7 @@ def extract_featured_artists(title: str) -> tuple[str, list[str]]:
     clean_title = (title[: match.start()] + title[match.end() :]).strip()
     clean_title = re.sub(r"\s{2,}", " ", clean_title)
 
-    featured_raw = match.group(1)
+    featured_raw = match.group("featured_artists")
     featured_artists = [
         artist_name.strip() for artist_name in ARTIST_SEPARATOR_PATTERN.split(featured_raw) if artist_name.strip()
     ]
@@ -40,6 +40,7 @@ if __name__ == "__main__":
         print("usage: title_parsing.py <title>")
         sys.exit(1)
 
-    clean_title, featured = extract_featured_artists(sys.argv[1])
+    _script_path, title = sys.argv
+    clean_title, featured = extract_featured_artists(title)
     print(f"clean title: {clean_title!r}")
     print(f"featured artists: {featured!r}")

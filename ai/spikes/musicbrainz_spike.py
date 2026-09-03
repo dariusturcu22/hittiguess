@@ -55,7 +55,8 @@ def select_best_release_group(release_groups: list[dict], prefer_type: str = "Si
     dated_groups = [release_group for release_group in candidate_groups if release_group.get("first-release-date")]
     if dated_groups:
         return min(dated_groups, key=lambda release_group: release_group["first-release-date"])
-    return candidate_groups[0]
+    arbitrary_undated_group = candidate_groups[0]
+    return arbitrary_undated_group
 
 
 def summarize(data: dict) -> None:
@@ -75,7 +76,8 @@ if __name__ == "__main__":
     if len(sys.argv) != 3:
         print("usage: musicbrainz_spike.py <title> <artist>")
         sys.exit(1)
-    data = search_release_group(sys.argv[1], sys.argv[2])
+    _script_path, title, artist = sys.argv
+    data = search_release_group(title, artist)
     summarize(data)
     best = select_best_release_group(data.get("release-groups", []))
     if best:
