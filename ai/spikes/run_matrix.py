@@ -76,20 +76,43 @@ def run_musicbrainz(title: str, artist: str, album: str | None) -> None:
         print(f"  MusicBrainz FINAL year (earliest of track/album): {earliest_year} (from {years[earliest_year]!r})")
 
 
-def run_discogs(title: str, artist: str) -> None:
-    time.sleep(DISCOGS_DELAY_SECONDS)
+def _discogs_lookup(title: str, artist: str, label: str) -> int | None:
     results = discogs_spike.search_release(title, artist)
     releases = results.get("results", [])
     if not releases:
-        print("  Discogs: no release match")
-        return
+        print(f"  Discogs ({label} query): no release match")
+        return None
 
-    master_id = releases[0].get("master_id")
-    print(f"  Discogs: {len(releases)} release(s) shown, top result year={releases[0].get('year')}")
-    if master_id:
+    master_id = discogs_spike.find_master_id(releases)
+    print(
+        f"  Discogs ({label} query): {len(releases)} release(s) shown, top result year={releases[0].get('year')}, "
+        f"master_id={master_id}"
+    )
+    if not master_id:
+        return None
+
+    time.sleep(DISCOGS_DELAY_SECONDS)
+    master = discogs_spike.get_master(master_id)
+    year = master.get("year")
+    print(f"  Discogs ({label}) master: year={year} genres={master.get('genres')} styles={master.get('styles')}")
+    return year
+
+
+def run_discogs(title: str, artist: str, album: str | None) -> None:
+    time.sleep(DISCOGS_DELAY_SECONDS)
+    track_year = _discogs_lookup(title, artist, "track")
+
+    album_year = None
+    if album:
         time.sleep(DISCOGS_DELAY_SECONDS)
-        master = discogs_spike.get_master(master_id)
-        print(f"  Discogs master: year={master.get('year')} genres={master.get('genres')} styles={master.get('styles')}")
+        album_year = _discogs_lookup(album, artist, "album")
+        if album_year and track_year:
+            agreement = "agrees" if album_year == track_year else "DIFFERS"
+            print(f"  Discogs track vs. album query: [{agreement}]")
+
+    years = [y for y in (track_year, album_year) if y is not None]
+    if years:
+        print(f"  Discogs FINAL year (earliest of track/album): {min(years)}")
 
 
 def _wikidata_lookup(title: str, artist: str, label: str) -> str | None:
@@ -149,6 +172,6 @@ if __name__ == "__main__":
             header += f"  ({note})"
         print(header)
         run_musicbrainz(title, artist, album)
-        run_discogs(title, artist)
+        run_discogs(title, artist, album)
         run_wikidata(title, artist, album)
         print()

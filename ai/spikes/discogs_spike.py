@@ -37,6 +37,17 @@ def get_master(master_id: int) -> dict:
     return response.json()
 
 
+def find_master_id(releases: list[dict]) -> int | None:
+    """The very first search result doesn't always have a master_id, an
+    unofficial or one-off release can lack one entirely (the niche vaporwave
+    test song's top result had none). Scans the first several results
+    instead of trusting releases[0]."""
+    for release in releases[:10]:
+        if release.get("master_id"):
+            return release["master_id"]
+    return None
+
+
 if __name__ == "__main__":
     if len(sys.argv) != 3:
         print("usage: discogs_spike.py <title> <artist>")
