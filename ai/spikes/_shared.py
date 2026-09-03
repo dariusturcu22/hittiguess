@@ -10,11 +10,22 @@ sys.stdout.reconfigure(encoding="utf-8")
 
 def get_with_backoff(url: str, *, params: dict | None = None, headers: dict | None = None,
                       max_retries: int = 4, base_delay_seconds: float = 5.0) -> httpx.Response:
-    """GET with retry/backoff on 429/503, the two statuses MusicBrainz and Discogs
-    both use for rate-limit and temporary-block responses. Honors Retry-After
-    when the server sends one, otherwise backs off exponentially."""
+    """GET with retry/backoff on 429/503 (rate-limit/temporary-block statuses
+    from MusicBrainz and Discogs) and on transport-level failures (timeouts,
+    connection errors), a plain network hiccup shouldn't crash the whole
+    matrix run any more than a rate limit should. Honors Retry-After when
+    the server sends one, otherwise backs off exponentially."""
+    last_exc: httpx.TransportError | None = None
     for attempt in range(max_retries):
-        response = httpx.get(url, params=params, headers=headers, timeout=10.0)
+        try:
+            response = httpx.get(url, params=params, headers=headers, timeout=10.0)
+        except httpx.TransportError as exc:
+            last_exc = exc
+            wait_seconds = base_delay_seconds * (2**attempt)
+            print(f"  [{type(exc).__name__}, backing off {wait_seconds:.1f}s before retry {attempt + 1}/{max_retries}]")
+            time.sleep(wait_seconds)
+            continue
+
         if response.status_code in (429, 503):
             retry_after = response.headers.get("Retry-After")
             minimum_wait = base_delay_seconds * (2**attempt)
@@ -25,6 +36,8 @@ def get_with_backoff(url: str, *, params: dict | None = None, headers: dict | No
         response.raise_for_status()
         return response
 
+    if last_exc is not None:
+        raise last_exc
     response.raise_for_status()
     return response
 
