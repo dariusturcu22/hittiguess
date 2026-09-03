@@ -21,7 +21,7 @@ SONGS = [
     ("Bohemian Rhapsody", "Queen", "mainstream", ""),
     ("Windowlicker", "Aphex Twin", "mid", ""),
     ("Roygbiv", "Boards of Canada", "mid", ""),
-    ("Rissafuranku 420 Gendai no Kompyu", "Macintosh Plus", "niche", "vaporwave cult release, title is stylized in Japanese"),
+    ("リサフランク420 / 現代のコンピュー", "Macintosh Plus", "niche", "vaporwave cult release, real stylized title, not romanized"),
     ("Dragostea Din Tei", "O-Zone", "romanian", "Romanian-language, but an international hit"),
 ]
 
@@ -34,11 +34,11 @@ def run_musicbrainz(title: str, artist: str) -> None:
         print("  MusicBrainz: no release-group match")
         return
 
-    top = groups[0]
-    artist_credit = top.get("artist-credit", [{}])
+    best = musicbrainz_spike.select_best_release_group(groups)
+    artist_credit = best.get("artist-credit", [{}])
     print(
-        f"  MusicBrainz: score={top.get('score')} first-release-date={top.get('first-release-date')} "
-        f"tags={[t['name'] for t in top.get('tags', [])]}"
+        f"  MusicBrainz: {len(groups)} candidate(s), selected first-release-date={best.get('first-release-date')} "
+        f"primary-type={best.get('primary-type')} tags={[t['name'] for t in best.get('tags', [])]}"
     )
 
     artist_id = artist_credit[0].get("artist", {}).get("id") if artist_credit else None
@@ -83,9 +83,14 @@ def run_wikidata(title: str) -> None:
 
     time.sleep(WIKIDATA_DELAY_SECONDS)
     labels = wikidata_spike.resolve_labels([i for i in (country_id, language_id) if i])
+
+    time.sleep(WIKIDATA_DELAY_SECONDS)
+    sitelinks_count = wikidata_spike.get_sitelinks_count(top_id)
+
     print(f"  Wikidata P577 (publication date): {date}")
     print(f"  Wikidata P495 (country of origin): {labels.get(country_id, country_id)}")
     print(f"  Wikidata P407 (language of work): {labels.get(language_id, language_id)}")
+    print(f"  Wikidata sitelinks (Wikipedia language editions): {sitelinks_count}")
 
 
 if __name__ == "__main__":

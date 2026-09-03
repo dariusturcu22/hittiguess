@@ -46,11 +46,38 @@ def get_entity(entity_id: str) -> dict:
 
 
 def extract_publication_date(entity: dict) -> str | None:
+    """A song entity can carry more than one P577 statement (the original
+    release plus a later reissue/compilation date), and taking claims[0]
+    isn't reliable, order isn't guaranteed to be earliest-first. Prefers a
+    statement explicitly ranked "preferred" over "normal", then takes the
+    earliest time value among whatever's left."""
     claims = entity.get("claims", {})
-    publication_date_claims = claims.get("P577")
-    if not publication_date_claims:
+    statements = claims.get("P577")
+    if not statements:
         return None
-    return publication_date_claims[0]["mainsnak"]["datavalue"]["value"]["time"]
+
+    preferred = [s for s in statements if s.get("rank") == "preferred"]
+    pool = preferred or statements
+    times = [
+        s["mainsnak"]["datavalue"]["value"]["time"]
+        for s in pool
+        if s.get("mainsnak", {}).get("snaktype") == "value"
+    ]
+    return min(times) if times else None
+
+
+def get_sitelinks_count(entity_id: str) -> int:
+    """Number of language-edition Wikipedia articles linked to this entity, a
+    rough proxy for how internationally known something is: a song with
+    dozens of language editions is plausibly more globally recognized than
+    one with only its home-country language's article, or none."""
+    response = get_with_backoff(
+        API_URL,
+        params={"action": "wbgetentities", "ids": entity_id, "props": "sitelinks", "format": "json"},
+        headers={"User-Agent": USER_AGENT},
+    )
+    entity = response.json()["entities"][entity_id]
+    return len(entity.get("sitelinks", {}))
 
 
 def extract_entity_id_claim(entity: dict, property_id: str) -> str | None:
@@ -100,6 +127,8 @@ if __name__ == "__main__":
         country_id = extract_entity_id_claim(entity, "P495")
         language_id = extract_entity_id_claim(entity, "P407")
         labels = resolve_labels([i for i in (country_id, language_id) if i])
+        sitelinks_count = get_sitelinks_count(top_id)
         print(f"\nTop match {top_id} P577 (publication date): {date}")
         print(f"Top match {top_id} P495 (country of origin): {labels.get(country_id, country_id)}")
         print(f"Top match {top_id} P407 (language of work): {labels.get(language_id, language_id)}")
+        print(f"Top match {top_id} sitelinks (Wikipedia language editions): {sitelinks_count}")
