@@ -1,5 +1,5 @@
-# Paused pending a review of this source's API usage; see the 2026-08
-# "Pause MusicBrainz, Wikipedia, and Genius" entry in docs/DECISIONS.md.
+# Stubbed pending implementation. MusicBrainz is a settled source, not
+# dropped; see the 2026-08 "Metadata source set" entry in docs/DECISIONS.md.
 
 
 def search(title: str, artist: str) -> list[dict[str, str]]:
