@@ -2,9 +2,10 @@
 
 Query on the title alone, a combined "artist title" search returns nothing,
 wbsearchentities matches labels/aliases literally rather than doing free-text
-search.
+search. The artist argument is used only to disambiguate among the title-only
+results afterward, not sent to Wikidata itself.
 
-Usage: python spikes/wikidata_spike.py "<title>"
+Usage: python spikes/wikidata_spike.py "<title>" "<artist>"
 """
 
 import sys
@@ -43,6 +44,23 @@ def get_entity(entity_id: str) -> dict:
         headers={"User-Agent": USER_AGENT},
     )
     return response.json()
+
+
+def pick_best_match(matches: list[dict], artist: str) -> dict | None:
+    """A title-only search (the only kind that reliably returns results, see
+    module docstring) can rank an unrelated homonym first, "Roygbiv" alone
+    top-matches the rainbow-color acronym, not the Boards of Canada track.
+    Prefers whichever match's description mentions the artist name, falls
+    back to the top-ranked match if none do."""
+    if not matches:
+        return None
+
+    artist_lower = artist.lower()
+    for match in matches:
+        description = (match.get("description") or "").lower()
+        if artist_lower in description:
+            return match
+    return matches[0]
 
 
 def extract_publication_date(entity: dict) -> str | None:
@@ -110,18 +128,21 @@ def resolve_labels(entity_ids: list[str]) -> dict[str, str]:
 
 
 if __name__ == "__main__":
-    if len(sys.argv) != 2:
-        print("usage: wikidata_spike.py <title>")
+    if len(sys.argv) != 3:
+        print("usage: wikidata_spike.py <title> <artist>")
         sys.exit(1)
 
-    title = sys.argv[1]
+    title, artist = sys.argv[1], sys.argv[2]
     matches = search_entity(title).get("search", [])
     print(f"{len(matches)} entity match(es) for {title!r}")
     for match in matches:
         print(f"  {match['id']}: {match['label']} - {match.get('description')}")
 
-    if matches:
-        top_id = matches[0]["id"]
+    best_match = pick_best_match(matches, artist)
+    if best_match:
+        top_id = best_match["id"]
+        if top_id != matches[0]["id"]:
+            print(f"(disambiguated to {top_id} over top-ranked {matches[0]['id']})")
         entity = get_entity(top_id)["entities"][top_id]
         date = extract_publication_date(entity)
         country_id = extract_entity_id_claim(entity, "P495")

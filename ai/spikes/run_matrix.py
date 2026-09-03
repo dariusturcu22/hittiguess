@@ -66,15 +66,20 @@ def run_discogs(title: str, artist: str) -> None:
         print(f"  Discogs master: year={master.get('year')} genres={master.get('genres')} styles={master.get('styles')}")
 
 
-def run_wikidata(title: str) -> None:
+def run_wikidata(title: str, artist: str) -> None:
     time.sleep(WIKIDATA_DELAY_SECONDS)
     matches = wikidata_spike.search_entity(title).get("search", [])
     if not matches:
         print("  Wikidata: no entity match")
         return
 
-    print(f"  Wikidata: {len(matches)} match(es), top={matches[0]['id']} ({matches[0].get('description')})")
-    top_id = matches[0]["id"]
+    best = wikidata_spike.pick_best_match(matches, artist)
+    disambiguated = best is not matches[0]
+    print(
+        f"  Wikidata: {len(matches)} match(es), picked={best['id']} ({best.get('description')})"
+        f"{' [disambiguated away from top rank]' if disambiguated else ''}"
+    )
+    top_id = best["id"]
     time.sleep(WIKIDATA_DELAY_SECONDS)
     entity = wikidata_spike.get_entity(top_id)["entities"][top_id]
     date = wikidata_spike.extract_publication_date(entity)
@@ -101,5 +106,5 @@ if __name__ == "__main__":
         print(header)
         run_musicbrainz(title, artist)
         run_discogs(title, artist)
-        run_wikidata(title)
+        run_wikidata(title, artist)
         print()

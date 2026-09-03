@@ -12,7 +12,7 @@ Run from the `ai/` directory with the project's virtualenv:
 ```
 .venv/Scripts/python.exe spikes/musicbrainz_spike.py "Roygbiv" "Boards of Canada"
 .venv/Scripts/python.exe spikes/discogs_spike.py "Roygbiv" "Boards of Canada"
-.venv/Scripts/python.exe spikes/wikidata_spike.py "Roygbiv"
+.venv/Scripts/python.exe spikes/wikidata_spike.py "Roygbiv" "Boards of Canada"
 .venv/Scripts/python.exe spikes/youtube_spike.py dQw4w9WgXcQ
 ```
 
