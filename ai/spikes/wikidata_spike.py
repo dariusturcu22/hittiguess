@@ -15,7 +15,11 @@ from _shared import USER_AGENT, get_with_backoff
 API_URL = "https://www.wikidata.org/w/api.php"
 
 
-def search_entity(title: str) -> dict:
+def search_entity(title: str, limit: int = 20) -> dict:
+    """A common title ("Dark Horse") can bury the actual song many results
+    past a narrow window, live-tested: Katy Perry's "Dark Horse" ranked 6th
+    behind a Nickelback album, an unrelated film, and a restaurant, a
+    limit of 5 (the original setting) never saw it at all."""
     response = get_with_backoff(
         API_URL,
         params={
@@ -24,7 +28,7 @@ def search_entity(title: str) -> dict:
             "language": "en",
             "type": "item",
             "format": "json",
-            "limit": 5,
+            "limit": limit,
         },
         headers={"User-Agent": USER_AGENT},
     )
@@ -46,12 +50,23 @@ def get_entity(entity_id: str) -> dict:
     return response.json()
 
 
+_MUSIC_DESCRIPTION_KEYWORDS = ("single", "song", "album", "track", " ep", "recording", "record")
+
+
 def pick_best_match(matches: list[dict], artist: str) -> dict | None:
     """A title-only search (the only kind that reliably returns results, see
     module docstring) can rank an unrelated homonym first, "Roygbiv" alone
     top-matches the rainbow-color acronym, not the Boards of Canada track.
-    Prefers whichever match's description mentions the artist name, falls
-    back to the top-ranked match if none do."""
+    Prefers whichever match's description mentions the artist name.
+
+    When nothing does, blindly falling back to matches[0] is actively
+    harmful, not neutral: live-tested on "Dark Horse," where none of a
+    5-result window mentioned Katy Perry at all (the real song ranked 6th,
+    past that window), the old fallback confidently returned a 2008
+    Nickelback album's Q-id, a wrong answer presented with the same
+    confidence as a right one. Falls back only to a candidate whose own
+    description at least sounds like a music release, and returns None
+    (better than a wrong entity) if even that comes up empty."""
     if not matches:
         return None
 
@@ -60,7 +75,13 @@ def pick_best_match(matches: list[dict], artist: str) -> dict | None:
         description = (match.get("description") or "").lower()
         if artist_lower in description:
             return match
-    return matches[0]
+
+    for match in matches:
+        description = (match.get("description") or "").lower()
+        if any(keyword in description for keyword in _MUSIC_DESCRIPTION_KEYWORDS):
+            return match
+
+    return None
 
 
 def extract_publication_date(entity: dict) -> str | None:
