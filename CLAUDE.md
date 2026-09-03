@@ -42,9 +42,12 @@ This applies everywhere: every markdown file in this repo, chat responses to the
 
 ## Code conventions
 
-- Descriptive names for variables, functions, and classes. Not abbreviated, not vague.
+- Descriptive names for variables, functions, and classes. Not abbreviated, not vague. No single-letter variable names anywhere, including loop variables, comprehensions, and lambdas; spell it out even when the scope is one line.
+- No magic numbers. A numeric literal that carries meaning (a limit, a threshold, a retry count, a slice length, a delay) gets a named constant, not a bare number inline in the code. This includes string literals used as opaque identifiers or codes (an external API's field code, a status string), not just numbers, the test is whether the reader needs outside knowledge to know what the value means, not whether it's numeric.
+- A bare list/array index (`items[0]`, `matches[1]`) or regex capture group number (`match.group(1)`) is a magic number too, indexing into a structure doesn't explain itself any more than a limit or a threshold does. Assign it to a descriptively-named variable before use so the meaning is explicit at the point of extraction, not left for the reader to infer from context. Where the language has a cleaner tool for the same job, use that instead of the raw index: tuple-unpack `sys.argv` rather than index into it, use a named regex capture group (`(?P<name>...)` / `match.group("name")`) rather than a numbered one.
 - Write as few comments as possible. Code should be understandable by reading it. Add a comment only when the reasoning genuinely can't be inferred from the code itself, and keep it short.
 - No comments that just restate what the line of code already says.
+- Comments and docstrings state the general rule or invariant, not a walkthrough of the specific example that led to it. Don't name a particular song, ticket, or test case as illustration inside a comment, that belongs in the commit message or PR description, not permanent code.
 
 ## Git workflow
 
