@@ -6,15 +6,19 @@ Usage: python spikes/musicbrainz_spike.py "<title>" "<artist>"
 import sys
 from urllib.parse import quote
 
-import httpx
-from _shared import USER_AGENT
+from _shared import USER_AGENT, get_with_backoff
 
 
 def search_release_group(title: str, artist: str) -> dict:
     query = f'releasegroup:"{title}" AND artist:"{artist}"'
     url = f"https://musicbrainz.org/ws/2/release-group/?query={quote(query)}&fmt=json&limit=5"
-    response = httpx.get(url, headers={"User-Agent": USER_AGENT}, timeout=10.0)
-    response.raise_for_status()
+    response = get_with_backoff(url, headers={"User-Agent": USER_AGENT})
+    return response.json()
+
+
+def get_artist(artist_id: str) -> dict:
+    url = f"https://musicbrainz.org/ws/2/artist/{artist_id}?fmt=json"
+    response = get_with_backoff(url, headers={"User-Agent": USER_AGENT})
     return response.json()
 
 

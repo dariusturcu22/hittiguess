@@ -8,25 +8,21 @@ Usage: python spikes/youtube_spike.py <video_id>
 import sys
 from pathlib import Path
 
-import httpx
 from dotenv import dotenv_values
-
-import _shared  # noqa: F401  (applies the UTF-8 stdout fix for Windows consoles)
+from _shared import get_with_backoff
 
 _env = dotenv_values(Path(__file__).resolve().parent.parent / ".env")
 
 
 def fetch_video(video_id: str) -> dict:
-    response = httpx.get(
+    response = get_with_backoff(
         "https://www.googleapis.com/youtube/v3/videos",
         params={
             "part": "snippet,contentDetails",
             "id": video_id,
             "key": _env["YOUTUBE_API_KEY"],
         },
-        timeout=10.0,
     )
-    response.raise_for_status()
     return response.json()
 
 

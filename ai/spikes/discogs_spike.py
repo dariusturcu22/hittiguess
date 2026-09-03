@@ -10,9 +10,8 @@ Usage: python spikes/discogs_spike.py "<title>" "<artist>"
 import sys
 from pathlib import Path
 
-import httpx
 from dotenv import dotenv_values
-from _shared import USER_AGENT
+from _shared import USER_AGENT, get_with_backoff
 
 _env = dotenv_values(Path(__file__).resolve().parent.parent / ".env")
 
@@ -22,23 +21,19 @@ def _auth_header() -> str:
 
 
 def search_release(title: str, artist: str) -> dict:
-    response = httpx.get(
+    response = get_with_backoff(
         "https://api.discogs.com/database/search",
         params={"q": f"{artist} {title}", "type": "release"},
         headers={"User-Agent": USER_AGENT, "Authorization": _auth_header()},
-        timeout=10.0,
     )
-    response.raise_for_status()
     return response.json()
 
 
 def get_master(master_id: int) -> dict:
-    response = httpx.get(
+    response = get_with_backoff(
         f"https://api.discogs.com/masters/{master_id}",
         headers={"User-Agent": USER_AGENT, "Authorization": _auth_header()},
-        timeout=10.0,
     )
-    response.raise_for_status()
     return response.json()
 
 
