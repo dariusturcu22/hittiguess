@@ -1,8 +1,12 @@
 # --- IDEs ---
 .idea/
 .vscode/
+.obsidian/
 *.swp
 *.iml
+
+# --- Local tooling overrides ---
+Makefile.local
 
 # --- Environment Secrets ---
 .env
