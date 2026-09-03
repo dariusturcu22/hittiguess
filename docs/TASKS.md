@@ -326,7 +326,7 @@ Handoff item 1. Story 25 (Discogs) is separate and already `Ready`. MusicBrainz 
 
 - [ ] Query MusicBrainz's live API against a handful of real submitted songs, inspect the actual response shape, confirm the release-group `first-release-date` field (not a plain recording/release search) is reachable and gives the right value, per `DECISIONS.md`'s note on this
 - [ ] Query Wikidata's API against the same songs, decide which endpoint (SPARQL query service vs. the `wbsearchentities`/`wbgetentities` REST actions) fits, and the query shape
-- [ ] Evaluate Apple's iTunes Search API (free, no key, not part of `DECISIONS.md`'s reviewed set) as a candidate additional source: live test against real songs plus a terms-of-use read, the same review MusicBrainz/Discogs/Wikidata already got before being added
+- [x] Evaluate Apple's iTunes Search API as a candidate additional source: terms-of-use read done, rejected without live testing, its license is promotional/affiliate-only, see `DECISIONS.md`'s 2026-09 entry
 - [ ] Test multiple query-phrasing strategies per source (title-only vs. title+artist, quoted vs. unquoted, native-script vs. romanized titles, alternate word order) against songs that failed to resolve under the first phrasing tried, recall on hard/niche songs depends on this, not just on which sources are queried
 - [ ] Decide how the pipeline should call and reconcile MusicBrainz, Wikidata, and (if adopted) iTunes results against each other and against the existing YouTube/Discogs sources
 - [ ] Build `ai/app/metadata/sources/wikidata.py` per the decided shape, following `youtube.py`'s pattern for HTTP client usage, timeout, and broad-exception-to-`UNKNOWN_DEFAULTS` fallback

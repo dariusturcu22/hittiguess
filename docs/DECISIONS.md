@@ -182,6 +182,14 @@ Note: MusicBrainz's release-group `first-release-date` field, not a specific rel
 
 ---
 
+## 2026-09 | iTunes Search API reviewed and rejected as a metadata source
+
+Decision: the iTunes Search API is not added to the metadata pipeline's source set.
+
+Why: its terms of use are scoped to Apple's Affiliate Program, promotional use only. Content must sit proximate to a store badge or purchase link and "is not used for independent entertainment value apart from its promotional purpose," with required "provided courtesy of iTunes" attribution on any preview use. None of that fits a backend metadata source with no iTunes purchase links or store badges anywhere in the product, the same mismatch that got Genius and Last.fm dropped in the entry above. Its rate limit (about 20 calls/minute) is also far below MusicBrainz/Discogs/Wikidata's. Rejected on terms alone, without live testing, matching how Genius and Last.fm were handled.
+
+---
+
 ## 2026-08 | Product standard: professional-grade, not just working
 
 Decision: the project holds itself to the same standard for the product as for its external dependencies, official and compliant, not just functional. This includes a real privacy policy and terms of service, GDPR compliance, and production-grade observability (error tracking, monitoring).
