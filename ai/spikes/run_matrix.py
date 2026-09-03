@@ -14,7 +14,11 @@ from _shared import extract_year
 
 MUSICBRAINZ_DELAY_SECONDS = 2.5  # documented hard limit is 1 request/second; padded well above it
 DISCOGS_DELAY_SECONDS = 1.1  # well under the 60/minute authenticated limit
-WIKIDATA_DELAY_SECONDS = 0.5  # no published hard limit, still pace politely
+# Wikidata's published limit for anonymous requests with no identifying characteristics
+# is 10/minute (a descriptive User-Agent may or may not move a script into the more
+# lenient 200/minute browser-identified tier, not confirmed either way), so pace to the
+# stricter number rather than assume the better one applies: 60/10 = 6s minimum, padded.
+WIKIDATA_DELAY_SECONDS = 6.5
 
 # (title, artist, album, tier, note) - album is None when there's no separate
 # album to compare against, or when guessing the title risks being wrong
@@ -93,7 +97,7 @@ def _discogs_lookup(title: str, artist: str, label: str) -> int | None:
 
     time.sleep(DISCOGS_DELAY_SECONDS)
     master = discogs_spike.get_master(master_id)
-    year = master.get("year")
+    year = discogs_spike.master_year(master)
     print(f"  Discogs ({label}) master: year={year} genres={master.get('genres')} styles={master.get('styles')}")
     return year
 

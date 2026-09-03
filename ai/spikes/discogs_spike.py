@@ -48,6 +48,14 @@ def find_master_id(releases: list[dict]) -> int | None:
     return None
 
 
+def master_year(master: dict) -> int | None:
+    """Discogs uses 0, not null, for a master with no known year (live-tested
+    on "Titanium"), a naive `.get("year")` would treat that as a real, very
+    old date instead of "unknown"."""
+    year = master.get("year")
+    return year if year else None
+
+
 if __name__ == "__main__":
     if len(sys.argv) != 3:
         print("usage: discogs_spike.py <title> <artist>")

@@ -26,7 +26,10 @@ TOPIC_SUFFIX_PATTERN = re.compile(r"\s*-\s*Topic$")
 
 MUSICBRAINZ_DELAY_SECONDS = 2.5
 DISCOGS_DELAY_SECONDS = 1.1
-WIKIDATA_DELAY_SECONDS = 0.5
+# Wikidata's published limit for anonymous requests with no identifying characteristics
+# is 10/minute, paced to that stricter number rather than assuming a descriptive
+# User-Agent buys the more lenient 200/minute browser-identified tier.
+WIKIDATA_DELAY_SECONDS = 6.5
 
 
 def fetch_playlist_items(playlist_id: str) -> list[dict]:
@@ -80,7 +83,7 @@ def check_discogs(title: str, artist: str) -> int | None:
     if not master_id:
         return None
     time.sleep(DISCOGS_DELAY_SECONDS)
-    return discogs_spike.get_master(master_id).get("year")
+    return discogs_spike.master_year(discogs_spike.get_master(master_id))
 
 
 def check_wikidata(title: str, artist: str) -> int | None:
