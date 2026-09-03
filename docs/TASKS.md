@@ -320,6 +320,20 @@ Tests:
 - [ ] Unit tests for `discogs.py`'s request building and response parsing, mirroring `youtube.py`'s existing test pattern
 - [ ] Unit test for the fallback behavior on a failed Discogs call
 
+## Spike: MusicBrainz and Wikidata sourcing
+
+Handoff item 1. Story 25 (Discogs) is separate and already `Ready`. MusicBrainz is a settled source, paused pending this review (`DECISIONS.md`'s 2026-08 entries); Wikidata has no source file yet. Needs real experimentation against real submitted songs before writing an implementation task list, not a guess at the integration shape.
+
+- [ ] Query MusicBrainz's live API against a handful of real submitted songs, inspect the actual response shape, confirm the release-group `first-release-date` field (not a plain recording/release search) is reachable and gives the right value, per `DECISIONS.md`'s note on this
+- [ ] Query Wikidata's API against the same songs, decide which endpoint (SPARQL query service vs. the `wbsearchentities`/`wbgetentities` REST actions) fits, and the query shape
+- [ ] Decide how the pipeline should call and reconcile MusicBrainz and Wikidata results against each other and against the existing YouTube/Discogs sources
+- [ ] Build `ai/app/metadata/sources/wikidata.py` per the decided shape, following `youtube.py`'s pattern for HTTP client usage, timeout, and broad-exception-to-`UNKNOWN_DEFAULTS` fallback
+- [ ] Un-stub `ai/app/metadata/sources/musicbrainz.py` per the decided shape
+- [ ] Wire both into `service.py`'s `_gather_all_metadata` and add matching `_append_musicbrainz_data`/`_append_wikidata_data` sections in `prompt.py` (the MusicBrainz one already exists and may need adjusting for the decided shape)
+
+Tests:
+- [ ] Unit tests for `musicbrainz.py` and `wikidata.py`'s request building, response parsing, and fallback behavior, mirroring `youtube.py`'s existing test pattern
+
 ## Story 26: Cache metadata pipeline results by artist/title or YouTube ID
 
 - [ ] Add a cache layer in front of `resolve_metadata`, no cache exists today, every call re-runs the full source-fetch and LLM pipeline
