@@ -27,3 +27,17 @@ def get_with_backoff(url: str, *, params: dict | None = None, headers: dict | No
 
     response.raise_for_status()
     return response
+
+
+def extract_year(date_str: str | None) -> int | None:
+    """First 4 digits after any leading sign, works for both MusicBrainz's
+    plain "YYYY"/"YYYY-MM-DD" and Wikidata's "+YYYY-MM-DDT00:00:00Z" time
+    values. Song.releaseYear is a plain int in the schema, so comparing or
+    selecting "the earliest date" should compare by year, not by the raw
+    date string: Wikidata zero-pads an unknown month/day to "-00-00", which
+    sorts as numerically earlier than a fully-precise same-year date in a
+    naive string comparison despite not actually being an earlier day."""
+    if not date_str:
+        return None
+    digits = date_str.lstrip("+-")
+    return int(digits[:4]) if digits[:4].isdigit() else None
