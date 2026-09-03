@@ -22,21 +22,27 @@ def get_artist(artist_id: str) -> dict:
     return response.json()
 
 
-def select_best_release_group(groups: list[dict]) -> dict | None:
+def select_best_release_group(groups: list[dict], prefer_type: str = "Single") -> dict | None:
     """The top-scored result isn't necessarily the original: MusicBrainz can
     return several score=100 release-groups for the same title (a reissue or
     compilation as a separate group from the original single), sometimes with
     a later or missing first-release-date on the one that happens to sort
-    first. Scans every top-scored candidate, prefers an actual Single, and
-    takes the earliest valid date among them."""
+    first. Scans every top-scored candidate, prefers prefer_type, and takes
+    the earliest valid date among them.
+
+    prefer_type matters beyond just picking the right date: an album query
+    for "Thriller" can tie in score with the unrelated same-titled "Thriller"
+    single, defaulting to "Single" there would silently substitute a
+    different work. Callers doing an album-level lookup should pass
+    prefer_type="Album"."""
     if not groups:
         return None
 
     top_score = max(g.get("score", 0) for g in groups)
     candidates = [g for g in groups if g.get("score", 0) == top_score]
 
-    singles = [g for g in candidates if g.get("primary-type") == "Single"]
-    pool = singles or candidates
+    preferred = [g for g in candidates if g.get("primary-type") == prefer_type]
+    pool = preferred or candidates
 
     dated = [g for g in pool if g.get("first-release-date")]
     if dated:

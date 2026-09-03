@@ -15,39 +15,63 @@ MUSICBRAINZ_DELAY_SECONDS = 2.5  # documented hard limit is 1 request/second; pa
 DISCOGS_DELAY_SECONDS = 1.1  # well under the 60/minute authenticated limit
 WIKIDATA_DELAY_SECONDS = 0.5  # no published hard limit, still pace politely
 
-# (title, artist, tier, note)
+# (title, artist, album, tier, note) - album is None when there's no separate
+# album to compare against, or when guessing the title risks being wrong
 SONGS = [
-    ("Never Gonna Give You Up", "Rick Astley", "mainstream", ""),
-    ("Bohemian Rhapsody", "Queen", "mainstream", ""),
-    ("Windowlicker", "Aphex Twin", "mid", ""),
-    ("Roygbiv", "Boards of Canada", "mid", ""),
-    ("リサフランク420 / 現代のコンピュー", "Macintosh Plus", "niche", "vaporwave cult release, real stylized title, not romanized"),
-    ("Dragostea Din Tei", "O-Zone", "romanian", "Romanian-language, but an international hit"),
+    ("Never Gonna Give You Up", "Rick Astley", "Whenever You Need Somebody", "mainstream", ""),
+    ("Bohemian Rhapsody", "Queen", "A Night at the Opera", "mainstream", ""),
+    ("Billie Jean", "Michael Jackson", "Thriller", "mainstream", ""),
+    ("Windowlicker", "Aphex Twin", None, "mid", "released as its own EP, no separate parent album to compare"),
+    ("Roygbiv", "Boards of Canada", "Music Has The Right To Children", "mid", ""),
+    ("Such Great Heights", "The Postal Service", "Give Up", "mid", ""),
+    ("リサフランク420 / 現代のコンピュー", "Macintosh Plus", "Floral Shoppe", "niche", "vaporwave cult release, real stylized title, not romanized"),
+    ("Dragostea Din Tei", "O-Zone", None, "romanian", "Romanian-language, but an international hit; not confident enough of the parent album's exact title to test it"),
 ]
 
 
-def run_musicbrainz(title: str, artist: str) -> None:
+def run_musicbrainz(title: str, artist: str, album: str | None) -> None:
     time.sleep(MUSICBRAINZ_DELAY_SECONDS)
     data = musicbrainz_spike.search_release_group(title, artist)
     groups = data.get("release-groups", [])
+    track_date = None
     if not groups:
-        print("  MusicBrainz: no release-group match")
-        return
+        print("  MusicBrainz (track query): no release-group match")
+    else:
+        best = musicbrainz_spike.select_best_release_group(groups)
+        track_date = best.get("first-release-date")
+        artist_credit = best.get("artist-credit", [{}])
+        print(
+            f"  MusicBrainz (track query): {len(groups)} candidate(s), selected first-release-date={track_date} "
+            f"primary-type={best.get('primary-type')} tags={[t['name'] for t in best.get('tags', [])]}"
+        )
 
-    best = musicbrainz_spike.select_best_release_group(groups)
-    artist_credit = best.get("artist-credit", [{}])
-    print(
-        f"  MusicBrainz: {len(groups)} candidate(s), selected first-release-date={best.get('first-release-date')} "
-        f"primary-type={best.get('primary-type')} tags={[t['name'] for t in best.get('tags', [])]}"
-    )
+        artist_id = artist_credit[0].get("artist", {}).get("id") if artist_credit else None
+        if artist_id:
+            time.sleep(MUSICBRAINZ_DELAY_SECONDS)
+            artist_data = musicbrainz_spike.get_artist(artist_id)
+            area = (artist_data.get("area") or {}).get("name")
+            country = artist_data.get("country")
+            print(f"  MusicBrainz artist area: {area} (country code {country})")
 
-    artist_id = artist_credit[0].get("artist", {}).get("id") if artist_credit else None
-    if artist_id:
+    album_date = None
+    if album:
         time.sleep(MUSICBRAINZ_DELAY_SECONDS)
-        artist_data = musicbrainz_spike.get_artist(artist_id)
-        area = (artist_data.get("area") or {}).get("name")
-        country = artist_data.get("country")
-        print(f"  MusicBrainz artist area: {area} (country code {country})")
+        album_data = musicbrainz_spike.search_release_group(album, artist)
+        album_groups = album_data.get("release-groups", [])
+        if not album_groups:
+            print("  MusicBrainz (album query): no release-group match")
+        else:
+            album_best = musicbrainz_spike.select_best_release_group(album_groups, prefer_type="Album")
+            album_date = album_best.get("first-release-date")
+            agreement = "agrees" if album_date and track_date and album_date == track_date else "DIFFERS"
+            print(
+                f"  MusicBrainz (album query): selected first-release-date={album_date} "
+                f"primary-type={album_best.get('primary-type')} [{agreement} with track query]"
+            )
+
+    dated_candidates = [d for d in (track_date, album_date) if d]
+    if dated_candidates:
+        print(f"  MusicBrainz FINAL (earliest of track/album): {min(dated_candidates)}")
 
 
 def run_discogs(title: str, artist: str) -> None:
@@ -66,17 +90,16 @@ def run_discogs(title: str, artist: str) -> None:
         print(f"  Discogs master: year={master.get('year')} genres={master.get('genres')} styles={master.get('styles')}")
 
 
-def run_wikidata(title: str, artist: str) -> None:
-    time.sleep(WIKIDATA_DELAY_SECONDS)
+def _wikidata_lookup(title: str, artist: str, label: str) -> str | None:
     matches = wikidata_spike.search_entity(title).get("search", [])
     if not matches:
-        print("  Wikidata: no entity match")
-        return
+        print(f"  Wikidata ({label} query): no entity match")
+        return None
 
     best = wikidata_spike.pick_best_match(matches, artist)
     disambiguated = best is not matches[0]
     print(
-        f"  Wikidata: {len(matches)} match(es), picked={best['id']} ({best.get('description')})"
+        f"  Wikidata ({label} query): {len(matches)} match(es), picked={best['id']} ({best.get('description')})"
         f"{' [disambiguated away from top rank]' if disambiguated else ''}"
     )
     top_id = best["id"]
@@ -92,19 +115,37 @@ def run_wikidata(title: str, artist: str) -> None:
     time.sleep(WIKIDATA_DELAY_SECONDS)
     sitelinks_count = wikidata_spike.get_sitelinks_count(top_id)
 
-    print(f"  Wikidata P577 (publication date): {date}")
-    print(f"  Wikidata P495 (country of origin): {labels.get(country_id, country_id)}")
-    print(f"  Wikidata P407 (language of work): {labels.get(language_id, language_id)}")
-    print(f"  Wikidata sitelinks (Wikipedia language editions): {sitelinks_count}")
+    print(f"  Wikidata ({label}) P577 (publication date): {date}")
+    print(f"  Wikidata ({label}) P495 (country of origin): {labels.get(country_id, country_id)}")
+    print(f"  Wikidata ({label}) P407 (language of work): {labels.get(language_id, language_id)}")
+    print(f"  Wikidata ({label}) sitelinks (Wikipedia language editions): {sitelinks_count}")
+    return date
+
+
+def run_wikidata(title: str, artist: str, album: str | None) -> None:
+    time.sleep(WIKIDATA_DELAY_SECONDS)
+    track_date = _wikidata_lookup(title, artist, "track")
+
+    album_date = None
+    if album:
+        time.sleep(WIKIDATA_DELAY_SECONDS)
+        album_date = _wikidata_lookup(album, artist, "album")
+        if album_date and track_date:
+            agreement = "agrees" if album_date == track_date else "DIFFERS"
+            print(f"  Wikidata track vs. album query: [{agreement}]")
+
+    dated_candidates = [d for d in (track_date, album_date) if d]
+    if dated_candidates:
+        print(f"  Wikidata FINAL (earliest of track/album): {min(dated_candidates)}")
 
 
 if __name__ == "__main__":
-    for title, artist, tier, note in SONGS:
-        header = f"=== [{tier}] {title!r} by {artist!r} ==="
+    for title, artist, album, tier, note in SONGS:
+        header = f"=== [{tier}] {title!r} by {artist!r}" + (f" (album: {album!r})" if album else "") + " ==="
         if note:
             header += f"  ({note})"
         print(header)
-        run_musicbrainz(title, artist)
+        run_musicbrainz(title, artist, album)
         run_discogs(title, artist)
-        run_wikidata(title, artist)
+        run_wikidata(title, artist, album)
         print()
