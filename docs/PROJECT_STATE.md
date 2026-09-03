@@ -31,7 +31,7 @@ A story can have draft tasks written against it in TASKS.md while still marked N
 | 16 | pgvector-based duplicate detection before running the metadata pipeline | Backend / AI | Ready |
 | 17 | Community song reports: report button, message, correct year, sources | Frontend / Backend | Ready, admin review surface additionally needs story 19's admin role, not yet built |
 | 18 | Criteria for promoting a reported or newly submitted song to verified | Backend | Needs Definition |
-| 19 | Admin bulk song import | Backend | Ready |
+| 19 | Admin bulk song import | Backend | Consolidated into story 40 |
 | 20 | Local LLM option for lower-cost bulk metadata processing | AI | Needs Definition, model/technique choice needs a separate exploration pass first |
 | 21 | Auto-generated featured playlists: consolidated into story 30, see there for its card-assembly tasks | Backend / AI | Consolidated into story 30 |
 | 22 | Test coverage for existing and new functionality | Quality | Ready |
@@ -52,6 +52,7 @@ A story can have draft tasks written against it in TASKS.md while still marked N
 | 37 | Privacy policy, terms of service, and GDPR compliance | Legal / Compliance | Ready |
 | 38 | Observability: error tracking and monitoring | Infra / Quality | Ready |
 | 39 | Group: persistent lobby a game session lives inside, invite-link membership, admin role, live-synced settings, chat and voice from creation, timer-based lifecycle | Game | Ready |
+| 40 | Catalog seeding queue (admin, patient, backlog-based) and user-facing bulk import (any user, immediate), absorbs story 19 | Backend / AI | Needs Definition, draft tasks exist, blocked on story 20 (LLM tier choice), story 23 (schema), and the metadata-sourcing spike's real implementation landing |
 
 ## Open questions
 
