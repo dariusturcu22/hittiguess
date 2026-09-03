@@ -58,6 +58,7 @@ A story can have draft tasks written against it in TASKS.md while still marked N
 ## Open questions
 
 - Flutter app: keep, repurpose, or drop? Must follow the same real-link-out rule as the rest of the product in the meantime, no exceptions.
+- Future idea, not yet a story: once story 34's abuse-visibility events (rate-limit-exceeded, report-submitted, and now story 41's flagged-injection-attempt) accumulate real data, a user-moderation feature (warnings, bans) based on a pattern of that behavior over time. Deliberately not scoped now, noted so it isn't lost.
 - Metadata source API usage: resolved. Source set is MusicBrainz, Discogs, and Wikidata; Genius, Last.fm, and live Wikipedia search were reviewed and dropped rather than fixed (see `docs/DECISIONS.md`).
 - Story 30's personalized difficulty layer needs real interaction data to beat its own aggregate baseline; the aggregate baseline itself works as soon as story 10 ships and rounds start accumulating `Guess` rows, without needing months of data the way the collaborative-filtering enhancement does, but neither exists until story 10's `Guess` entity does. Likely won't clearly beat the baseline at the 100-200 user target scale until real usage accumulates over months of casual play.
 - Story 30: medium-difficulty group scoring formula is undecided. `DECISIONS.md`'s story 30 entry settles easy (the group's lowest individual predicted score) and hard (a plain average), but never states medium's, don't assume it matches hard's.

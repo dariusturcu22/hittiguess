@@ -314,7 +314,7 @@ Two things settled through discussion:
 - [ ] Still-uncertain cases after all of the above route to manual review, not a hard reject, the same "escalate, don't guess" principle already set for artist/title verification
 - [ ] Add a dedicated structured-output prompt-injection check (`contains_injection_attempt`, plus reasoning) run over raw title/channel/description before any extraction or classification LLM call uses that text, separate from relying on the existing delimiting alone to both resist injection and do its actual job
 - [ ] Apply this injection check everywhere untrusted YouTube text reaches an LLM: the existing synthesis call, story 40's artist-extraction fallback, and this story's own classification pass, not just one of the three
-- [ ] Decide what happens when injection is flagged: an outright reject (unlike an honestly ambiguous song, an attempted injection is evidence of intent, not just uncertain data) versus the same manual-review path as other uncertain cases, undecided, worth a deliberate call rather than defaulting to whichever the implementation makes easiest
+- [x] Decided: a flagged injection attempt writes an abuse-visibility event (story 34's scope, alongside rate-limit-exceeded and report-submitted events), an attempted injection is evidence of intent, not just an uncertain submission, so it's tracked, not silently handled the same as an honestly ambiguous song. Depends on story 34's event pipeline existing. Whether the submission itself is also outright rejected, versus routed to manual review, still needs a call, not yet made
 
 Tests:
 - [ ] Unit tests for the hard duration+category filter, including the boundary values of the song-length window
