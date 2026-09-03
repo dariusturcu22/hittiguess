@@ -326,7 +326,9 @@ Handoff item 1. Story 25 (Discogs) is separate and already `Ready`. MusicBrainz 
 
 - [ ] Query MusicBrainz's live API against a handful of real submitted songs, inspect the actual response shape, confirm the release-group `first-release-date` field (not a plain recording/release search) is reachable and gives the right value, per `DECISIONS.md`'s note on this
 - [ ] Query Wikidata's API against the same songs, decide which endpoint (SPARQL query service vs. the `wbsearchentities`/`wbgetentities` REST actions) fits, and the query shape
-- [ ] Decide how the pipeline should call and reconcile MusicBrainz and Wikidata results against each other and against the existing YouTube/Discogs sources
+- [ ] Evaluate Apple's iTunes Search API (free, no key, not part of `DECISIONS.md`'s reviewed set) as a candidate additional source: live test against real songs plus a terms-of-use read, the same review MusicBrainz/Discogs/Wikidata already got before being added
+- [ ] Test multiple query-phrasing strategies per source (title-only vs. title+artist, quoted vs. unquoted, native-script vs. romanized titles, alternate word order) against songs that failed to resolve under the first phrasing tried, recall on hard/niche songs depends on this, not just on which sources are queried
+- [ ] Decide how the pipeline should call and reconcile MusicBrainz, Wikidata, and (if adopted) iTunes results against each other and against the existing YouTube/Discogs sources
 - [ ] Build `ai/app/metadata/sources/wikidata.py` per the decided shape, following `youtube.py`'s pattern for HTTP client usage, timeout, and broad-exception-to-`UNKNOWN_DEFAULTS` fallback
 - [ ] Un-stub `ai/app/metadata/sources/musicbrainz.py` per the decided shape
 - [ ] Wire both into `service.py`'s `_gather_all_metadata` and add matching `_append_musicbrainz_data`/`_append_wikidata_data` sections in `prompt.py` (the MusicBrainz one already exists and may need adjusting for the decided shape)
