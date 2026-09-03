@@ -15,6 +15,11 @@ from _shared import USER_AGENT, get_with_backoff
 API_URL = "https://www.wikidata.org/w/api.php"
 DEFAULT_SEARCH_LIMIT = 20
 
+PUBLICATION_DATE_PROPERTY = "P577"
+PART_OF_PROPERTY = "P361"
+COUNTRY_OF_ORIGIN_PROPERTY = "P495"
+LANGUAGE_OF_WORK_PROPERTY = "P407"
+
 
 def search_entity(title: str, limit: int = DEFAULT_SEARCH_LIMIT) -> dict:
     """A common title can bury the actual song many results past a narrow
@@ -88,7 +93,7 @@ def extract_publication_date(entity: dict) -> str | None:
     statement explicitly ranked "preferred" over "normal", then takes the
     earliest time value among whatever's left."""
     claims = entity.get("claims", {})
-    statements = claims.get("P577")
+    statements = claims.get(PUBLICATION_DATE_PROPERTY)
     if not statements:
         return None
 
@@ -108,7 +113,7 @@ def get_part_of(entity: dict) -> str | None:
     searching for it separately: no risk of a wrong guess, and no exposure
     to wbsearchentities' literal label matching for a second query."""
     claims = entity.get("claims", {})
-    statements = claims.get("P361")
+    statements = claims.get(PART_OF_PROPERTY)
     if not statements:
         return None
     return statements[0]["mainsnak"]["datavalue"]["value"]["id"]
@@ -177,8 +182,8 @@ if __name__ == "__main__":
             print(f"(disambiguated to {top_id} over top-ranked {matches[0]['id']})")
         entity = get_entity(top_id)["entities"][top_id]
         date = extract_publication_date(entity)
-        country_id = extract_entity_id_claim(entity, "P495")
-        language_id = extract_entity_id_claim(entity, "P407")
+        country_id = extract_entity_id_claim(entity, COUNTRY_OF_ORIGIN_PROPERTY)
+        language_id = extract_entity_id_claim(entity, LANGUAGE_OF_WORK_PROPERTY)
         labels = resolve_labels([entity_id for entity_id in (country_id, language_id) if entity_id])
         sitelinks_count = get_sitelinks_count(top_id)
         print(f"\nTop match {top_id} P577 (publication date): {date}")

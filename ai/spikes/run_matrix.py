@@ -141,8 +141,8 @@ def _wikidata_lookup(title: str, artist: str, label: str) -> str | None:
     time.sleep(WIKIDATA_DELAY_SECONDS)
     entity = wikidata_spike.get_entity(top_id)["entities"][top_id]
     date = wikidata_spike.extract_publication_date(entity)
-    country_id = wikidata_spike.extract_entity_id_claim(entity, "P495")
-    language_id = wikidata_spike.extract_entity_id_claim(entity, "P407")
+    country_id = wikidata_spike.extract_entity_id_claim(entity, wikidata_spike.COUNTRY_OF_ORIGIN_PROPERTY)
+    language_id = wikidata_spike.extract_entity_id_claim(entity, wikidata_spike.LANGUAGE_OF_WORK_PROPERTY)
 
     time.sleep(WIKIDATA_DELAY_SECONDS)
     labels = wikidata_spike.resolve_labels([entity_id for entity_id in (country_id, language_id) if entity_id])

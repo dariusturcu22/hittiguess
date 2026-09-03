@@ -31,12 +31,19 @@ _env = dotenv_values(Path(__file__).resolve().parent.parent / ".env")
 RELEASED_ON_PATTERN = re.compile(r"Released on:\s*(\d{4})-\d{2}-\d{2}")
 TOPIC_SUFFIX_PATTERN = re.compile(r"\s*-\s*Topic$")
 
+PLAYLIST_ITEMS_PAGE_SIZE = 50
+
 
 def fetch_playlist_items(playlist_id: str) -> list[dict]:
     items = []
     page_token = None
     while True:
-        params = {"part": "snippet", "maxResults": 50, "playlistId": playlist_id, "key": _env["YOUTUBE_API_KEY"]}
+        params = {
+            "part": "snippet",
+            "maxResults": PLAYLIST_ITEMS_PAGE_SIZE,
+            "playlistId": playlist_id,
+            "key": _env["YOUTUBE_API_KEY"],
+        }
         if page_token:
             params["pageToken"] = page_token
         response = get_with_backoff(
@@ -118,22 +125,30 @@ if __name__ == "__main__":
         snippet = item["snippet"]
         title = snippet["title"]
         artist = clean_artist(snippet.get("videoOwnerChannelTitle") or snippet.get("channelTitle"))
-        yt_year = extract_youtube_released_on(snippet.get("description"))
+        youtube_year = extract_youtube_released_on(snippet.get("description"))
 
-        print(f"--- {song_number}/{len(items)}: {title!r} by {artist!r} (YouTube desc: {yt_year}) ---")
+        print(f"--- {song_number}/{len(items)}: {title!r} by {artist!r} (YouTube desc: {youtube_year}) ---")
 
-        mb_year = check_musicbrainz(title, artist)
+        musicbrainz_year = check_musicbrainz(title, artist)
         discogs_year = check_discogs(title, artist)
-        wd_year = check_wikidata(title, artist)
+        wikidata_year = check_wikidata(title, artist)
 
-        source_years = [year_value for year_value in (mb_year, discogs_year, wd_year) if year_value is not None]
+        source_years = [
+            year_value for year_value in (musicbrainz_year, discogs_year, wikidata_year) if year_value is not None
+        ]
         agree = len(set(source_years)) <= 1 if source_years else False
         flag = "" if agree else "  <-- MISMATCH"
-        print(f"    MusicBrainz={mb_year} Discogs={discogs_year} Wikidata={wd_year} YouTube-desc={yt_year}{flag}")
+        print(
+            f"    MusicBrainz={musicbrainz_year} Discogs={discogs_year} Wikidata={wikidata_year} "
+            f"YouTube-desc={youtube_year}{flag}"
+        )
 
         if not agree:
-            mismatches.append((title, artist, mb_year, discogs_year, wd_year, yt_year))
+            mismatches.append((title, artist, musicbrainz_year, discogs_year, wikidata_year, youtube_year))
 
     print(f"\n{len(items)} checked, {len(mismatches)} source mismatch(es)")
-    for title, artist, mb_year, discogs_year, wd_year, yt_year in mismatches:
-        print(f"  {title!r} by {artist!r}: MB={mb_year} Discogs={discogs_year} WD={wd_year} YT={yt_year}")
+    for title, artist, musicbrainz_year, discogs_year, wikidata_year, youtube_year in mismatches:
+        print(
+            f"  {title!r} by {artist!r}: MusicBrainz={musicbrainz_year} Discogs={discogs_year} "
+            f"Wikidata={wikidata_year} YouTube={youtube_year}"
+        )
