@@ -79,11 +79,17 @@ def check_discogs(title: str, artist: str) -> int | None:
     releases = results.get("results", [])
     if not releases:
         return None
-    master_id = discogs_spike.find_master_id(releases)
-    if not master_id:
+    master_ids = discogs_spike.find_master_ids(releases)
+    if not master_ids:
         return None
-    time.sleep(DISCOGS_DELAY_SECONDS)
-    return discogs_spike.master_year(discogs_spike.get_master(master_id))
+
+    master_years = []
+    for master_id in master_ids:
+        time.sleep(DISCOGS_DELAY_SECONDS)
+        year = discogs_spike.master_year(discogs_spike.get_master(master_id))
+        if year is not None:
+            master_years.append(year)
+    return min(master_years) if master_years else None
 
 
 def check_wikidata(title: str, artist: str) -> int | None:

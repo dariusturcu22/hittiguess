@@ -37,15 +37,24 @@ def get_master(master_id: int) -> dict:
     return response.json()
 
 
-def find_master_id(releases: list[dict]) -> int | None:
-    """The very first search result doesn't always have a master_id, an
-    unofficial or one-off release can lack one entirely (the niche vaporwave
-    test song's top result had none). Scans the first several results
-    instead of trusting releases[0]."""
-    for release in releases[:10]:
-        if release.get("master_id"):
-            return release["master_id"]
-    return None
+def find_master_ids(releases: list[dict], limit: int = 3) -> list[int]:
+    """A single track can belong to more than one distinct master, its own
+    standalone single release and the album it also appears on, each with
+    its own master and its own year (live-tested: "Hey Mama" has a 2015
+    single master and is track 10 on "Listen," whose master year is 2014,
+    the true original). Trusting whichever master a search result lists
+    first picked the single over the earlier album. Returns every distinct
+    master_id found among the first several results, in first-seen order,
+    not just one, so the caller can check all of them and take the
+    earliest valid year."""
+    seen: list[int] = []
+    for release in releases[:15]:
+        master_id = release.get("master_id")
+        if master_id and master_id not in seen:
+            seen.append(master_id)
+        if len(seen) >= limit:
+            break
+    return seen
 
 
 def master_year(master: dict) -> int | None:
@@ -72,11 +81,11 @@ if __name__ == "__main__":
             f"master_id={release.get('master_id')} country={release.get('country')}"
         )
 
-    master_ids = sorted({r["master_id"] for r in releases if r.get("master_id")})
+    master_ids = find_master_ids(releases)
     print(f"\n{len(master_ids)} distinct master(s) among the shown results")
-    for master_id in master_ids[:3]:
+    for master_id in master_ids:
         master = get_master(master_id)
         print(
-            f"  master {master_id}: year={master.get('year')} title={master.get('title')!r} "
+            f"  master {master_id}: year={master_year(master)} title={master.get('title')!r} "
             f"genres={master.get('genres')} styles={master.get('styles')}"
         )

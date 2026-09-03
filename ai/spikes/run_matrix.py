@@ -87,19 +87,26 @@ def _discogs_lookup(title: str, artist: str, label: str) -> int | None:
         print(f"  Discogs ({label} query): no release match")
         return None
 
-    master_id = discogs_spike.find_master_id(releases)
+    master_ids = discogs_spike.find_master_ids(releases)
     print(
         f"  Discogs ({label} query): {len(releases)} release(s) shown, top result year={releases[0].get('year')}, "
-        f"master_id={master_id}"
+        f"master_ids={master_ids}"
     )
-    if not master_id:
+    if not master_ids:
         return None
 
-    time.sleep(DISCOGS_DELAY_SECONDS)
-    master = discogs_spike.get_master(master_id)
-    year = discogs_spike.master_year(master)
-    print(f"  Discogs ({label}) master: year={year} genres={master.get('genres')} styles={master.get('styles')}")
-    return year
+    master_years = []
+    for master_id in master_ids:
+        time.sleep(DISCOGS_DELAY_SECONDS)
+        master = discogs_spike.get_master(master_id)
+        year = discogs_spike.master_year(master)
+        print(f"  Discogs ({label}) master {master_id}: year={year} title={master.get('title')!r}")
+        if year is not None:
+            master_years.append(year)
+
+    if not master_years:
+        return None
+    return min(master_years)
 
 
 def run_discogs(title: str, artist: str, album: str | None) -> None:
