@@ -335,6 +335,15 @@ Tests:
 
 Checked against real code: `ai/app/clients/openai_client.py` is the only LLM client, a module-level `OpenAI` singleton, no other client exists. Which local model or technique to use is undecided, and stays undecided until a separate exploration pass, on its own branch, tests structured-output support and accuracy against real cases first. No implementation tasks drafted here yet, same treatment as the pipeline-gathering questions: deciding now would mean guessing at a model choice instead of testing it.
 
+## Spike: Local/cheap LLM option for bulk metadata processing
+
+Handoff item 2. Its own branch, separate from the metadata-source spike, per the handoff's explicit instruction. Covers both hosted-API and locally-runnable options, any provider, closed or open-weight, the constraint is Pydantic-compatible structured output (`CLAUDE.md`'s non-negotiable rule against regex-parsing LLM output), not a specific deployment shape.
+
+- [ ] Survey current free/cheap hosted-API options (for example Groq, Google Gemini's free tier, OpenRouter's free models, Together, Fireworks, DeepInfra) and open-weight models runnable locally (for example via Ollama or llama.cpp), for which ones support Pydantic-compatible structured output (JSON schema mode, function/tool calling, or constrained decoding), not just "returns JSON if you ask nicely" in a system prompt
+- [ ] Narrow to a shortlist of candidates that plausibly clear the structured-output bar
+- [ ] Test each shortlisted candidate against the same real submitted songs already used in the metadata-source spike, compare structured-output reliability and accuracy against the existing OpenAI (`gpt-5.1`) baseline in `ai/app/clients/openai_client.py`
+- [ ] Decide whether any candidate is worth defaulting bulk imports (story 19) to, or whether OpenAI remains the only option for now
+
 ## Story 23: Song schema reconciliation
 
 Checked against real code and `ARCHITECTURE.md`'s target shape (line 36): `Song` today has a single `releaseYear` int, a single `songTag` enum, a single `artist` string, and no `verificationStatus`, `confidence`, or `metadataRaw` fields. No migration tool exists yet, schema changes today happen only through Hibernate's `ddl-auto=update`; this story introduces Flyway rather than add another layer of auto-DDL.
