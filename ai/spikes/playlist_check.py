@@ -17,19 +17,19 @@ from dotenv import dotenv_values
 import discogs_spike
 import musicbrainz_spike
 import wikidata_spike
-from _shared import USER_AGENT, extract_year, get_with_backoff
+from _shared import (
+    DISCOGS_DELAY_SECONDS,
+    MUSICBRAINZ_DELAY_SECONDS,
+    USER_AGENT,
+    WIKIDATA_DELAY_SECONDS,
+    extract_year,
+    get_with_backoff,
+)
 
 _env = dotenv_values(Path(__file__).resolve().parent.parent / ".env")
 
 RELEASED_ON_PATTERN = re.compile(r"Released on:\s*(\d{4})-\d{2}-\d{2}")
 TOPIC_SUFFIX_PATTERN = re.compile(r"\s*-\s*Topic$")
-
-MUSICBRAINZ_DELAY_SECONDS = 2.5
-DISCOGS_DELAY_SECONDS = 1.1
-# Wikidata's published limit for anonymous requests with no identifying characteristics
-# is 10/minute, paced to that stricter number rather than assuming a descriptive
-# User-Agent buys the more lenient 200/minute browser-identified tier.
-WIKIDATA_DELAY_SECONDS = 6.5
 
 
 def fetch_playlist_items(playlist_id: str) -> list[dict]:
@@ -114,19 +114,19 @@ if __name__ == "__main__":
     print(f"{len(items)} song(s) in playlist\n")
 
     mismatches = []
-    for i, item in enumerate(items, start=1):
+    for song_number, item in enumerate(items, start=1):
         snippet = item["snippet"]
         title = snippet["title"]
         artist = clean_artist(snippet.get("videoOwnerChannelTitle") or snippet.get("channelTitle"))
         yt_year = extract_youtube_released_on(snippet.get("description"))
 
-        print(f"--- {i}/{len(items)}: {title!r} by {artist!r} (YouTube desc: {yt_year}) ---")
+        print(f"--- {song_number}/{len(items)}: {title!r} by {artist!r} (YouTube desc: {yt_year}) ---")
 
         mb_year = check_musicbrainz(title, artist)
         discogs_year = check_discogs(title, artist)
         wd_year = check_wikidata(title, artist)
 
-        source_years = [y for y in (mb_year, discogs_year, wd_year) if y is not None]
+        source_years = [year_value for year_value in (mb_year, discogs_year, wd_year) if year_value is not None]
         agree = len(set(source_years)) <= 1 if source_years else False
         flag = "" if agree else "  <-- MISMATCH"
         print(f"    MusicBrainz={mb_year} Discogs={discogs_year} Wikidata={wd_year} YouTube-desc={yt_year}{flag}")

@@ -42,9 +42,11 @@ This applies everywhere: every markdown file in this repo, chat responses to the
 
 ## Code conventions
 
-- Descriptive names for variables, functions, and classes. Not abbreviated, not vague.
+- Descriptive names for variables, functions, and classes. Not abbreviated, not vague. No single-letter variable names anywhere, including loop variables, comprehensions, and lambdas; spell it out even when the scope is one line.
+- No magic numbers. A numeric literal that carries meaning (a limit, a threshold, a retry count, a slice length, a delay) gets a named constant, not a bare number inline in the code.
 - Write as few comments as possible. Code should be understandable by reading it. Add a comment only when the reasoning genuinely can't be inferred from the code itself, and keep it short.
 - No comments that just restate what the line of code already says.
+- Comments and docstrings state the general rule or invariant, not a walkthrough of the specific example that led to it. Don't name a particular song, ticket, or test case as illustration inside a comment, that belongs in the commit message or PR description, not permanent code.
 
 ## Git workflow
 

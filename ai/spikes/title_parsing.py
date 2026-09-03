@@ -27,7 +27,9 @@ def extract_featured_artists(title: str) -> tuple[str, list[str]]:
     clean_title = re.sub(r"\s{2,}", " ", clean_title)
 
     featured_raw = match.group(1)
-    featured_artists = [a.strip() for a in ARTIST_SEPARATOR_PATTERN.split(featured_raw) if a.strip()]
+    featured_artists = [
+        artist_name.strip() for artist_name in ARTIST_SEPARATOR_PATTERN.split(featured_raw) if artist_name.strip()
+    ]
     return clean_title, featured_artists
 
 

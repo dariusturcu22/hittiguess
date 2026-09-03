@@ -13,13 +13,13 @@ import sys
 from _shared import USER_AGENT, get_with_backoff
 
 API_URL = "https://www.wikidata.org/w/api.php"
+DEFAULT_SEARCH_LIMIT = 20
 
 
-def search_entity(title: str, limit: int = 20) -> dict:
-    """A common title ("Dark Horse") can bury the actual song many results
-    past a narrow window, live-tested: Katy Perry's "Dark Horse" ranked 6th
-    behind a Nickelback album, an unrelated film, and a restaurant, a
-    limit of 5 (the original setting) never saw it at all."""
+def search_entity(title: str, limit: int = DEFAULT_SEARCH_LIMIT) -> dict:
+    """A common title can bury the actual song many results past a narrow
+    search window, a small limit risks never seeing the real entity at
+    all."""
     response = get_with_backoff(
         API_URL,
         params={
@@ -55,18 +55,15 @@ _MUSIC_DESCRIPTION_KEYWORDS = ("single", "song", "album", "track", " ep", "recor
 
 def pick_best_match(matches: list[dict], artist: str) -> dict | None:
     """A title-only search (the only kind that reliably returns results, see
-    module docstring) can rank an unrelated homonym first, "Roygbiv" alone
-    top-matches the rainbow-color acronym, not the Boards of Canada track.
-    Prefers whichever match's description mentions the artist name.
+    module docstring) can rank an unrelated homonym first. Prefers whichever
+    match's description mentions the artist name.
 
-    When nothing does, blindly falling back to matches[0] is actively
-    harmful, not neutral: live-tested on "Dark Horse," where none of a
-    5-result window mentioned Katy Perry at all (the real song ranked 6th,
-    past that window), the old fallback confidently returned a 2008
-    Nickelback album's Q-id, a wrong answer presented with the same
-    confidence as a right one. Falls back only to a candidate whose own
-    description at least sounds like a music release, and returns None
-    (better than a wrong entity) if even that comes up empty."""
+    When nothing does, blindly falling back to the top-ranked match is
+    actively harmful, not neutral, it can confidently return a wrong entity
+    with the same presentation as a right one. Falls back only to a
+    candidate whose own description at least sounds like a music release,
+    and returns None (better than a wrong entity) if even that comes up
+    empty."""
     if not matches:
         return None
 
@@ -95,14 +92,14 @@ def extract_publication_date(entity: dict) -> str | None:
     if not statements:
         return None
 
-    preferred = [s for s in statements if s.get("rank") == "preferred"]
-    pool = preferred or statements
-    times = [
-        s["mainsnak"]["datavalue"]["value"]["time"]
-        for s in pool
-        if s.get("mainsnak", {}).get("snaktype") == "value"
+    preferred_statements = [statement for statement in statements if statement.get("rank") == "preferred"]
+    candidate_statements = preferred_statements or statements
+    publication_times = [
+        statement["mainsnak"]["datavalue"]["value"]["time"]
+        for statement in candidate_statements
+        if statement.get("mainsnak", {}).get("snaktype") == "value"
     ]
-    return min(times) if times else None
+    return min(publication_times) if publication_times else None
 
 
 def get_part_of(entity: dict) -> str | None:
@@ -157,7 +154,9 @@ def resolve_labels(entity_ids: list[str]) -> dict[str, str]:
         headers={"User-Agent": USER_AGENT},
     )
     entities = response.json()["entities"]
-    return {eid: entities[eid]["labels"].get("en", {}).get("value", eid) for eid in entity_ids}
+    return {
+        entity_id: entities[entity_id]["labels"].get("en", {}).get("value", entity_id) for entity_id in entity_ids
+    }
 
 
 if __name__ == "__main__":
@@ -180,7 +179,7 @@ if __name__ == "__main__":
         date = extract_publication_date(entity)
         country_id = extract_entity_id_claim(entity, "P495")
         language_id = extract_entity_id_claim(entity, "P407")
-        labels = resolve_labels([i for i in (country_id, language_id) if i])
+        labels = resolve_labels([entity_id for entity_id in (country_id, language_id) if entity_id])
         sitelinks_count = get_sitelinks_count(top_id)
         print(f"\nTop match {top_id} P577 (publication date): {date}")
         print(f"Top match {top_id} P495 (country of origin): {labels.get(country_id, country_id)}")

@@ -8,10 +8,15 @@ from urllib.parse import quote
 
 from _shared import USER_AGENT, get_with_backoff
 
+RELEASE_GROUP_SEARCH_LIMIT = 10
+
 
 def search_release_group(title: str, artist: str) -> dict:
     query = f'releasegroup:"{title}" AND artist:"{artist}"'
-    url = f"https://musicbrainz.org/ws/2/release-group/?query={quote(query)}&fmt=json&limit=10"
+    url = (
+        f"https://musicbrainz.org/ws/2/release-group/?query={quote(query)}"
+        f"&fmt=json&limit={RELEASE_GROUP_SEARCH_LIMIT}"
+    )
     response = get_with_backoff(url, headers={"User-Agent": USER_AGENT})
     return response.json()
 
@@ -22,32 +27,35 @@ def get_artist(artist_id: str) -> dict:
     return response.json()
 
 
-def select_best_release_group(groups: list[dict], prefer_type: str = "Single") -> dict | None:
+def select_best_release_group(release_groups: list[dict], prefer_type: str = "Single") -> dict | None:
     """The top-scored result isn't necessarily the original: MusicBrainz can
-    return several score=100 release-groups for the same title (a reissue or
-    compilation as a separate group from the original single), sometimes with
-    a later or missing first-release-date on the one that happens to sort
-    first. Scans every top-scored candidate, prefers prefer_type, and takes
-    the earliest valid date among them.
+    return several equally-scored release-groups for the same title (a
+    reissue or compilation as a separate group from the original single),
+    sometimes with a later or missing first-release-date on whichever one
+    happens to sort first. Scans every top-scored candidate, prefers
+    prefer_type, and takes the earliest valid date among them.
 
-    prefer_type matters beyond just picking the right date: an album query
-    for "Thriller" can tie in score with the unrelated same-titled "Thriller"
-    single, defaulting to "Single" there would silently substitute a
-    different work. Callers doing an album-level lookup should pass
-    prefer_type="Album"."""
-    if not groups:
+    prefer_type matters beyond just picking the right date: a same-titled
+    single and album can tie in score, defaulting to "Single" for an
+    album-level lookup would silently substitute a different work. Callers
+    doing an album-level lookup should pass prefer_type="Album"."""
+    if not release_groups:
         return None
 
-    top_score = max(g.get("score", 0) for g in groups)
-    candidates = [g for g in groups if g.get("score", 0) == top_score]
+    top_score = max(release_group.get("score", 0) for release_group in release_groups)
+    top_scored_groups = [
+        release_group for release_group in release_groups if release_group.get("score", 0) == top_score
+    ]
 
-    preferred = [g for g in candidates if g.get("primary-type") == prefer_type]
-    pool = preferred or candidates
+    preferred_type_groups = [
+        release_group for release_group in top_scored_groups if release_group.get("primary-type") == prefer_type
+    ]
+    candidate_groups = preferred_type_groups or top_scored_groups
 
-    dated = [g for g in pool if g.get("first-release-date")]
-    if dated:
-        return min(dated, key=lambda g: g["first-release-date"])
-    return pool[0]
+    dated_groups = [release_group for release_group in candidate_groups if release_group.get("first-release-date")]
+    if dated_groups:
+        return min(dated_groups, key=lambda release_group: release_group["first-release-date"])
+    return candidate_groups[0]
 
 
 def summarize(data: dict) -> None:

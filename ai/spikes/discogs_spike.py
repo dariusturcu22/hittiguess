@@ -15,6 +15,10 @@ from _shared import USER_AGENT, get_with_backoff
 
 _env = dotenv_values(Path(__file__).resolve().parent.parent / ".env")
 
+MAX_DISTINCT_MASTERS = 3
+MAX_RELEASES_TO_SCAN_FOR_MASTERS = 15
+DISPLAY_RESULT_COUNT = 5
+
 
 def _auth_header() -> str:
     return f"Discogs key={_env['DISCOGS_CONSUMER_KEY']}, secret={_env['DISCOGS_CONSUMER_SECRET']}"
@@ -37,30 +41,28 @@ def get_master(master_id: int) -> dict:
     return response.json()
 
 
-def find_master_ids(releases: list[dict], limit: int = 3) -> list[int]:
+def find_master_ids(releases: list[dict], max_masters: int = MAX_DISTINCT_MASTERS) -> list[int]:
     """A single track can belong to more than one distinct master, its own
     standalone single release and the album it also appears on, each with
-    its own master and its own year (live-tested: "Hey Mama" has a 2015
-    single master and is track 10 on "Listen," whose master year is 2014,
-    the true original). Trusting whichever master a search result lists
-    first picked the single over the earlier album. Returns every distinct
-    master_id found among the first several results, in first-seen order,
-    not just one, so the caller can check all of them and take the
-    earliest valid year."""
-    seen: list[int] = []
-    for release in releases[:15]:
+    its own master and its own year. Trusting whichever master a search
+    result lists first can pick a later single over an earlier album.
+    Returns every distinct master_id found among the first several results,
+    in first-seen order, not just one, so the caller can check all of them
+    and take the earliest valid year."""
+    seen_master_ids: list[int] = []
+    for release in releases[:MAX_RELEASES_TO_SCAN_FOR_MASTERS]:
         master_id = release.get("master_id")
-        if master_id and master_id not in seen:
-            seen.append(master_id)
-        if len(seen) >= limit:
+        if master_id and master_id not in seen_master_ids:
+            seen_master_ids.append(master_id)
+        if len(seen_master_ids) >= max_masters:
             break
-    return seen
+    return seen_master_ids
 
 
 def master_year(master: dict) -> int | None:
-    """Discogs uses 0, not null, for a master with no known year (live-tested
-    on "Titanium"), a naive `.get("year")` would treat that as a real, very
-    old date instead of "unknown"."""
+    """Discogs uses 0, not null, for a master with no known year, a naive
+    `.get("year")` would treat that as a real, very old date instead of
+    "unknown"."""
     year = master.get("year")
     return year if year else None
 
@@ -75,7 +77,7 @@ if __name__ == "__main__":
     releases = results.get("results", [])
     total = results.get("pagination", {}).get("items", len(releases))
     print(f"{len(releases)} release result(s) shown, {total} total")
-    for release in releases[:5]:
+    for release in releases[:DISPLAY_RESULT_COUNT]:
         print(
             f"  year={release.get('year')} title={release.get('title')!r} "
             f"master_id={release.get('master_id')} country={release.get('country')}"

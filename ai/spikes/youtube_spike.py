@@ -13,6 +13,8 @@ from _shared import get_with_backoff
 
 _env = dotenv_values(Path(__file__).resolve().parent.parent / ".env")
 
+DESCRIPTION_PREVIEW_LENGTH = 300
+
 
 def fetch_video(video_id: str) -> dict:
     response = get_with_backoff(
@@ -41,4 +43,5 @@ if __name__ == "__main__":
     print(f"channel: {snippet.get('channelTitle')}")
     print(f"published: {snippet.get('publishedAt')}")
     print(f"tags: {snippet.get('tags')}")
-    print(f"description (first 300 chars): {snippet.get('description', '')[:300]}")
+    description_preview = snippet.get("description", "")[:DESCRIPTION_PREVIEW_LENGTH]
+    print(f"description (first {DESCRIPTION_PREVIEW_LENGTH} chars): {description_preview}")

@@ -10,15 +10,7 @@ import time
 import discogs_spike
 import musicbrainz_spike
 import wikidata_spike
-from _shared import extract_year
-
-MUSICBRAINZ_DELAY_SECONDS = 2.5  # documented hard limit is 1 request/second; padded well above it
-DISCOGS_DELAY_SECONDS = 1.1  # well under the 60/minute authenticated limit
-# Wikidata's published limit for anonymous requests with no identifying characteristics
-# is 10/minute (a descriptive User-Agent may or may not move a script into the more
-# lenient 200/minute browser-identified tier, not confirmed either way), so pace to the
-# stricter number rather than assume the better one applies: 60/10 = 6s minimum, padded.
-WIKIDATA_DELAY_SECONDS = 6.5
+from _shared import DISCOGS_DELAY_SECONDS, MUSICBRAINZ_DELAY_SECONDS, WIKIDATA_DELAY_SECONDS, extract_year
 
 # (title, artist, album, tier, note) - album is None when there's no separate
 # album to compare against, or when guessing the title risks being wrong
@@ -47,7 +39,7 @@ def run_musicbrainz(title: str, artist: str, album: str | None) -> None:
         artist_credit = best.get("artist-credit", [{}])
         print(
             f"  MusicBrainz (track query): {len(groups)} candidate(s), selected first-release-date={track_date} "
-            f"primary-type={best.get('primary-type')} tags={[t['name'] for t in best.get('tags', [])]}"
+            f"primary-type={best.get('primary-type')} tags={[tag['name'] for tag in best.get('tags', [])]}"
         )
 
         artist_id = artist_credit[0].get("artist", {}).get("id") if artist_credit else None
@@ -74,10 +66,17 @@ def run_musicbrainz(title: str, artist: str, album: str | None) -> None:
                 f"primary-type={album_best.get('primary-type')} [{agreement} with track query]"
             )
 
-    years = {y: d for d, y in ((d, extract_year(d)) for d in (track_date, album_date)) if y is not None}
-    if years:
-        earliest_year = min(years)
-        print(f"  MusicBrainz FINAL year (earliest of track/album): {earliest_year} (from {years[earliest_year]!r})")
+    date_by_year: dict[int, str] = {}
+    for date_value in (track_date, album_date):
+        year_value = extract_year(date_value)
+        if year_value is not None:
+            date_by_year[year_value] = date_value
+    if date_by_year:
+        earliest_year = min(date_by_year)
+        print(
+            f"  MusicBrainz FINAL year (earliest of track/album): {earliest_year} "
+            f"(from {date_by_year[earliest_year]!r})"
+        )
 
 
 def _discogs_lookup(title: str, artist: str, label: str) -> int | None:
@@ -121,9 +120,9 @@ def run_discogs(title: str, artist: str, album: str | None) -> None:
             agreement = "agrees" if album_year == track_year else "DIFFERS"
             print(f"  Discogs track vs. album query: [{agreement}]")
 
-    years = [y for y in (track_year, album_year) if y is not None]
-    if years:
-        print(f"  Discogs FINAL year (earliest of track/album): {min(years)}")
+    known_years = [year_value for year_value in (track_year, album_year) if year_value is not None]
+    if known_years:
+        print(f"  Discogs FINAL year (earliest of track/album): {min(known_years)}")
 
 
 def _wikidata_lookup(title: str, artist: str, label: str) -> str | None:
@@ -146,7 +145,7 @@ def _wikidata_lookup(title: str, artist: str, label: str) -> str | None:
     language_id = wikidata_spike.extract_entity_id_claim(entity, "P407")
 
     time.sleep(WIKIDATA_DELAY_SECONDS)
-    labels = wikidata_spike.resolve_labels([i for i in (country_id, language_id) if i])
+    labels = wikidata_spike.resolve_labels([entity_id for entity_id in (country_id, language_id) if entity_id])
 
     time.sleep(WIKIDATA_DELAY_SECONDS)
     sitelinks_count = wikidata_spike.get_sitelinks_count(top_id)
@@ -170,10 +169,16 @@ def run_wikidata(title: str, artist: str, album: str | None) -> None:
             agreement = "agrees" if extract_year(album_date) == extract_year(track_date) else "DIFFERS"
             print(f"  Wikidata track vs. album query: [{agreement}]")
 
-    years = {y: d for d, y in ((d, extract_year(d)) for d in (track_date, album_date)) if y is not None}
-    if years:
-        earliest_year = min(years)
-        print(f"  Wikidata FINAL year (earliest of track/album): {earliest_year} (from {years[earliest_year]!r})")
+    date_by_year: dict[int, str] = {}
+    for date_value in (track_date, album_date):
+        year_value = extract_year(date_value)
+        if year_value is not None:
+            date_by_year[year_value] = date_value
+    if date_by_year:
+        earliest_year = min(date_by_year)
+        print(
+            f"  Wikidata FINAL year (earliest of track/album): {earliest_year} (from {date_by_year[earliest_year]!r})"
+        )
 
 
 if __name__ == "__main__":
