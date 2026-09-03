@@ -84,6 +84,18 @@ def extract_publication_date(entity: dict) -> str | None:
     return min(times) if times else None
 
 
+def get_part_of(entity: dict) -> str | None:
+    """P361 ("part of") on a song entity usually points at its parent album,
+    when present this is more reliable than guessing the album's title and
+    searching for it separately: no risk of a wrong guess, and no exposure
+    to wbsearchentities' literal label matching for a second query."""
+    claims = entity.get("claims", {})
+    statements = claims.get("P361")
+    if not statements:
+        return None
+    return statements[0]["mainsnak"]["datavalue"]["value"]["id"]
+
+
 def get_sitelinks_count(entity_id: str) -> int:
     """Number of language-edition Wikipedia articles linked to this entity, a
     rough proxy for how internationally known something is: a song with

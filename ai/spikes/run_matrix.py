@@ -26,7 +26,7 @@ SONGS = [
     ("Roygbiv", "Boards of Canada", "Music Has The Right To Children", "mid", ""),
     ("Such Great Heights", "The Postal Service", "Give Up", "mid", ""),
     ("リサフランク420 / 現代のコンピュー", "Macintosh Plus", "Floral Shoppe", "niche", "vaporwave cult release, real stylized title, not romanized"),
-    ("Dragostea Din Tei", "O-Zone", None, "romanian", "Romanian-language, but an international hit; not confident enough of the parent album's exact title to test it"),
+    ("Dragostea Din Tei", "O-Zone", "DiscO-Zone", "romanian", "Romanian-language, but an international hit; album title found via Wikidata's P361 link on the song entity, not guessed"),
 ]
 
 
