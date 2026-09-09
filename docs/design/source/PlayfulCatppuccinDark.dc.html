@@ -1,0 +1,98 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bungee&family=Baloo+2:wght@700;800&family=Space+Grotesk:wght@400;500;700&display=swap">
+  <style>
+    body { margin: 0; }
+    a { color: #cdd6f4; } a:hover { color: #f5c2e7; }
+
+    .wave-bar { border-radius: 100px; width: 5px; }
+  </style>
+</helmet>
+<div style="width: 560px; height: 760px; background: #1e1e2e; font-family: 'Space Grotesk', sans-serif; box-sizing: border-box; padding: 40px; display: flex; flex-direction: column; gap: 28px; position: relative; overflow: hidden;">
+  <div style="position: absolute; top: -60px; right: -60px; width: 220px; height: 220px; border-radius: 50%; background: #cba6f7; opacity: 0.9;"></div>
+  <div style="position: absolute; bottom: -80px; left: -40px; width: 260px; height: 260px; background: #fab387; transform: rotate(18deg); opacity: 0.85;"></div>
+
+  <div style="display: flex; align-items: center; justify-content: space-between; z-index: 1;">
+    <div style="display: flex; align-items: center; gap: 14px;">
+      <div style="display: flex; align-items: center; gap: 4px; height: 26px;">
+        <div class="wave-bar" style="background: #a6e3a1; width: 6px; height: {{barB}};"></div>
+        <div class="wave-bar" style="background: #a6e3a1; width: 6px; height: {{barD}};"></div>
+        <div class="wave-bar" style="background: #a6e3a1; width: 6px; height: {{barA}};"></div>
+        <div class="wave-bar" style="background: #a6e3a1; width: 6px; height: {{barC}};"></div>
+      </div>
+      <div style="font-family: 'Baloo 2', sans-serif; font-weight: 800; font-size: 24px; color: #cdd6f4;">hittiguess</div>
+    </div>
+    <div style="display: flex; align-items: center; gap: 4px; background: #313244; border-radius: 100px; padding: 4px;">
+      <div style="width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #6c7086;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.2" y1="4.2" x2="5.6" y2="5.6"></line><line x1="18.4" y1="18.4" x2="19.8" y2="19.8"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.2" y1="19.8" x2="5.6" y2="18.4"></line><line x1="18.4" y1="5.6" x2="19.8" y2="4.2"></line></svg>
+      </div>
+      <div style="width: 28px; height: 28px; border-radius: 50%; background: #45475a; display: flex; align-items: center; justify-content: center; color: #f9e2af;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
+      </div>
+    </div>
+  </div>
+
+  <div style="z-index: 1; display: flex; flex-direction: column; gap: 16px; margin-top: 12px;">
+    <div style="font-family: 'Bungee', sans-serif; font-size: 56px; line-height: 1.02; color: #f5c2e7; text-shadow: 4px 4px 0 #313244;">
+      PLACE IT.<br>GUESS IT.<br>WIN IT.
+    </div>
+    <div style="font-size: 18px; color: #bac2de; font-weight: 500; max-width: 380px;">
+      The party game where being confidently wrong is half the fun. Songs, years, and your friends' terrible music takes.
+    </div>
+    <div style="margin-top: 8px;">
+      <span style="display: inline-block; background: #fab387; color: #1e1e2e; font-family: 'Bungee', sans-serif; font-size: 16px; padding: 16px 32px; border-radius: 100px; transform: rotate(-2deg); box-shadow: 6px 6px 0 rgba(0,0,0,0.35);">
+        START A SESSION
+      </span>
+    </div>
+  </div>
+
+  <div style="z-index: 1; margin-top: auto; display: flex; gap: 16px; align-items: flex-end;">
+    <div style="width: 150px; height: 190px; background: #313244; border: 4px solid #45475a; border-radius: 18px; transform: rotate(-6deg); box-shadow: 6px 6px 0 rgba(0,0,0,0.4); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px;">
+      <div style="width: 70%; height: 10px; background: #45475a; border-radius: 4px;"></div>
+      <div style="font-family: 'Bungee', sans-serif; font-size: 34px; color: #a6e3a1;">'87</div>
+      <div style="width: 50%; height: 10px; background: #45475a; border-radius: 4px;"></div>
+    </div>
+    <div style="width: 150px; height: 190px; background: #cba6f7; border: 4px solid #1e1e2e; border-radius: 18px; transform: rotate(4deg); box-shadow: 6px 6px 0 rgba(0,0,0,0.4); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px;">
+      <div style="width: 70%; height: 10px; background: rgba(30,30,46,0.25); border-radius: 4px;"></div>
+      <div style="font-family: 'Bungee', sans-serif; font-size: 34px; color: #1e1e2e;">?</div>
+      <div style="width: 50%; height: 10px; background: rgba(30,30,46,0.25); border-radius: 4px;"></div>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script data-dc-script data-props='{}'>
+class Component extends DCLogic {
+  componentDidMount() {
+    this.frame = 0;
+    this.timer = setInterval(() => {
+      this.frame += 1;
+      this.forceUpdate();
+    }, 120);
+  }
+  componentWillUnmount() {
+    clearInterval(this.timer);
+  }
+  renderVals() {
+    var frame = this.frame || 0;
+    var makeBarHeight = function (phase) {
+      var value = 12 + Math.round(6 * Math.sin(frame * 0.35 + phase));
+      return value + 'px';
+    };
+    return {
+      barA: makeBarHeight(0),
+      barB: makeBarHeight(1.6),
+      barC: makeBarHeight(3.1),
+      barD: makeBarHeight(4.7)
+    };
+  }
+}
+</script>
+</body>
+</html>

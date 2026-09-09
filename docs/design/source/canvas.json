@@ -1,0 +1,573 @@
+{
+  "artboards": [
+    {
+      "file": "PlayfulCatppuccinDark.dc.html",
+      "x": 0,
+      "y": 0,
+      "w": 560,
+      "h": 760,
+      "title": "THE DECISION, dark",
+      "page": "page-1"
+    },
+    {
+      "file": "PlayfulCatppuccinLight.dc.html",
+      "x": 700,
+      "y": 0,
+      "w": 560,
+      "h": 760,
+      "title": "THE DECISION, light",
+      "page": "page-1"
+    },
+    {
+      "file": "CardOptions.dc.html",
+      "x": 1400,
+      "y": 0,
+      "w": 1000,
+      "h": 822,
+      "title": "Card design",
+      "page": "page-1"
+    },
+    {
+      "file": "LandingDesktopDark.dc.html",
+      "x": 0,
+      "y": 1000,
+      "w": 1440,
+      "h": 2834,
+      "title": "Landing, desktop dark",
+      "page": "page-1"
+    },
+    {
+      "file": "LandingDesktopLight.dc.html",
+      "x": 1580,
+      "y": 1000,
+      "w": 1440,
+      "h": 2846,
+      "title": "Landing, desktop light",
+      "page": "page-1"
+    },
+    {
+      "file": "LandingMobileDark.dc.html",
+      "x": 3160,
+      "y": 1000,
+      "w": 390,
+      "h": 2725,
+      "title": "Landing, mobile dark",
+      "page": "page-1"
+    },
+    {
+      "file": "LandingMobileLight.dc.html",
+      "x": 3690,
+      "y": 1000,
+      "w": 390,
+      "h": 2737,
+      "title": "Landing, mobile light",
+      "page": "page-1"
+    },
+    {
+      "file": "AppShellDark.dc.html",
+      "x": 0,
+      "y": 4020,
+      "w": 1440,
+      "h": 900,
+      "title": "App shell, dark",
+      "page": "page-1"
+    },
+    {
+      "file": "AppShellLight.dc.html",
+      "x": 1580,
+      "y": 4020,
+      "w": 1440,
+      "h": 900,
+      "title": "App shell, light",
+      "page": "page-1"
+    },
+    {
+      "file": "LoginDark.dc.html",
+      "x": 0,
+      "y": 5080,
+      "w": 1440,
+      "h": 900,
+      "title": "Log in / create account, dark",
+      "page": "page-1"
+    },
+    {
+      "file": "RegisterDark.dc.html",
+      "x": 1580,
+      "y": 5080,
+      "w": 1440,
+      "h": 900,
+      "title": "Log in / create account (toggled), dark",
+      "page": "page-1"
+    },
+    {
+      "file": "ForgotPasswordDark.dc.html",
+      "x": 3160,
+      "y": 5080,
+      "w": 1440,
+      "h": 900,
+      "title": "Forgot password, dark",
+      "page": "page-1"
+    },
+    {
+      "file": "LoginLight.dc.html",
+      "x": 0,
+      "y": 6140,
+      "w": 1440,
+      "h": 860,
+      "title": "Log in / create account, light",
+      "page": "page-1"
+    },
+    {
+      "file": "RegisterLight.dc.html",
+      "x": 1580,
+      "y": 6140,
+      "w": 1440,
+      "h": 1010,
+      "title": "Log in / create account (toggled), light",
+      "page": "page-1"
+    },
+    {
+      "file": "ForgotPasswordLight.dc.html",
+      "x": 3160,
+      "y": 6140,
+      "w": 1440,
+      "h": 860,
+      "title": "Forgot password, light",
+      "page": "page-1"
+    },
+    {
+      "file": "YourPlaylistsDark.dc.html",
+      "x": 0,
+      "y": 7310,
+      "w": 1440,
+      "h": 900,
+      "title": "Your playlists, dark",
+      "page": "page-1"
+    },
+    {
+      "file": "YourPlaylistsLight.dc.html",
+      "x": 1580,
+      "y": 7310,
+      "w": 1440,
+      "h": 964,
+      "title": "Your playlists, light",
+      "page": "page-1"
+    },
+    {
+      "file": "ExplorePlaylistsDark.dc.html",
+      "x": 0,
+      "y": 8434,
+      "w": 1440,
+      "h": 900,
+      "title": "Explore public playlists, dark",
+      "page": "page-1"
+    },
+    {
+      "file": "ExplorePlaylistsLight.dc.html",
+      "x": 1580,
+      "y": 8434,
+      "w": 1440,
+      "h": 1192,
+      "title": "Explore public playlists, light",
+      "page": "page-1"
+    },
+    {
+      "file": "PlaylistDetailDark.dc.html",
+      "x": 0,
+      "y": 9786,
+      "w": 1440,
+      "h": 900,
+      "title": "Playlist detail, dark",
+      "page": "page-1"
+    },
+    {
+      "file": "PlaylistDetailLight.dc.html",
+      "x": 1580,
+      "y": 9786,
+      "w": 1440,
+      "h": 900,
+      "title": "Playlist detail, light",
+      "page": "page-1"
+    },
+    {
+      "file": "EditSongDetailsDark.dc.html",
+      "x": 0,
+      "y": 10846,
+      "w": 1440,
+      "h": 900,
+      "title": "Edit song details, dark",
+      "page": "page-1"
+    },
+    {
+      "file": "SongDetailDark.dc.html",
+      "x": 0,
+      "y": 11906,
+      "w": 1440,
+      "h": 900,
+      "title": "Song detail, dark",
+      "page": "page-1"
+    },
+    {
+      "file": "SongDetailLight.dc.html",
+      "x": 1580,
+      "y": 11906,
+      "w": 1440,
+      "h": 750,
+      "title": "Song detail, light",
+      "page": "page-1"
+    },
+    {
+      "file": "AddSongDark.dc.html",
+      "x": 0,
+      "y": 12966,
+      "w": 1440,
+      "h": 900,
+      "title": "Add songs, search and queue, dark",
+      "page": "page-1"
+    },
+    {
+      "file": "AddSongLight.dc.html",
+      "x": 1580,
+      "y": 12966,
+      "w": 1440,
+      "h": 1000,
+      "title": "Add songs, search and queue, light",
+      "page": "page-1"
+    },
+    {
+      "file": "AddNewSongLinkDark.dc.html",
+      "x": 0,
+      "y": 14126,
+      "w": 1440,
+      "h": 900,
+      "title": "Add a new song, step 1 link, dark",
+      "page": "page-1"
+    },
+    {
+      "file": "AddNewSongReviewLockedDark.dc.html",
+      "x": 0,
+      "y": 15186,
+      "w": 1440,
+      "h": 900,
+      "title": "Add a new song, step 2 high confidence locked, dark",
+      "page": "page-1"
+    },
+    {
+      "file": "AddNewSongReviewEditableDark.dc.html",
+      "x": 0,
+      "y": 16246,
+      "w": 1440,
+      "h": 900,
+      "title": "Add a new song, step 2 needs review editable, dark",
+      "page": "page-1"
+    },
+    {
+      "file": "ImportChooseSourceDark.dc.html",
+      "x": 0,
+      "y": 17306,
+      "w": 1440,
+      "h": 900,
+      "title": "Import playlist, choose source, dark",
+      "page": "page-1"
+    },
+    {
+      "file": "ImportPlaylistLinkDark.dc.html",
+      "x": 0,
+      "y": 18366,
+      "w": 1440,
+      "h": 900,
+      "title": "Import from YouTube, step 1 link, dark",
+      "page": "page-1"
+    },
+    {
+      "file": "ImportPlaylistProcessingDark.dc.html",
+      "x": 0,
+      "y": 19426,
+      "w": 1440,
+      "h": 900,
+      "title": "Import from YouTube, step 2 crawling, dark",
+      "page": "page-1"
+    },
+    {
+      "file": "ImportFromPlaylistSelectDark.dc.html",
+      "x": 0,
+      "y": 20486,
+      "w": 1440,
+      "h": 900,
+      "title": "Import from an existing playlist, step 1 select, dark",
+      "page": "page-1"
+    },
+    {
+      "file": "ImportFromPlaylistConfirmDark.dc.html",
+      "x": 0,
+      "y": 21546,
+      "w": 1440,
+      "h": 900,
+      "title": "Import from an existing playlist, step 2 confirm, dark",
+      "page": "page-1"
+    },
+    {
+      "file": "ImportProgressDark.dc.html",
+      "x": 0,
+      "y": 22606,
+      "w": 900,
+      "h": 370,
+      "title": "Import running in the background, sidebar icon and toast, dark",
+      "page": "page-1"
+    },
+    {
+      "file": "EditPlaylistDark.dc.html",
+      "x": 0,
+      "y": 23136,
+      "w": 1440,
+      "h": 900,
+      "title": "Edit playlist, dark",
+      "page": "page-1"
+    },
+    {
+      "file": "EditPlaylistLight.dc.html",
+      "x": 1580,
+      "y": 23136,
+      "w": 1440,
+      "h": 940,
+      "title": "Edit playlist, light",
+      "page": "page-1"
+    },
+    {
+      "file": "JoinInviteDark.dc.html",
+      "x": 0,
+      "y": 24236,
+      "w": 1440,
+      "h": 900,
+      "title": "Join by invite, dark",
+      "page": "page-1"
+    },
+    {
+      "file": "JoinInviteLight.dc.html",
+      "x": 1580,
+      "y": 24236,
+      "w": 1440,
+      "h": 900,
+      "title": "Join by invite, light",
+      "page": "page-1"
+    },
+    {
+      "file": "GroupLobbyDark.dc.html",
+      "x": 0,
+      "y": 25296,
+      "w": 1440,
+      "h": 900,
+      "title": "Group lobby, dark",
+      "page": "page-1"
+    },
+    {
+      "file": "GroupLobbyLight.dc.html",
+      "x": 1580,
+      "y": 25296,
+      "w": 1440,
+      "h": 860,
+      "title": "Group lobby, light",
+      "page": "page-1"
+    },
+    {
+      "file": "GameSessionPlayerDark.dc.html",
+      "x": 0,
+      "y": 26356,
+      "w": 1440,
+      "h": 900,
+      "title": "Game session, player view dark",
+      "page": "page-1"
+    },
+    {
+      "file": "GameSessionPlayerLight.dc.html",
+      "x": 1580,
+      "y": 26356,
+      "w": 1440,
+      "h": 700,
+      "title": "Game session, player view light",
+      "page": "page-1"
+    },
+    {
+      "file": "GameSessionDJDark.dc.html",
+      "x": 0,
+      "y": 27416,
+      "w": 1440,
+      "h": 900,
+      "title": "Game session, DJ view dark",
+      "page": "page-1"
+    },
+    {
+      "file": "GameSessionDJLight.dc.html",
+      "x": 1580,
+      "y": 27416,
+      "w": 1440,
+      "h": 900,
+      "title": "Game session, DJ view light",
+      "page": "page-1"
+    },
+    {
+      "file": "ResultsDark.dc.html",
+      "x": 0,
+      "y": 28476,
+      "w": 1440,
+      "h": 900,
+      "title": "Results / leaderboard, dark",
+      "page": "page-1"
+    },
+    {
+      "file": "ResultsLight.dc.html",
+      "x": 1580,
+      "y": 28476,
+      "w": 1440,
+      "h": 900,
+      "title": "Results / leaderboard, light",
+      "page": "page-1"
+    },
+    {
+      "file": "TurnNotificationDark.dc.html",
+      "x": 0,
+      "y": 29536,
+      "w": 800,
+      "h": 230,
+      "title": "Turn notification banner, dark",
+      "page": "page-1"
+    },
+    {
+      "file": "TurnNotificationLight.dc.html",
+      "x": 1580,
+      "y": 29536,
+      "w": 800,
+      "h": 230,
+      "title": "Turn notification banner, light",
+      "page": "page-1"
+    },
+    {
+      "file": "AwayWidgetDark.dc.html",
+      "x": 0,
+      "y": 29926,
+      "w": 600,
+      "h": 400,
+      "title": "Playing while away widget, dark",
+      "page": "page-1"
+    },
+    {
+      "file": "AwayWidgetLight.dc.html",
+      "x": 1580,
+      "y": 29926,
+      "w": 600,
+      "h": 400,
+      "title": "Playing while away widget, light",
+      "page": "page-1"
+    },
+    {
+      "file": "TextChatOverlayDark.dc.html",
+      "x": 0,
+      "y": 30486,
+      "w": 450,
+      "h": 658,
+      "title": "Text chat overlay, dark",
+      "page": "page-1"
+    },
+    {
+      "file": "TextChatOverlayLight.dc.html",
+      "x": 1580,
+      "y": 30486,
+      "w": 450,
+      "h": 658,
+      "title": "Text chat overlay, light",
+      "page": "page-1"
+    }
+  ],
+  "annotations": [
+    {
+      "id": "reference-note",
+      "x": 0,
+      "y": -60,
+      "w": 1300,
+      "text": "Reference: the settled visual decision and card design.",
+      "page": "page-1"
+    },
+    {
+      "id": "overview-note",
+      "x": 0,
+      "y": 940,
+      "w": 1400,
+      "text": "Final landing page: desktop and mobile, dark and light.",
+      "page": "page-1"
+    },
+    {
+      "id": "viewport-note",
+      "x": 0,
+      "y": 3960,
+      "w": 1400,
+      "text": "Every desktop app screen from here down is a fixed 1440x900, a real 16:10 viewport, not sized to whatever content happened to be on it. Content that doesn't fit scrolls inside the screen on its own custom-styled scrollbar (never the default browser one), the shell around it stays put. Landing pages, mobile artboards, and the small floating overlay components (turn banner, away widget, chat panel, the import progress callout) are the exceptions, they're a different medium or deliberately compact by design.",
+      "page": "page-1"
+    },
+    {
+      "id": "auth-note",
+      "x": 0,
+      "y": 5020,
+      "w": 1400,
+      "text": "Auth screens, in progress, desktop only. Log in and Create account are one screen with a toggle switcher at the top, not two separate pages: the two Login/Register artboards show the same screen in its two toggle states. Forgot password is its own standalone screen.",
+      "page": "page-1"
+    },
+    {
+      "id": "playlists-note",
+      "x": 0,
+      "y": 7250,
+      "w": 1400,
+      "text": "Playlists and content, desktop only. Your playlists (personal library), Explore public playlists, Playlist detail, Edit song details, Song detail, Add songs, Edit playlist, and Join by invite. All reuse the same left sidebar; song playback always links out to the real YouTube page or app, never an embedded player. Only the dark theme is being iterated on right now, light versions get ported once each page settles, so several pages currently only have a dark artboard. Terminology: \"Join\" is for accepting an invite link and becoming a real member of a playlist (Join by invite); \"Save\" (Explore public playlists) is for adding someone else's public playlist to your own library without becoming a member of it. Playlist detail offers two ways to add content: \"Add song\" and \"Import playlist\", both fully designed as their own flows below.",
+      "page": "page-1"
+    },
+    {
+      "id": "needs-review-note",
+      "x": 0,
+      "y": 10786,
+      "w": 1400,
+      "text": "On Playlist detail, songs flagged \"needs review\" get a pencil icon in place of the usual eye icon. Regular rows go to Song detail, which is read-only. \"Needs review\" rows go here instead, to Edit song details, a dedicated screen with the same fields shown as editable inputs so they can actually be corrected, since Song detail has no fields to edit. The \"Review now\" link on the summary banner jumps straight to the first flagged row in the list.",
+      "page": "page-1"
+    },
+    {
+      "id": "add-song-note",
+      "x": 0,
+      "y": 13906,
+      "w": 1400,
+      "text": "Add songs is two paths. The main page (search and queue) lets you search the existing song database, add several at once, and see everything queued before confirming; both the results list and the queue panel scroll on their own custom-styled scrollbar and now extend to match each other's height. \"Add a new song\" is a separate 3-step flow shown as its own artboards: 1) paste a YouTube link, 2) metadata is fetched automatically (no dedicated screen needed, it's instant), 3) review. Fields are locked when the AI is confident (with a \"Report and edit manually\" override for when it's confidently wrong), or left as empty, editable fields with placeholder text when it isn't sure. It never fabricates a partial guess.",
+      "page": "page-1"
+    },
+    {
+      "id": "import-playlist-note",
+      "x": 0,
+      "y": 17246,
+      "w": 1400,
+      "text": "Import playlist, the second way to add content from Playlist detail, now with two sources. Choosing \"From YouTube\" leads to the same crawl flow as before: step 1 takes a playlist link, step 2 lists every song and crawls them one at a time, each row starting with the raw YouTube data (video title and channel name, muted and in italics) and a spinning fetch indicator, then updating in place to the real title, artist, and release year with a checkmark once processed. Choosing \"From an existing playlist\" is instant instead: pick a playlist you've joined or found public, and every song copies over immediately, no fetching, since it's already in the database. Either way, closing the import screen doesn't cancel it: a temporary icon appears in the left sidebar below Group lobby while an import is active, and a small toast shows the progress once, then fades after a few seconds. Both reopen the import screen. That whole pattern is shown isolated in its own board below.",
+      "page": "page-1"
+    },
+    {
+      "id": "gameplay-note",
+      "x": 0,
+      "y": 25236,
+      "w": 1400,
+      "text": "Gameplay, desktop only. Group lobby, then the game session in its two views: player (timeline placement and betting) and DJ (song playback, always a link-out to the real YouTube page or app, never embedded). Results/leaderboard shows once the call has ended.",
+      "page": "page-1"
+    },
+    {
+      "id": "gameplay-overlays-note",
+      "x": 0,
+      "y": 29476,
+      "w": 1400,
+      "text": "Overlay components used during a session: the turn notification banner, the \"playing while away\" floating widget, and the text chat panel. Shown isolated at natural size, not placed on a specific background.",
+      "page": "page-1"
+    }
+  ],
+  "launch": {
+    "view": "canvas",
+    "page": "page-1"
+  },
+  "pages": [
+    {
+      "id": "page-1",
+      "name": "hittiguess design"
+    }
+  ]
+}

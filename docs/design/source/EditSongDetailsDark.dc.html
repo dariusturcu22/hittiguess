@@ -1,0 +1,114 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bungee&family=Baloo+2:wght@700;800&family=Space+Grotesk:wght@400;500;600;700&display=swap">
+  <style>
+    body { margin: 0; }
+    .navicon { width: 46px; height: 46px; border-radius: 14px; display: flex; align-items: center; justify-content: center; cursor: pointer; color: #6c7086; }
+    .navicon.active { background: #cba6f7; box-shadow: 3px 3px 0 rgba(0,0,0,0.4); color: #11111b; }
+    .divider { width: 32px; height: 2px; background: #313244; border-radius: 2px; margin: 14px auto; flex-shrink: 0; }
+    .game-card { width: 160px; height: 160px; box-sizing: border-box; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; font-family: 'Space Grotesk', sans-serif; text-align: center; border: 5px solid #11111b; border-radius: 24px; box-shadow: 6px 6px 0 rgba(0,0,0,0.4); }
+    .game-card .artist { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
+    .game-card .year { font-family: 'Bungee', sans-serif; font-size: 40px; line-height: 1; }
+    .game-card .title { font-size: 10px; font-weight: 500; opacity: 0.8; }
+    .field-block { width: 100%; margin-bottom: 16px; }
+    .field-label { font-size: 11px; font-weight: 600; color: #a6adc8; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; display: block; }
+    .field-input { width: 100%; box-sizing: border-box; background: #1e1e2e; border: 2px solid #f9e2af; border-radius: 13px; padding: 13px 16px; font-family: 'Space Grotesk', sans-serif; font-size: 14px; color: #cdd6f4; }
+    .field-input::placeholder { color: #6c7086; }
+    .btn-auth { width: 100%; text-align: center; background: #fab387; color: #1e1e2e; font-family: 'Bungee', sans-serif; font-size: 15px; padding: 16px 0; border-radius: 100px; box-shadow: 4px 4px 0 rgba(0,0,0,0.35); box-sizing: border-box; cursor: pointer; border: none; }
+    .btn-cancel { width: 100%; text-align: center; background: transparent; color: #a6adc8; font-family: 'Space Grotesk', sans-serif; font-weight: 600; font-size: 14px; padding: 14px 0; border-radius: 100px; border: 2px solid #45475a; box-sizing: border-box; cursor: pointer; }
+  </style>
+</helmet>
+<div style="width: 1440px; height: 900px; background: #1e1e2e; font-family: 'Space Grotesk', sans-serif; box-sizing: border-box; color: #cdd6f4; display: flex; overflow: hidden; position: relative;">
+
+  <div style="width: 76px; flex-shrink: 0; background: #11111b; display: flex; flex-direction: column; align-items: center; padding: 20px 0; box-sizing: border-box; border-right: 3px solid #313244;">
+    <div style="display: flex; align-items: center; gap: 2px; height: 22px;">
+      <div style="background: #a6e3a1; width: 5px; height: 10px; border-radius: 100px;"></div>
+      <div style="background: #a6e3a1; width: 5px; height: 20px; border-radius: 100px;"></div>
+      <div style="background: #a6e3a1; width: 5px; height: 14px; border-radius: 100px;"></div>
+      <div style="background: #a6e3a1; width: 5px; height: 22px; border-radius: 100px;"></div>
+    </div>
+    <div class="divider"></div>
+    <div class="navicon" title="Play / start a session">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="#cdd6f4"><path d="M8 5v14l11-7z"></path></svg>
+    </div>
+    <div class="divider"></div>
+    <div style="display: flex; flex-direction: column; gap: 14px;">
+      <div class="navicon active" title="Your playlists">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="6" x2="13" y2="6"></line><line x1="4" y1="12" x2="13" y2="12"></line><line x1="4" y1="18" x2="9" y2="18"></line><circle cx="18" cy="16" r="2.3"></circle><path d="M20.3 16V6.5l-2.8 1"></path></svg>
+      </div>
+      <div class="navicon" title="Explore public playlists">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"></circle><polygon points="15.5 8.5 13 13 8.5 15.5 11 11" fill="currentColor" stroke-linejoin="round"></polygon></svg>
+      </div>
+    </div>
+    <div class="divider"></div>
+    <div class="navicon" title="Group lobby">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+    </div>
+    <div style="flex: 1;"></div>
+    <div class="navicon" title="Theme">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
+    </div>
+    <div style="height: 16px;"></div>
+    <div style="width: 44px; height: 44px; border-radius: 50%; background: #fab387; border: 2px solid #313244; display: flex; align-items: center; justify-content: center; font-family: 'Bungee', sans-serif; font-size: 16px; color: #11111b; cursor: pointer;">D</div>
+  </div>
+
+  <div style="flex: 1; box-sizing: border-box; background-image: radial-gradient(circle, rgba(108,112,134,0.25) 1.5px, transparent 1.5px); background-size: 22px 22px; padding: 60px 0; display: flex; align-items: center; justify-content: center;">
+
+    <div style="width: 560px; background: #313244; border: 3px solid #11111b; border-radius: 18px; box-shadow: 6px 6px 0 rgba(0,0,0,0.4); box-sizing: border-box; padding: 44px 48px 48px; display: flex; flex-direction: column; align-items: center;">
+
+      <div style="width: 100%; font-family: 'Bungee', sans-serif; font-size: 24px; color: #cba6f7; text-shadow: 3px 3px 0 #1e1e2e; text-align: center; margin-bottom: 6px;">Edit song details</div>
+      <div style="font-size: 12px; color: #6c7086; text-align: center; margin-bottom: 16px;">From Midnight Radio</div>
+
+      <div style="display: inline-flex; align-items: center; gap: 6px; background: rgba(249,226,175,0.16); color: #f9e2af; font-family: 'Bungee', sans-serif; font-size: 11px; padding: 8px 16px; border-radius: 100px; margin-bottom: 22px;">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+        Needs review
+      </div>
+
+      <div class="game-card" style="background: #cba6f7; color: #1e1e2e; margin-bottom: 24px;">
+        <div class="artist">FKA TWIGS</div>
+        <div class="year">2014</div>
+        <div class="title">Two Weeks</div>
+      </div>
+
+      <div style="width: 100%;">
+        <div class="field-block">
+          <label class="field-label">Title</label>
+          <input class="field-input" type="text" value="Two Weeks">
+        </div>
+        <div class="field-block">
+          <label class="field-label">Artist</label>
+          <input class="field-input" type="text" value="FKA twigs">
+        </div>
+        <div class="field-block" style="margin-bottom: 20px;">
+          <label class="field-label">Release year</label>
+          <input class="field-input" type="text" value="2014">
+        </div>
+      </div>
+
+      <div style="font-size: 12px; color: #a6adc8; text-align: center; line-height: 1.6; margin-bottom: 24px;">These details haven't been confirmed yet. Check them, fix anything that's wrong, then save.</div>
+
+      <div style="display: flex; gap: 12px; width: 100%; margin-bottom: 18px;">
+        <button class="btn-cancel">Cancel</button>
+        <button class="btn-auth">Save &amp; mark verified</button>
+      </div>
+
+      <div style="font-size: 12px; color: #6c7086; cursor: pointer;">‹ Back to playlist</div>
+
+    </div>
+
+  </div>
+
+</div>
+</x-dc>
+<script data-dc-script data-props='{}'>
+class Component extends DCLogic {}
+</script>
+</body>
+</html>
