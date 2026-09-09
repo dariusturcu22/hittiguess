@@ -31,9 +31,15 @@ The two services run in the same hosting environment and reach each other over i
 
 ## System components
 
+### Database domain boundary
+
+One split is explicit: the transactional Postgres+pgvector instance versus a separate append-heavy analytics/event store ([PROJECT_STATE.md](PROJECT_STATE.md) story 33). Every entity either service reads or writes today, users, groups, sessions, rounds, guesses, songs, playlists, and pgvector embeddings, lives in the transactional instance; only usage/event data (games played, session length, rate-limit-exceeded, report-submitted, and similar counters) goes in the analytics store. No entity is planned to live in both, or move between them. This is the only database split in the architecture, there's no separate database per service.
+
 ### Song and playlist database
 
 Every song has: `youtubeId`, `title`, `releaseYear`, `verificationStatus`, `confidence` (persisted), `metadataRaw` (full pipeline output, for auditability), multi-value `tags`. Two parts of the target shape are undecided, not just unconfirmed against code: whether release year is one field or split into `submittedYear`/`verifiedYear`, and how multiple or featured artists are stored and guessed, today's schema still assumes a single `artist` string. See [PROJECT_STATE.md](PROJECT_STATE.md)'s open questions for both.
+
+`metadataRaw`, and any other field that persists external API output, holds the curated, actually-used subset of a source's response, never the full raw payload. A single source's raw response can run to tens of KB per song; at that size the database's free-tier size cap holds a small fraction of the catalog a curated version would. Any future field storing external API output follows the same rule.
 
 ### Metadata pipeline (AI microservice)
 

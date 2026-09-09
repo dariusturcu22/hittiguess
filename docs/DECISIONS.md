@@ -408,6 +408,14 @@ Why: a flat, equally-weighted list is simpler than modeling a strict single-main
 
 ---
 
+## 2026-09 | Database split: one explicit boundary, transactional versus analytics
+
+Decision: the project has exactly one database split, and it's given its own story (42) rather than staying implicit inside story 33's provisioning task: the transactional Postgres+pgvector instance holds every entity either service reads or writes today (users, groups, sessions, rounds, guesses, songs, playlists, embeddings), and story 33's separate append-heavy store holds only usage/event data. No per-service database (one for the core service, a separate one for the AI microservice) is planned.
+
+Why: story 33 already decided to provision a separate analytics store, but the actual domain boundary, which entities live where, was only ever implicit in that story's tasks. Giving it its own story documents the boundary at the architecture level once, instead of restating it inconsistently across stories 33 and 34.
+
+---
+
 ## 2026-09 | Session-long guess leaderboards, open to every player except the DJ
 
 Decision: every player except the DJ, the round's active player included, can submit a title/artist guess. The active player's guess works exactly as it already does, both correct earns the token, independent of placement correctness, either one wrong earns nothing. Every guess, active or not, also feeds two running per-player tallies for the session: "Most Artists Guessed" (every individual artist name correctly given, main or featured, from any song, counts once, regardless of how many total artists that song has) and "Most Titles Guessed" (every fully-correct title). Both leaderboards are shown alongside the main card-count ranking at session end.
