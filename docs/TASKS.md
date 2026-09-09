@@ -420,29 +420,39 @@ Was: a periodic, scheduled pass over the existing catalog, calling the AI micros
 
 ## Story 24: Parallelize metadata pipeline fetches across sources
 
-Checked against real code: `_gather_all_metadata` calls its sources sequentially with plain synchronous `httpx.get`, no `asyncio.gather`, no `httpx.AsyncClient`, no thread pool anywhere in the pipeline.
+Rechecked against current code and decisions: `_gather_all_metadata` (`ai/app/metadata/service.py`) still calls its sources sequentially with plain synchronous `httpx.get`, no `asyncio.gather`, `httpx.AsyncClient`, or thread pool anywhere in the pipeline. The resolved source set is MusicBrainz, Discogs, and Wikidata (`PROJECT_STATE.md`); Wikipedia is a fourth structured source used only when those three disagree (story 18's lock rule, `DECISIONS.md`). Each of the three has its own real, already-validated rate limit, not a shared or configurable one: MusicBrainz and Discogs both pace off adaptive rate limiters built during the sourcing spike (`ai/spikes/musicbrainz_spike.py`'s `MusicBrainzRateLimiter`, `ai/spikes/discogs_spike.py`'s `DiscogsRateLimiter`, the latter live-tracking Discogs' own `X-Discogs-Ratelimit-*` response headers), and Wikidata's documented anonymous limit is 10 requests/minute (`ai/spikes/wikidata_spike.py`). Parallelizing means running these three concurrently against each other, not racing each one against its own limit; per-source pacing stays in effect underneath the concurrency, this story only removes the artificial serialization between sources.
 
-- [ ] Convert the source fetch functions to async, using `httpx.AsyncClient`
-- [ ] Run the parallel-eligible sources concurrently with `asyncio.gather` in `_gather_all_metadata`
-- [ ] Parallelizing today's stubbed MusicBrainz/Wikipedia/Genius calls is wasted work, since the resolved source set is MusicBrainz, Discogs, and Wikidata (`PROJECT_STATE.md`); wait until the real three sources are actually implemented (Discogs via story 25, MusicBrainz un-stubbed, Wikidata built, none done yet) before parallelizing, rather than the current four stubbed/live sources
+This only matters for the on-the-spot path (story 40): a user waiting on a result benefits from concurrent sources, the admin backlog drain has no such latency pressure and can stay sequential. It also only matters once the real three sources exist, not today's mostly-stubbed set: still waiting on story 25 (Discogs) and the "Spike: MusicBrainz and Wikidata sourcing" section's un-stubbed MusicBrainz and built Wikidata, none of which exist yet, parallelizing the current stubbed sources remains wasted work.
+
+- [ ] Convert the three structured-source fetch functions (`musicbrainz.py`, `discogs.py`, `wikidata.py`) to async, using `httpx.AsyncClient`, once each is un-stubbed or built (story 25 and the sourcing spike's remaining tasks)
+- [ ] Run the three sources concurrently with `asyncio.gather` in `_gather_all_metadata`, for the on-the-spot path specifically (story 40); each source's own adaptive or documented rate limiter stays in effect underneath the concurrency
+- [ ] Keep the admin backlog drain (story 40) sequential unless a real need to parallelize it too shows up, it has no latency pressure to justify the added complexity
 - [ ] Add a per-source timeout so one slow source doesn't block the whole gather
+- [ ] Confirm the priority-queue rate-limit design (story 40, `DECISIONS.md`'s "Rate-limit contention" entry) still holds once fetches run concurrently: that design assumed sequential per-source calls when on-the-spot traffic preempts the admin backlog, confirm the pause/resume mechanism still behaves correctly against concurrent in-flight requests
 
 Tests:
-- [ ] Unit test confirming sources are fetched concurrently, not sequentially (mock call-order/timing assertion)
+- [ ] Unit test confirming the three sources are fetched concurrently, not sequentially (mock call-order/timing assertion)
 - [ ] Unit test for the per-source timeout: a slow source doesn't block the others
+- [ ] Unit test confirming each source's own rate limiter still throttles correctly when called concurrently with the other two, not just when called alone
 
 ## Story 25: Add Discogs as a metadata source
 
-Checked against real code: `sources/musicbrainz.py`, `wikipedia.py`, and `genius.py` are stubs returning empty results, each commented with a reference to the 2026-08 pause decision. No `discogs.py` or `wikidata.py` file exists. The resolved source set is MusicBrainz, Discogs, and Wikidata (`PROJECT_STATE.md`), settled, not open. This story covers Discogs only: un-stubbing MusicBrainz and building Wikidata still need their own design pass (how the pipeline should actually shape those calls) before tasks can be drafted for them, not yet decided, so they're left untasked here rather than folded into this story's scope or guessed at.
+Rechecked against current code: `ai/app/metadata/sources/musicbrainz.py`, `wikipedia.py`, and `genius.py` are stubs returning empty results, each commented with a reference to the 2026-08 pause decision (`DECISIONS.md`). No `discogs.py` or `wikidata.py` file exists yet. The resolved source set stays MusicBrainz, Discogs, and Wikidata (`PROJECT_STATE.md`), settled through the sourcing spike, not open for reconsideration. This story covers Discogs only; un-stubbing MusicBrainz and building Wikidata are tracked separately under "Spike: MusicBrainz and Wikidata sourcing," now handoff tasks off that spike rather than an open design question.
 
-- [ ] Add `sources/discogs.py`, copy and adapt `ai/spikes/discogs_spike.py`'s validated implementation, including `masterless_release_years` (a release with no linked master still often carries its own correct `year` field directly in the search result, silently discarded without this), following `sources/youtube.py`'s pattern (the only currently-live source) for HTTP client usage, timeout, and broad-exception-to-`UNKNOWN_DEFAULTS` fallback
+- [ ] Add `ai/app/metadata/sources/discogs.py`, copy and adapt `ai/spikes/discogs_spike.py`'s validated implementation: the search-and-select logic, and the `masterless_release_years` fallback (a release with no linked master still often carries its own correct `year` field directly in the search result, silently discarded without this, a real bug the spike caught live)
+- [ ] Apply the "check every candidate, take the earliest" rule already used for MusicBrainz: a track can belong to more than one Discogs master (its own standalone-single release and an album it also appears on), each with its own year, trusting whichever master a search result lists first picked a wrong year for a real playlist song during the spike
+- [ ] Treat Discogs' `year: 0` on its master resource as unknown, not a literal date, a live-confirmed bug the spike caught on a real release ("Titanium")
+- [ ] Carry over `DiscogsRateLimiter` from the same spike file, live-tracking Discogs' own `X-Discogs-Ratelimit`/`X-Discogs-Ratelimit-Remaining` response headers rather than a fixed guessed rate, matching the adaptive-limiter treatment MusicBrainz's own un-stub task already calls for
+- [ ] Follow `sources/youtube.py`'s existing pattern (the only currently-live production source) for HTTP client usage, timeout, and broad-exception-to-`UNKNOWN_DEFAULTS` fallback
 - [ ] Add the Discogs API token to AI service config (`config.py`), following the existing `youtube_api_key`/`openai_api_key` pattern
-- [ ] Wire Discogs into `_gather_all_metadata` and add a `_append_discogs_data` function in `prompt.py`, matching the existing per-source prompt-section pattern
-- [ ] Confirm Discogs' API terms of use permit this usage, matching the review MusicBrainz and Wikidata already got per `PROJECT_STATE.md`
+- [ ] Wire Discogs into `_gather_all_metadata` and add a `_append_discogs_data` function in `prompt.py`, matching the existing per-source prompt-section pattern; Discogs only feeds the lock-evaluation and reconciliation steps (story 18), it makes no LLM call of its own
+- [ ] Confirm Discogs' API terms of use permit this usage, matching the review MusicBrainz and Wikidata already got (`PROJECT_STATE.md`)
 
 Tests:
 - [ ] Unit tests for `discogs.py`'s request building and response parsing, mirroring `youtube.py`'s existing test pattern
+- [ ] Unit test for the `masterless_release_years` fallback and the `year: 0`-as-unknown handling, both real bugs the spike found
 - [ ] Unit test for the fallback behavior on a failed Discogs call
+- [ ] Unit test for `DiscogsRateLimiter` pacing correctly off live response headers, not a fixed guessed interval
 
 ## Spike: MusicBrainz and Wikidata sourcing
 
