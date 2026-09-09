@@ -17,8 +17,11 @@
     .btn-secondary { font-family: 'Space Grotesk', sans-serif; font-weight: 600; font-size: 13px; color: #cdd6f4; background: #1e1e2e; padding: 11px 20px; border-radius: 100px; border: 2px solid #45475a; box-sizing: border-box; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; }
     .sticker-card { border: 3px solid #45475a; border-radius: 18px; background: #313244; box-shadow: 6px 6px 0 rgba(0,0,0,0.4); box-sizing: border-box; }
     .podium-avatar { border-radius: 50%; display: flex; align-items: center; justify-content: center; font-family: 'Bungee', sans-serif; color: #11111b; flex-shrink: 0; }
-    .rank-row { display: flex; align-items: center; gap: 16px; padding: 12px 8px; border-bottom: 2px solid #45475a; }
+    .rank-row { display: flex; align-items: center; gap: 16px; padding: 11px 8px; border-bottom: 2px solid #45475a; }
     .rank-row:last-child { border-bottom: none; }
+    .board-row { display: flex; align-items: center; gap: 12px; padding: 9px 4px; border-bottom: 1px solid #45475a; }
+    .board-row:last-child { border-bottom: none; }
+    .mini-avatar { width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-family: 'Bungee', sans-serif; font-size: 11px; color: #11111b; flex-shrink: 0; }
   </style>
 </helmet>
 <div style="width: 1440px; height: 900px; box-sizing: border-box; background: #1e1e2e; display: flex; font-family: 'Space Grotesk', sans-serif;">
@@ -57,67 +60,89 @@
   </div>
 
   <!-- MAIN CONTENT (wider, no voice sidebar) -->
-  <div style="flex: 1; min-width: 0; padding: 40px 48px 50px; box-sizing: border-box; background-image: radial-gradient(circle, rgba(108,112,134,0.25) 1.5px, transparent 1.5px); background-size: 22px 22px; overflow: hidden; display: flex; flex-direction: column; align-items: center;">
+  <div style="flex: 1; min-width: 0; padding: 22px 48px 24px; box-sizing: border-box; background-image: radial-gradient(circle, rgba(108,112,134,0.25) 1.5px, transparent 1.5px); background-size: 22px 22px; overflow: hidden; display: flex; flex-direction: column; align-items: center;">
 
     <!-- HEADER -->
     <div style="text-align: center;">
-      <svg width="48" height="48" viewBox="0 0 24 24" fill="#f9e2af"><path d="M5 4h14v3a7 7 0 0 1-14 0V4z"></path><path d="M5 5H2v2a4 4 0 0 0 4 4M19 5h3v2a4 4 0 0 1-4 4"></path><rect x="9" y="14" width="6" height="4" fill="#f9e2af"></rect><rect x="6" y="18" width="12" height="3" rx="1" fill="#f9e2af"></rect></svg>
-      <div style="font-family: 'Bungee', sans-serif; font-size: 36px; color: #cdd6f4; margin-top: 12px; text-shadow: 3px 3px 0 rgba(0,0,0,0.4);">Game Over</div>
-      <div style="font-size: 14px; color: #a6adc8; margin-top: 10px;">Midnight Radio &nbsp;•&nbsp; 10 rounds</div>
+      <svg width="32" height="32" viewBox="0 0 24 24" fill="#f9e2af"><path d="M5 4h14v3a7 7 0 0 1-14 0V4z"></path><path d="M5 5H2v2a4 4 0 0 0 4 4M19 5h3v2a4 4 0 0 1-4 4"></path><rect x="9" y="14" width="6" height="4" fill="#f9e2af"></rect><rect x="6" y="18" width="12" height="3" rx="1" fill="#f9e2af"></rect></svg>
+      <div style="font-family: 'Bungee', sans-serif; font-size: 26px; color: #cdd6f4; margin-top: 6px; text-shadow: 3px 3px 0 rgba(0,0,0,0.4);">Game Over</div>
+      <div style="font-size: 12.5px; color: #a6adc8; margin-top: 6px;">Midnight Radio &nbsp;•&nbsp; Darius reached 8 cards first</div>
     </div>
 
     <!-- PODIUM -->
-    <div style="display: flex; align-items: flex-end; gap: 20px; margin-top: 32px;">
-      <div class="sticker-card" style="width: 170px; height: 190px; padding: 18px 14px; display: flex; flex-direction: column; align-items: center; background: #313244;">
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="#a6adc8"><path d="M12 2l2.5 6.5H21l-5.5 4L17.5 19 12 15l-5.5 4L8.5 12.5 3 8.5h6.5z"></path></svg>
-        <div class="podium-avatar" style="width: 56px; height: 56px; font-size: 19px; background: #89b4fa; margin-top: 8px;">M</div>
-        <div style="font-weight: 700; font-size: 14px; color: #cdd6f4; margin-top: 10px;">Mara</div>
-        <div style="font-family: 'Bungee', sans-serif; font-size: 18px; color: #89b4fa; margin-top: 6px;">310</div>
+    <div style="display: flex; align-items: flex-end; gap: 16px; margin-top: 14px;">
+      <div class="sticker-card" style="width: 140px; height: 132px; padding: 10px 10px; display: flex; flex-direction: column; align-items: center; background: #313244;">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="#a6adc8"><path d="M12 2l2.5 6.5H21l-5.5 4L17.5 19 12 15l-5.5 4L8.5 12.5 3 8.5h6.5z"></path></svg>
+        <div class="podium-avatar" style="width: 40px; height: 40px; font-size: 14px; background: #89b4fa; margin-top: 6px;">M</div>
+        <div style="font-weight: 700; font-size: 12px; color: #cdd6f4; margin-top: 6px;">Mara</div>
+        <div style="font-family: 'Bungee', sans-serif; font-size: 13px; color: #89b4fa; margin-top: 4px;">6 cards</div>
       </div>
-      <div class="sticker-card" style="width: 180px; height: 230px; padding: 20px 14px; display: flex; flex-direction: column; align-items: center; background: #313244; border-color: #f9e2af;">
-        <svg width="30" height="30" viewBox="0 0 24 24" fill="#f9e2af"><path d="M5 4h14v3a7 7 0 0 1-14 0V4z"></path><path d="M5 5H2v2a4 4 0 0 0 4 4M19 5h3v2a4 4 0 0 1-4 4"></path><rect x="9" y="14" width="6" height="4" fill="#f9e2af"></rect><rect x="6" y="18" width="12" height="3" rx="1" fill="#f9e2af"></rect></svg>
-        <div class="podium-avatar" style="width: 64px; height: 64px; font-size: 22px; background: #fab387; margin-top: 10px; box-shadow: 0 0 0 3px #f9e2af;">D</div>
-        <div style="font-weight: 700; font-size: 15px; color: #cdd6f4; margin-top: 12px;">Darius</div>
-        <div style="font-family: 'Bungee', sans-serif; font-size: 22px; color: #f9e2af; margin-top: 8px;">420</div>
+      <div class="sticker-card" style="width: 150px; height: 160px; padding: 12px 10px; display: flex; flex-direction: column; align-items: center; background: #313244; border-color: #f9e2af;">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="#f9e2af"><path d="M5 4h14v3a7 7 0 0 1-14 0V4z"></path><path d="M5 5H2v2a4 4 0 0 0 4 4M19 5h3v2a4 4 0 0 1-4 4"></path><rect x="9" y="14" width="6" height="4" fill="#f9e2af"></rect><rect x="6" y="18" width="12" height="3" rx="1" fill="#f9e2af"></rect></svg>
+        <div class="podium-avatar" style="width: 48px; height: 48px; font-size: 17px; background: #fab387; margin-top: 7px; box-shadow: 0 0 0 3px #f9e2af;">D</div>
+        <div style="font-weight: 700; font-size: 13px; color: #cdd6f4; margin-top: 8px;">Darius</div>
+        <div style="font-family: 'Bungee', sans-serif; font-size: 16px; color: #f9e2af; margin-top: 5px;">8 cards</div>
       </div>
-      <div class="sticker-card" style="width: 170px; height: 170px; padding: 18px 14px; display: flex; flex-direction: column; align-items: center; background: #313244;">
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="#fab387"><path d="M12 2l2.5 6.5H21l-5.5 4L17.5 19 12 15l-5.5 4L8.5 12.5 3 8.5h6.5z"></path></svg>
-        <div class="podium-avatar" style="width: 56px; height: 56px; font-size: 19px; background: #f9e2af; margin-top: 8px;">T</div>
-        <div style="font-weight: 700; font-size: 14px; color: #cdd6f4; margin-top: 10px;">Theo</div>
-        <div style="font-family: 'Bungee', sans-serif; font-size: 18px; color: #fab387; margin-top: 6px;">265</div>
+      <div class="sticker-card" style="width: 140px; height: 118px; padding: 10px 10px; display: flex; flex-direction: column; align-items: center; background: #313244;">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="#fab387"><path d="M12 2l2.5 6.5H21l-5.5 4L17.5 19 12 15l-5.5 4L8.5 12.5 3 8.5h6.5z"></path></svg>
+        <div class="podium-avatar" style="width: 40px; height: 40px; font-size: 14px; background: #f9e2af; margin-top: 6px;">T</div>
+        <div style="font-weight: 700; font-size: 12px; color: #cdd6f4; margin-top: 6px;">Theo</div>
+        <div style="font-family: 'Bungee', sans-serif; font-size: 13px; color: #fab387; margin-top: 4px;">5 cards</div>
       </div>
     </div>
 
-    <!-- FULL RANKED LIST -->
-    <div class="sticker-card" style="width: 560px; padding: 22px; margin-top: 28px; box-sizing: border-box;">
-      <div class="rank-row">
-        <div style="font-family: 'Bungee', sans-serif; font-size: 16px; color: #f9e2af; width: 24px;">1</div>
-        <div class="podium-avatar" style="width: 40px; height: 40px; font-size: 14px; background: #fab387;">D</div>
-        <div style="flex: 1; font-weight: 600; font-size: 14px; color: #cdd6f4;">Darius</div>
-        <div style="font-family: 'Bungee', sans-serif; font-size: 15px; color: #cdd6f4;">420</div>
+    <!-- FULL RANKED LIST + SIDE LEADERBOARDS -->
+    <div style="display: flex; gap: 20px; margin-top: 14px; align-items: flex-start;">
+
+      <div class="sticker-card" style="width: 480px; padding: 20px; box-sizing: border-box;">
+        <div style="font-family: 'Bungee', sans-serif; font-size: 12px; color: #a6adc8; margin-bottom: 10px;">FINAL RANKING</div>
+        <div class="rank-row">
+          <div style="font-family: 'Bungee', sans-serif; font-size: 15px; color: #f9e2af; width: 22px;">1</div>
+          <div class="podium-avatar" style="width: 36px; height: 36px; font-size: 13px; background: #fab387;">D</div>
+          <div style="flex: 1; font-weight: 600; font-size: 13.5px; color: #cdd6f4;">Darius</div>
+          <div style="font-family: 'Bungee', sans-serif; font-size: 14px; color: #cdd6f4;">8 cards</div>
+        </div>
+        <div class="rank-row">
+          <div style="font-family: 'Bungee', sans-serif; font-size: 15px; color: #a6adc8; width: 22px;">2</div>
+          <div class="podium-avatar" style="width: 36px; height: 36px; font-size: 13px; background: #89b4fa;">M</div>
+          <div style="flex: 1; font-weight: 600; font-size: 13.5px; color: #cdd6f4;">Mara</div>
+          <div style="font-family: 'Bungee', sans-serif; font-size: 14px; color: #cdd6f4;">6 cards</div>
+        </div>
+        <div class="rank-row">
+          <div style="font-family: 'Bungee', sans-serif; font-size: 15px; color: #a6adc8; width: 22px;">3</div>
+          <div class="podium-avatar" style="width: 36px; height: 36px; font-size: 13px; background: #f9e2af;">T</div>
+          <div style="flex: 1; font-weight: 600; font-size: 13.5px; color: #cdd6f4;">Theo</div>
+          <div style="font-family: 'Bungee', sans-serif; font-size: 14px; color: #cdd6f4;">5 cards</div>
+        </div>
+        <div class="rank-row">
+          <div style="font-family: 'Bungee', sans-serif; font-size: 15px; color: #a6adc8; width: 22px;">4</div>
+          <div class="podium-avatar" style="width: 36px; height: 36px; font-size: 13px; background: #f5c2e7;">L</div>
+          <div style="flex: 1; font-weight: 600; font-size: 13.5px; color: #cdd6f4;">Lena</div>
+          <div style="font-family: 'Bungee', sans-serif; font-size: 14px; color: #cdd6f4;">3 cards</div>
+        </div>
       </div>
-      <div class="rank-row">
-        <div style="font-family: 'Bungee', sans-serif; font-size: 16px; color: #a6adc8; width: 24px;">2</div>
-        <div class="podium-avatar" style="width: 40px; height: 40px; font-size: 14px; background: #89b4fa;">M</div>
-        <div style="flex: 1; font-weight: 600; font-size: 14px; color: #cdd6f4;">Mara</div>
-        <div style="font-family: 'Bungee', sans-serif; font-size: 15px; color: #cdd6f4;">310</div>
+
+      <div style="width: 300px; flex-shrink: 0; display: flex; flex-direction: column; gap: 16px;">
+        <div class="sticker-card" style="padding: 16px 18px;">
+          <div style="font-family: 'Bungee', sans-serif; font-size: 11px; color: #a6e3a1; margin-bottom: 8px;">MOST ARTISTS GUESSED</div>
+          <div class="board-row"><div class="mini-avatar" style="background: #89b4fa;">M</div><div style="flex: 1; font-size: 12.5px; color: #cdd6f4;">Mara</div><div style="font-weight: 700; font-size: 13px; color: #a6e3a1;">7</div></div>
+          <div class="board-row"><div class="mini-avatar" style="background: #fab387;">D</div><div style="flex: 1; font-size: 12.5px; color: #cdd6f4;">Darius</div><div style="font-weight: 700; font-size: 13px; color: #a6e3a1;">6</div></div>
+          <div class="board-row"><div class="mini-avatar" style="background: #f9e2af;">T</div><div style="flex: 1; font-size: 12.5px; color: #cdd6f4;">Theo</div><div style="font-weight: 700; font-size: 13px; color: #a6e3a1;">4</div></div>
+          <div class="board-row"><div class="mini-avatar" style="background: #f5c2e7;">L</div><div style="flex: 1; font-size: 12.5px; color: #cdd6f4;">Lena</div><div style="font-weight: 700; font-size: 13px; color: #a6e3a1;">2</div></div>
+        </div>
+        <div class="sticker-card" style="padding: 16px 18px;">
+          <div style="font-family: 'Bungee', sans-serif; font-size: 11px; color: #89b4fa; margin-bottom: 8px;">MOST TITLES GUESSED</div>
+          <div class="board-row"><div class="mini-avatar" style="background: #fab387;">D</div><div style="flex: 1; font-size: 12.5px; color: #cdd6f4;">Darius</div><div style="font-weight: 700; font-size: 13px; color: #89b4fa;">9</div></div>
+          <div class="board-row"><div class="mini-avatar" style="background: #89b4fa;">M</div><div style="flex: 1; font-size: 12.5px; color: #cdd6f4;">Mara</div><div style="font-weight: 700; font-size: 13px; color: #89b4fa;">5</div></div>
+          <div class="board-row"><div class="mini-avatar" style="background: #f5c2e7;">L</div><div style="flex: 1; font-size: 12.5px; color: #cdd6f4;">Lena</div><div style="font-weight: 700; font-size: 13px; color: #89b4fa;">3</div></div>
+          <div class="board-row"><div class="mini-avatar" style="background: #f9e2af;">T</div><div style="flex: 1; font-size: 12.5px; color: #cdd6f4;">Theo</div><div style="font-weight: 700; font-size: 13px; color: #89b4fa;">3</div></div>
+        </div>
       </div>
-      <div class="rank-row">
-        <div style="font-family: 'Bungee', sans-serif; font-size: 16px; color: #a6adc8; width: 24px;">3</div>
-        <div class="podium-avatar" style="width: 40px; height: 40px; font-size: 14px; background: #f9e2af;">T</div>
-        <div style="flex: 1; font-weight: 600; font-size: 14px; color: #cdd6f4;">Theo</div>
-        <div style="font-family: 'Bungee', sans-serif; font-size: 15px; color: #cdd6f4;">265</div>
-      </div>
-      <div class="rank-row">
-        <div style="font-family: 'Bungee', sans-serif; font-size: 16px; color: #a6adc8; width: 24px;">4</div>
-        <div class="podium-avatar" style="width: 40px; height: 40px; font-size: 14px; background: #f5c2e7;">L</div>
-        <div style="flex: 1; font-weight: 600; font-size: 14px; color: #cdd6f4;">Lena</div>
-        <div style="font-family: 'Bungee', sans-serif; font-size: 15px; color: #cdd6f4;">190</div>
-      </div>
+
     </div>
 
     <!-- BOTTOM BUTTONS -->
-    <div style="display: flex; align-items: center; gap: 18px; margin-top: 32px;">
+    <div style="display: flex; align-items: center; gap: 18px; margin-top: 16px;">
       <div class="btn-primary">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1e1e2e" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"></polyline><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"></path></svg>
         Play again

@@ -109,6 +109,15 @@
       "page": "page-1"
     },
     {
+      "file": "OAuth2RedirectDark.dc.html",
+      "x": 4740,
+      "y": 5080,
+      "w": 1440,
+      "h": 900,
+      "title": "OAuth2 redirect, dark",
+      "page": "page-1"
+    },
+    {
       "file": "LoginLight.dc.html",
       "x": 0,
       "y": 6140,
@@ -214,6 +223,15 @@
       "w": 1440,
       "h": 750,
       "title": "Song detail, light",
+      "page": "page-1"
+    },
+    {
+      "file": "SongDetailNeedsReviewDark.dc.html",
+      "x": 3160,
+      "y": 11906,
+      "w": 1440,
+      "h": 900,
+      "title": "Song detail, needs review (report + confirm), dark",
       "page": "page-1"
     },
     {
@@ -476,6 +494,24 @@
       "h": 658,
       "title": "Text chat overlay, light",
       "page": "page-1"
+    },
+    {
+      "file": "AdminCatalogBacklogDark.dc.html",
+      "x": 0,
+      "y": 31304,
+      "w": 1440,
+      "h": 900,
+      "title": "Admin: catalog backlog, dark",
+      "page": "page-1"
+    },
+    {
+      "file": "AdminReportQueueDark.dc.html",
+      "x": 1580,
+      "y": 31304,
+      "w": 1440,
+      "h": 900,
+      "title": "Admin: report review queue, dark",
+      "page": "page-1"
     }
   ],
   "annotations": [
@@ -508,7 +544,7 @@
       "x": 0,
       "y": 5020,
       "w": 1400,
-      "text": "Auth screens, in progress, desktop only. Log in and Create account are one screen with a toggle switcher at the top, not two separate pages: the two Login/Register artboards show the same screen in its two toggle states. Forgot password is its own standalone screen.",
+      "text": "Auth screens, in progress, desktop only. Log in and Create account are one screen with a toggle switcher at the top, not two separate pages: the two Login/Register artboards show the same screen in its two toggle states. Forgot password is its own standalone screen. OAuth2 redirect is the transient handoff screen while that flow completes, no real content of its own, shown for completeness.",
       "page": "page-1"
     },
     {
@@ -516,7 +552,7 @@
       "x": 0,
       "y": 7250,
       "w": 1400,
-      "text": "Playlists and content, desktop only. Your playlists (personal library), Explore public playlists, Playlist detail, Edit song details, Song detail, Add songs, Edit playlist, and Join by invite. All reuse the same left sidebar; song playback always links out to the real YouTube page or app, never an embedded player. Only the dark theme is being iterated on right now, light versions get ported once each page settles, so several pages currently only have a dark artboard. Terminology: \"Join\" is for accepting an invite link and becoming a real member of a playlist (Join by invite); \"Save\" (Explore public playlists) is for adding someone else's public playlist to your own library without becoming a member of it. Playlist detail offers two ways to add content: \"Add song\" and \"Import playlist\", both fully designed as their own flows below.",
+      "text": "Playlists and content, desktop only. Your playlists (personal library), Explore public playlists (story 30's published-playlist capability), Playlist detail, Song detail in both its states (verified/report-only, and needs-review/report-plus-confirm), Edit song details (manual-entry only), Add songs, Edit playlist, and Join by invite. All reuse the same left sidebar; song playback always links out to the real YouTube page or app, never an embedded player. Only the dark theme is being iterated on right now, light versions get ported once each page settles, so several pages currently only have a dark artboard. Terminology: \"Join\" is for accepting an invite link and becoming a real member of a playlist (Join by invite); \"Save\" (Explore public playlists) is for adding someone else's public playlist to your own library without becoming a member of it. Playlist detail offers two ways to add content: \"Add song\" and \"Import playlist\", both fully designed as their own flows below, plus story 45's third path, copying songs straight from another accessible playlist, folded into the Import playlist flow.",
       "page": "page-1"
     },
     {
@@ -524,7 +560,7 @@
       "x": 0,
       "y": 10786,
       "w": 1400,
-      "text": "On Playlist detail, songs flagged \"needs review\" get a pencil icon in place of the usual eye icon. Regular rows go to Song detail, which is read-only. \"Needs review\" rows go here instead, to Edit song details, a dedicated screen with the same fields shown as editable inputs so they can actually be corrected, since Song detail has no fields to edit. The \"Review now\" link on the summary banner jumps straight to the first flagged row in the list.",
+      "text": "Editing is reserved for the tier that actually needs it. Verified data already went through source agreement or an admin's manual review, and needs-review data came from real (if disagreeing) source reconciliation, hand-editing either one back out undermines the trust the pipeline just established. Only manual-entry songs, no source had any data at all, are directly editable: their row gets a red badge and a pencil icon on Playlist detail, routing to Edit song details. Needs-review rows keep an amber badge and the usual eye icon, routing to Song detail, read-only, but with a confirm (\"is this correct?\") action added alongside report, both shown on the needs-review variant below. The \"Review now\" link on the summary banner jumps straight to the first flagged row in the list.",
       "page": "page-1"
     },
     {
@@ -548,7 +584,7 @@
       "x": 0,
       "y": 25236,
       "w": 1400,
-      "text": "Gameplay, desktop only. Group lobby, then the game session in its two views: player (timeline placement and betting) and DJ (song playback, always a link-out to the real YouTube page or app, never embedded). Results/leaderboard shows once the call has ended.",
+      "text": "Gameplay, desktop only. A session has no fixed round count, it ends whenever the first player reaches the group's configured win-condition card count, so the lobby's settings are playlist, DJ mode, and cards-to-win, not a round or timer setting. Group lobby, then the game session in its two views: player (timeline placement, the artist/title guess box available all turn, and betting, exactly one bet accepted per round, staking the bettor's own guessed placement, not a correct/incorrect vote) and DJ (song playback, always a link-out to the real YouTube page or app with the audio-sharing warning attached, plus the actual round-flow controls: pause, play, close, end turn, reveal gated until betting closes). Results/leaderboard shows the card-count ranking alongside the two session-long guess leaderboards once the game has ended.",
       "page": "page-1"
     },
     {
@@ -557,6 +593,14 @@
       "y": 29476,
       "w": 1400,
       "text": "Overlay components used during a session: the turn notification banner, the \"playing while away\" floating widget, and the text chat panel. Shown isolated at natural size, not placed on a specific background.",
+      "page": "page-1"
+    },
+    {
+      "id": "admin-note",
+      "x": 0,
+      "y": 31244,
+      "w": 1400,
+      "text": "Admin views, desktop only, dark. Gated on the ADMIN role (story 40). Catalog backlog: pending/processed/quota stats plus the bulk-enqueue form, the batch YouTube-ID filtering step happens silently, only the result is shown. Report review queue: every reportable card ranked by the five-tier priority order, with the actual signals behind each rank (report count, convergence, confirmations) rather than one opaque score, and a manual resolve action, nothing here auto-applies a suggested year.",
       "page": "page-1"
     }
   ],
