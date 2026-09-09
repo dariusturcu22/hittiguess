@@ -143,3 +143,17 @@ Stories dropped outright, or folded into another story's tasks rather than kept 
 - **Story 29: Content-based song recommender.** No viable audio-feature data source found. AcousticBrainz, the obvious free option, shut down its live API and submission pipeline in February 2022; only a frozen dataset remains, dated June 2022, with coverage skewed toward mainstream music already analyzed before the shutdown, exactly the opposite of the niche/underground coverage this project cares about. Self-hosting Essentia (the toolkit AcousticBrainz itself used) would work on any song, but needs the actual audio file, and the only way to get that for a YouTube-sourced song is unofficial downloading, which violates `CLAUDE.md`'s non-negotiable official-APIs-only rule and the DJ-link-out architecture built specifically to avoid touching YouTube's media stream. Paid catalog APIs (Apple Music at $99/year, various smaller commercial ones) are real ongoing cost for a nice-to-have feature and still don't reliably cover niche YouTube-only tracks. Dropped rather than left blocked indefinitely.
 - **Story 31: "Similar songs" via text embeddings.** The only version of "similar songs" worth building is audio-based (how a song actually sounds), not text-based (which mostly just catches same-artist or similarly-worded matches). See story 29 above for why the audio-based version doesn't have a viable data source either.
 - **Story 32: Periodic LLM-as-judge catalog audit.** Redundant once story 18/40's two-tier verification pipeline was decided: every song already gets verified on submission, and a fast-tier answer gets re-verified through the patient tier afterward, so a separate scheduled audit pass over the whole catalog duplicates that coverage. A manual, admin-triggered version, run on demand rather than on a schedule, isn't ruled out, but isn't a defined feature.
+
+## Chore: Backlog refinement from the project owner's specification
+
+A written specification from the project owner added new cross-cutting architecture stories, corrected several existing stories, and called for a documentation cleanup pass. Split across separate branches below since it touches unrelated parts of the backlog; each is checked off once its PR merges.
+
+- [x] Cross-cutting: new stories for the database split (42), metadata minimization (43), and test user infrastructure (44); the access-token reissuance bug fix; a rate-limit stress-testing task on story 27; a legal-page scope clarification on story 37
+- [x] Story 9: DJ-controlled reveal flow, audio cutoff sequence, audio-sharing UI warning, and its missing test tasks
+- [x] Stories 10 and 11: dedupe the active/non-active player token and leaderboard tasks, add story 11's telemetry requirement
+- [x] Stories 24 and 25: full task rewrite against current rate limits, architecture, and decisions
+- [x] Stories 26, 30, and 40: caching-layer scope review, playlist-selection cut down to two modes, dedup pipeline's exact-match linking decided
+- [x] Backlog cleanup: remove dropped/consolidated stories from the active tables, audit for conflicting decisions across docs
+- [x] Implementation roadmap document, explicit sequential order for remaining stories
+- [x] Structured system docs: API contracts, entity model, state diagrams
+- [x] Frontend content specifications, independent of story 28's visual design

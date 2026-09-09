@@ -10,20 +10,6 @@ Story 9 and story 12 were checked against the real code and confirmed blocked: b
 
 "Next available task" means the earliest unchecked box under a Ready or In Progress story.
 
-## Chore: Backlog refinement from the project owner's specification
-
-A written specification from the project owner added new cross-cutting architecture stories, corrected several existing stories, and called for a documentation cleanup pass. Split across separate branches below since it touches unrelated parts of the backlog; each is checked off once its PR merges.
-
-- [x] Cross-cutting: new stories for the database split (42), metadata minimization (43), and test user infrastructure (44); the access-token reissuance bug fix; a rate-limit stress-testing task on story 27; a legal-page scope clarification on story 37
-- [x] Story 9: DJ-controlled reveal flow, audio cutoff sequence, audio-sharing UI warning, and its missing test tasks
-- [x] Stories 10 and 11: dedupe the active/non-active player token and leaderboard tasks, add story 11's telemetry requirement
-- [x] Stories 24 and 25: full task rewrite against current rate limits, architecture, and decisions
-- [x] Stories 26, 30, and 40: caching-layer scope review, playlist-selection cut down to two modes, dedup pipeline's exact-match linking decided
-- [x] Backlog cleanup: remove dropped/consolidated stories from the active tables, audit for conflicting decisions across docs
-- [x] Implementation roadmap document, explicit sequential order for remaining stories
-- [x] Structured system docs: API contracts, entity model, state diagrams
-- [x] Frontend content specifications, independent of story 28's visual design
-
 ## Story 9: DJ real YouTube link-out
 
 Confirmed against the real code: there's no DJ view, no group, no session concept, and no WebSocket layer today, so this is new work, not a removal. The QR code task was split out and done separately, see `ARCHIVE.md`'s Bug fixes entry. Blocked on story 39 (group), story 10 (game session), and story 11 (WebSocket sync).
