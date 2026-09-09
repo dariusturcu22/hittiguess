@@ -459,3 +459,11 @@ Decision: the DJ, not any player, controls a round's flow, pause, play, close th
 Why: letting any player reveal was a placeholder from when reveal was first designed as a stopgap for the lack of programmatic playback access, not a deliberate multiplayer-UX choice. The DJ already controls playback, giving them the rest of the round's flow controls too keeps one person responsible for pacing the round instead of leaving reveal timing to whichever player clicks first. The audio-sharing warning exists because starting tab capture is a real, consent-relevant action, a player should know before it happens that their audio is about to broadcast.
 
 ---
+
+## 2026-09 | Story 30 cut to two modes: Difficulty-Based and Custom, theme generation dropped
+
+Decision: story 30's playlist/session selection is exactly two modes, Difficulty-Based (Auto-Generated), a card set assembled on the spot and scored for the group's actual players, and Custom, the player selects a playlist they already have access to or pastes one directly. Theme-request generation, absorbed from story 21 into an earlier version of this story, is dropped entirely, and story 21 itself is now Dropped rather than Consolidated. The owned/member/published-public three-way distinction for playing from an existing playlist is also dropped; Custom mode treats every accessible or pasted playlist the same way, no `isPublic` flag or publish/unpublish endpoint is needed.
+
+Why: theme generation depended on catalog search (story 14) and new genre/popularity fields that existed for no other reason than to serve it, real scope for a feature that hadn't proven it was worth building yet. Cutting it down to the two modes that matter, an on-the-spot generated set and a player's own playlist, ships a simpler, real feature instead of carrying speculative scope. Dropping the owned/member/published-public distinction in favor of "accessible, or pasted directly" removes a whole publish/unpublish subsystem for a distinction Custom mode doesn't actually need to make.
+
+---

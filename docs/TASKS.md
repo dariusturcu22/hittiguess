@@ -177,11 +177,11 @@ Was: a "similar songs" feature using text embeddings over song title and artist.
 
 Researched directly rather than left open: AcousticBrainz, the obvious free option, shut down its live API and submission pipeline in February 2022; only a frozen dataset remains, dated June 2022, with coverage skewed toward mainstream music already analyzed before the shutdown, exactly the opposite of the niche/underground coverage this project cares about. Self-hosting Essentia (the toolkit AcousticBrainz itself used) would work on any song, but needs the actual audio file, and the only way to get that for a YouTube-sourced song is unofficial downloading, which violates `CLAUDE.md`'s non-negotiable official-APIs-only rule and the DJ-link-out architecture built specifically to avoid touching YouTube's media stream. Paid catalog APIs (Apple Music at $99/year, various smaller commercial ones) are real ongoing cost for a nice-to-have feature and still don't reliably cover niche YouTube-only tracks. No option clears the bar. Dropped rather than left blocked indefinitely.
 
-## Story 30: Difficulty-tuned, theme-aware game session generation
+## Story 30: Difficulty-tuned game session generation
 
-Redefined from a generic "collaborative filtering recommendations" idea into a concrete feature, and consolidates story 21 (auto-generated featured playlists) into it rather than keeping two stories doing adjacent "assemble a card set" work. Generates a game session's card set on the spot from a theme request, a difficulty tier (easy/medium/hard), or both together, scored against the actual players in the group, instead of only playing from an admin-picked playlist.
+Restructured to exactly two modes, decided: Difficulty-Based (Auto-Generated), a card set assembled on the spot for the actual players in the group, and Custom, the player selects a playlist they already have access to or pastes a playlist link directly, no owned/member/published-public distinction. Theme-request generation, originally absorbed from story 21, is dropped along with story 21 itself, no on-the-spot themed generation is planned; see `PROJECT_STATE.md`.
 
-A country/language filter dimension (a "Romanian songs only" mode alongside difficulty) is dropped, decided against. Instead, a difficulty-generated set defaults to international scope, a song counts as international if its Wikidata sitelinks count (the number of language-edition Wikipedia articles covering it) clears some threshold, a signal already validated during the metadata-sourcing spike, not new testing. The other way into a session, playing from an existing playlist, now covers three cases: a playlist the player owns, one they're a member of, or one someone has published for anyone to use, publishing a playlist publicly is a new capability that doesn't exist today.
+A country/language filter dimension (a "Romanian songs only" mode alongside difficulty) is also dropped, decided against separately. A difficulty-generated set defaults to international scope instead, a song counts as international if its Wikidata sitelinks count (the number of language-edition Wikipedia articles covering it) clears some threshold, a signal already validated during the metadata-sourcing spike, not new testing.
 
 Two tiers for difficulty, so this works from day one rather than waiting months for enough data:
 - A per-song aggregate difficulty score (percentage of all guesses on that song that were correct, across everyone) works immediately, even with a handful of plays per song, and covers first-time players with no personal history.
@@ -189,30 +189,25 @@ Two tiers for difficulty, so this works from day one rather than waiting months 
 
 Inference is cheap and local: scoring the whole catalog against a specific group's players is a small numeric comparison per song, no external API call, runs in well under a second even for a full catalog, unlike the metadata pipeline which costs money per call. The only real cost is periodic retraining, a scheduled batch job, cheap at this data scale.
 
-Theme side, from story 21: depends on story 14's catalog search existing, the agent needs to query the catalog by theme/keyword. A theme-generated set draws from `VERIFIED`-status songs only (story 18's lock, not `NEEDS_REVIEW` or `MANUAL_ENTRY`), same as any other selection.
-
 - [ ] Add a `SongDifficulty` aggregate view or table: per-song correct-guess percentage across all historical guesses, updated as new rounds complete
 - [ ] Add group-level difficulty scoring for "easy": the lowest individual predicted score among the group's actual players, not the average, so the least experienced player is protected rather than left behind by a group average that looks easy on paper
 - [ ] Add group-level difficulty scoring for "hard": a plain average across the group's players, no floor to protect, opt-in past the easy default
 - [ ] Add group-level difficulty scoring for "medium": the median of the group's individual predicted scores, a middle ground between easy's worst-case protection and hard's plain average, with no extra weighting factor to tune
-- [ ] Add genre/popularity fields to `Song` if story 23's reconciliation doesn't already cover them, today's `Song` has no genre field, only a single `songTag` enum, needed for theme matching
 - [ ] Persist Wikidata's sitelinks count on `Song` (coordinate with story 23), the international-scope signal for difficulty-generated sets; decide and add the actual threshold once there's enough real catalog data to check it against, not guessed
-- [ ] Add an `isPublic` flag (or equivalent) to `Playlist` (coordinate with story 15), and an endpoint to publish/unpublish one; a difficulty-generated set stays separate from this, it's assembled on the spot, not a stored playlist
-- [ ] Add an endpoint listing playlists available to start a session from: owned, member-of, and published-public, alongside the on-the-spot difficulty/theme generation option
-- [ ] Build the theme-matching flow: theme request → catalog search (story 14) → metadata pipeline calls to fill any gaps in genre/popularity data for candidate songs
-- [ ] Add the on-the-spot generation endpoint: given a group, an optional theme, an optional difficulty tier, and a target card count, score the full verified catalog for the group's actual players (blending personalized predictions where available with the aggregate baseline for first-time players), filter to whichever criteria were given, return enough songs with headroom above the win-condition card count so a session doesn't run out or repeat
+- [ ] Add the Difficulty-Based generation endpoint: given a group, a difficulty tier, and a target card count, score the full verified catalog for the group's actual players (blending personalized predictions where available with the aggregate baseline for first-time players), filter to international scope, return enough songs with headroom above the win-condition card count so a session doesn't run out or repeat
+- [ ] Add the Custom-mode endpoint: start a session from a playlist the player already has access to (owned or a member of, no further distinction), or from a playlist link or ID pasted directly, independent of ownership or membership
 - [ ] Train the personalized collaborative-filtering model on accumulated `Guess` data (story 10) once there's enough of it to evaluate
 - [ ] Add a scheduled retraining job for the personalized model
 - [ ] Add a monitoring check comparing the personalized model's prediction accuracy against the simple aggregate baseline; if the personalized model stops beating the baseline, that's the signal it's stale and needs retraining, not just a fixed schedule
-- [ ] Add the frontend: a theme request field and a difficulty selector (easy/medium/hard), either or both, plus a review step to inspect and confirm the generated set before saving
+- [ ] Add the frontend: a top-level choice between Difficulty-Based (Auto-Generated) and Custom; the former shows a difficulty selector (easy/medium/hard) and a review step to inspect and confirm the generated set before saving, the latter a playlist picker plus a paste-a-link field
 
 Tests:
 - [ ] Unit tests for the aggregate difficulty score calculation
 - [ ] Unit tests for all three group-scoring strategies (worst-case-protected for easy, median for medium, average for hard), including groups with a mix of experienced and first-time players
 - [ ] Unit tests for the personalized model's predictions against a held-out set of real guesses
-- [ ] Integration test: on-the-spot generation for a full-sized group (up to 8 players) returns a scored, filtered card set in well under a second, for theme, difficulty, and both together
+- [ ] Integration test: Difficulty-Based generation for a full-sized group (up to 8 players) returns a scored card set in well under a second
 - [ ] Integration test: the retraining job runs and the monitoring check correctly flags a model that's stopped beating the baseline
-- [ ] Integration test: publishing a playlist makes it selectable by a user who neither owns it nor is a member of it; unpublishing removes that access without affecting existing owners/members
+- [ ] Integration test: Custom mode starts a session from a pasted playlist link the player neither owns nor is a member of
 - [ ] Frontend test: the review UI lets a user inspect and confirm the generated set before saving
 
 ## Story 33: Analytics data store
@@ -480,7 +475,10 @@ Tests:
 
 ## Story 26: Cache metadata pipeline results by artist/title or YouTube ID
 
-- [ ] Add a cache layer in front of `resolve_metadata`, no cache exists today, every call re-runs the full source-fetch and LLM pipeline
+Scope review: two other mechanisms already cover a chunk of what a cache would. Story 40's batch YouTube-ID lookup catches an already-known exact ID before the pipeline runs at all, no external calls, no LLM. Story 16's pgvector similarity check catches a near-duplicate submission (different wording, same song), which a plain artist/title or YouTube-ID cache key would miss anyway since it isn't an exact-key match. What a cache layer adds on top of both: avoiding a second full pipeline run for the same exact YouTube ID submitted twice in quick succession, before story 40's alternate-ID mapping exists to catch it structurally, or during a burst where both submissions arrive before the first is persisted. That's a narrower case than the story's original framing suggested.
+
+- [ ] Decide, before building anything else here, whether this narrower case is worth its own caching layer at this project's scale (100-200 users), versus relying on story 40's batch lookup and story 16's similarity check once both exist, and accepting the rare double-run in the meantime
+- [ ] If still worth building: add a cache layer in front of `resolve_metadata`, no cache exists today, every call re-runs the full source-fetch and LLM pipeline
 - [ ] Decide cache backend: in-memory (simple, doesn't survive restarts or share across multiple AI service workers) vs. Redis/Postgres-backed
 - [ ] Set a TTL or invalidation policy, metadata for a given YouTube ID rarely changes, but upstream source data can be corrected
 - [ ] Coordinate with story 16: a pgvector similarity hit and a plain cache hit solve overlapping but different problems (near-duplicate vs. exact-repeat lookups), avoid building two redundant caching layers
