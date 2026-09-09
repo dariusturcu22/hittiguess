@@ -80,6 +80,7 @@ Every task breakdown in `TASKS.md` must include explicit test tasks alongside th
 - What to actually work on: [docs/TASKS.md](docs/TASKS.md)
 - Decision history and reasoning: [docs/DECISIONS.md](docs/DECISIONS.md), append-only, never edit or delete past entries
 - Completed stories: [docs/ARCHIVE.md](docs/ARCHIVE.md)
+- Sequential implementation order for remaining stories: [docs/ROADMAP.md](docs/ROADMAP.md)
 
 ## Task archiving
 
