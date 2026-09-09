@@ -31,9 +31,15 @@ The two services run in the same hosting environment and reach each other over i
 
 ## System components
 
+### Database domain boundary
+
+One split is explicit: the transactional Postgres+pgvector instance versus a separate append-heavy analytics/event store ([PROJECT_STATE.md](PROJECT_STATE.md) story 33). Every entity either service reads or writes today, users, groups, sessions, rounds, guesses, songs, playlists, and pgvector embeddings, lives in the transactional instance; only usage/event data (games played, session length, rate-limit-exceeded, report-submitted, and similar counters) goes in the analytics store. No entity is planned to live in both, or move between them. This is the only database split in the architecture, there's no separate database per service.
+
 ### Song and playlist database
 
 Every song has: `youtubeId`, `title`, `releaseYear`, `verificationStatus`, `confidence` (persisted), `metadataRaw` (full pipeline output, for auditability), multi-value `tags`. Two parts of the target shape are undecided, not just unconfirmed against code: whether release year is one field or split into `submittedYear`/`verifiedYear`, and how multiple or featured artists are stored and guessed, today's schema still assumes a single `artist` string. See [PROJECT_STATE.md](PROJECT_STATE.md)'s open questions for both.
+
+`metadataRaw`, and any other field that persists external API output, holds the curated, actually-used subset of a source's response, never the full raw payload. A single source's raw response can run to tens of KB per song; at that size the database's free-tier size cap holds a small fraction of the catalog a curated version would. Any future field storing external API output follows the same rule.
 
 ### Metadata pipeline (AI microservice)
 
@@ -105,11 +111,12 @@ Sync through WebSocket/STOMP for both the group and the game session. REST for g
 
 The DJ is never shown an embedded YouTube player.
 
-- Remote sessions: the DJ opens the real YouTube page in a new browser tab. That tab is captured through WebRTC tab audio capture and streamed to the other players.
+- Remote sessions: the DJ opens the real YouTube page in a new browser tab, only from an explicit "Open YouTube Link" action paired with a UI warning that doing so starts broadcasting their tab or system audio. That tab is captured through WebRTC tab audio capture and streamed to the other players.
 - In-person sessions: the DJ opens the real YouTube app through a deep link (Android intent, iOS universal link, falling back to a plain browser link if the app isn't installed) and plays through the device speaker.
 - Physical cards: the QR code encodes the YouTube video ID directly. Scanning opens the real YouTube app or site.
-- Playback control is entirely manual, on the DJ's device. There's no remote play or pause.
-- Round reveal is a manual trigger over WebSocket, since there's no programmatic access to a page we don't control.
+- Playback itself is manual, on the DJ's device, there's no remote play or pause on YouTube's own player. The DJ does control the round's flow over WebSocket: pause, play, close the YouTube tab or app, end the current turn, and trigger the reveal. No general player holds any of these controls.
+- The active player's audio stream cuts off immediately once they lock in their guess, regardless of what's still playing on the DJ's end.
+- Round reveal happens only after the betting window closes, and only the DJ can trigger it, there's no programmatic access to a page outside the app's control, so this stays a manual DJ action, not an automatic one and not any player's.
 - Ads play unmodified in every mode.
 
 ### Voice and text chat
@@ -122,7 +129,7 @@ Text: plain messages over the same WebSocket connection, stored for the life of 
 
 ### Verification
 
-Players can report a song's year as incorrect, with a message, the year they believe is correct, and one or more sources. What promotes a reported or new song to fully verified is undecided. Admin-submitted songs are trusted immediately.
+Players can report a song's year as incorrect, with a message, the year they believe is correct, and one or more sources. What promotes a reported or new song to fully verified is decided: exact agreement among MusicBrainz, Discogs, and Wikidata locks the year with no LLM involvement; anything short of that routes through Wikipedia extraction and four-source reconciliation instead, landing at `NEEDS_REVIEW`, never silently promoted to verified regardless of LLM confidence (story 18, `DECISIONS.md`). Admin-submitted songs are trusted immediately.
 
 ### RAG and deduplication (AI microservice)
 
@@ -130,7 +137,7 @@ Before running the full pipeline for a new submission: normalize `artist + title
 
 ### Admin tools
 
-Bulk import mechanism: to be designed. Admin-submitted songs skip the pipeline and are trusted immediately. Review queue for reports: to be designed.
+Bulk import mechanism: designed, story 40. Two separate paths, an admin-only patient backlog queue draining daily against an LLM tier's quota, and immediate on-the-spot resolution open to any user, never sharing a queue. Admin-submitted songs skip the pipeline and are trusted immediately. Review queue for reports: designed, story 17, ranked by a five-tier priority order (converging reports first, then non-converging reports, then confirmed-but-unreported cards, then unconfirmed cards, `VERIFIED` cards with no report never appear).
 
 ## Deployment
 

@@ -14,10 +14,22 @@ Story 9 and story 12 were checked against the real code and confirmed blocked: b
 
 Confirmed against the real code: there's no DJ view, no group, no session concept, and no WebSocket layer today, so this is new work, not a removal. The QR code task was split out and done separately, see `ARCHIVE.md`'s Bug fixes entry. Blocked on story 39 (group), story 10 (game session), and story 11 (WebSocket sync).
 
-- [ ] Build the DJ view: an "open in YouTube" link-out for remote sessions, opening a new browser tab, never an embedded player
-- [ ] Wire WebRTC tab audio capture to that new tab and stream it to the other players
+Reveal is the DJ's action alone, not any player's, and the DJ controls the round's flow more broadly: pause, play, close the YouTube tab or app, end the current turn, and reveal, all over WebSocket. General players hold none of these controls, see `GAME_DESIGN.md`'s Roles section.
+
+- [ ] Build the DJ view: an "open in YouTube" link-out for remote sessions, opening a new browser tab, never an embedded player, behind an explicit "Open YouTube Link" action
+- [ ] Add a UI warning shown alongside that action, explicit that clicking it starts broadcasting the DJ's tab or system audio to the rest of the group
+- [ ] Wire WebRTC tab audio capture to that new tab and stream it to the other players, starting only once the DJ has actually opened the link, not before
 - [ ] Add deep-link handling for in-person sessions (Android intent, iOS universal link, fallback to a plain browser link)
-- [ ] Wire the manual reveal trigger over WebSocket, any player can reveal once the song has played
+- [ ] Wire the active player's audio-stream cutoff over WebSocket: cuts off immediately on guess lock-in, regardless of what's still playing on the DJ's end
+- [ ] Wire the DJ's round-flow controls over WebSocket: pause, play, close the YouTube tab/app, end the current turn, and reveal; reveal is gated to fire only after the betting window (story 10) has closed
+- [ ] Restrict all of the above controls to the DJ role specifically, a non-DJ player's attempt to invoke any of them is rejected
+
+Tests:
+- [ ] Unit test: the audio-stream cutoff fires on guess lock-in regardless of playback state, and only for the active player's stream
+- [ ] Unit test: reveal is rejected when attempted by a non-DJ player, and when attempted before the betting window has closed
+- [ ] Unit tests for the DJ's other round-flow controls (pause, play, close, end turn), each rejected when attempted by a non-DJ player
+- [ ] Frontend test: the "Open YouTube Link" action shows the audio-sharing warning before WebRTC tab capture starts
+- [ ] Integration test: deep-link handling falls back to a plain browser link when the YouTube app isn't installed
 
 ## Story 10: Game session
 
@@ -30,10 +42,9 @@ Checked against real code: no session model exists, this is greenfield work. Bas
 - [ ] Guess placement and lock-in: before/after/between on the active player's timeline, with a lock-in sound effect
 - [ ] 3-5 second countdown after lock-in, then a 15-second betting window; skip the window entirely if no player holds a token
 - [ ] Betting: token-holding players may bet during the window, first come first served, concurrency-safe so only the first bet is accepted and a losing attempt doesn't cost a token; a skip-betting action ends the window early
-- [ ] Artist/title guess box, available to the active player for the whole turn, independent of timeline placement; a fully correct guess awards a token, matching normalizes both strings (lowercase, strip punctuation, strip diacritics, collapse whitespace) and compares them with Damerau-Levenshtein edit distance, a flat budget of 1 regardless of length (see `DECISIONS.md`). For a song with more than one artist (main or featured, story 23), naming any single one of them correctly is enough, not all of them
+- [ ] Artist/title guess box, available to every player except the DJ for the whole turn, independent of timeline placement; only the active player's fully correct guess awards a token, matching normalizes both strings (lowercase, strip punctuation, strip diacritics, collapse whitespace) and compares them with Damerau-Levenshtein edit distance, a flat budget of 1 regardless of length (see `DECISIONS.md`). For a song with more than one artist (main or featured, story 23), naming any single one of them correctly is enough for the token, not all of them
 - [ ] Scoring: apply the four outcome rules in `GAME_DESIGN.md` (correct placement keeps the card even on a tied release year; a correct guess beats any bet; a wrong guess with a correct bet gives the card to the bettor; a wrong guess with no bet discards it)
-- [ ] Extend the artist/title guess box to every player except the DJ, not just the active player; a non-active player's guess never earns a token or affects placement/betting, it only counts toward the two session-long leaderboards below
-- [ ] Track two running per-player tallies for the session: total individual artists correctly named (every correct name, main or featured, from any song, adds one, regardless of how many total artists that song has) and total fully-correct title guesses
+- [ ] Track two running per-player tallies for the session, fed by every player's guesses, active or not: total individual artists correctly named (every correct name, main or featured, from any song, adds one, regardless of how many total artists that song has) and total fully-correct title guesses. A non-active player's guess never earns a token or affects placement/betting, it only feeds these two tallies
 - [ ] Win condition: first player to reach the group's configured card count wins, bounded 5-20 for a 2-3 player group or 5-15 for a 4-8 player group
 - [ ] Player disconnect: mark `isConnected` false, leave timeline/tokens/turn order untouched
 - [ ] Player explicit leave: mark `Left`, exclude from future turns and DJ rotation, existing timeline cards still count toward the final results
@@ -69,6 +80,7 @@ Checked against real code: no WebSocket layer exists, this is greenfield work. B
 - [ ] Broadcast round events: round started, guess locked, bet placed, reveal triggered, round scored, next round
 - [ ] Handle disconnect: mark the member's or player's `isConnected` flag false without ending the group or the session
 - [ ] Wire group creation/join (story 39) to register the joining client on the group's topic, and game session start (story 10) to register on the session's topic
+- [ ] Log every state event this story broadcasts (membership, settings changes, round events) alongside the WebRTC connection lifecycle events story 12 adds, on the same per-group/per-session timeline, so a connection issue can be traced against what was happening in the group or session at the same moment
 - [ ] Frontend: keep the group/session WebSocket connection alive while navigating to other parts of the app, minimize the game to a small persistent widget instead of requiring the player stay on the game screen
 - [ ] Frontend: turn notification, a sound plus a clickable visual banner when it's the player's turn and the game screen isn't focused, clicking either returns them to the game
 
@@ -143,49 +155,44 @@ Tests:
 - [ ] Integration test: both 30-minute timers, pre-session and between-sessions, including that they don't fire early or fail to fire
 - [ ] Integration test: explicit leave removes membership while disconnect only flips the connection flag
 
-## Story 31: Dropped
+## Story 30: Difficulty-tuned game session generation
 
-Was: a "similar songs" feature using text embeddings over song title and artist. Dropped: the only version of "similar songs" worth building is audio-based (how a song actually sounds), not text-based (which mostly just catches same-artist or similarly-worded matches). See story 29 for why the audio-based version doesn't have a viable data source either.
+Restructured to exactly two top-level modes, decided: Difficulty-Based (Auto-Generated), a card set assembled on the spot for the actual players in the group, and Custom, the player starts a session from an accessible playlist or pastes a playlist link directly. "Accessible" still covers three cases: a playlist the player owns, one they're a member of, or one someone has published for anyone to use; publishing a playlist publicly stays a real capability, not a distinction that only mattered for a dropped third mode. Theme-request generation, originally absorbed from story 21, is dropped along with story 21 itself, no on-the-spot themed generation is planned; see `PROJECT_STATE.md`.
 
-## Story 29: Dropped, no viable audio-feature source found
+A country/language filter dimension (a "Romanian songs only" mode alongside difficulty) is also dropped, decided against separately. A difficulty-generated set defaults to international scope instead, a song counts as international if its Wikidata sitelinks count (the number of language-edition Wikipedia articles covering it) clears some threshold, a signal already validated during the metadata-sourcing spike, not new testing.
 
-Researched directly rather than left open: AcousticBrainz, the obvious free option, shut down its live API and submission pipeline in February 2022; only a frozen dataset remains, dated June 2022, with coverage skewed toward mainstream music already analyzed before the shutdown, exactly the opposite of the niche/underground coverage this project cares about. Self-hosting Essentia (the toolkit AcousticBrainz itself used) would work on any song, but needs the actual audio file, and the only way to get that for a YouTube-sourced song is unofficial downloading, which violates `CLAUDE.md`'s non-negotiable official-APIs-only rule and the DJ-link-out architecture built specifically to avoid touching YouTube's media stream. Paid catalog APIs (Apple Music at $99/year, various smaller commercial ones) are real ongoing cost for a nice-to-have feature and still don't reliably cover niche YouTube-only tracks. No option clears the bar. Dropped rather than left blocked indefinitely.
+That same sitelinks count also feeds difficulty tiering directly, not just the international-scope gate, decided: sitelinks is a real popularity proxy, a widely-covered song is a widely-recognized one, and it's available the moment a song is verified, unlike the aggregate guess-correctness score below, which needs real plays to exist first. Easy weights song selection toward higher-sitelink, more widely-recognized songs; hard carries no such weighting and can pull from low-sitelink, niche/obscure catalog entries same as any other song; medium sits between the two. This also covers the cold-start case, a newly-added song with too few real guesses for the aggregate score to mean anything yet still has a sitelinks count to place it provisionally.
 
-## Story 30: Difficulty-tuned, theme-aware game session generation
-
-Redefined from a generic "collaborative filtering recommendations" idea into a concrete feature, and consolidates story 21 (auto-generated featured playlists) into it rather than keeping two stories doing adjacent "assemble a card set" work. Generates a game session's card set on the spot from a theme request, a difficulty tier (easy/medium/hard), or both together, scored against the actual players in the group, instead of only playing from an admin-picked playlist.
-
-A country/language filter dimension (a "Romanian songs only" mode alongside difficulty) is dropped, decided against. Instead, a difficulty-generated set defaults to international scope, a song counts as international if its Wikidata sitelinks count (the number of language-edition Wikipedia articles covering it) clears some threshold, a signal already validated during the metadata-sourcing spike, not new testing. The other way into a session, playing from an existing playlist, now covers three cases: a playlist the player owns, one they're a member of, or one someone has published for anyone to use, publishing a playlist publicly is a new capability that doesn't exist today.
-
-Two tiers for difficulty, so this works from day one rather than waiting months for enough data:
-- A per-song aggregate difficulty score (percentage of all guesses on that song that were correct, across everyone) works immediately, even with a handful of plays per song, and covers first-time players with no personal history.
+Three tiers of signal feed difficulty, so this works from day one rather than waiting months for enough data:
+- Sitelinks-based popularity (above) is available immediately for every verified song, no play history needed.
+- A per-song aggregate difficulty score (percentage of all guesses on that song that were correct, across everyone) works as soon as a song has a handful of plays, and covers first-time players with no personal history.
 - A personalized layer (collaborative filtering: for a given player and song, predict correct-or-not and roughly how fast, learned from patterns across all players and songs, same technique Netflix-style recommenders use, applied to interaction outcomes instead of ratings) only adds value once there's enough per-player history to beat the aggregate baseline. Depends on story 10 shipping and real rounds accumulating; realistically months of casual play before the personalized layer clearly outperforms the simple aggregate at this project's 100-200 user scale, see `PROJECT_STATE.md`.
 
 Inference is cheap and local: scoring the whole catalog against a specific group's players is a small numeric comparison per song, no external API call, runs in well under a second even for a full catalog, unlike the metadata pipeline which costs money per call. The only real cost is periodic retraining, a scheduled batch job, cheap at this data scale.
-
-Theme side, from story 21: depends on story 14's catalog search existing, the agent needs to query the catalog by theme/keyword. A theme-generated set draws from `VERIFIED`-status songs only (story 18's lock, not `NEEDS_REVIEW` or `MANUAL_ENTRY`), same as any other selection.
 
 - [ ] Add a `SongDifficulty` aggregate view or table: per-song correct-guess percentage across all historical guesses, updated as new rounds complete
 - [ ] Add group-level difficulty scoring for "easy": the lowest individual predicted score among the group's actual players, not the average, so the least experienced player is protected rather than left behind by a group average that looks easy on paper
 - [ ] Add group-level difficulty scoring for "hard": a plain average across the group's players, no floor to protect, opt-in past the easy default
 - [ ] Add group-level difficulty scoring for "medium": the median of the group's individual predicted scores, a middle ground between easy's worst-case protection and hard's plain average, with no extra weighting factor to tune
-- [ ] Add genre/popularity fields to `Song` if story 23's reconciliation doesn't already cover them, today's `Song` has no genre field, only a single `songTag` enum, needed for theme matching
-- [ ] Persist Wikidata's sitelinks count on `Song` (coordinate with story 23), the international-scope signal for difficulty-generated sets; decide and add the actual threshold once there's enough real catalog data to check it against, not guessed
-- [ ] Add an `isPublic` flag (or equivalent) to `Playlist` (coordinate with story 15), and an endpoint to publish/unpublish one; a difficulty-generated set stays separate from this, it's assembled on the spot, not a stored playlist
-- [ ] Add an endpoint listing playlists available to start a session from: owned, member-of, and published-public, alongside the on-the-spot difficulty/theme generation option
-- [ ] Build the theme-matching flow: theme request → catalog search (story 14) → metadata pipeline calls to fill any gaps in genre/popularity data for candidate songs
-- [ ] Add the on-the-spot generation endpoint: given a group, an optional theme, an optional difficulty tier, and a target card count, score the full verified catalog for the group's actual players (blending personalized predictions where available with the aggregate baseline for first-time players), filter to whichever criteria were given, return enough songs with headroom above the win-condition card count so a session doesn't run out or repeat
+- [ ] Persist Wikidata's sitelinks count on `Song` (coordinate with story 23), both the international-scope signal and the popularity signal for difficulty-generated sets; decide and add the actual thresholds (international-scope cutoff, and the easy/medium/hard popularity weighting) once there's enough real catalog data to check them against, not guessed
+- [ ] Add the sitelinks-based popularity weighting to song selection: easy weights toward higher-sitelink songs, hard applies no such weighting, medium sits between; blends with, doesn't replace, the aggregate/personalized scoring below, and is what a newly-verified song with no real guesses yet falls back on
+- [ ] Add the Difficulty-Based generation endpoint: given a group, a difficulty tier, and a target card count, score the full verified catalog for the group's actual players (blending personalized predictions where available, the aggregate baseline for first-time players, and the sitelinks-based popularity weighting above), filter to international scope, return enough songs with headroom above the win-condition card count so a session doesn't run out or repeat
+- [ ] Add an `isPublic` flag (or equivalent) to `Playlist` (coordinate with story 15), and an endpoint to publish/unpublish one
+- [ ] Add the Custom-mode endpoint: start a session from a playlist the player owns, is a member of, or that's published publicly, or from a playlist link or ID pasted directly
 - [ ] Train the personalized collaborative-filtering model on accumulated `Guess` data (story 10) once there's enough of it to evaluate
 - [ ] Add a scheduled retraining job for the personalized model
 - [ ] Add a monitoring check comparing the personalized model's prediction accuracy against the simple aggregate baseline; if the personalized model stops beating the baseline, that's the signal it's stale and needs retraining, not just a fixed schedule
-- [ ] Add the frontend: a theme request field and a difficulty selector (easy/medium/hard), either or both, plus a review step to inspect and confirm the generated set before saving
+- [ ] Add the frontend: a top-level choice between Difficulty-Based (Auto-Generated) and Custom; the former shows a difficulty selector (easy/medium/hard) and a review step to inspect and confirm the generated set before saving, the latter a playlist picker plus a paste-a-link field
 
 Tests:
 - [ ] Unit tests for the aggregate difficulty score calculation
 - [ ] Unit tests for all three group-scoring strategies (worst-case-protected for easy, median for medium, average for hard), including groups with a mix of experienced and first-time players
+- [ ] Unit test for the sitelinks-based popularity weighting: easy-tier selection biased toward higher-sitelink songs, hard-tier selection unweighted and able to draw low-sitelink songs, using a synthetic catalog with a controlled sitelinks spread
+- [ ] Unit test: a song with zero recorded guesses still gets a usable difficulty placement from its sitelinks count alone
 - [ ] Unit tests for the personalized model's predictions against a held-out set of real guesses
-- [ ] Integration test: on-the-spot generation for a full-sized group (up to 8 players) returns a scored, filtered card set in well under a second, for theme, difficulty, and both together
+- [ ] Integration test: Difficulty-Based generation for a full-sized group (up to 8 players) returns a scored card set in well under a second
 - [ ] Integration test: the retraining job runs and the monitoring check correctly flags a model that's stopped beating the baseline
+- [ ] Integration test: Custom mode starts a session from a pasted playlist link the player neither owns nor is a member of
 - [ ] Integration test: publishing a playlist makes it selectable by a user who neither owns it nor is a member of it; unpublishing removes that access without affecting existing owners/members
 - [ ] Frontend test: the review UI lets a user inspect and confirm the generated set before saving
 
@@ -261,24 +268,9 @@ Tests:
 - [ ] Unit tests for the similarity-check step (mocked embedding client): a high-confidence match reuses existing data, a low-confidence match proceeds to the full pipeline
 - [ ] Integration test: submitting a near-duplicate song reuses existing verified data instead of re-running the LLM
 
-## Story 19: Admin bulk song import
-
-Checked against real code: `User.role` only has a `USER` value today, no `ADMIN` value or admin-only access check exists anywhere in the system. This is a prerequisite for this story, not something to assume already exists.
-
-- [ ] Add an `ADMIN` value to `User.role` and an admin-only access check, neither exists today
-- [ ] Add a bulk-import endpoint (CSV or JSON) that runs each entry through the existing metadata pipeline
-- [ ] Add a progress/result summary for a bulk import run, since a large batch calling the AI microservice per row takes time and can partially fail
-- [ ] Add the admin-only import UI
-
-Tests:
-- [ ] Unit tests for the admin-only access check, including a non-admin request rejected
-- [ ] Integration test: bulk import processes multiple rows and reports per-row success/failure
-
-Consolidated into story 40, which redefines bulk import as two separate paths (a slow admin backlog queue, and immediate on-the-spot resolution for any user) rather than one CSV/JSON endpoint. The `ADMIN` role and access-check prerequisite noted above still applies to story 40's admin-only backlog endpoints.
-
 ## Story 40: Catalog seeding queue and user-facing bulk import
 
-Checked against real code: `Song` has a single `youtubeId` field and no lookup query for it, `SongRepository` has zero custom query methods. No `@Scheduled` usage or scheduling dependency exists anywhere in the backend (confirmed during story 32's audit), `@EnableScheduling` isn't declared. Absorbs story 19's admin bulk-import scope, redefined as two genuinely separate mechanisms, not one:
+Checked against real code: `Song` has a single `youtubeId` field and no lookup query for it, `SongRepository` has zero custom query methods. No `@Scheduled` usage or scheduling dependency exists anywhere in the backend today, `@EnableScheduling` isn't declared. Absorbs story 19's admin bulk-import scope, redefined as two genuinely separate mechanisms, not one:
 
 - **Admin catalog seeding**: the admin (today, the sole developer) submits large batches of YouTube playlists or IDs to grow the catalog proactively, especially popular songs. This is patient, a multi-day backlog is fine, its whole point is reducing how often a normal user's own request needs to resolve a new song at all.
 - **User on-the-spot bulk import**: any user submitting their own YouTube playlist or a list of video IDs needs those songs resolved immediately, even if some of them happen to already be sitting in the admin's backlog awaiting their scheduled turn. The two never share a queue; a song in both places gets resolved twice if the timing lines up that way, that's fine, on-the-spot always wins on priority.
@@ -291,13 +283,14 @@ Since story 20's spike concluded, the on-the-spot path is now two tiers, not one
 - **Fast tier**: answers immediately from exactly one of MusicBrainz or Wikipedia (never both for the same song), dispatched dynamically, whichever of the two is free grabs the next song, rather than a fixed split, so a slower lane doesn't leave part of a batch waiting on it. 90% accuracy (63/70) on real data. Every fast-tier answer is provisional; the song still gets queued for the full patient pipeline afterward.
 - **Patient tier**: the full lock-or-Wikipedia-plus-reconciliation pipeline from story 18. 99% accuracy (69/70). This is what the admin backlog drain always uses (no latency pressure), and what every fast-tier answer eventually gets re-run through.
 
-One thing intentionally left undecided here, not assumed:
-- Exactly how the alternate-YouTube-ID-to-Song mapping interacts with story 16's pgvector near-duplicate detection: this story's YouTube-ID check is a cheap, exact, pre-pipeline step; story 16's embedding check is a fallback for when the ID is genuinely new but the song might not be, both still apply, the sequencing between them (ID check, then embedding check, then full pipeline) needs confirming once story 16 actually exists.
+Decided: how the alternate-YouTube-ID-to-`Song` mapping sequences against story 16's pgvector near-duplicate detection. This story's YouTube-ID check runs first, cheap, exact, no external calls; only a genuinely new ID reaches story 16's embedding check next. A high-confidence pgvector match against an existing `Song` means the same song under a different YouTube upload, not a new song: link the new ID into this story's alternate-ID table against that existing `Song` and stop there, no full pipeline run. The full metadata pipeline only runs once both checks come up empty.
 
 **Decided: rate-limit contention between the admin backlog drain and on-the-spot traffic, a real concern surfaced during story 20's spike, now settled with a priority-queue design.** On-the-spot requests, including a user's playlist import, are always high priority and take precedence over the admin backlog for the shared external rate-limit budgets (MusicBrainz, Discogs, Wikidata, Wikipedia all come from the same outbound IP). The backlog drain pauses while any on-the-spot traffic is active and resumes once it's clear. Every song the fast tier resolves provisionally gets added back to the admin backlog queue afterward, to be reprocessed through the patient pipeline at low priority like everything else, this is how the fast tier's 90%-vs-99% accuracy gap gets closed, not instantly, but automatically.
 
+- [ ] Add an `ADMIN` value to `User.role` and an admin-only access check, neither exists today, absorbed from story 19; gates every admin-only endpoint below
 - [ ] Add a table mapping alternate YouTube video IDs to an existing `Song` (many YouTube IDs to one canonical song), separate from `Song`'s own primary `youtubeId`, so a different upload of an already-known track (a lyric video, a Topic-channel version, a re-upload) doesn't create a duplicate `Song` row or re-run the pipeline
 - [ ] Add a batch YouTube-ID lookup (`SongRepository` needs its first custom query methods for this): given a list of IDs, returns which are already known, checking both `Song.youtubeId` and the new alternate-ID table, no external API calls, this is the shared first step both paths below depend on
+- [ ] When story 16's pgvector check returns a high-confidence match for a YouTube ID that passed this story's own exact-ID check as new, link that ID into the alternate-ID table against the matched `Song` instead of creating a new one, and stop there, skipping the full pipeline for it
 - [ ] Add a `PendingImport` entity: a YouTube ID submitted by the admin for eventual processing, not yet resolved, with its own status (pending, processing, done, failed)
 - [ ] Add an admin-only endpoint to bulk-enqueue YouTube IDs (from a playlist link or a raw ID list) into the backlog, running the batch lookup first so already-known songs never get enqueued at all
 - [ ] Add a scheduled job that drains the backlog daily up to whatever the chosen LLM tier's daily free quota is (story 20), running the full metadata pipeline per item and persisting results; this is the first `@Scheduled` usage in the backend
@@ -314,8 +307,10 @@ One thing intentionally left undecided here, not assumed:
 - [ ] Raw YouTube API Data specifically (a video's title, description, channel name) has its own constraint on top of the size one above: YouTube's Developer Policies (Section III.E.4) require non-authorized API Data to be deleted or refreshed within 30 calendar days, it can't be persisted indefinitely as-is. If any raw YouTube fields end up inside `metadataRaw`, they need their own refresh/delete cycle on that schedule; the derived facts (artist, title, release year, sourced from MusicBrainz/Discogs/Wikidata/Wikipedia) aren't YouTube API Data and aren't subject to this
 
 Tests:
+- [ ] Unit tests for the admin-only access check, including a non-admin request rejected
 - [ ] Unit tests for the batch YouTube-ID lookup, including a mix of known, alternate-mapped, and unknown IDs in one batch
 - [ ] Unit tests for the alternate-YouTube-ID-to-`Song` mapping
+- [ ] Integration test: a new YouTube ID that pgvector matches with high confidence links into the alternate-ID table against the existing `Song` and never triggers the full pipeline
 - [ ] Integration test: admin backlog enqueue skips already-known songs, only genuinely new IDs get added
 - [ ] Integration test: the scheduled drain job respects the daily quota and doesn't exceed it
 - [ ] Integration test: a user's on-the-spot request resolves immediately even when the same YouTube ID is also sitting in the admin backlog
@@ -347,7 +342,7 @@ Tests:
 
 ## Story 17: Community song reports and confirmations
 
-Depends on story 19 for the admin review surface. Resolution stays fully manual: an admin decides every report, nothing here auto-changes `verificationStatus` on its own, see `DECISIONS.md`. Every card is reportable, including `VERIFIED` ones.
+Depends on story 40 for the admin review surface, which now owns the `ADMIN` role and access check absorbed from story 19. Resolution stays fully manual: an admin decides every report, nothing here auto-changes `verificationStatus` on its own, see `DECISIONS.md`. Every card is reportable, including `VERIFIED` ones.
 
 - [ ] Add a `SongReport` entity (reporter, song, message, suggested correct year, sources, status)
 - [ ] `POST` endpoint to submit a report, available to any authenticated user who can view the song
@@ -355,7 +350,7 @@ Depends on story 19 for the admin review surface. Resolution stays fully manual:
 - [ ] Add a `SongConfirmation` entity (user, song, timestamp): the community thumbs-up, distinct from a report, shown only on `NEEDS_REVIEW`/`MANUAL_ENTRY` cards, one per user per song
 - [ ] `POST` endpoint to submit a confirmation, same visibility rule as the thumbs-up button below
 - [ ] Add a thumbs-up affordance to the song detail page, visible only for `NEEDS_REVIEW`/`MANUAL_ENTRY` cards, "is this correct?"
-- [ ] Admin review surface (needs story 19's admin role) ordered by priority, not submission time:
+- [ ] Admin review surface (needs story 40's admin role) ordered by priority, not submission time:
   1. Converging reports: two or more independent reports on the same card suggesting the same year, ranked highest regardless of current `verificationStatus`, including `VERIFIED` cards
   2. Reported, no convergence (a single report, or several that disagree with each other): ranked below convergent reports, by `verificationStatus` (`MANUAL_ENTRY`/`NEEDS_REVIEW` before `VERIFIED`)
   3. Unreported `NEEDS_REVIEW`/`MANUAL_ENTRY` cards with at least one confirmation, ranked by confirmation count, a fast confirm rather than research
@@ -388,35 +383,41 @@ Tests:
 - [ ] Integration test: a submission with unanimous source agreement never triggers an LLM call at all
 - [ ] Integration test: a submission with no data from any source, including Wikipedia, routes to manual review rather than erroring or silently failing
 
-## Story 32: Dropped, redundant with the verification pipeline
-
-Was: a periodic, scheduled pass over the existing catalog, calling the AI microservice with an LLM-as-judge prompt to flag likely duplicate or mislabeled entries. Dropped once story 18/40's two-tier pipeline was decided: every song already gets verified on submission, and a fast-tier answer gets re-verified through the patient tier afterward, so a separate scheduled audit pass over the whole catalog is redundant. A manual, admin-triggered version (run on demand, not on a schedule) isn't ruled out, but isn't a defined feature.
-
 ## Story 24: Parallelize metadata pipeline fetches across sources
 
-Checked against real code: `_gather_all_metadata` calls its sources sequentially with plain synchronous `httpx.get`, no `asyncio.gather`, no `httpx.AsyncClient`, no thread pool anywhere in the pipeline.
+Rechecked against current code and decisions: `_gather_all_metadata` (`ai/app/metadata/service.py`) still calls its sources sequentially with plain synchronous `httpx.get`, no `asyncio.gather`, `httpx.AsyncClient`, or thread pool anywhere in the pipeline. The resolved source set is MusicBrainz, Discogs, and Wikidata (`PROJECT_STATE.md`); Wikipedia is a fourth structured source used only when those three disagree (story 18's lock rule, `DECISIONS.md`). Each of the three has its own real, already-validated rate limit, not a shared or configurable one: MusicBrainz and Discogs both pace off adaptive rate limiters built during the sourcing spike (`ai/spikes/musicbrainz_spike.py`'s `MusicBrainzRateLimiter`, `ai/spikes/discogs_spike.py`'s `DiscogsRateLimiter`, the latter live-tracking Discogs' own `X-Discogs-Ratelimit-*` response headers), and Wikidata's documented anonymous limit is 10 requests/minute (`ai/spikes/wikidata_spike.py`). Parallelizing means running these three concurrently against each other, not racing each one against its own limit; per-source pacing stays in effect underneath the concurrency, this story only removes the artificial serialization between sources.
 
-- [ ] Convert the source fetch functions to async, using `httpx.AsyncClient`
-- [ ] Run the parallel-eligible sources concurrently with `asyncio.gather` in `_gather_all_metadata`
-- [ ] Parallelizing today's stubbed MusicBrainz/Wikipedia/Genius calls is wasted work, since the resolved source set is MusicBrainz, Discogs, and Wikidata (`PROJECT_STATE.md`); wait until the real three sources are actually implemented (Discogs via story 25, MusicBrainz un-stubbed, Wikidata built, none done yet) before parallelizing, rather than the current four stubbed/live sources
+This only matters for the on-the-spot path (story 40): a user waiting on a result benefits from concurrent sources, the admin backlog drain has no such latency pressure and can stay sequential. It also only matters once the real three sources exist, not today's mostly-stubbed set: still waiting on story 25 (Discogs) and the "Spike: MusicBrainz and Wikidata sourcing" section's un-stubbed MusicBrainz and built Wikidata, none of which exist yet, parallelizing the current stubbed sources remains wasted work.
+
+- [ ] Convert the three structured-source fetch functions (`musicbrainz.py`, `discogs.py`, `wikidata.py`) to async, using `httpx.AsyncClient`, once each is un-stubbed or built (story 25 and the sourcing spike's remaining tasks)
+- [ ] Run the three sources concurrently with `asyncio.gather` in `_gather_all_metadata`, for the on-the-spot path specifically (story 40); each source's own adaptive or documented rate limiter stays in effect underneath the concurrency
+- [ ] Keep the admin backlog drain (story 40) sequential unless a real need to parallelize it too shows up, it has no latency pressure to justify the added complexity
 - [ ] Add a per-source timeout so one slow source doesn't block the whole gather
+- [ ] Confirm the priority-queue rate-limit design (story 40, `DECISIONS.md`'s "Rate-limit contention" entry) still holds once fetches run concurrently: that design assumed sequential per-source calls when on-the-spot traffic preempts the admin backlog, confirm the pause/resume mechanism still behaves correctly against concurrent in-flight requests
 
 Tests:
-- [ ] Unit test confirming sources are fetched concurrently, not sequentially (mock call-order/timing assertion)
+- [ ] Unit test confirming the three sources are fetched concurrently, not sequentially (mock call-order/timing assertion)
 - [ ] Unit test for the per-source timeout: a slow source doesn't block the others
+- [ ] Unit test confirming each source's own rate limiter still throttles correctly when called concurrently with the other two, not just when called alone
 
 ## Story 25: Add Discogs as a metadata source
 
-Checked against real code: `sources/musicbrainz.py`, `wikipedia.py`, and `genius.py` are stubs returning empty results, each commented with a reference to the 2026-08 pause decision. No `discogs.py` or `wikidata.py` file exists. The resolved source set is MusicBrainz, Discogs, and Wikidata (`PROJECT_STATE.md`), settled, not open. This story covers Discogs only: un-stubbing MusicBrainz and building Wikidata still need their own design pass (how the pipeline should actually shape those calls) before tasks can be drafted for them, not yet decided, so they're left untasked here rather than folded into this story's scope or guessed at.
+Rechecked against current code: `ai/app/metadata/sources/musicbrainz.py`, `wikipedia.py`, and `genius.py` are stubs returning empty results, each commented with a reference to the 2026-08 pause decision (`DECISIONS.md`). No `discogs.py` or `wikidata.py` file exists yet. The resolved source set stays MusicBrainz, Discogs, and Wikidata (`PROJECT_STATE.md`), settled through the sourcing spike, not open for reconsideration. This story covers Discogs only; un-stubbing MusicBrainz and building Wikidata are tracked separately under "Spike: MusicBrainz and Wikidata sourcing," now handoff tasks off that spike rather than an open design question.
 
-- [ ] Add `sources/discogs.py`, copy and adapt `ai/spikes/discogs_spike.py`'s validated implementation, including `masterless_release_years` (a release with no linked master still often carries its own correct `year` field directly in the search result, silently discarded without this), following `sources/youtube.py`'s pattern (the only currently-live source) for HTTP client usage, timeout, and broad-exception-to-`UNKNOWN_DEFAULTS` fallback
+- [ ] Add `ai/app/metadata/sources/discogs.py`, copy and adapt `ai/spikes/discogs_spike.py`'s validated implementation: the search-and-select logic, and the `masterless_release_years` fallback (a release with no linked master still often carries its own correct `year` field directly in the search result, silently discarded without this, a real bug the spike caught live)
+- [ ] Apply the "check every candidate, take the earliest" rule already used for MusicBrainz: a track can belong to more than one Discogs master (its own standalone-single release and an album it also appears on), each with its own year, trusting whichever master a search result lists first picked a wrong year for a real playlist song during the spike
+- [ ] Treat Discogs' `year: 0` on its master resource as unknown, not a literal date, a live-confirmed bug the spike caught on a real release ("Titanium")
+- [ ] Carry over `DiscogsRateLimiter` from the same spike file, live-tracking Discogs' own `X-Discogs-Ratelimit`/`X-Discogs-Ratelimit-Remaining` response headers rather than a fixed guessed rate, matching the adaptive-limiter treatment MusicBrainz's own un-stub task already calls for
+- [ ] Follow `sources/youtube.py`'s existing pattern (the only currently-live production source) for HTTP client usage, timeout, and broad-exception-to-`UNKNOWN_DEFAULTS` fallback
 - [ ] Add the Discogs API token to AI service config (`config.py`), following the existing `youtube_api_key`/`openai_api_key` pattern
-- [ ] Wire Discogs into `_gather_all_metadata` and add a `_append_discogs_data` function in `prompt.py`, matching the existing per-source prompt-section pattern
-- [ ] Confirm Discogs' API terms of use permit this usage, matching the review MusicBrainz and Wikidata already got per `PROJECT_STATE.md`
+- [ ] Wire Discogs into `_gather_all_metadata` and add a `_append_discogs_data` function in `prompt.py`, matching the existing per-source prompt-section pattern; Discogs only feeds the lock-evaluation and reconciliation steps (story 18), it makes no LLM call of its own
+- [ ] Confirm Discogs' API terms of use permit this usage, matching the review MusicBrainz and Wikidata already got (`PROJECT_STATE.md`)
 
 Tests:
 - [ ] Unit tests for `discogs.py`'s request building and response parsing, mirroring `youtube.py`'s existing test pattern
+- [ ] Unit test for the `masterless_release_years` fallback and the `year: 0`-as-unknown handling, both real bugs the spike found
 - [ ] Unit test for the fallback behavior on a failed Discogs call
+- [ ] Unit test for `DiscogsRateLimiter` pacing correctly off live response headers, not a fixed guessed interval
 
 ## Spike: MusicBrainz and Wikidata sourcing
 
@@ -444,7 +445,10 @@ Tests:
 
 ## Story 26: Cache metadata pipeline results by artist/title or YouTube ID
 
-- [ ] Add a cache layer in front of `resolve_metadata`, no cache exists today, every call re-runs the full source-fetch and LLM pipeline
+Scope review: two other mechanisms already cover a chunk of what a cache would. Story 40's batch YouTube-ID lookup catches an already-known exact ID before the pipeline runs at all, no external calls, no LLM. Story 16's pgvector similarity check catches a near-duplicate submission (different wording, same song), which a plain artist/title or YouTube-ID cache key would miss anyway since it isn't an exact-key match. What a cache layer adds on top of both: avoiding a second full pipeline run for the same exact YouTube ID submitted twice in quick succession, before story 40's alternate-ID mapping exists to catch it structurally, or during a burst where both submissions arrive before the first is persisted. That's a narrower case than the story's original framing suggested.
+
+- [ ] Decide, before building anything else here, whether this narrower case is worth its own caching layer at this project's scale (100-200 users), versus relying on story 40's batch lookup and story 16's similarity check once both exist, and accepting the rare double-run in the meantime
+- [ ] If still worth building: add a cache layer in front of `resolve_metadata`, no cache exists today, every call re-runs the full source-fetch and LLM pipeline
 - [ ] Decide cache backend: in-memory (simple, doesn't survive restarts or share across multiple AI service workers) vs. Redis/Postgres-backed
 - [ ] Set a TTL or invalidation policy, metadata for a given YouTube ID rarely changes, but upstream source data can be corrected
 - [ ] Coordinate with story 16: a pgvector similarity hit and a plain cache hit solve overlapping but different problems (near-duplicate vs. exact-repeat lookups), avoid building two redundant caching layers
@@ -529,6 +533,7 @@ No story required for these. Fix on a `fix` branch.
 
 - [ ] `SongMetadataResponse` (Java) silently drops the AI microservice's `confidence`, `source`, and `reasoning` fields: `SongMetadataResult` (Python) computes and returns all three today, but the Java record deserializing that response only declares `title/artist/releaseYear/gradientColor1/gradientColor2`, so the other three are read off the wire and discarded on every metadata call. Extend the record to keep them.
 - [ ] `DELETE /me` (`UserService.deleteUser()`) throws an unhandled `DataIntegrityViolationException` for any user who has ever added a song: `Song.addedBy` (`Song.java:41-43`) is a non-nullable `@ManyToOne` with no inverse mapping on `User` and no cascade rule, so the FK Hibernate generates under `ddl-auto=update` has no `ON DELETE` clause. It also orphans a playlist when the deleting user is its last remaining member: unlike `leavePlaylist()` (`UserService.java`), which deletes a playlist once `getUserCount() == 0`, `deleteUser()` has no equivalent check.
+- [ ] `proxy.ts` gates every protected-route navigation on the presence of the `access_token` cookie alone, a 15-minute lifetime (`jwt.expiration=900000` in `application.properties`), instead of the 7-day `refresh_token` cookie. An idle user whose access token has expired gets redirected straight to `/login` on their next navigation, before `axios-instance.ts`'s response interceptor ever gets a chance to run and silently reissue a new access token through `/auth/refresh`, even though a valid refresh token still exists. Gate the middleware check on `refresh_token`'s presence instead, and let the client-side interceptor perform the actual reissue.
 
 ## Chore: Flutter DJ-model compliance
 
@@ -562,6 +567,7 @@ Checked against real code: the only rate limiting anywhere is `SongMetadataServi
 - [ ] Rate-limit `/auth/login` and `/auth/register` specifically, to blunt credential-stuffing and enumeration attempts
 - [ ] Standardize the 429 response shape; the metadata endpoint's current 429 uses Spring's default `ProblemDetail`, not the app's own `ErrorResponse` record used elsewhere in `GlobalExceptionHandler`
 - [ ] Rate-limit the AI microservice's `/metadata/resolve` endpoint directly, not just the core service's call into it, since anything holding the shared `X-Internal-Api-Key` secret can call it directly
+- [ ] Load-test every rate-limited entry point (both services) under concurrent traffic past the configured limit, confirming the limiter holds under real concurrency rather than only the single-threaded unit tests below
 
 Tests:
 - [ ] Unit tests for the rate limiter: requests under the limit pass, requests over the limit get rejected, including the boundary value
@@ -579,6 +585,8 @@ Tests:
 ## Story 37: Privacy policy, terms of service, and GDPR compliance
 
 Checked against real code: `DELETE /me` (`UserController` → `UserService.deleteUser()`) already does a real hard delete of the `User` row, not a deactivation. It's not just unaudited for `Song.addedBy` references and shared playlists, both are confirmed live bugs, see this file's Bug fixes section. No analytics exist yet (story 34), so there's nothing to disclose there until it ships.
+
+Scope decided: exactly two dedicated legal/static pages, Privacy Policy and Terms of Service. No separate cookie-consent page is needed yet, it's already gated below on story 34 shipping, and no other legal or static page (About, Contact) is planned.
 
 - [ ] Draft a privacy policy covering what's actually collected today: auth data (username, email, OAuth provider ID), playlist/song data
 - [ ] Draft terms of service
@@ -645,3 +653,33 @@ Tests:
 - [ ] Frontend test: the new gameplay screens render correctly against representative mock state (empty, mid-game, varying player counts)
 - [ ] Frontend test: the drag-and-drop timeline placement and the guess box's animated feedback behave per `GAME_DESIGN.md`'s Interaction and animation section
 - [ ] Accessibility check: color contrast and keyboard navigation for the new visual direction, specifically the semi-transparent chat overlay and the voice sidebar
+
+## Story 42: Explicit database split
+
+Formalizes the boundary between the core transactional database and story 33's separate analytics/event store as its own architectural decision, rather than leaving it implicit in story 33's provisioning task alone. Story 33 still owns picking the actual analytics store; this defines which data belongs on which side of the line, and why.
+
+- [ ] Document, in `ARCHITECTURE.md`'s Database section, the explicit domain boundary: every entity either service reads or writes today, users, groups, sessions, rounds, guesses, songs, playlists, and pgvector embeddings, stays in the transactional Postgres+pgvector instance; only story 33's append-heavy usage/event data goes in the separate analytics store
+- [ ] Confirm no entity currently planned for either service needs to live in both places or move between them; note it here if one turns up during story 33 or 34's implementation
+- [ ] Cross-reference this story from stories 33 and 34 so the boundary isn't restated inconsistently in three places
+
+## Story 43: Metadata minimization
+
+A cross-cutting principle rather than a single implementation: curb `metadataRaw`'s growth so it doesn't bloat the database. Story 40 already flags this as a real constraint (Wikidata's own entity dumps ran tens of KB per song during the sourcing spike; at that size the 500MB Supabase free-tier cap holds roughly 10,000-50,000 songs instead of 170,000+ with a curated version), and story 23 already decides the fix (`metadataRaw` persists the curated, actually-used subset of each source's response, not the full raw API response). This story applies that same rule everywhere raw pipeline output gets persisted, not just at those two stories' specific call sites.
+
+- [ ] Audit every place raw source or pipeline output is persisted (`metadataRaw` on `Song`, any raw YouTube API Data fields) against the curated-subset rule already decided in stories 23 and 40, confirm nothing outside those two stories ends up persisting an uncurated raw response
+- [ ] Document the curation rule in `ARCHITECTURE.md` as a standing constraint on any future field that persists external API output, not just `metadataRaw`
+- [ ] Coordinate with story 40's YouTube-API-Data 30-day refresh/delete requirement: both are limits on the same field, one on size, one on retention
+
+## Story 44: Test user infrastructure (dev only)
+
+A dedicated `Role` for automated test/QA agents, separate from `USER` and story 19/40's `ADMIN`. Exists so automated agents, this project's own AI-assisted development workflow included, reuse one seeded test account's credentials across runs instead of registering a fresh throwaway account every time. Coordinates with story 22 (test coverage): this is test infrastructure, not test coverage itself.
+
+- [ ] Add a `TEST` value to `User.role`, alongside the existing `USER` and (once story 19/40 lands) `ADMIN`
+- [ ] Add a fixture or seed mechanism that creates one reusable test account with known credentials in local/dev environments, rather than a new account per test run
+- [ ] Document, in `CONTRIBUTING.md` (story 36) or a dev-setup doc, that agents and contributors running tests locally reuse the seeded test account's credentials instead of registering new ones
+- [ ] Add an environment guardrail: any `TEST`-role account, and any endpoint or behavior gated on that role, is a no-op or outright rejected when running against a Production environment, even if a `TEST`-role row somehow exists there
+- [ ] Add a startup or CI check that fails loudly if a `TEST`-role row is ever found in a Production database, rather than silently ignoring it
+
+Tests:
+- [ ] Unit test confirming `TEST`-role behavior is disabled under a Production environment flag, including the case where a `TEST` row actually exists
+- [ ] Unit test for the seed/fixture mechanism producing the same reusable credentials across repeated runs

@@ -408,6 +408,14 @@ Why: a flat, equally-weighted list is simpler than modeling a strict single-main
 
 ---
 
+## 2026-09 | Database split: one explicit boundary, transactional versus analytics
+
+Decision: the project has exactly one database split, and it's given its own story (42) rather than staying implicit inside story 33's provisioning task: the transactional Postgres+pgvector instance holds every entity either service reads or writes today (users, groups, sessions, rounds, guesses, songs, playlists, embeddings), and story 33's separate append-heavy store holds only usage/event data. No per-service database (one for the core service, a separate one for the AI microservice) is planned.
+
+Why: story 33 already decided to provision a separate analytics store, but the actual domain boundary, which entities live where, was only ever implicit in that story's tasks. Giving it its own story documents the boundary at the architecture level once, instead of restating it inconsistently across stories 33 and 34.
+
+---
+
 ## 2026-09 | Session-long guess leaderboards, open to every player except the DJ
 
 Decision: every player except the DJ, the round's active player included, can submit a title/artist guess. The active player's guess works exactly as it already does, both correct earns the token, independent of placement correctness, either one wrong earns nothing. Every guess, active or not, also feeds two running per-player tallies for the session: "Most Artists Guessed" (every individual artist name correctly given, main or featured, from any song, counts once, regardless of how many total artists that song has) and "Most Titles Guessed" (every fully-correct title). Both leaderboards are shown alongside the main card-count ranking at session end.
@@ -441,5 +449,37 @@ Why: the mechanism was already decided as edit-distance/fuzzy matching, not sema
 Decision: story 28's UI redesign covers the existing implemented pages (landing, auth, dashboard/playlist and song CRUD) and the not-yet-built gameplay screens `GAME_DESIGN.md` already specs (timeline, guess box, voice sidebar, chat overlay, DJ view, results/leaderboards) in one unified pass, not two separate efforts. The visual direction starts fresh rather than building on the current shadcn/Tailwind theme tokens, though the underlying shadcn component library stays unless a specific component doesn't hold up under the new direction. Mockups are built as a multi-artboard canvas through the `design` skill (Claude Design's canvas editor, available directly in this environment) rather than an external tool, reviewed before any implementation code is written.
 
 Why: the gameplay screens don't exist as code yet, so designing them separately from the existing pages would mean shipping two visually disconnected halves of the same app. A single pass keeps the whole product consistent from the start instead of redesigning the existing pages once now and the new ones again later.
+
+---
+
+## 2026-09 | DJ controls the round's flow, reveal is the DJ's alone
+
+Decision: the DJ, not any player, controls a round's flow, pause, play, close the YouTube tab or app, end the current turn, and reveal. The 2026-07 DJ-link-out entry's "any player can reveal" trade-off is superseded by this: reveal still can't be automatic, there's no programmatic access to a page the app doesn't control, but it's the DJ's manual trigger specifically, fired only after the betting window closes, not a power every player holds. Separately, screen or system audio sharing for a remote session's WebRTC tab capture only starts when the DJ clicks "Open YouTube Link," paired with an explicit UI warning that doing so broadcasts their tab or system audio to the group. The active player's own audio stream cuts off immediately once they lock in a guess, regardless of what's still playing on the DJ's end.
+
+Why: letting any player reveal was a placeholder from when reveal was first designed as a stopgap for the lack of programmatic playback access, not a deliberate multiplayer-UX choice. The DJ already controls playback, giving them the rest of the round's flow controls too keeps one person responsible for pacing the round instead of leaving reveal timing to whichever player clicks first. The audio-sharing warning exists because starting tab capture is a real, consent-relevant action, a player should know before it happens that their audio is about to broadcast.
+
+---
+
+## 2026-09 | Story 30 cut to two top-level modes: Difficulty-Based and Custom, theme generation dropped
+
+Decision: story 30's playlist/session selection is exactly two top-level modes, Difficulty-Based (Auto-Generated), a card set assembled on the spot and scored for the group's actual players, and Custom, the player starts a session from an accessible playlist or pastes one directly. Theme-request generation, absorbed from story 21 into an earlier version of this story, is dropped entirely, and story 21 itself is now Dropped rather than Consolidated. The owned/member/published-public three-way access model for playing from an existing playlist stays: a playlist a player owns, is a member of, or that's been published publicly are all valid under Custom mode, and publishing a playlist publicly stays a real capability with its own `isPublic` flag and publish/unpublish endpoint.
+
+Why: theme generation depended on catalog search (story 14) and new genre/popularity fields that existed for no other reason than to serve it, real scope for a feature that hadn't proven it was worth building yet. Cutting it down to the two top-level modes that matter, an on-the-spot generated set and a player's own accessible playlist, ships a simpler, real feature instead of carrying speculative scope. The three-way access model stays because publishing a playlist publicly is a real, wanted capability independent of the top-level mode count, dropping it was a miscommunication during the original cut, not a deliberate scope decision.
+
+---
+
+## 2026-09 | Story 40's YouTube-ID check and story 16's pgvector check: exact-match sequencing decided
+
+Decision: story 40's exact YouTube-ID check runs first; only a genuinely new ID reaches story 16's pgvector embedding check. A high-confidence pgvector match against an existing `Song` means the new ID is another upload of an already-known song, not a new one: link it into story 40's alternate-ID table against that existing `Song` and stop, no full pipeline run. The full metadata pipeline only runs once both checks come up empty.
+
+Why: this was previously left open pending story 16 actually existing. The two checks solve adjacent but different problems, an exact ID match versus a near-duplicate under a different upload, and stacking them in cheapest-first order (no external calls, then an embedding comparison, then the full pipeline only as a last resort) avoids ever running the expensive pipeline for a song the catalog already has under a different YouTube ID.
+
+---
+
+## 2026-09 | Wikidata sitelinks count also weights story 30's difficulty tiering
+
+Decision: a song's Wikidata sitelinks count, already used as story 30's international-scope gate, also weights which songs each difficulty tier draws from. Easy weights song selection toward higher-sitelink, more widely-recognized songs; hard carries no such weighting and can pull from low-sitelink, niche/obscure catalog entries same as anything else; medium sits between. This blends with, not replaces, the per-song aggregate guess-correctness score and the personalized collaborative-filtering layer, and is what a newly-verified song with no real guesses yet falls back on until it has enough play history for the aggregate score to mean anything.
+
+Why: sitelinks count is a real popularity proxy, a song covered by many language editions of Wikipedia is a widely-recognized one, and it's available the moment a song is verified, unlike the guess-based signals, which need real play history to exist first. Difficulty-based generation is meant to favor popular, recognizable tracks for its easy tier and only reach into the niche/underground catalog this project otherwise deliberately supports (`CLAUDE.md`) as the tier climbs, not treat every verified song the same regardless of how many people would actually recognize it.
 
 ---
