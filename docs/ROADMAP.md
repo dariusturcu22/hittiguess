@@ -47,6 +47,7 @@ No blockers among these, and none block each other. Includes both game-session i
 - Story 12: Voice chat, needs stories 11 and 39 actually built
 - Story 13: Group-scoped text chat, needs stories 11 and 39 actually built
 - Story 30: Difficulty-tuned game session generation, needs story 10's `Guess` entity accumulating real data
+- Story 45: Import songs from an existing playlist, needs story 15's join table
 - Story 28: UI redesign, implementation phase, wires the new visual system to the gameplay screens as stories 10/11/39 land
 
 ## Phase 3: Depends on Phase 2

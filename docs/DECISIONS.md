@@ -483,3 +483,19 @@ Decision: a song's Wikidata sitelinks count, already used as story 30's internat
 Why: sitelinks count is a real popularity proxy, a song covered by many language editions of Wikipedia is a widely-recognized one, and it's available the moment a song is verified, unlike the guess-based signals, which need real play history to exist first. Difficulty-based generation is meant to favor popular, recognizable tracks for its easy tier and only reach into the niche/underground catalog this project otherwise deliberately supports (`CLAUDE.md`) as the tier climbs, not treat every verified song the same regardless of how many people would actually recognize it.
 
 ---
+
+## 2026-09 | Song editing narrows to MANUAL_ENTRY once verificationStatus ships
+
+Decision: once story 23's `verificationStatus` field exists, editing a song's fields directly is restricted to `MANUAL_ENTRY` songs only. `VERIFIED` and `NEEDS_REVIEW` songs lose the edit action entirely and keep only the report affordance (`NEEDS_REVIEW` also keeps story 17's thumbs-up confirmation once that ships). Today's live Song Detail page, which has no `verificationStatus` field yet and lets any song's fields be edited, is unaffected until story 23 lands; this decision governs the shape editing takes once it does.
+
+Why: surfaced during story 28's design pass. `VERIFIED` data already went through source agreement or an admin's manual review, hand-editing it back out undermines the trust tier the pipeline just established; `NEEDS_REVIEW` data came from LLM reconciliation of real, if disagreeing, source data, correcting it by hand the same way a `MANUAL_ENTRY` song would skips the review process story 17 already defines for exactly this case. `MANUAL_ENTRY` is different in kind, a human guess with zero source corroboration, the least-trusted tier specifically because nothing else vouches for it, so it's the one tier where letting the submitter (or another member) fix it directly by hand is a real improvement rather than a bypass.
+
+---
+
+## 2026-09 | Import songs from an existing playlist, and its background-import UX, given their own scope
+
+Decision: two pieces of new scope surfaced during story 28's design pass, neither previously tracked. First, a third way to add songs to a playlist alongside search-and-add (story 14) and YouTube-playlist import (story 40): copying songs directly from a playlist the player already has access to (owned, a member of, or published publicly) into the one they're editing, instant, no metadata pipeline involved since every song is already a resolved catalog row. Given its own story, 45, blocked on story 15's song/playlist join table. Second, the background-import UX for story 40's YouTube-crawl path specifically: a temporary left-sidebar icon and a fading toast, both reopening the import screen with live progress, so leaving the screen doesn't cancel an in-progress crawl. Added as frontend tasks under story 40 rather than a new story, since it's UX for a capability story 40 already owns.
+
+Why: both were reasonable, wanted features once the design pass reached the "add songs to a playlist" screens, but CLAUDE.md's task gate means design work surfacing new scope gets written into the backlog before it's built, not folded silently into mockups with no corresponding story or task.
+
+---

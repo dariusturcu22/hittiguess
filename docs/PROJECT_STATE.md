@@ -54,6 +54,7 @@ A story can have draft tasks written against it in TASKS.md while still marked N
 | 42 | Explicit database split: the domain boundary between the core transactional Postgres+pgvector database and story 33's separate analytics/event store | Infra | Needs Definition, draft tasks exist |
 | 43 | Metadata minimization: curb raw pipeline/metadata storage growth everywhere it's persisted, not just at story 23/40's specific fields | Backend / AI | Needs Definition, draft tasks exist |
 | 44 | Test user infrastructure (dev only): a dedicated `TEST` role and reusable seeded credentials for automated agents, disabled outright in Production | Quality / Backend | Needs Definition, draft tasks exist |
+| 45 | Import songs from an existing playlist (owned, member-of, or published-public) directly into another playlist, instant copy, no metadata pipeline involved | Backend / Frontend | Needs Definition, draft tasks exist, surfaced during story 28's design pass; blocked on story 15's song/playlist join table, a song can only belong to one playlist today |
 
 ## Open questions
 
