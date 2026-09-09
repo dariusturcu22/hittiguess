@@ -475,3 +475,11 @@ Decision: story 40's exact YouTube-ID check runs first; only a genuinely new ID 
 Why: this was previously left open pending story 16 actually existing. The two checks solve adjacent but different problems, an exact ID match versus a near-duplicate under a different upload, and stacking them in cheapest-first order (no external calls, then an embedding comparison, then the full pipeline only as a last resort) avoids ever running the expensive pipeline for a song the catalog already has under a different YouTube ID.
 
 ---
+
+## 2026-09 | Wikidata sitelinks count also weights story 30's difficulty tiering
+
+Decision: a song's Wikidata sitelinks count, already used as story 30's international-scope gate, also weights which songs each difficulty tier draws from. Easy weights song selection toward higher-sitelink, more widely-recognized songs; hard carries no such weighting and can pull from low-sitelink, niche/obscure catalog entries same as anything else; medium sits between. This blends with, not replaces, the per-song aggregate guess-correctness score and the personalized collaborative-filtering layer, and is what a newly-verified song with no real guesses yet falls back on until it has enough play history for the aggregate score to mean anything.
+
+Why: sitelinks count is a real popularity proxy, a song covered by many language editions of Wikipedia is a widely-recognized one, and it's available the moment a song is verified, unlike the guess-based signals, which need real play history to exist first. Difficulty-based generation is meant to favor popular, recognizable tracks for its easy tier and only reach into the niche/underground catalog this project otherwise deliberately supports (`CLAUDE.md`) as the tier climbs, not treat every verified song the same regardless of how many people would actually recognize it.
+
+---
