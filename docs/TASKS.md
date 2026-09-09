@@ -157,7 +157,7 @@ Tests:
 
 ## Story 30: Difficulty-tuned game session generation
 
-Restructured to exactly two modes, decided: Difficulty-Based (Auto-Generated), a card set assembled on the spot for the actual players in the group, and Custom, the player selects a playlist they already have access to or pastes a playlist link directly, no owned/member/published-public distinction. Theme-request generation, originally absorbed from story 21, is dropped along with story 21 itself, no on-the-spot themed generation is planned; see `PROJECT_STATE.md`.
+Restructured to exactly two top-level modes, decided: Difficulty-Based (Auto-Generated), a card set assembled on the spot for the actual players in the group, and Custom, the player starts a session from an accessible playlist or pastes a playlist link directly. "Accessible" still covers three cases: a playlist the player owns, one they're a member of, or one someone has published for anyone to use; publishing a playlist publicly stays a real capability, not a distinction that only mattered for a dropped third mode. Theme-request generation, originally absorbed from story 21, is dropped along with story 21 itself, no on-the-spot themed generation is planned; see `PROJECT_STATE.md`.
 
 A country/language filter dimension (a "Romanian songs only" mode alongside difficulty) is also dropped, decided against separately. A difficulty-generated set defaults to international scope instead, a song counts as international if its Wikidata sitelinks count (the number of language-edition Wikipedia articles covering it) clears some threshold, a signal already validated during the metadata-sourcing spike, not new testing.
 
@@ -173,7 +173,8 @@ Inference is cheap and local: scoring the whole catalog against a specific group
 - [ ] Add group-level difficulty scoring for "medium": the median of the group's individual predicted scores, a middle ground between easy's worst-case protection and hard's plain average, with no extra weighting factor to tune
 - [ ] Persist Wikidata's sitelinks count on `Song` (coordinate with story 23), the international-scope signal for difficulty-generated sets; decide and add the actual threshold once there's enough real catalog data to check it against, not guessed
 - [ ] Add the Difficulty-Based generation endpoint: given a group, a difficulty tier, and a target card count, score the full verified catalog for the group's actual players (blending personalized predictions where available with the aggregate baseline for first-time players), filter to international scope, return enough songs with headroom above the win-condition card count so a session doesn't run out or repeat
-- [ ] Add the Custom-mode endpoint: start a session from a playlist the player already has access to (owned or a member of, no further distinction), or from a playlist link or ID pasted directly, independent of ownership or membership
+- [ ] Add an `isPublic` flag (or equivalent) to `Playlist` (coordinate with story 15), and an endpoint to publish/unpublish one
+- [ ] Add the Custom-mode endpoint: start a session from a playlist the player owns, is a member of, or that's published publicly, or from a playlist link or ID pasted directly
 - [ ] Train the personalized collaborative-filtering model on accumulated `Guess` data (story 10) once there's enough of it to evaluate
 - [ ] Add a scheduled retraining job for the personalized model
 - [ ] Add a monitoring check comparing the personalized model's prediction accuracy against the simple aggregate baseline; if the personalized model stops beating the baseline, that's the signal it's stale and needs retraining, not just a fixed schedule
@@ -186,6 +187,7 @@ Tests:
 - [ ] Integration test: Difficulty-Based generation for a full-sized group (up to 8 players) returns a scored card set in well under a second
 - [ ] Integration test: the retraining job runs and the monitoring check correctly flags a model that's stopped beating the baseline
 - [ ] Integration test: Custom mode starts a session from a pasted playlist link the player neither owns nor is a member of
+- [ ] Integration test: publishing a playlist makes it selectable by a user who neither owns it nor is a member of it; unpublishing removes that access without affecting existing owners/members
 - [ ] Frontend test: the review UI lets a user inspect and confirm the generated set before saving
 
 ## Story 33: Analytics data store
