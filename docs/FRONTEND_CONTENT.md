@@ -72,6 +72,18 @@ Data: a minimized summary of session state (whose turn it is, own token count) w
 
 Data, on a normal session end: the main card-count ranking (winner and placement order), plus the two separate session-long tallies, "Most Artists Guessed" and "Most Titles Guessed" (story 10). Actions: download the results export, return to the group lobby.
 
+## Admin views (not yet built)
+
+Gated on the `ADMIN` role story 40 owns (absorbed from story 19); none of these exist as frontend code today.
+
+### Catalog backlog status
+
+Data: pending count, how many processed today, remaining daily LLM quota (story 40). Actions: submit a YouTube playlist link or a raw list of video IDs to bulk-enqueue into the backlog; the batch YouTube-ID lookup runs first so already-known songs are never enqueued, this view doesn't need to show that filtering step, only its result.
+
+### Report review queue (story 17)
+
+Data: every reportable card ranked by the five-tier priority order in `TASKS.md` (converging reports first, then non-converging, then confirmed-but-unreported, then unconfirmed, `VERIFIED` cards with no report never appear), and for each one the actual signals behind its rank, report count, whether they converge and on what year, confirmation count, not a single opaque score. Actions: resolve a report by setting the correct year and `verificationStatus`, the review stays a manual admin judgment call, nothing here auto-applies a suggested year.
+
 ## Content this file deliberately excludes
 
 Colors, typography, spacing, component styling, and layout are story 28's scope, not this one's. Where a screen's exact copy (button labels, error message text, empty-state wording) isn't already fixed by a decision in `DECISIONS.md` or `GAME_DESIGN.md`, it's left to be written during story 28's design and implementation passes rather than guessed at here.
