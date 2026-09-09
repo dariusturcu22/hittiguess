@@ -21,7 +21,7 @@ A written specification from the project owner added new cross-cutting architect
 - [x] Stories 26, 30, and 40: caching-layer scope review, playlist-selection cut down to two modes, dedup pipeline's exact-match linking decided
 - [x] Backlog cleanup: remove dropped/consolidated stories from the active tables, audit for conflicting decisions across docs
 - [x] Implementation roadmap document, explicit sequential order for remaining stories
-- [ ] Structured system docs: API contracts, entity model, state diagrams
+- [x] Structured system docs: API contracts, entity model, state diagrams
 - [ ] Frontend content specifications, independent of story 28's visual design
 
 ## Story 9: DJ real YouTube link-out

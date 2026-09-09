@@ -81,6 +81,7 @@ Every task breakdown in `TASKS.md` must include explicit test tasks alongside th
 - Decision history and reasoning: [docs/DECISIONS.md](docs/DECISIONS.md), append-only, never edit or delete past entries
 - Completed stories: [docs/ARCHIVE.md](docs/ARCHIVE.md)
 - Sequential implementation order for remaining stories: [docs/ROADMAP.md](docs/ROADMAP.md)
+- API contracts, entity model, and state diagrams: [docs/SYSTEM_REFERENCE.md](docs/SYSTEM_REFERENCE.md)
 
 ## Task archiving
 
