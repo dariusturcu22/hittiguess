@@ -55,15 +55,15 @@ User
 
 Playlist
   ├── id, name, color, inviteCode (unique, immutable)
-  ├── songs: List<Song>  (@OneToMany, cascade ALL, orphanRemoval — story 15 replaces this with a join table)
+  ├── songs: List<Song>  (@OneToMany, cascade ALL, orphanRemoval, story 15 replaces this with a join table)
   └── users: Set<User>   (@ManyToMany, mappedBy "playlists")
 
 Song
   ├── id, artist, title, releaseYear, youtubeId, gradientColor1, gradientColor2
-  ├── songTag (single enum — story 30 needs genre/popularity fields story 23 may or may not cover)
+  ├── songTag (single enum, story 30 needs genre/popularity fields story 23 may or may not cover)
   ├── country
-  ├── playlist: Playlist  (@ManyToOne — story 15 replaces this with the join table above)
-  └── addedBy: User       (@ManyToOne, no inverse mapping, no cascade — the DELETE /me bug in TASKS.md's Bug fixes)
+  ├── playlist: Playlist  (@ManyToOne, story 15 replaces this with the join table above)
+  └── addedBy: User       (@ManyToOne, no inverse mapping, no cascade, the DELETE /me bug in TASKS.md's Bug fixes)
 
 RefreshToken
   ├── id, token (unique, hashed)

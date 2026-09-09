@@ -116,7 +116,7 @@ The DJ is never shown an embedded YouTube player.
 - Physical cards: the QR code encodes the YouTube video ID directly. Scanning opens the real YouTube app or site.
 - Playback itself is manual, on the DJ's device, there's no remote play or pause on YouTube's own player. The DJ does control the round's flow over WebSocket: pause, play, close the YouTube tab or app, end the current turn, and trigger the reveal. No general player holds any of these controls.
 - The active player's audio stream cuts off immediately once they lock in their guess, regardless of what's still playing on the DJ's end.
-- Round reveal happens only after the betting window closes, and only the DJ can trigger it, there's no programmatic access to a page we don't control, so this stays a manual DJ action, not an automatic one and not any player's.
+- Round reveal happens only after the betting window closes, and only the DJ can trigger it, there's no programmatic access to a page outside the app's control, so this stays a manual DJ action, not an automatic one and not any player's.
 - Ads play unmodified in every mode.
 
 ### Voice and text chat
