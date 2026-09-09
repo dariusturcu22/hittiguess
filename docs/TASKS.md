@@ -14,10 +14,22 @@ Story 9 and story 12 were checked against the real code and confirmed blocked: b
 
 Confirmed against the real code: there's no DJ view, no group, no session concept, and no WebSocket layer today, so this is new work, not a removal. The QR code task was split out and done separately, see `ARCHIVE.md`'s Bug fixes entry. Blocked on story 39 (group), story 10 (game session), and story 11 (WebSocket sync).
 
-- [ ] Build the DJ view: an "open in YouTube" link-out for remote sessions, opening a new browser tab, never an embedded player
-- [ ] Wire WebRTC tab audio capture to that new tab and stream it to the other players
+Reveal is the DJ's action alone, not any player's, and the DJ controls the round's flow more broadly: pause, play, close the YouTube tab or app, end the current turn, and reveal, all over WebSocket. General players hold none of these controls, see `GAME_DESIGN.md`'s Roles section.
+
+- [ ] Build the DJ view: an "open in YouTube" link-out for remote sessions, opening a new browser tab, never an embedded player, behind an explicit "Open YouTube Link" action
+- [ ] Add a UI warning shown alongside that action, explicit that clicking it starts broadcasting the DJ's tab or system audio to the rest of the group
+- [ ] Wire WebRTC tab audio capture to that new tab and stream it to the other players, starting only once the DJ has actually opened the link, not before
 - [ ] Add deep-link handling for in-person sessions (Android intent, iOS universal link, fallback to a plain browser link)
-- [ ] Wire the manual reveal trigger over WebSocket, any player can reveal once the song has played
+- [ ] Wire the active player's audio-stream cutoff over WebSocket: cuts off immediately on guess lock-in, regardless of what's still playing on the DJ's end
+- [ ] Wire the DJ's round-flow controls over WebSocket: pause, play, close the YouTube tab/app, end the current turn, and reveal; reveal is gated to fire only after the betting window (story 10) has closed
+- [ ] Restrict all of the above controls to the DJ role specifically, a non-DJ player's attempt to invoke any of them is rejected
+
+Tests:
+- [ ] Unit test: the audio-stream cutoff fires on guess lock-in regardless of playback state, and only for the active player's stream
+- [ ] Unit test: reveal is rejected when attempted by a non-DJ player, and when attempted before the betting window has closed
+- [ ] Unit tests for the DJ's other round-flow controls (pause, play, close, end turn), each rejected when attempted by a non-DJ player
+- [ ] Frontend test: the "Open YouTube Link" action shows the audio-sharing warning before WebRTC tab capture starts
+- [ ] Integration test: deep-link handling falls back to a plain browser link when the YouTube app isn't installed
 
 ## Story 10: Game session
 

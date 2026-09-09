@@ -105,11 +105,12 @@ Sync through WebSocket/STOMP for both the group and the game session. REST for g
 
 The DJ is never shown an embedded YouTube player.
 
-- Remote sessions: the DJ opens the real YouTube page in a new browser tab. That tab is captured through WebRTC tab audio capture and streamed to the other players.
+- Remote sessions: the DJ opens the real YouTube page in a new browser tab, only from an explicit "Open YouTube Link" action paired with a UI warning that doing so starts broadcasting their tab or system audio. That tab is captured through WebRTC tab audio capture and streamed to the other players.
 - In-person sessions: the DJ opens the real YouTube app through a deep link (Android intent, iOS universal link, falling back to a plain browser link if the app isn't installed) and plays through the device speaker.
 - Physical cards: the QR code encodes the YouTube video ID directly. Scanning opens the real YouTube app or site.
-- Playback control is entirely manual, on the DJ's device. There's no remote play or pause.
-- Round reveal is a manual trigger over WebSocket, since there's no programmatic access to a page we don't control.
+- Playback itself is manual, on the DJ's device, there's no remote play or pause on YouTube's own player. The DJ does control the round's flow over WebSocket: pause, play, close the YouTube tab or app, end the current turn, and trigger the reveal. No general player holds any of these controls.
+- The active player's audio stream cuts off immediately once they lock in their guess, regardless of what's still playing on the DJ's end.
+- Round reveal happens only after the betting window closes, and only the DJ can trigger it, there's no programmatic access to a page we don't control, so this stays a manual DJ action, not an automatic one and not any player's.
 - Ads play unmodified in every mode.
 
 ### Voice and text chat

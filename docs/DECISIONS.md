@@ -443,3 +443,11 @@ Decision: story 28's UI redesign covers the existing implemented pages (landing,
 Why: the gameplay screens don't exist as code yet, so designing them separately from the existing pages would mean shipping two visually disconnected halves of the same app. A single pass keeps the whole product consistent from the start instead of redesigning the existing pages once now and the new ones again later.
 
 ---
+
+## 2026-09 | DJ controls the round's flow, reveal is the DJ's alone
+
+Decision: the DJ, not any player, controls a round's flow, pause, play, close the YouTube tab or app, end the current turn, and reveal. The 2026-07 DJ-link-out entry's "any player can reveal" trade-off is superseded by this: reveal still can't be automatic, there's no programmatic access to a page the app doesn't control, but it's the DJ's manual trigger specifically, fired only after the betting window closes, not a power every player holds. Separately, screen or system audio sharing for a remote session's WebRTC tab capture only starts when the DJ clicks "Open YouTube Link," paired with an explicit UI warning that doing so broadcasts their tab or system audio to the group. The active player's own audio stream cuts off immediately once they lock in a guess, regardless of what's still playing on the DJ's end.
+
+Why: letting any player reveal was a placeholder from when reveal was first designed as a stopgap for the lack of programmatic playback access, not a deliberate multiplayer-UX choice. The DJ already controls playback, giving them the rest of the round's flow controls too keeps one person responsible for pacing the round instead of leaving reveal timing to whichever player clicks first. The audio-sharing warning exists because starting tab capture is a real, consent-relevant action, a player should know before it happens that their audio is about to broadcast.
+
+---
