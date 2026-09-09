@@ -15,10 +15,10 @@ Story 9 and story 12 were checked against the real code and confirmed blocked: b
 A written specification from the project owner added new cross-cutting architecture stories, corrected several existing stories, and called for a documentation cleanup pass. Split across separate branches below since it touches unrelated parts of the backlog; each is checked off once its PR merges.
 
 - [x] Cross-cutting: new stories for the database split (42), metadata minimization (43), and test user infrastructure (44); the access-token reissuance bug fix; a rate-limit stress-testing task on story 27; a legal-page scope clarification on story 37
-- [ ] Story 9: DJ-controlled reveal flow, audio cutoff sequence, audio-sharing UI warning, and its missing test tasks
-- [ ] Stories 10 and 11: dedupe the active/non-active player token and leaderboard tasks, add story 11's telemetry requirement
-- [ ] Stories 24 and 25: full task rewrite against current rate limits, architecture, and decisions
-- [ ] Stories 26, 30, and 40: caching-layer scope review, playlist-selection cut down to two modes, dedup pipeline's exact-match linking decided
+- [x] Story 9: DJ-controlled reveal flow, audio cutoff sequence, audio-sharing UI warning, and its missing test tasks
+- [x] Stories 10 and 11: dedupe the active/non-active player token and leaderboard tasks, add story 11's telemetry requirement
+- [x] Stories 24 and 25: full task rewrite against current rate limits, architecture, and decisions
+- [x] Stories 26, 30, and 40: caching-layer scope review, playlist-selection cut down to two modes, dedup pipeline's exact-match linking decided
 - [ ] Backlog cleanup: remove dropped/consolidated stories from the active tables, audit for conflicting decisions across docs
 - [ ] Implementation roadmap document, explicit sequential order for remaining stories
 - [ ] Structured system docs: API contracts, entity model, state diagrams
@@ -169,14 +169,6 @@ Tests:
 - [ ] Integration test: both 30-minute timers, pre-session and between-sessions, including that they don't fire early or fail to fire
 - [ ] Integration test: explicit leave removes membership while disconnect only flips the connection flag
 
-## Story 31: Dropped
-
-Was: a "similar songs" feature using text embeddings over song title and artist. Dropped: the only version of "similar songs" worth building is audio-based (how a song actually sounds), not text-based (which mostly just catches same-artist or similarly-worded matches). See story 29 for why the audio-based version doesn't have a viable data source either.
-
-## Story 29: Dropped, no viable audio-feature source found
-
-Researched directly rather than left open: AcousticBrainz, the obvious free option, shut down its live API and submission pipeline in February 2022; only a frozen dataset remains, dated June 2022, with coverage skewed toward mainstream music already analyzed before the shutdown, exactly the opposite of the niche/underground coverage this project cares about. Self-hosting Essentia (the toolkit AcousticBrainz itself used) would work on any song, but needs the actual audio file, and the only way to get that for a YouTube-sourced song is unofficial downloading, which violates `CLAUDE.md`'s non-negotiable official-APIs-only rule and the DJ-link-out architecture built specifically to avoid touching YouTube's media stream. Paid catalog APIs (Apple Music at $99/year, various smaller commercial ones) are real ongoing cost for a nice-to-have feature and still don't reliably cover niche YouTube-only tracks. No option clears the bar. Dropped rather than left blocked indefinitely.
-
 ## Story 30: Difficulty-tuned game session generation
 
 Restructured to exactly two modes, decided: Difficulty-Based (Auto-Generated), a card set assembled on the spot for the actual players in the group, and Custom, the player selects a playlist they already have access to or pastes a playlist link directly, no owned/member/published-public distinction. Theme-request generation, originally absorbed from story 21, is dropped along with story 21 itself, no on-the-spot themed generation is planned; see `PROJECT_STATE.md`.
@@ -282,21 +274,6 @@ Tests:
 - [ ] Unit tests for the similarity-check step (mocked embedding client): a high-confidence match reuses existing data, a low-confidence match proceeds to the full pipeline
 - [ ] Integration test: submitting a near-duplicate song reuses existing verified data instead of re-running the LLM
 
-## Story 19: Admin bulk song import
-
-Checked against real code: `User.role` only has a `USER` value today, no `ADMIN` value or admin-only access check exists anywhere in the system. This is a prerequisite for this story, not something to assume already exists.
-
-- [ ] Add an `ADMIN` value to `User.role` and an admin-only access check, neither exists today
-- [ ] Add a bulk-import endpoint (CSV or JSON) that runs each entry through the existing metadata pipeline
-- [ ] Add a progress/result summary for a bulk import run, since a large batch calling the AI microservice per row takes time and can partially fail
-- [ ] Add the admin-only import UI
-
-Tests:
-- [ ] Unit tests for the admin-only access check, including a non-admin request rejected
-- [ ] Integration test: bulk import processes multiple rows and reports per-row success/failure
-
-Consolidated into story 40, which redefines bulk import as two separate paths (a slow admin backlog queue, and immediate on-the-spot resolution for any user) rather than one CSV/JSON endpoint. The `ADMIN` role and access-check prerequisite noted above still applies to story 40's admin-only backlog endpoints.
-
 ## Story 40: Catalog seeding queue and user-facing bulk import
 
 Checked against real code: `Song` has a single `youtubeId` field and no lookup query for it, `SongRepository` has zero custom query methods. No `@Scheduled` usage or scheduling dependency exists anywhere in the backend today, `@EnableScheduling` isn't declared. Absorbs story 19's admin bulk-import scope, redefined as two genuinely separate mechanisms, not one:
@@ -316,6 +293,7 @@ Decided: how the alternate-YouTube-ID-to-`Song` mapping sequences against story 
 
 **Decided: rate-limit contention between the admin backlog drain and on-the-spot traffic, a real concern surfaced during story 20's spike, now settled with a priority-queue design.** On-the-spot requests, including a user's playlist import, are always high priority and take precedence over the admin backlog for the shared external rate-limit budgets (MusicBrainz, Discogs, Wikidata, Wikipedia all come from the same outbound IP). The backlog drain pauses while any on-the-spot traffic is active and resumes once it's clear. Every song the fast tier resolves provisionally gets added back to the admin backlog queue afterward, to be reprocessed through the patient pipeline at low priority like everything else, this is how the fast tier's 90%-vs-99% accuracy gap gets closed, not instantly, but automatically.
 
+- [ ] Add an `ADMIN` value to `User.role` and an admin-only access check, neither exists today, absorbed from story 19; gates every admin-only endpoint below
 - [ ] Add a table mapping alternate YouTube video IDs to an existing `Song` (many YouTube IDs to one canonical song), separate from `Song`'s own primary `youtubeId`, so a different upload of an already-known track (a lyric video, a Topic-channel version, a re-upload) doesn't create a duplicate `Song` row or re-run the pipeline
 - [ ] Add a batch YouTube-ID lookup (`SongRepository` needs its first custom query methods for this): given a list of IDs, returns which are already known, checking both `Song.youtubeId` and the new alternate-ID table, no external API calls, this is the shared first step both paths below depend on
 - [ ] When story 16's pgvector check returns a high-confidence match for a YouTube ID that passed this story's own exact-ID check as new, link that ID into the alternate-ID table against the matched `Song` instead of creating a new one, and stop there, skipping the full pipeline for it
@@ -335,6 +313,7 @@ Decided: how the alternate-YouTube-ID-to-`Song` mapping sequences against story 
 - [ ] Raw YouTube API Data specifically (a video's title, description, channel name) has its own constraint on top of the size one above: YouTube's Developer Policies (Section III.E.4) require non-authorized API Data to be deleted or refreshed within 30 calendar days, it can't be persisted indefinitely as-is. If any raw YouTube fields end up inside `metadataRaw`, they need their own refresh/delete cycle on that schedule; the derived facts (artist, title, release year, sourced from MusicBrainz/Discogs/Wikidata/Wikipedia) aren't YouTube API Data and aren't subject to this
 
 Tests:
+- [ ] Unit tests for the admin-only access check, including a non-admin request rejected
 - [ ] Unit tests for the batch YouTube-ID lookup, including a mix of known, alternate-mapped, and unknown IDs in one batch
 - [ ] Unit tests for the alternate-YouTube-ID-to-`Song` mapping
 - [ ] Integration test: a new YouTube ID that pgvector matches with high confidence links into the alternate-ID table against the existing `Song` and never triggers the full pipeline
@@ -369,7 +348,7 @@ Tests:
 
 ## Story 17: Community song reports and confirmations
 
-Depends on story 19 for the admin review surface. Resolution stays fully manual: an admin decides every report, nothing here auto-changes `verificationStatus` on its own, see `DECISIONS.md`. Every card is reportable, including `VERIFIED` ones.
+Depends on story 40 for the admin review surface, which now owns the `ADMIN` role and access check absorbed from story 19. Resolution stays fully manual: an admin decides every report, nothing here auto-changes `verificationStatus` on its own, see `DECISIONS.md`. Every card is reportable, including `VERIFIED` ones.
 
 - [ ] Add a `SongReport` entity (reporter, song, message, suggested correct year, sources, status)
 - [ ] `POST` endpoint to submit a report, available to any authenticated user who can view the song
@@ -377,7 +356,7 @@ Depends on story 19 for the admin review surface. Resolution stays fully manual:
 - [ ] Add a `SongConfirmation` entity (user, song, timestamp): the community thumbs-up, distinct from a report, shown only on `NEEDS_REVIEW`/`MANUAL_ENTRY` cards, one per user per song
 - [ ] `POST` endpoint to submit a confirmation, same visibility rule as the thumbs-up button below
 - [ ] Add a thumbs-up affordance to the song detail page, visible only for `NEEDS_REVIEW`/`MANUAL_ENTRY` cards, "is this correct?"
-- [ ] Admin review surface (needs story 19's admin role) ordered by priority, not submission time:
+- [ ] Admin review surface (needs story 40's admin role) ordered by priority, not submission time:
   1. Converging reports: two or more independent reports on the same card suggesting the same year, ranked highest regardless of current `verificationStatus`, including `VERIFIED` cards
   2. Reported, no convergence (a single report, or several that disagree with each other): ranked below convergent reports, by `verificationStatus` (`MANUAL_ENTRY`/`NEEDS_REVIEW` before `VERIFIED`)
   3. Unreported `NEEDS_REVIEW`/`MANUAL_ENTRY` cards with at least one confirmation, ranked by confirmation count, a fast confirm rather than research
@@ -409,10 +388,6 @@ Tests:
 - [ ] Unit test confirming a locked song's year is immutable even via story 17's report path
 - [ ] Integration test: a submission with unanimous source agreement never triggers an LLM call at all
 - [ ] Integration test: a submission with no data from any source, including Wikipedia, routes to manual review rather than erroring or silently failing
-
-## Story 32: Dropped, redundant with the verification pipeline
-
-Was: a periodic, scheduled pass over the existing catalog, calling the AI microservice with an LLM-as-judge prompt to flag likely duplicate or mislabeled entries. Dropped once story 18/40's two-tier pipeline was decided: every song already gets verified on submission, and a fast-tier answer gets re-verified through the patient tier afterward, so a separate scheduled audit pass over the whole catalog is redundant. A manual, admin-triggered version (run on demand, not on a schedule) isn't ruled out, but isn't a defined feature.
 
 ## Story 24: Parallelize metadata pipeline fetches across sources
 

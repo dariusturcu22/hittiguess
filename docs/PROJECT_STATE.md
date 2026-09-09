@@ -2,6 +2,8 @@
 
 This file is the backlog. Every planned or completed piece of functionality is a story with a stable ID. IDs reflect the order stories were written down, not priority; the order to work on stories is decided separately.
 
+Dropped and consolidated stories are removed from the table below rather than kept with a Dropped/Consolidated status row; their reasoning lives in [ARCHIVE.md](ARCHIVE.md)'s "Dropped and consolidated stories" section instead. Gaps in the ID sequence are expected and not a sign something's missing.
+
 `TASKS.md` is what work actually happens from. This file is context, read it to understand the bigger picture behind a task, not as a list of things to do.
 
 ## Status legend
@@ -10,8 +12,8 @@ This file is the backlog. Every planned or completed piece of functionality is a
 - Ready: has confirmed tasks in TASKS.md, checked against the real code, can be worked on.
 - In Progress: actively being worked on.
 - Needs Definition: confirmed as wanted, tasks may exist as a draft, but not yet checked against the real code.
-- Dropped: considered and explicitly rejected, distinct from Needs Definition, which just means not yet gotten to.
-- Consolidated: merged into another story's tasks rather than kept as its own, see the story it points to.
+- Dropped: considered and explicitly rejected, distinct from Needs Definition, which just means not yet gotten to. Removed from the table below, see `ARCHIVE.md`.
+- Consolidated: merged into another story's tasks rather than kept as its own. Removed from the table below, see `ARCHIVE.md` for which story absorbed it.
 
 A story can have draft tasks written against it in TASKS.md while still marked Needs Definition. That alone doesn't unlock work. A story only becomes Ready once those tasks are confirmed accurate against the real codebase.
 
@@ -29,11 +31,9 @@ A story can have draft tasks written against it in TASKS.md while still marked N
 | 14 | Song search by link or by keyword before submission | Frontend / Backend | Ready |
 | 15 | Song/playlist relational fix, so one song can belong to multiple playlists | Backend | Ready |
 | 16 | pgvector-based duplicate detection before running the metadata pipeline | Backend / AI | Ready |
-| 17 | Community song reports and confirmations: report button, message, correct year, sources; a separate thumbs-up confirmation on low-confidence cards; admin review queue ranked by a five-tier priority order | Frontend / Backend | Ready, admin review surface additionally needs story 19's admin role, not yet built |
+| 17 | Community song reports and confirmations: report button, message, correct year, sources; a separate thumbs-up confirmation on low-confidence cards; admin review queue ranked by a five-tier priority order | Frontend / Backend | Ready, admin review surface additionally needs the admin role story 40 now owns (absorbed from story 19), not yet built |
 | 18 | Criteria for promoting a reported or newly submitted song to verified | Backend | Needs Definition, criteria decided and validated against real data (`DECISIONS.md`), draft tasks exist, blocked on story 23's `verificationStatus` field, which doesn't exist yet |
-| 19 | Admin bulk song import | Backend | Consolidated into story 40 |
 | 20 | Local LLM option for lower-cost bulk metadata processing | AI | Needs Definition, model choice decided and validated against real data (`DECISIONS.md`): gpt-5-nano for reconciliation, DeepSeek-V4-Flash for Wikipedia extraction. Blocked on the same schema and implementation work as story 40 |
-| 21 | Auto-generated featured playlists | Backend / AI | Dropped, theme-request generation was briefly absorbed into story 30 but is now dropped there too, no on-the-spot themed generation is planned |
 | 22 | Test coverage for existing and new functionality | Quality | Ready |
 | 23 | Song schema reconciliation against the current implementation | Backend | Ready |
 | 24 | Parallelize metadata pipeline fetches across sources | Backend / AI | Needs Definition, draft tasks exist, confirmed blocked, parallelizing today's mostly-stubbed source set is wasted work until story 25 (Discogs) and the spike-validated MusicBrainz/Wikidata/Wikipedia implementations actually ship |
@@ -41,10 +41,7 @@ A story can have draft tasks written against it in TASKS.md while still marked N
 | 26 | Cache metadata pipeline results by artist/title or YouTube ID | Backend / AI | Ready, first task is a scope-review decision on whether this is still worth building once stories 16 and 40 exist, see `TASKS.md` |
 | 27 | Rate limiting | Backend | Ready |
 | 28 | UI redesign | Frontend | Ready, one unified pass covering existing pages and the not-yet-built gameplay screens, fresh visual direction, see `DECISIONS.md` |
-| 29 | Content-based song recommender: audio-feature metadata (tempo, energy, valence), cosine similarity, works with zero user data | Backend / AI | Dropped, no viable audio-feature data source found (researched, see `TASKS.md`) |
 | 30 | Difficulty-tuned game session generation: exactly two modes, Difficulty-Based (Auto-Generated, easy/medium/hard, defaults to international scope) and Custom (select a playlist already accessible, or paste one directly) | Backend / AI / Frontend | Needs Definition, draft tasks exist, confirmed blocked on story 10, no `Guess` entity exists yet for either the aggregate score or the personalized layer |
-| 31 | "Similar songs" feature using pgvector embeddings over song title and artist | Backend / AI | Dropped, only the audio-based version was worth building, see story 29 |
-| 32 | LLM-as-judge catalog audit: periodic pass over the existing catalog flagging likely duplicate or mislabeled songs | Backend / AI | Dropped, a scheduled/periodic pass is redundant now that every song already flows through story 18's verification pipeline, both on submission and, for the fast tier, again afterward through the patient tier. A separate, manual/on-demand admin tool isn't ruled out but isn't a defined feature either |
 | 33 | Analytics data store: separate append-heavy store for usage/event data (games played, session length), apart from the transactional Postgres database | Infra | Ready |
 | 34 | First-party usage analytics: track games played and session length through a self-hosted or custom event pipeline, no third-party trackers | Backend / Frontend | Needs Definition, draft tasks exist, confirmed blocked on story 33 and, for the abuse-visibility events, on stories 10, 13, 17, and 27 actually shipping too |
 | 35 | Public ground-truth data API: verified `(artist, title, release_year)` triples only, no YouTube links or unverified entries | Backend | Ready, the verified-only filter additionally needs story 23's `verificationStatus` field, not yet built |
