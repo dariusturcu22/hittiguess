@@ -10,6 +10,20 @@ Story 9 and story 12 were checked against the real code and confirmed blocked: b
 
 "Next available task" means the earliest unchecked box under a Ready or In Progress story.
 
+## Chore: Backlog refinement from the project owner's specification
+
+A written specification from the project owner added new cross-cutting architecture stories, corrected several existing stories, and called for a documentation cleanup pass. Split across separate branches below since it touches unrelated parts of the backlog; each is checked off once its PR merges.
+
+- [x] Cross-cutting: new stories for the database split (42), metadata minimization (43), and test user infrastructure (44); the access-token reissuance bug fix; a rate-limit stress-testing task on story 27; a legal-page scope clarification on story 37
+- [ ] Story 9: DJ-controlled reveal flow, audio cutoff sequence, audio-sharing UI warning, and its missing test tasks
+- [ ] Stories 10 and 11: dedupe the active/non-active player token and leaderboard tasks, add story 11's telemetry requirement
+- [ ] Stories 24 and 25: full task rewrite against current rate limits, architecture, and decisions
+- [ ] Stories 26, 30, and 40: caching-layer scope review, playlist-selection cut down to two modes, dedup pipeline's exact-match linking decided
+- [ ] Backlog cleanup: remove dropped/consolidated stories from the active tables, audit for conflicting decisions across docs
+- [ ] Implementation roadmap document, explicit sequential order for remaining stories
+- [ ] Structured system docs: API contracts, entity model, state diagrams
+- [ ] Frontend content specifications, independent of story 28's visual design
+
 ## Story 9: DJ real YouTube link-out
 
 Confirmed against the real code: there's no DJ view, no group, no session concept, and no WebSocket layer today, so this is new work, not a removal. The QR code task was split out and done separately, see `ARCHIVE.md`'s Bug fixes entry. Blocked on story 39 (group), story 10 (game session), and story 11 (WebSocket sync).
@@ -541,6 +555,7 @@ No story required for these. Fix on a `fix` branch.
 
 - [ ] `SongMetadataResponse` (Java) silently drops the AI microservice's `confidence`, `source`, and `reasoning` fields: `SongMetadataResult` (Python) computes and returns all three today, but the Java record deserializing that response only declares `title/artist/releaseYear/gradientColor1/gradientColor2`, so the other three are read off the wire and discarded on every metadata call. Extend the record to keep them.
 - [ ] `DELETE /me` (`UserService.deleteUser()`) throws an unhandled `DataIntegrityViolationException` for any user who has ever added a song: `Song.addedBy` (`Song.java:41-43`) is a non-nullable `@ManyToOne` with no inverse mapping on `User` and no cascade rule, so the FK Hibernate generates under `ddl-auto=update` has no `ON DELETE` clause. It also orphans a playlist when the deleting user is its last remaining member: unlike `leavePlaylist()` (`UserService.java`), which deletes a playlist once `getUserCount() == 0`, `deleteUser()` has no equivalent check.
+- [ ] `proxy.ts` gates every protected-route navigation on the presence of the `access_token` cookie alone, a 15-minute lifetime (`jwt.expiration=900000` in `application.properties`), instead of the 7-day `refresh_token` cookie. An idle user whose access token has expired gets redirected straight to `/login` on their next navigation, before `axios-instance.ts`'s response interceptor ever gets a chance to run and silently reissue a new access token through `/auth/refresh`, even though a valid refresh token still exists. Gate the middleware check on `refresh_token`'s presence instead, and let the client-side interceptor perform the actual reissue.
 
 ## Chore: Flutter DJ-model compliance
 
@@ -574,6 +589,7 @@ Checked against real code: the only rate limiting anywhere is `SongMetadataServi
 - [ ] Rate-limit `/auth/login` and `/auth/register` specifically, to blunt credential-stuffing and enumeration attempts
 - [ ] Standardize the 429 response shape; the metadata endpoint's current 429 uses Spring's default `ProblemDetail`, not the app's own `ErrorResponse` record used elsewhere in `GlobalExceptionHandler`
 - [ ] Rate-limit the AI microservice's `/metadata/resolve` endpoint directly, not just the core service's call into it, since anything holding the shared `X-Internal-Api-Key` secret can call it directly
+- [ ] Load-test every rate-limited entry point (both services) under concurrent traffic past the configured limit, confirming the limiter holds under real concurrency rather than only the single-threaded unit tests below
 
 Tests:
 - [ ] Unit tests for the rate limiter: requests under the limit pass, requests over the limit get rejected, including the boundary value
@@ -591,6 +607,8 @@ Tests:
 ## Story 37: Privacy policy, terms of service, and GDPR compliance
 
 Checked against real code: `DELETE /me` (`UserController` → `UserService.deleteUser()`) already does a real hard delete of the `User` row, not a deactivation. It's not just unaudited for `Song.addedBy` references and shared playlists, both are confirmed live bugs, see this file's Bug fixes section. No analytics exist yet (story 34), so there's nothing to disclose there until it ships.
+
+Scope decided: exactly two dedicated legal/static pages, Privacy Policy and Terms of Service. No separate cookie-consent page is needed yet, it's already gated below on story 34 shipping, and no other legal or static page (About, Contact) is planned.
 
 - [ ] Draft a privacy policy covering what's actually collected today: auth data (username, email, OAuth provider ID), playlist/song data
 - [ ] Draft terms of service
@@ -657,3 +675,33 @@ Tests:
 - [ ] Frontend test: the new gameplay screens render correctly against representative mock state (empty, mid-game, varying player counts)
 - [ ] Frontend test: the drag-and-drop timeline placement and the guess box's animated feedback behave per `GAME_DESIGN.md`'s Interaction and animation section
 - [ ] Accessibility check: color contrast and keyboard navigation for the new visual direction, specifically the semi-transparent chat overlay and the voice sidebar
+
+## Story 42: Explicit database split
+
+Formalizes the boundary between the core transactional database and story 33's separate analytics/event store as its own architectural decision, rather than leaving it implicit in story 33's provisioning task alone. Story 33 still owns picking the actual analytics store; this defines which data belongs on which side of the line, and why.
+
+- [ ] Document, in `ARCHITECTURE.md`'s Database section, the explicit domain boundary: every entity either service reads or writes today, users, groups, sessions, rounds, guesses, songs, playlists, and pgvector embeddings, stays in the transactional Postgres+pgvector instance; only story 33's append-heavy usage/event data goes in the separate analytics store
+- [ ] Confirm no entity currently planned for either service needs to live in both places or move between them; note it here if one turns up during story 33 or 34's implementation
+- [ ] Cross-reference this story from stories 33 and 34 so the boundary isn't restated inconsistently in three places
+
+## Story 43: Metadata minimization
+
+A cross-cutting principle rather than a single implementation: curb `metadataRaw`'s growth so it doesn't bloat the database. Story 40 already flags this as a real constraint (Wikidata's own entity dumps ran tens of KB per song during the sourcing spike; at that size the 500MB Supabase free-tier cap holds roughly 10,000-50,000 songs instead of 170,000+ with a curated version), and story 23 already decides the fix (`metadataRaw` persists the curated, actually-used subset of each source's response, not the full raw API response). This story applies that same rule everywhere raw pipeline output gets persisted, not just at those two stories' specific call sites.
+
+- [ ] Audit every place raw source or pipeline output is persisted (`metadataRaw` on `Song`, any raw YouTube API Data fields) against the curated-subset rule already decided in stories 23 and 40, confirm nothing outside those two stories ends up persisting an uncurated raw response
+- [ ] Document the curation rule in `ARCHITECTURE.md` as a standing constraint on any future field that persists external API output, not just `metadataRaw`
+- [ ] Coordinate with story 40's YouTube-API-Data 30-day refresh/delete requirement: both are limits on the same field, one on size, one on retention
+
+## Story 44: Test user infrastructure (dev only)
+
+A dedicated `Role` for automated test/QA agents, separate from `USER` and story 19/40's `ADMIN`. Exists so automated agents, this project's own AI-assisted development workflow included, reuse one seeded test account's credentials across runs instead of registering a fresh throwaway account every time. Coordinates with story 22 (test coverage): this is test infrastructure, not test coverage itself.
+
+- [ ] Add a `TEST` value to `User.role`, alongside the existing `USER` and (once story 19/40 lands) `ADMIN`
+- [ ] Add a fixture or seed mechanism that creates one reusable test account with known credentials in local/dev environments, rather than a new account per test run
+- [ ] Document, in `CONTRIBUTING.md` (story 36) or a dev-setup doc, that agents and contributors running tests locally reuse the seeded test account's credentials instead of registering new ones
+- [ ] Add an environment guardrail: any `TEST`-role account, and any endpoint or behavior gated on that role, is a no-op or outright rejected when running against a Production environment, even if a `TEST`-role row somehow exists there
+- [ ] Add a startup or CI check that fails loudly if a `TEST`-role row is ever found in a Production database, rather than silently ignoring it
+
+Tests:
+- [ ] Unit test confirming `TEST`-role behavior is disabled under a Production environment flag, including the case where a `TEST` row actually exists
+- [ ] Unit test for the seed/fixture mechanism producing the same reusable credentials across repeated runs
