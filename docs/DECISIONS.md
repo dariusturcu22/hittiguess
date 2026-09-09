@@ -467,3 +467,11 @@ Decision: story 30's playlist/session selection is exactly two modes, Difficulty
 Why: theme generation depended on catalog search (story 14) and new genre/popularity fields that existed for no other reason than to serve it, real scope for a feature that hadn't proven it was worth building yet. Cutting it down to the two modes that matter, an on-the-spot generated set and a player's own playlist, ships a simpler, real feature instead of carrying speculative scope. Dropping the owned/member/published-public distinction in favor of "accessible, or pasted directly" removes a whole publish/unpublish subsystem for a distinction Custom mode doesn't actually need to make.
 
 ---
+
+## 2026-09 | Story 40's YouTube-ID check and story 16's pgvector check: exact-match sequencing decided
+
+Decision: story 40's exact YouTube-ID check runs first; only a genuinely new ID reaches story 16's pgvector embedding check. A high-confidence pgvector match against an existing `Song` means the new ID is another upload of an already-known song, not a new one: link it into story 40's alternate-ID table against that existing `Song` and stop, no full pipeline run. The full metadata pipeline only runs once both checks come up empty.
+
+Why: this was previously left open pending story 16 actually existing. The two checks solve adjacent but different problems, an exact ID match versus a near-duplicate under a different upload, and stacking them in cheapest-first order (no external calls, then an embedding comparison, then the full pipeline only as a last resort) avoids ever running the expensive pipeline for a song the catalog already has under a different YouTube ID.
+
+---
