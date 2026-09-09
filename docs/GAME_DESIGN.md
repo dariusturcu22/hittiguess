@@ -47,7 +47,7 @@ The DJ and the active player, whoever's turn it is, are separate roles.
 
 ## Earning tokens
 
-At any point during their turn, independent of their timeline placement, the active player can submit a guess for the song's artist and title in a box available for the whole turn. A fully correct guess, both artist and title, earns a token, spendable on a future round's bet. How much typo tolerance a guess gets before counting as correct is still undecided, see [PROJECT_STATE.md](PROJECT_STATE.md)'s open questions.
+At any point during their turn, independent of their timeline placement, the active player can submit a guess for the song's artist and title in a box available for the whole turn. A fully correct guess, both artist and title, earns a token, spendable on a future round's bet. Typo tolerance is decided: normalize both the guess and the canonical answer (lowercase, strip punctuation, strip diacritics, collapse whitespace) and compare with Damerau-Levenshtein edit distance, a flat budget of 1 regardless of title length, see [DECISIONS.md](DECISIONS.md).
 
 ## Winning
 
@@ -90,7 +90,7 @@ The system prefers official "Topic" channel uploads on YouTube when available, a
 
 ## Data quality
 
-An incorrect year on a card breaks the game for everyone at the table. Players can report a song they believe has the wrong year, along with a message, the year they believe is correct, and one or more sources. What causes a reported or newly submitted song to become fully trusted is still undecided. Admin-seeded songs are trusted immediately and skip this process entirely.
+An incorrect year on a card breaks the game for everyone at the table. Players can report a song they believe has the wrong year, along with a message, the year they believe is correct, and one or more sources. What causes a reported or newly submitted song to become fully trusted is decided: exact agreement among MusicBrainz, Discogs, and Wikidata locks the year with no LLM involvement; anything short of that goes through Wikipedia extraction and reconciliation instead, landing at `NEEDS_REVIEW`, not automatically verified (see [DECISIONS.md](DECISIONS.md)). Admin-seeded songs are trusted immediately and skip this process entirely.
 
 ## Planned game modes
 

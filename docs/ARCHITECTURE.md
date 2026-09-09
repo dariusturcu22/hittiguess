@@ -129,7 +129,7 @@ Text: plain messages over the same WebSocket connection, stored for the life of 
 
 ### Verification
 
-Players can report a song's year as incorrect, with a message, the year they believe is correct, and one or more sources. What promotes a reported or new song to fully verified is undecided. Admin-submitted songs are trusted immediately.
+Players can report a song's year as incorrect, with a message, the year they believe is correct, and one or more sources. What promotes a reported or new song to fully verified is decided: exact agreement among MusicBrainz, Discogs, and Wikidata locks the year with no LLM involvement; anything short of that routes through Wikipedia extraction and four-source reconciliation instead, landing at `NEEDS_REVIEW`, never silently promoted to verified regardless of LLM confidence (story 18, `DECISIONS.md`). Admin-submitted songs are trusted immediately.
 
 ### RAG and deduplication (AI microservice)
 
@@ -137,7 +137,7 @@ Before running the full pipeline for a new submission: normalize `artist + title
 
 ### Admin tools
 
-Bulk import mechanism: to be designed. Admin-submitted songs skip the pipeline and are trusted immediately. Review queue for reports: to be designed.
+Bulk import mechanism: designed, story 40. Two separate paths, an admin-only patient backlog queue draining daily against an LLM tier's quota, and immediate on-the-spot resolution open to any user, never sharing a queue. Admin-submitted songs skip the pipeline and are trusted immediately. Review queue for reports: designed, story 17, ranked by a five-tier priority order (converging reports first, then non-converging reports, then confirmed-but-unreported cards, then unconfirmed cards, `VERIFIED` cards with no report never appear).
 
 ## Deployment
 
