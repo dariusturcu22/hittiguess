@@ -82,6 +82,7 @@ Every task breakdown in `TASKS.md` must include explicit test tasks alongside th
 - Completed stories: [docs/ARCHIVE.md](docs/ARCHIVE.md)
 - Sequential implementation order for remaining stories: [docs/ROADMAP.md](docs/ROADMAP.md)
 - API contracts, entity model, and state diagrams: [docs/SYSTEM_REFERENCE.md](docs/SYSTEM_REFERENCE.md)
+- Frontend content requirements, independent of visual design: [docs/FRONTEND_CONTENT.md](docs/FRONTEND_CONTENT.md)
 
 ## Task archiving
 
