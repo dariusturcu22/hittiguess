@@ -442,6 +442,51 @@
       "page": "page-1"
     },
     {
+      "file": "GameSessionCardDraggingDark.dc.html",
+      "x": 3160,
+      "y": 26356,
+      "w": 1440,
+      "h": 900,
+      "title": "Game session, dragging the card onto the timeline, dark",
+      "page": "page-1"
+    },
+    {
+      "file": "GameSessionCardLockedDark.dc.html",
+      "x": 4740,
+      "y": 26356,
+      "w": 1440,
+      "h": 900,
+      "title": "Game session, card locked in, dark",
+      "page": "page-1"
+    },
+    {
+      "file": "GameSessionBettingPrepDark.dc.html",
+      "x": 6320,
+      "y": 26356,
+      "w": 1440,
+      "h": 900,
+      "title": "Game session, betting countdown, dark",
+      "page": "page-1"
+    },
+    {
+      "file": "GameSessionBettingActiveDark.dc.html",
+      "x": 7900,
+      "y": 26356,
+      "w": 1440,
+      "h": 900,
+      "title": "Game session, betting window open, dark",
+      "page": "page-1"
+    },
+    {
+      "file": "GameSessionRevealDark.dc.html",
+      "x": 9480,
+      "y": 26356,
+      "w": 1440,
+      "h": 900,
+      "title": "Game session, reveal, dark",
+      "page": "page-1"
+    },
+    {
       "file": "GameSessionDJDark.dc.html",
       "x": 0,
       "y": 27416,
@@ -620,7 +665,7 @@
       "x": 0,
       "y": 25236,
       "w": 1400,
-      "text": "Gameplay, desktop only. A session has no fixed round count, it ends whenever the first player reaches the group's configured win-condition card count. Group lobby drops the card/panel look entirely: the join code sits centered and large with a copy-link action under it, members scatter around it at varied distances and angles, each tilted slightly, with a slow, subtle drift animation, not literal movement or a symmetric grid. Avatar size is dynamic, not fixed: 112px at 2 players, 108px at 4, 102px at 8, all three deliberately close together rather than shrinking hard as the count climbs. Distance from the code is generous at every count, clear of the join-code label and the copy-link action around it, not just the big digits themselves. Two more artboards show the same layout at 2 and at 8 players, since how it holds up at the group-size extremes matters more than the 4-player middle case alone. The bottom bar holds four labeled buttons, start game, chat, and settings grouped together, leave lobby set apart on the right; two further artboards show settings and chat each open as their own popup, both undimmed and anchored near the button that opens them rather than a centered dialog, chat reusing the same message-list pattern as the standalone Text chat overlay artboard and the semi-transparent bottom-left placement GAME_DESIGN.md specs. The voice sidebar shows the not-yet-joined state: existing participants listed with no mute/deafen/leave controls of your own, a dashed join-call circle trailing the list. Then the game session in its two views: player (timeline placement, the artist/title guess box available all turn, and betting, exactly one bet accepted per round, staking the bettor's own guessed placement, not a correct/incorrect vote) and DJ (song playback, always a link-out to the real YouTube page or app with the audio-sharing warning attached, plus the actual round-flow controls: pause, play, close, end turn, reveal gated until betting closes). Results/leaderboard shows the card-count ranking alongside the two session-long guess leaderboards once the game has ended.",
+      "text": "Gameplay, desktop only. A session has no fixed round count, it ends whenever the first player reaches the group's configured win-condition card count. Group lobby drops the card/panel look entirely: the join code sits centered and large with a copy-link action under it, members scatter around it at varied distances and angles, each tilted slightly, with a slow, subtle drift animation, not literal movement or a symmetric grid. Avatar size is dynamic, not fixed: 112px at 2 players, 108px at 4, 102px at 8, all three deliberately close together rather than shrinking hard as the count climbs. Distance from the code is generous at every count, clear of the join-code label and the copy-link action around it, not just the big digits themselves. Two more artboards show the same layout at 2 and at 8 players, since how it holds up at the group-size extremes matters more than the 4-player middle case alone. The bottom bar holds four labeled buttons, start game, chat, and settings grouped together, leave lobby set apart on the right; two further artboards show settings and chat each open as their own popup, both undimmed and anchored near the button that opens them rather than a centered dialog, chat reusing the same message-list pattern as the standalone Text chat overlay artboard and the semi-transparent bottom-left placement GAME_DESIGN.md specs. The voice sidebar shows the not-yet-joined state: existing participants listed with no mute/deafen/leave controls of your own, a dashed join-call circle trailing the list. Then the game session in its two views. Player is shown across six artboards walking the full turn: an unplaced card rendered as a large animated version of the app's equalizer mark, dragging it onto the timeline with neighboring cards fanning open and wobbling until the drop lands, the card settled face down once locked in with playback stopped, a countdown before betting opens, the betting window itself with the first token staked and everyone else locked out, exactly one bet accepted per round staking the bettor's own guessed placement rather than a correct or incorrect vote, and the reveal once the round closes. The artist/title guess box stays available across every one of those states, since guessing isn't tied to whose turn it is to place a card. DJ (song playback, always a link-out to the real YouTube page or app with the audio-sharing warning attached, plus the actual round-flow controls: pause, play, close, end turn, reveal gated until betting closes). Results/leaderboard shows the card-count ranking alongside the two session-long guess leaderboards once the game has ended.",
       "page": "page-1"
     },
     {
