@@ -14,20 +14,18 @@ Story 9 and story 12 were checked against the real code and confirmed blocked: b
 
 Confirmed against the real code: there's no DJ view, no group, no session concept, and no WebSocket layer today, so this is new work, not a removal. The QR code task was split out and done separately, see `ARCHIVE.md`'s Bug fixes entry. Blocked on story 39 (group), story 10 (game session), and story 11 (WebSocket sync).
 
-Reveal is the DJ's action alone, not any player's, and the DJ controls the round's flow more broadly: pause, play, close the YouTube tab or app, end the current turn, and reveal, all over WebSocket. General players hold none of these controls, see `GAME_DESIGN.md`'s Roles section.
+The DJ's only in-app action is "Open YouTube Link"; playback, pausing, and closing the tab or app all happen on YouTube itself, never mirrored into the game. The round's own flow, the betting countdown and window, the reveal, and advancing to the next player, runs automatically off timers the game already has once the DJ opens the link, with no manual trigger from the DJ or any player (see `GAME_DESIGN.md`'s Roles section and story 10's automatic-reveal task).
 
 - [ ] Build the DJ view: an "open in YouTube" link-out for remote sessions, opening a new browser tab, never an embedded player, behind an explicit "Open YouTube Link" action
 - [ ] Add a UI warning shown alongside that action, explicit that clicking it starts broadcasting the DJ's tab or system audio to the rest of the group
 - [ ] Wire WebRTC tab audio capture to that new tab and stream it to the other players, starting only once the DJ has actually opened the link, not before
 - [ ] Add deep-link handling for in-person sessions (Android intent, iOS universal link, fallback to a plain browser link)
 - [ ] Wire the active player's audio-stream cutoff over WebSocket: cuts off immediately on guess lock-in, regardless of what's still playing on the DJ's end
-- [ ] Wire the DJ's round-flow controls over WebSocket: pause, play, close the YouTube tab/app, end the current turn, and reveal; reveal is gated to fire only after the betting window (story 10) has closed
-- [ ] Restrict all of the above controls to the DJ role specifically, a non-DJ player's attempt to invoke any of them is rejected
+- [ ] Restrict the "Open YouTube Link" action to the DJ role specifically, a non-DJ player's attempt to invoke it is rejected
 
 Tests:
 - [ ] Unit test: the audio-stream cutoff fires on guess lock-in regardless of playback state, and only for the active player's stream
-- [ ] Unit test: reveal is rejected when attempted by a non-DJ player, and when attempted before the betting window has closed
-- [ ] Unit tests for the DJ's other round-flow controls (pause, play, close, end turn), each rejected when attempted by a non-DJ player
+- [ ] Unit test: the "Open YouTube Link" action is rejected when attempted by a non-DJ player
 - [ ] Frontend test: the "Open YouTube Link" action shows the audio-sharing warning before WebRTC tab capture starts
 - [ ] Integration test: deep-link handling falls back to a plain browser link when the YouTube app isn't installed
 
@@ -42,6 +40,7 @@ Checked against real code: no session model exists, this is greenfield work. Bas
 - [ ] Guess placement and lock-in: before/after/between on the active player's timeline, with a lock-in sound effect
 - [ ] 3-5 second countdown after lock-in, then a 15-second betting window; skip the window entirely if no player holds a token
 - [ ] Betting: token-holding players may bet during the window, first come first served, concurrency-safe so only the first bet is accepted and a losing attempt doesn't cost a token; a skip-betting action ends the window early
+- [ ] Automatic reveal once the betting window closes: broadcast the song's artist, title, and year to every player, off the same window timer, with no DJ or player action triggering it
 - [ ] Artist/title guess box, available to every player except the DJ for the whole turn, independent of timeline placement; only the active player's fully correct guess awards a token, matching normalizes both strings (lowercase, strip punctuation, strip diacritics, collapse whitespace) and compares them with Damerau-Levenshtein edit distance, a flat budget of 1 regardless of length (see `DECISIONS.md`). For a song with more than one artist (main or featured, story 23), naming any single one of them correctly is enough for the token, not all of them
 - [ ] Scoring: apply the four outcome rules in `GAME_DESIGN.md` (correct placement keeps the card even on a tied release year; a correct guess beats any bet; a wrong guess with a correct bet gives the card to the bettor; a wrong guess with no bet discards it)
 - [ ] Track two running per-player tallies for the session, fed by every player's guesses, active or not: total individual artists correctly named (every correct name, main or featured, from any song, adds one, regardless of how many total artists that song has) and total fully-correct title guesses. A non-active player's guess never earns a token or affects placement/betting, it only feeds these two tallies
@@ -62,6 +61,7 @@ Tests:
 - [ ] Unit tests for win-condition bounds: 5-20 (2-3 players) and 5-15 (4-8 players), including the boundary values
 - [ ] Unit tests for round rotation, both fixed and rotating DJ settings, and rotation skipping `Left` players
 - [ ] Unit tests for the active-player turn timeout, including the boundary at 90 seconds
+- [ ] Unit test: reveal fires automatically once the betting window closes, with no DJ or player trigger required
 - [ ] Integration test: full session lifecycle, admin starts, roster snapshot, several rounds, win condition hit, results export generated, state purged
 - [ ] Integration test: auto-abandon path, session torn down after 10 minutes with zero connected players, confirms no export is generated
 - [ ] Integration test: betting concurrency, multiple simultaneous bet attempts on the same guess, exactly one accepted, no token lost by the others
@@ -198,6 +198,8 @@ Tests:
 
 ## Story 33: Analytics data store
 
+Story 42 owns the explicit domain boundary this story's provisioning assumes: every transactional entity stays in the core Postgres+pgvector instance, only this story's usage/event data goes in the separate store it provisions below.
+
 - [ ] Choose and provision a separate append-heavy store for usage/event data, apart from the transactional Postgres database (a separate schema, or a dedicated event/time-series store)
 - [ ] Define the event schema: game session start/end (with a compact per-game summary, group, players, win/loss, cards won, final score, for story 34's game history feature), login, playlist created, song submitted, rate-limit-exceeded (user, endpoint), report submitted, failed login attempt
 - [ ] Decide a retention policy
@@ -208,7 +210,7 @@ Tests:
 
 ## Story 34: First-party usage analytics
 
-Depends on story 33's store existing, and also on the events it instruments actually existing: story 10 (game session, no `GameSession` model exists yet), story 17 (reports, no `SongReport` entity exists yet), and story 27 (rate limiting, only a narrow one-in-flight-request-per-user concurrency gate exists today on `/api/metadata/song`, not the general per-user/per-IP time-window limiter this depends on for login/register or other endpoints). Login and playlist-creation events can be instrumented once story 33 lands, independent of the others. Event scope is deliberately count/aggregate-based, not behavioral click-tracking: usage stats for the project's own understanding (games played, session length, playlists created, songs submitted, login activity), and abuse-visibility signals that turn existing enforcement into something reviewable (rate-limit-exceeded events from stories 13/27, report submissions from story 17, failed login attempts), not a new detection mechanism of its own.
+Story 42 owns the explicit domain boundary this story reads and writes against: the transactional `GameSession`/`Round`/`Guess` rows this story's game-history task reads a summary from stay in the core database and purge exactly as story 10 specifies; only the compact event/summary data this story writes goes in story 33's separate analytics store. Depends on story 33's store existing, and also on the events it instruments actually existing: story 10 (game session, no `GameSession` model exists yet), story 17 (reports, no `SongReport` entity exists yet), and story 27 (rate limiting, only a narrow one-in-flight-request-per-user concurrency gate exists today on `/api/metadata/song`, not the general per-user/per-IP time-window limiter this depends on for login/register or other endpoints). Login and playlist-creation events can be instrumented once story 33 lands, independent of the others. Event scope is deliberately count/aggregate-based, not behavioral click-tracking: usage stats for the project's own understanding (games played, session length, playlists created, songs submitted, login activity), and abuse-visibility signals that turn existing enforcement into something reviewable (rate-limit-exceeded events from stories 13/27, report submissions from story 17, failed login attempts), not a new detection mechanism of its own.
 
 - [ ] Instrument game session start/end (with the per-game summary), login, playlist creation, and song submission events to write to the analytics store; the game-session half depends on story 10, the rest can start once story 33 lands
 - [ ] Instrument rate-limit-exceeded, report-submitted, and failed-login-attempt events, for abuse visibility, not enforcement; depends on stories 13/27/17 actually shipping their enforcement first, none of which exist yet
@@ -256,7 +258,7 @@ Tests:
 
 ## Story 46: Playlist membership: owner/admin, granular permissions, kick and ban, per-playlist identity
 
-Surfaced during story 28's design pass on the Edit playlist and Join by invite screens, not part of the original backlog mapping. Checked against real code: `Playlist.users` is a plain `@ManyToMany` with no per-member attributes and no owner/admin field anywhere on `Playlist`; joining today (`UserController`'s playlist-join endpoint) just adds the row, no per-playlist identity is captured. See `DECISIONS.md`'s 2026-09 "Playlist membership" entry for the decided shape.
+Surfaced during story 28's design pass on the Edit playlist and Join by invite screens, not part of the original backlog mapping. Checked against real code: `Playlist.users` is a plain `@ManyToMany` with no per-member attributes and no owner/admin field anywhere on `Playlist`; joining today (`UserController`'s playlist-join endpoint) just adds the row, no per-playlist identity is captured. See `DECISIONS.md`'s 2026-09 "Playlist membership" entry for the decided shape. Not blocked, only coordinating with story 15 on `Playlist`'s relations. Marked Ready in `PROJECT_STATE.md`.
 
 - [ ] Add an owner/admin concept to `Playlist`: an `ownerId` (or equivalent), set to the creator on creation; only the owner can rename, change cover/color/description, toggle `isPublic` (story 30), delete the playlist, or manage other members
 - [ ] Replace the plain `Playlist.users` many-to-many with a `PlaylistMembership` entity (playlist, user, `canRead`/`canWrite`/`canDelete` booleans, joined-at, per-playlist display name and avatar), coordinate with story 15 since both touch `Playlist`'s relations
@@ -342,7 +344,7 @@ Decided: how the alternate-YouTube-ID-to-`Song` mapping sequences against story 
 - [ ] Implement the priority queue itself: on-the-spot requests (including playlist imports) are always high priority against the shared external rate-limit budgets (MusicBrainz, Discogs, Wikidata, Wikipedia, one outbound IP); the scheduled backlog-drain job (above) pauses while any on-the-spot traffic is active and resumes once it clears, rather than the two paths contending for the same rate-limit budget in real time
 - [ ] Depends on story 24: run the three structured sources' fetches concurrently rather than sequentially for the on-the-spot path specifically, where a user is waiting on the result; the admin backlog drain has no such latency pressure and can stay sequential if that's simpler to build first
 - [ ] Coordinate with story 23: `metadataRaw` should persist the curated, actually-used subset of each source's response, not the full raw API response, Wikidata's own entity dumps alone ran into the tens of KB per song during this spike's testing; at that size the 500MB Supabase free-tier cap holds roughly 10,000-50,000 songs instead of 170,000+ with a curated version
-- [ ] Raw YouTube API Data specifically (a video's title, description, channel name) has its own constraint on top of the size one above: YouTube's Developer Policies (Section III.E.4) require non-authorized API Data to be deleted or refreshed within 30 calendar days, it can't be persisted indefinitely as-is. If any raw YouTube fields end up inside `metadataRaw`, they need their own refresh/delete cycle on that schedule; the derived facts (artist, title, release year, sourced from MusicBrainz/Discogs/Wikidata/Wikipedia) aren't YouTube API Data and aren't subject to this
+- [ ] Raw YouTube API Data specifically (a video's title, description, channel name) has its own constraint on top of the size one above, coordinate with story 43's metadata-minimization rule, one limit on size, this one on retention: YouTube's Developer Policies (Section III.E.4) require non-authorized API Data to be deleted or refreshed within 30 calendar days, it can't be persisted indefinitely as-is. If any raw YouTube fields end up inside `metadataRaw`, they need their own refresh/delete cycle on that schedule; the derived facts (artist, title, release year, sourced from MusicBrainz/Discogs/Wikidata/Wikipedia) aren't YouTube API Data and aren't subject to this
 - [ ] Frontend, user-facing path only: the playlist-link crawl runs in the background rather than blocking the import screen. Leaving the screen doesn't cancel it: a temporary icon appears in the left sidebar (below Group lobby) while an import is active, and a toast appears once and fades after a few seconds; both reopen the import screen showing live per-song progress (raw YouTube title/channel updating in place to the resolved title, artist, and year as each one finishes). Surfaced during story 28's design pass. Story 45's from-an-existing-playlist path is synchronous and needs none of this
 
 Tests:
@@ -497,9 +499,19 @@ Tests:
 - [ ] Unit tests for cache hit/miss behavior
 - [ ] Unit test for TTL expiration
 
-## Story 20: Local LLM option for lower-cost bulk metadata processing
+## Story 20: LLM client infrastructure for the metadata pipeline
 
-Checked against real code: `ai/app/clients/openai_client.py` is the only LLM client, a module-level `OpenAI` singleton, no other client exists. Which local model or technique to use is undecided, and stays undecided until a separate exploration pass, on its own branch, tests structured-output support and accuracy against real cases first. No implementation tasks drafted here yet, same treatment as the pipeline-gathering questions: deciding now would mean guessing at a model choice instead of testing it.
+Checked against real code: `ai/app/clients/openai_client.py` is the only LLM client, a module-level `OpenAI` singleton, no other client exists. Greenlit to build (`DECISIONS.md`): the spike's validated model choice, gpt-5-nano for reconciliation and DeepSeek-V4-Flash for Wikipedia extraction, goes into production rather than staying validated-but-unbuilt. gpt-5-nano needs no new client, the existing `openai_client.py` already calls OpenAI by model name; DeepSeek-V4-Flash is hosted on DeepInfra, a different provider, so this story's actual remaining scope is narrow: add that one client. Not blocked on anything, this is infrastructure with no dependency on the Song schema; in practice it lands together with or just ahead of story 18, its first real caller.
+
+- [ ] Add a DeepInfra (OpenAI-compatible) LLM client to `ai/app/clients/`, copy and adapt the validated request-building and error-handling logic in `ai/spikes/openai_compatible_spike.py`: temperature 0.0 for structured-output calls (confirmed live to remove run-to-run answer variance on close reconciliation calls), a 90-second request timeout (the real fix for the Nemotron-hang bug the spike found), and the `response_format` JSON-schema-mode-with-forced-tool-calling-fallback pattern
+- [ ] Wire DeepSeek-V4-Flash as the model this client calls, the extraction model story 18's Wikipedia-reading step depends on
+- [ ] Add the DeepInfra API key to AI service config (`config.py`), following the existing `openai_api_key` pattern
+- [ ] Drop every other shortlisted candidate (Groq, llama.cpp, AWS Bedrock Nova Micro) from further production consideration, none beat gpt-5-nano/DeepSeek-V4-Flash on the actual reconciliation/extraction tasks this pipeline needs; kept only as documented spike results in `ai/spikes/`, not carried into the microservice
+
+Tests:
+- [ ] Unit tests for the DeepInfra client's request building and response parsing, mirroring `youtube.py`'s existing test pattern
+- [ ] Unit test for the client's timeout behavior: a hung request fails after 90 seconds rather than blocking the pipeline indefinitely
+- [ ] Unit test confirming structured output validates correctly against a Pydantic schema for both the extraction and reconciliation call shapes
 
 ## Spike: Local/cheap LLM option for bulk metadata processing
 
@@ -539,8 +551,8 @@ OpenAI's own cheap tier (`gpt-5-nano`, `gpt-5-mini`) and the existing `gpt-5.1` 
 - [x] Decided the patient pipeline's actual metadata-gathering shape: query MusicBrainz, Discogs, and Wikidata always (free, deterministic, zero LLM cost); if all three agree exactly, lock that as the answer with no LLM call at all; only when they don't agree, fetch and extract Wikipedia (DeepSeek-V4-Flash) and run four-source reconciliation (gpt-5-nano). Built and ran this (`run_conditional_pipeline.py`) across the full 70-song set: **69/70 correct (99%)**, the only miss being "Mor De Ochii Tai" (the manele track no source has ever had real data on). 37 of 70 songs (53%) locked with zero LLM calls; only 33 (47%) needed the Wikipedia+reconciliation path; 66 total LLM calls across all 70 songs, versus 140 if every song always used both LLM steps
 - [ ] Decide what a genuine no-answer (no source, including Wikipedia, has anything, like "Mor De Ochii Tai") should do downstream: per story 40/41's existing "escalate, don't guess" principle, this should route to manual review rather than auto-approve or guess, but that routing isn't built or tested in this spike
 - [x] Tested the fast/on-the-spot tier: MusicBrainz and Wikipedia are this spike's two strongest single sources (87% and 89% standalone across all 70 songs, see the source-comparison entries above), so the fast tier routes each song to exactly one of the two, never both, via dynamic work-stealing dispatch, whichever lane is free grabs the next song, rather than a fixed pre-assigned split, so a slower lane doesn't leave the batch half-finished while the faster one idles. Built and ran this (`run_fast_tier_dispatch.py`) against all 70 songs, real cached answers, modeled per-lane timing grounded in this session's own observed latencies (MusicBrainz's paced API calls vs. Wikipedia's fetch-plus-LLM-extraction): **63/70 correct (90%)**, MusicBrainz's lane handled 42 songs, Wikipedia's handled 28, in line with MusicBrainz being the faster lane. That's a real, known 9-point accuracy gap against the patient pipeline's 99%, the deliberate cost of answering immediately instead of waiting; every fast-tier answer is still meant to get queued for the full patient pipeline afterward (already the existing two-pipeline design), which is what closes that gap, just not instantly
-- [ ] Decide whether any shortlisted LLM candidate, and this conditional-pipeline shape (patient and fast tiers both), is worth building into the real AI microservice (stories 18/40), or whether further validation is needed first
-- [ ] Design the report/re-verification system floated during this spike, not yet decided in detail: a report button on every card; an admin review queue prioritized by lowest confidence first (a report on an already-3-source-locked card sinks to the bottom of the queue rather than triggering review); a community "is this correct?" thumbs-up specifically on low-confidence or manually-entered cards, as a lightweight verification signal distinct from a report. Explicitly not mandatory before shipping the pipeline itself
+- [x] Decide whether any shortlisted LLM candidate, and this conditional-pipeline shape (patient and fast tiers both), is worth building into the real AI microservice (stories 18/40), or whether further validation is needed first. Greenlit, see `DECISIONS.md` and story 20's own task list for the narrow remaining client-infrastructure scope
+- [x] Design the report/re-verification system floated during this spike: settled in full detail since, not just the lowest-confidence-first sketch this line originally described, see story 17's five-tier priority queue and the 2026-09 "Report and confirmation resolution" `DECISIONS.md` entry
 - [x] `docs/TASKS.md`'s own story 18 section and `docs/PROJECT_STATE.md`'s story 18 row used to reference a `DECISIONS.md` "verification is a lock, not a score" entry that was explicitly retracted earlier in this project (never actually authorized). Both cleaned up, no longer point at the retracted entry; the lock concept it described is the same shape this spike later validated with real data (three-source agreement = lock), so the underlying idea held up even though that specific entry never existed
 
 ## Story 23: Song schema reconciliation
@@ -700,25 +712,32 @@ Tests:
 
 Formalizes the boundary between the core transactional database and story 33's separate analytics/event store as its own architectural decision, rather than leaving it implicit in story 33's provisioning task alone. Story 33 still owns picking the actual analytics store; this defines which data belongs on which side of the line, and why.
 
-- [ ] Document, in `ARCHITECTURE.md`'s Database section, the explicit domain boundary: every entity either service reads or writes today, users, groups, sessions, rounds, guesses, songs, playlists, and pgvector embeddings, stays in the transactional Postgres+pgvector instance; only story 33's append-heavy usage/event data goes in the separate analytics store
-- [ ] Confirm no entity currently planned for either service needs to live in both places or move between them; note it here if one turns up during story 33 or 34's implementation
-- [ ] Cross-reference this story from stories 33 and 34 so the boundary isn't restated inconsistently in three places
+Checked against real code and the current docs: `ARCHITECTURE.md`'s Database domain boundary section already states the boundary this story's first task calls for, word for word, including "no entity is planned to live in both, or move between them." Not blocked on anything, the one real remaining gap is that stories 33 and 34 don't cross-reference this story yet.
+
+- [x] Document, in `ARCHITECTURE.md`'s Database section, the explicit domain boundary: every entity either service reads or writes today, users, groups, sessions, rounds, guesses, songs, playlists, and pgvector embeddings, stays in the transactional Postgres+pgvector instance; only story 33's append-heavy usage/event data goes in the separate analytics store. Already present in `ARCHITECTURE.md`'s Database domain boundary section
+- [ ] Confirm no entity currently planned for either service needs to live in both places or move between them; already stated as true in `ARCHITECTURE.md`, re-check and note it here if one turns up during story 33 or 34's actual implementation
+- [x] Cross-reference this story from stories 33 and 34 so the boundary isn't restated inconsistently in three places
 
 ## Story 43: Metadata minimization
 
 A cross-cutting principle rather than a single implementation: curb `metadataRaw`'s growth so it doesn't bloat the database. Story 40 already flags this as a real constraint (Wikidata's own entity dumps ran tens of KB per song during the sourcing spike; at that size the 500MB Supabase free-tier cap holds roughly 10,000-50,000 songs instead of 170,000+ with a curated version), and story 23 already decides the fix (`metadataRaw` persists the curated, actually-used subset of each source's response, not the full raw API response). This story applies that same rule everywhere raw pipeline output gets persisted, not just at those two stories' specific call sites.
 
-- [ ] Audit every place raw source or pipeline output is persisted (`metadataRaw` on `Song`, any raw YouTube API Data fields) against the curated-subset rule already decided in stories 23 and 40, confirm nothing outside those two stories ends up persisting an uncurated raw response
-- [ ] Document the curation rule in `ARCHITECTURE.md` as a standing constraint on any future field that persists external API output, not just `metadataRaw`
-- [ ] Coordinate with story 40's YouTube-API-Data 30-day refresh/delete requirement: both are limits on the same field, one on size, one on retention
+Checked against real code: no field anywhere in the backend or AI microservice persists a raw external API response today, `metadataRaw` itself doesn't exist yet (story 23's scope), so the audit below currently finds nothing outside stories 23/40 to fix. `ARCHITECTURE.md`'s Song and playlist database section already documents the curation rule as a standing constraint. Not blocked on anything, the one real remaining gap is the explicit cross-reference to story 40's retention requirement.
+
+- [x] Audit every place raw source or pipeline output is persisted (`metadataRaw` on `Song`, any raw YouTube API Data fields) against the curated-subset rule already decided in stories 23 and 40, confirm nothing outside those two stories ends up persisting an uncurated raw response. Confirmed clean today, nothing in the backend or AI microservice persists a raw response anywhere; re-run once story 23 actually adds `metadataRaw`
+- [x] Document the curation rule in `ARCHITECTURE.md` as a standing constraint on any future field that persists external API output, not just `metadataRaw`. Already present in `ARCHITECTURE.md`'s Song and playlist database section
+- [x] Coordinate with story 40's YouTube-API-Data 30-day refresh/delete requirement: both are limits on the same field, one on size, one on retention. Cross-referenced from story 40's own task now
 
 ## Story 44: Test user infrastructure (dev only)
 
-A dedicated `Role` for automated test/QA agents, separate from `USER` and story 19/40's `ADMIN`. Exists so automated agents, this project's own AI-assisted development workflow included, reuse one seeded test account's credentials across runs instead of registering a fresh throwaway account every time. Coordinates with story 22 (test coverage): this is test infrastructure, not test coverage itself.
+A dedicated `Role` for automated test/QA agents, separate from `USER` and story 40's `ADMIN`. Exists so automated agents, this project's own AI-assisted development workflow included, reuse one seeded test account's credentials across runs instead of registering a fresh throwaway account every time. Coordinates with story 22 (test coverage): this is test infrastructure, not test coverage itself.
 
-- [ ] Add a `TEST` value to `User.role`, alongside the existing `USER` and (once story 19/40 lands) `ADMIN`
+Checked against real code: `Role.java` declares only `USER` today, confirming the first task below. No environment/profile mechanism exists anywhere in the backend, no `@Profile` annotation and no `spring.profiles.active` configuration anywhere, so "Production environment" isn't yet a concept the code can gate on; establishing that distinction is this story's own scope to build, not a dependency on another story. No root `CONTRIBUTING.md` exists yet either (story 36), the documentation task below already anticipates that with its dev-setup-doc fallback. Not blocked on anything else.
+
+- [ ] Add a `TEST` value to `User.role`, alongside the existing `USER` and (once story 40 lands) `ADMIN`
 - [ ] Add a fixture or seed mechanism that creates one reusable test account with known credentials in local/dev environments, rather than a new account per test run
 - [ ] Document, in `CONTRIBUTING.md` (story 36) or a dev-setup doc, that agents and contributors running tests locally reuse the seeded test account's credentials instead of registering new ones
+- [ ] Add an environment/profile mechanism distinguishing a Production deployment from local/dev, none exists today, no `@Profile` or `spring.profiles.active` usage anywhere in the backend; every guardrail below depends on this existing
 - [ ] Add an environment guardrail: any `TEST`-role account, and any endpoint or behavior gated on that role, is a no-op or outright rejected when running against a Production environment, even if a `TEST`-role row somehow exists there
 - [ ] Add a startup or CI check that fails loudly if a `TEST`-role row is ever found in a Production database, rather than silently ignoring it
 

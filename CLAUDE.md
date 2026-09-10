@@ -56,6 +56,7 @@ This applies everywhere: every markdown file in this repo, chat responses to the
 - PRs are reviewed on GitHub by the project owner, never merged automatically. Merge only when explicitly told to for a named PR. When merging, use a regular merge, never squash, so the individual commits survive. GitHub auto-deletes the remote branch on merge. Immediately after merging, delete the local copy of the branch.
 - Never include a `Co-Authored-By` trailer or any AI-attribution footer on commits or pull requests.
 - Commit granularly. Each commit represents one coherent change, not a batch of unrelated changes.
+- When working through a batch of stories (see `docs/ROADMAP.md`'s batch plan), only one PR from that plan is open for review at a time. Once a PR is opened, implementation work on the next batch can proceed locally on its own branch, but that next PR doesn't get opened until the current one merges. This keeps the project owner from ever having more than one of these PRs to review at once.
 
 ## Task gate
 

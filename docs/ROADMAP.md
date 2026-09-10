@@ -6,10 +6,9 @@ Within a phase, stories are independent of each other and can be worked in any o
 
 ## Phase 0: Spike handoff completion
 
-Unlocks the metadata/AI track's remaining stories. Both items are the last unstarted tasks under their own spike sections in `TASKS.md`, not new scope.
+Unlocks the metadata/AI track's remaining stories. The one remaining item is the last unstarted task under its own spike section in `TASKS.md`, not new scope. The spike's other handoff item, whether the fast/patient tier pipeline shape and shortlisted LLM candidate are worth building into production, is resolved: greenlit, see `DECISIONS.md` and story 20.
 
 - Build `ai/app/metadata/sources/wikidata.py`, un-stub `musicbrainz.py`, add `wikipedia.py` ("Spike: MusicBrainz and Wikidata sourcing")
-- Decide whether the fast/patient tier pipeline shape and shortlisted LLM candidate are worth building into production, or need further validation first ("Spike: Local/cheap LLM option")
 
 ## Phase 1: Independent foundational work
 
@@ -34,12 +33,12 @@ No blockers among these, and none block each other. Includes both game-session i
 - Story 43: Metadata minimization
 - Story 44: Test user infrastructure
 - Story 28: UI redesign, design phase (the implementation phase moves to Phase 2, see below)
+- Story 20: LLM client infrastructure for the metadata pipeline, no schema dependency, moved here from Phase 2 once greenlit
 
 ## Phase 2: Depends on Phase 0 and Phase 1
 
-- Story 18: Criteria for promoting a song to verified, needs story 23's `verificationStatus` field
+- Story 18: Criteria for promoting a song to verified, needs story 23's `verificationStatus` field, and in practice story 20's DeepInfra client for its Wikipedia-extraction step
 - Story 40: Catalog seeding queue and user-facing bulk import, needs story 23 (schema) and Phase 0's sourcing-spike implementation
-- Story 20: Local LLM option, needs the same schema and implementation work as story 40
 - Story 24: Parallelize metadata pipeline fetches, needs story 25 and Phase 0's sourcing-spike implementation
 - Story 41: Submission content safety, needs Phase 0's sourcing-spike implementation
 - Story 17: Community song reports and confirmations, the report/confirmation submission flow itself is unblocked, but the admin review surface needs story 40's admin role
@@ -55,6 +54,34 @@ No blockers among these, and none block each other. Includes both game-session i
 
 - Story 34: First-party usage analytics, needs story 33 and, for its abuse-visibility events specifically, stories 10, 13, 17, and 27 actually shipped
 - Story 35: Public ground-truth data API, needs story 23's `verificationStatus` field and, in practice, story 18's lock rule actually producing verified rows to publish
+
+## Batch plan: one PR per batch, worked in this order
+
+Phase 1 lists its stories as independent and workable in any order, including in parallel. This section picks one concrete, sequential order for a single implementer working through them one PR at a time, so a session doesn't have to re-derive a starting point every time. A batch is normally one story; two batches combine a story's tasks only where the docs already say to (15 and 23 both touch `Song`). Update this list's checkmark as each batch's PR merges into `dev`; the list itself doesn't move to `ARCHIVE.md`, it stays as the reference for the next batch to work from.
+
+Per `CLAUDE.md`'s batching workflow: only one PR from this list is open for review at a time. Work on the next batch can proceed locally once the current PR is opened, but that next batch's own PR isn't opened until the current one merges.
+
+- [ ] Batch 1: Phase 0's metadata source implementation (`wikidata.py`, `musicbrainz.py`, `wikipedia.py`)
+- [ ] Batch 2: Story 20, the DeepInfra client
+- [ ] Batch 3: Story 23, Song schema reconciliation
+- [ ] Batch 4: Story 15, Song/playlist relational fix
+- [ ] Batch 5: Story 46, Playlist membership
+- [ ] Batch 6: Story 16, pgvector duplicate detection
+- [ ] Batch 7: Story 25, Discogs source
+- [ ] Batch 8: Story 14, Song search by link or keyword
+- [ ] Batch 9: Story 39, Group
+- [ ] Batch 10: Story 11, WebSocket sync
+- [ ] Batch 11: Story 10, Game session
+- [ ] Batch 12: Story 33, Analytics data store
+- [ ] Batch 13: Story 27, Rate limiting
+- [ ] Batch 14: Story 38, Observability
+- [ ] Batch 15: Story 37, Privacy policy, terms of service, GDPR compliance
+- [ ] Batch 16: Story 36, Open-source collaboration readiness
+- [ ] Batch 17: Story 44, Test user infrastructure
+- [ ] Batch 18: Story 22, Test coverage
+- [ ] Batch 19: Story 42, database split cross-references, and story 43, metadata minimization, combined into one small batch, both are already fully satisfied except a couple of standing re-check notes
+- [ ] Batch 20: Story 28, UI redesign implementation phase for whatever of the gameplay screens Batches 9-11 have unlocked by this point; verify the design mockups against the shipped screens before starting rather than assuming they still match
+- Phase 2 and Phase 3 stories aren't broken into batches yet, their tasks may shift once Phase 1 actually ships (particularly stories 18, 40, and 30, which reference real entities Batches 3, 4, and 11 create); revisit this list once Phase 1 is done rather than pre-sequencing Phase 2 now
 
 ## Deferred by explicit decision, not blocked
 

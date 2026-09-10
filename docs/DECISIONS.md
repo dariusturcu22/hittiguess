@@ -515,3 +515,21 @@ Decision: the DJ's only in-app action is "Open YouTube Link." Pause, play, close
 Why: surfaced during story 28's design pass on the DJ view screen. Mirroring play/pause/close into the app duplicates controls the DJ already has open on the real YouTube tab for no benefit. End turn and reveal looked like they needed a manual trigger, but the betting window was already timed, closing it and firing the reveal off the same clock removes a step without changing when either happens.
 
 ---
+
+## 2026-09 | A flagged prompt-injection attempt is an abuse-visibility event
+
+Decision: when story 41's injection-detection check flags a submission, that flag itself writes an abuse-visibility event, the same category as story 34's rate-limit-exceeded and report-submitted events, not just an ambiguous-content outcome.
+
+Why: an attempted prompt injection is evidence of intent, not the same kind of uncertainty as a song the non-music classifier genuinely can't place. Tracking it the same way as the other abuse-visibility signals keeps a pattern of injection attempts reviewable later, the same reasoning already applied to rate-limit and report abuse. Depends on story 34's event pipeline existing.
+
+Open item: whether a flagged submission is also outright rejected, versus routed to manual review, still needs a call, not made here.
+
+---
+
+## 2026-09 | Story 20 greenlit: the validated metadata pipeline is built into production
+
+Decision: the local/cheap LLM spike's validated two-tier pipeline and model choice (gpt-5-nano for reconciliation, DeepSeek-V4-Flash for Wikipedia extraction, the patient/fast tier shape) is built into the real AI microservice, not left validated-but-unbuilt in `ai/spikes/`. Story 20's own remaining scope narrows to exactly the client infrastructure this needs beyond what already exists: a DeepInfra (OpenAI-compatible) client for DeepSeek-V4-Flash, copied and adapted from `ai/spikes/openai_compatible_spike.py`'s validated implementation. gpt-5-nano needs no new client, the existing `openai_client.py` already calls OpenAI by model name.
+
+Why: the spike ran real accuracy numbers against a 70-song test set (99% patient tier, 90% fast tier) and turned up no reliability concern worth re-testing before building; the only thing left open was whether to actually ship it, not whether it works. The winning design isn't a genuinely local, self-hosted model, llama.cpp's accuracy came in well below its own hosted twin under quantization, so "local LLM option" narrows in practice to "the cheapest hosted models that actually clear the accuracy bar," which the spike already identified.
+
+---

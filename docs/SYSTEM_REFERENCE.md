@@ -50,7 +50,7 @@ Four entities exist today: `User`, `Playlist`, `Song`, `RefreshToken`.
 User
   ├── id, username, email, password, imageUrl
   ├── authProvider, authProviderId
-  ├── role (USER only today, see stories 19/40 and 44 for ADMIN and TEST)
+  ├── role (USER only today, see story 40 for ADMIN and story 44 for TEST)
   └── playlists: Set<Playlist>  (@ManyToMany, EAGER)
 
 Playlist
@@ -84,7 +84,7 @@ Listed here so the entity picture is in one place; each is still greenfield work
 - `SongArtist` (ordered artist list, replaces `Song.artist`), story 23
 - `PendingImport`, an alternate-YouTube-ID-to-`Song` mapping table (story 40)
 - `SongDifficulty` aggregate view or table (story 30)
-- `TEST`/`ADMIN` values on `User.role` (stories 44 and 19/40)
+- `TEST`/`ADMIN` values on `User.role` (stories 44 and 40)
 
 ## State diagrams
 
