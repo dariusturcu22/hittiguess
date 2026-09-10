@@ -507,3 +507,11 @@ Decision: a playlist gets a real owner/admin, today's `Playlist.users` many-to-m
 Why: surfaced during story 28's design pass on the Edit playlist and Join by invite screens. Even read being revocable, not just write and delete, was a deliberate call: it lets an owner temporarily shut a member out without removing them from the playlist outright, distinct from a kick. Extending per-space identity to playlists mirrors the reasoning that already justified it for groups, playing under a different name or avatar with people who don't share every space, without conflating a playlist's own membership model with a game group's.
 
 ---
+
+## 2026-09 | DJ holds no in-app round controls; reveal and turn advance run automatically
+
+Decision: the DJ's only in-app action is "Open YouTube Link." Pause, play, close, end turn, and reveal, all previously listed as DJ-only controls, are removed. Playback control happens entirely on the real YouTube page or app, not mirrored into the game. The round's own flow no longer waits on a DJ trigger anywhere: the betting countdown and window already run on their own timers once the active player locks in a placement, so reveal firing automatically once the betting window closes, and the active player role advancing automatically once scoring resolves, both fall out of timers the game already has running rather than needing a new one.
+
+Why: surfaced during story 28's design pass on the DJ view screen. Mirroring play/pause/close into the app duplicates controls the DJ already has open on the real YouTube tab for no benefit. End turn and reveal looked like they needed a manual trigger, but the betting window was already timed, closing it and firing the reveal off the same clock removes a step without changing when either happens.
+
+---

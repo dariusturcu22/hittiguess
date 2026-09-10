@@ -69,7 +69,7 @@ Data: the active player's own timeline (ordered cards, each showing artist/title
 
 ### DJ view
 
-Data: the current song's real YouTube page or app link-out, not an embedded player. Actions, DJ only: "Open YouTube Link" (paired with the audio-sharing UI warning, story 9), pause, play, close the tab/app, end the current turn, reveal (only enabled once the betting window has closed). Non-DJ players never see this screen's playback controls at all, only the shared game UI.
+Data: the current song's real YouTube page or app link-out, not an embedded player. Actions, DJ only: "Open YouTube Link" (paired with the audio-sharing UI warning, story 9). That's the DJ's only action; there's no in-app pause, play, close, end-turn, or reveal, playback happens entirely on YouTube and the round's flow (betting countdown, reveal, advancing to the next player) runs automatically once the song's been opened. Non-DJ players see the same shared game UI, just without that link-out.
 
 ### Voice sidebar
 
