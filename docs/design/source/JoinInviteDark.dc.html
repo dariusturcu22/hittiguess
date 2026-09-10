@@ -14,9 +14,13 @@
     .navicon.active { background: #cba6f7; box-shadow: 3px 3px 0 rgba(0,0,0,0.4); color: #11111b; }
     .divider { width: 32px; height: 2px; background: #313244; border-radius: 2px; margin: 14px auto; flex-shrink: 0; }
     .bar { border-radius: 100px; }
-    .invitecard { width: 460px; background: #313244; border: 3px solid #11111b; border-radius: 18px; box-shadow: 6px 6px 0 rgba(0,0,0,0.4); box-sizing: border-box; padding: 44px 48px 48px; display: flex; flex-direction: column; align-items: center; }
+    .invitecard { width: 540px; background: #313244; border: 3px solid #11111b; border-radius: 18px; box-shadow: 6px 6px 0 rgba(0,0,0,0.4); box-sizing: border-box; padding: 40px 48px 44px; display: flex; flex-direction: column; align-items: center; }
     .btn-join { width: 100%; text-align: center; background: #fab387; color: #1e1e2e; font-family: 'Bungee', sans-serif; font-size: 15px; padding: 16px 0; border-radius: 100px; box-shadow: 4px 4px 0 rgba(0,0,0,0.35); box-sizing: border-box; cursor: pointer; border: none; }
     .link-ghost { color: #a6adc8; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; font-size: 13px; }
+    .mini-avatar { width: 34px; height: 34px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-family: 'Bungee', sans-serif; font-size: 12px; color: #11111b; border: 3px solid #313244; box-sizing: border-box; }
+    .mini-avatar.overflow { background: #45475a; color: #a6adc8; }
+    .field-label { font-size: 11px; font-weight: 700; color: #a6adc8; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 7px; display: block; }
+    .field-input { width: 100%; box-sizing: border-box; background: #1e1e2e; border: 2px solid #45475a; border-radius: 13px; padding: 12px 16px; font-family: 'Space Grotesk', sans-serif; font-size: 14px; color: #cdd6f4; }
   </style>
 </helmet>
 <div style="width: 1440px; height: 900px; background: #1e1e2e; font-family: 'Space Grotesk', sans-serif; box-sizing: border-box; color: #cdd6f4; display: flex; overflow: hidden; position: relative;">
@@ -57,7 +61,7 @@
 
     <div class="invitecard">
 
-      <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 30px;">
+      <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 26px;">
         <div style="display: flex; align-items: center; gap: 3px; height: 24px;">
           <div class="bar" style="background: #a6e3a1; width: 5px; height: 11px;"></div>
           <div class="bar" style="background: #a6e3a1; width: 5px; height: 22px;"></div>
@@ -67,21 +71,38 @@
         <div style="font-family: 'Baloo 2', sans-serif; font-weight: 800; font-size: 26px; color: #cdd6f4;">hittiguess</div>
       </div>
 
-      <div style="width: 42px; height: 42px; border-radius: 50%; background: rgba(203,166,247,0.16); display: flex; align-items: center; justify-content: center; margin-bottom: 20px;">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#cba6f7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 6c0-1.1-.9-2-2-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V6Z"></path><polyline points="22 6 12 13 2 6"></polyline></svg>
+      <div style="font-family: 'Bungee', sans-serif; font-size: 22px; color: #f5c2e7; text-shadow: 3px 3px 0 #1e1e2e; text-align: center; margin-bottom: 22px;">You're invited</div>
+
+      <!-- PLAYLIST CARD -->
+      <div style="width: 100%; background: #1e1e2e; border: 2px solid #45475a; border-radius: 16px; box-sizing: border-box; padding: 18px; display: flex; align-items: center; gap: 16px; margin-bottom: 22px;">
+        <div style="width: 76px; height: 76px; border-radius: 16px; background: #cba6f7; border: 3px solid #11111b; box-sizing: border-box; flex-shrink: 0; display: flex; align-items: center; justify-content: center;">
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="rgba(17,17,27,0.4)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"></path><circle cx="6" cy="18" r="3"></circle><circle cx="18" cy="16" r="3"></circle></svg>
+        </div>
+        <div style="min-width: 0; flex: 1;">
+          <div style="font-family: 'Bungee', sans-serif; font-size: 20px; color: #cba6f7; text-shadow: 2px 2px 0 #313244;">Midnight Radio</div>
+          <div style="font-size: 12.5px; color: #a6adc8; margin-top: 6px;">32 songs</div>
+          <div style="display: flex; align-items: center; margin-top: 10px;">
+            <div class="mini-avatar" style="background: #fab387; z-index: 4;">D</div>
+            <div class="mini-avatar" style="background: #89b4fa; z-index: 3; margin-left: -10px;">M</div>
+            <div class="mini-avatar" style="background: #f9e2af; z-index: 2; margin-left: -10px;">T</div>
+            <div class="mini-avatar overflow" style="z-index: 1; margin-left: -10px;">+3</div>
+          </div>
+        </div>
       </div>
 
-      <div style="font-family: 'Bungee', sans-serif; font-size: 24px; color: #f5c2e7; text-shadow: 3px 3px 0 #1e1e2e; text-align: center; margin-bottom: 28px;">You're invited</div>
-
-      <div style="width: 100%; background: #1e1e2e; border: 2px solid #45475a; border-radius: 14px; box-sizing: border-box; padding: 16px; display: flex; align-items: center; gap: 14px; margin-bottom: 28px;">
-        <div style="width: 60px; height: 60px; border-radius: 12px; background: #cba6f7; flex-shrink: 0; display: flex; align-items: center; justify-content: center;">
-          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="rgba(17,17,27,0.4)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"></path><circle cx="6" cy="18" r="3"></circle><circle cx="18" cy="16" r="3"></circle></svg>
+      <!-- PROFILE FOR THIS PLAYLIST -->
+      <div style="width: 100%; margin-bottom: 24px;">
+        <label class="field-label">Join as</label>
+        <div style="display: flex; align-items: center; gap: 14px;">
+          <div style="position: relative; width: 64px; height: 64px; border-radius: 50%; overflow: hidden; flex-shrink: 0; border: 3px solid #11111b; cursor: pointer;">
+            <div style="width: 100%; height: 100%; background: #a6e3a1; display: flex; align-items: center; justify-content: center; font-family: 'Bungee', sans-serif; font-size: 22px; color: #11111b;">D</div>
+            <div style="position: absolute; inset: 0; background: linear-gradient(to top, rgba(17,17,27,0.8) 0%, rgba(17,17,27,0) 55%); display: flex; align-items: flex-end; justify-content: center; padding-bottom: 6px;">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#cdd6f4" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2Z"></path><circle cx="12" cy="13" r="4"></circle></svg>
+            </div>
+          </div>
+          <input class="field-input" type="text" value="Darius" style="flex: 1;">
         </div>
-        <div style="min-width: 0;">
-          <div style="font-family: 'Bungee', sans-serif; font-size: 15px; color: #cdd6f4;">Midnight Radio</div>
-          <div style="font-size: 12px; color: #a6adc8; margin-top: 4px;">32 songs</div>
-          <div style="font-size: 12px; color: #6c7086; margin-top: 2px;">by Darius</div>
-        </div>
+        <div style="font-size: 11px; color: #6c7086; margin-top: 8px; line-height: 1.5;">Defaults to your account name and picture. Change either one to join under a different identity just for this playlist.</div>
       </div>
 
       <button class="btn-join" style="margin-bottom: 16px;">Join playlist</button>
