@@ -254,6 +254,28 @@ Tests:
 - [ ] Integration test: importing from a playlist with overlapping songs only links the ones not already in the target
 - [ ] Integration test: importing from a public playlist the requester neither owns nor is a member of succeeds
 
+## Story 46: Playlist membership: owner/admin, granular permissions, kick and ban, per-playlist identity
+
+Surfaced during story 28's design pass on the Edit playlist and Join by invite screens, not part of the original backlog mapping. Checked against real code: `Playlist.users` is a plain `@ManyToMany` with no per-member attributes and no owner/admin field anywhere on `Playlist`; joining today (`UserController`'s playlist-join endpoint) just adds the row, no per-playlist identity is captured. See `DECISIONS.md`'s 2026-09 "Playlist membership" entry for the decided shape.
+
+- [ ] Add an owner/admin concept to `Playlist`: an `ownerId` (or equivalent), set to the creator on creation; only the owner can rename, change cover/color/description, toggle `isPublic` (story 30), delete the playlist, or manage other members
+- [ ] Replace the plain `Playlist.users` many-to-many with a `PlaylistMembership` entity (playlist, user, `canRead`/`canWrite`/`canDelete` booleans, joined-at, per-playlist display name and avatar), coordinate with story 15 since both touch `Playlist`'s relations
+- [ ] Data migration for existing memberships: default all three grants to true, owner determined by whichever user the migration treats as creator (decide the exact rule against real data, today's schema has no creator field to read from)
+- [ ] Gate `PlaylistService`'s existing access checks by the new grants: reading requires `canRead`, adding a song requires `canWrite`, removing a song requires `canDelete`; an owner always has all three implicitly
+- [ ] Add owner-only endpoints to update a member's `canRead`/`canWrite`/`canDelete` grants independently, each revocable without affecting the others
+- [ ] Add a kick endpoint (owner only): ends the membership, the existing invite link or code still lets the kicked user rejoin
+- [ ] Add a `PlaylistBan` entity (playlist, user, banned-at) and a ban endpoint (owner only): ends the membership and blocks that user's future join attempts against this playlist
+- [ ] Update the join-by-invite endpoint to reject a banned user's join attempt, and to accept the per-playlist display name/avatar submitted with the join request, defaulting to the account's own when not overridden
+- [ ] Frontend: Edit playlist's member list (per-member read/write/delete toggles, kick and ban actions), owner-only, already designed
+- [ ] Frontend: Join by invite's identity step (avatar and display name, pre-filled from the account, editable before joining), already designed
+
+Tests:
+- [ ] Unit tests for the owner-only gate: every owner-only action (rename, cover/color/description, public toggle, delete, kick, ban, grant changes) rejects a non-owner member
+- [ ] Unit tests for each of the three grants enforced independently: a member with `canRead` false can't view, `canWrite` false can't add a song, `canDelete` false can't remove one, and combinations of the three don't interfere with each other
+- [ ] Unit tests for kick versus ban: a kicked user's subsequent join-by-invite succeeds, a banned user's is rejected
+- [ ] Integration test: full lifecycle, join with a custom per-playlist identity, owner revokes a grant, the affected action is blocked, owner kicks the member, the member rejoins successfully, owner bans a different member, that member's rejoin attempt is rejected
+- [ ] Integration test: the data migration assigns every existing membership full grants and a determinable owner, with no playlist left without one
+
 ## Story 14: Song search by link or keyword before submission
 
 Checked against real code: `SongRepository` has zero custom query methods, no backend search capability exists. The only "search" today is `DataTable`'s client-side substring filter over an already-loaded playlist's songs, not a real query.

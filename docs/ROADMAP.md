@@ -20,6 +20,7 @@ No blockers among these, and none block each other. Includes both game-session i
 - Story 11: Real-time sync over WebSocket, build alongside stories 10 and 39; both need it functionally even though each is independently startable
 - Story 23: Song schema reconciliation, unlocks stories 18, 35, and coordinates with 15, 16, and 40
 - Story 15: Song/playlist relational fix, coordinate with story 23
+- Story 46: Playlist membership (owner/admin, per-member permissions, kick/ban, per-playlist join identity)
 - Story 16: pgvector-based duplicate detection
 - Story 25: Add Discogs as a metadata source
 - Story 14: Song search by link or keyword

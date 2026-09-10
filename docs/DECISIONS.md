@@ -499,3 +499,11 @@ Decision: two pieces of new scope surfaced during story 28's design pass, neithe
 Why: both were reasonable, wanted features once the design pass reached the "add songs to a playlist" screens, but CLAUDE.md's task gate means design work surfacing new scope gets written into the backlog before it's built, not folded silently into mockups with no corresponding story or task.
 
 ---
+
+## 2026-09 | Playlist membership: owner/admin, granular permissions, kick versus ban, per-playlist identity
+
+Decision: a playlist gets a real owner/admin, today's `Playlist.users` many-to-many has no such concept. Only the owner can rename the playlist, change its cover/color/description, toggle it public, delete it, or manage other members. Each non-owner member holds three independently revocable grants: read, write (add songs), and delete (remove existing songs), not a single role. Removing a member is two distinct actions: kicking (membership ends, the invite link or code still lets them rejoin later) and banning (membership ends and rejoining is blocked outright). Separately, joining a playlist by invite prompts for a per-playlist display name and avatar, defaulting to the account's own but editable, the same pattern `GAME_DESIGN.md` already specifies for joining a group, now extended to playlists.
+
+Why: surfaced during story 28's design pass on the Edit playlist and Join by invite screens. Even read being revocable, not just write and delete, was a deliberate call: it lets an owner temporarily shut a member out without removing them from the playlist outright, distinct from a kick. Extending per-space identity to playlists mirrors the reasoning that already justified it for groups, playing under a different name or avatar with people who don't share every space, without conflating a playlist's own membership model with a game group's.
+
+---

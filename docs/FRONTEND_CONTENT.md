@@ -34,7 +34,7 @@ Authenticated, playlist-access-gated. Fields: YouTube link or ID, with a "get de
 
 ### Join by invite (`/playlists/join/[inviteCode]`)
 
-Authenticated. No content beyond a brief in-progress state; on success, redirects into the newly-joined playlist. On failure, shows a real error rather than getting stuck (`ARCHIVE.md`'s QA-pass fix for the stuck-forever bug this route used to have).
+Authenticated. Today: no content beyond a brief in-progress state; on success, redirects into the newly-joined playlist. On failure, shows a real error rather than getting stuck (`ARCHIVE.md`'s QA-pass fix for the stuck-forever bug this route used to have). Once story 46 ships, this becomes a real preview screen first: the playlist's cover, name, song count, and a stacked-avatar preview of its members, plus an identity step (per-playlist display name and avatar, defaulting to the account's own, editable before joining) above the join action. A banned user's join attempt shows a real rejection instead of succeeding.
 
 ## Planned playlist screens (not yet built)
 
@@ -53,7 +53,7 @@ Reached from Playlist detail, a second way to add content alongside Add song. Tw
 
 ### Edit playlist
 
-Reached from Playlist detail. Fields: name, color. Actions: save, cancel. Splits rename/color-change out of Playlist detail's inline fields into their own screen.
+Reached from Playlist detail, owner only (story 46). Data: cover image, name, title color (the same `color` field used elsewhere, not a separate cover color), description, `isPublic` (story 30), and the full member list, each member's `canRead`/`canWrite`/`canDelete` grants, and whether they're kicked/banned-eligible. Actions: change the cover (click-through on the cover itself, not a separate control), rename inline (pencil to edit, a save action beside it), pick a title color, edit the description, toggle public, save/cancel, delete the playlist. Member-row actions: toggle each of the three grants independently, kick (membership ends, can rejoin via invite), ban (membership ends, can't rejoin). Splits rename/color-change out of Playlist detail's inline fields into their own screen.
 
 ## Planned gameplay screens (not yet built)
 
