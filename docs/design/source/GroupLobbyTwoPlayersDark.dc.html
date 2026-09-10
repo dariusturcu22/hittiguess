@@ -20,8 +20,8 @@
     .lobby-btn.primary { font-family: 'Bungee', sans-serif; font-size: 13px; color: #1e1e2e; background: #fab387; border: none; box-shadow: 4px 4px 0 rgba(0,0,0,0.4); }
     .lobby-btn.danger { color: #e78284; border-color: #e78284; background: transparent; }
     .orbit-slot { position: absolute; }
-    @keyframes driftA { 0%, 100% { transform: translate(0,0); } 33% { transform: translate(6px,-5px); } 66% { transform: translate(-5px,4px); } }
-    @keyframes driftB { 0%, 100% { transform: translate(0,0); } 33% { transform: translate(-6px,4px); } 66% { transform: translate(5px,-6px); } }
+    @keyframes driftA { 0% { transform: translate(0,0); } 22% { transform: translate(10px,-3px); } 48% { transform: translate(3px,8px); } 74% { transform: translate(-9px,2px); } 100% { transform: translate(0,0); } }
+    @keyframes driftB { 0% { transform: translate(0,0); } 28% { transform: translate(-8px,6px); } 58% { transform: translate(7px,-9px); } 82% { transform: translate(-2px,-5px); } 100% { transform: translate(0,0); } }
     .drift-a { animation: driftA 7s ease-in-out infinite; }
     .drift-b { animation: driftB 8s ease-in-out infinite; animation-delay: -1.2s; }
   </style>
@@ -94,7 +94,7 @@
               <div class="vavatar" style="background: #fab387; width: 112px; height: 112px; font-size: 36px; box-shadow: 0 0 0 3px #1e1e2e, 0 0 0 8px #a6e3a1;">D</div>
               <svg width="28" height="28" viewBox="0 0 24 24" fill="#f9e2af" style="position: absolute; top: -10px; right: -10px; filter: drop-shadow(1px 1px 0 #1e1e2e);"><path d="M3 19h18l-1.8-9-5.2 4-3-7.5-3 7.5-5.2-4z"></path></svg>
             </div>
-            <div style="font-weight: 600; font-size: 15px; color: #cdd6f4; margin-top: 9px;">Darius</div>
+            <div style="font-weight: 600; font-size: 15px; color: #cdd6f4; margin-top: 18px;">Darius</div>
           </div>
         </div>
       </div>
@@ -103,7 +103,7 @@
         <div class="drift-b">
           <div class="vavatar-wrap">
             <div class="vavatar" style="background: #89b4fa; width: 112px; height: 112px; font-size: 36px; box-shadow: 0 0 0 3px #1e1e2e, 0 0 0 8px #a6e3a1;">M</div>
-            <div style="font-weight: 600; font-size: 15px; color: #cdd6f4; margin-top: 9px;">Mara</div>
+            <div style="font-weight: 600; font-size: 15px; color: #cdd6f4; margin-top: 18px;">Mara</div>
           </div>
         </div>
       </div>

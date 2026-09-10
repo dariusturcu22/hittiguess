@@ -18,8 +18,8 @@
     .vname { font-size: 10px; color: #a6adc8; max-width: 70px; text-align: center; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .vctrl { width: 42px; height: 42px; border-radius: 12px; display: flex; align-items: center; justify-content: center; cursor: pointer; }
 
-    @keyframes ringPulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.04); } }
-    .ring-pulse { animation: ringPulse 1s ease-in-out infinite; }
+    @keyframes ringDrain { from { stroke-dashoffset: 0; } to { stroke-dashoffset: 377; } }
+    .ring-drain { animation: ringDrain 5s linear infinite; }
     @keyframes roleFloat { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
     .role-float { animation: roleFloat 3s ease-in-out infinite; }
   </style>
@@ -65,11 +65,11 @@
     <div style="font-weight: 700; font-size: 13px; letter-spacing: 4px; color: #6c7086; text-transform: uppercase; margin-bottom: 18px;">First to 8 cards wins</div>
     <div style="font-family: 'Bungee', sans-serif; font-size: 72px; color: #cdd6f4; text-shadow: 5px 5px 0 rgba(0,0,0,0.4); margin-bottom: 44px;">Round 1</div>
 
-    <!-- COUNTDOWN RING -->
-    <div class="ring-pulse" style="position: relative; width: 140px; height: 140px; margin-bottom: 48px;">
+    <!-- COUNTDOWN RING: drains at a steady, continuous pace, no pulsing -->
+    <div style="position: relative; width: 140px; height: 140px; margin-bottom: 48px;">
       <svg width="140" height="140" viewBox="0 0 140 140">
         <circle cx="70" cy="70" r="60" fill="none" stroke="#313244" stroke-width="10"></circle>
-        <circle cx="70" cy="70" r="60" fill="none" stroke="#fab387" stroke-width="10" stroke-linecap="round" stroke-dasharray="377" stroke-dashoffset="151" transform="rotate(-90 70 70)"></circle>
+        <circle class="ring-drain" cx="70" cy="70" r="60" fill="none" stroke="#fab387" stroke-width="10" stroke-linecap="round" stroke-dasharray="377" transform="rotate(-90 70 70)"></circle>
       </svg>
       <div style="position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-family: 'Bungee', sans-serif; font-size: 48px; color: #cdd6f4;">3</div>
     </div>
