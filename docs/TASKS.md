@@ -14,20 +14,18 @@ Story 9 and story 12 were checked against the real code and confirmed blocked: b
 
 Confirmed against the real code: there's no DJ view, no group, no session concept, and no WebSocket layer today, so this is new work, not a removal. The QR code task was split out and done separately, see `ARCHIVE.md`'s Bug fixes entry. Blocked on story 39 (group), story 10 (game session), and story 11 (WebSocket sync).
 
-Reveal is the DJ's action alone, not any player's, and the DJ controls the round's flow more broadly: pause, play, close the YouTube tab or app, end the current turn, and reveal, all over WebSocket. General players hold none of these controls, see `GAME_DESIGN.md`'s Roles section.
+The DJ's only in-app action is "Open YouTube Link"; playback, pausing, and closing the tab or app all happen on YouTube itself, never mirrored into the game. The round's own flow, the betting countdown and window, the reveal, and advancing to the next player, runs automatically off timers the game already has once the DJ opens the link, with no manual trigger from the DJ or any player (see `GAME_DESIGN.md`'s Roles section and story 10's automatic-reveal task).
 
 - [ ] Build the DJ view: an "open in YouTube" link-out for remote sessions, opening a new browser tab, never an embedded player, behind an explicit "Open YouTube Link" action
 - [ ] Add a UI warning shown alongside that action, explicit that clicking it starts broadcasting the DJ's tab or system audio to the rest of the group
 - [ ] Wire WebRTC tab audio capture to that new tab and stream it to the other players, starting only once the DJ has actually opened the link, not before
 - [ ] Add deep-link handling for in-person sessions (Android intent, iOS universal link, fallback to a plain browser link)
 - [ ] Wire the active player's audio-stream cutoff over WebSocket: cuts off immediately on guess lock-in, regardless of what's still playing on the DJ's end
-- [ ] Wire the DJ's round-flow controls over WebSocket: pause, play, close the YouTube tab/app, end the current turn, and reveal; reveal is gated to fire only after the betting window (story 10) has closed
-- [ ] Restrict all of the above controls to the DJ role specifically, a non-DJ player's attempt to invoke any of them is rejected
+- [ ] Restrict the "Open YouTube Link" action to the DJ role specifically, a non-DJ player's attempt to invoke it is rejected
 
 Tests:
 - [ ] Unit test: the audio-stream cutoff fires on guess lock-in regardless of playback state, and only for the active player's stream
-- [ ] Unit test: reveal is rejected when attempted by a non-DJ player, and when attempted before the betting window has closed
-- [ ] Unit tests for the DJ's other round-flow controls (pause, play, close, end turn), each rejected when attempted by a non-DJ player
+- [ ] Unit test: the "Open YouTube Link" action is rejected when attempted by a non-DJ player
 - [ ] Frontend test: the "Open YouTube Link" action shows the audio-sharing warning before WebRTC tab capture starts
 - [ ] Integration test: deep-link handling falls back to a plain browser link when the YouTube app isn't installed
 
@@ -42,6 +40,7 @@ Checked against real code: no session model exists, this is greenfield work. Bas
 - [ ] Guess placement and lock-in: before/after/between on the active player's timeline, with a lock-in sound effect
 - [ ] 3-5 second countdown after lock-in, then a 15-second betting window; skip the window entirely if no player holds a token
 - [ ] Betting: token-holding players may bet during the window, first come first served, concurrency-safe so only the first bet is accepted and a losing attempt doesn't cost a token; a skip-betting action ends the window early
+- [ ] Automatic reveal once the betting window closes: broadcast the song's artist, title, and year to every player, off the same window timer, with no DJ or player action triggering it
 - [ ] Artist/title guess box, available to every player except the DJ for the whole turn, independent of timeline placement; only the active player's fully correct guess awards a token, matching normalizes both strings (lowercase, strip punctuation, strip diacritics, collapse whitespace) and compares them with Damerau-Levenshtein edit distance, a flat budget of 1 regardless of length (see `DECISIONS.md`). For a song with more than one artist (main or featured, story 23), naming any single one of them correctly is enough for the token, not all of them
 - [ ] Scoring: apply the four outcome rules in `GAME_DESIGN.md` (correct placement keeps the card even on a tied release year; a correct guess beats any bet; a wrong guess with a correct bet gives the card to the bettor; a wrong guess with no bet discards it)
 - [ ] Track two running per-player tallies for the session, fed by every player's guesses, active or not: total individual artists correctly named (every correct name, main or featured, from any song, adds one, regardless of how many total artists that song has) and total fully-correct title guesses. A non-active player's guess never earns a token or affects placement/betting, it only feeds these two tallies
@@ -62,6 +61,7 @@ Tests:
 - [ ] Unit tests for win-condition bounds: 5-20 (2-3 players) and 5-15 (4-8 players), including the boundary values
 - [ ] Unit tests for round rotation, both fixed and rotating DJ settings, and rotation skipping `Left` players
 - [ ] Unit tests for the active-player turn timeout, including the boundary at 90 seconds
+- [ ] Unit test: reveal fires automatically once the betting window closes, with no DJ or player trigger required
 - [ ] Integration test: full session lifecycle, admin starts, roster snapshot, several rounds, win condition hit, results export generated, state purged
 - [ ] Integration test: auto-abandon path, session torn down after 10 minutes with zero connected players, confirms no export is generated
 - [ ] Integration test: betting concurrency, multiple simultaneous bet attempts on the same guess, exactly one accepted, no token lost by the others
@@ -256,7 +256,7 @@ Tests:
 
 ## Story 46: Playlist membership: owner/admin, granular permissions, kick and ban, per-playlist identity
 
-Surfaced during story 28's design pass on the Edit playlist and Join by invite screens, not part of the original backlog mapping. Checked against real code: `Playlist.users` is a plain `@ManyToMany` with no per-member attributes and no owner/admin field anywhere on `Playlist`; joining today (`UserController`'s playlist-join endpoint) just adds the row, no per-playlist identity is captured. See `DECISIONS.md`'s 2026-09 "Playlist membership" entry for the decided shape.
+Surfaced during story 28's design pass on the Edit playlist and Join by invite screens, not part of the original backlog mapping. Checked against real code: `Playlist.users` is a plain `@ManyToMany` with no per-member attributes and no owner/admin field anywhere on `Playlist`; joining today (`UserController`'s playlist-join endpoint) just adds the row, no per-playlist identity is captured. See `DECISIONS.md`'s 2026-09 "Playlist membership" entry for the decided shape. Not blocked, only coordinating with story 15 on `Playlist`'s relations. Marked Ready in `PROJECT_STATE.md`.
 
 - [ ] Add an owner/admin concept to `Playlist`: an `ownerId` (or equivalent), set to the creator on creation; only the owner can rename, change cover/color/description, toggle `isPublic` (story 30), delete the playlist, or manage other members
 - [ ] Replace the plain `Playlist.users` many-to-many with a `PlaylistMembership` entity (playlist, user, `canRead`/`canWrite`/`canDelete` booleans, joined-at, per-playlist display name and avatar), coordinate with story 15 since both touch `Playlist`'s relations
@@ -714,9 +714,9 @@ A cross-cutting principle rather than a single implementation: curb `metadataRaw
 
 ## Story 44: Test user infrastructure (dev only)
 
-A dedicated `Role` for automated test/QA agents, separate from `USER` and story 19/40's `ADMIN`. Exists so automated agents, this project's own AI-assisted development workflow included, reuse one seeded test account's credentials across runs instead of registering a fresh throwaway account every time. Coordinates with story 22 (test coverage): this is test infrastructure, not test coverage itself.
+A dedicated `Role` for automated test/QA agents, separate from `USER` and story 40's `ADMIN`. Exists so automated agents, this project's own AI-assisted development workflow included, reuse one seeded test account's credentials across runs instead of registering a fresh throwaway account every time. Coordinates with story 22 (test coverage): this is test infrastructure, not test coverage itself.
 
-- [ ] Add a `TEST` value to `User.role`, alongside the existing `USER` and (once story 19/40 lands) `ADMIN`
+- [ ] Add a `TEST` value to `User.role`, alongside the existing `USER` and (once story 40 lands) `ADMIN`
 - [ ] Add a fixture or seed mechanism that creates one reusable test account with known credentials in local/dev environments, rather than a new account per test run
 - [ ] Document, in `CONTRIBUTING.md` (story 36) or a dev-setup doc, that agents and contributors running tests locally reuse the seeded test account's credentials instead of registering new ones
 - [ ] Add an environment guardrail: any `TEST`-role account, and any endpoint or behavior gated on that role, is a no-op or outright rejected when running against a Production environment, even if a `TEST`-role row somehow exists there

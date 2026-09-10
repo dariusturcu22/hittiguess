@@ -92,7 +92,9 @@ The system prefers official "Topic" channel uploads on YouTube when available, a
 
 An incorrect year on a card breaks the game for everyone at the table. Players can report a song they believe has the wrong year, along with a message, the year they believe is correct, and one or more sources. What causes a reported or newly submitted song to become fully trusted is decided: exact agreement among MusicBrainz, Discogs, and Wikidata locks the year with no LLM involvement; anything short of that goes through Wikipedia extraction and reconciliation instead, landing at `NEEDS_REVIEW`, not automatically verified (see [DECISIONS.md](DECISIONS.md)). Admin-seeded songs are trusted immediately and skip this process entirely.
 
-## Planned game modes
+## Future game mode ideas, not currently scoped
+
+None of these have a story in `PROJECT_STATE.md`. Genre Round in particular overlaps with theme-based session generation, explicitly dropped from story 30 (see [DECISIONS.md](DECISIONS.md)'s "Story 30 cut to two top-level modes" entry: "no on-the-spot themed generation is planned"). Kept here as ideas that could resurface later, not as planned work.
 
 - Decade Challenge: songs only from a specific decade.
 - Genre Round: songs tagged with a specific genre.

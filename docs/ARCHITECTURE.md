@@ -25,7 +25,7 @@ Auth, playlist and song CRUD, the Song table (schema owner), game session and ro
 
 ### AI microservice (FastAPI)
 
-Multi-source metadata fetch (YouTube, MusicBrainz, Discogs, Wikidata), LLM synthesis with structured output, embedding generation and pgvector similarity search. Exposes a small internal API, for example `POST /metadata/resolve`, consumed only by the core service, not exposed publicly.
+Multi-source metadata fetch (YouTube, MusicBrainz, Discogs, Wikidata, Wikipedia), LLM synthesis with structured output, embedding generation and pgvector similarity search. Exposes a small internal API, for example `POST /metadata/resolve`, consumed only by the core service, not exposed publicly.
 
 The two services run in the same hosting environment and reach each other over internal networking, wherever that ends up being, see the Deployment section. The core service owns all database migrations; the AI microservice reads and writes rows but never alters schema.
 
@@ -37,7 +37,7 @@ One split is explicit: the transactional Postgres+pgvector instance versus a sep
 
 ### Song and playlist database
 
-Every song has: `youtubeId`, `title`, `releaseYear`, `verificationStatus`, `confidence` (persisted), `metadataRaw` (full pipeline output, for auditability), multi-value `tags`. Two parts of the target shape are undecided, not just unconfirmed against code: whether release year is one field or split into `submittedYear`/`verifiedYear`, and how multiple or featured artists are stored and guessed, today's schema still assumes a single `artist` string. See [PROJECT_STATE.md](PROJECT_STATE.md)'s open questions for both.
+Every song has: `youtubeId`, `title`, `releaseYear`, `verificationStatus`, `confidence` (persisted), `metadataRaw` (full pipeline output, for auditability), multi-value `tags`. Release year is one mutable field plus `verificationStatus`, not a separate `submittedYear`/`verifiedYear` pair; once verified, the year doesn't change except through the report/re-verification process. Artists are an ordered list (`SongArtist`), each tagged `MAIN` or `FEATURED`, replacing today's single `artist` string; more than one `MAIN` artist is allowed, the role tag is display-only, and naming any single artist on the list correctly is enough to guess it. Both decided, see [PROJECT_STATE.md](PROJECT_STATE.md)'s resolved questions and [DECISIONS.md](DECISIONS.md).
 
 `metadataRaw`, and any other field that persists external API output, holds the curated, actually-used subset of a source's response, never the full raw payload. A single source's raw response can run to tens of KB per song; at that size the database's free-tier size cap holds a small fraction of the catalog a curated version would. Any future field storing external API output follows the same rule.
 
@@ -118,9 +118,9 @@ The DJ is never shown an embedded YouTube player.
 - Remote sessions: the DJ opens the real YouTube page in a new browser tab, only from an explicit "Open YouTube Link" action paired with a UI warning that doing so starts broadcasting their tab or system audio. That tab is captured through WebRTC tab audio capture and streamed to the other players.
 - In-person sessions: the DJ opens the real YouTube app through a deep link (Android intent, iOS universal link, falling back to a plain browser link if the app isn't installed) and plays through the device speaker.
 - Physical cards: the QR code encodes the YouTube video ID directly. Scanning opens the real YouTube app or site.
-- Playback itself is manual, on the DJ's device, there's no remote play or pause on YouTube's own player. The DJ does control the round's flow over WebSocket: pause, play, close the YouTube tab or app, end the current turn, and trigger the reveal. No general player holds any of these controls.
+- Playback itself is manual, on the DJ's device, there's no remote play or pause on YouTube's own player. The DJ holds no other in-app controls: pause, play, and closing the tab or app all happen on YouTube itself, not mirrored into the game. "Open YouTube Link" is the DJ's only in-app action.
 - The active player's audio stream cuts off immediately once they lock in their guess, regardless of what's still playing on the DJ's end.
-- Round reveal happens only after the betting window closes, and only the DJ can trigger it, there's no programmatic access to a page outside the app's control, so this stays a manual DJ action, not an automatic one and not any player's.
+- Round reveal fires automatically once the betting window closes, off the timer that window already runs on, artist, title, and year broadcast to everyone with no DJ or player trigger; the active player role then advances automatically once scoring resolves.
 - Ads play unmodified in every mode.
 
 ### Voice and text chat
@@ -190,7 +190,7 @@ Group returns to its lobby state: admin starts another session within 30 minutes
 ## What's built
 
 - Two-service split: Spring Boot core service (`backend/`) and Python/FastAPI AI microservice (`ai/`).
-- Multi-source metadata pipeline in the AI microservice, LLM synthesis with structured output through Pydantic; only the YouTube source is live, MusicBrainz, Wikipedia, and Genius are paused pending an API compliance and cost review.
+- Multi-source metadata pipeline in the AI microservice, LLM synthesis with structured output through Pydantic; only the YouTube source is live. MusicBrainz and Wikipedia are stubbed pending the real implementation validated in `ai/spikes/` (see `TASKS.md`'s "Spike: MusicBrainz and Wikidata sourcing" handoff); Genius, Last.fm, and iTunes were reviewed and dropped for good, not paused.
 - Spring Boot backend: auth, playlist CRUD, song CRUD.
 - Next.js frontend with AI-assisted song submission, deployed on Vercel.
 - PDF/QR card generation.
@@ -198,4 +198,4 @@ Group returns to its lobby state: admin starts another session within 30 minutes
 
 ## Not yet built
 
-Hosting migration, database migration, group model, game session model, WebSocket layer, DJ link-out playback flow, voice and text chat, song search by link or keyword, community reporting flow, pgvector deduplication, playlist/song relational fix, Discogs integration, confidence-gating UI, admin bulk import, admin review queue, scheduled re-verification, rate limiting, UI redesign, auto-generated featured playlists, test coverage.
+Hosting migration, database migration, group model, game session model, WebSocket layer, DJ link-out playback flow, voice and text chat, song search by link or keyword, community reporting flow, pgvector deduplication, playlist/song relational fix, Discogs integration, confidence-gating UI, admin bulk import, admin review queue, rate limiting, UI redesign, test coverage.

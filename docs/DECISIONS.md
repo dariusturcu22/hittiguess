@@ -515,3 +515,13 @@ Decision: the DJ's only in-app action is "Open YouTube Link." Pause, play, close
 Why: surfaced during story 28's design pass on the DJ view screen. Mirroring play/pause/close into the app duplicates controls the DJ already has open on the real YouTube tab for no benefit. End turn and reveal looked like they needed a manual trigger, but the betting window was already timed, closing it and firing the reveal off the same clock removes a step without changing when either happens.
 
 ---
+
+## 2026-09 | A flagged prompt-injection attempt is an abuse-visibility event
+
+Decision: when story 41's injection-detection check flags a submission, that flag itself writes an abuse-visibility event, the same category as story 34's rate-limit-exceeded and report-submitted events, not just an ambiguous-content outcome.
+
+Why: an attempted prompt injection is evidence of intent, not the same kind of uncertainty as a song the non-music classifier genuinely can't place. Tracking it the same way as the other abuse-visibility signals keeps a pattern of injection attempts reviewable later, the same reasoning already applied to rate-limit and report abuse. Depends on story 34's event pipeline existing.
+
+Open item: whether a flagged submission is also outright rejected, versus routed to manual review, still needs a call, not made here.
+
+---
