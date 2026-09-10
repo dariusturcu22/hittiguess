@@ -92,59 +92,52 @@
     <!-- CENTER STAGE -->
     <div style="flex: 1; min-height: 0; position: relative;">
 
-      <!-- TIMELINE, dead center -->
-      <div style="position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;">
-        <div style="display: flex; flex-direction: column; align-items: center; gap: 12px;">
-          <div style="font-weight: 700; font-size: 12px; letter-spacing: 3px; color: #6c7086; text-transform: uppercase;">Timeline</div>
-          <div style="position: relative; width: 1100px;">
-            <div style="width: 100%; overflow: hidden; -webkit-mask-image: linear-gradient(90deg, transparent, #000 64px, #000 calc(100% - 64px), transparent); mask-image: linear-gradient(90deg, transparent, #000 64px, #000 calc(100% - 64px), transparent); display: flex; justify-content: center;">
-              <div style="display: flex; gap: 18px;">
-                <div class="tcard" style="background: #89b4fa; color: #1e1e2e;">
-                  <div class="artist">Natalie Imbruglia</div>
-                  <div class="year">1998</div>
-                  <div class="title">Torn</div>
-                </div>
-                <div class="tcard" style="background: #a6e3a1; color: #1e1e2e;">
-                  <div class="artist">OutKast</div>
-                  <div class="year">2003</div>
-                  <div class="title">Hey Ya!</div>
-                </div>
-                <div class="tcard" style="background: #f9e2af; color: #1e1e2e;">
-                  <div class="artist">Adele</div>
-                  <div class="year">2011</div>
-                  <div class="title">Rolling in the Deep</div>
-                </div>
-                <div class="tcard" style="background: #f5c2e7; color: #1e1e2e;">
-                  <div class="artist">Bruno Mars</div>
-                  <div class="year">2015</div>
-                  <div class="title">Uptown Funk</div>
-                </div>
-                <div class="tcard" style="background: #cba6f7; color: #1e1e2e;">
-                  <div class="artist">The Weeknd</div>
-                  <div class="year">2019</div>
-                  <div class="title">Blinding Lights</div>
-                </div>
-                <div class="tcard unknown">
-                  <div class="year">?</div>
-                </div>
-                <div class="tcard" style="background: #e78284; color: #1e1e2e;">
-                  <div class="artist">Harry Styles</div>
-                  <div class="year">2022</div>
-                  <div class="title">As It Was</div>
-                </div>
-                <div class="tcard" style="background: #eba0ac; color: #1e1e2e;">
-                  <div class="artist">Miley Cyrus</div>
-                  <div class="year">2023</div>
-                  <div class="title">Flowers</div>
-                </div>
-              </div>
+      <!-- TIMELINE ROW, pinned dead center and recentered on the card everyone's now judging -->
+      <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 1100px;">
+        <div style="width: 100%; overflow: hidden; -webkit-mask-image: linear-gradient(90deg, transparent, #000 64px, #000 calc(100% - 64px), transparent); mask-image: linear-gradient(90deg, transparent, #000 64px, #000 calc(100% - 64px), transparent); display: flex; justify-content: center;">
+          <div style="display: flex; gap: 18px;">
+            <div class="tcard" style="background: #f9e2af; color: #1e1e2e;">
+              <div class="artist">Adele</div>
+              <div class="year">2011</div>
+              <div class="title">Rolling in the Deep</div>
+            </div>
+            <div class="tcard" style="background: #f5c2e7; color: #1e1e2e;">
+              <div class="artist">Bruno Mars</div>
+              <div class="year">2015</div>
+              <div class="title">Uptown Funk</div>
+            </div>
+            <div class="tcard" style="background: #cba6f7; color: #1e1e2e;">
+              <div class="artist">The Weeknd</div>
+              <div class="year">2019</div>
+              <div class="title">Blinding Lights</div>
+            </div>
+            <div class="tcard unknown">
+              <div class="year">?</div>
+            </div>
+            <div class="tcard" style="background: #e78284; color: #1e1e2e;">
+              <div class="artist">Harry Styles</div>
+              <div class="year">2022</div>
+              <div class="title">As It Was</div>
+            </div>
+            <div class="tcard" style="background: #eba0ac; color: #1e1e2e;">
+              <div class="artist">Miley Cyrus</div>
+              <div class="year">2023</div>
+              <div class="title">Flowers</div>
+            </div>
+            <div class="tcard" style="background: #94e2d5; color: #1e1e2e;">
+              <div class="artist">Sabrina Carpenter</div>
+              <div class="year">2024</div>
+              <div class="title">Espresso</div>
             </div>
           </div>
         </div>
       </div>
 
+      <!-- TIMELINE LABEL -->
+      <div style="position: absolute; left: 50%; bottom: calc(50% + 98px); transform: translateX(-50%); font-weight: 700; font-size: 12px; letter-spacing: 3px; color: #6c7086; text-transform: uppercase;">Timeline</div>
+
       <!-- GUESS PILLS, below center -->
-      <div style="position: absolute; left: 50%; top: calc(50% + 130px); transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 12px;">
+      <div style="position: absolute; left: 50%; top: calc(50% + 98px); transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 12px;">
         <div style="display: flex; gap: 20px;">
           <div class="guess-pill">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#a6adc8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0;"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>

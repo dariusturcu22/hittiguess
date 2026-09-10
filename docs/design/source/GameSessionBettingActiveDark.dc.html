@@ -31,8 +31,9 @@
 
     @keyframes timerBlink { 0%, 100% { opacity: 1; } 50% { opacity: 0.45; } }
     .timer-blink { animation: timerBlink 1s ease-in-out infinite; }
-    @keyframes bobToken { 0%, 100% { transform: translateY(0) rotate(-6deg); } 50% { transform: translateY(-5px) rotate(-6deg); } }
+    @keyframes bobToken { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-5px); } }
     .bob-token { animation: bobToken 1.8s ease-in-out infinite; }
+    .timeline-locked { filter: grayscale(0.9) brightness(0.7); opacity: 0.55; }
   </style>
 </helmet>
 <div style="width: 1440px; height: 900px; box-sizing: border-box; background: #1e1e2e; display: flex; font-family: 'Space Grotesk', sans-serif;">
@@ -78,7 +79,7 @@
       <div>
         <div style="font-family: 'Bungee', sans-serif; font-size: 32px; color: #cdd6f4; text-shadow: 3px 3px 0 rgba(0,0,0,0.4);">Round 4</div>
         <div style="display: flex; align-items: center; gap: 10px; margin-top: 8px;">
-          <div style="font-size: 12px; color: #6c7086;">First bet wins the slot, one bet per round</div>
+          <div style="font-size: 12px; color: #6c7086;">You can't bet on your own card</div>
           <div style="width: 4px; height: 4px; border-radius: 50%; background: #6c7086;"></div>
           <div style="font-family: 'Bungee', sans-serif; font-size: 12px; color: #e78284;">Betting window</div>
         </div>
@@ -94,69 +95,65 @@
     <!-- CENTER STAGE -->
     <div style="flex: 1; min-height: 0; position: relative;">
 
-      <!-- TIMELINE, dead center, with Mara's bet token pinned to the unknown card -->
-      <div style="position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;">
-        <div style="display: flex; flex-direction: column; align-items: center; gap: 12px;">
-          <div style="font-weight: 700; font-size: 12px; letter-spacing: 3px; color: #6c7086; text-transform: uppercase;">Timeline</div>
-          <div style="position: relative; width: 1100px;">
-            <div style="width: 100%; height: 260px; overflow: hidden; -webkit-mask-image: linear-gradient(90deg, transparent, #000 64px, #000 calc(100% - 64px), transparent); mask-image: linear-gradient(90deg, transparent, #000 64px, #000 calc(100% - 64px), transparent); display: flex; justify-content: center;">
-              <div style="display: flex; gap: 18px; align-items: flex-end;">
-                <div class="tcard" style="background: #a6e3a1; color: #1e1e2e;">
-                  <div class="artist">OutKast</div>
-                  <div class="year">2003</div>
-                  <div class="title">Hey Ya!</div>
-                </div>
-                <div class="tcard" style="background: #f9e2af; color: #1e1e2e;">
-                  <div class="artist">Adele</div>
-                  <div class="year">2011</div>
-                  <div class="title">Rolling in the Deep</div>
-                </div>
-                <div class="tcard" style="background: #f5c2e7; color: #1e1e2e;">
-                  <div class="artist">Bruno Mars</div>
-                  <div class="year">2015</div>
-                  <div class="title">Uptown Funk</div>
-                </div>
-                <div class="tcard" style="background: #cba6f7; color: #1e1e2e;">
-                  <div class="artist">The Weeknd</div>
-                  <div class="year">2019</div>
-                  <div class="title">Blinding Lights</div>
-                </div>
-                <div style="position: relative;">
-                  <div class="tcard unknown" style="border-color: #a6e3a1; box-shadow: 0 0 0 3px rgba(166,227,161,0.35);">
-                    <div class="year">?</div>
-                  </div>
-                  <div class="bob-token" style="position: absolute; bottom: 100%; left: 50%; margin-bottom: 14px; transform: translateX(-50%);">
-                    <div style="display: flex; flex-direction: column; align-items: center; gap: 6px;">
-                      <div class="vavatar" style="background: #89b4fa; width: 30px; height: 30px; font-size: 11px; border: 2px solid #1e1e2e;">M</div>
-                      <div style="width: 34px; height: 34px; border-radius: 50%; background: #f9e2af; border: 3px solid #1e1e2e; box-shadow: 3px 3px 0 rgba(0,0,0,0.35); display: flex; align-items: center; justify-content: center; font-family: 'Bungee', sans-serif; font-size: 12px; color: #1e1e2e;">$</div>
-                    </div>
-                  </div>
-                </div>
-                <div class="tcard" style="background: #e78284; color: #1e1e2e;">
-                  <div class="artist">Harry Styles</div>
-                  <div class="year">2022</div>
-                  <div class="title">As It Was</div>
-                </div>
-                <div class="tcard" style="background: #eba0ac; color: #1e1e2e;">
-                  <div class="artist">Miley Cyrus</div>
-                  <div class="year">2023</div>
-                  <div class="title">Flowers</div>
-                </div>
+      <!-- TIMELINE ROW, pinned dead center, recentered on the card being judged, grayed: this viewer can't bet on their own card -->
+      <div class="timeline-locked" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 1100px;">
+        <div style="width: 100%; overflow: hidden; -webkit-mask-image: linear-gradient(90deg, transparent, #000 64px, #000 calc(100% - 64px), transparent); mask-image: linear-gradient(90deg, transparent, #000 64px, #000 calc(100% - 64px), transparent); display: flex; justify-content: center;">
+          <div style="display: flex; align-items: center; gap: 18px;">
+            <div class="tcard" style="background: #f9e2af; color: #1e1e2e;">
+              <div class="artist">Adele</div>
+              <div class="year">2011</div>
+              <div class="title">Rolling in the Deep</div>
+            </div>
+
+            <!-- MARA'S BET: her own guess, placed between two cards exactly like a card placement, never on the slot that's already filled -->
+            <div style="width: 64px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+              <div class="bob-token" style="display: flex; flex-direction: column; align-items: center; gap: 6px;">
+                <div class="vavatar" style="background: #89b4fa; width: 26px; height: 26px; font-size: 10px; border: 2px solid #1e1e2e;">M</div>
+                <div style="width: 30px; height: 30px; border-radius: 50%; background: #f9e2af; border: 3px solid #1e1e2e; box-shadow: 3px 3px 0 rgba(0,0,0,0.35); display: flex; align-items: center; justify-content: center; font-family: 'Bungee', sans-serif; font-size: 10px; color: #1e1e2e;">$</div>
               </div>
             </div>
+
+            <div class="tcard" style="background: #f5c2e7; color: #1e1e2e;">
+              <div class="artist">Bruno Mars</div>
+              <div class="year">2015</div>
+              <div class="title">Uptown Funk</div>
+            </div>
+            <div class="tcard" style="background: #cba6f7; color: #1e1e2e;">
+              <div class="artist">The Weeknd</div>
+              <div class="year">2019</div>
+              <div class="title">Blinding Lights</div>
+            </div>
+            <div class="tcard unknown">
+              <div class="year">?</div>
+            </div>
+            <div class="tcard" style="background: #e78284; color: #1e1e2e;">
+              <div class="artist">Harry Styles</div>
+              <div class="year">2022</div>
+              <div class="title">As It Was</div>
+            </div>
+            <div class="tcard" style="background: #eba0ac; color: #1e1e2e;">
+              <div class="artist">Miley Cyrus</div>
+              <div class="year">2023</div>
+              <div class="title">Flowers</div>
+            </div>
           </div>
-          <div style="font-size: 12px; color: #a6adc8;"><b style="color: #cdd6f4;">Mara</b> staked her token here first &mdash; nobody else can bet this round</div>
         </div>
       </div>
 
-      <!-- LIVE COUNTDOWN, floats above center -->
-      <div style="position: absolute; left: 50%; bottom: calc(50% + 195px); transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 6px;">
+      <!-- TIMELINE LABEL -->
+      <div style="position: absolute; left: 50%; bottom: calc(50% + 98px); transform: translateX(-50%); font-weight: 700; font-size: 12px; letter-spacing: 3px; color: #6c7086; text-transform: uppercase;">Timeline</div>
+
+      <!-- CAPTION -->
+      <div style="position: absolute; left: 50%; top: calc(50% + 98px); transform: translateX(-50%); font-size: 12px; color: #a6adc8; white-space: nowrap;"><b style="color: #cdd6f4;">Mara</b> staked her token between Rolling in the Deep (2011) and Uptown Funk (2015). Nobody else can bet this round.</div>
+
+      <!-- LIVE COUNTDOWN, floats well above the row -->
+      <div style="position: absolute; left: 50%; bottom: calc(50% + 148px); transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 6px;">
         <div class="timer-blink" style="font-family: 'Bungee', sans-serif; font-size: 28px; color: #e78284;">0:08</div>
         <div style="font-weight: 700; font-size: 11px; letter-spacing: 2px; color: #6c7086; text-transform: uppercase;">Betting closes</div>
       </div>
 
-      <!-- GUESS PILLS, below center -->
-      <div style="position: absolute; left: 50%; top: calc(50% + 195px); transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 12px;">
+      <!-- GUESS PILLS, further below, still active: guessing isn't betting -->
+      <div style="position: absolute; left: 50%; top: calc(50% + 148px); transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 12px;">
         <div style="display: flex; gap: 20px;">
           <div class="guess-pill">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#a6adc8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0;"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
@@ -177,12 +174,12 @@
 
     </div>
 
-    <!-- TOKEN PILE -->
-    <div style="position: absolute; right: 56px; bottom: 40px; display: flex; flex-direction: column; align-items: center; gap: 10px;">
+    <!-- TOKEN PILE: not glowing here, this viewer isn't the one betting -->
+    <div style="position: absolute; right: 56px; bottom: 40px; display: flex; flex-direction: column; align-items: center; gap: 10px; opacity: 0.6;">
       <div style="position: relative; width: 70px; height: 60px;">
         <div style="position: absolute; left: 10px; top: 6px; width: 46px; height: 46px; border-radius: 50%; background: #f9e2af; border: 3px solid #1e1e2e; box-shadow: 3px 3px 0 rgba(0,0,0,0.35); display: flex; align-items: center; justify-content: center; transform: rotate(-9deg); font-family: 'Bungee', sans-serif; font-size: 16px; color: #1e1e2e;">$</div>
       </div>
-      <div style="font-weight: 700; font-size: 11px; letter-spacing: 2px; color: #6c7086; text-transform: uppercase;">Your tokens</div>
+      <div style="font-weight: 700; font-size: 11px; letter-spacing: 2px; color: #6c7086; text-transform: uppercase;">Sitting out</div>
     </div>
 
   </div>
