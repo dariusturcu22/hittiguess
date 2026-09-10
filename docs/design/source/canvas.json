@@ -388,6 +388,42 @@
       "page": "page-1"
     },
     {
+      "file": "GroupLobbyTwoPlayersDark.dc.html",
+      "x": 3160,
+      "y": 25296,
+      "w": 1440,
+      "h": 900,
+      "title": "Group lobby, 2 players, dark",
+      "page": "page-1"
+    },
+    {
+      "file": "GroupLobbyEightPlayersDark.dc.html",
+      "x": 4740,
+      "y": 25296,
+      "w": 1440,
+      "h": 900,
+      "title": "Group lobby, 8 players, dark",
+      "page": "page-1"
+    },
+    {
+      "file": "GroupLobbySettingsDark.dc.html",
+      "x": 6320,
+      "y": 25296,
+      "w": 1440,
+      "h": 900,
+      "title": "Group lobby, settings popup open, dark",
+      "page": "page-1"
+    },
+    {
+      "file": "GroupLobbyChatDark.dc.html",
+      "x": 7900,
+      "y": 25296,
+      "w": 1440,
+      "h": 900,
+      "title": "Group lobby, chat popup open, dark",
+      "page": "page-1"
+    },
+    {
       "file": "GameSessionPlayerDark.dc.html",
       "x": 0,
       "y": 26356,
@@ -584,7 +620,7 @@
       "x": 0,
       "y": 25236,
       "w": 1400,
-      "text": "Gameplay, desktop only. A session has no fixed round count, it ends whenever the first player reaches the group's configured win-condition card count. Group lobby drops the card/panel look entirely: the join code sits centered and large with a copy-link action under it, members float around it in a fixed arrangement with a slow, subtle drift animation, not literal movement. The bottom bar holds four labeled buttons, start game, chat, and settings grouped together, leave lobby set apart on the right; settings and chat both open as a popup, not shown as their own state here yet, the settings content itself (playlist, DJ mode, cards-to-win) is unchanged from before. The voice sidebar shows the not-yet-joined state: existing participants listed with no mute/deafen/leave controls of your own, a dashed join-call circle trailing the list. Then the game session in its two views: player (timeline placement, the artist/title guess box available all turn, and betting, exactly one bet accepted per round, staking the bettor's own guessed placement, not a correct/incorrect vote) and DJ (song playback, always a link-out to the real YouTube page or app with the audio-sharing warning attached, plus the actual round-flow controls: pause, play, close, end turn, reveal gated until betting closes). Results/leaderboard shows the card-count ranking alongside the two session-long guess leaderboards once the game has ended.",
+      "text": "Gameplay, desktop only. A session has no fixed round count, it ends whenever the first player reaches the group's configured win-condition card count. Group lobby drops the card/panel look entirely: the join code sits centered and large with a copy-link action under it, members scatter around it at varied distances and angles, each tilted slightly, with a slow, subtle drift animation, not literal movement or a symmetric grid. Two more artboards show the same layout at 2 and at 8 players, since how it holds up at the group-size extremes matters more than the 4-player middle case alone. The bottom bar holds four labeled buttons, start game, chat, and settings grouped together, leave lobby set apart on the right; two further artboards show settings and chat each open as their own popup, settings as a centered modal over a dimmed lobby, chat as the semi-transparent bottom-left overlay GAME_DESIGN.md specs, reusing the same message-list pattern as the standalone Text chat overlay artboard. The voice sidebar shows the not-yet-joined state: existing participants listed with no mute/deafen/leave controls of your own, a dashed join-call circle trailing the list. Then the game session in its two views: player (timeline placement, the artist/title guess box available all turn, and betting, exactly one bet accepted per round, staking the bettor's own guessed placement, not a correct/incorrect vote) and DJ (song playback, always a link-out to the real YouTube page or app with the audio-sharing warning attached, plus the actual round-flow controls: pause, play, close, end turn, reveal gated until betting closes). Results/leaderboard shows the card-count ranking alongside the two session-long guess leaderboards once the game has ended.",
       "page": "page-1"
     },
     {

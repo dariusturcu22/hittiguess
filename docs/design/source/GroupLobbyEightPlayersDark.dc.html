@@ -23,10 +23,15 @@
     @keyframes driftA { 0%, 100% { transform: translate(0,0); } 33% { transform: translate(6px,-5px); } 66% { transform: translate(-5px,4px); } }
     @keyframes driftB { 0%, 100% { transform: translate(0,0); } 33% { transform: translate(-6px,4px); } 66% { transform: translate(5px,-6px); } }
     @keyframes driftC { 0%, 100% { transform: translate(0,0); } 40% { transform: translate(4px,6px); } 70% { transform: translate(-6px,-4px); } }
+    @keyframes driftD { 0%, 100% { transform: translate(0,0); } 35% { transform: translate(-5px,-5px); } 70% { transform: translate(6px,4px); } }
     .drift-a { animation: driftA 7s ease-in-out infinite; }
     .drift-b { animation: driftB 8s ease-in-out infinite; animation-delay: -1.2s; }
     .drift-c { animation: driftC 6.5s ease-in-out infinite; animation-delay: -2.6s; }
     .drift-d { animation: driftA 7.5s ease-in-out infinite reverse; animation-delay: -0.6s; }
+    .drift-e { animation: driftD 6.8s ease-in-out infinite; animation-delay: -3.4s; }
+    .drift-f { animation: driftB 7.2s ease-in-out infinite reverse; animation-delay: -1.8s; }
+    .drift-g { animation: driftC 8.2s ease-in-out infinite; animation-delay: -4.1s; }
+    .drift-h { animation: driftD 7.6s ease-in-out infinite reverse; animation-delay: -2.2s; }
   </style>
 </helmet>
 <div style="width: 1440px; height: 900px; box-sizing: border-box; background: #1e1e2e; display: flex; font-family: 'Space Grotesk', sans-serif;">
@@ -78,7 +83,7 @@
       </div>
     </div>
 
-    <!-- ORBIT -->
+    <!-- ORBIT: 8 players -->
     <div style="flex: 1; min-height: 0; position: relative;">
 
       <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); text-align: center;">
@@ -90,7 +95,7 @@
         </div>
       </div>
 
-      <div class="orbit-slot" style="top: calc(50% - 115px); left: calc(50% - 210px); transform: translate(-50%,-50%) rotate(-7deg);">
+      <div class="orbit-slot" style="top: calc(50% - 30px); left: calc(50% - 260px); transform: translate(-50%,-50%) rotate(-6deg);">
         <div class="drift-a">
           <div class="vavatar-wrap">
             <div style="position: relative;">
@@ -102,7 +107,7 @@
         </div>
       </div>
 
-      <div class="orbit-slot" style="top: calc(50% - 155px); left: calc(50% + 195px); transform: translate(-50%,-50%) rotate(5deg);">
+      <div class="orbit-slot" style="top: calc(50% - 165px); left: calc(50% - 190px); transform: translate(-50%,-50%) rotate(5deg);">
         <div class="drift-b">
           <div class="vavatar-wrap">
             <div class="vavatar" style="background: #89b4fa; width: 48px; height: 48px; font-size: 16px; box-shadow: 0 0 0 3px #1e1e2e, 0 0 0 5px #a6e3a1;">M</div>
@@ -111,7 +116,7 @@
         </div>
       </div>
 
-      <div class="orbit-slot" style="top: calc(50% + 145px); left: calc(50% - 165px); transform: translate(-50%,-50%) rotate(6deg);">
+      <div class="orbit-slot" style="top: calc(50% - 200px); left: calc(50% + 15px); transform: translate(-50%,-50%) rotate(-4deg);">
         <div class="drift-c">
           <div class="vavatar-wrap">
             <div class="vavatar" style="background: #f9e2af; width: 48px; height: 48px; font-size: 16px; box-shadow: 0 0 0 3px #1e1e2e, 0 0 0 5px #45475a;">T</div>
@@ -120,11 +125,47 @@
         </div>
       </div>
 
-      <div class="orbit-slot" style="top: calc(50% + 125px); left: calc(50% + 235px); transform: translate(-50%,-50%) rotate(-5deg);">
+      <div class="orbit-slot" style="top: calc(50% - 150px); left: calc(50% + 215px); transform: translate(-50%,-50%) rotate(6deg);">
         <div class="drift-d">
           <div class="vavatar-wrap">
             <div class="vavatar" style="background: #f5c2e7; width: 48px; height: 48px; font-size: 16px; box-shadow: 0 0 0 3px #1e1e2e, 0 0 0 5px #a6e3a1;">L</div>
             <div style="font-weight: 600; font-size: 12px; color: #cdd6f4; margin-top: 4px;">Lena</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="orbit-slot" style="top: calc(50% + 20px); left: calc(50% + 270px); transform: translate(-50%,-50%) rotate(-5deg);">
+        <div class="drift-e">
+          <div class="vavatar-wrap">
+            <div class="vavatar" style="background: #a6e3a1; width: 48px; height: 48px; font-size: 16px; box-shadow: 0 0 0 3px #1e1e2e, 0 0 0 5px #a6e3a1;">A</div>
+            <div style="font-weight: 600; font-size: 12px; color: #cdd6f4; margin-top: 4px;">Ana</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="orbit-slot" style="top: calc(50% + 165px); left: calc(50% + 185px); transform: translate(-50%,-50%) rotate(4deg);">
+        <div class="drift-f">
+          <div class="vavatar-wrap">
+            <div class="vavatar" style="background: #cba6f7; width: 48px; height: 48px; font-size: 16px; box-shadow: 0 0 0 3px #1e1e2e, 0 0 0 5px #a6e3a1;">K</div>
+            <div style="font-weight: 600; font-size: 12px; color: #cdd6f4; margin-top: 4px;">Kian</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="orbit-slot" style="top: calc(50% + 205px); left: calc(50% - 15px); transform: translate(-50%,-50%) rotate(-6deg);">
+        <div class="drift-g">
+          <div class="vavatar-wrap">
+            <div class="vavatar" style="background: #74c7ec; width: 48px; height: 48px; font-size: 16px; box-shadow: 0 0 0 3px #1e1e2e, 0 0 0 5px #a6e3a1;">N</div>
+            <div style="font-weight: 600; font-size: 12px; color: #cdd6f4; margin-top: 4px;">Noah</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="orbit-slot" style="top: calc(50% + 145px); left: calc(50% - 220px); transform: translate(-50%,-50%) rotate(5deg);">
+        <div class="drift-h">
+          <div class="vavatar-wrap">
+            <div class="vavatar" style="background: #eba0ac; width: 48px; height: 48px; font-size: 16px; box-shadow: 0 0 0 3px #1e1e2e, 0 0 0 5px #a6e3a1;">I</div>
+            <div style="font-weight: 600; font-size: 12px; color: #cdd6f4; margin-top: 4px;">Ivy</div>
           </div>
         </div>
       </div>
@@ -156,32 +197,39 @@
 
   <!-- RIGHT VOICE SIDEBAR, not yet joined -->
   <div style="width: 100px; flex-shrink: 0; background: #181825; border-left: 3px solid #313244; display: flex; flex-direction: column; align-items: center; padding: 22px 0 20px; box-sizing: border-box;">
-    <div style="display: flex; flex-direction: column; align-items: center; gap: 24px;">
+    <div class="custom-scroll" style="display: flex; flex-direction: column; align-items: center; gap: 20px; overflow-y: auto;">
       <div class="vavatar-wrap">
-        <div class="vavatar" style="background: #89b4fa;">M</div>
+        <div class="vavatar" style="background: #89b4fa; width: 46px; height: 46px;">M</div>
         <div class="vname">Mara</div>
       </div>
       <div class="vavatar-wrap">
-        <div style="position: relative; width: 52px; height: 52px;">
+        <div style="position: relative; width: 46px; height: 46px;">
           <div class="vavatar" style="background: #f9e2af; width: 100%; height: 100%;">T</div>
           <div style="position: absolute; inset: 0; border-radius: 50%; background: radial-gradient(circle, rgba(231,130,132,0.88) 0%, rgba(231,130,132,0.55) 65%, rgba(231,130,132,0.4) 100%); display: flex; align-items: center; justify-content: center;">
-            <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 5.12 2.12M15 9.34V4a3 3 0 0 0-5.94-.6"></path><path d="M19 10v2a7 7 0 0 1-.11 1.23"></path><path d="M5 10v2a7 7 0 0 0 7 7 6.94 6.94 0 0 0 3.11-.72"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 5.12 2.12M15 9.34V4a3 3 0 0 0-5.94-.6"></path><path d="M19 10v2a7 7 0 0 1-.11 1.23"></path><path d="M5 10v2a7 7 0 0 0 7 7 6.94 6.94 0 0 0 3.11-.72"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>
           </div>
         </div>
         <div class="vname" style="color: #e78284;">Theo</div>
       </div>
       <div class="vavatar-wrap">
-        <div class="vavatar" style="background: #f5c2e7;">L</div>
+        <div class="vavatar" style="background: #f5c2e7; width: 46px; height: 46px;">L</div>
         <div class="vname">Lena</div>
       </div>
+      <div class="vavatar-wrap">
+        <div class="vavatar" style="background: #a6e3a1; width: 46px; height: 46px;">A</div>
+        <div class="vname">Ana</div>
+      </div>
+      <div class="vavatar-wrap">
+        <div class="vavatar" style="background: #cba6f7; width: 46px; height: 46px;">K</div>
+        <div class="vname">Kian</div>
+      </div>
       <div class="vavatar-wrap" style="cursor: pointer;">
-        <div style="width: 52px; height: 52px; border-radius: 50%; border: 2px dashed #6c7086; display: flex; align-items: center; justify-content: center; color: #a6e3a1; box-sizing: border-box;">
-          <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path></svg>
+        <div style="width: 46px; height: 46px; border-radius: 50%; border: 2px dashed #6c7086; display: flex; align-items: center; justify-content: center; color: #a6e3a1; box-sizing: border-box;">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path></svg>
         </div>
         <div class="vname" style="color: #a6e3a1;">Join call</div>
       </div>
     </div>
-    <div style="flex: 1;"></div>
   </div>
 
 </div>

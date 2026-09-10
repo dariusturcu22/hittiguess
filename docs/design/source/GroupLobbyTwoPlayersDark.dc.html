@@ -22,11 +22,8 @@
     .orbit-slot { position: absolute; }
     @keyframes driftA { 0%, 100% { transform: translate(0,0); } 33% { transform: translate(6px,-5px); } 66% { transform: translate(-5px,4px); } }
     @keyframes driftB { 0%, 100% { transform: translate(0,0); } 33% { transform: translate(-6px,4px); } 66% { transform: translate(5px,-6px); } }
-    @keyframes driftC { 0%, 100% { transform: translate(0,0); } 40% { transform: translate(4px,6px); } 70% { transform: translate(-6px,-4px); } }
     .drift-a { animation: driftA 7s ease-in-out infinite; }
     .drift-b { animation: driftB 8s ease-in-out infinite; animation-delay: -1.2s; }
-    .drift-c { animation: driftC 6.5s ease-in-out infinite; animation-delay: -2.6s; }
-    .drift-d { animation: driftA 7.5s ease-in-out infinite reverse; animation-delay: -0.6s; }
   </style>
 </helmet>
 <div style="width: 1440px; height: 900px; box-sizing: border-box; background: #1e1e2e; display: flex; font-family: 'Space Grotesk', sans-serif;">
@@ -78,7 +75,7 @@
       </div>
     </div>
 
-    <!-- ORBIT -->
+    <!-- ORBIT: 2 players -->
     <div style="flex: 1; min-height: 0; position: relative;">
 
       <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); text-align: center;">
@@ -90,7 +87,7 @@
         </div>
       </div>
 
-      <div class="orbit-slot" style="top: calc(50% - 115px); left: calc(50% - 210px); transform: translate(-50%,-50%) rotate(-7deg);">
+      <div class="orbit-slot" style="top: calc(50% - 45px); left: calc(50% - 235px); transform: translate(-50%,-50%) rotate(-6deg);">
         <div class="drift-a">
           <div class="vavatar-wrap">
             <div style="position: relative;">
@@ -102,29 +99,11 @@
         </div>
       </div>
 
-      <div class="orbit-slot" style="top: calc(50% - 155px); left: calc(50% + 195px); transform: translate(-50%,-50%) rotate(5deg);">
+      <div class="orbit-slot" style="top: calc(50% + 90px); left: calc(50% + 225px); transform: translate(-50%,-50%) rotate(5deg);">
         <div class="drift-b">
           <div class="vavatar-wrap">
             <div class="vavatar" style="background: #89b4fa; width: 48px; height: 48px; font-size: 16px; box-shadow: 0 0 0 3px #1e1e2e, 0 0 0 5px #a6e3a1;">M</div>
             <div style="font-weight: 600; font-size: 12px; color: #cdd6f4; margin-top: 4px;">Mara</div>
-          </div>
-        </div>
-      </div>
-
-      <div class="orbit-slot" style="top: calc(50% + 145px); left: calc(50% - 165px); transform: translate(-50%,-50%) rotate(6deg);">
-        <div class="drift-c">
-          <div class="vavatar-wrap">
-            <div class="vavatar" style="background: #f9e2af; width: 48px; height: 48px; font-size: 16px; box-shadow: 0 0 0 3px #1e1e2e, 0 0 0 5px #45475a;">T</div>
-            <div style="font-weight: 600; font-size: 12px; color: #cdd6f4; margin-top: 4px;">Theo</div>
-          </div>
-        </div>
-      </div>
-
-      <div class="orbit-slot" style="top: calc(50% + 125px); left: calc(50% + 235px); transform: translate(-50%,-50%) rotate(-5deg);">
-        <div class="drift-d">
-          <div class="vavatar-wrap">
-            <div class="vavatar" style="background: #f5c2e7; width: 48px; height: 48px; font-size: 16px; box-shadow: 0 0 0 3px #1e1e2e, 0 0 0 5px #a6e3a1;">L</div>
-            <div style="font-weight: 600; font-size: 12px; color: #cdd6f4; margin-top: 4px;">Lena</div>
           </div>
         </div>
       </div>
@@ -160,19 +139,6 @@
       <div class="vavatar-wrap">
         <div class="vavatar" style="background: #89b4fa;">M</div>
         <div class="vname">Mara</div>
-      </div>
-      <div class="vavatar-wrap">
-        <div style="position: relative; width: 52px; height: 52px;">
-          <div class="vavatar" style="background: #f9e2af; width: 100%; height: 100%;">T</div>
-          <div style="position: absolute; inset: 0; border-radius: 50%; background: radial-gradient(circle, rgba(231,130,132,0.88) 0%, rgba(231,130,132,0.55) 65%, rgba(231,130,132,0.4) 100%); display: flex; align-items: center; justify-content: center;">
-            <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 5.12 2.12M15 9.34V4a3 3 0 0 0-5.94-.6"></path><path d="M19 10v2a7 7 0 0 1-.11 1.23"></path><path d="M5 10v2a7 7 0 0 0 7 7 6.94 6.94 0 0 0 3.11-.72"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>
-          </div>
-        </div>
-        <div class="vname" style="color: #e78284;">Theo</div>
-      </div>
-      <div class="vavatar-wrap">
-        <div class="vavatar" style="background: #f5c2e7;">L</div>
-        <div class="vname">Lena</div>
       </div>
       <div class="vavatar-wrap" style="cursor: pointer;">
         <div style="width: 52px; height: 52px; border-radius: 50%; border: 2px dashed #6c7086; display: flex; align-items: center; justify-content: center; color: #a6e3a1; box-sizing: border-box;">
