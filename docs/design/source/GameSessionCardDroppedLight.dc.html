@@ -28,11 +28,8 @@
     .guess-pill input::placeholder { color: #9ca0b0; }
     .guess-submit { width: 34px; height: 34px; border-radius: 50%; flex-shrink: 0; display: flex; align-items: center; justify-content: center; cursor: pointer; background: #ed6f27; }
 
-    @keyframes floatCard { 0%, 100% { transform: rotate(-3deg) translateY(0); } 50% { transform: rotate(-3deg) translateY(-8px); } }
-    .newcard-float { animation: floatCard 4.5s ease-in-out infinite; }
+    .btn-primary { font-family: 'Bungee', sans-serif; font-size: 13px; color: #ffffff; background: #ed6f27; padding: 13px 26px; border-radius: 100px; box-shadow: 4px 4px 0 rgba(76,79,105,0.3); box-sizing: border-box; cursor: pointer; display: inline-flex; align-items: center; gap: 9px; border: none; }
 
-    @keyframes toastIn { 0% { opacity: 0; transform: translate(16px, -6px); } 100% { opacity: 1; transform: translate(0, 0); } }
-    .toast { animation: toastIn 0.5s ease-out; }
   </style>
 </helmet>
 <div style="width: 1440px; height: 900px; box-sizing: border-box; background: #eff1f5; display: flex; font-family: 'Space Grotesk', sans-serif;">
@@ -71,16 +68,16 @@
   </div>
 
   <!-- MAIN CONTENT -->
-  <div style="flex: 1; min-width: 0; padding: 36px 56px 40px; box-sizing: border-box; background-image: radial-gradient(circle, rgba(76,79,105,0.2) 1.5px, transparent 1.5px); background-size: 22px 22px; display: flex; flex-direction: column; position: relative;">
+  <div style="flex: 1; min-width: 0; padding: 36px 56px 40px; box-sizing: border-box; background-image: radial-gradient(circle, rgba(76,79,105,0.2) 1.5px, transparent 1.5px); background-size: 22px 22px; display: flex; flex-direction: column; position: relative; overflow: hidden;">
 
     <!-- HEADER ROW -->
     <div style="display: flex; align-items: flex-start; justify-content: space-between; flex-shrink: 0;">
       <div>
         <div style="font-family: 'Bungee', sans-serif; font-size: 32px; color: #4c4f69; text-shadow: 3px 3px 0 rgba(76,79,105,0.25);">Round 4</div>
         <div style="display: flex; align-items: center; gap: 10px; margin-top: 8px;">
-          <div style="font-size: 12px; color: #9ca0b0;">First to 8 cards wins</div>
+          <div style="font-size: 12px; color: #9ca0b0;">You can still drag it to a different spot</div>
           <div style="width: 4px; height: 4px; border-radius: 50%; background: #9ca0b0;"></div>
-          <div style="font-family: 'Bungee', sans-serif; font-size: 12px; color: #ed6f27;">Your turn</div>
+          <div style="font-family: 'Bungee', sans-serif; font-size: 12px; color: #ed6f27;">Confirm your placement</div>
         </div>
       </div>
       <div style="display: inline-flex; align-items: center; gap: 10px; background: #ffffff; border: 2px solid #ccd0da; border-radius: 100px; padding: 8px 16px 8px 8px;">
@@ -91,23 +88,13 @@
       </div>
     </div>
 
-    <!-- TOAST NOTIFICATION -->
-    <div class="toast" style="position: absolute; top: 96px; right: 56px; display: flex; align-items: center; gap: 10px; background: #ffffff; border: 2px solid #ccd0da; border-radius: 16px; padding: 10px 16px; box-shadow: 4px 4px 0 rgba(76,79,105,0.2); box-sizing: border-box;">
-      <div class="vavatar" style="background: #3772e6; width: 32px; height: 32px; font-size: 12px;">M</div>
-      <div>
-        <div style="font-weight: 700; font-size: 12px; color: #4c4f69;">Mara guessed the artist</div>
-        <div style="font-size: 10px; color: #5c5f77; margin-top: 1px;">One artist down, more to find</div>
-      </div>
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#499f36" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
-    </div>
-
-    <!-- CENTER STAGE: the card row is pinned to the exact stage center; everything else is positioned off that fixed anchor, never off each other -->
+    <!-- CENTER STAGE -->
     <div style="flex: 1; min-height: 0; position: relative;">
 
-      <!-- TIMELINE ROW, pinned dead center regardless of anything else on screen -->
+      <!-- TIMELINE ROW, pinned dead center, settled flat, card resting in its slot. Masked and clipped so nothing paints over the sidebars. -->
       <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 1100px;">
         <div style="width: 100%; overflow: hidden; -webkit-mask-image: linear-gradient(90deg, transparent, #000 64px, #000 calc(100% - 64px), transparent); mask-image: linear-gradient(90deg, transparent, #000 64px, #000 calc(100% - 64px), transparent); display: flex; justify-content: center;">
-          <div style="display: flex; gap: 18px; cursor: grab;">
+          <div style="display: flex; align-items: center; gap: 18px;">
             <div class="tcard" style="background: #179299; color: #ffffff;">
               <div class="artist">Rolling Stones</div>
               <div class="year">1965</div>
@@ -143,6 +130,15 @@
               <div class="year">2019</div>
               <div class="title">Blinding Lights</div>
             </div>
+            <div style="width: 168px; height: 168px; border-radius: 22px; border: 5px solid #ccd0da; background: #ffffff; box-shadow: 6px 6px 0 rgba(76,79,105,0.25); box-sizing: border-box; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+              <div style="display: flex; align-items: center; gap: 8px; height: 60px;">
+                <div style="background: #499f36; width: 8px; border-radius: 100px; height: 26px;"></div>
+                <div style="background: #499f36; width: 8px; border-radius: 100px; height: 44px;"></div>
+                <div style="background: #499f36; width: 8px; border-radius: 100px; height: 32px;"></div>
+                <div style="background: #499f36; width: 8px; border-radius: 100px; height: 50px;"></div>
+                <div style="background: #499f36; width: 8px; border-radius: 100px; height: 30px;"></div>
+              </div>
+            </div>
             <div class="tcard" style="background: #d20f39; color: #ffffff;">
               <div class="artist">Harry Styles</div>
               <div class="year">2022</div>
@@ -163,48 +159,18 @@
         </div>
       </div>
 
-      <!-- TIMELINE LABEL, anchored just above the row -->
+      <!-- TIMELINE LABEL -->
       <div style="position: absolute; left: 50%; bottom: calc(50% + 98px); transform: translateX(-50%); font-weight: 700; font-size: 12px; letter-spacing: 3px; color: #9ca0b0; text-transform: uppercase;">Timeline</div>
 
-      <!-- NEW CARD: small, floats well above the row, never shifts it -->
-      <div style="position: absolute; left: 50%; bottom: calc(50% + 148px); transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 10px;">
-        <div style="font-weight: 700; font-size: 11px; letter-spacing: 2.5px; color: #ed6f27; text-transform: uppercase;">Your card</div>
-        <div class="newcard-float">
-          <div style="width: 128px; height: 128px; border-radius: 20px; border: 5px solid #ccd0da; background: #ffffff; box-shadow: 5px 5px 0 rgba(76,79,105,0.25); box-sizing: border-box; display: flex; align-items: center; justify-content: center;">
-            <div style="display: flex; align-items: center; gap: 6px; height: 46px;">
-              <div style="background: #499f36; width: 7px; border-radius: 100px; height: {{barA}};"></div>
-              <div style="background: #499f36; width: 7px; border-radius: 100px; height: {{barB}};"></div>
-              <div style="background: #499f36; width: 7px; border-radius: 100px; height: {{barC}};"></div>
-              <div style="background: #499f36; width: 7px; border-radius: 100px; height: {{barD}};"></div>
-              <div style="background: #499f36; width: 7px; border-radius: 100px; height: {{barE}};"></div>
-            </div>
-          </div>
-        </div>
-        <div style="display: flex; align-items: center; gap: 5px; color: #9ca0b0; font-size: 11px;">
-          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="19 12 12 19 5 12"></polyline><line x1="12" y1="19" x2="12" y2="5"></line></svg>
-          Drag onto the timeline
-        </div>
-      </div>
+      <!-- CAPTION -->
+      <div style="position: absolute; left: 50%; top: calc(50% + 98px); transform: translateX(-50%); font-size: 12px; color: #5c5f77; white-space: nowrap;">Placed between <b style="color: #4c4f69;">Blinding Lights</b> (2019) and <b style="color: #4c4f69;">As It Was</b> (2022)</div>
 
-      <!-- GUESS PILLS, below center, never shifts the timeline -->
-      <div style="position: absolute; left: 50%; top: calc(50% + 148px); transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 12px;">
-        <div style="display: flex; gap: 20px;">
-          <div class="guess-pill">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#5c5f77" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0;"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
-            <input type="text" placeholder="Guess the artist">
-            <div class="guess-submit">
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
-            </div>
-          </div>
-          <div class="guess-pill">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#5c5f77" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0;"><path d="M9 18V5l12-2v13"></path><circle cx="6" cy="18" r="3"></circle><circle cx="18" cy="16" r="3"></circle></svg>
-            <input type="text" placeholder="Guess the title">
-            <div class="guess-submit">
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
-            </div>
-          </div>
+      <!-- LOCK IN ACTION -->
+      <div style="position: absolute; left: 50%; top: calc(50% + 148px); transform: translateX(-50%);">
+        <div class="btn-primary">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="9" rx="2"></rect><path d="M8 11V8a4 4 0 0 1 8 0v3"></path></svg>
+          Lock in answer
         </div>
-        <div style="font-size: 11.5px; color: #9ca0b0;">Anyone can guess, anytime. Songs can credit more than one artist, so try them one at a time.</div>
       </div>
 
     </div>
@@ -230,9 +196,11 @@
 
     <!-- TOKEN PILE -->
     <div style="position: absolute; right: 56px; bottom: 40px; display: flex; flex-direction: column; align-items: center; gap: 10px;">
-      <div style="position: relative; width: 70px; height: 60px;">
-        <div style="position: absolute; left: 10px; top: 6px; width: 46px; height: 46px; border-radius: 50%; background: #d49032; border: 3px solid #4c4f69; box-shadow: 3px 3px 0 rgba(76,79,105,0.25); display: flex; align-items: center; justify-content: center; transform: rotate(-9deg); font-family: 'Bungee', sans-serif; font-size: 16px; color: #ffffff;">$</div>
-        <div style="position: absolute; left: 0; top: 0; width: 46px; height: 46px; border-radius: 50%; background: #d49032; border: 3px solid #4c4f69; box-shadow: 3px 3px 0 rgba(76,79,105,0.25); display: flex; align-items: center; justify-content: center; transform: rotate(7deg); font-family: 'Bungee', sans-serif; font-size: 16px; color: #ffffff;">$</div>
+      <div style="position: relative; width: 86px; height: 72px;">
+        <div style="position: absolute; left: 22px; top: 18px; width: 46px; height: 46px; border-radius: 50%; background: #d49032; border: 3px solid #4c4f69; box-shadow: 3px 3px 0 rgba(76,79,105,0.25); display: flex; align-items: center; justify-content: center; transform: rotate(10deg); font-family: 'Bungee', sans-serif; font-size: 16px; color: #ffffff;">$</div>
+        <div style="position: absolute; left: 4px; top: 12px; width: 46px; height: 46px; border-radius: 50%; background: #d49032; border: 3px solid #4c4f69; box-shadow: 3px 3px 0 rgba(76,79,105,0.25); display: flex; align-items: center; justify-content: center; transform: rotate(-11deg); font-family: 'Bungee', sans-serif; font-size: 16px; color: #ffffff;">$</div>
+        <div style="position: absolute; left: 18px; top: 2px; width: 46px; height: 46px; border-radius: 50%; background: #d49032; border: 3px solid #4c4f69; box-shadow: 3px 3px 0 rgba(76,79,105,0.25); display: flex; align-items: center; justify-content: center; transform: rotate(4deg); font-family: 'Bungee', sans-serif; font-size: 16px; color: #ffffff;">$</div>
+        <div style="position: absolute; left: 2px; top: -6px; width: 46px; height: 46px; border-radius: 50%; background: #d49032; border: 3px solid #4c4f69; box-shadow: 3px 3px 0 rgba(76,79,105,0.25); display: flex; align-items: center; justify-content: center; transform: rotate(-3deg); font-family: 'Bungee', sans-serif; font-size: 16px; color: #ffffff;">$</div>
       </div>
       <div style="font-weight: 700; font-size: 11px; letter-spacing: 2px; color: #9ca0b0; text-transform: uppercase;">Your tokens</div>
     </div>
@@ -286,32 +254,7 @@
 </div>
 </x-dc>
 <script data-dc-script data-props='{}'>
-class Component extends DCLogic {
-  componentDidMount() {
-    this.frame = 0;
-    this.timer = setInterval(() => {
-      this.frame += 1;
-      this.forceUpdate();
-    }, 110);
-  }
-  componentWillUnmount() {
-    clearInterval(this.timer);
-  }
-  renderVals() {
-    var frame = this.frame || 0;
-    var makeBarHeight = function (phase) {
-      var value = 16 + Math.round(13 * Math.sin(frame * 0.35 + phase));
-      return value + 'px';
-    };
-    return {
-      barA: makeBarHeight(0),
-      barB: makeBarHeight(1.3),
-      barC: makeBarHeight(2.6),
-      barD: makeBarHeight(3.9),
-      barE: makeBarHeight(5.2)
-    };
-  }
-}
+class Component extends DCLogic {}
 </script>
 </body>
 </html>

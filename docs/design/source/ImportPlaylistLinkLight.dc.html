@@ -1,0 +1,90 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bungee&family=Baloo+2:wght@700;800&family=Space+Grotesk:wght@400;500;600;700&display=swap">
+  <style>
+    body { margin: 0; }
+    .navicon { width: 46px; height: 46px; border-radius: 14px; display: flex; align-items: center; justify-content: center; cursor: pointer; color: #9ca0b0; }
+    .navicon.active { background: #8f4fe3; box-shadow: 3px 3px 0 rgba(76,79,105,0.3); color: #ffffff; }
+    .divider { width: 32px; height: 2px; background: #ccd0da; border-radius: 2px; margin: 14px auto; flex-shrink: 0; }
+    .field-block { width: 100%; margin-bottom: 22px; }
+    .field-label { font-size: 13px; font-weight: 600; color: #5c5f77; margin-bottom: 7px; display: block; }
+    .field-input { width: 100%; box-sizing: border-box; background: #eff1f5; border: 2px solid #ccd0da; border-radius: 13px; padding: 14px 16px; font-family: 'Space Grotesk', sans-serif; font-size: 14px; color: #4c4f69; }
+    .field-input::placeholder { color: #9ca0b0; }
+    .btn-auth { width: 100%; text-align: center; background: #ed6f27; color: #ffffff; font-family: 'Bungee', sans-serif; font-size: 15px; padding: 16px 0; border-radius: 100px; box-shadow: 4px 4px 0 rgba(76,79,105,0.3); box-sizing: border-box; cursor: pointer; border: none; display: flex; align-items: center; justify-content: center; gap: 9px; }
+  </style>
+</helmet>
+<div style="width: 1440px; height: 900px; background: #eff1f5; font-family: 'Space Grotesk', sans-serif; box-sizing: border-box; color: #4c4f69; display: flex; overflow: hidden; position: relative;">
+
+  <div style="width: 76px; flex-shrink: 0; background: #e6e9ef; display: flex; flex-direction: column; align-items: center; padding: 20px 0; box-sizing: border-box; border-right: 3px solid #ccd0da;">
+    <div style="display: flex; align-items: center; gap: 2px; height: 22px;">
+      <div style="background: #499f36; width: 5px; height: 10px; border-radius: 100px;"></div>
+      <div style="background: #499f36; width: 5px; height: 20px; border-radius: 100px;"></div>
+      <div style="background: #499f36; width: 5px; height: 14px; border-radius: 100px;"></div>
+      <div style="background: #499f36; width: 5px; height: 22px; border-radius: 100px;"></div>
+    </div>
+    <div class="divider"></div>
+    <div class="navicon" title="Play / start a session">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="#4c4f69"><path d="M8 5v14l11-7z"></path></svg>
+    </div>
+    <div class="divider"></div>
+    <div style="display: flex; flex-direction: column; gap: 14px;">
+      <div class="navicon active" title="Your playlists">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="6" x2="13" y2="6"></line><line x1="4" y1="12" x2="13" y2="12"></line><line x1="4" y1="18" x2="9" y2="18"></line><circle cx="18" cy="16" r="2.3"></circle><path d="M20.3 16V6.5l-2.8 1"></path></svg>
+      </div>
+      <div class="navicon" title="Explore public playlists">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"></circle><polygon points="15.5 8.5 13 13 8.5 15.5 11 11" fill="currentColor" stroke-linejoin="round"></polygon></svg>
+      </div>
+    </div>
+    <div class="divider"></div>
+    <div class="navicon" title="Group lobby">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+    </div>
+    <div style="flex: 1;"></div>
+    <div class="navicon" title="Theme">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.2" y1="4.2" x2="5.6" y2="5.6"></line><line x1="18.4" y1="18.4" x2="19.8" y2="19.8"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.2" y1="19.8" x2="5.6" y2="18.4"></line><line x1="18.4" y1="5.6" x2="19.8" y2="4.2"></line></svg>
+    </div>
+    <div style="height: 16px;"></div>
+    <div style="width: 44px; height: 44px; border-radius: 50%; background: #ed6f27; border: 2px solid #ccd0da; display: flex; align-items: center; justify-content: center; font-family: 'Bungee', sans-serif; font-size: 16px; color: #ffffff; cursor: pointer;">D</div>
+  </div>
+
+  <div style="flex: 1; box-sizing: border-box; background-image: radial-gradient(circle, rgba(76,79,105,0.2) 1.5px, transparent 1.5px); background-size: 22px 22px; padding: 60px 0; display: flex; align-items: center; justify-content: center;">
+
+    <div style="width: 560px; background: #ffffff; border: 3px solid #4c4f69; border-radius: 18px; box-shadow: 6px 6px 0 rgba(76,79,105,0.25); box-sizing: border-box; padding: 44px 48px 48px; display: flex; flex-direction: column; align-items: center;">
+
+      <div style="width: 84px; height: 84px; border-radius: 22px; background: rgba(210,15,57,0.1); display: flex; align-items: center; justify-content: center; margin-bottom: 22px;">
+        <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#d20f39" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="3"></rect><polygon points="10 8.5 16 12 10 15.5" fill="#d20f39" stroke="none"></polygon></svg>
+      </div>
+
+      <div style="width: 100%; font-family: 'Bungee', sans-serif; font-size: 24px; color: #d20f39; text-shadow: 3px 3px 0 #ccd0da; text-align: center; margin-bottom: 8px;">Import from YouTube</div>
+      <div style="font-size: 13px; color: #5c5f77; text-align: center; margin-bottom: 28px; line-height: 1.5;">Paste a playlist link. We'll list every song and fetch details for each one.</div>
+
+      <div class="field-block" style="margin-bottom: 28px;">
+        <label class="field-label">YouTube playlist link</label>
+        <input class="field-input" type="text" placeholder="https://youtube.com/playlist?list=...">
+      </div>
+
+      <button class="btn-auth">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14z"></path><path d="M21 21l-4.35-4.35"></path></svg>
+        Fetch playlist
+      </button>
+
+      <div style="font-size: 12px; color: #9ca0b0; margin-top: 18px; cursor: pointer;">‹ Back</div>
+
+    </div>
+
+  </div>
+
+</div>
+</x-dc>
+<script data-dc-script data-props='{}'>
+class Component extends DCLogic {}
+</script>
+</body>
+</html>

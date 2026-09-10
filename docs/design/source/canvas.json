@@ -674,6 +674,276 @@
       "h": 900,
       "title": "Admin: report review queue, dark",
       "page": "page-1"
+    },
+    {
+      "file": "AddNewSongLinkLight.dc.html",
+      "x": 1580,
+      "y": 14126,
+      "w": 1440,
+      "h": 900,
+      "title": "Add a new song, step 1 link, light",
+      "page": "page-1"
+    },
+    {
+      "file": "AddNewSongReviewLockedLight.dc.html",
+      "x": 1580,
+      "y": 15186,
+      "w": 1440,
+      "h": 900,
+      "title": "Add a new song, step 2 high confidence locked, light",
+      "page": "page-1"
+    },
+    {
+      "file": "AddNewSongReviewEditableLight.dc.html",
+      "x": 1580,
+      "y": 16246,
+      "w": 1440,
+      "h": 900,
+      "title": "Add a new song, step 2 needs review editable, light",
+      "page": "page-1"
+    },
+    {
+      "file": "EditSongDetailsLight.dc.html",
+      "x": 1580,
+      "y": 10846,
+      "w": 1440,
+      "h": 900,
+      "title": "Edit song details, light",
+      "page": "page-1"
+    },
+    {
+      "file": "SongDetailNeedsReviewLight.dc.html",
+      "x": 4740,
+      "y": 11906,
+      "w": 1440,
+      "h": 900,
+      "title": "Song detail, needs review (report + confirm), light",
+      "page": "page-1"
+    },
+    {
+      "file": "ImportChooseSourceLight.dc.html",
+      "x": 1580,
+      "y": 17306,
+      "w": 1440,
+      "h": 900,
+      "title": "Import playlist, choose source, light",
+      "page": "page-1"
+    },
+    {
+      "file": "ImportPlaylistLinkLight.dc.html",
+      "x": 1580,
+      "y": 18366,
+      "w": 1440,
+      "h": 900,
+      "title": "Import from YouTube, step 1 link, light",
+      "page": "page-1"
+    },
+    {
+      "file": "ImportPlaylistProcessingLight.dc.html",
+      "x": 1580,
+      "y": 19426,
+      "w": 1440,
+      "h": 900,
+      "title": "Import from YouTube, step 2 crawling, light",
+      "page": "page-1"
+    },
+    {
+      "file": "ImportFromPlaylistSelectLight.dc.html",
+      "x": 1580,
+      "y": 20486,
+      "w": 1440,
+      "h": 900,
+      "title": "Import from an existing playlist, step 1 select, light",
+      "page": "page-1"
+    },
+    {
+      "file": "ImportFromPlaylistConfirmLight.dc.html",
+      "x": 1580,
+      "y": 21546,
+      "w": 1440,
+      "h": 900,
+      "title": "Import from an existing playlist, step 2 confirm, light",
+      "page": "page-1"
+    },
+    {
+      "file": "ImportProgressLight.dc.html",
+      "x": 1040,
+      "y": 22606,
+      "w": 900,
+      "h": 370,
+      "title": "Import running in the background, sidebar icon and toast, light",
+      "page": "page-1"
+    },
+    {
+      "file": "AdminCatalogBacklogLight.dc.html",
+      "x": 3160,
+      "y": 31304,
+      "w": 1440,
+      "h": 900,
+      "title": "Admin: catalog backlog, light",
+      "page": "page-1"
+    },
+    {
+      "file": "AdminReportQueueLight.dc.html",
+      "x": 4740,
+      "y": 31304,
+      "w": 1440,
+      "h": 900,
+      "title": "Admin: report review queue, light",
+      "page": "page-1"
+    },
+    {
+      "file": "GroupLobbyTwoPlayersLight.dc.html",
+      "x": 9480,
+      "y": 25296,
+      "w": 1440,
+      "h": 900,
+      "title": "Group lobby, 2 players, light",
+      "page": "page-1"
+    },
+    {
+      "file": "GroupLobbyEightPlayersLight.dc.html",
+      "x": 11060,
+      "y": 25296,
+      "w": 1440,
+      "h": 900,
+      "title": "Group lobby, 8 players, light",
+      "page": "page-1"
+    },
+    {
+      "file": "GroupLobbySettingsLight.dc.html",
+      "x": 12640,
+      "y": 25296,
+      "w": 1440,
+      "h": 900,
+      "title": "Group lobby, settings popup open, light",
+      "page": "page-1"
+    },
+    {
+      "file": "GroupLobbyChatLight.dc.html",
+      "x": 14220,
+      "y": 25296,
+      "w": 1440,
+      "h": 900,
+      "title": "Group lobby, chat popup open, light",
+      "page": "page-1"
+    },
+    {
+      "file": "GameSessionRoundIntroLight.dc.html",
+      "x": 18960,
+      "y": 26356,
+      "w": 1440,
+      "h": 900,
+      "title": "Game session, round intro, DJ and first turn announced, light",
+      "page": "page-1"
+    },
+    {
+      "file": "GameSessionCardDraggingLight.dc.html",
+      "x": 20540,
+      "y": 26356,
+      "w": 1440,
+      "h": 900,
+      "title": "Game session, dragging the card onto the timeline, light",
+      "page": "page-1"
+    },
+    {
+      "file": "GameSessionCardDraggingSpectatorLight.dc.html",
+      "x": 22120,
+      "y": 26356,
+      "w": 1440,
+      "h": 900,
+      "title": "Game session, same moment, another player's view while it's being placed, light",
+      "page": "page-1"
+    },
+    {
+      "file": "GameSessionCardDroppedLight.dc.html",
+      "x": 23700,
+      "y": 26356,
+      "w": 1440,
+      "h": 900,
+      "title": "Game session, card dropped, awaiting lock in, light",
+      "page": "page-1"
+    },
+    {
+      "file": "GameSessionCardLockedLight.dc.html",
+      "x": 25280,
+      "y": 26356,
+      "w": 1440,
+      "h": 900,
+      "title": "Game session, card locked in, light",
+      "page": "page-1"
+    },
+    {
+      "file": "GameSessionBettingPrepLight.dc.html",
+      "x": 26860,
+      "y": 26356,
+      "w": 1440,
+      "h": 900,
+      "title": "Game session, betting countdown, active player's view, light",
+      "page": "page-1"
+    },
+    {
+      "file": "GameSessionBettingPrepTokenHolderLight.dc.html",
+      "x": 28440,
+      "y": 26356,
+      "w": 1440,
+      "h": 900,
+      "title": "Game session, same moment, a token holder positioning their bet during the countdown, light",
+      "page": "page-1"
+    },
+    {
+      "file": "GameSessionBettingActiveLight.dc.html",
+      "x": 30020,
+      "y": 26356,
+      "w": 1440,
+      "h": 900,
+      "title": "Game session, betting window open, active player's view, light",
+      "page": "page-1"
+    },
+    {
+      "file": "GameSessionBettingActiveTokenHolderLight.dc.html",
+      "x": 31600,
+      "y": 26356,
+      "w": 1440,
+      "h": 900,
+      "title": "Game session, same moment, a token holder's view during betting, light",
+      "page": "page-1"
+    },
+    {
+      "file": "GameSessionRevealLight.dc.html",
+      "x": 33180,
+      "y": 26356,
+      "w": 1440,
+      "h": 900,
+      "title": "Game session, reveal, light",
+      "page": "page-1"
+    },
+    {
+      "file": "ResultsTwoPlayersLight.dc.html",
+      "x": 6320,
+      "y": 28476,
+      "w": 1440,
+      "h": 900,
+      "title": "Results / leaderboard, 2 players, light",
+      "page": "page-1"
+    },
+    {
+      "file": "ResultsEightPlayersLight.dc.html",
+      "x": 7900,
+      "y": 28476,
+      "w": 1440,
+      "h": 900,
+      "title": "Results / leaderboard, 8 players, light",
+      "page": "page-1"
+    },
+    {
+      "file": "OAuth2RedirectLight.dc.html",
+      "x": 6320,
+      "y": 5080,
+      "w": 1440,
+      "h": 900,
+      "title": "OAuth2 redirect, light",
+      "page": "page-1"
     }
   ],
   "annotations": [
