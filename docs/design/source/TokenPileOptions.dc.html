@@ -1,0 +1,94 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bungee&family=Space+Grotesk:wght@500;700&display=swap">
+  <style>
+    body { margin: 0; }
+    a { color: #cdd6f4; }
+    .lbl { font-size: 13px; letter-spacing: 1.5px; text-transform: uppercase; color: #6c7086; margin-bottom: 20px; }
+    .row { display: flex; gap: 40px; align-items: flex-end; }
+    .slot { display: flex; flex-direction: column; align-items: center; gap: 14px; }
+    .count { font-family: 'Bungee', sans-serif; font-size: 13px; color: #a6adc8; }
+    .pile { position: relative; width: 90px; height: 90px; }
+    .token { position: absolute; width: 52px; height: 52px; border-radius: 50%; background: #f9e2af; border: 4px solid #1e1e2e; box-shadow: 4px 4px 0 rgba(0,0,0,0.35); display: flex; align-items: center; justify-content: center; font-family: 'Bungee', sans-serif; font-size: 17px; color: #1e1e2e; box-sizing: border-box; }
+    .empty-ring { width: 52px; height: 52px; border-radius: 50%; border: 3px dashed #45475a; box-sizing: border-box; }
+  </style>
+</helmet>
+<div style="width: 1100px; background: #dce0e8; font-family: 'Space Grotesk', sans-serif; box-sizing: border-box; padding: 44px; display: flex; flex-direction: column; gap: 32px;">
+
+  <div style="background: #1e1e2e; border-radius: 24px; padding: 40px; color: #cdd6f4;">
+    <div class="lbl">Token pile, by count. Same token everywhere, just stacked differently.</div>
+    <div class="row">
+
+      <div class="slot">
+        <div class="pile">
+          <div class="empty-ring" style="position: absolute; left: 19px; top: 19px;"></div>
+        </div>
+        <div class="count">0 tokens</div>
+      </div>
+
+      <div class="slot">
+        <div class="pile">
+          <div class="token" style="left: 19px; top: 19px; transform: rotate(-4deg);">$</div>
+        </div>
+        <div class="count">1 token</div>
+      </div>
+
+      <div class="slot">
+        <div class="pile">
+          <div class="token" style="left: 24px; top: 24px; transform: rotate(6deg);">$</div>
+          <div class="token" style="left: 10px; top: 12px; transform: rotate(-9deg);">$</div>
+        </div>
+        <div class="count">2 tokens</div>
+      </div>
+
+      <div class="slot">
+        <div class="pile">
+          <div class="token" style="left: 26px; top: 26px; transform: rotate(8deg);">$</div>
+          <div class="token" style="left: 12px; top: 16px; transform: rotate(-6deg);">$</div>
+          <div class="token" style="left: 20px; top: 4px; transform: rotate(2deg);">$</div>
+        </div>
+        <div class="count">3 tokens</div>
+      </div>
+
+      <div class="slot">
+        <div class="pile">
+          <div class="token" style="left: 28px; top: 30px; transform: rotate(10deg);">$</div>
+          <div class="token" style="left: 8px; top: 22px; transform: rotate(-11deg);">$</div>
+          <div class="token" style="left: 24px; top: 10px; transform: rotate(4deg);">$</div>
+          <div class="token" style="left: 6px; top: 2px; transform: rotate(-3deg);">$</div>
+        </div>
+        <div class="count">4 tokens</div>
+      </div>
+
+      <div class="slot">
+        <div class="pile">
+          <div class="token" style="left: 30px; top: 32px; transform: rotate(11deg);">$</div>
+          <div class="token" style="left: 6px; top: 26px; transform: rotate(-13deg);">$</div>
+          <div class="token" style="left: 26px; top: 12px; transform: rotate(5deg);">$</div>
+          <div class="token" style="left: 2px; top: 6px; transform: rotate(-4deg);">$</div>
+          <div class="token" style="left: 16px; top: -6px; transform: rotate(1deg);">$</div>
+        </div>
+        <div class="count">5 tokens</div>
+      </div>
+
+    </div>
+  </div>
+
+  <div style="font-size: 14px; color: #4c4f69; max-width: 900px; line-height: 1.6;">
+    Every count uses the same flat coin, 52px, thick dark border, hard offset shadow, a stacked $ mark. Zero tokens is an empty dashed ring, never a blank space, so it still reads as "your token spot" rather than missing UI. From one token on it's a loose scatter, each coin at its own small rotation, piling up toward the top-right as the count grows, never a neat grid and never sorted into a row. This is the same coin used for the corner "Your tokens" pile and for a staked bet sitting in a timeline gap, just placed differently depending on context.
+  </div>
+
+</div>
+</x-dc>
+<script data-dc-script data-props='{}'>
+class Component extends DCLogic {}
+</script>
+</body>
+</html>

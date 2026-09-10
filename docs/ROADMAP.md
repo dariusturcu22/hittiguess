@@ -20,6 +20,7 @@ No blockers among these, and none block each other. Includes both game-session i
 - Story 11: Real-time sync over WebSocket, build alongside stories 10 and 39; both need it functionally even though each is independently startable
 - Story 23: Song schema reconciliation, unlocks stories 18, 35, and coordinates with 15, 16, and 40
 - Story 15: Song/playlist relational fix, coordinate with story 23
+- Story 46: Playlist membership (owner/admin, per-member permissions, kick/ban, per-playlist join identity)
 - Story 16: pgvector-based duplicate detection
 - Story 25: Add Discogs as a metadata source
 - Story 14: Song search by link or keyword
@@ -47,6 +48,7 @@ No blockers among these, and none block each other. Includes both game-session i
 - Story 12: Voice chat, needs stories 11 and 39 actually built
 - Story 13: Group-scoped text chat, needs stories 11 and 39 actually built
 - Story 30: Difficulty-tuned game session generation, needs story 10's `Guess` entity accumulating real data
+- Story 45: Import songs from an existing playlist, needs story 15's join table
 - Story 28: UI redesign, implementation phase, wires the new visual system to the gameplay screens as stories 10/11/39 land
 
 ## Phase 3: Depends on Phase 2

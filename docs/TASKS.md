@@ -238,6 +238,44 @@ Tests:
 - [ ] Integration test: migrating existing data preserves each song's original playlist link
 - [ ] Integration test: a song in multiple playlists behaves correctly for access checks and the decided deletion semantics
 
+## Story 45: Import songs from an existing playlist
+
+Surfaced during story 28's design pass, not part of the original backlog mapping. Playlist detail already offers two ways to add content: search-and-add from the catalog (story 14) and importing a whole YouTube playlist (story 40's user-facing bulk import). This is a third, distinct path: copying songs directly from a playlist the player already has access to, owned, a member of, or published publicly, straight into the playlist they're editing. No metadata pipeline involvement, every song is already a resolved `Song` row, so the copy is instant rather than a fetch-and-verify flow.
+
+Blocked on story 15: today a `Song` belongs to exactly one playlist via a singular `@ManyToOne`, so "copying" a song into a second playlist has nowhere to attach without the join table story 15 introduces. Once that lands, this story is mostly wiring: pick a source playlist, link its songs' existing rows into the target playlist via the same join table.
+
+- [ ] Add an endpoint accepting a source playlist ID and a target playlist ID, validating the requester can read the source (owned, member, or `isPublic`, coordinate with story 30's access model) and can write to the target
+- [ ] Link every song from the source playlist into the target playlist via story 15's join table; skip songs already present in the target rather than erroring or duplicating the link
+- [ ] Add the frontend picker: choose a playlist from owned/joined/public, show a confirm step naming how many songs will be added (and how many are already present and will be skipped)
+- [ ] Since the copy is synchronous and immediate, no background-job or progress-tracking UI is needed for this path specifically, unlike story 40's YouTube-crawl import
+
+Tests:
+- [ ] Unit tests for the access check: a source playlist the requester can't read (not owned, not a member, not public) is rejected
+- [ ] Integration test: importing from a playlist with overlapping songs only links the ones not already in the target
+- [ ] Integration test: importing from a public playlist the requester neither owns nor is a member of succeeds
+
+## Story 46: Playlist membership: owner/admin, granular permissions, kick and ban, per-playlist identity
+
+Surfaced during story 28's design pass on the Edit playlist and Join by invite screens, not part of the original backlog mapping. Checked against real code: `Playlist.users` is a plain `@ManyToMany` with no per-member attributes and no owner/admin field anywhere on `Playlist`; joining today (`UserController`'s playlist-join endpoint) just adds the row, no per-playlist identity is captured. See `DECISIONS.md`'s 2026-09 "Playlist membership" entry for the decided shape.
+
+- [ ] Add an owner/admin concept to `Playlist`: an `ownerId` (or equivalent), set to the creator on creation; only the owner can rename, change cover/color/description, toggle `isPublic` (story 30), delete the playlist, or manage other members
+- [ ] Replace the plain `Playlist.users` many-to-many with a `PlaylistMembership` entity (playlist, user, `canRead`/`canWrite`/`canDelete` booleans, joined-at, per-playlist display name and avatar), coordinate with story 15 since both touch `Playlist`'s relations
+- [ ] Data migration for existing memberships: default all three grants to true, owner determined by whichever user the migration treats as creator (decide the exact rule against real data, today's schema has no creator field to read from)
+- [ ] Gate `PlaylistService`'s existing access checks by the new grants: reading requires `canRead`, adding a song requires `canWrite`, removing a song requires `canDelete`; an owner always has all three implicitly
+- [ ] Add owner-only endpoints to update a member's `canRead`/`canWrite`/`canDelete` grants independently, each revocable without affecting the others
+- [ ] Add a kick endpoint (owner only): ends the membership, the existing invite link or code still lets the kicked user rejoin
+- [ ] Add a `PlaylistBan` entity (playlist, user, banned-at) and a ban endpoint (owner only): ends the membership and blocks that user's future join attempts against this playlist
+- [ ] Update the join-by-invite endpoint to reject a banned user's join attempt, and to accept the per-playlist display name/avatar submitted with the join request, defaulting to the account's own when not overridden
+- [ ] Frontend: Edit playlist's member list (per-member read/write/delete toggles, kick and ban actions), owner-only, already designed
+- [ ] Frontend: Join by invite's identity step (avatar and display name, pre-filled from the account, editable before joining), already designed
+
+Tests:
+- [ ] Unit tests for the owner-only gate: every owner-only action (rename, cover/color/description, public toggle, delete, kick, ban, grant changes) rejects a non-owner member
+- [ ] Unit tests for each of the three grants enforced independently: a member with `canRead` false can't view, `canWrite` false can't add a song, `canDelete` false can't remove one, and combinations of the three don't interfere with each other
+- [ ] Unit tests for kick versus ban: a kicked user's subsequent join-by-invite succeeds, a banned user's is rejected
+- [ ] Integration test: full lifecycle, join with a custom per-playlist identity, owner revokes a grant, the affected action is blocked, owner kicks the member, the member rejoins successfully, owner bans a different member, that member's rejoin attempt is rejected
+- [ ] Integration test: the data migration assigns every existing membership full grants and a determinable owner, with no playlist left without one
+
 ## Story 14: Song search by link or keyword before submission
 
 Checked against real code: `SongRepository` has zero custom query methods, no backend search capability exists. The only "search" today is `DataTable`'s client-side substring filter over an already-loaded playlist's songs, not a real query.
@@ -305,6 +343,7 @@ Decided: how the alternate-YouTube-ID-to-`Song` mapping sequences against story 
 - [ ] Depends on story 24: run the three structured sources' fetches concurrently rather than sequentially for the on-the-spot path specifically, where a user is waiting on the result; the admin backlog drain has no such latency pressure and can stay sequential if that's simpler to build first
 - [ ] Coordinate with story 23: `metadataRaw` should persist the curated, actually-used subset of each source's response, not the full raw API response, Wikidata's own entity dumps alone ran into the tens of KB per song during this spike's testing; at that size the 500MB Supabase free-tier cap holds roughly 10,000-50,000 songs instead of 170,000+ with a curated version
 - [ ] Raw YouTube API Data specifically (a video's title, description, channel name) has its own constraint on top of the size one above: YouTube's Developer Policies (Section III.E.4) require non-authorized API Data to be deleted or refreshed within 30 calendar days, it can't be persisted indefinitely as-is. If any raw YouTube fields end up inside `metadataRaw`, they need their own refresh/delete cycle on that schedule; the derived facts (artist, title, release year, sourced from MusicBrainz/Discogs/Wikidata/Wikipedia) aren't YouTube API Data and aren't subject to this
+- [ ] Frontend, user-facing path only: the playlist-link crawl runs in the background rather than blocking the import screen. Leaving the screen doesn't cancel it: a temporary icon appears in the left sidebar (below Group lobby) while an import is active, and a toast appears once and fades after a few seconds; both reopen the import screen showing live per-song progress (raw YouTube title/channel updating in place to the resolved title, artist, and year as each one finishes). Surfaced during story 28's design pass. Story 45's from-an-existing-playlist path is synchronous and needs none of this
 
 Tests:
 - [ ] Unit tests for the admin-only access check, including a non-admin request rejected
@@ -317,6 +356,7 @@ Tests:
 - [ ] Unit tests for the artist/title verification trigger: a zero-match escalates to LLM extraction, a successful retry clears verification, a failed retry routes to manual review rather than auto-approving
 - [ ] Integration test: an on-the-spot song resolved by the fast tier gets re-enqueued into the admin backlog afterward, and later resolves through the patient pipeline without being skipped as already-done
 - [ ] Integration test: the backlog-drain job pauses while on-the-spot traffic is active and resumes once it clears, doesn't contend with on-the-spot requests for the same external rate-limit budget
+- [ ] Frontend test: leaving and reopening the import screen mid-crawl (via the sidebar icon or the toast) shows the same live progress, not a reset state
 
 ## Story 41: Submission content safety, non-music rejection and prompt-injection defense
 
@@ -522,10 +562,12 @@ Title cleaning changes as a result, superseding the AI microservice's current `p
 - [ ] Replace the single `songTag` enum with a multi-value `tags` relation, and update `SongMapper`'s default-to-`NONE` behavior in `toDTO`/`toEntity`, which won't map cleanly onto "no tags" vs. a tag literally named `NONE` once it's a collection
 - [ ] Data migration for existing rows: default `verificationStatus`
 - [ ] Update `SongDTO`, `CreateSongRequest`, `UpdateSongRequest`, `SongMapper`, and regenerate the frontend's orval client and song forms for the new shape
+- [ ] Gate the song-edit endpoint and the frontend edit action by `verificationStatus`, decided during story 28's design pass: only `MANUAL_ENTRY` songs stay editable; `VERIFIED` and `NEEDS_REVIEW` songs lose the edit action entirely, editing verified or LLM-reconciled data by hand undermines the trust tiers the pipeline already established. `VERIFIED`/`NEEDS_REVIEW` keep only the report action (and, `NEEDS_REVIEW` specifically, story 17's thumbs-up once it ships); a non-`MANUAL_ENTRY` edit attempt is rejected server-side, not just hidden client-side
 
 Tests:
 - [ ] Unit tests for the data migration: `verificationStatus` defaulted correctly for existing rows
 - [ ] Integration test: existing API responses (`SongDTO`) don't break for rows migrated from the old shape
+- [ ] Unit tests for the edit-access gate: a `MANUAL_ENTRY` song accepts an edit, `VERIFIED` and `NEEDS_REVIEW` reject one server-side regardless of frontend state
 
 ## Bug fixes
 

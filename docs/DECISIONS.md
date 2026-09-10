@@ -483,3 +483,35 @@ Decision: a song's Wikidata sitelinks count, already used as story 30's internat
 Why: sitelinks count is a real popularity proxy, a song covered by many language editions of Wikipedia is a widely-recognized one, and it's available the moment a song is verified, unlike the guess-based signals, which need real play history to exist first. Difficulty-based generation is meant to favor popular, recognizable tracks for its easy tier and only reach into the niche/underground catalog this project otherwise deliberately supports (`CLAUDE.md`) as the tier climbs, not treat every verified song the same regardless of how many people would actually recognize it.
 
 ---
+
+## 2026-09 | Song editing narrows to MANUAL_ENTRY once verificationStatus ships
+
+Decision: once story 23's `verificationStatus` field exists, editing a song's fields directly is restricted to `MANUAL_ENTRY` songs only. `VERIFIED` and `NEEDS_REVIEW` songs lose the edit action entirely and keep only the report affordance (`NEEDS_REVIEW` also keeps story 17's thumbs-up confirmation once that ships). Today's live Song Detail page, which has no `verificationStatus` field yet and lets any song's fields be edited, is unaffected until story 23 lands; this decision governs the shape editing takes once it does.
+
+Why: surfaced during story 28's design pass. `VERIFIED` data already went through source agreement or an admin's manual review, hand-editing it back out undermines the trust tier the pipeline just established; `NEEDS_REVIEW` data came from LLM reconciliation of real, if disagreeing, source data, correcting it by hand the same way a `MANUAL_ENTRY` song would skips the review process story 17 already defines for exactly this case. `MANUAL_ENTRY` is different in kind, a human guess with zero source corroboration, the least-trusted tier specifically because nothing else vouches for it, so it's the one tier where letting the submitter (or another member) fix it directly by hand is a real improvement rather than a bypass.
+
+---
+
+## 2026-09 | Import songs from an existing playlist, and its background-import UX, given their own scope
+
+Decision: two pieces of new scope surfaced during story 28's design pass, neither previously tracked. First, a third way to add songs to a playlist alongside search-and-add (story 14) and YouTube-playlist import (story 40): copying songs directly from a playlist the player already has access to (owned, a member of, or published publicly) into the one they're editing, instant, no metadata pipeline involved since every song is already a resolved catalog row. Given its own story, 45, blocked on story 15's song/playlist join table. Second, the background-import UX for story 40's YouTube-crawl path specifically: a temporary left-sidebar icon and a fading toast, both reopening the import screen with live progress, so leaving the screen doesn't cancel an in-progress crawl. Added as frontend tasks under story 40 rather than a new story, since it's UX for a capability story 40 already owns.
+
+Why: both were reasonable, wanted features once the design pass reached the "add songs to a playlist" screens, but CLAUDE.md's task gate means design work surfacing new scope gets written into the backlog before it's built, not folded silently into mockups with no corresponding story or task.
+
+---
+
+## 2026-09 | Playlist membership: owner/admin, granular permissions, kick versus ban, per-playlist identity
+
+Decision: a playlist gets a real owner/admin, today's `Playlist.users` many-to-many has no such concept. Only the owner can rename the playlist, change its cover/color/description, toggle it public, delete it, or manage other members. Each non-owner member holds three independently revocable grants: read, write (add songs), and delete (remove existing songs), not a single role. Removing a member is two distinct actions: kicking (membership ends, the invite link or code still lets them rejoin later) and banning (membership ends and rejoining is blocked outright). Separately, joining a playlist by invite prompts for a per-playlist display name and avatar, defaulting to the account's own but editable, the same pattern `GAME_DESIGN.md` already specifies for joining a group, now extended to playlists.
+
+Why: surfaced during story 28's design pass on the Edit playlist and Join by invite screens. Even read being revocable, not just write and delete, was a deliberate call: it lets an owner temporarily shut a member out without removing them from the playlist outright, distinct from a kick. Extending per-space identity to playlists mirrors the reasoning that already justified it for groups, playing under a different name or avatar with people who don't share every space, without conflating a playlist's own membership model with a game group's.
+
+---
+
+## 2026-09 | DJ holds no in-app round controls; reveal and turn advance run automatically
+
+Decision: the DJ's only in-app action is "Open YouTube Link." Pause, play, close, end turn, and reveal, all previously listed as DJ-only controls, are removed. Playback control happens entirely on the real YouTube page or app, not mirrored into the game. The round's own flow no longer waits on a DJ trigger anywhere: the betting countdown and window already run on their own timers once the active player locks in a placement, so reveal firing automatically once the betting window closes, and the active player role advancing automatically once scoring resolves, both fall out of timers the game already has running rather than needing a new one.
+
+Why: surfaced during story 28's design pass on the DJ view screen. Mirroring play/pause/close into the app duplicates controls the DJ already has open on the real YouTube tab for no benefit. End turn and reveal looked like they needed a manual trigger, but the betting window was already timed, closing it and firing the reveal off the same clock removes a step without changing when either happens.
+
+---

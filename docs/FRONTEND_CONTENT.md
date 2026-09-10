@@ -22,19 +22,38 @@ Authenticated. Data: the current user's playlists, each as a `PlaylistSummaryDTO
 
 ### Playlist detail (`/playlists/[playlistId]`)
 
-Authenticated, playlist-access-gated. Data: a `PlaylistDetailDTO`, name, color, invite code, song count, the full song list (each a `SongDTO`: artist, title, release year, YouTube ID, tag, country, who added it), and the member list (`UserSummaryDTO`s). States: empty (no songs yet), loaded, search-with-no-results (distinct message from the empty state, `ARCHIVE.md`'s QA-pass fixes). Actions: rename the playlist, change its color, add a song, open a song, remove a song, copy the invite link/code, search/filter songs by title (client-side today).
+Authenticated, playlist-access-gated. Data: a `PlaylistDetailDTO`, name, color, invite code, song count, the full song list (each a `SongDTO`: artist, title, release year, YouTube ID, tag, country, who added it), and the member list (`UserSummaryDTO`s). States: empty (no songs yet), loaded, search-with-no-results (distinct message from the empty state, `ARCHIVE.md`'s QA-pass fixes). Actions today: rename the playlist, change its color, add a song, open a song, remove a song, copy the invite link/code, search/filter songs by title (client-side today). Story 28's design pass moves rename/color-change into a dedicated Edit playlist screen rather than inline fields, and adds a second way to add content alongside Add song: Import playlist, covering both a YouTube-playlist crawl (story 40) and copying songs from another accessible playlist (story 45); see their own sections below.
 
 ### Song detail (`/playlists/[playlistId]/songs/[songId]`)
 
-Authenticated, playlist-access-gated. Data: a single `SongDTO`'s full fields, plus who added it. Actions: edit the song's fields, delete it from the playlist. Once story 17 ships, this view also needs a report affordance (available on every card regardless of `verificationStatus`) and, on `NEEDS_REVIEW`/`MANUAL_ENTRY` cards only, a thumbs-up confirmation affordance; not built yet, noted here so the eventual content addition isn't a surprise.
+Authenticated, playlist-access-gated. Data: a single `SongDTO`'s full fields, plus who added it. Actions today: edit the song's fields, delete it from the playlist. Once story 17 ships, this view also needs a report affordance (available on every card regardless of `verificationStatus`) and, on `NEEDS_REVIEW`/`MANUAL_ENTRY` cards only, a thumbs-up confirmation affordance. Once story 23's `verificationStatus` ships, editing narrows to `MANUAL_ENTRY` songs only, decided during story 28's design pass (see `DECISIONS.md`): `VERIFIED` and `NEEDS_REVIEW` songs lose the edit action and keep report (plus, for `NEEDS_REVIEW`, the thumbs-up) instead, routed to this same read-only view; `MANUAL_ENTRY` songs route to a separate, dedicated edit screen with the fields actually editable. None of this is built yet, noted here so the eventual content and permission changes aren't a surprise.
 
 ### Add song (`/playlists/[playlistId]/songs/add`)
 
-Authenticated, playlist-access-gated. Fields: YouTube link or ID, with a "get details" action that calls the metadata pipeline and pre-fills artist/title/release year/gradient colors/tag/country for the submitter to review and adjust before saving. States: idle, fetching, fetched-and-editable, error (a failed fetch surfaces a real error, not a silent no-op, `ARCHIVE.md`'s story-6 frontend fix).
+Authenticated, playlist-access-gated. Fields: YouTube link or ID, with a "get details" action that calls the metadata pipeline and pre-fills artist/title/release year/gradient colors/tag/country for the submitter to review and adjust before saving. States: idle, fetching, fetched-and-editable, error (a failed fetch surfaces a real error, not a silent no-op, `ARCHIVE.md`'s story-6 frontend fix). Story 28's design pass makes this a two-path screen: searching the existing catalog and queuing several matches at once (anticipating story 14, not built yet) as the primary path, with this link-and-fetch flow kept as a secondary "add a new song" path for tracks not already in the database.
 
 ### Join by invite (`/playlists/join/[inviteCode]`)
 
-Authenticated. No content beyond a brief in-progress state; on success, redirects into the newly-joined playlist. On failure, shows a real error rather than getting stuck (`ARCHIVE.md`'s QA-pass fix for the stuck-forever bug this route used to have).
+Authenticated. Today: no content beyond a brief in-progress state; on success, redirects into the newly-joined playlist. On failure, shows a real error rather than getting stuck (`ARCHIVE.md`'s QA-pass fix for the stuck-forever bug this route used to have). Once story 46 ships, this becomes a real preview screen first: the playlist's cover, name, song count, and a stacked-avatar preview of its members, plus an identity step (per-playlist display name and avatar, defaulting to the account's own, editable before joining) above the join action. A banned user's join attempt shows a real rejection instead of succeeding.
+
+## Planned playlist screens (not yet built)
+
+Surfaced during story 28's design pass, none of the following exist as frontend code today.
+
+### Explore public playlists
+
+Authenticated. Data: playlists published publicly (story 30's `isPublic` flag), each a `PlaylistSummaryDTO` plus its owner. States: empty, loaded. Actions: "Save" a public playlist into the current user's own library without becoming a member of it, distinct from "Join," which is for accepting an invite link and becoming a real member (Join by invite, above). Depends on story 30's `isPublic` flag and publish/unpublish endpoint.
+
+### Import playlist
+
+Reached from Playlist detail, a second way to add content alongside Add song. Two sources:
+
+- **From YouTube** (story 40's user-facing bulk import): paste a YouTube playlist link, then a per-song crawl, each row starting from the raw YouTube data (video title, channel name) and updating in place to the resolved title, artist, and year as it's processed. Runs in the background per story 40's background-import UX task: leaving the screen doesn't cancel it, a temporary sidebar icon and a fading toast both reopen it with live progress.
+- **From an existing playlist** (story 45): pick a playlist the player owns, is a member of, or that's published publicly, and every song copies over immediately, no fetching, since it's already a resolved catalog row. Synchronous, no background/progress state needed for this path.
+
+### Edit playlist
+
+Reached from Playlist detail, owner only (story 46). Data: cover image, name, title color (the same `color` field used elsewhere, not a separate cover color), description, `isPublic` (story 30), and the full member list, each member's `canRead`/`canWrite`/`canDelete` grants, and whether they're kicked/banned-eligible. Actions: change the cover (click-through on the cover itself, not a separate control), rename inline (pencil to edit, a save action beside it), pick a title color, edit the description, toggle public, save/cancel, delete the playlist. Member-row actions: toggle each of the three grants independently, kick (membership ends, can rejoin via invite), ban (membership ends, can't rejoin). Splits rename/color-change out of Playlist detail's inline fields into their own screen.
 
 ## Planned gameplay screens (not yet built)
 
@@ -50,7 +69,7 @@ Data: the active player's own timeline (ordered cards, each showing artist/title
 
 ### DJ view
 
-Data: the current song's real YouTube page or app link-out, not an embedded player. Actions, DJ only: "Open YouTube Link" (paired with the audio-sharing UI warning, story 9), pause, play, close the tab/app, end the current turn, reveal (only enabled once the betting window has closed). Non-DJ players never see this screen's playback controls at all, only the shared game UI.
+Data: the current song's real YouTube page or app link-out, not an embedded player. Actions, DJ only: "Open YouTube Link" (paired with the audio-sharing UI warning, story 9). That's the DJ's only action; there's no in-app pause, play, close, end-turn, or reveal, playback happens entirely on YouTube and the round's flow (betting countdown, reveal, advancing to the next player) runs automatically once the song's been opened. Non-DJ players see the same shared game UI, just without that link-out.
 
 ### Voice sidebar
 

@@ -48,15 +48,19 @@ YouTube URL
     ↓
 YouTube Data API, title, artist, channel info
     ↓
-Parallel: MusicBrainz, Discogs, Wikidata
+pgvector similarity check against existing verified songs
+    ↓ high-confidence match: reuse existing data, skip everything below
+Query MusicBrainz, Discogs, and Wikidata
     ↓
-pgvector similarity check, if a high-confidence match exists, skip the LLM call
+All three agree exactly?
+    yes → lock the year, no LLM call, verificationStatus VERIFIED
+    no  → fetch and extract Wikipedia (LLM reading-comprehension call),
+          reconcile all four sources (LLM call), verificationStatus NEEDS_REVIEW
+    none of the four has any data at all → verificationStatus MANUAL_ENTRY
     ↓
-LLM synthesis (Pydantic structured output), metadata response
+Confidence and status surfaced in the UI
     ↓
-Confidence gating, surfaced in the UI
-    ↓
-Core service stores the song as unverified
+Core service stores the song
 ```
 
 Quota note: YouTube's `search.list` costs 100 units per call against a 100-call default daily budget. `videos.list` costs 1 unit and batches up to 50 IDs per call. Resolving `(artist, title) → youtubeId` from a known ID avoids `search.list` entirely.
@@ -175,7 +179,7 @@ DJ and active player assigned for round 1
 DJ opens the real YouTube page (remote) or app (in-person)
 Other players hear the stream (remote) or the room (in-person), see game UI only
 Active player guesses; other players may bet after the guess locks
-Any player triggers reveal manually
+DJ triggers reveal manually, once the betting window closes
 Backend scores the round, updates tokens
 Next round: active player rotates, DJ follows the group's fixed or rotating setting
 Game ends when a player completes their timeline, or the session is abandoned after 10 minutes with zero connected players

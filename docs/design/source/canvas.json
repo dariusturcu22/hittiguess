@@ -1,0 +1,1049 @@
+{
+  "artboards": [
+    {
+      "file": "PlayfulCatppuccinDark.dc.html",
+      "x": 0,
+      "y": 0,
+      "w": 560,
+      "h": 760,
+      "title": "THE DECISION, dark",
+      "page": "page-1"
+    },
+    {
+      "file": "PlayfulCatppuccinLight.dc.html",
+      "x": 700,
+      "y": 0,
+      "w": 560,
+      "h": 760,
+      "title": "THE DECISION, light",
+      "page": "page-1"
+    },
+    {
+      "file": "CardOptions.dc.html",
+      "x": 1400,
+      "y": 0,
+      "w": 1000,
+      "h": 822,
+      "title": "Card design",
+      "page": "page-1"
+    },
+    {
+      "file": "TokenPileOptions.dc.html",
+      "x": 2520,
+      "y": 0,
+      "w": 1100,
+      "h": 720,
+      "title": "Token pile design, by count",
+      "page": "page-1"
+    },
+    {
+      "file": "NotificationOptions.dc.html",
+      "x": 3740,
+      "y": 0,
+      "w": 1180,
+      "h": 970,
+      "title": "Notification and badge design, by type",
+      "page": "page-1"
+    },
+    {
+      "file": "LandingDesktopDark.dc.html",
+      "x": 0,
+      "y": 1000,
+      "w": 1440,
+      "h": 2834,
+      "title": "Landing, desktop dark",
+      "page": "page-1"
+    },
+    {
+      "file": "LandingDesktopLight.dc.html",
+      "x": 1580,
+      "y": 1000,
+      "w": 1440,
+      "h": 2846,
+      "title": "Landing, desktop light",
+      "page": "page-1"
+    },
+    {
+      "file": "LandingMobileDark.dc.html",
+      "x": 3160,
+      "y": 1000,
+      "w": 390,
+      "h": 2725,
+      "title": "Landing, mobile dark",
+      "page": "page-1"
+    },
+    {
+      "file": "LandingMobileLight.dc.html",
+      "x": 3690,
+      "y": 1000,
+      "w": 390,
+      "h": 2737,
+      "title": "Landing, mobile light",
+      "page": "page-1"
+    },
+    {
+      "file": "AppShellDark.dc.html",
+      "x": 0,
+      "y": 4020,
+      "w": 1440,
+      "h": 900,
+      "title": "App shell, dark",
+      "page": "page-1"
+    },
+    {
+      "file": "AppShellLight.dc.html",
+      "x": 1580,
+      "y": 4020,
+      "w": 1440,
+      "h": 900,
+      "title": "App shell, light",
+      "page": "page-1"
+    },
+    {
+      "file": "LoginDark.dc.html",
+      "x": 0,
+      "y": 5080,
+      "w": 1440,
+      "h": 900,
+      "title": "Log in / create account, dark",
+      "page": "page-1"
+    },
+    {
+      "file": "RegisterDark.dc.html",
+      "x": 1580,
+      "y": 5080,
+      "w": 1440,
+      "h": 900,
+      "title": "Log in / create account (toggled), dark",
+      "page": "page-1"
+    },
+    {
+      "file": "ForgotPasswordDark.dc.html",
+      "x": 3160,
+      "y": 5080,
+      "w": 1440,
+      "h": 900,
+      "title": "Forgot password, dark",
+      "page": "page-1"
+    },
+    {
+      "file": "OAuth2RedirectDark.dc.html",
+      "x": 4740,
+      "y": 5080,
+      "w": 1440,
+      "h": 900,
+      "title": "OAuth2 redirect, dark",
+      "page": "page-1"
+    },
+    {
+      "file": "LoginLight.dc.html",
+      "x": 0,
+      "y": 6140,
+      "w": 1440,
+      "h": 860,
+      "title": "Log in / create account, light",
+      "page": "page-1"
+    },
+    {
+      "file": "RegisterLight.dc.html",
+      "x": 1580,
+      "y": 6140,
+      "w": 1440,
+      "h": 1010,
+      "title": "Log in / create account (toggled), light",
+      "page": "page-1"
+    },
+    {
+      "file": "ForgotPasswordLight.dc.html",
+      "x": 3160,
+      "y": 6140,
+      "w": 1440,
+      "h": 860,
+      "title": "Forgot password, light",
+      "page": "page-1"
+    },
+    {
+      "file": "YourPlaylistsDark.dc.html",
+      "x": 0,
+      "y": 7310,
+      "w": 1440,
+      "h": 900,
+      "title": "Your playlists, dark",
+      "page": "page-1"
+    },
+    {
+      "file": "YourPlaylistsLight.dc.html",
+      "x": 1580,
+      "y": 7310,
+      "w": 1440,
+      "h": 964,
+      "title": "Your playlists, light",
+      "page": "page-1"
+    },
+    {
+      "file": "ExplorePlaylistsDark.dc.html",
+      "x": 0,
+      "y": 8434,
+      "w": 1440,
+      "h": 900,
+      "title": "Explore public playlists, dark",
+      "page": "page-1"
+    },
+    {
+      "file": "ExplorePlaylistsLight.dc.html",
+      "x": 1580,
+      "y": 8434,
+      "w": 1440,
+      "h": 1192,
+      "title": "Explore public playlists, light",
+      "page": "page-1"
+    },
+    {
+      "file": "PlaylistDetailDark.dc.html",
+      "x": 0,
+      "y": 9786,
+      "w": 1440,
+      "h": 900,
+      "title": "Playlist detail, dark",
+      "page": "page-1"
+    },
+    {
+      "file": "PlaylistDetailLight.dc.html",
+      "x": 1580,
+      "y": 9786,
+      "w": 1440,
+      "h": 900,
+      "title": "Playlist detail, light",
+      "page": "page-1"
+    },
+    {
+      "file": "EditSongDetailsDark.dc.html",
+      "x": 0,
+      "y": 10846,
+      "w": 1440,
+      "h": 900,
+      "title": "Edit song details, dark",
+      "page": "page-1"
+    },
+    {
+      "file": "SongDetailDark.dc.html",
+      "x": 0,
+      "y": 11906,
+      "w": 1440,
+      "h": 900,
+      "title": "Song detail, dark",
+      "page": "page-1"
+    },
+    {
+      "file": "SongDetailLight.dc.html",
+      "x": 1580,
+      "y": 11906,
+      "w": 1440,
+      "h": 750,
+      "title": "Song detail, light",
+      "page": "page-1"
+    },
+    {
+      "file": "SongDetailNeedsReviewDark.dc.html",
+      "x": 3160,
+      "y": 11906,
+      "w": 1440,
+      "h": 900,
+      "title": "Song detail, needs review (report + confirm), dark",
+      "page": "page-1"
+    },
+    {
+      "file": "AddSongDark.dc.html",
+      "x": 0,
+      "y": 12966,
+      "w": 1440,
+      "h": 900,
+      "title": "Add songs, search and queue, dark",
+      "page": "page-1"
+    },
+    {
+      "file": "AddSongLight.dc.html",
+      "x": 1580,
+      "y": 12966,
+      "w": 1440,
+      "h": 1000,
+      "title": "Add songs, search and queue, light",
+      "page": "page-1"
+    },
+    {
+      "file": "AddNewSongLinkDark.dc.html",
+      "x": 0,
+      "y": 14126,
+      "w": 1440,
+      "h": 900,
+      "title": "Add a new song, step 1 link, dark",
+      "page": "page-1"
+    },
+    {
+      "file": "AddNewSongReviewLockedDark.dc.html",
+      "x": 0,
+      "y": 15186,
+      "w": 1440,
+      "h": 900,
+      "title": "Add a new song, step 2 high confidence locked, dark",
+      "page": "page-1"
+    },
+    {
+      "file": "AddNewSongReviewEditableDark.dc.html",
+      "x": 0,
+      "y": 16246,
+      "w": 1440,
+      "h": 900,
+      "title": "Add a new song, step 2 needs review editable, dark",
+      "page": "page-1"
+    },
+    {
+      "file": "ImportChooseSourceDark.dc.html",
+      "x": 0,
+      "y": 17306,
+      "w": 1440,
+      "h": 900,
+      "title": "Import playlist, choose source, dark",
+      "page": "page-1"
+    },
+    {
+      "file": "ImportPlaylistLinkDark.dc.html",
+      "x": 0,
+      "y": 18366,
+      "w": 1440,
+      "h": 900,
+      "title": "Import from YouTube, step 1 link, dark",
+      "page": "page-1"
+    },
+    {
+      "file": "ImportPlaylistProcessingDark.dc.html",
+      "x": 0,
+      "y": 19426,
+      "w": 1440,
+      "h": 900,
+      "title": "Import from YouTube, step 2 crawling, dark",
+      "page": "page-1"
+    },
+    {
+      "file": "ImportFromPlaylistSelectDark.dc.html",
+      "x": 0,
+      "y": 20486,
+      "w": 1440,
+      "h": 900,
+      "title": "Import from an existing playlist, step 1 select, dark",
+      "page": "page-1"
+    },
+    {
+      "file": "ImportFromPlaylistConfirmDark.dc.html",
+      "x": 0,
+      "y": 21546,
+      "w": 1440,
+      "h": 900,
+      "title": "Import from an existing playlist, step 2 confirm, dark",
+      "page": "page-1"
+    },
+    {
+      "file": "ImportProgressDark.dc.html",
+      "x": 0,
+      "y": 22606,
+      "w": 900,
+      "h": 370,
+      "title": "Import running in the background, sidebar icon and toast, dark",
+      "page": "page-1"
+    },
+    {
+      "file": "EditPlaylistDark.dc.html",
+      "x": 0,
+      "y": 23136,
+      "w": 1440,
+      "h": 900,
+      "title": "Edit playlist, dark",
+      "page": "page-1"
+    },
+    {
+      "file": "EditPlaylistLight.dc.html",
+      "x": 1580,
+      "y": 23136,
+      "w": 1440,
+      "h": 940,
+      "title": "Edit playlist, light",
+      "page": "page-1"
+    },
+    {
+      "file": "JoinInviteDark.dc.html",
+      "x": 0,
+      "y": 24236,
+      "w": 1440,
+      "h": 900,
+      "title": "Join by invite, dark",
+      "page": "page-1"
+    },
+    {
+      "file": "JoinInviteLight.dc.html",
+      "x": 1580,
+      "y": 24236,
+      "w": 1440,
+      "h": 900,
+      "title": "Join by invite, light",
+      "page": "page-1"
+    },
+    {
+      "file": "GroupLobbyDark.dc.html",
+      "x": 0,
+      "y": 25296,
+      "w": 1440,
+      "h": 900,
+      "title": "Group lobby, dark",
+      "page": "page-1"
+    },
+    {
+      "file": "GroupLobbyLight.dc.html",
+      "x": 1580,
+      "y": 25296,
+      "w": 1440,
+      "h": 860,
+      "title": "Group lobby, light",
+      "page": "page-1"
+    },
+    {
+      "file": "GroupLobbyTwoPlayersDark.dc.html",
+      "x": 3160,
+      "y": 25296,
+      "w": 1440,
+      "h": 900,
+      "title": "Group lobby, 2 players, dark",
+      "page": "page-1"
+    },
+    {
+      "file": "GroupLobbyEightPlayersDark.dc.html",
+      "x": 4740,
+      "y": 25296,
+      "w": 1440,
+      "h": 900,
+      "title": "Group lobby, 8 players, dark",
+      "page": "page-1"
+    },
+    {
+      "file": "GroupLobbySettingsDark.dc.html",
+      "x": 6320,
+      "y": 25296,
+      "w": 1440,
+      "h": 900,
+      "title": "Group lobby, settings popup open, dark",
+      "page": "page-1"
+    },
+    {
+      "file": "GroupLobbyChatDark.dc.html",
+      "x": 7900,
+      "y": 25296,
+      "w": 1440,
+      "h": 900,
+      "title": "Group lobby, chat popup open, dark",
+      "page": "page-1"
+    },
+    {
+      "file": "GameSessionRoundIntroDark.dc.html",
+      "x": 0,
+      "y": 26356,
+      "w": 1440,
+      "h": 900,
+      "title": "Game session, round intro, DJ and first turn announced, dark",
+      "page": "page-1"
+    },
+    {
+      "file": "GameSessionPlayerDark.dc.html",
+      "x": 1580,
+      "y": 26356,
+      "w": 1440,
+      "h": 900,
+      "title": "Game session, player view, unplaced card, dark",
+      "page": "page-1"
+    },
+    {
+      "file": "GameSessionCardDraggingDark.dc.html",
+      "x": 3160,
+      "y": 26356,
+      "w": 1440,
+      "h": 900,
+      "title": "Game session, dragging the card onto the timeline, dark",
+      "page": "page-1"
+    },
+    {
+      "file": "GameSessionCardDraggingSpectatorDark.dc.html",
+      "x": 4740,
+      "y": 26356,
+      "w": 1440,
+      "h": 900,
+      "title": "Game session, same moment, another player's view while it's being placed, dark",
+      "page": "page-1"
+    },
+    {
+      "file": "GameSessionCardDroppedDark.dc.html",
+      "x": 6320,
+      "y": 26356,
+      "w": 1440,
+      "h": 900,
+      "title": "Game session, card dropped, awaiting lock in, dark",
+      "page": "page-1"
+    },
+    {
+      "file": "GameSessionCardLockedDark.dc.html",
+      "x": 7900,
+      "y": 26356,
+      "w": 1440,
+      "h": 900,
+      "title": "Game session, card locked in, dark",
+      "page": "page-1"
+    },
+    {
+      "file": "GameSessionBettingPrepDark.dc.html",
+      "x": 9480,
+      "y": 26356,
+      "w": 1440,
+      "h": 900,
+      "title": "Game session, betting countdown, active player's view, dark",
+      "page": "page-1"
+    },
+    {
+      "file": "GameSessionBettingPrepTokenHolderDark.dc.html",
+      "x": 11060,
+      "y": 26356,
+      "w": 1440,
+      "h": 900,
+      "title": "Game session, same moment, a token holder positioning their bet during the countdown, dark",
+      "page": "page-1"
+    },
+    {
+      "file": "GameSessionBettingActiveDark.dc.html",
+      "x": 12640,
+      "y": 26356,
+      "w": 1440,
+      "h": 900,
+      "title": "Game session, betting window open, active player's view, dark",
+      "page": "page-1"
+    },
+    {
+      "file": "GameSessionBettingActiveTokenHolderDark.dc.html",
+      "x": 14220,
+      "y": 26356,
+      "w": 1440,
+      "h": 900,
+      "title": "Game session, same moment, a token holder's view during betting, dark",
+      "page": "page-1"
+    },
+    {
+      "file": "GameSessionRevealDark.dc.html",
+      "x": 15800,
+      "y": 26356,
+      "w": 1440,
+      "h": 900,
+      "title": "Game session, reveal, dark",
+      "page": "page-1"
+    },
+    {
+      "file": "GameSessionPlayerLight.dc.html",
+      "x": 17380,
+      "y": 26356,
+      "w": 1440,
+      "h": 700,
+      "title": "Game session, player view light",
+      "page": "page-1"
+    },
+    {
+      "file": "GameSessionDJDark.dc.html",
+      "x": 0,
+      "y": 27416,
+      "w": 1440,
+      "h": 900,
+      "title": "Game session, DJ view dark",
+      "page": "page-1"
+    },
+    {
+      "file": "GameSessionDJLight.dc.html",
+      "x": 1580,
+      "y": 27416,
+      "w": 1440,
+      "h": 900,
+      "title": "Game session, DJ view light",
+      "page": "page-1"
+    },
+    {
+      "file": "ResultsDark.dc.html",
+      "x": 0,
+      "y": 28476,
+      "w": 1440,
+      "h": 900,
+      "title": "Results / leaderboard, dark",
+      "page": "page-1"
+    },
+    {
+      "file": "ResultsLight.dc.html",
+      "x": 1580,
+      "y": 28476,
+      "w": 1440,
+      "h": 900,
+      "title": "Results / leaderboard, light",
+      "page": "page-1"
+    },
+    {
+      "file": "ResultsTwoPlayersDark.dc.html",
+      "x": 3160,
+      "y": 28476,
+      "w": 1440,
+      "h": 900,
+      "title": "Results / leaderboard, 2 players, dark",
+      "page": "page-1"
+    },
+    {
+      "file": "ResultsEightPlayersDark.dc.html",
+      "x": 4740,
+      "y": 28476,
+      "w": 1440,
+      "h": 900,
+      "title": "Results / leaderboard, 8 players, dark",
+      "page": "page-1"
+    },
+    {
+      "file": "TurnNotificationDark.dc.html",
+      "x": 0,
+      "y": 29536,
+      "w": 800,
+      "h": 230,
+      "title": "Turn notification banner, dark",
+      "page": "page-1"
+    },
+    {
+      "file": "TurnNotificationLight.dc.html",
+      "x": 1580,
+      "y": 29536,
+      "w": 800,
+      "h": 230,
+      "title": "Turn notification banner, light",
+      "page": "page-1"
+    },
+    {
+      "file": "AwayWidgetDark.dc.html",
+      "x": 0,
+      "y": 29926,
+      "w": 600,
+      "h": 400,
+      "title": "Playing while away widget, dark",
+      "page": "page-1"
+    },
+    {
+      "file": "AwayWidgetLight.dc.html",
+      "x": 1580,
+      "y": 29926,
+      "w": 600,
+      "h": 400,
+      "title": "Playing while away widget, light",
+      "page": "page-1"
+    },
+    {
+      "file": "TextChatOverlayDark.dc.html",
+      "x": 0,
+      "y": 30486,
+      "w": 450,
+      "h": 658,
+      "title": "Text chat overlay, dark",
+      "page": "page-1"
+    },
+    {
+      "file": "TextChatOverlayLight.dc.html",
+      "x": 1580,
+      "y": 30486,
+      "w": 450,
+      "h": 658,
+      "title": "Text chat overlay, light",
+      "page": "page-1"
+    },
+    {
+      "file": "AdminCatalogBacklogDark.dc.html",
+      "x": 0,
+      "y": 31304,
+      "w": 1440,
+      "h": 900,
+      "title": "Admin: catalog backlog, dark",
+      "page": "page-1"
+    },
+    {
+      "file": "AdminReportQueueDark.dc.html",
+      "x": 1580,
+      "y": 31304,
+      "w": 1440,
+      "h": 900,
+      "title": "Admin: report review queue, dark",
+      "page": "page-1"
+    },
+    {
+      "file": "AddNewSongLinkLight.dc.html",
+      "x": 1580,
+      "y": 14126,
+      "w": 1440,
+      "h": 900,
+      "title": "Add a new song, step 1 link, light",
+      "page": "page-1"
+    },
+    {
+      "file": "AddNewSongReviewLockedLight.dc.html",
+      "x": 1580,
+      "y": 15186,
+      "w": 1440,
+      "h": 900,
+      "title": "Add a new song, step 2 high confidence locked, light",
+      "page": "page-1"
+    },
+    {
+      "file": "AddNewSongReviewEditableLight.dc.html",
+      "x": 1580,
+      "y": 16246,
+      "w": 1440,
+      "h": 900,
+      "title": "Add a new song, step 2 needs review editable, light",
+      "page": "page-1"
+    },
+    {
+      "file": "EditSongDetailsLight.dc.html",
+      "x": 1580,
+      "y": 10846,
+      "w": 1440,
+      "h": 900,
+      "title": "Edit song details, light",
+      "page": "page-1"
+    },
+    {
+      "file": "SongDetailNeedsReviewLight.dc.html",
+      "x": 4740,
+      "y": 11906,
+      "w": 1440,
+      "h": 900,
+      "title": "Song detail, needs review (report + confirm), light",
+      "page": "page-1"
+    },
+    {
+      "file": "ImportChooseSourceLight.dc.html",
+      "x": 1580,
+      "y": 17306,
+      "w": 1440,
+      "h": 900,
+      "title": "Import playlist, choose source, light",
+      "page": "page-1"
+    },
+    {
+      "file": "ImportPlaylistLinkLight.dc.html",
+      "x": 1580,
+      "y": 18366,
+      "w": 1440,
+      "h": 900,
+      "title": "Import from YouTube, step 1 link, light",
+      "page": "page-1"
+    },
+    {
+      "file": "ImportPlaylistProcessingLight.dc.html",
+      "x": 1580,
+      "y": 19426,
+      "w": 1440,
+      "h": 900,
+      "title": "Import from YouTube, step 2 crawling, light",
+      "page": "page-1"
+    },
+    {
+      "file": "ImportFromPlaylistSelectLight.dc.html",
+      "x": 1580,
+      "y": 20486,
+      "w": 1440,
+      "h": 900,
+      "title": "Import from an existing playlist, step 1 select, light",
+      "page": "page-1"
+    },
+    {
+      "file": "ImportFromPlaylistConfirmLight.dc.html",
+      "x": 1580,
+      "y": 21546,
+      "w": 1440,
+      "h": 900,
+      "title": "Import from an existing playlist, step 2 confirm, light",
+      "page": "page-1"
+    },
+    {
+      "file": "ImportProgressLight.dc.html",
+      "x": 1040,
+      "y": 22606,
+      "w": 900,
+      "h": 370,
+      "title": "Import running in the background, sidebar icon and toast, light",
+      "page": "page-1"
+    },
+    {
+      "file": "AdminCatalogBacklogLight.dc.html",
+      "x": 3160,
+      "y": 31304,
+      "w": 1440,
+      "h": 900,
+      "title": "Admin: catalog backlog, light",
+      "page": "page-1"
+    },
+    {
+      "file": "AdminReportQueueLight.dc.html",
+      "x": 4740,
+      "y": 31304,
+      "w": 1440,
+      "h": 900,
+      "title": "Admin: report review queue, light",
+      "page": "page-1"
+    },
+    {
+      "file": "GroupLobbyTwoPlayersLight.dc.html",
+      "x": 9480,
+      "y": 25296,
+      "w": 1440,
+      "h": 900,
+      "title": "Group lobby, 2 players, light",
+      "page": "page-1"
+    },
+    {
+      "file": "GroupLobbyEightPlayersLight.dc.html",
+      "x": 11060,
+      "y": 25296,
+      "w": 1440,
+      "h": 900,
+      "title": "Group lobby, 8 players, light",
+      "page": "page-1"
+    },
+    {
+      "file": "GroupLobbySettingsLight.dc.html",
+      "x": 12640,
+      "y": 25296,
+      "w": 1440,
+      "h": 900,
+      "title": "Group lobby, settings popup open, light",
+      "page": "page-1"
+    },
+    {
+      "file": "GroupLobbyChatLight.dc.html",
+      "x": 14220,
+      "y": 25296,
+      "w": 1440,
+      "h": 900,
+      "title": "Group lobby, chat popup open, light",
+      "page": "page-1"
+    },
+    {
+      "file": "GameSessionRoundIntroLight.dc.html",
+      "x": 18960,
+      "y": 26356,
+      "w": 1440,
+      "h": 900,
+      "title": "Game session, round intro, DJ and first turn announced, light",
+      "page": "page-1"
+    },
+    {
+      "file": "GameSessionCardDraggingLight.dc.html",
+      "x": 20540,
+      "y": 26356,
+      "w": 1440,
+      "h": 900,
+      "title": "Game session, dragging the card onto the timeline, light",
+      "page": "page-1"
+    },
+    {
+      "file": "GameSessionCardDraggingSpectatorLight.dc.html",
+      "x": 22120,
+      "y": 26356,
+      "w": 1440,
+      "h": 900,
+      "title": "Game session, same moment, another player's view while it's being placed, light",
+      "page": "page-1"
+    },
+    {
+      "file": "GameSessionCardDroppedLight.dc.html",
+      "x": 23700,
+      "y": 26356,
+      "w": 1440,
+      "h": 900,
+      "title": "Game session, card dropped, awaiting lock in, light",
+      "page": "page-1"
+    },
+    {
+      "file": "GameSessionCardLockedLight.dc.html",
+      "x": 25280,
+      "y": 26356,
+      "w": 1440,
+      "h": 900,
+      "title": "Game session, card locked in, light",
+      "page": "page-1"
+    },
+    {
+      "file": "GameSessionBettingPrepLight.dc.html",
+      "x": 26860,
+      "y": 26356,
+      "w": 1440,
+      "h": 900,
+      "title": "Game session, betting countdown, active player's view, light",
+      "page": "page-1"
+    },
+    {
+      "file": "GameSessionBettingPrepTokenHolderLight.dc.html",
+      "x": 28440,
+      "y": 26356,
+      "w": 1440,
+      "h": 900,
+      "title": "Game session, same moment, a token holder positioning their bet during the countdown, light",
+      "page": "page-1"
+    },
+    {
+      "file": "GameSessionBettingActiveLight.dc.html",
+      "x": 30020,
+      "y": 26356,
+      "w": 1440,
+      "h": 900,
+      "title": "Game session, betting window open, active player's view, light",
+      "page": "page-1"
+    },
+    {
+      "file": "GameSessionBettingActiveTokenHolderLight.dc.html",
+      "x": 31600,
+      "y": 26356,
+      "w": 1440,
+      "h": 900,
+      "title": "Game session, same moment, a token holder's view during betting, light",
+      "page": "page-1"
+    },
+    {
+      "file": "GameSessionRevealLight.dc.html",
+      "x": 33180,
+      "y": 26356,
+      "w": 1440,
+      "h": 900,
+      "title": "Game session, reveal, light",
+      "page": "page-1"
+    },
+    {
+      "file": "ResultsTwoPlayersLight.dc.html",
+      "x": 6320,
+      "y": 28476,
+      "w": 1440,
+      "h": 900,
+      "title": "Results / leaderboard, 2 players, light",
+      "page": "page-1"
+    },
+    {
+      "file": "ResultsEightPlayersLight.dc.html",
+      "x": 7900,
+      "y": 28476,
+      "w": 1440,
+      "h": 900,
+      "title": "Results / leaderboard, 8 players, light",
+      "page": "page-1"
+    },
+    {
+      "file": "OAuth2RedirectLight.dc.html",
+      "x": 6320,
+      "y": 5080,
+      "w": 1440,
+      "h": 900,
+      "title": "OAuth2 redirect, light",
+      "page": "page-1"
+    }
+  ],
+  "annotations": [
+    {
+      "id": "reference-note",
+      "x": 0,
+      "y": -60,
+      "w": 1300,
+      "text": "Reference: the settled visual decision, card design, token pile design, and notification/badge design.",
+      "page": "page-1"
+    },
+    {
+      "id": "overview-note",
+      "x": 0,
+      "y": 940,
+      "w": 1400,
+      "text": "Final landing page: desktop and mobile, dark and light.",
+      "page": "page-1"
+    },
+    {
+      "id": "viewport-note",
+      "x": 0,
+      "y": 3960,
+      "w": 1400,
+      "text": "Every desktop app screen from here down is a fixed 1440x900, a real 16:10 viewport, not sized to whatever content happened to be on it. Content that doesn't fit scrolls inside the screen on its own custom-styled scrollbar (never the default browser one), the shell around it stays put. Landing pages, mobile artboards, and the small floating overlay components (turn banner, away widget, chat panel, the import progress callout) are the exceptions, they're a different medium or deliberately compact by design.",
+      "page": "page-1"
+    },
+    {
+      "id": "auth-note",
+      "x": 0,
+      "y": 5020,
+      "w": 1400,
+      "text": "Auth screens, in progress, desktop only. Log in and Create account are one screen with a toggle switcher at the top, not two separate pages: the two Login/Register artboards show the same screen in its two toggle states. Forgot password is its own standalone screen. OAuth2 redirect is the transient handoff screen while that flow completes, no real content of its own, shown for completeness.",
+      "page": "page-1"
+    },
+    {
+      "id": "playlists-note",
+      "x": 0,
+      "y": 7250,
+      "w": 1400,
+      "text": "Playlists and content, desktop only. Your playlists (personal library), Explore public playlists (story 30's published-playlist capability), Playlist detail, Song detail in both its states (verified/report-only, and needs-review/report-plus-confirm), Edit song details (manual-entry only), Add songs, Edit playlist, and Join by invite. All reuse the same left sidebar; song playback always links out to the real YouTube page or app, never an embedded player. Only the dark theme is being iterated on right now, light versions get ported once each page settles, so several pages currently only have a dark artboard. Terminology: \"Join\" is for accepting an invite link and becoming a real member of a playlist (Join by invite); \"Save\" (Explore public playlists) is for adding someone else's public playlist to your own library without becoming a member of it. Playlist detail offers two ways to add content: \"Add song\" and \"Import playlist\", both fully designed as their own flows below, plus story 45's third path, copying songs straight from another accessible playlist, folded into the Import playlist flow.",
+      "page": "page-1"
+    },
+    {
+      "id": "needs-review-note",
+      "x": 0,
+      "y": 10786,
+      "w": 1400,
+      "text": "Editing is reserved for the tier that actually needs it. Verified data already went through source agreement or an admin's manual review, and needs-review data came from real (if disagreeing) source reconciliation, hand-editing either one back out undermines the trust the pipeline just established. Only manual-entry songs, no source had any data at all, are directly editable: their row gets a red badge and a pencil icon on Playlist detail, routing to Edit song details. Needs-review rows keep an amber badge and the usual eye icon, routing to Song detail, read-only, but with a confirm (\"is this correct?\") action added alongside report, both shown on the needs-review variant below. The \"Review now\" link on the summary banner jumps straight to the first flagged row in the list.",
+      "page": "page-1"
+    },
+    {
+      "id": "add-song-note",
+      "x": 0,
+      "y": 13906,
+      "w": 1400,
+      "text": "Add songs is two paths. The main page (search and queue) lets you search the existing song database, add several at once, and see everything queued before confirming; both the results list and the queue panel scroll on their own custom-styled scrollbar and now extend to match each other's height. \"Add a new song\" is a separate 3-step flow shown as its own artboards: 1) paste a YouTube link, 2) metadata is fetched automatically (no dedicated screen needed, it's instant), 3) review. Fields are locked when the AI is confident (with a \"Report and edit manually\" override for when it's confidently wrong), or left as empty, editable fields with placeholder text when it isn't sure. It never fabricates a partial guess.",
+      "page": "page-1"
+    },
+    {
+      "id": "import-playlist-note",
+      "x": 0,
+      "y": 17246,
+      "w": 1400,
+      "text": "Import playlist, the second way to add content from Playlist detail, now with two sources. Choosing \"From YouTube\" leads to the same crawl flow as before: step 1 takes a playlist link, step 2 lists every song and crawls them one at a time, each row starting with the raw YouTube data (video title and channel name, muted and in italics) and a spinning fetch indicator, then updating in place to the real title, artist, and release year with a checkmark once processed. Choosing \"From an existing playlist\" is instant instead: pick a playlist you've joined or found public, and every song copies over immediately, no fetching, since it's already in the database. Either way, closing the import screen doesn't cancel it: a temporary icon appears in the left sidebar below Group lobby while an import is active, and a small toast shows the progress once, then fades after a few seconds. Both reopen the import screen. That whole pattern is shown isolated in its own board below.",
+      "page": "page-1"
+    },
+    {
+      "id": "gameplay-note",
+      "x": 0,
+      "y": 25236,
+      "w": 1400,
+      "text": "Gameplay, desktop only. A session has no fixed round count, it ends whenever the first player reaches the group's configured win-condition card count. Group lobby drops the card/panel look entirely: the join code sits centered and large with a copy-link action under it, members scatter around it at varied distances and angles, each tilted slightly, with a slow, subtle drift animation, not literal movement or a symmetric grid. Avatar size is dynamic, not fixed, 112px at 2 players, 108px at 4, 102px at 8, held close together rather than shrinking hard across the range. Distance from the code stays generous at every count, clear of the join-code label and copy-link action, not just the digits. Two more artboards show the same layout at 2 and at 8 players, since how it holds up at the group-size extremes matters more than the 4-player middle case alone. The bottom bar holds four labeled buttons, start game, chat, and settings grouped together, leave lobby set apart on the right; two further artboards show settings and chat each open as their own popup, undimmed and anchored near the button that opens them rather than centered, chat reusing the standalone Text chat overlay's message pattern and GAME_DESIGN.md's semi-transparent bottom-left placement. The voice sidebar shows the not-yet-joined state: existing participants listed with no mute/deafen/leave controls of your own, a dashed join-call circle trailing the list. Then the game session, laid out left to right in the order a round plays out, not scattered. It opens with a round intro artboard, a full-screen countdown announcing that round's DJ and active player, the ring draining at a steady pace rather than pulsing. That pairing stays pinned as a small readout in the bottom-left corner of every screen after it, a proper pill set in from the sidebar rather than flush against it. Player runs across ten more artboards. The timeline stays pixel-fixed at the exact center of every one; everything else floats around that anchor, and nothing renders past the main panel into the sidebars no matter how wide a state's row gets. The turn runs: an unplaced card as a large animated equalizer mark, sized like a timeline card so it never dominates; dragging it onto the timeline, where displaced cards fan open and wobble slightly, each rocking only toward the side it was pushed, subtle enough not to clip a corner; that same drag shown again from another player's screen, dimmed but never grayscale, guessing still open to them; a settled drop waiting on an explicit lock in answer button, the card still showing its equalizer face, static, no glow pulse and no redundant drag hint; the card face down once locked in, playback stopped, timeline recentered for everyone, guess box removed entirely from here through the reveal since guessing closes the moment a card locks in; a countdown before betting, shown twice, the active player sitting it out and a token holder lining a token over a dashed gap between two cards, as a wobbling preview, nothing committed until betting opens; the betting window itself, staking working exactly like a card placement, one physical coin sized to actually read, resting between two cards once staked, not floating or bobbing, first token in wins and locks everyone else out, shown both dimmed and full color; and the reveal, a plain settled shadow with no added outline ring, carrying a bigger up-next readout above the timeline for next turn's DJ and active player with their own progress bar. Whatever sits below the timeline, guess box or closed-guessing note, and whatever floats above it, unplaced card or countdown, anchors at the same fixed distance from center on every screen, so nothing shifts depending on whether a caption happens to be present. The same pair of scroll arrows sits at the same spot on every one of these ten screens, not just the first, and a bet during the countdown sits inside its dashed gap the same way a settled bet does, never floating above it. Each screen's corner token pile varies its count, zero through five, so every case shows up somewhere. A companion artboard by the card design reference lays out that same coin at every count, the reference for the exact design. DJ reuses that same shell, timeline dimmed since the DJ never places a card, with the hero slot above it holding the current song's card, known only to the DJ, beside the single open-on-YouTube action and its audio-sharing warning, the DJ's only action: no in-app pause, play, close, end turn, or reveal, those run on real YouTube or fire off the betting timer automatically. Results: artists-guessed left, titles-guessed right, ranking centered, a graphic podium with a winner's glow, confetti that actually falls rather than jitters, and a download-results action, its podium and columns recentering to sit airy at 2 players and full at 8, both shown next to the 4-player baseline. A companion board catalogs toast, badge, and banner notification styles.",
+      "page": "page-1"
+    },
+    {
+      "id": "gameplay-overlays-note",
+      "x": 0,
+      "y": 29476,
+      "w": 1400,
+      "text": "Overlay components used during a session: the turn notification banner, the \"playing while away\" floating widget, and the text chat panel. Shown isolated at natural size, not placed on a specific background.",
+      "page": "page-1"
+    },
+    {
+      "id": "admin-note",
+      "x": 0,
+      "y": 31244,
+      "w": 1400,
+      "text": "Admin views, desktop only, dark. Gated on the ADMIN role (story 40). Catalog backlog: pending/processed/quota stats plus the bulk-enqueue form, the batch YouTube-ID filtering step happens silently, only the result is shown. Its queue panel leads with what's still moving, processing first, then pending, then a failed-and-retrying row, with completed entries at the bottom, since what an admin actually watches here is the backlog draining, not a history of what already finished. Report review queue: every reportable card ranked by the five-tier priority order, with the actual signals behind each rank (report count, convergence, confirmations) rather than one opaque score, and a manual resolve action, nothing here auto-applies a suggested year.",
+      "page": "page-1"
+    }
+  ],
+  "launch": {
+    "view": "canvas",
+    "page": "page-1"
+  },
+  "pages": [
+    {
+      "id": "page-1",
+      "name": "hittiguess design"
+    }
+  ]
+}

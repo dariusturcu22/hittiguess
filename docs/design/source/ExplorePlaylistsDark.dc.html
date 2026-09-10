@@ -1,0 +1,217 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bungee&family=Baloo+2:wght@700;800&family=Space+Grotesk:wght@400;500;600;700&display=swap">
+  <style>
+    body { margin: 0; }
+    .navicon { width: 46px; height: 46px; border-radius: 14px; display: flex; align-items: center; justify-content: center; cursor: pointer; color: #6c7086; }
+    .navicon.active { background: #cba6f7; box-shadow: 3px 3px 0 rgba(0,0,0,0.4); color: #11111b; }
+    .divider { width: 32px; height: 2px; background: #313244; border-radius: 2px; margin: 14px auto; flex-shrink: 0; }
+    .genre-chip { font-family: 'Space Grotesk', sans-serif; font-weight: 600; font-size: 13px; padding: 9px 20px; border-radius: 100px; box-sizing: border-box; cursor: pointer; }
+    .genre-chip.active { background: #cba6f7; color: #11111b; box-shadow: 3px 3px 0 rgba(0,0,0,0.4); }
+    .genre-chip.inactive { color: #a6adc8; border: 2px solid #45475a; }
+    .search-input { background: #181825; border: 2px solid #45475a; border-radius: 100px; padding: 12px 18px 12px 42px; font-family: 'Space Grotesk', sans-serif; font-size: 14px; color: #cdd6f4; box-sizing: border-box; }
+    .search-input::placeholder { color: #6c7086; }
+    .playlist-card { background: #313244; border: 3px solid #11111b; border-radius: 16px; box-shadow: 6px 6px 0 rgba(0,0,0,0.4); overflow: hidden; display: flex; flex-direction: column; }
+    .cover-mosaic { aspect-ratio: 1 / 1; display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; gap: 2px; background: #11111b; }
+    .cover-tile { display: flex; align-items: center; justify-content: center; }
+    .btn-join { width: 100%; text-align: center; font-family: 'Bungee', sans-serif; font-size: 12px; color: #1e1e2e; background: #fab387; padding: 10px 0; border-radius: 100px; box-shadow: 3px 3px 0 rgba(0,0,0,0.4); box-sizing: border-box; cursor: pointer; border: none; }
+    .custom-scroll::-webkit-scrollbar { width: 8px; }
+    .custom-scroll::-webkit-scrollbar-track { background: transparent; }
+    .custom-scroll::-webkit-scrollbar-thumb { background: #45475a; border-radius: 100px; }
+    .custom-scroll::-webkit-scrollbar-thumb:hover { background: #6c7086; }
+  </style>
+</helmet>
+<div style="width: 1440px; height: 900px; background: #1e1e2e; font-family: 'Space Grotesk', sans-serif; box-sizing: border-box; color: #cdd6f4; display: flex; overflow: hidden; position: relative;">
+
+  <div style="width: 76px; flex-shrink: 0; background: #11111b; display: flex; flex-direction: column; align-items: center; padding: 20px 0; box-sizing: border-box; border-right: 3px solid #313244;">
+    <div style="display: flex; align-items: center; gap: 2px; height: 22px;">
+      <div style="background: #a6e3a1; width: 5px; height: 10px; border-radius: 100px;"></div>
+      <div style="background: #a6e3a1; width: 5px; height: 20px; border-radius: 100px;"></div>
+      <div style="background: #a6e3a1; width: 5px; height: 14px; border-radius: 100px;"></div>
+      <div style="background: #a6e3a1; width: 5px; height: 22px; border-radius: 100px;"></div>
+    </div>
+    <div class="divider"></div>
+    <div class="navicon" title="Play / start a session">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="#cdd6f4"><path d="M8 5v14l11-7z"></path></svg>
+    </div>
+    <div class="divider"></div>
+    <div style="display: flex; flex-direction: column; gap: 14px;">
+      <div class="navicon" title="Your playlists">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="6" x2="13" y2="6"></line><line x1="4" y1="12" x2="13" y2="12"></line><line x1="4" y1="18" x2="9" y2="18"></line><circle cx="18" cy="16" r="2.3"></circle><path d="M20.3 16V6.5l-2.8 1"></path></svg>
+      </div>
+      <div class="navicon active" title="Explore public playlists">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"></circle><polygon points="15.5 8.5 13 13 8.5 15.5 11 11" fill="currentColor" stroke-linejoin="round"></polygon></svg>
+      </div>
+    </div>
+    <div class="divider"></div>
+    <div class="navicon" title="Group lobby">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+    </div>
+    <div style="flex: 1;"></div>
+    <div class="navicon" title="Theme">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
+    </div>
+    <div style="height: 16px;"></div>
+    <div style="width: 44px; height: 44px; border-radius: 50%; background: #fab387; border: 2px solid #313244; display: flex; align-items: center; justify-content: center; font-family: 'Bungee', sans-serif; font-size: 16px; color: #11111b; cursor: pointer;">D</div>
+  </div>
+
+  <div style="flex: 1; box-sizing: border-box; background-image: radial-gradient(circle, rgba(108,112,134,0.25) 1.5px, transparent 1.5px); background-size: 22px 22px; padding: 44px 56px 50px; display: flex; flex-direction: column;">
+
+    <div style="font-family: 'Bungee', sans-serif; font-size: 34px; color: #89b4fa; text-shadow: 3px 3px 0 #313244; margin-bottom: 24px;">Explore public playlists</div>
+
+    <div style="position: relative; width: 420px; margin-bottom: 20px;">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6c7086" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="position: absolute; left: 16px; top: 50%; transform: translateY(-50%);"><circle cx="11" cy="11" r="7"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+      <input class="search-input" style="width: 100%;" type="text" placeholder="Search public playlists...">
+    </div>
+
+    <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 28px;">
+      <div class="genre-chip active">All</div>
+      <div class="genre-chip inactive">Pop</div>
+      <div class="genre-chip inactive">Rock</div>
+      <div class="genre-chip inactive">2000s</div>
+      <div class="genre-chip inactive">Obscure</div>
+    </div>
+
+    <div class="custom-scroll" style="flex: 1; min-height: 0; overflow-y: auto; padding-right: 4px;">
+
+    <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 24px;">
+
+      <div class="playlist-card">
+        <div class="cover-mosaic">
+          <div class="cover-tile" style="background: #cba6f7;"><svg width="16" height="16" viewBox="0 0 24 24" fill="rgba(255,255,255,0.55)"><path d="M8 5v14l11-7z"></path></svg></div>
+          <div class="cover-tile" style="background: #f5c2e7;"><svg width="16" height="16" viewBox="0 0 24 24" fill="rgba(255,255,255,0.55)"><path d="M8 5v14l11-7z"></path></svg></div>
+          <div class="cover-tile" style="background: #89b4fa;"><svg width="16" height="16" viewBox="0 0 24 24" fill="rgba(255,255,255,0.55)"><path d="M8 5v14l11-7z"></path></svg></div>
+          <div class="cover-tile" style="background: #fab387;"><svg width="16" height="16" viewBox="0 0 24 24" fill="rgba(255,255,255,0.55)"><path d="M8 5v14l11-7z"></path></svg></div>
+        </div>
+        <div style="padding: 16px 18px 18px; display: flex; flex-direction: column; gap: 4px;">
+          <div style="font-family: 'Bungee', sans-serif; font-size: 16px; color: #cdd6f4;">Chart Toppers</div>
+          <div style="font-size: 12px; color: #a6adc8;">56 songs</div>
+          <div style="font-size: 11px; color: #6c7086; margin-bottom: 10px;">by Mara</div>
+          <button class="btn-join">Save</button>
+        </div>
+      </div>
+
+      <div class="playlist-card">
+        <div class="cover-mosaic">
+          <div class="cover-tile" style="background: #fab387;"><svg width="16" height="16" viewBox="0 0 24 24" fill="rgba(255,255,255,0.55)"><path d="M8 5v14l11-7z"></path></svg></div>
+          <div class="cover-tile" style="background: #e78284;"><svg width="16" height="16" viewBox="0 0 24 24" fill="rgba(255,255,255,0.55)"><path d="M8 5v14l11-7z"></path></svg></div>
+          <div class="cover-tile" style="background: #f9e2af;"><svg width="16" height="16" viewBox="0 0 24 24" fill="rgba(255,255,255,0.55)"><path d="M8 5v14l11-7z"></path></svg></div>
+          <div class="cover-tile" style="background: #45475a;"><svg width="16" height="16" viewBox="0 0 24 24" fill="rgba(255,255,255,0.55)"><path d="M8 5v14l11-7z"></path></svg></div>
+        </div>
+        <div style="padding: 16px 18px 18px; display: flex; flex-direction: column; gap: 4px;">
+          <div style="font-family: 'Bungee', sans-serif; font-size: 16px; color: #cdd6f4;">Garage Rock Basement</div>
+          <div style="font-size: 12px; color: #a6adc8;">33 songs</div>
+          <div style="font-size: 11px; color: #6c7086; margin-bottom: 10px;">by Theo</div>
+          <button class="btn-join">Save</button>
+        </div>
+      </div>
+
+      <div class="playlist-card">
+        <div class="cover-mosaic">
+          <div class="cover-tile" style="background: #a6e3a1;"><svg width="16" height="16" viewBox="0 0 24 24" fill="rgba(255,255,255,0.55)"><path d="M8 5v14l11-7z"></path></svg></div>
+          <div class="cover-tile" style="background: #f9e2af;"><svg width="16" height="16" viewBox="0 0 24 24" fill="rgba(255,255,255,0.55)"><path d="M8 5v14l11-7z"></path></svg></div>
+          <div class="cover-tile" style="background: #f5c2e7;"><svg width="16" height="16" viewBox="0 0 24 24" fill="rgba(255,255,255,0.55)"><path d="M8 5v14l11-7z"></path></svg></div>
+          <div class="cover-tile" style="background: #cba6f7;"><svg width="16" height="16" viewBox="0 0 24 24" fill="rgba(255,255,255,0.55)"><path d="M8 5v14l11-7z"></path></svg></div>
+        </div>
+        <div style="padding: 16px 18px 18px; display: flex; flex-direction: column; gap: 4px;">
+          <div style="font-family: 'Bungee', sans-serif; font-size: 16px; color: #cdd6f4;">Y2K Time Machine</div>
+          <div style="font-size: 12px; color: #a6adc8;">44 songs</div>
+          <div style="font-size: 11px; color: #6c7086; margin-bottom: 10px;">by Lena</div>
+          <button class="btn-join">Save</button>
+        </div>
+      </div>
+
+      <div class="playlist-card">
+        <div class="cover-mosaic">
+          <div class="cover-tile" style="background: #89b4fa;"><svg width="16" height="16" viewBox="0 0 24 24" fill="rgba(255,255,255,0.55)"><path d="M8 5v14l11-7z"></path></svg></div>
+          <div class="cover-tile" style="background: #45475a;"><svg width="16" height="16" viewBox="0 0 24 24" fill="rgba(255,255,255,0.55)"><path d="M8 5v14l11-7z"></path></svg></div>
+          <div class="cover-tile" style="background: #6c7086;"><svg width="16" height="16" viewBox="0 0 24 24" fill="rgba(255,255,255,0.55)"><path d="M8 5v14l11-7z"></path></svg></div>
+          <div class="cover-tile" style="background: #cba6f7;"><svg width="16" height="16" viewBox="0 0 24 24" fill="rgba(255,255,255,0.55)"><path d="M8 5v14l11-7z"></path></svg></div>
+        </div>
+        <div style="padding: 16px 18px 18px; display: flex; flex-direction: column; gap: 4px;">
+          <div style="font-family: 'Bungee', sans-serif; font-size: 16px; color: #cdd6f4;">Deep Crate Obscurities</div>
+          <div style="font-size: 12px; color: #a6adc8;">29 songs</div>
+          <div style="font-size: 11px; color: #6c7086; margin-bottom: 10px;">by Darius</div>
+          <button class="btn-join">Save</button>
+        </div>
+      </div>
+
+      <div class="playlist-card">
+        <div class="cover-mosaic">
+          <div class="cover-tile" style="background: #f5c2e7;"><svg width="16" height="16" viewBox="0 0 24 24" fill="rgba(255,255,255,0.55)"><path d="M8 5v14l11-7z"></path></svg></div>
+          <div class="cover-tile" style="background: #cba6f7;"><svg width="16" height="16" viewBox="0 0 24 24" fill="rgba(255,255,255,0.55)"><path d="M8 5v14l11-7z"></path></svg></div>
+          <div class="cover-tile" style="background: #89b4fa;"><svg width="16" height="16" viewBox="0 0 24 24" fill="rgba(255,255,255,0.55)"><path d="M8 5v14l11-7z"></path></svg></div>
+          <div class="cover-tile" style="background: #f9e2af;"><svg width="16" height="16" viewBox="0 0 24 24" fill="rgba(255,255,255,0.55)"><path d="M8 5v14l11-7z"></path></svg></div>
+        </div>
+        <div style="padding: 16px 18px 18px; display: flex; flex-direction: column; gap: 4px;">
+          <div style="font-family: 'Bungee', sans-serif; font-size: 16px; color: #cdd6f4;">Pink Sky Pop</div>
+          <div style="font-size: 12px; color: #a6adc8;">38 songs</div>
+          <div style="font-size: 11px; color: #6c7086; margin-bottom: 10px;">by Mara</div>
+          <button class="btn-join">Save</button>
+        </div>
+      </div>
+
+      <div class="playlist-card">
+        <div class="cover-mosaic">
+          <div class="cover-tile" style="background: #f9e2af;"><svg width="16" height="16" viewBox="0 0 24 24" fill="rgba(255,255,255,0.55)"><path d="M8 5v14l11-7z"></path></svg></div>
+          <div class="cover-tile" style="background: #fab387;"><svg width="16" height="16" viewBox="0 0 24 24" fill="rgba(255,255,255,0.55)"><path d="M8 5v14l11-7z"></path></svg></div>
+          <div class="cover-tile" style="background: #a6e3a1;"><svg width="16" height="16" viewBox="0 0 24 24" fill="rgba(255,255,255,0.55)"><path d="M8 5v14l11-7z"></path></svg></div>
+          <div class="cover-tile" style="background: #cba6f7;"><svg width="16" height="16" viewBox="0 0 24 24" fill="rgba(255,255,255,0.55)"><path d="M8 5v14l11-7z"></path></svg></div>
+        </div>
+        <div style="padding: 16px 18px 18px; display: flex; flex-direction: column; gap: 4px;">
+          <div style="font-family: 'Bungee', sans-serif; font-size: 16px; color: #cdd6f4;">Sunshine Road Mix</div>
+          <div style="font-size: 12px; color: #a6adc8;">22 songs</div>
+          <div style="font-size: 11px; color: #6c7086; margin-bottom: 10px;">by Theo</div>
+          <button class="btn-join">Save</button>
+        </div>
+      </div>
+
+      <div class="playlist-card">
+        <div class="cover-mosaic">
+          <div class="cover-tile" style="background: #45475a;"><svg width="16" height="16" viewBox="0 0 24 24" fill="rgba(255,255,255,0.55)"><path d="M8 5v14l11-7z"></path></svg></div>
+          <div class="cover-tile" style="background: #89b4fa;"><svg width="16" height="16" viewBox="0 0 24 24" fill="rgba(255,255,255,0.55)"><path d="M8 5v14l11-7z"></path></svg></div>
+          <div class="cover-tile" style="background: #f5c2e7;"><svg width="16" height="16" viewBox="0 0 24 24" fill="rgba(255,255,255,0.55)"><path d="M8 5v14l11-7z"></path></svg></div>
+          <div class="cover-tile" style="background: #6c7086;"><svg width="16" height="16" viewBox="0 0 24 24" fill="rgba(255,255,255,0.55)"><path d="M8 5v14l11-7z"></path></svg></div>
+        </div>
+        <div style="padding: 16px 18px 18px; display: flex; flex-direction: column; gap: 4px;">
+          <div style="font-family: 'Bungee', sans-serif; font-size: 16px; color: #cdd6f4;">Rainy Day Jazz</div>
+          <div style="font-size: 12px; color: #a6adc8;">19 songs</div>
+          <div style="font-size: 11px; color: #6c7086; margin-bottom: 10px;">by Lena</div>
+          <button class="btn-join">Save</button>
+        </div>
+      </div>
+
+      <div class="playlist-card">
+        <div class="cover-mosaic">
+          <div class="cover-tile" style="background: #e78284;"><svg width="16" height="16" viewBox="0 0 24 24" fill="rgba(255,255,255,0.55)"><path d="M8 5v14l11-7z"></path></svg></div>
+          <div class="cover-tile" style="background: #fab387;"><svg width="16" height="16" viewBox="0 0 24 24" fill="rgba(255,255,255,0.55)"><path d="M8 5v14l11-7z"></path></svg></div>
+          <div class="cover-tile" style="background: #cba6f7;"><svg width="16" height="16" viewBox="0 0 24 24" fill="rgba(255,255,255,0.55)"><path d="M8 5v14l11-7z"></path></svg></div>
+          <div class="cover-tile" style="background: #f9e2af;"><svg width="16" height="16" viewBox="0 0 24 24" fill="rgba(255,255,255,0.55)"><path d="M8 5v14l11-7z"></path></svg></div>
+        </div>
+        <div style="padding: 16px 18px 18px; display: flex; flex-direction: column; gap: 4px;">
+          <div style="font-family: 'Bungee', sans-serif; font-size: 16px; color: #cdd6f4;">Certified Bangers</div>
+          <div style="font-size: 12px; color: #a6adc8;">61 songs</div>
+          <div style="font-size: 11px; color: #6c7086; margin-bottom: 10px;">by Darius</div>
+          <button class="btn-join">Save</button>
+        </div>
+      </div>
+
+    </div>
+    </div>
+
+  </div>
+
+</div>
+</x-dc>
+<script data-dc-script data-props='{}'>
+class Component extends DCLogic {}
+</script>
+</body>
+</html>
