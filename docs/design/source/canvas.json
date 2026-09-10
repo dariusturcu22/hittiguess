@@ -28,6 +28,15 @@
       "page": "page-1"
     },
     {
+      "file": "TokenPileOptions.dc.html",
+      "x": 2520,
+      "y": 0,
+      "w": 1100,
+      "h": 720,
+      "title": "Token pile design, by count",
+      "page": "page-1"
+    },
+    {
       "file": "LandingDesktopDark.dc.html",
       "x": 0,
       "y": 1000,
@@ -424,21 +433,21 @@
       "page": "page-1"
     },
     {
-      "file": "GameSessionPlayerDark.dc.html",
+      "file": "GameSessionRoundIntroDark.dc.html",
       "x": 0,
       "y": 26356,
       "w": 1440,
       "h": 900,
-      "title": "Game session, player view dark",
+      "title": "Game session, round intro, DJ and first turn announced, dark",
       "page": "page-1"
     },
     {
-      "file": "GameSessionPlayerLight.dc.html",
+      "file": "GameSessionPlayerDark.dc.html",
       "x": 1580,
       "y": 26356,
       "w": 1440,
-      "h": 700,
-      "title": "Game session, player view light",
+      "h": 900,
+      "title": "Game session, player view, unplaced card, dark",
       "page": "page-1"
     },
     {
@@ -451,8 +460,26 @@
       "page": "page-1"
     },
     {
-      "file": "GameSessionCardLockedDark.dc.html",
+      "file": "GameSessionCardDraggingSpectatorDark.dc.html",
       "x": 4740,
+      "y": 26356,
+      "w": 1440,
+      "h": 900,
+      "title": "Game session, same moment, another player's view while it's being placed, dark",
+      "page": "page-1"
+    },
+    {
+      "file": "GameSessionCardDroppedDark.dc.html",
+      "x": 6320,
+      "y": 26356,
+      "w": 1440,
+      "h": 900,
+      "title": "Game session, card dropped, awaiting lock in, dark",
+      "page": "page-1"
+    },
+    {
+      "file": "GameSessionCardLockedDark.dc.html",
+      "x": 7900,
       "y": 26356,
       "w": 1440,
       "h": 900,
@@ -461,7 +488,7 @@
     },
     {
       "file": "GameSessionBettingPrepDark.dc.html",
-      "x": 6320,
+      "x": 9480,
       "y": 26356,
       "w": 1440,
       "h": 900,
@@ -470,16 +497,25 @@
     },
     {
       "file": "GameSessionBettingActiveDark.dc.html",
-      "x": 7900,
+      "x": 11060,
       "y": 26356,
       "w": 1440,
       "h": 900,
-      "title": "Game session, betting window open, dark",
+      "title": "Game session, betting window open, active player's view, dark",
+      "page": "page-1"
+    },
+    {
+      "file": "GameSessionBettingActiveTokenHolderDark.dc.html",
+      "x": 12640,
+      "y": 26356,
+      "w": 1440,
+      "h": 900,
+      "title": "Game session, same moment, a token holder's view during betting, dark",
       "page": "page-1"
     },
     {
       "file": "GameSessionRevealDark.dc.html",
-      "x": 9480,
+      "x": 14220,
       "y": 26356,
       "w": 1440,
       "h": 900,
@@ -487,30 +523,12 @@
       "page": "page-1"
     },
     {
-      "file": "GameSessionCardDroppedDark.dc.html",
-      "x": 11060,
+      "file": "GameSessionPlayerLight.dc.html",
+      "x": 15800,
       "y": 26356,
       "w": 1440,
-      "h": 900,
-      "title": "Game session, card dropped, awaiting lock in, dark",
-      "page": "page-1"
-    },
-    {
-      "file": "GameSessionCardDraggingSpectatorDark.dc.html",
-      "x": 12640,
-      "y": 26356,
-      "w": 1440,
-      "h": 900,
-      "title": "Game session, another player's view while a card is being placed, dark",
-      "page": "page-1"
-    },
-    {
-      "file": "GameSessionBettingActiveTokenHolderDark.dc.html",
-      "x": 14220,
-      "y": 26356,
-      "w": 1440,
-      "h": 900,
-      "title": "Game session, a token holder's view during betting, dark",
+      "h": 700,
+      "title": "Game session, player view light",
       "page": "page-1"
     },
     {
@@ -692,7 +710,7 @@
       "x": 0,
       "y": 25236,
       "w": 1400,
-      "text": "Gameplay, desktop only. A session has no fixed round count, it ends whenever the first player reaches the group's configured win-condition card count. Group lobby drops the card/panel look entirely: the join code sits centered and large with a copy-link action under it, members scatter around it at varied distances and angles, each tilted slightly, with a slow, subtle drift animation, not literal movement or a symmetric grid. Avatar size is dynamic, not fixed: 112px at 2 players, 108px at 4, 102px at 8, all three deliberately close together rather than shrinking hard as the count climbs. Distance from the code is generous at every count, clear of the join-code label and the copy-link action around it, not just the big digits themselves. Two more artboards show the same layout at 2 and at 8 players, since how it holds up at the group-size extremes matters more than the 4-player middle case alone. The bottom bar holds four labeled buttons, start game, chat, and settings grouped together, leave lobby set apart on the right; two further artboards show settings and chat each open as their own popup, both undimmed and anchored near the button that opens them rather than a centered dialog, chat reusing the same message-list pattern as the standalone Text chat overlay artboard and the semi-transparent bottom-left placement GAME_DESIGN.md specs. The voice sidebar shows the not-yet-joined state: existing participants listed with no mute/deafen/leave controls of your own, a dashed join-call circle trailing the list. Then the game session in its two views. Player is shown across nine artboards. The timeline itself is what stays fixed at the exact center of the screen in every one of them; everything else, the unplaced card, a countdown, the guess box, floats around that fixed point instead of the other way around, so the timeline never shifts position between states. The turn runs: an unplaced card rendered as a large animated version of the app's equalizer mark, sized like a timeline card so it never dominates the screen; dragging it onto the timeline, where every displaced card fans open and wobbles a little as if unsettled, not just the one being held; a settled drop that waits on an explicit lock in answer button rather than confirming itself, still draggable to a different spot until that button is pressed; the card face down in its slot once locked in, with playback stopped and the timeline recentered on that slot for everyone; a countdown before betting opens; the betting window itself, where staking a token works exactly like placing a card, dropped between two existing cards rather than voting on the slot that's already filled, first token in wins the round and locks everyone else out; and the reveal once the round closes. The artist/title guess box stays available across every one of those states, since guessing isn't tied to whose turn it is to place a card. Two more artboards show the same moments from a different seat at the table: another player's screen while someone else is placing their card, timeline grayed out and locked under an icon since it isn't theirs to touch, guessing still fully live; and, during betting, the contrast between a viewer who still has a stake in it, shown in full color, actively staking their own token, and the active player's own screen, grayed out since nobody bets on their own card. DJ (song playback, always a link-out to the real YouTube page or app with the audio-sharing warning attached, plus the actual round-flow controls: pause, play, close, end turn, reveal gated until betting closes). Results/leaderboard shows the card-count ranking alongside the two session-long guess leaderboards once the game has ended.",
+      "text": "Gameplay, desktop only. A session has no fixed round count, it ends whenever the first player reaches the group's configured win-condition card count. Group lobby drops the card/panel look entirely: the join code sits centered and large with a copy-link action under it, members scatter around it at varied distances and angles, each tilted slightly, with a slow, subtle drift animation, not literal movement or a symmetric grid. Avatar size is dynamic, not fixed: 112px at 2 players, 108px at 4, 102px at 8, all three deliberately close together rather than shrinking hard as the count climbs. Distance from the code is generous at every count, clear of the join-code label and the copy-link action around it, not just the big digits themselves. Two more artboards show the same layout at 2 and at 8 players, since how it holds up at the group-size extremes matters more than the 4-player middle case alone. The bottom bar holds four labeled buttons, start game, chat, and settings grouped together, leave lobby set apart on the right; two further artboards show settings and chat each open as their own popup, both undimmed and anchored near the button that opens them rather than a centered dialog, chat reusing the same message-list pattern as the standalone Text chat overlay artboard and the semi-transparent bottom-left placement GAME_DESIGN.md specs. The voice sidebar shows the not-yet-joined state: existing participants listed with no mute/deafen/leave controls of your own, a dashed join-call circle trailing the list. Then the game session in its two views, laid out left to right in the actual order a round plays out, not scattered. It opens with a round intro artboard, a full-screen countdown announcing that round's DJ and active player before anything else happens, the same DJ/active-player pairing then pinned as a small readout in the bottom-left corner of every screen that follows so it never needs re-explaining. Player is shown across nine more artboards. The timeline itself is what stays fixed at the exact center of the screen in every one of them, pixel-measured, not approximate; everything else, the unplaced card, a countdown, the guess box, floats around that fixed point instead of the other way around, so the timeline never shifts position between states, and nothing ever renders past the edge of the main panel into the sidebars regardless of how wide a given state's row gets. The turn runs: an unplaced card rendered as a large animated version of the app's equalizer mark, sized like a timeline card so it never dominates the screen; dragging it onto the timeline, where every displaced card fans open and wobbles a little as if unsettled, each one rocking only toward the direction it was pushed rather than swinging both ways, not just the one being held; the same dragging moment shown a second time from another player's screen, dimmed but never grayscale, still clearly colored, since they're watching it happen live and just can't touch it themselves, guessing still fully open to them; a settled drop that waits on an explicit lock in answer button rather than confirming itself, the card still showing its equalizer face and still draggable to a different spot until that button is pressed; the card face down in its slot once locked in, with playback stopped, the timeline recentered on that slot for everyone, and the artist/title guess box removed entirely from every screen from here on, since guessing closes the moment a card is locked in rather than staying open through the reveal; a countdown before betting opens; the betting window itself, where staking a token works exactly like placing a card, a single physical coin sized to actually read at a glance, dropped between two existing cards and resting there at rest, not floating or bobbing, since a placed bet no longer moves any more than a placed card does, first token in wins the round and locks everyone else out; that same betting moment shown twice more, once as the active player's own screen, dimmed because nobody bets on their own card, and once as a token holder's screen in full color actively staking; and the reveal, which also carries a compact up-next readout above the timeline, the next round's DJ and active player with their own draining progress bar, so the transition into the following round intro isn't a surprise. A companion artboard elsewhere on the canvas, next to the card design reference, lays out the token coin itself at every count from zero to five, the same coin throughout, just stacked differently as the pile grows, that reference sheet being where the exact design lives rather than repeating it here. DJ (song playback, always a link-out to the real YouTube page or app with the audio-sharing warning attached, plus the actual round-flow controls: pause, play, close, end turn, reveal gated until betting closes). Results/leaderboard shows the card-count ranking alongside the two session-long guess leaderboards once the game has ended.",
       "page": "page-1"
     },
     {

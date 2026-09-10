@@ -32,8 +32,10 @@
     .wobble { animation: wobble 1.1s ease-in-out infinite; }
     @keyframes gapPulse { 0%, 100% { opacity: 0.55; } 50% { opacity: 1; } }
     .gap-pulse { animation: gapPulse 1.4s ease-in-out infinite; }
-    @keyframes jitter { 0%, 100% { transform: rotate(-2.5deg); } 50% { transform: rotate(2.5deg); } }
-    .jitter { animation: jitter 0.9s ease-in-out infinite; }
+    @keyframes jitterLeft { 0%, 100% { transform: rotate(0deg); } 50% { transform: rotate(-4deg); } }
+    @keyframes jitterRight { 0%, 100% { transform: rotate(0deg); } 50% { transform: rotate(4deg); } }
+    .jitter-left { animation: jitterLeft 0.9s ease-in-out infinite; }
+    .jitter-right { animation: jitterRight 0.9s ease-in-out infinite; }
   </style>
 </helmet>
 <div style="width: 1440px; height: 900px; box-sizing: border-box; background: #1e1e2e; display: flex; font-family: 'Space Grotesk', sans-serif;">
@@ -72,7 +74,7 @@
   </div>
 
   <!-- MAIN CONTENT -->
-  <div style="flex: 1; min-width: 0; padding: 36px 56px 40px; box-sizing: border-box; background-image: radial-gradient(circle, rgba(108,112,134,0.25) 1.5px, transparent 1.5px); background-size: 22px 22px; display: flex; flex-direction: column; position: relative;">
+  <div style="flex: 1; min-width: 0; padding: 36px 56px 40px; box-sizing: border-box; background-image: radial-gradient(circle, rgba(108,112,134,0.25) 1.5px, transparent 1.5px); background-size: 22px 22px; display: flex; flex-direction: column; position: relative; overflow: hidden;">
 
     <!-- HEADER ROW -->
     <div style="display: flex; align-items: flex-start; justify-content: space-between; flex-shrink: 0;">
@@ -95,76 +97,80 @@
     <!-- CENTER STAGE -->
     <div style="flex: 1; min-height: 0; position: relative;">
 
-      <!-- TIMELINE ROW, pinned dead center regardless of anything else on screen -->
-      <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); display: flex; align-items: center; gap: 18px;">
-        <div style="transform: translateX(-26px) rotate(-9deg);">
-          <div class="tcard jitter" style="background: #89b4fa; color: #1e1e2e; animation-delay: -0.1s;">
-            <div class="artist">Natalie Imbruglia</div>
-            <div class="year">1998</div>
-            <div class="title">Torn</div>
-          </div>
-        </div>
-        <div style="transform: translateX(-18px) rotate(-7deg);">
-          <div class="tcard jitter" style="background: #a6e3a1; color: #1e1e2e; animation-delay: -0.4s;">
-            <div class="artist">OutKast</div>
-            <div class="year">2003</div>
-            <div class="title">Hey Ya!</div>
-          </div>
-        </div>
-        <div style="transform: translateX(-11px) rotate(-5deg);">
-          <div class="tcard jitter" style="background: #f9e2af; color: #1e1e2e; animation-delay: -0.7s;">
-            <div class="artist">Adele</div>
-            <div class="year">2011</div>
-            <div class="title">Rolling in the Deep</div>
-          </div>
-        </div>
-        <div style="transform: translateX(-5px) rotate(-3deg);">
-          <div class="tcard jitter" style="background: #f5c2e7; color: #1e1e2e; animation-delay: -0.2s;">
-            <div class="artist">Bruno Mars</div>
-            <div class="year">2015</div>
-            <div class="title">Uptown Funk</div>
-          </div>
-        </div>
-        <div style="transform: translateX(-2px) rotate(-1.5deg);">
-          <div class="tcard jitter" style="background: #cba6f7; color: #1e1e2e; animation-delay: -0.5s;">
-            <div class="artist">The Weeknd</div>
-            <div class="year">2019</div>
-            <div class="title">Blinding Lights</div>
-          </div>
-        </div>
+      <!-- TIMELINE ROW, pinned dead center regardless of anything else on screen. Masked + clipped so nothing ever paints over the sidebars; the dragged card is a separate sibling below, not nested inside this clipped box. -->
+      <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 1100px;">
+        <div style="width: 100%; overflow: hidden; -webkit-mask-image: linear-gradient(90deg, transparent, #000 64px, #000 calc(100% - 64px), transparent); mask-image: linear-gradient(90deg, transparent, #000 64px, #000 calc(100% - 64px), transparent); display: flex; justify-content: center;">
+          <div style="display: flex; align-items: center; gap: 18px;">
+            <div style="transform: translateX(-26px) rotate(-9deg);">
+              <div class="tcard jitter-left" style="background: #89b4fa; color: #1e1e2e; animation-delay: -0.1s;">
+                <div class="artist">Natalie Imbruglia</div>
+                <div class="year">1998</div>
+                <div class="title">Torn</div>
+              </div>
+            </div>
+            <div style="transform: translateX(-18px) rotate(-7deg);">
+              <div class="tcard jitter-left" style="background: #a6e3a1; color: #1e1e2e; animation-delay: -0.4s;">
+                <div class="artist">OutKast</div>
+                <div class="year">2003</div>
+                <div class="title">Hey Ya!</div>
+              </div>
+            </div>
+            <div style="transform: translateX(-11px) rotate(-5deg);">
+              <div class="tcard jitter-left" style="background: #f9e2af; color: #1e1e2e; animation-delay: -0.7s;">
+                <div class="artist">Adele</div>
+                <div class="year">2011</div>
+                <div class="title">Rolling in the Deep</div>
+              </div>
+            </div>
+            <div style="transform: translateX(-5px) rotate(-3deg);">
+              <div class="tcard jitter-left" style="background: #f5c2e7; color: #1e1e2e; animation-delay: -0.2s;">
+                <div class="artist">Bruno Mars</div>
+                <div class="year">2015</div>
+                <div class="title">Uptown Funk</div>
+              </div>
+            </div>
+            <div style="transform: translateX(-2px) rotate(-1.5deg);">
+              <div class="tcard jitter-left" style="background: #cba6f7; color: #1e1e2e; animation-delay: -0.5s;">
+                <div class="artist">The Weeknd</div>
+                <div class="year">2019</div>
+                <div class="title">Blinding Lights</div>
+              </div>
+            </div>
 
-        <!-- GAP: where the card is hovering -->
-        <div style="position: relative; width: 150px; height: 168px; flex-shrink: 0; box-sizing: border-box; border: 3px dashed #fab387; border-radius: 22px; display: flex; align-items: center; justify-content: center;" class="gap-pulse">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fab387" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="19 12 12 19 5 12"></polyline><line x1="12" y1="19" x2="12" y2="5"></line></svg>
+            <!-- GAP: where the card will land -->
+            <div style="width: 150px; height: 168px; flex-shrink: 0; box-sizing: border-box; border: 3px dashed #fab387; border-radius: 22px; display: flex; align-items: center; justify-content: center;" class="gap-pulse">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fab387" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="19 12 12 19 5 12"></polyline><line x1="12" y1="19" x2="12" y2="5"></line></svg>
+            </div>
 
-          <!-- the card, hovering above the gap, wobbling -->
-          <div style="position: absolute; bottom: 100%; left: 50%; margin-bottom: 22px; transform: translateX(-50%);">
-            <div class="wobble">
-              <div style="width: 168px; height: 168px; border-radius: 22px; border: 5px solid #45475a; background: #313244; box-shadow: 10px 10px 0 rgba(0,0,0,0.45); box-sizing: border-box; display: flex; align-items: center; justify-content: center;">
-                <div style="display: flex; align-items: center; gap: 8px; height: 70px;">
-                  <div style="background: #a6e3a1; width: 9px; border-radius: 100px; height: 30px;"></div>
-                  <div style="background: #a6e3a1; width: 9px; border-radius: 100px; height: 52px;"></div>
-                  <div style="background: #a6e3a1; width: 9px; border-radius: 100px; height: 38px;"></div>
-                  <div style="background: #a6e3a1; width: 9px; border-radius: 100px; height: 60px;"></div>
-                  <div style="background: #a6e3a1; width: 9px; border-radius: 100px; height: 34px;"></div>
-                </div>
+            <div style="transform: translateX(4px) rotate(2deg);">
+              <div class="tcard jitter-right" style="background: #e78284; color: #1e1e2e; animation-delay: -0.3s;">
+                <div class="artist">Harry Styles</div>
+                <div class="year">2022</div>
+                <div class="title">As It Was</div>
+              </div>
+            </div>
+            <div style="transform: translateX(12px) rotate(5deg);">
+              <div class="tcard jitter-right" style="background: #eba0ac; color: #1e1e2e; animation-delay: -0.6s;">
+                <div class="artist">Miley Cyrus</div>
+                <div class="year">2023</div>
+                <div class="title">Flowers</div>
               </div>
             </div>
           </div>
         </div>
+      </div>
 
-        <div style="transform: translateX(4px) rotate(2deg);">
-          <div class="tcard jitter" style="background: #e78284; color: #1e1e2e; animation-delay: -0.3s;">
-            <div class="artist">Harry Styles</div>
-            <div class="year">2022</div>
-            <div class="title">As It Was</div>
-          </div>
-        </div>
-        <div style="transform: translateX(12px) rotate(5deg);">
-          <div class="tcard jitter" style="background: #eba0ac; color: #1e1e2e; animation-delay: -0.6s;">
-            <div class="artist">Miley Cyrus</div>
-            <div class="year">2023</div>
-            <div class="title">Flowers</div>
+      <!-- THE DRAGGED CARD, hovering above the gap, wobbling. A separate sibling positioned by its own calculated offset from stage center, so it's never clipped by the row's overflow. -->
+      <div style="position: absolute; left: calc(50% + 279px); top: calc(50% - 190px); transform: translate(-50%, -50%);">
+        <div class="wobble">
+          <div style="width: 168px; height: 168px; border-radius: 22px; border: 5px solid #45475a; background: #313244; box-shadow: 10px 10px 0 rgba(0,0,0,0.45); box-sizing: border-box; display: flex; align-items: center; justify-content: center;">
+            <div style="display: flex; align-items: center; gap: 8px; height: 70px;">
+              <div style="background: #a6e3a1; width: 9px; border-radius: 100px; height: 30px;"></div>
+              <div style="background: #a6e3a1; width: 9px; border-radius: 100px; height: 52px;"></div>
+              <div style="background: #a6e3a1; width: 9px; border-radius: 100px; height: 38px;"></div>
+              <div style="background: #a6e3a1; width: 9px; border-radius: 100px; height: 60px;"></div>
+              <div style="background: #a6e3a1; width: 9px; border-radius: 100px; height: 34px;"></div>
+            </div>
           </div>
         </div>
       </div>
@@ -195,6 +201,25 @@
         </div>
       </div>
 
+    </div>
+
+    <!-- ROUND STATUS, bottom-left: who's DJing, whose turn it is, visible on every game session screen -->
+    <div style="position: absolute; left: 0; bottom: 40px; display: flex; align-items: center; gap: 14px;">
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <div class="vavatar" style="background: #cba6f7; width: 30px; height: 30px; font-size: 11px;">M</div>
+        <div>
+          <div style="font-size: 9px; letter-spacing: 1.5px; color: #6c7086; text-transform: uppercase;">DJ</div>
+          <div style="font-size: 12px; font-weight: 700; color: #cdd6f4;">Mara</div>
+        </div>
+      </div>
+      <div style="width: 1px; height: 26px; background: #313244;"></div>
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <div class="vavatar" style="background: #a6e3a1; width: 30px; height: 30px; font-size: 11px;">D</div>
+        <div>
+          <div style="font-size: 9px; letter-spacing: 1.5px; color: #6c7086; text-transform: uppercase;">Turn</div>
+          <div style="font-size: 12px; font-weight: 700; color: #cdd6f4;">Darius</div>
+        </div>
+      </div>
     </div>
 
     <!-- TOKEN PILE -->

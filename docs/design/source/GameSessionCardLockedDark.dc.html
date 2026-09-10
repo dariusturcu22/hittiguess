@@ -66,7 +66,7 @@
   </div>
 
   <!-- MAIN CONTENT -->
-  <div style="flex: 1; min-width: 0; padding: 36px 56px 40px; box-sizing: border-box; background-image: radial-gradient(circle, rgba(108,112,134,0.25) 1.5px, transparent 1.5px); background-size: 22px 22px; display: flex; flex-direction: column; position: relative;">
+  <div style="flex: 1; min-width: 0; padding: 36px 56px 40px; box-sizing: border-box; background-image: radial-gradient(circle, rgba(108,112,134,0.25) 1.5px, transparent 1.5px); background-size: 22px 22px; display: flex; flex-direction: column; position: relative; overflow: hidden;">
 
     <!-- HEADER ROW -->
     <div style="display: flex; align-items: flex-start; justify-content: space-between; flex-shrink: 0;">
@@ -137,26 +137,30 @@
       <div style="position: absolute; left: 50%; bottom: calc(50% + 98px); transform: translateX(-50%); font-weight: 700; font-size: 12px; letter-spacing: 3px; color: #6c7086; text-transform: uppercase;">Timeline</div>
 
       <!-- GUESS PILLS, below center -->
-      <div style="position: absolute; left: 50%; top: calc(50% + 98px); transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 12px;">
-        <div style="display: flex; gap: 20px;">
-          <div class="guess-pill">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#a6adc8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0;"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
-            <input type="text" placeholder="Guess the artist">
-            <div class="guess-submit">
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#1e1e2e" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
-            </div>
-          </div>
-          <div class="guess-pill">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#a6adc8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0;"><path d="M9 18V5l12-2v13"></path><circle cx="6" cy="18" r="3"></circle><circle cx="18" cy="16" r="3"></circle></svg>
-            <input type="text" placeholder="Guess the title">
-            <div class="guess-submit">
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#1e1e2e" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
-            </div>
-          </div>
-        </div>
-        <div style="font-size: 11.5px; color: #6c7086;">Anyone can still guess. Betting opens once everyone's seen where the card landed.</div>
+      <div style="position: absolute; left: 50%; top: calc(50% + 98px); transform: translateX(-50%); display: flex; align-items: center; gap: 8px;">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#6c7086" stroke-width="2.3" stroke-linecap="round"><rect x="5" y="11" width="14" height="9" rx="2"></rect><path d="M8 11V8a4 4 0 0 1 8 0v3"></path></svg>
+        <div style="font-size: 12px; color: #6c7086;">Guessing is closed for this card</div>
       </div>
 
+    </div>
+
+    <!-- ROUND STATUS, bottom-left -->
+    <div style="position: absolute; left: 0; bottom: 40px; display: flex; align-items: center; gap: 14px;">
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <div class="vavatar" style="background: #cba6f7; width: 30px; height: 30px; font-size: 11px;">M</div>
+        <div>
+          <div style="font-size: 9px; letter-spacing: 1.5px; color: #6c7086; text-transform: uppercase;">DJ</div>
+          <div style="font-size: 12px; font-weight: 700; color: #cdd6f4;">Mara</div>
+        </div>
+      </div>
+      <div style="width: 1px; height: 26px; background: #313244;"></div>
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <div class="vavatar" style="background: #a6e3a1; width: 30px; height: 30px; font-size: 11px;">D</div>
+        <div>
+          <div style="font-size: 9px; letter-spacing: 1.5px; color: #6c7086; text-transform: uppercase;">Turn</div>
+          <div style="font-size: 12px; font-weight: 700; color: #cdd6f4;">Darius</div>
+        </div>
+      </div>
     </div>
 
     <!-- TOKEN PILE -->

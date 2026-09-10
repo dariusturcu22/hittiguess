@@ -28,11 +28,21 @@
     .guess-pill input::placeholder { color: #6c7086; }
     .guess-submit { width: 34px; height: 34px; border-radius: 50%; flex-shrink: 0; display: flex; align-items: center; justify-content: center; cursor: pointer; background: #fab387; }
 
-    .timeline-locked { filter: grayscale(0.9) brightness(0.7); opacity: 0.55; }
+    @keyframes wobble { 0%, 100% { transform: scale(1.06) rotate(-5deg); } 50% { transform: scale(1.06) rotate(5deg); } }
+    .wobble { animation: wobble 1.1s ease-in-out infinite; }
+    @keyframes gapPulse { 0%, 100% { opacity: 0.55; } 50% { opacity: 1; } }
+    .gap-pulse { animation: gapPulse 1.4s ease-in-out infinite; }
+    @keyframes jitterLeft { 0%, 100% { transform: rotate(0deg); } 50% { transform: rotate(-4deg); } }
+    @keyframes jitterRight { 0%, 100% { transform: rotate(0deg); } 50% { transform: rotate(4deg); } }
+    .jitter-left { animation: jitterLeft 0.9s ease-in-out infinite; }
+    .jitter-right { animation: jitterRight 0.9s ease-in-out infinite; }
     @keyframes dotPulse { 0%, 100% { opacity: 0.3; } 50% { opacity: 1; } }
     .dot-pulse { animation: dotPulse 1s ease-in-out infinite; }
     .dot-pulse:nth-child(2) { animation-delay: 0.2s; }
     .dot-pulse:nth-child(3) { animation-delay: 0.4s; }
+
+    /* Not your turn: still watching it happen live, just dimmed, never grayscale */
+    .not-my-turn { opacity: 0.72; filter: saturate(0.7); }
   </style>
 </helmet>
 <div style="width: 1440px; height: 900px; box-sizing: border-box; background: #1e1e2e; display: flex; font-family: 'Space Grotesk', sans-serif;">
@@ -71,14 +81,13 @@
   </div>
 
   <!-- MAIN CONTENT -->
-  <div style="flex: 1; min-width: 0; padding: 36px 56px 40px; box-sizing: border-box; background-image: radial-gradient(circle, rgba(108,112,134,0.25) 1.5px, transparent 1.5px); background-size: 22px 22px; display: flex; flex-direction: column; position: relative;">
+  <div style="flex: 1; min-width: 0; padding: 36px 56px 40px; box-sizing: border-box; background-image: radial-gradient(circle, rgba(108,112,134,0.25) 1.5px, transparent 1.5px); background-size: 22px 22px; display: flex; flex-direction: column; position: relative; overflow: hidden;">
 
     <!-- HEADER ROW -->
     <div style="display: flex; align-items: flex-start; justify-content: space-between; flex-shrink: 0;">
       <div>
         <div style="font-family: 'Bungee', sans-serif; font-size: 32px; color: #cdd6f4; text-shadow: 3px 3px 0 rgba(0,0,0,0.4);">Round 4</div>
         <div style="display: flex; align-items: center; gap: 8px; margin-top: 8px;">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6c7086" stroke-width="2" stroke-linecap="round"><rect x="5" y="11" width="14" height="9" rx="2"></rect><path d="M8 11V8a4 4 0 0 1 8 0v3"></path></svg>
           <div style="font-size: 12px; color: #a6adc8;"><b style="color: #cdd6f4;">Darius</b> is placing their card</div>
           <div style="display: flex; gap: 3px; margin-left: 2px;">
             <div class="dot-pulse" style="width: 4px; height: 4px; border-radius: 50%; background: #a6adc8;"></div>
@@ -95,60 +104,94 @@
       </div>
     </div>
 
-    <!-- CENTER STAGE -->
+    <!-- CENTER STAGE: watching Darius's drag happen live, just dimmed -->
     <div style="flex: 1; min-height: 0; position: relative;">
 
-      <!-- TIMELINE ROW, pinned dead center, grayed out: not your turn to touch it -->
-      <div class="timeline-locked" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); display: flex; align-items: center; gap: 18px;">
-        <div class="tcard" style="background: #89b4fa; color: #1e1e2e;">
-          <div class="artist">Natalie Imbruglia</div>
-          <div class="year">1998</div>
-          <div class="title">Torn</div>
-        </div>
-        <div class="tcard" style="background: #a6e3a1; color: #1e1e2e;">
-          <div class="artist">OutKast</div>
-          <div class="year">2003</div>
-          <div class="title">Hey Ya!</div>
-        </div>
-        <div class="tcard" style="background: #f9e2af; color: #1e1e2e;">
-          <div class="artist">Adele</div>
-          <div class="year">2011</div>
-          <div class="title">Rolling in the Deep</div>
-        </div>
-        <div class="tcard" style="background: #f5c2e7; color: #1e1e2e;">
-          <div class="artist">Bruno Mars</div>
-          <div class="year">2015</div>
-          <div class="title">Uptown Funk</div>
-        </div>
-        <div class="tcard" style="background: #cba6f7; color: #1e1e2e;">
-          <div class="artist">The Weeknd</div>
-          <div class="year">2019</div>
-          <div class="title">Blinding Lights</div>
-        </div>
-        <div class="tcard" style="background: #e78284; color: #1e1e2e;">
-          <div class="artist">Harry Styles</div>
-          <div class="year">2022</div>
-          <div class="title">As It Was</div>
-        </div>
-        <div class="tcard" style="background: #eba0ac; color: #1e1e2e;">
-          <div class="artist">Miley Cyrus</div>
-          <div class="year">2023</div>
-          <div class="title">Flowers</div>
+      <!-- TIMELINE ROW, pinned dead center, mirrors the active player's live drag -->
+      <div class="not-my-turn" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 1100px;">
+        <div style="width: 100%; overflow: hidden; -webkit-mask-image: linear-gradient(90deg, transparent, #000 64px, #000 calc(100% - 64px), transparent); mask-image: linear-gradient(90deg, transparent, #000 64px, #000 calc(100% - 64px), transparent); display: flex; justify-content: center;">
+          <div style="display: flex; align-items: center; gap: 18px;">
+            <div style="transform: translateX(-26px) rotate(-9deg);">
+              <div class="tcard jitter-left" style="background: #89b4fa; color: #1e1e2e; animation-delay: -0.1s;">
+                <div class="artist">Natalie Imbruglia</div>
+                <div class="year">1998</div>
+                <div class="title">Torn</div>
+              </div>
+            </div>
+            <div style="transform: translateX(-18px) rotate(-7deg);">
+              <div class="tcard jitter-left" style="background: #a6e3a1; color: #1e1e2e; animation-delay: -0.4s;">
+                <div class="artist">OutKast</div>
+                <div class="year">2003</div>
+                <div class="title">Hey Ya!</div>
+              </div>
+            </div>
+            <div style="transform: translateX(-11px) rotate(-5deg);">
+              <div class="tcard jitter-left" style="background: #f9e2af; color: #1e1e2e; animation-delay: -0.7s;">
+                <div class="artist">Adele</div>
+                <div class="year">2011</div>
+                <div class="title">Rolling in the Deep</div>
+              </div>
+            </div>
+            <div style="transform: translateX(-5px) rotate(-3deg);">
+              <div class="tcard jitter-left" style="background: #f5c2e7; color: #1e1e2e; animation-delay: -0.2s;">
+                <div class="artist">Bruno Mars</div>
+                <div class="year">2015</div>
+                <div class="title">Uptown Funk</div>
+              </div>
+            </div>
+            <div style="transform: translateX(-2px) rotate(-1.5deg);">
+              <div class="tcard jitter-left" style="background: #cba6f7; color: #1e1e2e; animation-delay: -0.5s;">
+                <div class="artist">The Weeknd</div>
+                <div class="year">2019</div>
+                <div class="title">Blinding Lights</div>
+              </div>
+            </div>
+
+            <!-- GAP: where Darius's card will land -->
+            <div style="width: 150px; height: 168px; flex-shrink: 0; box-sizing: border-box; border: 3px dashed #fab387; border-radius: 22px; display: flex; align-items: center; justify-content: center;" class="gap-pulse">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fab387" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="19 12 12 19 5 12"></polyline><line x1="12" y1="19" x2="12" y2="5"></line></svg>
+            </div>
+
+            <div style="transform: translateX(4px) rotate(2deg);">
+              <div class="tcard jitter-right" style="background: #e78284; color: #1e1e2e; animation-delay: -0.3s;">
+                <div class="artist">Harry Styles</div>
+                <div class="year">2022</div>
+                <div class="title">As It Was</div>
+              </div>
+            </div>
+            <div style="transform: translateX(12px) rotate(5deg);">
+              <div class="tcard jitter-right" style="background: #eba0ac; color: #1e1e2e; animation-delay: -0.6s;">
+                <div class="artist">Miley Cyrus</div>
+                <div class="year">2023</div>
+                <div class="title">Flowers</div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
-      <!-- LOCK ICON, over the row, making the disabled state obvious -->
-      <div style="position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: 56px; height: 56px; border-radius: 50%; background: rgba(17,17,27,0.85); display: flex; align-items: center; justify-content: center;">
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#a6adc8" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="9" rx="2"></rect><path d="M8 11V8a4 4 0 0 1 8 0v3"></path></svg>
+      <!-- DARIUS'S DRAGGED CARD, hovering above the gap, wobbling, visible to everyone watching -->
+      <div class="not-my-turn" style="position: absolute; left: calc(50% + 279px); top: calc(50% - 190px); transform: translate(-50%, -50%);">
+        <div class="wobble">
+          <div style="width: 168px; height: 168px; border-radius: 22px; border: 5px solid #45475a; background: #313244; box-shadow: 10px 10px 0 rgba(0,0,0,0.45); box-sizing: border-box; display: flex; align-items: center; justify-content: center;">
+            <div style="display: flex; align-items: center; gap: 8px; height: 70px;">
+              <div style="background: #a6e3a1; width: 9px; border-radius: 100px; height: 30px;"></div>
+              <div style="background: #a6e3a1; width: 9px; border-radius: 100px; height: 52px;"></div>
+              <div style="background: #a6e3a1; width: 9px; border-radius: 100px; height: 38px;"></div>
+              <div style="background: #a6e3a1; width: 9px; border-radius: 100px; height: 60px;"></div>
+              <div style="background: #a6e3a1; width: 9px; border-radius: 100px; height: 34px;"></div>
+            </div>
+          </div>
+        </div>
       </div>
 
       <!-- TIMELINE LABEL -->
       <div style="position: absolute; left: 50%; bottom: calc(50% + 98px); transform: translateX(-50%); font-weight: 700; font-size: 12px; letter-spacing: 3px; color: #6c7086; text-transform: uppercase;">Timeline</div>
 
       <!-- CAPTION -->
-      <div style="position: absolute; left: 50%; top: calc(50% + 98px); transform: translateX(-50%); font-size: 12px; color: #6c7086;">You'll be able to place your own cards on your turn</div>
+      <div style="position: absolute; left: 50%; top: calc(50% + 98px); transform: translateX(-50%); font-size: 12px; color: #6c7086; white-space: nowrap;">Watching live. It's not your turn to place a card.</div>
 
-      <!-- GUESS PILLS, still fully active: guessing isn't tied to whose turn it is -->
+      <!-- GUESS PILLS, fully active: guessing isn't tied to whose turn it is -->
       <div style="position: absolute; left: 50%; top: calc(50% + 145px); transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 12px;">
         <div style="display: flex; gap: 20px;">
           <div class="guess-pill">
@@ -169,6 +212,25 @@
         <div style="font-size: 11.5px; color: #6c7086;">Anyone can guess, anytime, no matter whose turn it is.</div>
       </div>
 
+    </div>
+
+    <!-- ROUND STATUS, bottom-left -->
+    <div style="position: absolute; left: 0; bottom: 40px; display: flex; align-items: center; gap: 14px;">
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <div class="vavatar" style="background: #cba6f7; width: 30px; height: 30px; font-size: 11px;">M</div>
+        <div>
+          <div style="font-size: 9px; letter-spacing: 1.5px; color: #6c7086; text-transform: uppercase;">DJ</div>
+          <div style="font-size: 12px; font-weight: 700; color: #cdd6f4;">Mara</div>
+        </div>
+      </div>
+      <div style="width: 1px; height: 26px; background: #313244;"></div>
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <div class="vavatar" style="background: #a6e3a1; width: 30px; height: 30px; font-size: 11px;">D</div>
+        <div>
+          <div style="font-size: 9px; letter-spacing: 1.5px; color: #6c7086; text-transform: uppercase;">Turn</div>
+          <div style="font-size: 12px; font-weight: 700; color: #cdd6f4;">Darius</div>
+        </div>
+      </div>
     </div>
 
     <!-- TOKEN PILE, unaffected by whose turn it is -->

@@ -72,7 +72,7 @@
   </div>
 
   <!-- MAIN CONTENT -->
-  <div style="flex: 1; min-width: 0; padding: 36px 56px 40px; box-sizing: border-box; background-image: radial-gradient(circle, rgba(108,112,134,0.25) 1.5px, transparent 1.5px); background-size: 22px 22px; display: flex; flex-direction: column; position: relative;">
+  <div style="flex: 1; min-width: 0; padding: 36px 56px 40px; box-sizing: border-box; background-image: radial-gradient(circle, rgba(108,112,134,0.25) 1.5px, transparent 1.5px); background-size: 22px 22px; display: flex; flex-direction: column; position: relative; overflow: hidden;">
 
     <!-- HEADER ROW -->
     <div style="display: flex; align-items: flex-start; justify-content: space-between; flex-shrink: 0;">
@@ -141,27 +141,62 @@
         </div>
       </div>
 
+      <!-- UP NEXT: who's DJing and whose turn it is for the round that's about to start, with a draining progress bar -->
+      <div style="position: absolute; left: 50%; bottom: calc(50% + 145px); transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 10px;">
+        <div style="font-weight: 700; font-size: 11px; letter-spacing: 2px; color: #6c7086; text-transform: uppercase;">Round 5 starts in</div>
+        <div style="display: flex; align-items: center; gap: 20px; background: #313244; border: 2px solid #45475a; border-radius: 100px; padding: 10px 22px; box-shadow: 3px 3px 0 rgba(0,0,0,0.3);">
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <div class="vavatar" style="background: #f9e2af; width: 28px; height: 28px; font-size: 10px;">T</div>
+            <div>
+              <div style="font-size: 8px; letter-spacing: 1.5px; color: #6c7086; text-transform: uppercase;">DJ</div>
+              <div style="font-size: 12px; font-weight: 700; color: #cdd6f4;">Theo</div>
+            </div>
+          </div>
+          <div style="width: 1px; height: 22px; background: #45475a;"></div>
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <div class="vavatar" style="background: #f5c2e7; width: 28px; height: 28px; font-size: 10px;">L</div>
+            <div>
+              <div style="font-size: 8px; letter-spacing: 1.5px; color: #6c7086; text-transform: uppercase;">Turn</div>
+              <div style="font-size: 12px; font-weight: 700; color: #cdd6f4;">Lena</div>
+            </div>
+          </div>
+        </div>
+        <div style="width: 180px; height: 5px; background: #45475a; border-radius: 100px; overflow: hidden;">
+          <div style="width: 45%; height: 100%; background: #fab387; border-radius: 100px;"></div>
+        </div>
+      </div>
+
       <!-- TIMELINE LABEL -->
       <div style="position: absolute; left: 50%; bottom: calc(50% + 98px); transform: translateX(-50%); font-weight: 700; font-size: 12px; letter-spacing: 3px; color: #6c7086; text-transform: uppercase;">Timeline</div>
 
       <!-- CAPTION -->
       <div style="position: absolute; left: 50%; top: calc(50% + 98px); transform: translateX(-50%); font-size: 12px; color: #a6adc8; white-space: nowrap;"><b style="color: #cdd6f4;">Darius</b> takes the card. 5 of 8 to win.</div>
 
-      <!-- GUESS PILLS, further below, closed out for the round -->
-      <div style="position: absolute; left: 50%; top: calc(50% + 145px); transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 12px;">
-        <div style="display: flex; gap: 20px;">
-          <div class="guess-pill">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6c7086" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0;"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
-            <input type="text" placeholder="Artist: Dua Lipa" disabled>
-          </div>
-          <div class="guess-pill">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6c7086" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0;"><path d="M9 18V5l12-2v13"></path><circle cx="6" cy="18" r="3"></circle><circle cx="18" cy="16" r="3"></circle></svg>
-            <input type="text" placeholder="Title: Levitating" disabled>
-          </div>
-        </div>
-        <div style="font-size: 11.5px; color: #6c7086;">Round closed. Next card is dealt in a moment.</div>
+      <!-- Guessing has closed now that the card is revealed -->
+      <div style="position: absolute; left: 50%; top: calc(50% + 145px); transform: translateX(-50%); display: flex; align-items: center; gap: 8px;">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#6c7086" stroke-width="2.3" stroke-linecap="round"><rect x="5" y="11" width="14" height="9" rx="2"></rect><path d="M8 11V8a4 4 0 0 1 8 0v3"></path></svg>
+        <div style="font-size: 12px; color: #6c7086;">Round closed. Next card is dealt in a moment.</div>
       </div>
 
+    </div>
+
+    <!-- ROUND STATUS, bottom-left -->
+    <div style="position: absolute; left: 0; bottom: 40px; display: flex; align-items: center; gap: 14px;">
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <div class="vavatar" style="background: #cba6f7; width: 30px; height: 30px; font-size: 11px;">M</div>
+        <div>
+          <div style="font-size: 9px; letter-spacing: 1.5px; color: #6c7086; text-transform: uppercase;">DJ</div>
+          <div style="font-size: 12px; font-weight: 700; color: #cdd6f4;">Mara</div>
+        </div>
+      </div>
+      <div style="width: 1px; height: 26px; background: #313244;"></div>
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <div class="vavatar" style="background: #a6e3a1; width: 30px; height: 30px; font-size: 11px;">D</div>
+        <div>
+          <div style="font-size: 9px; letter-spacing: 1.5px; color: #6c7086; text-transform: uppercase;">Turn</div>
+          <div style="font-size: 12px; font-weight: 700; color: #cdd6f4;">Darius</div>
+        </div>
+      </div>
     </div>
 
     <!-- TOKEN PILE -->
