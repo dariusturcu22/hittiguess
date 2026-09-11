@@ -9,6 +9,9 @@ class Settings(BaseSettings):
     internal_service_api_key: str
     openai_model: str = "gpt-5.1"
 
+    deepinfra_api_key: str
+    deepinfra_model: str = "deepseek-ai/DeepSeek-V4-Flash"
+
     # Optional: unlock each wiki's authenticated rate-limit tier (200
     # requests/minute versus 10/minute anonymous). A bot password is issued
     # per wiki, Wikidata's doesn't authenticate against Wikipedia.
