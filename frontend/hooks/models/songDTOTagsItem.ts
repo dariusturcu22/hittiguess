@@ -5,12 +5,11 @@
  * OpenAPI spec version: v0
  */
 
-export type UpdateSongRequestSongTag = typeof UpdateSongRequestSongTag[keyof typeof UpdateSongRequestSongTag];
+export type SongDTOTagsItem = typeof SongDTOTagsItem[keyof typeof SongDTOTagsItem];
 
 
 // eslint-disable-next-line @typescript-eslint/no-redeclare
-export const UpdateSongRequestSongTag = {
-  NONE: 'NONE',
+export const SongDTOTagsItem = {
   PLAYLIST: 'PLAYLIST',
   SPECIAL: 'SPECIAL',
   ANIME: 'ANIME',

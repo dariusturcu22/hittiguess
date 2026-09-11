@@ -4,7 +4,7 @@
  * OpenAPI definition
  * OpenAPI spec version: v0
  */
-import type { UpdateSongRequestSongTag } from './updateSongRequestSongTag';
+import type { UpdateSongRequestTagsItem } from './updateSongRequestTagsItem';
 import type { UpdateSongRequestCountry } from './updateSongRequestCountry';
 
 export interface UpdateSongRequest {
@@ -14,6 +14,6 @@ export interface UpdateSongRequest {
   youtubeId?: string;
   gradientColor1?: string;
   gradientColor2?: string;
-  songTag?: UpdateSongRequestSongTag;
+  tags?: UpdateSongRequestTagsItem[];
   country?: UpdateSongRequestCountry;
 }

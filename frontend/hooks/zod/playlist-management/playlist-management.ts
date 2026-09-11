@@ -28,7 +28,7 @@ export const createSongBody = zod.object({
   "youtubeId": zod.string().min(1),
   "gradientColor1": zod.string().min(1),
   "gradientColor2": zod.string().min(1),
-  "songTag": zod.enum(['NONE', 'PLAYLIST', 'SPECIAL', 'ANIME']).optional(),
+  "tags": zod.array(zod.enum(['PLAYLIST', 'SPECIAL', 'ANIME'])).optional(),
   "country": zod.enum(['NONE', 'RO']).optional()
 })
 
@@ -82,7 +82,7 @@ export const updateSongBody = zod.object({
   "youtubeId": zod.string().optional(),
   "gradientColor1": zod.string().optional(),
   "gradientColor2": zod.string().optional(),
-  "songTag": zod.enum(['NONE', 'PLAYLIST', 'SPECIAL', 'ANIME']).optional(),
+  "tags": zod.array(zod.enum(['PLAYLIST', 'SPECIAL', 'ANIME'])).optional(),
   "country": zod.enum(['NONE', 'RO']).optional()
 })
 
