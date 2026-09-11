@@ -12,7 +12,6 @@ def _base_metadata(**overrides):
         "musicbrainz": [],
         "wikidata": [],
         "wikipedia": [],
-        "genius": None,
     }
     data.update(overrides)
     return data
@@ -28,12 +27,11 @@ def test_build_includes_youtube_section():
 
 def test_build_shows_no_candidates_for_empty_structured_sources():
     text = prompt.build(_base_metadata())
-    assert "=== MUSICBRAINZ DATABASE (Most Authoritative) ===" in text
+    assert "=== MUSICBRAINZ DATABASE ===" in text
     assert "=== WIKIDATA ===" in text
     assert "=== WIKIPEDIA ===" in text
     assert "(no candidates returned)" in text
     assert "(no article extract available)" in text
-    assert "=== GENIUS ===" not in text
 
 
 def test_build_includes_musicbrainz_results_when_present():
@@ -68,13 +66,6 @@ def test_build_includes_wikipedia_results_when_present():
     )
     assert "[track] 'Test Song (song)':" in text
     assert "Released in 1999." in text
-
-
-def test_build_includes_genius_when_present():
-    text = prompt.build(
-        _base_metadata(genius={"title": "Test Song", "artist": "Test Artist", "release_date": "1999-05-01"})
-    )
-    assert '"Test Song" by Test Artist - Year: 1999' in text
 
 
 def test_build_truncates_long_description():
