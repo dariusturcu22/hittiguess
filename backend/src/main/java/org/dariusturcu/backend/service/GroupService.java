@@ -18,8 +18,11 @@ import org.dariusturcu.backend.repository.GroupRepository;
 import org.dariusturcu.backend.repository.MemberRepository;
 import org.dariusturcu.backend.repository.PlaylistRepository;
 import org.dariusturcu.backend.security.util.SecurityUtils;
+import org.dariusturcu.backend.websocket.GroupBroadcastEvent;
+import org.dariusturcu.backend.websocket.GroupEventType;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -56,6 +59,7 @@ public class GroupService {
     private final MemberRepository memberRepository;
     private final PlaylistRepository playlistRepository;
     private final GroupMapper groupMapper;
+    private final ApplicationEventPublisher eventPublisher;
 
     private final SecureRandom secureRandom = new SecureRandom();
 
@@ -109,7 +113,9 @@ public class GroupService {
         group.addMember(member);
 
         Group savedGroup = groupRepository.save(group);
-        return groupMapper.toDetailDTO(savedGroup);
+        GroupDetailDTO result = groupMapper.toDetailDTO(savedGroup);
+        eventPublisher.publishEvent(new GroupBroadcastEvent(GroupEventType.MEMBER_JOINED, result));
+        return result;
     }
 
     @Transactional(readOnly = true)
@@ -127,9 +133,9 @@ public class GroupService {
                 .map(groupMapper::toDetailDTO);
     }
 
-    // The single point settings changes flow through. Story 11's WebSocket handler
-    // calls this same method (or publishes an event from it) to broadcast the update
-    // to other members; no push mechanism exists yet, this only persists the change.
+    // The single point settings changes flow through: persists the change and publishes
+    // a SETTINGS_CHANGED event, which GroupBroadcastListener forwards to the group's
+    // settings topic.
     public GroupDetailDTO updateGroupSettings(Long groupId, UpdateGroupSettingsRequest request) {
         Group group = findGroup(groupId);
         requireAdmin(group, SecurityUtils.getCurrentUser());
@@ -149,7 +155,9 @@ public class GroupService {
         }
 
         Group savedGroup = groupRepository.save(group);
-        return groupMapper.toDetailDTO(savedGroup);
+        GroupDetailDTO result = groupMapper.toDetailDTO(savedGroup);
+        eventPublisher.publishEvent(new GroupBroadcastEvent(GroupEventType.SETTINGS_CHANGED, result));
+        return result;
     }
 
     // Story 10 owns the actual game session model; until it exists, this only flips
@@ -163,7 +171,9 @@ public class GroupService {
         group.setExpiresAt(null);
 
         Group savedGroup = groupRepository.save(group);
-        return groupMapper.toDetailDTO(savedGroup);
+        GroupDetailDTO result = groupMapper.toDetailDTO(savedGroup);
+        eventPublisher.publishEvent(new GroupBroadcastEvent(GroupEventType.GAME_SESSION_STARTED, result));
+        return result;
     }
 
     // Story 10 calls this once a real game session ends, restarting the
@@ -185,7 +195,9 @@ public class GroupService {
         group.removeMember(member);
 
         if (!wasAdmin) {
-            groupRepository.save(group);
+            Group savedGroup = groupRepository.save(group);
+            eventPublisher.publishEvent(new GroupBroadcastEvent(
+                    GroupEventType.MEMBER_LEFT, groupMapper.toDetailDTO(savedGroup)));
             return;
         }
 
@@ -194,7 +206,10 @@ public class GroupService {
 
         if (nextAdmin.isPresent()) {
             nextAdmin.get().setAdmin(true);
-            groupRepository.save(group);
+            Group savedGroup = groupRepository.save(group);
+            GroupDetailDTO result = groupMapper.toDetailDTO(savedGroup);
+            eventPublisher.publishEvent(new GroupBroadcastEvent(GroupEventType.MEMBER_LEFT, result));
+            eventPublisher.publishEvent(new GroupBroadcastEvent(GroupEventType.ADMIN_CHANGED, result));
         } else {
             groupRepository.delete(group);
         }
@@ -203,15 +218,29 @@ public class GroupService {
     public void disconnect(Long groupId) {
         Group group = findGroup(groupId);
         Member member = requireMembership(group, SecurityUtils.getCurrentUser());
-        member.setConnected(false);
-        memberRepository.save(member);
+        setConnectedAndBroadcast(group, member, false);
     }
 
     public void reconnect(Long groupId) {
         Group group = findGroup(groupId);
         Member member = requireMembership(group, SecurityUtils.getCurrentUser());
-        member.setConnected(true);
+        setConnectedAndBroadcast(group, member, true);
+    }
+
+    // The WebSocket disconnect listener's entry point: it only has the user id from the
+    // socket session's authenticated principal, not a full request-scoped SecurityContext,
+    // so it can't go through disconnect() above. Same effect, resolved by user id instead.
+    public void disconnectMember(Long groupId, Long userId) {
+        Group group = findGroup(groupId);
+        Member member = requireMembershipByUserId(group, userId);
+        setConnectedAndBroadcast(group, member, false);
+    }
+
+    private void setConnectedAndBroadcast(Group group, Member member, boolean connected) {
+        member.setConnected(connected);
         memberRepository.save(member);
+        GroupDetailDTO result = groupMapper.toDetailDTO(group);
+        eventPublisher.publishEvent(new GroupBroadcastEvent(GroupEventType.MEMBER_CONNECTION_CHANGED, result));
     }
 
     public GroupDetailDTO promoteMember(Long groupId, Long memberId) {
@@ -231,7 +260,9 @@ public class GroupService {
         target.setAdmin(true);
 
         Group savedGroup = groupRepository.save(group);
-        return groupMapper.toDetailDTO(savedGroup);
+        GroupDetailDTO result = groupMapper.toDetailDTO(savedGroup);
+        eventPublisher.publishEvent(new GroupBroadcastEvent(GroupEventType.ADMIN_CHANGED, result));
+        return result;
     }
 
     // Only a presence flag: the WebRTC mesh/signaling mechanics that make voice
@@ -283,8 +314,12 @@ public class GroupService {
     }
 
     private Member requireMembership(Group group, User user) {
+        return requireMembershipByUserId(group, user.getId());
+    }
+
+    private Member requireMembershipByUserId(Group group, Long userId) {
         return group.getMembers().stream()
-                .filter(member -> member.getUser().getId().equals(user.getId()))
+                .filter(member -> member.getUser().getId().equals(userId))
                 .findFirst()
                 .orElseThrow(() -> new AccessDeniedException("You are not a member of this group"));
     }

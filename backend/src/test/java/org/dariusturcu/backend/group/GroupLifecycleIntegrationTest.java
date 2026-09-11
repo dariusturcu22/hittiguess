@@ -26,6 +26,7 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.boot.persistence.autoconfigure.EntityScan;
 import org.springframework.boot.security.oauth2.client.autoconfigure.OAuth2ClientAutoConfiguration;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -78,8 +79,9 @@ class GroupLifecycleIntegrationTest {
 
         @Bean
         GroupService groupService(GroupRepository groupRepository, MemberRepository memberRepository,
-                                   PlaylistRepository playlistRepository, GroupMapper groupMapper) {
-            return new GroupService(groupRepository, memberRepository, playlistRepository, groupMapper);
+                                   PlaylistRepository playlistRepository, GroupMapper groupMapper,
+                                   ApplicationEventPublisher eventPublisher) {
+            return new GroupService(groupRepository, memberRepository, playlistRepository, groupMapper, eventPublisher);
         }
     }
 
