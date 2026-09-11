@@ -10,9 +10,16 @@ import org.flywaydb.core.Flyway;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
+import org.springframework.boot.persistence.autoconfigure.EntityScan;
+import org.springframework.boot.security.oauth2.client.autoconfigure.OAuth2ClientAutoConfiguration;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
+import org.springframework.transaction.annotation.Transactional;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
@@ -28,23 +35,47 @@ import static org.assertj.core.api.Assertions.assertThat;
  * A song row migrated from V1's original shape must still come back as a
  * valid SongDTO through the real repository and mapper, not just survive at
  * the raw-SQL level (SongSchemaMigrationTest covers that separately).
+ *
+ * Uses a minimal JPA-only context (JpaTestConfig below) rather than the whole
+ * BackendApplication: this project's OAuth2 client and AI-service RestClient
+ * beans both build a java.net.http.HttpClient, which this sandbox's JDK can't
+ * construct (a platform loopback-socket limitation, unrelated to this test),
+ * and neither bean has anything to do with what's under test here anyway.
  */
 @Testcontainers
-@SpringBootTest
+@SpringBootTest(classes = SongApiCompatibilityAfterMigrationTest.JpaTestConfig.class)
+@Transactional
 class SongApiCompatibilityAfterMigrationTest {
+
+    @Configuration
+    @EnableAutoConfiguration(exclude = OAuth2ClientAutoConfiguration.class)
+    @EntityScan("org.dariusturcu.backend.model")
+    @EnableJpaRepositories(basePackageClasses = SongRepository.class)
+    static class JpaTestConfig {
+        @Bean
+        SongMapper songMapper() {
+            return new SongMapper();
+        }
+    }
 
     @Container
     static final PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:18-alpine");
 
+    // Flyway runs by hand below, entirely before the Spring context exists, rather than
+    // relying on Spring Boot's autoconfigured Flyway bean: that bean's run is tied to context
+    // refresh timing relative to @BeforeAll, which isn't guaranteed to land after this class's
+    // own @BeforeAll finishes. Disabling it here removes that ordering question entirely, the
+    // database is already in its final migrated state by the time the context starts.
     @DynamicPropertySource
     static void configureDataSource(DynamicPropertyRegistry registry) {
         registry.add("spring.datasource.url", postgres::getJdbcUrl);
         registry.add("spring.datasource.username", postgres::getUsername);
         registry.add("spring.datasource.password", postgres::getPassword);
+        registry.add("spring.flyway.enabled", () -> false);
     }
 
     @BeforeAll
-    static void migrateBaselineAndInsertLegacyRow() throws SQLException {
+    static void migrateBaselineInsertLegacyRowThenMigrateTheRest() throws SQLException {
         Flyway.configure()
                 .dataSource(postgres.getJdbcUrl(), postgres.getUsername(), postgres.getPassword())
                 .target("1")
@@ -64,8 +95,10 @@ class SongApiCompatibilityAfterMigrationTest {
             );
         }
 
-        // Spring Boot's own Flyway auto-configuration applies V2-V4 when the context below starts,
-        // since flyway_schema_history above already shows V1 as done, not baselining, migrating.
+        Flyway.configure()
+                .dataSource(postgres.getJdbcUrl(), postgres.getUsername(), postgres.getPassword())
+                .load()
+                .migrate();
     }
 
     @Autowired

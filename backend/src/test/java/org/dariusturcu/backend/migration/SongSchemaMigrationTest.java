@@ -1,7 +1,7 @@
 package org.dariusturcu.backend.migration;
 
 import org.flywaydb.core.Flyway;
-import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
@@ -30,12 +30,15 @@ class SongSchemaMigrationTest {
     @Container
     static final PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:18-alpine");
 
-    private Connection connection;
-    private long taggedSongId;
-    private long untaggedSongId;
+    // The container above is static, one instance shared for the whole class, so this setup
+    // runs once via @BeforeAll rather than per-test: re-running it per-test against the same
+    // already-migrated database would try to insert the same rows twice.
+    private static Connection connection;
+    private static long taggedSongId;
+    private static long untaggedSongId;
 
-    @BeforeEach
-    void migrateBaselineInsertLegacyRowsThenMigrateTheRest() throws SQLException {
+    @BeforeAll
+    static void migrateBaselineInsertLegacyRowsThenMigrateTheRest() throws SQLException {
         Flyway.configure()
                 .dataSource(postgres.getJdbcUrl(), postgres.getUsername(), postgres.getPassword())
                 .target("1")
