@@ -533,3 +533,11 @@ Decision: the local/cheap LLM spike's validated two-tier pipeline and model choi
 Why: the spike ran real accuracy numbers against a 70-song test set (99% patient tier, 90% fast tier) and turned up no reliability concern worth re-testing before building; the only thing left open was whether to actually ship it, not whether it works. The winning design isn't a genuinely local, self-hosted model, llama.cpp's accuracy came in well below its own hosted twin under quantization, so "local LLM option" narrows in practice to "the cheapest hosted models that actually clear the accuracy bar," which the spike already identified.
 
 ---
+
+## 2026-09 | Song deletion once a song isn't playlist-exclusive: unlink first, delete only when orphaned everywhere
+
+Decision: story 15 replaces `Song`'s singular `@ManyToOne playlist` with a `song_playlists` join table, so a song can belong to more than one playlist. Removing a song from a playlist now only unlinks that one join row. The song row itself is only deleted outright once that removal leaves it with zero remaining playlists.
+
+Why: there's no catalog view today that can reach a song with no playlist at all, so leaving one behind as a fully orphaned, unreachable row is worse than deleting it. But a straight delete on every removal, the old behavior when a song could only ever have one playlist, would silently break the song for every other playlist it's still linked to once story 45's cross-playlist copy exists. Checking for zero remaining playlists before deleting gets both: no dangling rows, and no destructive surprise for a shared song.
+
+---

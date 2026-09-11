@@ -214,3 +214,20 @@ Tests:
 - [x] Unit tests for the data migration: `verificationStatus` defaulted correctly for existing rows, plus the legacy artist string and tag both carrying forward correctly into the new tables (`SongSchemaMigrationTest`, run against a real Postgres via Testcontainers)
 - [x] Integration test: existing API responses (`SongDTO`) don't break for rows migrated from the old shape (`SongApiCompatibilityAfterMigrationTest`); a separate test (`FlywayAutoConfigurationRunsOnStartupTest`) confirms Spring Boot's own Flyway bean, not just the Java API called directly, actually migrates a fresh database on startup
 - [x] Unit tests for the edit-access gate: a `MANUAL_ENTRY` or `UNVERIFIED` song accepts an edit, `VERIFIED` and `NEEDS_REVIEW` reject one server-side regardless of frontend state (`PlaylistServiceTest`)
+
+## Story 15: Song/playlist relational fix
+
+Checked against real code: `Song.playlist` is a required singular `@ManyToOne`, one song belongs to exactly one playlist today. Touches the same table as story 23; sequencing or combining the two migrations avoids two separate schema changes to `Song`.
+
+- [x] Introduce a join table between `Song` and `Playlist`, replacing the singular `@ManyToOne playlist` on `Song`
+- [x] Rewrite `Playlist.songs`'s `@OneToMany(mappedBy = "playlist", cascade = CascadeType.ALL, orphanRemoval = true)` relation and its `addSong`/`removeSong` helpers, both of which assume the singular back-reference (`song.setPlaylist(this)`/`song.setPlaylist(null)`) that a join table removes
+- [x] Migrate existing data: each song's current single playlist link becomes one row in the new join table
+- [x] Update `PlaylistService`'s `checkSongBelongsToPlaylist`, which currently assumes one song belongs to exactly one playlist; `checkPlaylistAccess` doesn't need changing, it checks playlist-user membership and doesn't touch the song relation
+- [x] Decide song deletion semantics once a song isn't playlist-exclusive: does removing a song from one playlist delete it outright, or only unlink it? `PlaylistController`'s current delete-song endpoint, via `Playlist.removeSong` and `orphanRemoval = true`, does a real delete today. Decided: unlinking is the default, a real delete only happens once a song is left with zero playlists, see `DECISIONS.md`'s 2026-09 "Song deletion once a song isn't playlist-exclusive" entry
+- [x] Update `SongDTO`/`PlaylistDetailDTO`, `PlaylistMapper.toDetailDTO` (the code path that assembles a playlist's song list), and the frontend to reflect a song appearing in multiple playlists. Neither DTO ever exposed the singular relation directly, so their shape is unchanged; `PlaylistMapper.toDetailDTO` and the frontend continue to work against `Playlist.getSongs()` as before, now backed by the join table
+- [x] Coordinate with story 23 (schema reconciliation), both touch `Song`'s shape. Built directly on top of story 23's `Song` entity rewrite rather than against a stale copy
+
+Tests:
+- [x] Unit tests for `checkSongBelongsToPlaylist` against the new many-to-many relation, plus a regression check that `checkPlaylistAccess` is unaffected
+- [x] Integration test: migrating existing data preserves each song's original playlist link
+- [x] Integration test: a song in multiple playlists behaves correctly for access checks and the decided deletion semantics
