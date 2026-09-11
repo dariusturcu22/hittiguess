@@ -21,8 +21,12 @@ public class Song {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    // @OrderBy, not @OrderColumn: Hibernate only wants @OrderColumn managing the index itself
+    // for a unidirectional relation; this one is mappedBy (SongArtist owns the FK back to
+    // Song), so displayOrder is a real, explicitly-assigned column instead (confirmed live,
+    // Hibernate's own HHH160246 warning against @OrderColumn on a mappedBy association).
     @OneToMany(mappedBy = "song", cascade = CascadeType.ALL, orphanRemoval = true)
-    @OrderColumn(name = "display_order")
+    @OrderBy("displayOrder ASC")
     private List<SongArtist> artists = new ArrayList<>();
 
     private String title;
@@ -50,7 +54,9 @@ public class Song {
 
     private String confidence;
 
-    @Lob
+    // Not @Lob: on Postgres that maps a String to the oid large-object type, a reference into
+    // separate large-object storage, not the plain text column the TEXT migration column is.
+    @Column(columnDefinition = "TEXT")
     private String metadataRaw;
 
     @ManyToOne

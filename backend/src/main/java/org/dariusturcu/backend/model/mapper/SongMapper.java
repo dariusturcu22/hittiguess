@@ -73,11 +73,14 @@ public class SongMapper {
         return song;
     }
 
+    private static final int SOLE_ARTIST_DISPLAY_ORDER = 0;
+
     private void setSingleMainArtist(Song song, String artistName) {
         SongArtist artist = new SongArtist();
         artist.setSong(song);
         artist.setName(artistName);
         artist.setRole(ArtistRole.MAIN);
+        artist.setDisplayOrder(SOLE_ARTIST_DISPLAY_ORDER);
         song.setArtists(List.of(artist));
     }
 }

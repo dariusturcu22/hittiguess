@@ -23,4 +23,7 @@ public class SongArtist {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private ArtistRole role;
+
+    @Column(nullable = false)
+    private Integer displayOrder;
 }

@@ -41,9 +41,17 @@ CREATE TABLE songs (
     added_by BIGINT NOT NULL REFERENCES users (id)
 );
 
+-- RefreshToken.id has no explicit @GeneratedValue strategy, so Hibernate's AUTO
+-- resolution here is sequence-backed rather than identity-column-backed like
+-- every other entity's id, confirmed live: schema validation fails looking for
+-- this exact sequence name (Hibernate's default is <table>_seq) if it's absent.
+CREATE SEQUENCE refresh_tokens_seq START WITH 1 INCREMENT BY 50;
+
 CREATE TABLE refresh_tokens (
-    id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    id BIGINT NOT NULL DEFAULT nextval('refresh_tokens_seq') PRIMARY KEY,
     token VARCHAR(255) NOT NULL UNIQUE,
     user_id BIGINT UNIQUE REFERENCES users (id),
     expires_at TIMESTAMP NOT NULL
 );
+
+ALTER SEQUENCE refresh_tokens_seq OWNED BY refresh_tokens.id;
