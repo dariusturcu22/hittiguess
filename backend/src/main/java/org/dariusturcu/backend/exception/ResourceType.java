@@ -4,7 +4,9 @@ public enum ResourceType {
     PLAYLIST("Playlist"),
     SONG("Song"),
     USER("User"),
-    SONG_NOT_IN_PLAYLIST("Song");
+    SONG_NOT_IN_PLAYLIST("Song"),
+    GROUP("Group"),
+    MEMBER("Member");
 
     private final String displayName;
 
