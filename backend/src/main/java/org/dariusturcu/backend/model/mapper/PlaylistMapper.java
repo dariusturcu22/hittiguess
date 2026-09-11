@@ -2,23 +2,20 @@ package org.dariusturcu.backend.model.mapper;
 
 import org.dariusturcu.backend.model.playlist.Playlist;
 import org.dariusturcu.backend.model.playlist.PlaylistDetailDTO;
+import org.dariusturcu.backend.model.playlist.PlaylistMemberDTO;
+import org.dariusturcu.backend.model.playlist.PlaylistMembership;
 import org.dariusturcu.backend.model.playlist.PlaylistSummaryDTO;
 import org.dariusturcu.backend.model.playlist.UpdatePlaylistRequest;
 
-import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Component;
+import lombok.RequiredArgsConstructor;
 
 import java.util.stream.Collectors;
 
 @Component
+@RequiredArgsConstructor
 public class PlaylistMapper {
     private final SongMapper songMapper;
-    private final UserMapper userMapper;
-
-    public PlaylistMapper(SongMapper songMapper, @Lazy UserMapper userMapper) {
-        this.songMapper = songMapper;
-        this.userMapper = userMapper;
-    }
 
     public PlaylistSummaryDTO toSummaryDTO(Playlist playlist) {
         return new PlaylistSummaryDTO(
@@ -30,6 +27,7 @@ public class PlaylistMapper {
     }
 
     public PlaylistDetailDTO toDetailDTO(Playlist playlist) {
+        Long ownerId = playlist.getOwner().getId();
         return new PlaylistDetailDTO(
                 playlist.getId(),
                 playlist.getName(),
@@ -39,9 +37,24 @@ public class PlaylistMapper {
                 playlist.getSongs().stream()
                         .map(songMapper::toDTO)
                         .toList(),
-                playlist.getUsers().stream()
-                        .map(userMapper::toSummaryDTO)
+                ownerId,
+                playlist.getMemberships().stream()
+                        .map(membership -> toMemberDTO(membership, membership.getUser().getId().equals(ownerId)))
                         .collect(Collectors.toSet())
+        );
+    }
+
+    public PlaylistMemberDTO toMemberDTO(PlaylistMembership membership, boolean owner) {
+        return new PlaylistMemberDTO(
+                membership.getUser().getId(),
+                membership.getUser().getUsername(),
+                membership.getDisplayName(),
+                membership.getAvatarUrl(),
+                owner,
+                membership.isCanRead(),
+                membership.isCanWrite(),
+                membership.isCanDelete(),
+                membership.getJoinedAt()
         );
     }
 
