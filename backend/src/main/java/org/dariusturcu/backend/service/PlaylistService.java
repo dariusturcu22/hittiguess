@@ -65,7 +65,10 @@ public class PlaylistService {
     }
 
     private void checkSongBelongsToPlaylist(Song song, Long playlistId) {
-        if (!song.getPlaylist().getId().equals(playlistId)) {
+        boolean belongsToPlaylist = song.getPlaylists().stream()
+                .anyMatch(songPlaylist -> songPlaylist.getId().equals(playlistId));
+
+        if (!belongsToPlaylist) {
             throw new ResourceNotFoundException(ResourceType.SONG_NOT_IN_PLAYLIST, song.getId(), playlistId);
         }
     }
@@ -123,10 +126,11 @@ public class PlaylistService {
 
         User user = SecurityUtils.getCurrentUser();
         Song newSong = songMapper.toEntity(request);
-        newSong.setPlaylist(playlist);
         newSong.setAddedBy(user);
 
         Song savedSong = songRepository.save(newSong);
+        playlist.addSong(savedSong);
+        playlistRepository.save(playlist);
 
         return songMapper.toDTO(savedSong);
     }
@@ -161,7 +165,14 @@ public class PlaylistService {
         checkSongBelongsToPlaylist(song, playlistId);
 
         playlist.removeSong(song);
-
         playlistRepository.save(playlist);
+
+        // A song only exists to belong to a playlist, there's no catalog view that can reach one
+        // with zero playlists left. Unlinking the last playlist is a real delete, not just this
+        // playlist's link, to avoid leaving unreachable rows behind (see DECISIONS.md's 2026-09
+        // "Song deletion" entry).
+        if (song.getPlaylists().isEmpty()) {
+            songRepository.delete(song);
+        }
     }
 }

@@ -1,5 +1,6 @@
 package org.dariusturcu.backend.service;
 
+import org.dariusturcu.backend.exception.ResourceNotFoundException;
 import org.dariusturcu.backend.model.mapper.PlaylistMapper;
 import org.dariusturcu.backend.model.mapper.SongMapper;
 import org.dariusturcu.backend.model.playlist.Playlist;
@@ -28,9 +29,11 @@ import java.util.HashSet;
 import java.util.Optional;
 import java.util.Set;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -83,7 +86,7 @@ class PlaylistServiceTest {
     private Song songWithStatus(VerificationStatus status) {
         Song song = new Song();
         song.setId(SONG_ID);
-        song.setPlaylist(playlist);
+        song.getPlaylists().add(playlist);
         song.setVerificationStatus(status);
         return song;
     }
@@ -116,5 +119,40 @@ class PlaylistServiceTest {
                 .isInstanceOf(AccessDeniedException.class);
 
         verify(songMapper, never()).updateEntity(any(), any());
+    }
+
+    @Test
+    void getSongRejectsASongThatDoesNotBelongToThePlaylist() {
+        Song song = songWithStatus(VerificationStatus.UNVERIFIED);
+        song.getPlaylists().clear();
+        when(songRepository.findById(SONG_ID)).thenReturn(Optional.of(song));
+
+        assertThatThrownBy(() -> playlistService.getSong(PLAYLIST_ID, SONG_ID))
+                .isInstanceOf(ResourceNotFoundException.class);
+    }
+
+    @Test
+    void deleteSongOnlyUnlinksWhenTheSongBelongsToAnotherPlaylist() {
+        Song song = songWithStatus(VerificationStatus.UNVERIFIED);
+        Playlist otherPlaylist = new Playlist();
+        otherPlaylist.setId(99L);
+        song.getPlaylists().add(otherPlaylist);
+        when(songRepository.findById(SONG_ID)).thenReturn(Optional.of(song));
+
+        playlistService.deleteSong(PLAYLIST_ID, SONG_ID);
+
+        assertThat(song.getPlaylists()).containsExactly(otherPlaylist);
+        verify(songRepository, never()).delete(any());
+    }
+
+    @Test
+    void deleteSongDeletesTheSongOutrightWhenItsTheOnlyPlaylistItBelongsTo() {
+        Song song = songWithStatus(VerificationStatus.UNVERIFIED);
+        when(songRepository.findById(SONG_ID)).thenReturn(Optional.of(song));
+
+        playlistService.deleteSong(PLAYLIST_ID, SONG_ID);
+
+        assertThat(song.getPlaylists()).isEmpty();
+        verify(songRepository, times(1)).delete(song);
     }
 }

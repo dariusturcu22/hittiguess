@@ -59,9 +59,8 @@ public class Song {
     @Column(columnDefinition = "TEXT")
     private String metadataRaw;
 
-    @ManyToOne
-    @JoinColumn(name = "playlist_id", nullable = false)
-    private Playlist playlist;
+    @ManyToMany(mappedBy = "songs")
+    private Set<Playlist> playlists = new HashSet<>();
 
     @ManyToOne
     @JoinColumn(name = "added_by", nullable = false)
