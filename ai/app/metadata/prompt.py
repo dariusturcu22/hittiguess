@@ -104,10 +104,14 @@ def _append_task_instructions(parts: list[str]) -> None:
         "'Lyrics', 'Lyric Video', 'Live', 'Live Version', 'Radio Edit', 'Single Version'"
     )
     parts.append("- REMOVE year qualifiers like '2019 Remaster' or 'Remastered 2011'")
-    parts.append("- KEEP: 'Remix', 'Mashup', 'feat.', 'ft.'")
+    parts.append(
+        "- REMOVE a '(feat. X)'/'(ft. X)' clause from the title entirely, it does not belong in the "
+        "cleaned title text"
+    )
+    parts.append("- KEEP: 'Remix', 'Mashup'")
     parts.append("- KEEP: 'Original Mix', 'Extended Mix'")
     parts.append("- Example: 'Big In Japan (2019 Remaster)' -> 'Big In Japan'")
-    parts.append("- Example: 'Somebody That I Used To Know (feat. Kimbra)' -> keep as is")
+    parts.append("- Example: 'Somebody That I Used To Know (feat. Kimbra)' -> 'Somebody That I Used To Know'")
     parts.append("- Example: 'Blinding Lights (Radio Edit)' -> 'Blinding Lights'")
     parts.append("- Example: 'Somebody That I Used To Know - Remix' -> keep as is")
     parts.append("gradient_color1 and gradient_color2 should be hex colors, without a leading #, that fit the song's vibe as a gradient pair.")
