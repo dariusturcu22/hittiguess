@@ -28,28 +28,59 @@ def _append_youtube_data(parts: list[str], youtube_data: dict[str, str]) -> None
         parts.append("\nVideo Description: (none)\n")
 
 
-def _append_musicbrainz_data(parts: list[str], musicbrainz_results: list[dict[str, str]]) -> None:
-    if not musicbrainz_results:
+def _append_candidates_by_query(parts: list[str], section_title: str, candidates: list[dict], format_candidate) -> None:
+    parts.append(section_title)
+    if not candidates:
+        parts.append("(no candidates returned)")
+        parts.append("")
         return
 
-    parts.append("=== MUSICBRAINZ DATABASE (Most Authoritative) ===")
-    for i, result in enumerate(musicbrainz_results[:5], start=1):
-        release_date = result.get("release_date", "unknown")
-        year = release_date[:4] if release_date != "unknown" and len(release_date) >= 4 else "unknown"
-        parts.append(
-            f"{i}. \"{result.get('title')}\" by {result.get('artist')} - "
-            f"Year: {year} (Match Score: {result.get('score')}/100)"
-        )
+    track_candidates = [candidate for candidate in candidates if candidate["query"] == "track"]
+    album_candidates = [candidate for candidate in candidates if candidate["query"] == "album"]
+    for label, group in (("Track query", track_candidates), ("Album query", album_candidates)):
+        if not group:
+            continue
+        parts.append(f"{label}:")
+        for candidate in group:
+            parts.append(format_candidate(candidate))
     parts.append("")
 
 
-def _append_wikipedia_data(parts: list[str], wikipedia_data: dict[str, str] | None) -> None:
-    if wikipedia_data is None:
+def _append_musicbrainz_data(parts: list[str], musicbrainz_candidates: list[dict]) -> None:
+    _append_candidates_by_query(
+        parts,
+        "=== MUSICBRAINZ DATABASE (Most Authoritative) ===",
+        musicbrainz_candidates,
+        lambda candidate: (
+            f"  - \"{candidate['title']}\" by {candidate['artist']} - date: {candidate['date']} - "
+            f"type: {candidate['type']} - score: {candidate['score']}/100"
+        ),
+    )
+
+
+def _append_wikidata_data(parts: list[str], wikidata_candidates: list[dict]) -> None:
+    parts.append("=== WIKIDATA ===")
+    if not wikidata_candidates:
+        parts.append("(no candidates returned)")
+        parts.append("")
         return
 
+    for candidate in wikidata_candidates:
+        parts.append(f"[{candidate['query']}] {candidate.get('description')} - publication date: {candidate['date']}")
+    parts.append("")
+
+
+def _append_wikipedia_data(parts: list[str], wikipedia_entries: list[dict]) -> None:
     parts.append("=== WIKIPEDIA ===")
-    parts.append(f"Page: {wikipedia_data.get('title')}")
-    parts.append(f"Info: {wikipedia_data.get('release_info')}\n")
+    if not wikipedia_entries:
+        parts.append("(no article extract available)")
+        parts.append("")
+        return
+
+    for entry in wikipedia_entries:
+        parts.append(f"[{entry['query']}] {entry['page_title']!r}:")
+        parts.append(entry["extract"])
+    parts.append("")
 
 
 def _append_genius_data(parts: list[str], genius_data: dict[str, str] | None) -> None:
@@ -103,6 +134,7 @@ def build(all_data: dict[str, object]) -> str:
 
     _append_youtube_data(parts, all_data["youtube"])
     _append_musicbrainz_data(parts, all_data["musicbrainz"])
+    _append_wikidata_data(parts, all_data["wikidata"])
     _append_wikipedia_data(parts, all_data["wikipedia"])
     _append_genius_data(parts, all_data["genius"])
     _append_task_instructions(parts)
