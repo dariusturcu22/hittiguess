@@ -59,7 +59,7 @@ class SongApiCompatibilityAfterMigrationTest {
     }
 
     @Container
-    static final PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:18-alpine");
+    static final PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("pgvector/pgvector:pg18");
 
     // Flyway runs by hand below, entirely before the Spring context exists, rather than
     // relying on Spring Boot's autoconfigured Flyway bean: that bean's run is tied to context
