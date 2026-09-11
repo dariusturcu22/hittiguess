@@ -58,6 +58,15 @@ def _append_musicbrainz_data(parts: list[str], musicbrainz_candidates: list[dict
     )
 
 
+def _append_discogs_data(parts: list[str], discogs_candidates: list[dict]) -> None:
+    _append_candidates_by_query(
+        parts,
+        "=== DISCOGS ===",
+        discogs_candidates,
+        lambda candidate: f"  - master \"{candidate['title']}\" - year: {candidate['year']}",
+    )
+
+
 def _append_wikidata_data(parts: list[str], wikidata_candidates: list[dict]) -> None:
     parts.append("=== WIKIDATA ===")
     if not wikidata_candidates:
@@ -132,6 +141,7 @@ def build(all_data: dict[str, object]) -> str:
 
     _append_youtube_data(parts, all_data["youtube"])
     _append_musicbrainz_data(parts, all_data["musicbrainz"])
+    _append_discogs_data(parts, all_data["discogs"])
     _append_wikidata_data(parts, all_data["wikidata"])
     _append_wikipedia_data(parts, all_data["wikipedia"])
     _append_task_instructions(parts)
