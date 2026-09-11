@@ -533,3 +533,19 @@ Decision: the local/cheap LLM spike's validated two-tier pipeline and model choi
 Why: the spike ran real accuracy numbers against a 70-song test set (99% patient tier, 90% fast tier) and turned up no reliability concern worth re-testing before building; the only thing left open was whether to actually ship it, not whether it works. The winning design isn't a genuinely local, self-hosted model, llama.cpp's accuracy came in well below its own hosted twin under quantization, so "local LLM option" narrows in practice to "the cheapest hosted models that actually clear the accuracy bar," which the spike already identified.
 
 ---
+
+## 2026-09 | Story 46 migration: owner selection for pre-existing playlists
+
+Decision: the story 46 migration assigns each pre-existing playlist's owner as the lowest user id among its `user_playlists` members, its earliest-created account. A playlist that held songs but never had a `user_playlists` row of its own falls back further: the contributor of its oldest song becomes both owner and sole member, since a song's `added_by` is always a real account and nothing else ties such a playlist to a user at all. A playlist matching neither case, no members and no songs, is dropped by the migration; the application never leaves a playlist in that state outside of migration, since the last member leaving already deletes it.
+
+Why: no creation timestamp exists on `Playlist` to read an actual creator from, so a deterministic stand-in was needed. Lowest user id approximates "earliest account, most likely the creator" without adding a real audit trail this story doesn't otherwise need. The song-contributor fallback exists because real data can apparently include a playlist with songs but no matching `user_playlists` row (this surfaced in the migration test suite's existing fixtures), and every playlist needs a determinable owner coming out of this migration, not just the common case.
+
+---
+
+## 2026-09 | Story 46: the playlist owner can't leave while other members remain
+
+Decision: leaving a playlist you own is only allowed once you're its last remaining member, in which case leaving deletes the playlist exactly as it already did before this story. While other members are still on the playlist, the owner's leave attempt is rejected; kicking or banning every other member first, or waiting for them to leave, clears the way.
+
+Why: the owner is the sole source of every owner-only action, including managing membership itself. An owner leaving mid-playlist would strand the remaining members with no one able to change grants, kick, ban, or otherwise administer it, and this story doesn't introduce an ownership-transfer mechanism to hand that authority off cleanly first.
+
+---
