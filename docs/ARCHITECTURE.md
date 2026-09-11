@@ -37,7 +37,7 @@ One split is explicit: the transactional Postgres+pgvector instance versus a sep
 
 ### Song and playlist database
 
-Every song has: `youtubeId`, `title`, `releaseYear`, `verificationStatus`, `confidence` (persisted), `metadataRaw` (full pipeline output, for auditability), multi-value `tags`. Release year is one mutable field plus `verificationStatus`, not a separate `submittedYear`/`verifiedYear` pair; once verified, the year doesn't change except through the report/re-verification process. Artists are an ordered list (`SongArtist`), each tagged `MAIN` or `FEATURED`, replacing today's single `artist` string; more than one `MAIN` artist is allowed, the role tag is display-only, and naming any single artist on the list correctly is enough to guess it. Both decided, see [PROJECT_STATE.md](PROJECT_STATE.md)'s resolved questions and [DECISIONS.md](DECISIONS.md).
+Every song has: `youtubeId`, `title`, `releaseYear`, `verificationStatus`, `confidence` (persisted), `metadataRaw` (full pipeline output, for auditability), multi-value `tags` (story 23, built). Release year is one mutable field plus `verificationStatus`, not a separate `submittedYear`/`verifiedYear` pair; once verified, the year doesn't change except through the report/re-verification process (story 18, still to build). Artists are an ordered list (`SongArtist`), each tagged `MAIN` or `FEATURED`; more than one `MAIN` artist is allowed, the role tag is display-only, and naming any single artist on the list correctly is enough to guess it. No pipeline extracts featured artists into that list yet, submission still populates a single `MAIN` entry per song. See [PROJECT_STATE.md](PROJECT_STATE.md)'s resolved questions and [DECISIONS.md](DECISIONS.md).
 
 `metadataRaw`, and any other field that persists external API output, holds the curated, actually-used subset of a source's response, never the full raw payload. A single source's raw response can run to tens of KB per song; at that size the database's free-tier size cap holds a small fraction of the catalog a curated version would. Any future field storing external API output follows the same rule.
 
@@ -190,12 +190,12 @@ Group returns to its lobby state: admin starts another session within 30 minutes
 ## What's built
 
 - Two-service split: Spring Boot core service (`backend/`) and Python/FastAPI AI microservice (`ai/`).
-- Multi-source metadata pipeline in the AI microservice, LLM synthesis with structured output through Pydantic; YouTube, MusicBrainz, Wikidata, and Wikipedia are live, each returning candidate data for the LLM synthesis step to reconcile. Discogs is the one structured source not yet built (story 25). Genius, Last.fm, and iTunes were reviewed and dropped for good, not paused. The lock-before-LLM verification flow in the Metadata resolution flow section above (skip the LLM call entirely on exact source agreement) is decided but not yet implemented, still blocked on story 23's schema (see story 18).
-- Spring Boot backend: auth, playlist CRUD, song CRUD.
+- Multi-source metadata pipeline in the AI microservice, LLM synthesis with structured output through Pydantic; YouTube, MusicBrainz, Wikidata, and Wikipedia are live, each returning candidate data for the LLM synthesis step to reconcile. Discogs is the one structured source not yet built (story 25). Genius, Last.fm, and iTunes were reviewed and dropped for good, not paused. The lock-before-LLM verification flow in the Metadata resolution flow section above (skip the LLM call entirely on exact source agreement) is decided but not yet implemented (story 18); the `Song` schema it writes to (`verificationStatus`, `confidence`, `metadataRaw`) has landed (story 23).
+- Spring Boot backend: auth, playlist CRUD, song CRUD; a song's release year is edit-gated by `verificationStatus`, only `UNVERIFIED` and `MANUAL_ENTRY` songs stay editable (story 23).
 - Next.js frontend with AI-assisted song submission, deployed on Vercel.
 - PDF/QR card generation.
 - OAuth2 + JWT auth.
 
 ## Not yet built
 
-Hosting migration, database migration, group model, game session model, WebSocket layer, DJ link-out playback flow, voice and text chat, song search by link or keyword, community reporting flow, pgvector deduplication, playlist/song relational fix, Discogs integration, confidence-gating UI, admin bulk import, admin review queue, rate limiting, UI redesign, test coverage.
+Hosting migration, database migration, group model, game session model, WebSocket layer, DJ link-out playback flow, voice and text chat, song search by link or keyword, community reporting flow, pgvector deduplication, playlist/song relational fix, Discogs integration, admin bulk import, admin review queue, rate limiting, UI redesign, test coverage.

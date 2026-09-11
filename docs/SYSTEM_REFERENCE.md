@@ -44,7 +44,7 @@ Every endpoint stories 9-13, 17, 30, 39-41 add (group, game session, WebSocket d
 
 ### Current (JPA entities, core service)
 
-Four entities exist today: `User`, `Playlist`, `Song`, `RefreshToken`.
+Five entities exist today: `User`, `Playlist`, `Song`, `SongArtist`, `RefreshToken`.
 
 ```
 User
@@ -59,11 +59,21 @@ Playlist
   └── users: Set<User>   (@ManyToMany, mappedBy "playlists")
 
 Song
-  ├── id, artist, title, releaseYear, youtubeId, gradientColor1, gradientColor2
-  ├── songTag (single enum, story 30 needs genre/popularity fields story 23 may or may not cover)
+  ├── id, title, releaseYear, youtubeId, gradientColor1, gradientColor2
+  ├── artists: List<SongArtist>  (@OneToMany, ordered by displayOrder; today always one MAIN entry,
+  │     the submission flow has no multi-artist entry UI yet, see story 40's featured-artist extraction)
+  ├── tags: Set<SongTag>  (PLAYLIST/SPECIAL/ANIME; empty means no tags, story 30 needs genre/popularity
+  │     fields story 23 didn't cover)
   ├── country
+  ├── verificationStatus (UNVERIFIED default, VERIFIED, NEEDS_REVIEW, MANUAL_ENTRY; see the state
+  │     diagram below, story 18 still owns the actual lock-evaluation logic that moves it)
+  ├── confidence, metadataRaw (populated once story 18's pipeline actually runs; both nullable today)
   ├── playlist: Playlist  (@ManyToOne, story 15 replaces this with the join table above)
   └── addedBy: User       (@ManyToOne, no inverse mapping, no cascade, the DELETE /me bug in TASKS.md's Bug fixes)
+
+SongArtist
+  ├── id, name, role (MAIN/FEATURED), displayOrder
+  └── song: Song  (@ManyToOne, owns the FK back to Song)
 
 RefreshToken
   ├── id, token (unique, hashed)
@@ -71,7 +81,7 @@ RefreshToken
   └── expiresAt
 ```
 
-`Song` today has none of `verificationStatus`, `confidence`, or `metadataRaw`; a single `artist` string, not the ordered multi-artist list story 23 decides. See `ARCHITECTURE.md`'s Song and playlist database section and story 23 in `TASKS.md` for the target shape.
+Schema changes now go through Flyway migrations (`backend/src/main/resources/db/migration/`), not Hibernate's `ddl-auto` (moved to `validate`); `spring-boot-flyway` is a required dependency alongside the third-party `flyway-core`/`flyway-database-postgresql` libraries for Spring Boot's own autoconfiguration to actually run it.
 
 ### Planned (not yet code, target shape per ARCHITECTURE.md and TASKS.md)
 
@@ -81,7 +91,6 @@ Listed here so the entity picture is in one place; each is still greenfield work
 - `GameSession`, `Player`, `Round`, `Guess` (story 10)
 - `ChatMessage` (story 13)
 - `SongReport`, `SongConfirmation` (story 17)
-- `SongArtist` (ordered artist list, replaces `Song.artist`), story 23
 - `PendingImport`, an alternate-YouTube-ID-to-`Song` mapping table (story 40)
 - `SongDifficulty` aggregate view or table (story 30)
 - `TEST`/`ADMIN` values on `User.role` (stories 44 and 40)
