@@ -11,6 +11,7 @@ import org.dariusturcu.backend.model.song.CreateSongRequest;
 import org.dariusturcu.backend.model.song.Song;
 import org.dariusturcu.backend.model.song.SongDTO;
 import org.dariusturcu.backend.model.song.UpdateSongRequest;
+import org.dariusturcu.backend.model.song.VerificationStatus;
 import org.dariusturcu.backend.model.user.User;
 import org.dariusturcu.backend.repository.PlaylistRepository;
 
@@ -20,6 +21,8 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
+
+import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
@@ -31,6 +34,14 @@ public class PlaylistService {
     private final SongRepository songRepository;
     private final PlaylistMapper playlistMapper;
     private final SongMapper songMapper;
+
+    // VERIFIED is a pipeline-established lock and NEEDS_REVIEW is an LLM-reconciled year;
+    // hand-editing either undermines the trust tier the pipeline already assigned it.
+    // UNVERIFIED hasn't been through the pipeline at all yet (today, every song's actual
+    // status, since story 40's pipeline doesn't exist to move it anywhere else), so there's
+    // no established trust tier to protect there, same as the least-trusted MANUAL_ENTRY tier.
+    private static final Set<VerificationStatus> EDITABLE_VERIFICATION_STATUSES =
+            Set.of(VerificationStatus.UNVERIFIED, VerificationStatus.MANUAL_ENTRY);
 
     private Playlist findPlaylist(Long playlistId) {
         return playlistRepository.findById(playlistId)
@@ -56,6 +67,12 @@ public class PlaylistService {
     private void checkSongBelongsToPlaylist(Song song, Long playlistId) {
         if (!song.getPlaylist().getId().equals(playlistId)) {
             throw new ResourceNotFoundException(ResourceType.SONG_NOT_IN_PLAYLIST, song.getId(), playlistId);
+        }
+    }
+
+    private void checkSongEditable(Song song) {
+        if (!EDITABLE_VERIFICATION_STATUSES.contains(song.getVerificationStatus())) {
+            throw new AccessDeniedException("This song has been verified and can no longer be edited directly");
         }
     }
 
@@ -124,6 +141,7 @@ public class PlaylistService {
         Song song = findSong(songId);
 
         checkSongBelongsToPlaylist(song, playlistId);
+        checkSongEditable(song);
 
         song = songMapper.updateEntity(song, request);
 

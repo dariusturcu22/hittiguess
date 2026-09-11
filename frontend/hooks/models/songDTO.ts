@@ -4,19 +4,23 @@
  * OpenAPI definition
  * OpenAPI spec version: v0
  */
-import type { SongDTOSongTag } from './songDTOSongTag';
+import type { SongArtistDTO } from './songArtistDTO';
+import type { SongDTOTagsItem } from './songDTOTagsItem';
 import type { SongDTOCountry } from './songDTOCountry';
+import type { SongDTOVerificationStatus } from './songDTOVerificationStatus';
 import type { UserSummaryDTO } from './userSummaryDTO';
 
 export interface SongDTO {
   id: number;
-  artist: string;
+  artists: SongArtistDTO[];
   title: string;
   releaseYear: number;
   youtubeId: string;
   gradientColor1?: string;
   gradientColor2?: string;
-  songTag?: SongDTOSongTag;
+  tags?: SongDTOTagsItem[];
   country?: SongDTOCountry;
+  verificationStatus: SongDTOVerificationStatus;
+  confidence?: string;
   addedBy: UserSummaryDTO;
 }

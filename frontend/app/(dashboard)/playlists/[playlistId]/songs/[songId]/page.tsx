@@ -8,8 +8,15 @@ import { IconArrowLeft } from "@tabler/icons-react";
 import Link from "next/link";
 import React, { use } from "react";
 import { SongForm } from "./SongForm";
+import { SongReadOnlyView } from "./SongReadOnlyView";
 import { useGetSong } from "@/hooks/generated/playlist-management/playlist-management";
 import { useGetUserPlaylists } from "@/hooks/generated/user-management/user-management";
+import { SongDTOVerificationStatus } from "@/hooks/models";
+
+const EDITABLE_VERIFICATION_STATUSES: string[] = [
+  SongDTOVerificationStatus.UNVERIFIED,
+  SongDTOVerificationStatus.MANUAL_ENTRY,
+];
 
 interface PageProps {
   params: Promise<{ playlistId: string; songId: string }>;
@@ -53,11 +60,17 @@ export default function SongDetailPage({ params }: PageProps) {
 
           {song && (
             <>
-              <SongForm
-                song={song}
-                backPath={backPath}
-                playlistId={playlistId}
-              />
+              {EDITABLE_VERIFICATION_STATUSES.includes(
+                song.verificationStatus,
+              ) ? (
+                <SongForm
+                  song={song}
+                  backPath={backPath}
+                  playlistId={playlistId}
+                />
+              ) : (
+                <SongReadOnlyView song={song} backPath={backPath} />
+              )}
 
               <div className="text-center text-[10px] text-muted-foreground mt-4">
                 Added by {song.addedBy.username}

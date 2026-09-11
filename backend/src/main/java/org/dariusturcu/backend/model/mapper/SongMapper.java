@@ -5,19 +5,24 @@ import org.dariusturcu.backend.model.song.*;
 import org.dariusturcu.backend.model.user.UserSummaryDTO;
 import org.springframework.stereotype.Component;
 
+import java.util.List;
+import java.util.Set;
+
 @Component
 public class SongMapper {
     public SongDTO toDTO(Song song) {
         return new SongDTO(
                 song.getId(),
-                song.getArtist(),
+                song.getArtists().stream().map(artist -> new SongArtistDTO(artist.getName(), artist.getRole())).toList(),
                 song.getTitle(),
                 song.getReleaseYear(),
                 song.getYoutubeId(),
                 song.getGradientColor1(),
                 song.getGradientColor2(),
-                song.getSongTag() != null ? song.getSongTag() : SongTag.NONE,
+                song.getTags(),
                 song.getCountry() != null ? song.getCountry() : Country.NONE,
+                song.getVerificationStatus(),
+                song.getConfidence(),
                 new UserSummaryDTO(
                         song.getAddedBy().getId(),
                         song.getAddedBy().getUsername()
@@ -27,22 +32,23 @@ public class SongMapper {
 
     public Song toEntity(CreateSongRequest request) {
         Song newSong = new Song();
-        newSong.setArtist(request.artist());
+        setSingleMainArtist(newSong, request.artist());
         newSong.setTitle(request.title());
         newSong.setReleaseYear(request.releaseYear());
         newSong.setYoutubeId(request.youtubeId());
         newSong.setGradientColor1(request.gradientColor1());
         newSong.setGradientColor2(request.gradientColor2());
-        newSong.setSongTag(request.songTag() != null ? request.songTag() : SongTag.NONE);
+        newSong.setTags(request.tags() != null ? request.tags() : Set.of());
         newSong.setCountry(request.country() != null ? request.country() : Country.NONE);
 
         return newSong;
     }
 
     public Song updateEntity(Song song, UpdateSongRequest request) {
-        if (request.artist() != null) {
-            song.setArtist(request.artist());
-        }
+        // artist is @NotBlank on the request, always present, no need to guess whether it
+        // was omitted; today's submission flow has no multi-artist entry, so an edit still
+        // replaces the whole list with a single MAIN artist rather than adjusting one entry.
+        setSingleMainArtist(song, request.artist());
         if (request.title() != null) {
             song.setTitle(request.title());
         }
@@ -58,12 +64,23 @@ public class SongMapper {
         if (request.gradientColor2() != null) {
             song.setGradientColor2(request.gradientColor2());
         }
-        if (request.songTag() != null) {
-            song.setSongTag(request.songTag());
+        if (request.tags() != null) {
+            song.setTags(request.tags());
         }
         if (request.country() != null) {
             song.setCountry(request.country());
         }
         return song;
+    }
+
+    private static final int SOLE_ARTIST_DISPLAY_ORDER = 0;
+
+    private void setSingleMainArtist(Song song, String artistName) {
+        SongArtist artist = new SongArtist();
+        artist.setSong(song);
+        artist.setName(artistName);
+        artist.setRole(ArtistRole.MAIN);
+        artist.setDisplayOrder(SOLE_ARTIST_DISPLAY_ORDER);
+        song.setArtists(List.of(artist));
     }
 }

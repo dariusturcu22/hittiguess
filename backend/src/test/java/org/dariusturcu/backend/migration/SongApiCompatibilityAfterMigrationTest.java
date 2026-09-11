@@ -1,0 +1,125 @@
+package org.dariusturcu.backend.migration;
+
+import org.dariusturcu.backend.model.mapper.SongMapper;
+import org.dariusturcu.backend.model.song.Song;
+import org.dariusturcu.backend.model.song.SongDTO;
+import org.dariusturcu.backend.model.song.SongTag;
+import org.dariusturcu.backend.model.song.VerificationStatus;
+import org.dariusturcu.backend.repository.SongRepository;
+import org.flywaydb.core.Flyway;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
+import org.springframework.boot.persistence.autoconfigure.EntityScan;
+import org.springframework.boot.security.oauth2.client.autoconfigure.OAuth2ClientAutoConfiguration;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
+import org.springframework.test.context.DynamicPropertyRegistry;
+import org.springframework.test.context.DynamicPropertySource;
+import org.springframework.transaction.annotation.Transactional;
+import org.testcontainers.containers.PostgreSQLContainer;
+import org.testcontainers.junit.jupiter.Container;
+import org.testcontainers.junit.jupiter.Testcontainers;
+
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.SQLException;
+import java.sql.Statement;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+/**
+ * A song row migrated from V1's original shape must still come back as a
+ * valid SongDTO through the real repository and mapper, not just survive at
+ * the raw-SQL level (SongSchemaMigrationTest covers that separately).
+ *
+ * Uses a minimal JPA-only context (JpaTestConfig below) rather than the whole
+ * BackendApplication: this project's OAuth2 client and AI-service RestClient
+ * beans both build a java.net.http.HttpClient, which this sandbox's JDK can't
+ * construct (a platform loopback-socket limitation, unrelated to this test),
+ * and neither bean has anything to do with what's under test here anyway.
+ */
+@Testcontainers
+@SpringBootTest(classes = SongApiCompatibilityAfterMigrationTest.JpaTestConfig.class)
+@Transactional
+class SongApiCompatibilityAfterMigrationTest {
+
+    @Configuration
+    @EnableAutoConfiguration(exclude = OAuth2ClientAutoConfiguration.class)
+    @EntityScan("org.dariusturcu.backend.model")
+    @EnableJpaRepositories(basePackageClasses = SongRepository.class)
+    static class JpaTestConfig {
+        @Bean
+        SongMapper songMapper() {
+            return new SongMapper();
+        }
+    }
+
+    @Container
+    static final PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:18-alpine");
+
+    // Flyway runs by hand below, entirely before the Spring context exists, rather than
+    // relying on Spring Boot's autoconfigured Flyway bean: that bean's run is tied to context
+    // refresh timing relative to @BeforeAll, which isn't guaranteed to land after this class's
+    // own @BeforeAll finishes. Disabling it here removes that ordering question entirely, the
+    // database is already in its final migrated state by the time the context starts.
+    @DynamicPropertySource
+    static void configureDataSource(DynamicPropertyRegistry registry) {
+        registry.add("spring.datasource.url", postgres::getJdbcUrl);
+        registry.add("spring.datasource.username", postgres::getUsername);
+        registry.add("spring.datasource.password", postgres::getPassword);
+        registry.add("spring.flyway.enabled", () -> false);
+    }
+
+    @BeforeAll
+    static void migrateBaselineInsertLegacyRowThenMigrateTheRest() throws SQLException {
+        Flyway.configure()
+                .dataSource(postgres.getJdbcUrl(), postgres.getUsername(), postgres.getPassword())
+                .target("1")
+                .load()
+                .migrate();
+
+        try (Connection connection = DriverManager.getConnection(
+                postgres.getJdbcUrl(), postgres.getUsername(), postgres.getPassword());
+             Statement statement = connection.createStatement()) {
+            statement.execute("INSERT INTO users (username) VALUES ('legacy-user')");
+            statement.execute("INSERT INTO playlists (invite_code) VALUES ('LEGACY1')");
+            statement.execute(
+                    "INSERT INTO songs (artist, title, release_year, youtube_id, song_tag, playlist_id, added_by) "
+                            + "VALUES ('Legacy Artist', 'Legacy Title', 1999, 'dQw4w9WgXcQ', 'ANIME', "
+                            + "(SELECT id FROM playlists WHERE invite_code = 'LEGACY1'), "
+                            + "(SELECT id FROM users WHERE username = 'legacy-user'))"
+            );
+        }
+
+        Flyway.configure()
+                .dataSource(postgres.getJdbcUrl(), postgres.getUsername(), postgres.getPassword())
+                .load()
+                .migrate();
+    }
+
+    @Autowired
+    private SongRepository songRepository;
+
+    @Autowired
+    private SongMapper songMapper;
+
+    @Test
+    void migratedSongMapsToAValidDTO() {
+        Song song = songRepository.findAll().stream()
+                .filter(candidate -> "Legacy Title".equals(candidate.getTitle()))
+                .findFirst()
+                .orElseThrow();
+
+        SongDTO dto = songMapper.toDTO(song);
+
+        assertThat(dto.artists()).hasSize(1);
+        assertThat(dto.artists().getFirst().name()).isEqualTo("Legacy Artist");
+        assertThat(dto.tags()).containsExactly(SongTag.ANIME);
+        assertThat(dto.verificationStatus()).isEqualTo(VerificationStatus.UNVERIFIED);
+        assertThat(dto.confidence()).isNull();
+    }
+}

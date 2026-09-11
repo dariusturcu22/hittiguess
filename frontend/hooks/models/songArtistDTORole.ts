@@ -5,13 +5,11 @@
  * OpenAPI spec version: v0
  */
 
-export type SongDTOSongTag = typeof SongDTOSongTag[keyof typeof SongDTOSongTag];
+export type SongArtistDTORole = typeof SongArtistDTORole[keyof typeof SongArtistDTORole];
 
 
 // eslint-disable-next-line @typescript-eslint/no-redeclare
-export const SongDTOSongTag = {
-  NONE: 'NONE',
-  PLAYLIST: 'PLAYLIST',
-  SPECIAL: 'SPECIAL',
-  ANIME: 'ANIME',
+export const SongArtistDTORole = {
+  MAIN: 'MAIN',
+  FEATURED: 'FEATURED',
 } as const;
