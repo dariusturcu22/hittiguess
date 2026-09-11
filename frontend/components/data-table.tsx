@@ -170,9 +170,11 @@ export function DataTable({
       ),
     },
     {
-      accessorKey: "artist",
+      accessorKey: "artists",
       header: "Artist",
-      cell: ({ row }) => <div>{row.original.artist}</div>,
+      cell: ({ row }) => (
+        <div>{row.original.artists.map((artist) => artist.name).join(", ")}</div>
+      ),
     },
     {
       accessorKey: "releaseYear",

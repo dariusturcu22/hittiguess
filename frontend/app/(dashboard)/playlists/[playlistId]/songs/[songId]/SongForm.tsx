@@ -8,7 +8,7 @@ import { IconExternalLink } from "@tabler/icons-react";
 import Link from "next/link";
 import {
   CreateSongRequestCountry,
-  CreateSongRequestSongTag,
+  CreateSongRequestTagsItem,
   SongDTO,
 } from "@/hooks/models";
 import { useRouter } from "next/navigation";
@@ -36,7 +36,7 @@ interface SongFormData {
   releaseYear: number | string;
   gradientColor1: string;
   gradientColor2: string;
-  songTag: CreateSongRequestSongTag;
+  tags: CreateSongRequestTagsItem[];
   country: CreateSongRequestCountry;
 }
 
@@ -46,15 +46,17 @@ export function SongForm({ song, backPath, playlistId }: SongFormProps) {
   const { mutate: updateSong, isPending } = useUpdateSong();
   const [submitError, setSubmitError] = useState("");
 
+  // Today's submission flow has no multi-artist entry, so this edits the sole MAIN
+  // artist story 23's schema still stores as an ordered list underneath.
   const [formData, setFormData] = useState<SongFormData>({
     youtubeId: song.youtubeId,
     title: song.title,
-    artist: song.artist,
+    artist: song.artists[0]?.name ?? "",
     releaseYear: song.releaseYear,
     gradientColor1: song.gradientColor1 ? `#${song.gradientColor1}` : "#8B5CF6",
     gradientColor2: song.gradientColor2 ? `#${song.gradientColor2}` : "#EC4899",
-    songTag: CreateSongRequestSongTag.NONE,
-    country: CreateSongRequestCountry.NONE,
+    tags: song.tags ?? [],
+    country: song.country ?? CreateSongRequestCountry.NONE,
   });
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -112,7 +114,7 @@ export function SongForm({ song, backPath, playlistId }: SongFormProps) {
           releaseYear,
           gradientColor1: formData.gradientColor1.replace("#", ""),
           gradientColor2: formData.gradientColor2.replace("#", ""),
-          songTag: formData.songTag,
+          tags: formData.tags,
           country: formData.country,
         },
       },
@@ -204,20 +206,25 @@ export function SongForm({ song, backPath, playlistId }: SongFormProps) {
       </div>
 
       <div className="grid gap-2">
-        <Label>Tag</Label>
+        <Label>Tags</Label>
         <div className="flex gap-3 flex-wrap">
-          {Object.values(CreateSongRequestSongTag).map((tag) => (
+          {Object.values(CreateSongRequestTagsItem).map((tag) => (
             <label
               key={tag}
               className="flex items-center gap-1.5 cursor-pointer"
             >
               <input
-                type="radio"
-                name="songTag"
+                type="checkbox"
+                name="tags"
                 value={tag}
-                checked={formData.songTag === tag}
-                onChange={() =>
-                  setFormData((prev) => ({ ...prev, songTag: tag }))
+                checked={formData.tags.includes(tag)}
+                onChange={(e) =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    tags: e.target.checked
+                      ? [...prev.tags, tag]
+                      : prev.tags.filter((selected) => selected !== tag),
+                  }))
                 }
               />
               <span className="text-sm">{tag}</span>
