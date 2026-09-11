@@ -214,3 +214,22 @@ Tests:
 - [x] Unit tests for the data migration: `verificationStatus` defaulted correctly for existing rows, plus the legacy artist string and tag both carrying forward correctly into the new tables (`SongSchemaMigrationTest`, run against a real Postgres via Testcontainers)
 - [x] Integration test: existing API responses (`SongDTO`) don't break for rows migrated from the old shape (`SongApiCompatibilityAfterMigrationTest`); a separate test (`FlywayAutoConfigurationRunsOnStartupTest`) confirms Spring Boot's own Flyway bean, not just the Java API called directly, actually migrates a fresh database on startup
 - [x] Unit tests for the edit-access gate: a `MANUAL_ENTRY` or `UNVERIFIED` song accepts an edit, `VERIFIED` and `NEEDS_REVIEW` reject one server-side regardless of frontend state (`PlaylistServiceTest`)
+
+## Story 25: Add Discogs as a metadata source
+
+Rechecked against current code: `ai/app/metadata/sources/musicbrainz.py`, `wikipedia.py`, and `genius.py` are stubs returning empty results, each commented with a reference to the 2026-08 pause decision (`DECISIONS.md`). No `discogs.py` or `wikidata.py` file exists yet. The resolved source set stays MusicBrainz, Discogs, and Wikidata (`PROJECT_STATE.md`), settled through the sourcing spike, not open for reconsideration. This story covers Discogs only; un-stubbing MusicBrainz and building Wikidata are tracked separately under "Spike: MusicBrainz and Wikidata sourcing," now handoff tasks off that spike rather than an open design question.
+
+- [x] Add `ai/app/metadata/sources/discogs.py`, copy and adapt `ai/spikes/discogs_spike.py`'s validated implementation: the search-and-select logic, and the `masterless_release_years` fallback (a release with no linked master still often carries its own correct `year` field directly in the search result, silently discarded without this, a real bug the spike caught live)
+- [x] Apply the "check every candidate, take the earliest" rule already used for MusicBrainz: a track can belong to more than one Discogs master (its own standalone-single release and an album it also appears on), each with its own year, trusting whichever master a search result lists first picked a wrong year for a real playlist song during the spike
+- [x] Treat Discogs' `year: 0` on its master resource as unknown, not a literal date, a live-confirmed bug the spike caught on a real release ("Titanium")
+- [x] Carry over `DiscogsRateLimiter` from the same spike file, live-tracking Discogs' own `X-Discogs-Ratelimit`/`X-Discogs-Ratelimit-Remaining` response headers rather than a fixed guessed rate, matching the adaptive-limiter treatment MusicBrainz's own un-stub task already calls for
+- [x] Follow `sources/youtube.py`'s existing pattern (the only currently-live production source) for HTTP client usage, timeout, and broad-exception-to-`UNKNOWN_DEFAULTS` fallback
+- [x] Add the Discogs API token to AI service config (`config.py`), following the existing `youtube_api_key`/`openai_api_key` pattern
+- [x] Wire Discogs into `_gather_all_metadata` and add a `_append_discogs_data` function in `prompt.py`, matching the existing per-source prompt-section pattern; Discogs only feeds the lock-evaluation and reconciliation steps (story 18), it makes no LLM call of its own
+- [x] Confirm Discogs' API terms of use permit this usage, matching the review MusicBrainz and Wikidata already got (`PROJECT_STATE.md`), already reviewed and accepted as part of the source-set decision, not revisited here
+
+Tests:
+- [x] Unit tests for `discogs.py`'s request building and response parsing, mirroring `youtube.py`'s existing test pattern
+- [x] Unit test for the `masterless_release_years` fallback and the `year: 0`-as-unknown handling, both real bugs the spike found
+- [x] Unit test for the fallback behavior on a failed Discogs call
+- [x] Unit test for `DiscogsRateLimiter` pacing correctly off live response headers, not a fixed guessed interval
