@@ -22,6 +22,10 @@ See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the full technical breakdow
 - AI microservice: `uvicorn app.main:app --reload`, tests: `pytest`
 - Frontend: `npm run dev`, build: `npm run build`
 
+## Tooling
+
+This project pins bleeding-edge dependency versions (Spring Boot 4.x, a Next.js version with its own breaking-changes warning in `frontend/AGENTS.md`). Training data is a bad source of truth for exactly this kind of dependency. Before writing code against a specific library or framework API, check current documentation using whatever documentation-lookup MCP server or tool is available (for example `context7`), rather than relying on memory. Do this upfront, before the first line of code, not after a test failure forces it. This applies to test-slice annotations, dependency wiring, config property names, and anything else where the exact artifact, class, or package could have moved between versions.
+
 ## Non-negotiable rules
 
 - The DJ is never shown an embedded YouTube player. Playback always happens on the real YouTube page or the real YouTube app. See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) and [docs/DECISIONS.md](docs/DECISIONS.md) for the reasoning.
