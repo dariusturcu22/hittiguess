@@ -1,7 +1,9 @@
 package org.dariusturcu.backend.util;
 
+import org.dariusturcu.backend.model.song.ArtistRole;
 import org.dariusturcu.backend.model.song.Country;
 import org.dariusturcu.backend.model.song.Song;
+import org.dariusturcu.backend.model.song.SongArtist;
 import org.dariusturcu.backend.model.song.SongTag;
 import org.springframework.stereotype.Component;
 
@@ -9,6 +11,7 @@ import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Component
 public class CardGenerator {
@@ -59,7 +62,7 @@ public class CardGenerator {
         int padding = 67;
 
         graphics2D.setFont(artistFont);
-        drawCentered(graphics2D, song.getArtist(), x + padding, y + (int) (size * 0.22), size - padding * 2, 70);
+        drawCentered(graphics2D, formatArtists(song), x + padding, y + (int) (size * 0.22), size - padding * 2, 70);
 
         graphics2D.setFont(yearFont);
         FontMetrics yearMetrics = graphics2D.getFontMetrics(yearFont);
@@ -103,6 +106,23 @@ public class CardGenerator {
         }
     }
 
+    // A physical card prints the main artist(s), then "featuring" the featured ones
+    // (see docs/GAME_DESIGN.md); role is a display concern only, guessing treats every
+    // artist on the list identically.
+    private static String formatArtists(Song song) {
+        String mainArtists = song.getArtists().stream()
+                .filter(artist -> artist.getRole() == ArtistRole.MAIN)
+                .map(SongArtist::getName)
+                .collect(Collectors.joining(" & "));
+
+        String featuredArtists = song.getArtists().stream()
+                .filter(artist -> artist.getRole() == ArtistRole.FEATURED)
+                .map(SongArtist::getName)
+                .collect(Collectors.joining(", "));
+
+        return featuredArtists.isEmpty() ? mainArtists : mainArtists + " (feat. " + featuredArtists + ")";
+    }
+
     private static Color decodeColorSafe(String hex) {
         try {
             return Color.decode("#" + hex);
@@ -111,18 +131,23 @@ public class CardGenerator {
         }
     }
 
-    private static void drawTagTriangle(Graphics2D graphics2D, int x, int y, int size, Song song) {
-        if (song.getSongTag() == null || song.getSongTag() == SongTag.NONE) return;
+    // A song can carry more than one tag today; the card still shows a single
+    // corner triangle, so this picks the highest-priority tag present rather
+    // than stacking one triangle per tag.
+    private static final List<SongTag> TAG_TRIANGLE_PRIORITY = List.of(SongTag.SPECIAL, SongTag.ANIME, SongTag.PLAYLIST);
 
-        Color tagColor;
-        switch (song.getSongTag()) {
-            case SPECIAL -> tagColor = new Color(0, 255, 0);
-            case ANIME -> tagColor = new Color(255, 105, 180);
-            case PLAYLIST -> tagColor = decodeColorSafe(song.getPlaylist().getColor());
-            default -> {
-                return;
-            }
-        }
+    private static void drawTagTriangle(Graphics2D graphics2D, int x, int y, int size, Song song) {
+        SongTag tagToDraw = TAG_TRIANGLE_PRIORITY.stream()
+                .filter(song.getTags()::contains)
+                .findFirst()
+                .orElse(null);
+        if (tagToDraw == null) return;
+
+        Color tagColor = switch (tagToDraw) {
+            case SPECIAL -> new Color(0, 255, 0);
+            case ANIME -> new Color(255, 105, 180);
+            case PLAYLIST -> decodeColorSafe(song.getPlaylist().getColor());
+        };
 
         int triangleSize = (int) (size * 0.10);
         int[] xPoints = {x, x + triangleSize, x};

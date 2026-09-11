@@ -7,6 +7,11 @@ import lombok.Getter;
 import lombok.Setter;
 import org.dariusturcu.backend.model.user.User;
 
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+
 @Entity
 @Getter
 @Setter
@@ -16,7 +21,9 @@ public class Song {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    private String artist;
+    @OneToMany(mappedBy = "song", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OrderColumn(name = "display_order")
+    private List<SongArtist> artists = new ArrayList<>();
 
     private String title;
 
@@ -28,11 +35,23 @@ public class Song {
 
     private String gradientColor2;
 
+    @ElementCollection(targetClass = SongTag.class)
+    @CollectionTable(name = "song_tags", joinColumns = @JoinColumn(name = "song_id"))
     @Enumerated(EnumType.STRING)
-    private SongTag songTag;
+    @Column(name = "tag")
+    private Set<SongTag> tags = new HashSet<>();
 
     @Enumerated(EnumType.STRING)
     private Country country;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private VerificationStatus verificationStatus = VerificationStatus.UNVERIFIED;
+
+    private String confidence;
+
+    @Lob
+    private String metadataRaw;
 
     @ManyToOne
     @JoinColumn(name = "playlist_id", nullable = false)
