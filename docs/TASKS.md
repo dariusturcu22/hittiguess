@@ -293,21 +293,6 @@ Tests:
 - [ ] Integration test: search results respect the chosen scope's access checks
 - [ ] Frontend test: the search UI returns and displays results correctly
 
-## Story 16: pgvector-based duplicate detection
-
-Checked against real code: no pgvector dependency in `pom.xml`, no vector-DB client or embedding code anywhere in `ai/app`, this is greenfield on both services. Based on `ARCHITECTURE.md`'s RAG/dedup section (line 127-129): normalize `artist + title`, embed, check similarity before running the full pipeline, reuse existing data on a high-confidence match.
-
-- [ ] Enable the pgvector Postgres extension (coordinate with story 8/23 if a migration tool lands around the same time)
-- [ ] Add an embedding step to the AI microservice: normalize `artist + title`, generate an embedding via OpenAI's embeddings API, no embedding client exists in `ai/app` today
-- [ ] Store embeddings for verified songs
-- [ ] Add a similarity-check step before the source fetch/LLM synthesis in `metadata/service.py`'s `resolve_metadata`, reuse existing data on a high-confidence match instead of re-running the pipeline
-- [ ] Decide and document the similarity threshold for "high-confidence match", flagged as still unresolved in `ARCHITECTURE.md`
-- [ ] Coordinate with story 15 if dedup needs to consider a song already existing under a different playlist relationship
-
-Tests:
-- [ ] Unit tests for the similarity-check step (mocked embedding client): a high-confidence match reuses existing data, a low-confidence match proceeds to the full pipeline
-- [ ] Integration test: submitting a near-duplicate song reuses existing verified data instead of re-running the LLM
-
 ## Story 40: Catalog seeding queue and user-facing bulk import
 
 Checked against real code: `Song` has a single `youtubeId` field and no lookup query for it, `SongRepository` has zero custom query methods. No `@Scheduled` usage or scheduling dependency exists anywhere in the backend today, `@EnableScheduling` isn't declared. Absorbs story 19's admin bulk-import scope, redefined as two genuinely separate mechanisms, not one:
