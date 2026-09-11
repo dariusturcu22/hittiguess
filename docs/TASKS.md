@@ -499,20 +499,6 @@ Tests:
 - [ ] Unit tests for cache hit/miss behavior
 - [ ] Unit test for TTL expiration
 
-## Story 20: LLM client infrastructure for the metadata pipeline
-
-Checked against real code: `ai/app/clients/openai_client.py` is the only LLM client, a module-level `OpenAI` singleton, no other client exists. Greenlit to build (`DECISIONS.md`): the spike's validated model choice, gpt-5-nano for reconciliation and DeepSeek-V4-Flash for Wikipedia extraction, goes into production rather than staying validated-but-unbuilt. gpt-5-nano needs no new client, the existing `openai_client.py` already calls OpenAI by model name; DeepSeek-V4-Flash is hosted on DeepInfra, a different provider, so this story's actual remaining scope is narrow: add that one client. Not blocked on anything, this is infrastructure with no dependency on the Song schema; in practice it lands together with or just ahead of story 18, its first real caller.
-
-- [ ] Add a DeepInfra (OpenAI-compatible) LLM client to `ai/app/clients/`, copy and adapt the validated request-building and error-handling logic in `ai/spikes/openai_compatible_spike.py`: temperature 0.0 for structured-output calls (confirmed live to remove run-to-run answer variance on close reconciliation calls), a 90-second request timeout (the real fix for the Nemotron-hang bug the spike found), and the `response_format` JSON-schema-mode-with-forced-tool-calling-fallback pattern
-- [ ] Wire DeepSeek-V4-Flash as the model this client calls, the extraction model story 18's Wikipedia-reading step depends on
-- [ ] Add the DeepInfra API key to AI service config (`config.py`), following the existing `openai_api_key` pattern
-- [ ] Drop every other shortlisted candidate (Groq, llama.cpp, AWS Bedrock Nova Micro) from further production consideration, none beat gpt-5-nano/DeepSeek-V4-Flash on the actual reconciliation/extraction tasks this pipeline needs; kept only as documented spike results in `ai/spikes/`, not carried into the microservice
-
-Tests:
-- [ ] Unit tests for the DeepInfra client's request building and response parsing, mirroring `youtube.py`'s existing test pattern
-- [ ] Unit test for the client's timeout behavior: a hung request fails after 90 seconds rather than blocking the pipeline indefinitely
-- [ ] Unit test confirming structured output validates correctly against a Pydantic schema for both the extraction and reconciliation call shapes
-
 ## Spike: Local/cheap LLM option for bulk metadata processing
 
 Handoff item 2. Its own branch, separate from the metadata-source spike, per the handoff's explicit instruction. Covers both hosted-API and locally-runnable options, any provider, closed or open-weight, the constraint is Pydantic-compatible structured output (`CLAUDE.md`'s non-negotiable rule against regex-parsing LLM output), not a specific deployment shape.
