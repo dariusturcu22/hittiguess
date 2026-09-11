@@ -533,3 +533,11 @@ Decision: the local/cheap LLM spike's validated two-tier pipeline and model choi
 Why: the spike ran real accuracy numbers against a 70-song test set (99% patient tier, 90% fast tier) and turned up no reliability concern worth re-testing before building; the only thing left open was whether to actually ship it, not whether it works. The winning design isn't a genuinely local, self-hosted model, llama.cpp's accuracy came in well below its own hosted twin under quantization, so "local LLM option" narrows in practice to "the cheapest hosted models that actually clear the accuracy bar," which the spike already identified.
 
 ---
+
+## 2026-09 | Story 14's song search is catalog-wide, backend built first
+
+Decision: story 14's search endpoint (`GET /api/songs/search`) searches the whole `songs` table, not one playlist or one user's playlists. It's a plain authenticated top-level route rather than nested under a specific playlist's URL, since a catalog-wide search has no single playlist to check membership against, and needs none of `PlaylistService`'s per-playlist access checks. A query is matched by exact YouTube ID if it parses as a bare video ID or a YouTube link (watch URL, `youtu.be` short link, or embed URL, the same shapes `AddSongForm.tsx`'s `extractYoutubeId` already recognizes, now replicated server-side as `YoutubeLinkParser`), and otherwise as a case-insensitive keyword against title and artist name. This work is backend only, the same split the song-genre-and-print-redesign batch used: wiring `AddSongForm.tsx` to check search results before submission, and building the search UI itself, are deferred to story 28's implementation phase.
+
+Why: the task list's own motivating use case, checking whether a song is already in the catalog before it's resubmitted as a near-duplicate, only makes sense against every song, not one playlist's subset. This mirrors story 16's pgvector dedup check, also catalog-wide against every `VERIFIED` song, so the two dedup paths (plain keyword/link versus embedding-based similarity) end up covering the same scope. Building the endpoint now and the UI later avoids guessing at a search surface against mockups that predate this decision, the same reasoning already applied to the genre field and the printed card.
+
+---
