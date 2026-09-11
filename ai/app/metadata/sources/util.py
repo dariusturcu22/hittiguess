@@ -1,15 +1,13 @@
 import re
 from urllib.parse import quote
 
-YOUTUBE_ID_PATTERN = re.compile(r"^[a-zA-Z0-9_-]{11}$")
+# MusicBrainz, Wikidata, and Wikipedia all require a descriptive User-Agent
+# identifying the application and a contact point; an unidentified or
+# generic one risks a block. Wikidata and Wikipedia are the same Wikimedia
+# infrastructure and share this same policy.
+METADATA_SOURCE_USER_AGENT = "hittiguess/0.1 (+https://hittiguess.com; contact@hittiguess.com)"
 
-RELEASE_DATE_PATTERNS = [
-    re.compile(r"released on ([A-Za-z]+ \d{1,2}, \d{4})"),
-    re.compile(r"released in ([A-Za-z]+ \d{4})"),
-    re.compile(r"released (\d{4})"),
-    re.compile(r"(\d{4}) single"),
-    re.compile(r"(\d{4}) song"),
-]
+YOUTUBE_ID_PATTERN = re.compile(r"^[a-zA-Z0-9_-]{11}$")
 
 LUCENE_SPECIAL_CHARS = re.compile(r'([+\-!(){}\[\]^"~*?:\\&|/])')
 
@@ -53,18 +51,6 @@ def clean_youtube_text(text: str | None) -> str:
     return cleaned
 
 
-def extract_release_date_from_text(text: str | None) -> str:
-    if not text:
-        return "No release date found"
-
-    for pattern in RELEASE_DATE_PATTERNS:
-        match = pattern.search(text)
-        if match:
-            return f"Released: {match.group(1)}"
-
-    return "No release date found"
-
-
 def escape_lucene(value: str | None) -> str:
     if not value:
         return ""
@@ -75,22 +61,4 @@ def build_youtube_api_url(video_id: str, api_key: str) -> str:
     return (
         "https://www.googleapis.com/youtube/v3/videos"
         f"?part=snippet,contentDetails&id={quote(video_id)}&key={api_key}"
-    )
-
-
-def build_musicbrainz_api_url(query: str) -> str:
-    return f"https://musicbrainz.org/ws/2/recording/?query={quote(query)}&fmt=json&limit=10"
-
-
-def build_wikipedia_search_url(search_term: str) -> str:
-    return (
-        "https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch="
-        f"{quote(search_term)}&format=json&srlimit=3"
-    )
-
-
-def build_wikipedia_page_url(page_title: str) -> str:
-    return (
-        f"https://en.wikipedia.org/w/api.php?action=query&titles={quote(page_title)}"
-        "&prop=extracts&exintro=true&format=json"
     )

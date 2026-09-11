@@ -190,7 +190,7 @@ Group returns to its lobby state: admin starts another session within 30 minutes
 ## What's built
 
 - Two-service split: Spring Boot core service (`backend/`) and Python/FastAPI AI microservice (`ai/`).
-- Multi-source metadata pipeline in the AI microservice, LLM synthesis with structured output through Pydantic; only the YouTube source is live. MusicBrainz and Wikipedia are stubbed pending the real implementation validated in `ai/spikes/` (see `TASKS.md`'s "Spike: MusicBrainz and Wikidata sourcing" handoff); Genius, Last.fm, and iTunes were reviewed and dropped for good, not paused.
+- Multi-source metadata pipeline in the AI microservice, LLM synthesis with structured output through Pydantic; YouTube, MusicBrainz, Wikidata, and Wikipedia are live, each returning candidate data for the LLM synthesis step to reconcile. Discogs is the one structured source not yet built (story 25). Genius, Last.fm, and iTunes were reviewed and dropped for good, not paused. The lock-before-LLM verification flow in the Metadata resolution flow section above (skip the LLM call entirely on exact source agreement) is decided but not yet implemented, still blocked on story 23's schema (see story 18).
 - Spring Boot backend: auth, playlist CRUD, song CRUD.
 - Next.js frontend with AI-assisted song submission, deployed on Vercel.
 - PDF/QR card generation.

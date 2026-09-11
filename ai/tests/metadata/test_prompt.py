@@ -10,8 +10,8 @@ def _base_metadata(**overrides):
             "description": "Released in 1999.",
         },
         "musicbrainz": [],
-        "wikipedia": None,
-        "genius": None,
+        "wikidata": [],
+        "wikipedia": [],
     }
     data.update(overrides)
     return data
@@ -25,34 +25,47 @@ def test_build_includes_youtube_section():
     assert "Released in 1999." in text
 
 
-def test_build_omits_empty_optional_sources():
+def test_build_shows_no_candidates_for_empty_structured_sources():
     text = prompt.build(_base_metadata())
-    assert "=== MUSICBRAINZ DATABASE" not in text
-    assert "=== WIKIPEDIA ===" not in text
-    assert "=== GENIUS ===" not in text
+    assert "=== MUSICBRAINZ DATABASE ===" in text
+    assert "=== WIKIDATA ===" in text
+    assert "=== WIKIPEDIA ===" in text
+    assert "(no candidates returned)" in text
+    assert "(no article extract available)" in text
 
 
 def test_build_includes_musicbrainz_results_when_present():
     text = prompt.build(
         _base_metadata(
             musicbrainz=[
-                {"title": "Test Song", "artist": "Test Artist", "release_date": "1999-05-01", "score": "95"}
+                {"query": "track", "title": "Test Song", "artist": "Test Artist", "date": "1999-05-01", "type": "Single", "score": 95},
+                {"query": "album", "title": "Test Album", "artist": "Test Artist", "date": "2001-01-01", "type": "Album", "score": 90},
             ]
         )
     )
-    assert "=== MUSICBRAINZ DATABASE (Most Authoritative) ===" in text
-    assert '"Test Song" by Test Artist - Year: 1999 (Match Score: 95/100)' in text
+    assert "Track query:" in text
+    assert "Album query:" in text
+    assert '"Test Song" by Test Artist - date: 1999-05-01 - type: Single - score: 95/100' in text
+    assert '"Test Album" by Test Artist - date: 2001-01-01 - type: Album - score: 90/100' in text
 
 
-def test_build_includes_wikipedia_and_genius_when_present():
+def test_build_includes_wikidata_results_when_present():
     text = prompt.build(
         _base_metadata(
-            wikipedia={"title": "Test Song (song)", "release_info": "Released: 1999"},
-            genius={"title": "Test Song", "artist": "Test Artist", "release_date": "1999-05-01"},
+            wikidata=[{"query": "track", "entity_id": "Q1", "description": "1999 song", "date": "+1999-00-00T00:00:00Z"}]
         )
     )
-    assert "Page: Test Song (song)" in text
-    assert '"Test Song" by Test Artist - Year: 1999' in text
+    assert "[track] 1999 song - publication date: +1999-00-00T00:00:00Z" in text
+
+
+def test_build_includes_wikipedia_results_when_present():
+    text = prompt.build(
+        _base_metadata(
+            wikipedia=[{"query": "track", "page_title": "Test Song (song)", "extract": "Released in 1999."}]
+        )
+    )
+    assert "[track] 'Test Song (song)':" in text
+    assert "Released in 1999." in text
 
 
 def test_build_truncates_long_description():
