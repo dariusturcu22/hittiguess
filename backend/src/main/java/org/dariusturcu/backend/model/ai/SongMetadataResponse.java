@@ -9,7 +9,10 @@ public record SongMetadataResponse(
         String artist,
         Integer releaseYear,
         String gradientColor1,
-        String gradientColor2
+        String gradientColor2,
+        String confidence,
+        String source,
+        String reasoning
 ) {
 
 }
