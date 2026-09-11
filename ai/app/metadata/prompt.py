@@ -49,7 +49,7 @@ def _append_candidates_by_query(parts: list[str], section_title: str, candidates
 def _append_musicbrainz_data(parts: list[str], musicbrainz_candidates: list[dict]) -> None:
     _append_candidates_by_query(
         parts,
-        "=== MUSICBRAINZ DATABASE (Most Authoritative) ===",
+        "=== MUSICBRAINZ DATABASE ===",
         musicbrainz_candidates,
         lambda candidate: (
             f"  - \"{candidate['title']}\" by {candidate['artist']} - date: {candidate['date']} - "
@@ -83,16 +83,6 @@ def _append_wikipedia_data(parts: list[str], wikipedia_entries: list[dict]) -> N
     parts.append("")
 
 
-def _append_genius_data(parts: list[str], genius_data: dict[str, str] | None) -> None:
-    if genius_data is None:
-        return
-
-    parts.append("=== GENIUS ===")
-    genius_release = genius_data.get("release_date", "unknown")
-    genius_year = genius_release[:4] if genius_release != "unknown" and len(genius_release) >= 4 else "unknown"
-    parts.append(f"\"{genius_data.get('title')}\" by {genius_data.get('artist')} - Year: {genius_year}\n")
-
-
 def _append_task_instructions(parts: list[str]) -> None:
     parts.append("=== YOUR ANALYSIS TASK ===")
     parts.append(
@@ -101,9 +91,13 @@ def _append_task_instructions(parts: list[str]) -> None:
         "describe the JSON shape yourself.\n"
     )
     parts.append("CONFIDENCE GUIDELINES:")
-    parts.append("- high: MusicBrainz score >85 OR year explicitly stated OR multiple sources agree")
-    parts.append("- medium: MusicBrainz score 70-85 OR single reliable source")
-    parts.append("- low: Only YouTube data OR conflicting sources")
+    parts.append(
+        "- high: a source states the year explicitly and unambiguously, or multiple sources agree; "
+        "no single source (including MusicBrainz) counts as inherently more trustworthy than the "
+        "others, weigh how many candidates actually agree, not which source has the best reputation"
+    )
+    parts.append("- medium: a single source's data needs interpretation, or sources need reconciling")
+    parts.append("- low: only YouTube data, or sources meaningfully conflict")
     parts.append("TITLE CLEANING RULES:")
     parts.append(
         "- REMOVE: 'Remastered', 'Remaster', 'HD', 'HQ', '4K', 'Official Video', 'Official Audio', "
@@ -136,7 +130,6 @@ def build(all_data: dict[str, object]) -> str:
     _append_musicbrainz_data(parts, all_data["musicbrainz"])
     _append_wikidata_data(parts, all_data["wikidata"])
     _append_wikipedia_data(parts, all_data["wikipedia"])
-    _append_genius_data(parts, all_data["genius"])
     _append_task_instructions(parts)
 
     return "\n".join(parts)
