@@ -72,22 +72,31 @@ Tests:
 
 Checked against real code: no WebSocket layer exists, this is greenfield work. Based on the sync model in `ARCHITECTURE.md` (REST for group/session creation and join, WebSocket for state changes). Covers both the group and the game session, not just the session.
 
-- [ ] Add the Spring WebSocket/STOMP dependency and base config to the core service
-- [ ] Authenticate the WebSocket handshake against the existing JWT auth
-- [ ] Define per-group STOMP destinations for broadcast (membership, settings changes, chat, voice signaling) and a client-to-server channel for admin actions
-- [ ] Define per-session STOMP destinations for broadcast (round events) and a client-to-server channel for actions (guess, bet, reveal)
-- [ ] Broadcast group events: member joined/left, settings changed, game session started
-- [ ] Broadcast round events: round started, guess locked, bet placed, reveal triggered, round scored, next round
-- [ ] Handle disconnect: mark the member's or player's `isConnected` flag false without ending the group or the session
-- [ ] Wire group creation/join (story 39) to register the joining client on the group's topic, and game session start (story 10) to register on the session's topic
-- [ ] Log every state event this story broadcasts (membership, settings changes, round events) alongside the WebRTC connection lifecycle events story 12 adds, on the same per-group/per-session timeline, so a connection issue can be traced against what was happening in the group or session at the same moment
-- [ ] Frontend: keep the group/session WebSocket connection alive while navigating to other parts of the app, minimize the game to a small persistent widget instead of requiring the player stay on the game screen
-- [ ] Frontend: turn notification, a sound plus a clickable visual banner when it's the player's turn and the game screen isn't focused, clicking either returns them to the game
+This batch built the general STOMP infrastructure and the full group-side half only. Story 10 (game session) doesn't exist yet, it's the next batch, and owns the session-side half; the two frontend tasks are deferred project-wide for this phase of batches, backend only. See `DECISIONS.md`'s corresponding entry for the destination-naming convention, the messaging pattern chosen, and the full list of deferrals.
+
+- [x] Add the Spring WebSocket/STOMP dependency and base config to the core service (`WebSocketConfig`, `spring-boot-starter-websocket`)
+- [x] Authenticate the WebSocket handshake against the existing JWT auth (`StompAuthenticationChannelInterceptor`, validated on the STOMP CONNECT frame)
+- [x] Define per-group STOMP destinations for broadcast (membership, settings changes, chat, voice signaling) and a client-to-server channel for admin actions (`GroupDestinations`); chat and voice are naming-convention placeholders only, no send/receive logic, stories 13 and 12 still own that
+- [ ] Define per-session STOMP destinations for broadcast (round events) and a client-to-server channel for actions (guess, bet, reveal). Deferred to story 10, no session model exists yet; `GroupDestinations`' javadoc documents the parallel `/topic/sessions/{sessionId}/...` convention story 10 should follow
+- [x] Broadcast group events: member joined/left, settings changed, game session started (`GroupService` publishes a `GroupBroadcastEvent` via `ApplicationEventPublisher`, `GroupBroadcastListener` forwards it to the right STOMP topic); member connection changes (disconnect/reconnect) and admin transfer broadcast the same way, a natural extension of "membership changes" beyond the story's literal four events, see `DECISIONS.md`
+- [ ] Broadcast round events: round started, guess locked, bet placed, reveal triggered, round scored, next round. Deferred to story 10, no round/guess/bet concept exists yet
+- [x] Handle disconnect, group-member half: on WebSocket disconnect, mark the member's `isConnected` flag false without ending the group (`GroupSessionEventListener` reacting to `SessionDisconnectEvent`, calling `GroupService.disconnectMember`)
+- [ ] Handle disconnect, in-session-player half: deferred to story 10, no `Player` entity exists yet
+- [x] Wire group creation/join to register the joining client on the group's topic: the client subscribing to its group's membership topic is what registers presence in `GroupPresenceRegistry` (`GroupSessionEventListener` reacting to the subscription)
+- [ ] Wire game session start to register the joining client on the session's topic. Deferred to story 10, no session topic exists yet
+- [x] Log the group-side state events this story broadcasts (membership, settings changes) on a per-group timeline: a structured `groupEvent type=... groupId=...` line (`GroupBroadcastListener`), a shape a later addition can log alongside using the same two fields
+- [ ] Log round events alongside the WebRTC connection lifecycle events story 12 adds. Deferred alongside the round-event broadcast itself, story 10's scope
+- [ ] Frontend: keep the group/session WebSocket connection alive while navigating to other parts of the app, minimize the game to a small persistent widget instead of requiring the player stay on the game screen. Deferred: this batch is backend only, per standing instruction; revisit alongside story 28's redesign or whenever story 10's frontend lands
+- [ ] Frontend: turn notification, a sound plus a clickable visual banner when it's the player's turn and the game screen isn't focused, clicking either returns them to the game. Deferred alongside the item above, and also depends on story 10's turn concept existing
 
 Tests:
-- [ ] Integration test: WebSocket connection and session state survive navigating away from the game route and back
-- [ ] Integration test: turn notification fires when the player's turn starts while they're on a different route, and doesn't fire when they're already on the game screen
-- [ ] Unit tests for the disconnect handler: flag flips without ending the group or session, for both a group member and an in-session player
+- [ ] Integration test: WebSocket connection and session state survive navigating away from the game route and back. This describes frontend routing behavior with no backend-only analog; deferred alongside the two frontend tasks above. Replaced for this batch by a real backend-testable equivalent proving the same underlying guarantee at the protocol level, see below
+- [x] Integration test: a client can disconnect and reconnect to a group's topic and keep receiving broadcasts correctly, membership state isn't lost or duplicated across the reconnect (`GroupWebSocketIntegrationTest`, asserted against the real STOMP simple broker's own subscription registry)
+- [ ] Integration test: turn notification fires when the player's turn starts while they're on a different route, and doesn't fire when they're already on the game screen. Deferred alongside the frontend turn-notification task, entirely frontend/game-session behavior that doesn't exist on either side yet
+- [x] Unit tests for the disconnect handler, group-member half: the flag flips without ending the group (`GroupServiceTest`, `GroupSessionEventListenerTest`)
+- [ ] Unit tests for the disconnect handler, in-session-player half: deferred to story 10, no `Player` entity exists yet
+- [x] Unit tests for JWT handshake authentication: a valid token connects (sets the STOMP session's user), an invalid or missing one is rejected (`StompAuthenticationChannelInterceptorTest`)
+- [x] Tests that the right group events actually get broadcast when `GroupService`'s methods run: member joins/leaves, settings change, session starts, disconnect/reconnect, admin transfer (`GroupServiceTest`'s event-publishing tests, `GroupBroadcastListenerTest`'s destination-routing tests)
 
 ## Story 12: Voice chat
 
@@ -134,7 +143,7 @@ Checked against real code: no group model exists, this is greenfield work. Based
 - [x] Generate a unique 4-letter join code alongside the existing invite link when a group is created
 - [x] `POST` endpoint to join a group via invite link or join code, only while the group hasn't started a game session yet
 - [x] On join, prompt for a per-group display name and avatar, defaulting to the user's account values but editable; other members only ever see this per-group identity, never the account profile
-- [ ] Settings (playlist(s), DJ mode, win-condition card count), editable by the admin only, broadcast to all members in real time. The data model and the admin-only update endpoint (`GroupService.updateGroupSettings`) are built and persist correctly; the real-time broadcast half is deferred to story 11 (no WebSocket layer exists yet), see `DECISIONS.md`. `updateGroupSettings` is the single method story 11 will call from its WebSocket handler or publish an event from.
+- [x] Settings (playlist(s), DJ mode, win-condition card count), editable by the admin only, broadcast to all members in real time. The data model and the admin-only update endpoint (`GroupService.updateGroupSettings`) persist correctly; `updateGroupSettings` now publishes a `SETTINGS_CHANGED` event story 11's `GroupBroadcastListener` forwards to the group's settings STOMP topic, see `DECISIONS.md`.
 - [ ] Chat available from group creation, stored for the life of the group. Deferred entirely to story 13, which owns `ChatMessage` and actual send/receive/persistence; `Group` uses a plain `Long` primary key, no special preparation needed for story 13 to attach messages to it later. See `DECISIONS.md`.
 - [x] Voice joinable and leavable at any time (see story 12 for the WebRTC mechanics). Built as a plain `isInVoice` presence flag on `Member` plus join/leave-voice endpoints that flip it; the actual WebRTC mesh/signaling belongs to story 12, blocked on this story and story 11 both shipping. See `DECISIONS.md`.
 - [x] 30-minute timer from group creation to the admin starting a game session, delete the group if it fires

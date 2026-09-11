@@ -25,7 +25,7 @@ A story can have draft tasks written against it in TASKS.md while still marked N
 | 8 | Database migration off Supabase, whether to migrate at all and to what platform both undecided | Infra | Needs Definition |
 | 9 | DJ opens the real YouTube page or app instead of an embedded player | Game / Compliance | Needs Definition, draft tasks exist, confirmed blocked on stories 10, 11, and 39 |
 | 10 | Game session: round-by-round gameplay within a group, rounds, guesses, betting, scoring, win condition, and two session-long guess-based leaderboards; ephemeral, purged when the session ends except for a downloadable results export | Game | Ready |
-| 11 | Real-time game sync over WebSocket | Realtime | Ready |
+| 11 | Real-time game sync over WebSocket | Realtime | Ready, group-side backend built on `feature/websocket-sync` (STOMP config, JWT handshake auth, group broadcast, group-member disconnect handling); session-side half and both frontend tasks deferred to story 10's batch, see `DECISIONS.md` |
 | 12 | Voice chat between players in a group, mesh peer-to-peer with Cloudflare TURN fallback, joinable and leavable anytime for the group's lifetime | Realtime | Needs Definition, draft tasks exist, confirmed blocked on stories 11 and 39 |
 | 13 | Group-scoped text chat, active from group creation until the group is deleted | Realtime | Needs Definition, draft tasks exist, confirmed blocked on stories 11 and 39 |
 | 14 | Song search by link or by keyword before submission | Frontend / Backend | Ready |
