@@ -9,5 +9,13 @@ class Settings(BaseSettings):
     internal_service_api_key: str
     openai_model: str = "gpt-5.1"
 
+    # Optional: unlock each wiki's authenticated rate-limit tier (200
+    # requests/minute versus 10/minute anonymous). A bot password is issued
+    # per wiki, Wikidata's doesn't authenticate against Wikipedia.
+    wikidata_bot_username: str | None = None
+    wikidata_bot_password: str | None = None
+    wikipedia_bot_username: str | None = None
+    wikipedia_bot_password: str | None = None
+
 
 settings = Settings()
