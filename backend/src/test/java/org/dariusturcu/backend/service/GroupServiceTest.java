@@ -19,6 +19,8 @@ import org.dariusturcu.backend.repository.GroupRepository;
 import org.dariusturcu.backend.repository.MemberRepository;
 import org.dariusturcu.backend.repository.PlaylistRepository;
 import org.dariusturcu.backend.security.UserPrincipal;
+import org.dariusturcu.backend.websocket.GroupBroadcastEvent;
+import org.dariusturcu.backend.websocket.GroupEventType;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -26,6 +28,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -55,6 +58,8 @@ class GroupServiceTest {
     @Mock
     private PlaylistRepository playlistRepository;
     @Mock
+    private ApplicationEventPublisher eventPublisher;
+    @Mock
     private PlaylistAccessService playlistAccessService;
 
     private GroupMapper groupMapper;
@@ -79,7 +84,7 @@ class GroupServiceTest {
         otherUser.setRole(Role.USER);
 
         groupMapper = new GroupMapper(new PlaylistMapper(null));
-        groupService = new GroupService(groupRepository, memberRepository, playlistRepository, groupMapper, playlistAccessService);
+        groupService = new GroupService(groupRepository, memberRepository, playlistRepository, groupMapper, eventPublisher, playlistAccessService);
 
         lenient().when(groupRepository.save(any(Group.class))).thenAnswer(invocation -> invocation.getArgument(0));
         lenient().when(memberRepository.save(any(Member.class))).thenAnswer(invocation -> invocation.getArgument(0));
@@ -423,5 +428,135 @@ class GroupServiceTest {
 
         assertThatThrownBy(() -> groupService.getGroup(99L))
                 .isInstanceOf(ResourceNotFoundException.class);
+    }
+
+    @Test
+    void joinGroupPublishesAMemberJoinedEvent() {
+        Group group = groupWithAdmin();
+        when(memberRepository.existsByUser(otherUser)).thenReturn(false);
+        when(groupRepository.findByInviteCode("invite-code")).thenReturn(Optional.of(group));
+        authenticateAs(otherUser);
+
+        groupService.joinGroup(new JoinGroupRequest("invite-code", null, null, null));
+
+        ArgumentCaptor<GroupBroadcastEvent> captor = ArgumentCaptor.forClass(GroupBroadcastEvent.class);
+        verify(eventPublisher).publishEvent(captor.capture());
+        assertThat(captor.getValue().type()).isEqualTo(GroupEventType.MEMBER_JOINED);
+        assertThat(captor.getValue().group().members()).hasSize(2);
+    }
+
+    @Test
+    void leaveGroupPublishesAMemberLeftEventForANonAdmin() {
+        Group group = groupWithAdmin();
+        memberOf(group, otherUser, false, Instant.now());
+        when(groupRepository.findById(10L)).thenReturn(Optional.of(group));
+        authenticateAs(otherUser);
+
+        groupService.leaveGroup(10L);
+
+        ArgumentCaptor<GroupBroadcastEvent> captor = ArgumentCaptor.forClass(GroupBroadcastEvent.class);
+        verify(eventPublisher).publishEvent(captor.capture());
+        assertThat(captor.getValue().type()).isEqualTo(GroupEventType.MEMBER_LEFT);
+    }
+
+    @Test
+    void leaveGroupPublishesBothMemberLeftAndAdminChangedWhenTheAdminLeaves() {
+        Group group = groupWithAdmin();
+        memberOf(group, otherUser, false, Instant.now());
+        when(groupRepository.findById(10L)).thenReturn(Optional.of(group));
+
+        groupService.leaveGroup(10L);
+
+        ArgumentCaptor<GroupBroadcastEvent> captor = ArgumentCaptor.forClass(GroupBroadcastEvent.class);
+        verify(eventPublisher, times(2)).publishEvent(captor.capture());
+        assertThat(captor.getAllValues())
+                .extracting(GroupBroadcastEvent::type)
+                .containsExactlyInAnyOrder(GroupEventType.MEMBER_LEFT, GroupEventType.ADMIN_CHANGED);
+    }
+
+    @Test
+    void leaveGroupPublishesNoEventWhenTheGroupIsDeleted() {
+        Group group = groupWithAdmin();
+        when(groupRepository.findById(10L)).thenReturn(Optional.of(group));
+
+        groupService.leaveGroup(10L);
+
+        verify(eventPublisher, never()).publishEvent(any());
+    }
+
+    @Test
+    void updateGroupSettingsPublishesASettingsChangedEvent() {
+        Group group = groupWithAdmin();
+        when(groupRepository.findById(10L)).thenReturn(Optional.of(group));
+
+        groupService.updateGroupSettings(10L, new UpdateGroupSettingsRequest(null, DjMode.ROTATING, null));
+
+        ArgumentCaptor<GroupBroadcastEvent> captor = ArgumentCaptor.forClass(GroupBroadcastEvent.class);
+        verify(eventPublisher).publishEvent(captor.capture());
+        assertThat(captor.getValue().type()).isEqualTo(GroupEventType.SETTINGS_CHANGED);
+    }
+
+    @Test
+    void startGameSessionPublishesAGameSessionStartedEvent() {
+        Group group = groupWithAdmin();
+        when(groupRepository.findById(10L)).thenReturn(Optional.of(group));
+
+        groupService.startGameSession(10L);
+
+        ArgumentCaptor<GroupBroadcastEvent> captor = ArgumentCaptor.forClass(GroupBroadcastEvent.class);
+        verify(eventPublisher).publishEvent(captor.capture());
+        assertThat(captor.getValue().type()).isEqualTo(GroupEventType.GAME_SESSION_STARTED);
+    }
+
+    @Test
+    void promoteMemberPublishesAnAdminChangedEvent() {
+        Group group = groupWithAdmin();
+        Member secondMember = memberOf(group, otherUser, false, Instant.now());
+        when(groupRepository.findById(10L)).thenReturn(Optional.of(group));
+
+        groupService.promoteMember(10L, secondMember.getId());
+
+        ArgumentCaptor<GroupBroadcastEvent> captor = ArgumentCaptor.forClass(GroupBroadcastEvent.class);
+        verify(eventPublisher).publishEvent(captor.capture());
+        assertThat(captor.getValue().type()).isEqualTo(GroupEventType.ADMIN_CHANGED);
+    }
+
+    @Test
+    void disconnectPublishesAMemberConnectionChangedEvent() {
+        Group group = groupWithAdmin();
+        when(groupRepository.findById(10L)).thenReturn(Optional.of(group));
+
+        groupService.disconnect(10L);
+
+        ArgumentCaptor<GroupBroadcastEvent> captor = ArgumentCaptor.forClass(GroupBroadcastEvent.class);
+        verify(eventPublisher).publishEvent(captor.capture());
+        assertThat(captor.getValue().type()).isEqualTo(GroupEventType.MEMBER_CONNECTION_CHANGED);
+    }
+
+    @Test
+    void disconnectMemberFlipsTheConnectionFlagByUserIdWithoutRemovingMembership() {
+        Group group = groupWithAdmin();
+        when(groupRepository.findById(10L)).thenReturn(Optional.of(group));
+
+        groupService.disconnectMember(10L, adminUser.getId());
+
+        Member adminMember = group.getMembers().getFirst();
+        assertThat(adminMember.isConnected()).isFalse();
+        assertThat(group.getMembers()).contains(adminMember);
+        verify(groupRepository, never()).delete(any());
+        verify(groupRepository, never()).save(any());
+
+        ArgumentCaptor<GroupBroadcastEvent> captor = ArgumentCaptor.forClass(GroupBroadcastEvent.class);
+        verify(eventPublisher).publishEvent(captor.capture());
+        assertThat(captor.getValue().type()).isEqualTo(GroupEventType.MEMBER_CONNECTION_CHANGED);
+    }
+
+    @Test
+    void disconnectMemberRejectsAUserWhoIsNotAMember() {
+        Group group = groupWithAdmin();
+        when(groupRepository.findById(10L)).thenReturn(Optional.of(group));
+
+        assertThatThrownBy(() -> groupService.disconnectMember(10L, otherUser.getId()))
+                .isInstanceOf(AccessDeniedException.class);
     }
 }
