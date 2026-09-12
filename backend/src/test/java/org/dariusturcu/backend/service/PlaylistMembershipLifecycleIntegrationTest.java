@@ -35,7 +35,6 @@ import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
-import java.util.Set;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -158,7 +157,6 @@ class PlaylistMembershipLifecycleIntegrationTest {
                 "dQw4w9WgXcQ",
                 "abcdef",
                 "abcdef",
-                Set.of(),
                 null);
     }
 

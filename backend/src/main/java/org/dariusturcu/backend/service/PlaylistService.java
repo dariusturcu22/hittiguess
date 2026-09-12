@@ -71,7 +71,7 @@ public class PlaylistService {
     }
 
     private void checkSongBelongsToPlaylist(Song song, Long playlistId) {
-        if (!song.getPlaylist().getId().equals(playlistId)) {
+        if (!songRepository.existsByIdAndPlaylistsId(song.getId(), playlistId)) {
             throw new ResourceNotFoundException(ResourceType.SONG_NOT_IN_PLAYLIST, song.getId(), playlistId);
         }
     }
@@ -135,10 +135,11 @@ public class PlaylistService {
         playlistAccessService.requireWrite(playlist, user);
 
         Song newSong = songMapper.toEntity(request);
-        newSong.setPlaylist(playlist);
         newSong.setAddedBy(user);
 
         Song savedSong = songRepository.save(newSong);
+        playlist.addSong(savedSong);
+        playlistRepository.save(playlist);
 
         return songMapper.toDTO(savedSong);
     }
@@ -172,8 +173,10 @@ public class PlaylistService {
 
         checkSongBelongsToPlaylist(song, playlistId);
 
+        // Unlinking only, never a real delete: a song is independent of any playlist it happens
+        // to belong to, a song with zero playlists is a valid, permanent state, not a signal to
+        // remove the row (see DECISIONS.md's 2026-09 "Song deletion" entries).
         playlist.removeSong(song);
-
         playlistRepository.save(playlist);
     }
 

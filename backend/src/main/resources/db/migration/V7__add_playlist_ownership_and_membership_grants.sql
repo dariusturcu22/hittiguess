@@ -39,12 +39,15 @@ JOIN users ON users.id = user_playlists.user_id;
 -- its own; a song's contributor is a real user, so that contributor becomes
 -- the fallback owner and sole member for a playlist the join table never
 -- covered, one membership per playlist from whichever of its songs is oldest.
+-- Reads through song_playlists (story 15's join table), not a direct
+-- songs.playlist_id column, which no longer exists by the time this runs.
 INSERT INTO playlist_memberships (playlist_id, user_id, can_read, can_write, can_delete, display_name, avatar_url, joined_at)
-SELECT DISTINCT ON (songs.playlist_id) songs.playlist_id, songs.added_by, TRUE, TRUE, TRUE, users.username, users.image_url, now()
-FROM songs
+SELECT DISTINCT ON (song_playlists.playlist_id) song_playlists.playlist_id, songs.added_by, TRUE, TRUE, TRUE, users.username, users.image_url, now()
+FROM song_playlists
+JOIN songs ON songs.id = song_playlists.song_id
 JOIN users ON users.id = songs.added_by
-WHERE songs.playlist_id NOT IN (SELECT playlist_id FROM playlist_memberships)
-ORDER BY songs.playlist_id, songs.id ASC;
+WHERE song_playlists.playlist_id NOT IN (SELECT playlist_id FROM playlist_memberships)
+ORDER BY song_playlists.playlist_id, songs.id ASC;
 
 -- A playlist left with neither a membership nor a song by this point has
 -- nothing pointing at it and no user to migrate an owner from; the

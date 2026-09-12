@@ -12,10 +12,9 @@ Structured reference for what exists in the code today, distinct from [ARCHITECT
 | POST | `/auth/login` | `AuthController` |
 | POST | `/auth/refresh` | `AuthController` |
 | POST | `/auth/logout` | `AuthController` |
-| GET | `/api/enums/tags` | `EnumController` |
 | GET | `/api/enums/countries` | `EnumController` |
-| GET | `/api/playlists/{playlistId}/export/info` | `ExportController` |
-| GET | `/api/playlists/{playlistId}/export/qr` | `ExportController` |
+| GET | `/api/playlists/{playlistId}/export/info` | `ExportController`, `paperSize` query param (`A4`/`LETTER`, default `A4`) |
+| GET | `/api/playlists/{playlistId}/export/qr` | `ExportController`, same `paperSize` query param |
 | GET | `/api/playlists/{playlistId}` | `PlaylistController`, requires `canRead` |
 | PATCH | `/api/playlists/{playlistId}` | `PlaylistController`, owner only |
 | GET | `/api/playlists/{playlistId}/songs/{songId}` | `PlaylistController`, requires `canRead` |
@@ -60,7 +59,8 @@ Playlist
   ├── id, name, color, inviteCode (unique, immutable)
   ├── owner: User  (@ManyToOne, set to the creator on creation, story 46; only the owner can rename,
   │     change color, delete the playlist, or manage members)
-  ├── songs: List<Song>  (@OneToMany, cascade ALL, orphanRemoval, story 15 replaces this with a join table)
+  ├── songs: List<Song>  (@ManyToMany, owning side, joins through song_playlists; removing a song here
+  │     only ever unlinks it, a Song is never deleted as a side effect of playlist membership)
   └── memberships: List<PlaylistMembership>  (@OneToMany, cascade ALL, orphanRemoval, story 46 replaces
         the old plain users many-to-many)
 
@@ -82,13 +82,16 @@ Song
   ├── id, title, releaseYear, youtubeId, gradientColor1, gradientColor2
   ├── artists: List<SongArtist>  (@OneToMany, ordered by displayOrder; today always one MAIN entry,
   │     the submission flow has no multi-artist entry UI yet, see story 40's featured-artist extraction)
-  ├── tags: Set<SongTag>  (PLAYLIST/SPECIAL/ANIME; empty means no tags, story 30 needs genre/popularity
-  │     fields story 23 didn't cover)
+  ├── genre  (nullable String, populated by the metadata pipeline once it runs, not user-submitted,
+  │     same as confidence/metadataRaw below; replaces the old SongTag/PLAYLIST/SPECIAL/ANIME enum,
+  │     which had no analog in the settled design mockups, see DECISIONS.md's 2026-09 entry)
   ├── country
   ├── verificationStatus (UNVERIFIED default, VERIFIED, NEEDS_REVIEW, MANUAL_ENTRY; see the state
   │     diagram below, story 18 still owns the actual lock-evaluation logic that moves it)
   ├── confidence, metadataRaw (populated once story 18's pipeline actually runs; both nullable today)
-  ├── playlist: Playlist  (@ManyToOne, story 15 replaces this with the join table above)
+  ├── playlists: Set<Playlist>  (@ManyToMany, mappedBy "songs"; a song can belong to more than one
+  │     playlist since story 15, and to zero, a song is a standalone catalog entity independent of
+  │     any playlist, see DECISIONS.md's 2026-09 "Song deletion reversed" entry)
   └── addedBy: User       (@ManyToOne, no inverse mapping, no cascade, the DELETE /me bug in TASKS.md's Bug fixes)
 
 SongArtist
