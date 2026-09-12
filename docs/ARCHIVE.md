@@ -282,3 +282,19 @@ Checked against real code: no pgvector dependency in `pom.xml`, no vector-DB cli
 Tests:
 - [x] Unit tests for the similarity-check step (mocked embedding client): a high-confidence match reuses existing data, a low-confidence match proceeds to the full pipeline
 - [x] Integration test: submitting a near-duplicate song reuses existing verified data instead of re-running the LLM
+
+## Story 27: Rate limiting
+
+Checked against real code: the only rate limiting anywhere is `SongMetadataService`'s single in-flight-request-per-user gate on `/api/metadata/song`, a `ConcurrentHashMap`-backed set, not a time-window limiter. No rate-limiting library (Bucket4j, resilience4j) exists in `pom.xml`. `/auth/login` and `/auth/register` have no rate limiting at all today.
+
+- [x] Add a rate-limiting library (Bucket4j is the standard Spring choice) to `pom.xml`
+- [x] Add per-user or per-IP request-window rate limits across public-facing endpoints, not just the existing single in-flight gate
+- [x] Rate-limit `/auth/login` and `/auth/register` specifically, to blunt credential-stuffing and enumeration attempts
+- [x] Standardize the 429 response shape; the metadata endpoint's current 429 uses Spring's default `ProblemDetail`, not the app's own `ErrorResponse` record used elsewhere in `GlobalExceptionHandler`
+- [x] Rate-limit the AI microservice's `/metadata/resolve` endpoint directly, not just the core service's call into it, since anything holding the shared `X-Internal-Api-Key` secret can call it directly
+- [x] Load-test every rate-limited entry point (both services) under concurrent traffic past the configured limit, confirming the limiter holds under real concurrency rather than only the single-threaded unit tests below
+
+Tests:
+- [x] Unit tests for the rate limiter: requests under the limit pass, requests over the limit get rejected, including the boundary value
+- [x] Integration test: `/auth/login` and `/auth/register` rate limiting specifically
+- [x] Integration test: the AI microservice's `/metadata/resolve` rate limit triggers independent of the core service's own limiting
