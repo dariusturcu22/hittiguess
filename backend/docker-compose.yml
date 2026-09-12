@@ -12,5 +12,19 @@ services:
     volumes:
       - hitster_postgres_data:/var/lib/postgresql
 
+  analytics-db:
+    image: postgres:18
+    container_name: my-hitster-analytics-postgres
+    restart: always
+    ports:
+      - "5501:5432"
+    environment:
+      POSTGRES_DB: ${ANALYTICS_DB_NAME}
+      POSTGRES_USER: ${ANALYTICS_DB_USERNAME}
+      POSTGRES_PASSWORD: ${ANALYTICS_DB_PASSWORD}
+    volumes:
+      - hitster_analytics_postgres_data:/var/lib/postgresql
+
 volumes:
   hitster_postgres_data:
+  hitster_analytics_postgres_data:
