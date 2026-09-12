@@ -73,6 +73,7 @@ class SongMultiplePlaylistsIntegrationTest {
     private Playlist newPlaylist(String inviteCode) {
         Playlist playlist = new Playlist();
         playlist.setInviteCode(inviteCode);
+        playlist.setOwner(songOwner);
         return playlistRepository.save(playlist);
     }
 

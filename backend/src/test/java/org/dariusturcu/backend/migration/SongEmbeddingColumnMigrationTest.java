@@ -16,7 +16,7 @@ import java.sql.Statement;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * Verifies V7 enables pgvector and adds a nullable vector(1536) embedding
+ * Verifies V8 enables pgvector and adds a nullable vector(1536) embedding
  * column to songs, story 16's storage for verified-song duplicate detection.
  * Requires a Postgres image that bundles the pgvector extension binary
  * (pgvector/pgvector:pg18), a plain postgres image has no extension to load.
@@ -84,7 +84,10 @@ class SongEmbeddingColumnMigrationTest {
     void supportsInsertingAndComparingEmbeddingsByCosineDistance() throws SQLException {
         try (Statement statement = connection.createStatement()) {
             statement.execute("INSERT INTO users (username) VALUES ('embedding-test-user')");
-            statement.execute("INSERT INTO playlists (invite_code) VALUES ('EMBED001')");
+            statement.execute(
+                    "INSERT INTO playlists (invite_code, owner_id) "
+                            + "VALUES ('EMBED001', (SELECT id FROM users WHERE username = 'embedding-test-user'))"
+            );
             statement.execute(
                     "INSERT INTO songs (title, release_year, youtube_id, added_by, embedding) "
                             + "VALUES ('Embedding Test Song', 2000, 'dQw4w9WgXcQ', "

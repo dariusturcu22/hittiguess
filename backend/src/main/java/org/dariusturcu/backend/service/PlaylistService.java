@@ -1,11 +1,16 @@
 package org.dariusturcu.backend.service;
 
+import org.dariusturcu.backend.exception.ConflictException;
 import org.dariusturcu.backend.exception.ResourceNotFoundException;
 import org.dariusturcu.backend.exception.ResourceType;
 import org.dariusturcu.backend.model.mapper.PlaylistMapper;
 import org.dariusturcu.backend.model.mapper.SongMapper;
 import org.dariusturcu.backend.model.playlist.Playlist;
+import org.dariusturcu.backend.model.playlist.PlaylistBan;
 import org.dariusturcu.backend.model.playlist.PlaylistDetailDTO;
+import org.dariusturcu.backend.model.playlist.PlaylistMemberDTO;
+import org.dariusturcu.backend.model.playlist.PlaylistMembership;
+import org.dariusturcu.backend.model.playlist.UpdateMembershipGrantsRequest;
 import org.dariusturcu.backend.model.playlist.UpdatePlaylistRequest;
 import org.dariusturcu.backend.model.song.CreateSongRequest;
 import org.dariusturcu.backend.model.song.Song;
@@ -13,6 +18,8 @@ import org.dariusturcu.backend.model.song.SongDTO;
 import org.dariusturcu.backend.model.song.UpdateSongRequest;
 import org.dariusturcu.backend.model.song.VerificationStatus;
 import org.dariusturcu.backend.model.user.User;
+import org.dariusturcu.backend.repository.PlaylistBanRepository;
+import org.dariusturcu.backend.repository.PlaylistMembershipRepository;
 import org.dariusturcu.backend.repository.PlaylistRepository;
 
 import org.dariusturcu.backend.repository.SongRepository;
@@ -22,6 +29,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
 
+import java.time.Instant;
+import java.util.List;
 import java.util.Set;
 
 @Service
@@ -34,6 +43,9 @@ public class PlaylistService {
     private final SongRepository songRepository;
     private final PlaylistMapper playlistMapper;
     private final SongMapper songMapper;
+    private final PlaylistAccessService playlistAccessService;
+    private final PlaylistMembershipRepository playlistMembershipRepository;
+    private final PlaylistBanRepository playlistBanRepository;
 
     // VERIFIED is a pipeline-established lock and NEEDS_REVIEW is an LLM-reconciled year;
     // hand-editing either undermines the trust tier the pipeline already assigned it.
@@ -53,15 +65,9 @@ public class PlaylistService {
                 .orElseThrow(() -> new ResourceNotFoundException(ResourceType.SONG, songId));
     }
 
-    private void checkPlaylistAccess(Playlist playlist) {
-        User currentUser = SecurityUtils.getCurrentUser();
-
-        boolean hasAccess = playlist.getUsers().stream()
-                .anyMatch(user -> user.getId().equals(currentUser.getId()));
-
-        if (!hasAccess) {
-            throw new AccessDeniedException("You are not a member of this playlist");
-        }
+    private PlaylistMembership findMembership(Long playlistId, Long userId) {
+        return playlistMembershipRepository.findByPlaylistIdAndUserId(playlistId, userId)
+                .orElseThrow(() -> new ResourceNotFoundException(ResourceType.PLAYLIST_MEMBER, userId));
     }
 
     private void checkSongBelongsToPlaylist(Song song, Long playlistId) {
@@ -76,12 +82,18 @@ public class PlaylistService {
         }
     }
 
+    private void checkTargetIsNotOwner(Playlist playlist, Long targetUserId, String action) {
+        if (playlist.getOwner().getId().equals(targetUserId)) {
+            throw new ConflictException("The playlist owner can't " + action);
+        }
+    }
+
     @Transactional(readOnly = true)
     public PlaylistDetailDTO getPlaylist(
             Long playlistId) {
 
         Playlist playlist = findPlaylist(playlistId);
-        checkPlaylistAccess(playlist);
+        playlistAccessService.requireRead(playlist, SecurityUtils.getCurrentUser());
         return playlistMapper.toDetailDTO(playlist);
     }
 
@@ -91,7 +103,7 @@ public class PlaylistService {
 
         Playlist playlist = findPlaylist(playlistId);
 
-        checkPlaylistAccess(playlist);
+        playlistAccessService.requireOwner(playlist, SecurityUtils.getCurrentUser());
         playlist = playlistMapper.updateEntity(playlist, request);
 
         playlistRepository.save(playlist);
@@ -106,7 +118,7 @@ public class PlaylistService {
 
         Playlist playlist = findPlaylist(playlistId);
 
-        checkPlaylistAccess(playlist);
+        playlistAccessService.requireRead(playlist, SecurityUtils.getCurrentUser());
         Song song = findSong(songId);
 
         checkSongBelongsToPlaylist(song, playlistId);
@@ -119,9 +131,9 @@ public class PlaylistService {
             CreateSongRequest request) {
 
         Playlist playlist = findPlaylist(playlistId);
-        checkPlaylistAccess(playlist);
-
         User user = SecurityUtils.getCurrentUser();
+        playlistAccessService.requireWrite(playlist, user);
+
         Song newSong = songMapper.toEntity(request);
         newSong.setAddedBy(user);
 
@@ -138,7 +150,7 @@ public class PlaylistService {
             UpdateSongRequest request) {
 
         Playlist playlist = findPlaylist(playlistId);
-        checkPlaylistAccess(playlist);
+        playlistAccessService.requireWrite(playlist, SecurityUtils.getCurrentUser());
         Song song = findSong(songId);
 
         checkSongBelongsToPlaylist(song, playlistId);
@@ -156,7 +168,7 @@ public class PlaylistService {
             Long songId) {
 
         Playlist playlist = findPlaylist(playlistId);
-        checkPlaylistAccess(playlist);
+        playlistAccessService.requireDelete(playlist, SecurityUtils.getCurrentUser());
         Song song = findSong(songId);
 
         checkSongBelongsToPlaylist(song, playlistId);
@@ -166,5 +178,83 @@ public class PlaylistService {
         // remove the row (see DECISIONS.md's 2026-09 "Song deletion" entries).
         playlist.removeSong(song);
         playlistRepository.save(playlist);
+    }
+
+    @Transactional(readOnly = true)
+    public List<PlaylistMemberDTO> getMembers(Long playlistId) {
+        Playlist playlist = findPlaylist(playlistId);
+        playlistAccessService.requireRead(playlist, SecurityUtils.getCurrentUser());
+
+        Long ownerId = playlist.getOwner().getId();
+        return playlist.getMemberships().stream()
+                .map(membership -> playlistMapper.toMemberDTO(membership, membership.getUser().getId().equals(ownerId)))
+                .toList();
+    }
+
+    public PlaylistMemberDTO updateMemberGrants(Long playlistId, Long targetUserId, UpdateMembershipGrantsRequest request) {
+        Playlist playlist = findPlaylist(playlistId);
+        playlistAccessService.requireOwner(playlist, SecurityUtils.getCurrentUser());
+        checkTargetIsNotOwner(playlist, targetUserId, "have their own grants changed");
+
+        PlaylistMembership membership = findMembership(playlistId, targetUserId);
+
+        if (request.canRead() != null) {
+            membership.setCanRead(request.canRead());
+        }
+        if (request.canWrite() != null) {
+            membership.setCanWrite(request.canWrite());
+        }
+        if (request.canDelete() != null) {
+            membership.setCanDelete(request.canDelete());
+        }
+
+        PlaylistMembership savedMembership = playlistMembershipRepository.save(membership);
+        return playlistMapper.toMemberDTO(savedMembership, false);
+    }
+
+    public void kickMember(Long playlistId, Long targetUserId) {
+        Playlist playlist = findPlaylist(playlistId);
+        playlistAccessService.requireOwner(playlist, SecurityUtils.getCurrentUser());
+        checkTargetIsNotOwner(playlist, targetUserId, "be kicked");
+
+        PlaylistMembership membership = findMembership(playlistId, targetUserId);
+
+        playlist.removeMembership(membership);
+        playlistRepository.save(playlist);
+    }
+
+    public PlaylistDetailDTO transferOwnership(Long playlistId, Long newOwnerId) {
+        Playlist playlist = findPlaylist(playlistId);
+        playlistAccessService.requireOwner(playlist, SecurityUtils.getCurrentUser());
+
+        if (playlist.getOwner().getId().equals(newOwnerId)) {
+            throw new ConflictException("This user is already the playlist owner");
+        }
+
+        PlaylistMembership newOwnerMembership = findMembership(playlistId, newOwnerId);
+        playlist.setOwner(newOwnerMembership.getUser());
+
+        Playlist savedPlaylist = playlistRepository.save(playlist);
+        return playlistMapper.toDetailDTO(savedPlaylist);
+    }
+
+    public void banMember(Long playlistId, Long targetUserId) {
+        Playlist playlist = findPlaylist(playlistId);
+        playlistAccessService.requireOwner(playlist, SecurityUtils.getCurrentUser());
+        checkTargetIsNotOwner(playlist, targetUserId, "be banned");
+
+        PlaylistMembership membership = findMembership(playlistId, targetUserId);
+        User bannedUser = membership.getUser();
+
+        playlist.removeMembership(membership);
+        playlistRepository.save(playlist);
+
+        if (!playlistBanRepository.existsByPlaylistIdAndUserId(playlistId, targetUserId)) {
+            PlaylistBan ban = new PlaylistBan();
+            ban.setPlaylist(playlist);
+            ban.setUser(bannedUser);
+            ban.setBannedAt(Instant.now());
+            playlistBanRepository.save(ban);
+        }
     }
 }

@@ -31,9 +31,10 @@ import java.sql.Statement;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * A song row migrated from V1's original shape must still come back as a
- * valid SongDTO through the real repository and mapper, not just survive at
- * the raw-SQL level (SongSchemaMigrationTest covers that separately).
+ * A song row inserted at the raw-SQL level against the fully migrated schema
+ * must still come back as a valid SongDTO through the real repository and
+ * mapper, confirming the entity mapping matches the schema every migration
+ * up to and including the latest one actually produces.
  *
  * Uses a minimal JPA-only context (JpaTestConfig below) rather than the whole
  * BackendApplication: this project's OAuth2 client and AI-service RestClient
@@ -74,30 +75,26 @@ class SongApiCompatibilityAfterMigrationTest {
     }
 
     @BeforeAll
-    static void migrateBaselineInsertLegacyRowThenMigrateTheRest() throws SQLException {
+    static void migrateThenInsertASongAgainstTheFinalSchema() throws SQLException {
         Flyway.configure()
                 .dataSource(postgres.getJdbcUrl(), postgres.getUsername(), postgres.getPassword())
-                .target("1")
                 .load()
                 .migrate();
 
         try (Connection connection = DriverManager.getConnection(
                 postgres.getJdbcUrl(), postgres.getUsername(), postgres.getPassword());
              Statement statement = connection.createStatement()) {
-            statement.execute("INSERT INTO users (username) VALUES ('legacy-user')");
-            statement.execute("INSERT INTO playlists (invite_code) VALUES ('LEGACY1')");
+            statement.execute("INSERT INTO users (username) VALUES ('song-owner')");
             statement.execute(
-                    "INSERT INTO songs (artist, title, release_year, youtube_id, song_tag, playlist_id, added_by) "
-                            + "VALUES ('Legacy Artist', 'Legacy Title', 1999, 'dQw4w9WgXcQ', 'ANIME', "
-                            + "(SELECT id FROM playlists WHERE invite_code = 'LEGACY1'), "
-                            + "(SELECT id FROM users WHERE username = 'legacy-user'))"
+                    "INSERT INTO songs (title, release_year, youtube_id, added_by) "
+                            + "VALUES ('A Song', 1999, 'dQw4w9WgXcQ', "
+                            + "(SELECT id FROM users WHERE username = 'song-owner'))"
+            );
+            statement.execute(
+                    "INSERT INTO song_artists (song_id, name, role, display_order) "
+                            + "VALUES ((SELECT id FROM songs WHERE title = 'A Song'), 'An Artist', 'MAIN', 0)"
             );
         }
-
-        Flyway.configure()
-                .dataSource(postgres.getJdbcUrl(), postgres.getUsername(), postgres.getPassword())
-                .load()
-                .migrate();
     }
 
     @Autowired
@@ -107,16 +104,16 @@ class SongApiCompatibilityAfterMigrationTest {
     private SongMapper songMapper;
 
     @Test
-    void migratedSongMapsToAValidDTO() {
+    void aSongInsertedAgainstTheFinalSchemaMapsToAValidDTO() {
         Song song = songRepository.findAll().stream()
-                .filter(candidate -> "Legacy Title".equals(candidate.getTitle()))
+                .filter(candidate -> "A Song".equals(candidate.getTitle()))
                 .findFirst()
                 .orElseThrow();
 
         SongDTO dto = songMapper.toDTO(song);
 
         assertThat(dto.artists()).hasSize(1);
-        assertThat(dto.artists().getFirst().name()).isEqualTo("Legacy Artist");
+        assertThat(dto.artists().getFirst().name()).isEqualTo("An Artist");
         assertThat(dto.genre()).isNull();
         assertThat(dto.verificationStatus()).isEqualTo(VerificationStatus.UNVERIFIED);
         assertThat(dto.confidence()).isNull();
