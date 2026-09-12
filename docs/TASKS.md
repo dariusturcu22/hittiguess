@@ -584,22 +584,22 @@ Checked against real code: no Spring Boot Actuator dependency exists in `pom.xml
 
 Goes deeper than a minimal setup, deliberately: metrics, logs, and traces together (Prometheus, Loki, Tempo), not just health checks and error tracking. All consumed through Grafana Cloud's free tier rather than self-hosted, self-hosting any of these means an always-on VM that doesn't fit the project's whole-deployment cost ceiling (see `DECISIONS.md`), while the free tier covers this project's scale at $0. Instrumentation itself is OpenTelemetry, the vendor-neutral standard, so nothing here locks the project into Grafana Cloud specifically.
 
-- [ ] Add Spring Boot Actuator to the core service for health/metrics endpoints, expose `/actuator/prometheus`
-- [ ] Add an equivalent health endpoint to the AI microservice (FastAPI has none today), expose metrics via `prometheus-fastapi-instrumentator`
-- [ ] Set up a Grafana Cloud free-tier account, point both services' Prometheus metrics at it
-- [ ] Add OpenTelemetry auto-instrumentation to both services for distributed tracing, viewable in Grafana Cloud's Tempo
-- [ ] Ship both services' structured logs to Grafana Cloud's Loki
-- [ ] Add error tracking (Sentry, free tier) to both services
-- [ ] Add a request-id/correlation-id filter so one user action can be traced across both services' logs, and correlates with the OpenTelemetry trace for the same request
-- [ ] Build a basic Grafana dashboard: request rate, error rate, latency percentiles for both services
-- [ ] Add uptime monitoring for the production deployment
-- [ ] Surface the AI microservice's per-source fetch failures and OpenAI call failures as visible alerts, rather than only the generic swallowed `status="ERROR"` response
-- [ ] Add a periodic check against Grafana Cloud's and Sentry's free-tier usage limits, so approaching them is noticed before either starts silently dropping data or asking for payment
+- [x] Add Spring Boot Actuator to the core service for health/metrics endpoints, expose `/actuator/prometheus`
+- [x] Add an equivalent health endpoint to the AI microservice (FastAPI has none today), expose metrics via `prometheus-fastapi-instrumentator`
+- [ ] Set up a Grafana Cloud free-tier account, point both services' Prometheus metrics at it — not done, needs a real account the user hasn't created yet. Both services' Prometheus endpoints (`/actuator/prometheus`, `/metrics`) are built and ready to be scraped once one exists.
+- [x] Add OpenTelemetry auto-instrumentation to both services for distributed tracing, viewable in Grafana Cloud's Tempo — instrumented and producing real in-process spans in both services; export over OTLP is wired but points nowhere until `OTEL_SDK_DISABLED=false` (core service) or `OTEL_EXPORTER_OTLP_ENDPOINT` (AI microservice) name a real collector or Grafana Cloud Tempo instance
+- [ ] Ship both services' structured logs to Grafana Cloud's Loki — not done, needs a real account the user hasn't created yet. Both services already emit structured JSON logs to stdout, Loki-shippable via Promtail once a Loki endpoint exists.
+- [x] Add error tracking (Sentry, free tier) to both services — SDK wiring is in place in both services (`sentry-spring-boot-4`, `sentry-sdk`), disabled by default and verified with the SDK in that disabled/no-op state; no real Sentry project has been created or verified against, so a live account and DSN are still needed before events actually reach Sentry
+- [x] Add a request-id/correlation-id filter so one user action can be traced across both services' logs, and correlates with the OpenTelemetry trace for the same request
+- [x] Build a basic Grafana dashboard: request rate, error rate, latency percentiles for both services — written as dashboard-as-code at `observability/grafana/hittiguess-overview-dashboard.json`, not provisioned into a live Grafana instance since no account exists yet
+- [ ] Add uptime monitoring for the production deployment — not done, there is no production deployment yet (stories 7 and 8, hosting and database migration, are both still undecided), uptime monitoring is meaningless without one
+- [x] Surface the AI microservice's per-source fetch failures and OpenAI call failures as visible alerts, rather than only the generic swallowed `status="ERROR"` response — each metadata source and the OpenAI synthesis call now logs a structured error and calls the Sentry SDK's capture path distinctly, instead of disappearing into the pipeline's generic error response
+- [ ] Add a periodic check against Grafana Cloud's and Sentry's free-tier usage limits, so approaching them is noticed before either starts silently dropping data or asking for payment — not done, depends entirely on those accounts existing
 
 Tests:
-- [ ] Integration test: Actuator health endpoint reports correctly both when healthy and when a dependency (the database) is down
-- [ ] Integration test: a request-id set on an incoming request propagates through a core-service-to-AI-service call, appears in both services' logs, and correlates with a single OpenTelemetry trace
-- [ ] Integration test: a metrics scrape and a log line both actually reach Grafana Cloud in a real (non-mocked) call
+- [x] Integration test: Actuator health endpoint reports correctly both when healthy and when a dependency (the database) is down
+- [x] Integration test: a request-id set on an incoming request propagates through a core-service-to-AI-service call, appears in both services' logs, and correlates with a single OpenTelemetry trace — the backend side (filter, MDC, span attribute, RestClient interceptor) is proven against the real production code path; the AI microservice side (reusing an incoming id, echoing it, logging it) is proven independently in its own suite. This sandbox's JDK cannot open real loopback sockets between processes (the same limitation `BackendApplicationTests` is excluded for), so a literal cross-process HTTP call between the two real running services could not be executed here; `MockRestServiceServer` stands in for the AI service's HTTP boundary while exercising every other real component.
+- [ ] Integration test: a metrics scrape and a log line both actually reach Grafana Cloud in a real (non-mocked) call — not done, cannot be written honestly without real Grafana Cloud credentials
 
 ## Story 35: Public ground-truth data API
 

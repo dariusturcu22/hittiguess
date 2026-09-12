@@ -29,5 +29,15 @@ class Settings(BaseSettings):
     wikipedia_bot_username: str | None = None
     wikipedia_bot_password: str | None = None
 
+    # Error tracking (Sentry): inactive until a real DSN is supplied, matching the
+    # Sentry SDK's own no-op behavior when sentry_sdk.init() is never called.
+    sentry_dsn: str | None = None
+    sentry_traces_sample_rate: float = 0.1
+
+    # Distributed tracing (OpenTelemetry): spans are always created in-process so
+    # request logs can be correlated with a trace id, but nothing is exported over
+    # OTLP until this is pointed at a real collector or Grafana Cloud Tempo instance.
+    otel_exporter_otlp_endpoint: str | None = None
+
 
 settings = Settings()

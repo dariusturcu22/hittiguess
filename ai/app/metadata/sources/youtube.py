@@ -2,7 +2,9 @@ import httpx
 
 from app.config import settings
 from app.metadata.sources.util import build_youtube_api_url, extract_youtube_video_id
+from app.observability.error_reporting import report_source_failure
 
+SOURCE_NAME = "youtube"
 UNKNOWN_DEFAULTS = {
     "channel_title": "unknown",
     "video_title": "unknown",
@@ -36,5 +38,6 @@ def fetch_youtube_metadata(url: str) -> dict[str, str]:
             "upload_date": published_at[:10] if len(published_at) >= 10 else "unknown",
             "upload_year": published_at[:4] if len(published_at) >= 4 else "unknown",
         }
-    except Exception:
+    except Exception as youtube_error:
+        report_source_failure(SOURCE_NAME, youtube_error, title=url, artist="unknown")
         return dict(UNKNOWN_DEFAULTS)
