@@ -207,18 +207,6 @@ Tests:
 - [ ] Integration test: publishing a playlist makes it selectable by a user who neither owns it nor is a member of it; unpublishing removes that access without affecting existing owners/members
 - [ ] Frontend test: the review UI lets a user inspect and confirm the generated set before saving
 
-## Story 33: Analytics data store
-
-Story 42 owns the explicit domain boundary this story's provisioning assumes: every transactional entity stays in the core Postgres+pgvector instance, only this story's usage/event data goes in the separate store it provisions below.
-
-- [x] Choose and provision a separate append-heavy store for usage/event data, apart from the transactional Postgres database (a separate schema, or a dedicated event/time-series store). A second Postgres database, `analytics-db` in `docker-compose.yml`, migrated through its own Flyway history under `db/analytics-migration`, independent of the core service's V1-V10 history
-- [x] Define the event schema: game session start/end (with a compact per-game summary, group, players, win/loss, cards won, final score, for story 34's game history feature), login, playlist created, song submitted, rate-limit-exceeded (user, endpoint), report submitted, failed login attempt. A single `analytics_events` table (event type, timestamp, JSONB payload) plus a typed payload record per event, in `backend/src/main/java/org/dariusturcu/backend/analytics`
-- [x] Decide a retention policy. 180 days, configurable through `analytics.retention.days`
-
-Tests:
-- [x] Integration test: an event write to the new store doesn't touch or block the transactional database
-- [x] Integration test for the retention policy's cleanup logic
-
 ## Story 34: First-party usage analytics
 
 Story 42 owns the explicit domain boundary this story reads and writes against: the transactional `GameSession`/`Round`/`Guess` rows this story's game-history task reads a summary from stay in the core database and purge exactly as story 10 specifies; only the compact event/summary data this story writes goes in story 33's separate analytics store. Depends on story 33's store existing, and also on the events it instruments actually existing: story 10 (game session, no `GameSession` model exists yet), story 17 (reports, no `SongReport` entity exists yet), and story 27 (rate limiting, only a narrow one-in-flight-request-per-user concurrency gate exists today on `/api/metadata/song`, not the general per-user/per-IP time-window limiter this depends on for login/register or other endpoints). Login and playlist-creation events can be instrumented once story 33 lands, independent of the others. Event scope is deliberately count/aggregate-based, not behavioral click-tracking: usage stats for the project's own understanding (games played, session length, playlists created, songs submitted, login activity), and abuse-visibility signals that turn existing enforcement into something reviewable (rate-limit-exceeded events from stories 13/27, report submissions from story 17, failed login attempts), not a new detection mechanism of its own.
