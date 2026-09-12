@@ -3,7 +3,6 @@ package org.dariusturcu.backend.migration;
 import org.dariusturcu.backend.model.mapper.SongMapper;
 import org.dariusturcu.backend.model.song.Song;
 import org.dariusturcu.backend.model.song.SongDTO;
-import org.dariusturcu.backend.model.song.SongTag;
 import org.dariusturcu.backend.model.song.VerificationStatus;
 import org.dariusturcu.backend.repository.SongRepository;
 import org.flywaydb.core.Flyway;
@@ -118,7 +117,7 @@ class SongApiCompatibilityAfterMigrationTest {
 
         assertThat(dto.artists()).hasSize(1);
         assertThat(dto.artists().getFirst().name()).isEqualTo("Legacy Artist");
-        assertThat(dto.tags()).containsExactly(SongTag.ANIME);
+        assertThat(dto.genre()).isNull();
         assertThat(dto.verificationStatus()).isEqualTo(VerificationStatus.UNVERIFIED);
         assertThat(dto.confidence()).isNull();
     }
