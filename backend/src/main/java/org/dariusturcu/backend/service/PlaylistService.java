@@ -223,6 +223,21 @@ public class PlaylistService {
         playlistRepository.save(playlist);
     }
 
+    public PlaylistDetailDTO transferOwnership(Long playlistId, Long newOwnerId) {
+        Playlist playlist = findPlaylist(playlistId);
+        playlistAccessService.requireOwner(playlist, SecurityUtils.getCurrentUser());
+
+        if (playlist.getOwner().getId().equals(newOwnerId)) {
+            throw new ConflictException("This user is already the playlist owner");
+        }
+
+        PlaylistMembership newOwnerMembership = findMembership(playlistId, newOwnerId);
+        playlist.setOwner(newOwnerMembership.getUser());
+
+        Playlist savedPlaylist = playlistRepository.save(playlist);
+        return playlistMapper.toDetailDTO(savedPlaylist);
+    }
+
     public void banMember(Long playlistId, Long targetUserId) {
         Playlist playlist = findPlaylist(playlistId);
         playlistAccessService.requireOwner(playlist, SecurityUtils.getCurrentUser());

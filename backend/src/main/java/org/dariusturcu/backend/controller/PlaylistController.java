@@ -98,6 +98,15 @@ public class PlaylistController {
         return ResponseEntity.ok(updatedMember);
     }
 
+    @Operation(summary = "Transfer ownership to another member, owner only; the previous owner stays a regular member")
+    @PostMapping("/{playlistId}/members/{userId}/promote")
+    public ResponseEntity<PlaylistDetailDTO> promoteMember(
+            @PathVariable Long playlistId,
+            @PathVariable Long userId) {
+        PlaylistDetailDTO updatedPlaylist = playlistService.transferOwnership(playlistId, userId);
+        return ResponseEntity.ok(updatedPlaylist);
+    }
+
     @Operation(summary = "Kick a member, owner only; the invite still lets them rejoin")
     @DeleteMapping("/{playlistId}/members/{userId}")
     public ResponseEntity<Void> kickMember(

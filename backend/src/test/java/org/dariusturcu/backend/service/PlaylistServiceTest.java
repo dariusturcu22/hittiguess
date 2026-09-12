@@ -229,6 +229,52 @@ class PlaylistServiceTest {
     }
 
     @Test
+    void transferOwnershipRejectsANonOwnerMember() {
+        doThrow(new AccessDeniedException("Only the playlist owner can perform this action"))
+                .when(playlistAccessService).requireOwner(playlist, currentUser);
+
+        assertThatThrownBy(() -> playlistService.transferOwnership(PLAYLIST_ID, MEMBER_ID))
+                .isInstanceOf(AccessDeniedException.class);
+
+        verify(playlistRepository, never()).save(any());
+    }
+
+    @Test
+    void transferOwnershipRejectsTransferringToTheCurrentOwner() {
+        assertThatThrownBy(() -> playlistService.transferOwnership(PLAYLIST_ID, OWNER_ID))
+                .isInstanceOf(ConflictException.class);
+
+        verify(playlistRepository, never()).save(any());
+    }
+
+    @Test
+    void transferOwnershipRejectsANonMemberTarget() {
+        when(playlistMembershipRepository.findByPlaylistIdAndUserId(PLAYLIST_ID, MEMBER_ID))
+                .thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> playlistService.transferOwnership(PLAYLIST_ID, MEMBER_ID))
+                .isInstanceOf(ResourceNotFoundException.class);
+
+        verify(playlistRepository, never()).save(any());
+    }
+
+    @Test
+    void transferOwnershipMovesTheOwnerToTheChosenMemberAndKeepsThePreviousOwnerAsAMember() {
+        PlaylistMembership membership = memberMembership();
+        playlist.getMemberships().add(membership);
+        when(playlistMembershipRepository.findByPlaylistIdAndUserId(PLAYLIST_ID, MEMBER_ID))
+                .thenReturn(Optional.of(membership));
+        when(playlistRepository.save(playlist)).thenReturn(playlist);
+        when(playlistMapper.toDetailDTO(playlist)).thenReturn(null);
+
+        playlistService.transferOwnership(PLAYLIST_ID, MEMBER_ID);
+
+        assertThat(playlist.getOwner()).isEqualTo(membership.getUser());
+        assertThat(playlist.getMemberships()).contains(membership);
+        verify(playlistRepository).save(playlist);
+    }
+
+    @Test
     void kickMemberRejectsANonOwnerMember() {
         doThrow(new AccessDeniedException("Only the playlist owner can perform this action"))
                 .when(playlistAccessService).requireOwner(playlist, currentUser);
