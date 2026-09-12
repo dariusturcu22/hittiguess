@@ -1,5 +1,6 @@
 package org.dariusturcu.backend.service;
 
+import org.dariusturcu.backend.exception.ResourceNotFoundException;
 import org.dariusturcu.backend.model.mapper.PlaylistMapper;
 import org.dariusturcu.backend.model.mapper.SongMapper;
 import org.dariusturcu.backend.model.playlist.Playlist;
@@ -28,6 +29,7 @@ import java.util.HashSet;
 import java.util.Optional;
 import java.util.Set;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
@@ -83,13 +85,13 @@ class PlaylistServiceTest {
     private Song songWithStatus(VerificationStatus status) {
         Song song = new Song();
         song.setId(SONG_ID);
-        song.setPlaylist(playlist);
+        song.getPlaylists().add(playlist);
         song.setVerificationStatus(status);
         return song;
     }
 
     private UpdateSongRequest anyUpdateRequest() {
-        return new UpdateSongRequest("Artist", "Title", 2000, "dQw4w9WgXcQ", "abcdef", "abcdef", Set.of(), null);
+        return new UpdateSongRequest("Artist", "Title", 2000, "dQw4w9WgXcQ", "abcdef", "abcdef", null);
     }
 
     @ParameterizedTest
@@ -98,6 +100,7 @@ class PlaylistServiceTest {
         Song song = songWithStatus(status);
         UpdateSongRequest request = anyUpdateRequest();
         when(songRepository.findById(SONG_ID)).thenReturn(Optional.of(song));
+        when(songRepository.existsByIdAndPlaylistsId(SONG_ID, PLAYLIST_ID)).thenReturn(true);
         when(songMapper.updateEntity(song, request)).thenReturn(song);
 
         playlistService.updateSong(PLAYLIST_ID, SONG_ID, request);
@@ -111,10 +114,48 @@ class PlaylistServiceTest {
         Song song = songWithStatus(status);
         UpdateSongRequest request = anyUpdateRequest();
         when(songRepository.findById(SONG_ID)).thenReturn(Optional.of(song));
+        when(songRepository.existsByIdAndPlaylistsId(SONG_ID, PLAYLIST_ID)).thenReturn(true);
 
         assertThatThrownBy(() -> playlistService.updateSong(PLAYLIST_ID, SONG_ID, request))
                 .isInstanceOf(AccessDeniedException.class);
 
         verify(songMapper, never()).updateEntity(any(), any());
+    }
+
+    @Test
+    void getSongRejectsASongThatDoesNotBelongToThePlaylist() {
+        Song song = songWithStatus(VerificationStatus.UNVERIFIED);
+        when(songRepository.findById(SONG_ID)).thenReturn(Optional.of(song));
+        when(songRepository.existsByIdAndPlaylistsId(SONG_ID, PLAYLIST_ID)).thenReturn(false);
+
+        assertThatThrownBy(() -> playlistService.getSong(PLAYLIST_ID, SONG_ID))
+                .isInstanceOf(ResourceNotFoundException.class);
+    }
+
+    @Test
+    void deleteSongOnlyUnlinksWhenTheSongBelongsToAnotherPlaylist() {
+        Song song = songWithStatus(VerificationStatus.UNVERIFIED);
+        Playlist otherPlaylist = new Playlist();
+        otherPlaylist.setId(99L);
+        song.getPlaylists().add(otherPlaylist);
+        when(songRepository.findById(SONG_ID)).thenReturn(Optional.of(song));
+        when(songRepository.existsByIdAndPlaylistsId(SONG_ID, PLAYLIST_ID)).thenReturn(true);
+
+        playlistService.deleteSong(PLAYLIST_ID, SONG_ID);
+
+        assertThat(song.getPlaylists()).containsExactly(otherPlaylist);
+        verify(songRepository, never()).delete(any());
+    }
+
+    @Test
+    void deleteSongOnlyUnlinksAndNeverDeletesEvenWhenItsTheOnlyPlaylistItBelongsTo() {
+        Song song = songWithStatus(VerificationStatus.UNVERIFIED);
+        when(songRepository.findById(SONG_ID)).thenReturn(Optional.of(song));
+        when(songRepository.existsByIdAndPlaylistsId(SONG_ID, PLAYLIST_ID)).thenReturn(true);
+
+        playlistService.deleteSong(PLAYLIST_ID, SONG_ID);
+
+        assertThat(song.getPlaylists()).isEmpty();
+        verify(songRepository, never()).delete(any());
     }
 }

@@ -19,4 +19,8 @@ public interface SongRepository extends JpaRepository<Song, Long> {
                or lower(artist.name) like lower(concat('%', :keyword, '%'))
             """)
     List<Song> searchByTitleOrArtistKeyword(@Param("keyword") String keyword);
+
+    // A direct exists query against the join table, rather than loading a song's full playlists
+    // collection into memory just to check membership in one of them.
+    boolean existsByIdAndPlaylistsId(Long songId, Long playlistId);
 }

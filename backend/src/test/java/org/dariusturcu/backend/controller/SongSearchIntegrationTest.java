@@ -140,7 +140,6 @@ class SongSearchIntegrationTest {
         song.setTitle(title);
         song.setReleaseYear(2000);
         song.setYoutubeId(youtubeId);
-        song.setPlaylist(playlist);
         song.setAddedBy(owner);
 
         SongArtist artist = new SongArtist();
@@ -150,7 +149,11 @@ class SongSearchIntegrationTest {
         artist.setDisplayOrder(SOLE_ARTIST_DISPLAY_ORDER);
         song.setArtists(List.of(artist));
 
-        return songRepository.save(song);
+        Song savedSong = songRepository.save(song);
+        playlist.addSong(savedSong);
+        playlistRepository.save(playlist);
+
+        return savedSong;
     }
 
     @Test
