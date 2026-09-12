@@ -176,11 +176,12 @@ public class GroupService {
         return result;
     }
 
-    // Story 10 calls this once a real game session ends, restarting the
-    // between-session timer the sweep enforces. Nothing in this codebase
-    // triggers it yet, since the session model it depends on doesn't exist.
+    // Called by GameSessionService once a session ends or is abandoned: unlocks the group
+    // for new members and restarts the between-session timer the sweep enforces, handing
+    // control back to the group the same way it worked before a session ever started.
     public GroupDetailDTO recordGameSessionEnded(Long groupId) {
         Group group = findGroup(groupId);
+        group.setStatus(GroupStatus.OPEN);
         group.setExpiresAt(Instant.now().plus(BETWEEN_SESSION_WINDOW));
 
         Group savedGroup = groupRepository.save(group);
