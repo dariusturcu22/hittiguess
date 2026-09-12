@@ -269,16 +269,18 @@ Tests:
 
 Checked against real code: `SongRepository` has zero custom query methods, no backend search capability exists. The only "search" today is `DataTable`'s client-side substring filter over an already-loaded playlist's songs, not a real query.
 
-- [ ] Add a backend search endpoint, `SongRepository` has no query methods to build on today
-- [ ] Support search by artist/title keyword and by YouTube link/ID (the link-parsing logic already exists client-side as `extractYoutubeId` in `AddSongForm.tsx`, currently not shared with the backend)
-- [ ] Decide search scope: within one playlist, across the user's playlists, or catalog-wide, affects both the query and which of `PlaylistService`'s access checks apply (catalog-wide search would need one, since it isn't a per-playlist access check)
-- [ ] Wire `AddSongForm.tsx`'s submission flow to check search results first, so a song already in the catalog isn't resubmitted as a near-duplicate (distinct from story 16's pgvector-based similarity check; this is a plain keyword/link pre-check)
-- [ ] Add the frontend search UI, replacing or extending the current client-side-only title filter in `DataTable`
+Backend-only for this batch, matching how the song-genre-and-print-redesign batch split its own backend/frontend work: the frontend is getting a full visual redesign under story 28 (mockups exist under `docs/design/source/` but aren't implemented yet), so building UI against the current, soon-to-be-replaced design would be redone almost immediately. The three frontend-facing items below are deferred to story 28's implementation phase, not dropped. See DECISIONS.md for the search-scope decision.
+
+- [x] Add a backend search endpoint, `SongRepository` has no query methods to build on today (`GET /api/songs/search`, the first top-level `/api/songs/...` route)
+- [x] Support search by artist/title keyword and by YouTube link/ID (the link-parsing logic already exists client-side as `extractYoutubeId` in `AddSongForm.tsx`; replicated server-side as `YoutubeLinkParser`)
+- [x] Decide search scope: within one playlist, across the user's playlists, or catalog-wide, affects both the query and which of `PlaylistService`'s access checks apply (catalog-wide search would need one, since it isn't a per-playlist access check). Decided catalog-wide, see DECISIONS.md
+- [ ] Deferred to story 28: Wire `AddSongForm.tsx`'s submission flow to check search results first, so a song already in the catalog isn't resubmitted as a near-duplicate (distinct from story 16's pgvector-based similarity check; this is a plain keyword/link pre-check)
+- [ ] Deferred to story 28: Add the frontend search UI, replacing or extending the current client-side-only title filter in `DataTable`
 
 Tests:
-- [ ] Unit tests for the search query: keyword matching and YouTube link/ID matching
-- [ ] Integration test: search results respect the chosen scope's access checks
-- [ ] Frontend test: the search UI returns and displays results correctly
+- [x] Unit tests for the search query: keyword matching and YouTube link/ID matching
+- [x] Integration test: search results respect the chosen scope's access checks (catalog-wide plus plain authentication: any authenticated user can search the whole catalog, an unauthenticated request is rejected)
+- [ ] Deferred to story 28: Frontend test: the search UI returns and displays results correctly
 
 ## Story 40: Catalog seeding queue and user-facing bulk import
 
