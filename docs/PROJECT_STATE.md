@@ -34,7 +34,6 @@ A story can have draft tasks written against it in TASKS.md while still marked N
 | 22 | Test coverage for existing and new functionality | Quality | Ready |
 | 24 | Parallelize metadata pipeline fetches across sources | Backend / AI | Needs Definition, draft tasks exist, confirmed blocked, parallelizing today's mostly-stubbed source set is wasted work until story 25 (Discogs) and the spike-validated MusicBrainz/Wikidata/Wikipedia implementations actually ship |
 | 26 | Cache metadata pipeline results by artist/title or YouTube ID | Backend / AI | Ready, first task is a scope-review decision on whether this is still worth building once stories 16 and 40 exist, see `TASKS.md` |
-| 27 | Rate limiting | Backend | Ready |
 | 28 | UI redesign | Frontend | Ready, one unified pass covering existing pages and the not-yet-built gameplay screens, fresh visual direction, see `DECISIONS.md` |
 | 30 | Difficulty-tuned game session generation: exactly two top-level modes, Difficulty-Based (Auto-Generated, easy/medium/hard, defaults to international scope, sitelinks-based popularity weighting) and Custom (a playlist owned, member-of, or published-public, or one pasted directly) | Backend / AI / Frontend | Needs Definition, draft tasks exist, confirmed blocked on story 10, no `Guess` entity exists yet for either the aggregate score or the personalized layer |
 | 33 | Analytics data store: separate append-heavy store for usage/event data (games played, session length), apart from the transactional Postgres database | Infra | Ready |

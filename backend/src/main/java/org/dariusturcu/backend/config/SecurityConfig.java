@@ -3,6 +3,7 @@ package org.dariusturcu.backend.config;
 import tools.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import org.dariusturcu.backend.exception.ErrorResponse;
+import org.dariusturcu.backend.ratelimit.RateLimitingFilter;
 import org.dariusturcu.backend.security.JwtAuthenticationFilter;
 import org.dariusturcu.backend.security.oauth2.CustomOAuth2UserService;
 import org.dariusturcu.backend.security.oauth2.HttpCookieOAuth2AuthorizationRequestRepository;
@@ -43,6 +44,7 @@ import java.util.List;
 public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
+    private final RateLimitingFilter rateLimitingFilter;
     private final UserDetailsService userDetailsService;
     private final CustomOAuth2UserService customOAuth2UserService;
     private final OAuth2AuthenticationSuccessHandler oAuth2AuthenticationSuccessHandler;
@@ -90,6 +92,7 @@ public class SecurityConfig {
                 )
                 .authenticationProvider(authenticationProvider())
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
+                .addFilterAfter(rateLimitingFilter, JwtAuthenticationFilter.class)
                 .oauth2Login(oauth2 -> oauth2
                         .authorizationEndpoint(auth -> auth
                                 .authorizationRequestRepository(authorizationRequestRepository))
