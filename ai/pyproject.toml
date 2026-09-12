@@ -10,6 +10,8 @@ dependencies = [
     "openai>=1.54",
     "pydantic>=2.9",
     "pydantic-settings>=2.6",
+    "pg8000>=1.31",
+    "pgvector>=0.3",
 ]
 
 [project.optional-dependencies]
@@ -17,6 +19,7 @@ dev = [
     "pytest>=8.3",
     "pytest-mock>=3.14",
     "respx>=0.21",
+    "testcontainers>=4.9",
 ]
 
 [tool.pytest.ini_options]

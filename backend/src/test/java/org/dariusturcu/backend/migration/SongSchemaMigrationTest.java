@@ -28,7 +28,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class SongSchemaMigrationTest {
 
     @Container
-    static final PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:18-alpine");
+    static final PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("pgvector/pgvector:pg18");
 
     // The container above is static, one instance shared for the whole class, so this setup
     // runs once via @BeforeAll rather than per-test: re-running it per-test against the same

@@ -28,7 +28,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class SongGenreMigrationTest {
 
     @Container
-    static final PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:18-alpine");
+    static final PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("pgvector/pgvector:pg18");
 
     private static Connection connection;
     private static long taggedSongId;
