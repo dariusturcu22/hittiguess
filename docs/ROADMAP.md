@@ -69,9 +69,9 @@ Per `CLAUDE.md`'s batching workflow: only one PR from this list is open for revi
 - [x] Batch 6: Story 16, pgvector duplicate detection
 - [x] Batch 7: Story 25, Discogs source
 - [x] Batch 8: Story 14, Song search by link or keyword
-- [ ] Batch 9: Story 39, Group
-- [ ] Batch 10: Story 11, WebSocket sync
-- [ ] Batch 11: Story 10, Game session
+- [x] Batch 9: Story 39, Group
+- [x] Batch 10: Story 11, WebSocket sync
+- [x] Batch 11: Story 10, Game session
 - [ ] Batch 12: Story 33, Analytics data store
 - [ ] Batch 13: Story 27, Rate limiting
 - [ ] Batch 14: Story 38, Observability
