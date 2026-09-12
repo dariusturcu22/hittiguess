@@ -2,6 +2,8 @@ package org.dariusturcu.backend.controller;
 
 import jakarta.validation.Valid;
 import org.dariusturcu.backend.model.playlist.PlaylistDetailDTO;
+import org.dariusturcu.backend.model.playlist.PlaylistMemberDTO;
+import org.dariusturcu.backend.model.playlist.UpdateMembershipGrantsRequest;
 import org.dariusturcu.backend.model.playlist.UpdatePlaylistRequest;
 import org.dariusturcu.backend.model.song.CreateSongRequest;
 import org.dariusturcu.backend.model.song.SongDTO;
@@ -13,6 +15,8 @@ import org.springframework.web.bind.annotation.*;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
+
+import java.util.List;
 
 
 @RestController
@@ -73,6 +77,51 @@ public class PlaylistController {
             @PathVariable Long playlistId,
             @PathVariable Long songId) {
         playlistService.deleteSong(playlistId, songId);
+        return ResponseEntity.noContent().build();
+    }
+
+    @Operation(summary = "Get the playlist's members and their per-playlist identity and grants")
+    @GetMapping("/{playlistId}/members")
+    public ResponseEntity<List<PlaylistMemberDTO>> getMembers(
+            @PathVariable Long playlistId) {
+        List<PlaylistMemberDTO> members = playlistService.getMembers(playlistId);
+        return ResponseEntity.ok(members);
+    }
+
+    @Operation(summary = "Update a member's read, write, and delete grants, owner only")
+    @PatchMapping("/{playlistId}/members/{userId}")
+    public ResponseEntity<PlaylistMemberDTO> updateMemberGrants(
+            @PathVariable Long playlistId,
+            @PathVariable Long userId,
+            @Valid @RequestBody UpdateMembershipGrantsRequest request) {
+        PlaylistMemberDTO updatedMember = playlistService.updateMemberGrants(playlistId, userId, request);
+        return ResponseEntity.ok(updatedMember);
+    }
+
+    @Operation(summary = "Transfer ownership to another member, owner only; the previous owner stays a regular member")
+    @PostMapping("/{playlistId}/members/{userId}/promote")
+    public ResponseEntity<PlaylistDetailDTO> promoteMember(
+            @PathVariable Long playlistId,
+            @PathVariable Long userId) {
+        PlaylistDetailDTO updatedPlaylist = playlistService.transferOwnership(playlistId, userId);
+        return ResponseEntity.ok(updatedPlaylist);
+    }
+
+    @Operation(summary = "Kick a member, owner only; the invite still lets them rejoin")
+    @DeleteMapping("/{playlistId}/members/{userId}")
+    public ResponseEntity<Void> kickMember(
+            @PathVariable Long playlistId,
+            @PathVariable Long userId) {
+        playlistService.kickMember(playlistId, userId);
+        return ResponseEntity.noContent().build();
+    }
+
+    @Operation(summary = "Ban a member, owner only; blocks their future join attempts")
+    @PostMapping("/{playlistId}/members/{userId}/ban")
+    public ResponseEntity<Void> banMember(
+            @PathVariable Long playlistId,
+            @PathVariable Long userId) {
+        playlistService.banMember(playlistId, userId);
         return ResponseEntity.noContent().build();
     }
 }

@@ -62,8 +62,11 @@ class SongSchemaMigrationTest {
             }
         }
 
+        // Stops at V6, before V7's playlist and song data wipe, since this test checks V2-V4's
+        // backfills, not anything V7 does.
         Flyway.configure()
                 .dataSource(postgres.getJdbcUrl(), postgres.getUsername(), postgres.getPassword())
+                .target("6")
                 .load()
                 .migrate();
     }

@@ -534,6 +534,26 @@ Why: the spike ran real accuracy numbers against a 70-song test set (99% patient
 
 ---
 
+## 2026-09 | Story 46 migration: owner selection for pre-existing playlists
+
+Decision: the story 46 migration assigns each pre-existing playlist's owner as the lowest user id among its `user_playlists` members, its earliest-created account. A playlist that held songs but never had a `user_playlists` row of its own falls back further: the contributor of its oldest song becomes both owner and sole member, since a song's `added_by` is always a real account and nothing else ties such a playlist to a user at all. A playlist matching neither case, no members and no songs, is dropped by the migration; the application never leaves a playlist in that state outside of migration, since the last member leaving already deletes it.
+
+Why: no creation timestamp exists on `Playlist` to read an actual creator from, so a deterministic stand-in was needed. Lowest user id approximates "earliest account, most likely the creator" without adding a real audit trail this story doesn't otherwise need. The song-contributor fallback exists because real data can apparently include a playlist with songs but no matching `user_playlists` row (this surfaced in the migration test suite's existing fixtures), and every playlist needs a determinable owner coming out of this migration, not just the common case.
+
+Note, 2026-09: reversed, see the 2026-09 "Story 46 migration reversed" entry below. Pre-existing playlists and songs are cleared outright instead of having an owner guessed for them.
+
+---
+
+## 2026-09 | Story 46: the playlist owner can't leave while other members remain
+
+Decision: leaving a playlist you own is only allowed once you're its last remaining member, in which case leaving deletes the playlist exactly as it already did before this story. While other members are still on the playlist, the owner's leave attempt is rejected; kicking or banning every other member first, or waiting for them to leave, clears the way.
+
+Why: the owner is the sole source of every owner-only action, including managing membership itself. An owner leaving mid-playlist would strand the remaining members with no one able to change grants, kick, ban, or otherwise administer it, and this story doesn't introduce an ownership-transfer mechanism to hand that authority off cleanly first.
+
+Note, 2026-09: reversed, see the 2026-09 "Owner leave and ownership transfer" entry below. The owner can leave at any time; leadership passes automatically instead of being blocked.
+
+---
+
 ## 2026-09 | Song deletion once a song isn't playlist-exclusive: unlink first, delete only when orphaned everywhere
 
 Decision: story 15 replaces `Song`'s singular `@ManyToOne playlist` with a `song_playlists` join table, so a song can belong to more than one playlist. Removing a song from a playlist now only unlinks that one join row. The song row itself is only deleted outright once that removal leaves it with zero remaining playlists.
@@ -557,5 +577,21 @@ Why: a song is a standalone catalog entity in its own right, not something that 
 Decision: `SongTag` (`PLAYLIST`/`SPECIAL`/`ANIME`) and the `song_tags` table are dropped outright, with no automatic backfill into anything, existing tag data doesn't carry forward. `Song` gets a nullable `genre` string instead, populated later by the metadata pipeline rather than user-submitted, so it's absent from `CreateSongRequest`/`UpdateSongRequest` the same way `confidence` and `metadataRaw` are. `GET /api/enums/tags` is removed with it, there's no fixed enum left to enumerate. Separately, `CardGenerator`'s printed card is redrawn to match the settled look in `docs/design/source/CardOptions.dc.html`: one flat color per card instead of a two-color gradient, rounded corners, a thick border, a hard offset shadow, and only artist/year/title on the face, no tag triangle or country flag (the tag triangle's removal also drops the last thing that read a playlist's color for card rendering, superseding a fixed placeholder color a different PR had introduced there in the meantime). The card/QR export endpoints gain a `PaperSize` parameter (A4, Letter, defaulting to A4), and the page grid is now computed from that paper's real pixel dimensions at 300 DPI instead of a fixed constant that never actually corresponded to a real sheet of paper.
 
 Why: `docs/design/source`'s mockups (built during story 28's design pass, before this schema and before story 28's own implementation phase) were never cross-checked against the current backend when they were made. Going through them now: no mockup shows `PLAYLIST`/`SPECIAL`/`ANIME` or a multi-select tag picker anywhere, `SongDetailLight.dc.html` instead shows a single genre chip next to the year, and no submission-flow mockup lets a user set one, consistent with it being pipeline-derived. `CardOptions.dc.html` explicitly settles the card's visual shape and states plainly what's on it and what isn't. This work is backend only; the frontend side (a real genre/tag input surface, and a still-undesigned print-settings screen for choosing paper size) is deferred to story 28's implementation phase, where the two get reconciled directly against whatever the frontend actually needs instead of guessed at now.
+
+---
+
+## 2026-09 | Story 46 migration reversed: pre-existing playlists and songs are cleared, not assigned a guessed owner
+
+Decision: the story 46 migration no longer tries to determine an owner for any pre-existing playlist. Every existing playlist and song is deleted outright (along with their join and tag rows), `user_playlists` is still dropped the same as before. `users` is untouched.
+
+Why: nothing in the pre-story-46 schema names a real creator, so any owner the migration picks is a guess, not a fact. Guessing an owner from `user_playlists` row order stands on data that was never meant to carry that meaning. Clearing the catalog instead of migrating it forward on a guess keeps the owner column's data honest from the first row it's ever set on.
+
+---
+
+## 2026-09 | Owner leave and ownership transfer: leadership passes automatically, and the owner can hand it off at any time
+
+Decision: the playlist owner can leave at any time. If other members remain, the member who joined earliest is promoted to owner automatically as part of that same leave; a playlist with other members left is never without an owner. Separately, the owner can transfer ownership to any current member at any time through a dedicated endpoint; the previous owner is not removed and keeps their existing membership and grants, just without the owner-only powers.
+
+Why: blocking the owner from leaving until everyone else was gone, the prior decision, forced a departing owner to kick or ban every other member first just to leave their own playlist, destroying those memberships as a side effect of an unrelated decision to leave. Automatic promotion by join order gives every playlist a deterministic next owner without asking the departing owner to choose one under pressure. The separate transfer endpoint covers the case where the owner wants to hand off leadership deliberately, without leaving.
 
 ---
