@@ -6,7 +6,6 @@ import org.dariusturcu.backend.model.user.UserSummaryDTO;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
-import java.util.Set;
 
 @Component
 public class SongMapper {
@@ -19,7 +18,7 @@ public class SongMapper {
                 song.getYoutubeId(),
                 song.getGradientColor1(),
                 song.getGradientColor2(),
-                song.getTags(),
+                song.getGenre(),
                 song.getCountry() != null ? song.getCountry() : Country.NONE,
                 song.getVerificationStatus(),
                 song.getConfidence(),
@@ -38,7 +37,6 @@ public class SongMapper {
         newSong.setYoutubeId(request.youtubeId());
         newSong.setGradientColor1(request.gradientColor1());
         newSong.setGradientColor2(request.gradientColor2());
-        newSong.setTags(request.tags() != null ? request.tags() : Set.of());
         newSong.setCountry(request.country() != null ? request.country() : Country.NONE);
 
         return newSong;
@@ -63,9 +61,6 @@ public class SongMapper {
         }
         if (request.gradientColor2() != null) {
             song.setGradientColor2(request.gradientColor2());
-        }
-        if (request.tags() != null) {
-            song.setTags(request.tags());
         }
         if (request.country() != null) {
             song.setCountry(request.country());

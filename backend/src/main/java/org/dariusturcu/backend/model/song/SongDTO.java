@@ -4,7 +4,6 @@ import jakarta.validation.constraints.NotNull;
 import org.dariusturcu.backend.model.user.UserSummaryDTO;
 
 import java.util.List;
-import java.util.Set;
 
 public record SongDTO(
         @NotNull
@@ -19,7 +18,7 @@ public record SongDTO(
         String youtubeId,
         String gradientColor1,
         String gradientColor2,
-        Set<SongTag> tags,
+        String genre,
         Country country,
         @NotNull
         VerificationStatus verificationStatus,
