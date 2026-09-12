@@ -11,12 +11,14 @@ import org.dariusturcu.backend.model.user.Role;
 import org.dariusturcu.backend.model.user.User;
 import org.dariusturcu.backend.repository.GroupRepository;
 import org.dariusturcu.backend.repository.MemberRepository;
+import org.dariusturcu.backend.repository.PlaylistMembershipRepository;
 import org.dariusturcu.backend.repository.PlaylistRepository;
 import org.dariusturcu.backend.repository.UserRepository;
 import org.dariusturcu.backend.security.CustomUserDetailsService;
 import org.dariusturcu.backend.security.UserPrincipal;
 import org.dariusturcu.backend.security.util.JwtUtil;
 import org.dariusturcu.backend.service.GroupService;
+import org.dariusturcu.backend.service.PlaylistAccessService;
 import org.flywaydb.core.Flyway;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
@@ -128,7 +130,7 @@ class GroupWebSocketIntegrationTest {
 
         @Bean
         PlaylistMapper playlistMapper() {
-            return new PlaylistMapper(null, null);
+            return new PlaylistMapper(null);
         }
 
         @Bean
@@ -137,10 +139,15 @@ class GroupWebSocketIntegrationTest {
         }
 
         @Bean
+        PlaylistAccessService playlistAccessService(PlaylistMembershipRepository playlistMembershipRepository) {
+            return new PlaylistAccessService(playlistMembershipRepository);
+        }
+
+        @Bean
         GroupService groupService(GroupRepository groupRepository, MemberRepository memberRepository,
                                    PlaylistRepository playlistRepository, GroupMapper groupMapper,
-                                   ApplicationEventPublisher eventPublisher) {
-            return new GroupService(groupRepository, memberRepository, playlistRepository, groupMapper, eventPublisher);
+                                   ApplicationEventPublisher eventPublisher, PlaylistAccessService playlistAccessService) {
+            return new GroupService(groupRepository, memberRepository, playlistRepository, groupMapper, eventPublisher, playlistAccessService);
         }
     }
 
@@ -148,7 +155,7 @@ class GroupWebSocketIntegrationTest {
     private static final Duration POLL_INTERVAL = Duration.ofMillis(50);
 
     @Container
-    static final PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:18-alpine");
+    static final PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("pgvector/pgvector:pg18");
 
     @DynamicPropertySource
     static void configureProperties(DynamicPropertyRegistry registry) {

@@ -9,9 +9,7 @@ import lombok.Setter;
 import org.hibernate.annotations.BatchSize;
 
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 
 @Entity
 @Setter
@@ -29,6 +27,10 @@ public class Playlist {
     @Column(nullable = false, updatable = false, unique = true)
     private String inviteCode;
 
+    @ManyToOne
+    @JoinColumn(name = "owner_id", nullable = false)
+    private User owner;
+
     // Owning side of the join table: a song can belong to more than one playlist, so removing
     // it here only unlinks it, it never cascades to deleting the Song row itself (PlaylistService
     // decides that separately, based on whether the song is left in any playlist at all).
@@ -42,8 +44,9 @@ public class Playlist {
     @BatchSize(size = 20)
     private List<Song> songs = new ArrayList<>();
 
-    @ManyToMany(mappedBy = "playlists")
-    private Set<User> users = new HashSet<>();
+    @OneToMany(mappedBy = "playlist", cascade = CascadeType.ALL, orphanRemoval = true)
+    @BatchSize(size = 20)
+    private List<PlaylistMembership> memberships = new ArrayList<>();
 
     public void addSong(Song song) {
         songs.add(song);
@@ -55,16 +58,22 @@ public class Playlist {
         song.getPlaylists().remove(this);
     }
 
-    public void addUser(User user) {
-        users.add(user);
+    public void addMembership(PlaylistMembership membership) {
+        memberships.add(membership);
+        membership.setPlaylist(this);
     }
 
-    public void removeUser(User user) {
-        users.remove(user);
+    public void removeMembership(PlaylistMembership membership) {
+        memberships.remove(membership);
+        membership.setPlaylist(null);
+    }
+
+    public boolean isOwnedBy(User user) {
+        return owner != null && user != null && owner.getId().equals(user.getId());
     }
 
     public int getUserCount() {
-        return users.size();
+        return memberships.size();
     }
 
     public int getSongCount() {

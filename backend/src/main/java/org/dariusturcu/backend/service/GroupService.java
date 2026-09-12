@@ -60,6 +60,7 @@ public class GroupService {
     private final PlaylistRepository playlistRepository;
     private final GroupMapper groupMapper;
     private final ApplicationEventPublisher eventPublisher;
+    private final PlaylistAccessService playlistAccessService;
 
     private final SecureRandom secureRandom = new SecureRandom();
 
@@ -336,12 +337,7 @@ public class GroupService {
         Playlist playlist = playlistRepository.findById(playlistId)
                 .orElseThrow(() -> new ResourceNotFoundException(ResourceType.PLAYLIST, playlistId));
 
-        User admin = SecurityUtils.getCurrentUser();
-        boolean hasAccess = playlist.getUsers().stream()
-                .anyMatch(playlistMember -> playlistMember.getId().equals(admin.getId()));
-        if (!hasAccess) {
-            throw new AccessDeniedException("You are not a member of playlist {id=" + playlistId + "}");
-        }
+        playlistAccessService.requireRead(playlist, SecurityUtils.getCurrentUser());
         return playlist;
     }
 
