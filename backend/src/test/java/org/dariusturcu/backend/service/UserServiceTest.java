@@ -6,11 +6,13 @@ import org.dariusturcu.backend.model.mapper.UserMapper;
 import org.dariusturcu.backend.model.playlist.JoinPlaylistRequest;
 import org.dariusturcu.backend.model.playlist.Playlist;
 import org.dariusturcu.backend.model.playlist.PlaylistMembership;
+import org.dariusturcu.backend.model.song.Song;
 import org.dariusturcu.backend.model.user.Role;
 import org.dariusturcu.backend.model.user.User;
 import org.dariusturcu.backend.repository.PlaylistBanRepository;
 import org.dariusturcu.backend.repository.PlaylistMembershipRepository;
 import org.dariusturcu.backend.repository.PlaylistRepository;
+import org.dariusturcu.backend.repository.SongRepository;
 import org.dariusturcu.backend.repository.UserRepository;
 import org.dariusturcu.backend.security.UserPrincipal;
 import org.junit.jupiter.api.AfterEach;
@@ -25,6 +27,7 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.context.SecurityContextHolder;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -49,6 +52,8 @@ class UserServiceTest {
     private PlaylistMembershipRepository playlistMembershipRepository;
     @Mock
     private PlaylistBanRepository playlistBanRepository;
+    @Mock
+    private SongRepository songRepository;
 
     @InjectMocks
     private UserService userService;
@@ -214,5 +219,79 @@ class UserServiceTest {
         assertThat(playlist.getMemberships()).containsExactly(otherMembership);
         verify(playlistRepository).save(playlist);
         verify(playlistRepository, never()).delete(any());
+    }
+
+    @Test
+    void deleteUserWithNoSongsOrPlaylistsOnlyRemovesTheAccount() {
+        when(songRepository.findByAddedById(USER_ID)).thenReturn(List.of());
+        when(playlistMembershipRepository.findByUserId(USER_ID)).thenReturn(List.of());
+
+        userService.deleteUser();
+
+        verify(userRepository).delete(currentUser);
+        verify(playlistRepository, never()).delete(any());
+        verify(playlistRepository, never()).save(any());
+    }
+
+    @Test
+    void deleteUserClearsAttributionOnEverySongTheySubmittedInsteadOfBlockingDeletion() {
+        Song firstSong = new Song();
+        Song secondSong = new Song();
+        firstSong.setAddedBy(currentUser);
+        secondSong.setAddedBy(currentUser);
+
+        when(songRepository.findByAddedById(USER_ID)).thenReturn(List.of(firstSong, secondSong));
+        when(playlistMembershipRepository.findByUserId(USER_ID)).thenReturn(List.of());
+
+        userService.deleteUser();
+
+        assertThat(firstSong.getAddedBy()).isNull();
+        assertThat(secondSong.getAddedBy()).isNull();
+        verify(songRepository).saveAll(List.of(firstSong, secondSong));
+        verify(userRepository).delete(currentUser);
+    }
+
+    @Test
+    void deleteUserDeletesAPlaylistWhereTheyAreTheLastRemainingMember() {
+        PlaylistMembership membership = new PlaylistMembership();
+        membership.setUser(currentUser);
+        playlist.addMembership(membership);
+        playlist.setOwner(currentUser);
+
+        when(songRepository.findByAddedById(USER_ID)).thenReturn(List.of());
+        when(playlistMembershipRepository.findByUserId(USER_ID)).thenReturn(List.of(membership));
+
+        userService.deleteUser();
+
+        verify(playlistRepository).delete(playlist);
+        verify(playlistRepository, never()).save(any());
+        verify(userRepository).delete(currentUser);
+    }
+
+    @Test
+    void deleteUserPromotesTheEarliestJoinedRemainingMemberWhenTheOwnerIsDeletedFromASharedPlaylist() {
+        User remainingMember = new User();
+        remainingMember.setId(99L);
+
+        PlaylistMembership ownerMembership = new PlaylistMembership();
+        ownerMembership.setUser(currentUser);
+        ownerMembership.setJoinedAt(Instant.parse("2026-01-01T00:00:00Z"));
+        PlaylistMembership remainingMembership = new PlaylistMembership();
+        remainingMembership.setUser(remainingMember);
+        remainingMembership.setJoinedAt(Instant.parse("2026-01-02T00:00:00Z"));
+        playlist.addMembership(ownerMembership);
+        playlist.addMembership(remainingMembership);
+        playlist.setOwner(currentUser);
+
+        when(songRepository.findByAddedById(USER_ID)).thenReturn(List.of());
+        when(playlistMembershipRepository.findByUserId(USER_ID)).thenReturn(List.of(ownerMembership));
+
+        userService.deleteUser();
+
+        assertThat(playlist.getOwner()).isEqualTo(remainingMember);
+        assertThat(playlist.getMemberships()).containsExactly(remainingMembership);
+        verify(playlistRepository).save(playlist);
+        verify(playlistRepository, never()).delete(any());
+        verify(userRepository).delete(currentUser);
     }
 }

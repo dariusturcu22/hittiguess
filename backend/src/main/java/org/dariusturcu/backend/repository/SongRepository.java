@@ -11,6 +11,8 @@ public interface SongRepository extends JpaRepository<Song, Long> {
 
     List<Song> findByYoutubeId(String youtubeId);
 
+    List<Song> findByAddedById(Long userId);
+
     @Query("""
             select distinct song
             from Song song

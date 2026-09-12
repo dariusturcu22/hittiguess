@@ -30,7 +30,8 @@ Structured reference for what exists in the code today, distinct from [ARCHITECT
 | GET | `/api/users/me` | `UserController` |
 | GET | `/api/users/{userId}` | `UserController` |
 | PATCH | `/api/users/me` | `UserController` |
-| DELETE | `/api/users/me` | `UserController`, has the real bugs logged in `TASKS.md`'s Bug fixes section |
+| DELETE | `/api/users/me` | `UserController`, story 37 fixed the FK violation and playlist-orphaning bugs formerly logged in `TASKS.md`'s Bug fixes section |
+| GET | `/api/users/me/export` | `UserController`, `PersonalDataExportService`, GDPR personal-data export: account fields, every playlist membership, every submitted song, story 37, distinct from `ExportController`'s playlist-content PDFs |
 | POST | `/api/users/me/playlists` | `UserController` |
 | GET | `/api/users/me/playlists` | `UserController` |
 | POST | `/api/users/me/playlists/{playlistInviteCode}` | `UserController`, optional body carries a per-playlist display name and avatar, rejects a banned user, story 46 |
@@ -93,7 +94,8 @@ Song
   ├── playlists: Set<Playlist>  (@ManyToMany, mappedBy "songs"; a song can belong to more than one
   │     playlist since story 15, and to zero, a song is a standalone catalog entity independent of
   │     any playlist, see DECISIONS.md's 2026-09 "Song deletion reversed" entry)
-  └── addedBy: User       (@ManyToOne, no inverse mapping, no cascade, the DELETE /me bug in TASKS.md's Bug fixes)
+  └── addedBy: User       (@ManyToOne, nullable since story 37, no inverse mapping; cleared, not blocked
+        or cascaded, when the submitting account is deleted)
 
 SongArtist
   ├── id, name, role (MAIN/FEATURED), displayOrder
