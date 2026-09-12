@@ -253,6 +253,10 @@ class GameSessionBettingConcurrencyIntegrationTest {
             savedSong.getArtists().add(artist);
             songRepository.save(savedSong);
         }
+        // Playlist.songs is the owning side of its own many-to-many with Song; savedPlaylist
+        // is detached in this non-transactional test, so addSong's in-memory mutation above
+        // never reaches song_playlists without an explicit save here.
+        playlistRepository.save(savedPlaylist);
 
         authenticateAs(admin);
         groupService.updateGroupSettings(createdGroup.id(), new UpdateGroupSettingsRequest(

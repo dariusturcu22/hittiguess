@@ -29,7 +29,16 @@ public class Playlist {
     @Column(nullable = false, updatable = false, unique = true)
     private String inviteCode;
 
-    @OneToMany(mappedBy = "playlist", cascade = CascadeType.ALL, orphanRemoval = true)
+    // Owning side of the join table: a song can belong to more than one playlist, so removing
+    // it here only unlinks it, it never cascades to deleting the Song row itself (PlaylistService
+    // decides that separately, based on whether the song is left in any playlist at all).
+    @ManyToMany
+    @JoinTable(
+            name = "song_playlists",
+            joinColumns = @JoinColumn(name = "playlist_id"),
+            inverseJoinColumns = @JoinColumn(name = "song_id")
+    )
+    @OrderBy("id ASC")
     @BatchSize(size = 20)
     private List<Song> songs = new ArrayList<>();
 
@@ -38,12 +47,12 @@ public class Playlist {
 
     public void addSong(Song song) {
         songs.add(song);
-        song.setPlaylist(this);
+        song.getPlaylists().add(this);
     }
 
     public void removeSong(Song song) {
         songs.remove(song);
-        song.setPlaylist(null);
+        song.getPlaylists().remove(this);
     }
 
     public void addUser(User user) {
