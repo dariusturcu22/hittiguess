@@ -22,10 +22,9 @@ public class SongMapper {
                 song.getCountry() != null ? song.getCountry() : Country.NONE,
                 song.getVerificationStatus(),
                 song.getConfidence(),
-                new UserSummaryDTO(
-                        song.getAddedBy().getId(),
-                        song.getAddedBy().getUsername()
-                )
+                song.getAddedBy() != null
+                        ? new UserSummaryDTO(song.getAddedBy().getId(), song.getAddedBy().getUsername())
+                        : null
         );
     }
 
