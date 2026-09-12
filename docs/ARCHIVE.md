@@ -282,3 +282,20 @@ Checked against real code: no pgvector dependency in `pom.xml`, no vector-DB cli
 Tests:
 - [x] Unit tests for the similarity-check step (mocked embedding client): a high-confidence match reuses existing data, a low-confidence match proceeds to the full pipeline
 - [x] Integration test: submitting a near-duplicate song reuses existing verified data instead of re-running the LLM
+
+## Story 44: Test user infrastructure (dev only)
+
+A dedicated `Role` for automated test/QA agents, separate from `USER` and story 40's `ADMIN`. Exists so automated agents, this project's own AI-assisted development workflow included, reuse one seeded test account's credentials across runs instead of registering a fresh throwaway account every time. Coordinates with story 22 (test coverage): this is test infrastructure, not test coverage itself.
+
+Checked against real code: `Role.java` declares only `USER` today, confirming the first task below. No environment/profile mechanism exists anywhere in the backend, no `@Profile` annotation and no `spring.profiles.active` configuration anywhere, so "Production environment" isn't yet a concept the code can gate on; establishing that distinction is this story's own scope to build, not a dependency on another story. No root `CONTRIBUTING.md` exists yet either (story 36), the documentation task below already anticipates that with its dev-setup-doc fallback. Not blocked on anything else.
+
+- [x] Add a `TEST` value to `User.role`, alongside the existing `USER` and (once story 40 lands) `ADMIN`
+- [x] Add a fixture or seed mechanism that creates one reusable test account with known credentials in local/dev environments, rather than a new account per test run
+- [x] Document, in `CONTRIBUTING.md` (story 36) or a dev-setup doc, that agents and contributors running tests locally reuse the seeded test account's credentials instead of registering new ones
+- [x] Add an environment/profile mechanism distinguishing a Production deployment from local/dev, none exists today, no `@Profile` or `spring.profiles.active` usage anywhere in the backend; every guardrail below depends on this existing
+- [x] Add an environment guardrail: any `TEST`-role account, and any endpoint or behavior gated on that role, is a no-op or outright rejected when running against a Production environment, even if a `TEST`-role row somehow exists there
+- [x] Add a startup or CI check that fails loudly if a `TEST`-role row is ever found in a Production database, rather than silently ignoring it
+
+Tests:
+- [x] Unit test confirming `TEST`-role behavior is disabled under a Production environment flag, including the case where a `TEST` row actually exists
+- [x] Unit test for the seed/fixture mechanism producing the same reusable credentials across repeated runs
