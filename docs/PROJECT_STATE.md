@@ -40,7 +40,6 @@ A story can have draft tasks written against it in TASKS.md while still marked N
 | 33 | Analytics data store: separate append-heavy store for usage/event data (games played, session length), apart from the transactional Postgres database | Infra | Ready |
 | 34 | First-party usage analytics: track games played and session length through a self-hosted or custom event pipeline, no third-party trackers | Backend / Frontend | Needs Definition, draft tasks exist, confirmed blocked on story 33 and, for the abuse-visibility events, on stories 10, 13, 17, and 27 actually shipping too |
 | 35 | Public ground-truth data API: verified `(artist, title, release_year)` triples only, no YouTube links or unverified entries | Backend | Ready, the verified-only filter needs story 23's `verificationStatus` field, which has now landed, plus story 18's lock rule actually producing verified rows to publish, which hasn't |
-| 36 | Open-source collaboration readiness: `CONTRIBUTING.md`, `LICENSE`, `CODE_OF_CONDUCT.md`, issue/PR templates | Docs / Community | Ready |
 | 37 | Privacy policy, terms of service, and GDPR compliance | Legal / Compliance | Ready |
 | 38 | Observability: error tracking and monitoring | Infra / Quality | Ready |
 | 39 | Group: persistent lobby a game session lives inside, invite-link membership, admin role, live-synced settings, chat and voice from creation, timer-based lifecycle | Game | Ready |
