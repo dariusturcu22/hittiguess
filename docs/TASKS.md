@@ -33,59 +33,61 @@ Tests:
 
 Checked against real code: no session model exists, this is greenfield work. Based on the `GameSession` shape and round flow in `ARCHITECTURE.md`, and the round/token/reconnect rules in `GAME_DESIGN.md`.
 
-- [ ] Implement `GameSession`, `Player`, `Round`, and `Guess` as ephemeral Postgres rows, purged when the session ends
-- [ ] Initialize a session from the group's current settings when the admin starts it (playlist(s), DJ mode, win-condition card count), snapshotting the group's connected members as the roster
-- [ ] Assign round 1's active player and DJ
-- [ ] Round rotation: active player rotates each round, DJ stays fixed or rotates per the group's setting, skipping players marked `Left`
-- [ ] Guess placement and lock-in: before/after/between on the active player's timeline, with a lock-in sound effect
-- [ ] 3-5 second countdown after lock-in, then a 15-second betting window; skip the window entirely if no player holds a token
-- [ ] Betting: token-holding players may bet during the window, first come first served, concurrency-safe so only the first bet is accepted and a losing attempt doesn't cost a token; a skip-betting action ends the window early
-- [ ] Automatic reveal once the betting window closes: broadcast the song's artist, title, and year to every player, off the same window timer, with no DJ or player action triggering it
-- [ ] Artist/title guess box, available to every player except the DJ for the whole turn, independent of timeline placement; only the active player's fully correct guess awards a token, matching normalizes both strings (lowercase, strip punctuation, strip diacritics, collapse whitespace) and compares them with Damerau-Levenshtein edit distance, a flat budget of 1 regardless of length (see `DECISIONS.md`). For a song with more than one artist (main or featured, story 23), naming any single one of them correctly is enough for the token, not all of them
-- [ ] Scoring: apply the four outcome rules in `GAME_DESIGN.md` (correct placement keeps the card even on a tied release year; a correct guess beats any bet; a wrong guess with a correct bet gives the card to the bettor; a wrong guess with no bet discards it)
-- [ ] Track two running per-player tallies for the session, fed by every player's guesses, active or not: total individual artists correctly named (every correct name, main or featured, from any song, adds one, regardless of how many total artists that song has) and total fully-correct title guesses. A non-active player's guess never earns a token or affects placement/betting, it only feeds these two tallies
-- [ ] Win condition: first player to reach the group's configured card count wins, bounded 5-20 for a 2-3 player group or 5-15 for a 4-8 player group
-- [ ] Player disconnect: mark `isConnected` false, leave timeline/tokens/turn order untouched
-- [ ] Player explicit leave: mark `Left`, exclude from future turns and DJ rotation, existing timeline cards still count toward the final results
-- [ ] Active-player turn timeout: if the active player is disconnected when their turn comes, or disconnects mid-turn, auto-skip after 90 seconds and mark them `Left`
-- [ ] Auto-abandon the session after 10 minutes with zero connected players, no results export in that case
-- [ ] Downloadable results export when a session completes normally, including the main card-count ranking and the two separate "Most Artists Guessed"/"Most Titles Guessed" leaderboards
-- [ ] Purge all session state (roster, rounds, guesses) once the session ends or is abandoned, hand control back to the group
-- [ ] Frontend: drag-and-drop timeline placement, cards animate apart to open a gap with no overlap, animate back into place once placed
-- [ ] Frontend: artist/title guess box gives immediate animated feedback, a correct guess animates a token dropping into the player's count, distinct animation for incorrect
+Built on `feature/game-session`, stacked off `feature/websocket-sync`. Backend only, both frontend tasks stay unchecked and are deferred to story 28, per standing project-wide instruction for this phase of batches. See `DECISIONS.md` for the round-rotation, timer-scheduling, and betting-concurrency design choices this batch resolved.
+
+- [x] Implement `GameSession`, `Player`, `Round`, and `Guess` as ephemeral Postgres rows, purged when the session ends
+- [x] Initialize a session from the group's current settings when the admin starts it (playlist(s), DJ mode, win-condition card count), snapshotting the group's connected members as the roster
+- [x] Assign round 1's active player and DJ
+- [x] Round rotation: active player rotates each round, DJ stays fixed or rotates per the group's setting, skipping players marked `Left`
+- [x] Guess placement and lock-in: before/after/between on the active player's timeline. Lock-in sound effect is a frontend concern, not built this batch (backend only)
+- [x] 3-5 second countdown after lock-in, then a 15-second betting window; skip the window entirely if no player holds a token
+- [x] Betting: token-holding players may bet during the window, first come first served, concurrency-safe so only the first bet is accepted and a losing attempt doesn't cost a token; a skip-betting action ends the window early
+- [x] Automatic reveal once the betting window closes: broadcast the song's artist, title, and year to every player, off the same window timer, with no DJ or player action triggering it
+- [x] Artist/title guess box, available to every player except the DJ for the whole turn, independent of timeline placement; only the active player's fully correct guess awards a token, matching normalizes both strings (lowercase, strip punctuation, strip diacritics, collapse whitespace) and compares them with Damerau-Levenshtein edit distance, a flat budget of 1 regardless of length (see `DECISIONS.md`). For a song with more than one artist (main or featured, story 23), naming any single one of them correctly is enough for the token, not all of them
+- [x] Scoring: apply the four outcome rules in `GAME_DESIGN.md` (correct placement keeps the card even on a tied release year; a correct guess beats any bet; a wrong guess with a correct bet gives the card to the bettor; a wrong guess with no bet discards it)
+- [x] Track two running per-player tallies for the session, fed by every player's guesses, active or not: total individual artists correctly named (every correct name, main or featured, from any song, adds one, regardless of how many total artists that song has) and total fully-correct title guesses. A non-active player's guess never earns a token or affects placement/betting, it only feeds these two tallies
+- [x] Win condition: first player to reach the group's configured card count wins, bounded 5-20 for a 2-3 player group or 5-15 for a 4-8 player group (reuses `GroupService`'s existing validation, not re-implemented)
+- [x] Player disconnect: mark `isConnected` false, leave timeline/tokens/turn order untouched
+- [x] Player explicit leave: mark `Left`, exclude from future turns and DJ rotation, existing timeline cards still count toward the final results
+- [x] Active-player turn timeout: if the active player is disconnected when their turn comes, or disconnects mid-turn, auto-skip after 90 seconds and mark them `Left`
+- [x] Auto-abandon the session after 10 minutes with zero connected players, no results export in that case
+- [x] Downloadable results export when a session completes normally, including the main card-count ranking and the two separate "Most Artists Guessed"/"Most Titles Guessed" leaderboards
+- [x] Purge all session state (roster, rounds, guesses) once the session ends or is abandoned, hand control back to the group (`GroupService.recordGameSessionEnded` now also reopens the group, see `DECISIONS.md`)
+- [ ] Frontend: drag-and-drop timeline placement, cards animate apart to open a gap with no overlap, animate back into place once placed. Deferred to story 28, backend only this phase
+- [ ] Frontend: artist/title guess box gives immediate animated feedback, a correct guess animates a token dropping into the player's count, distinct animation for incorrect. Deferred to story 28, backend only this phase
 
 Tests:
-- [ ] Unit tests for the guess-matching function: normalization (punctuation, diacritics, whitespace) and the flat edit-distance-1 budget, covering both a correct-typo case and a same-distance wrong-word case (`DECISIONS.md`'s worked examples), plus the multi-artist any-one-correct rule
-- [ ] Unit tests for scoring: all four outcome rules, including the tied-release-year case
-- [ ] Unit tests for the two leaderboard tallies: a non-active player's guess updates them without touching tokens or placement; a multi-artist song credits a correct featured-artist name the same as a correct main-artist name
-- [ ] Unit tests for win-condition bounds: 5-20 (2-3 players) and 5-15 (4-8 players), including the boundary values
-- [ ] Unit tests for round rotation, both fixed and rotating DJ settings, and rotation skipping `Left` players
-- [ ] Unit tests for the active-player turn timeout, including the boundary at 90 seconds
-- [ ] Unit test: reveal fires automatically once the betting window closes, with no DJ or player trigger required
-- [ ] Integration test: full session lifecycle, admin starts, roster snapshot, several rounds, win condition hit, results export generated, state purged
-- [ ] Integration test: auto-abandon path, session torn down after 10 minutes with zero connected players, confirms no export is generated
-- [ ] Integration test: betting concurrency, multiple simultaneous bet attempts on the same guess, exactly one accepted, no token lost by the others
-- [ ] Integration test: betting window skipped entirely when no player holds a token
-- [ ] Integration test: player disconnects mid-turn, doesn't reconnect within 90 seconds, ends up `Left`, and a later reconnect attempt after that point doesn't restore active status
+- [x] Unit tests for the guess-matching function: normalization (punctuation, diacritics, whitespace) and the flat edit-distance-1 budget, covering both a correct-typo case and a same-distance wrong-word case (`DECISIONS.md`'s worked examples), plus the multi-artist any-one-correct rule (`GuessMatcherTest`)
+- [x] Unit tests for scoring: all four outcome rules, including the tied-release-year case (`GameSessionServiceTest`)
+- [x] Unit tests for the two leaderboard tallies: a non-active player's guess updates them without touching tokens or placement; a multi-artist song credits a correct featured-artist name the same as a correct main-artist name (`GameSessionServiceTest`)
+- [x] Unit tests for win-condition bounds: 5-20 (2-3 players) and 5-15 (4-8 players), including the boundary values (`GroupServiceTest`, since `GameSessionService` reuses that validation rather than re-implementing it)
+- [x] Unit tests for round rotation, both fixed and rotating DJ settings, and rotation skipping `Left` players (`GameSessionServiceTest`)
+- [x] Unit tests for the active-player turn timeout, including the boundary at 90 seconds (`GameSessionServiceTest`)
+- [x] Unit test: reveal fires automatically once the betting window closes, with no DJ or player trigger required (`GameSessionServiceTest`)
+- [x] Integration test: full session lifecycle, admin starts, roster snapshot, several rounds, win condition hit, results export generated, state purged (`GameSessionLifecycleIntegrationTest`)
+- [x] Integration test: auto-abandon path, session torn down after 10 minutes with zero connected players, confirms no export is generated (`GameSessionLifecycleIntegrationTest`)
+- [x] Integration test: betting concurrency, multiple simultaneous bet attempts on the same guess, exactly one accepted, no token lost by the others (`GameSessionBettingConcurrencyIntegrationTest`, real threads against a real Postgres instance)
+- [x] Integration test: betting window skipped entirely when no player holds a token (`GameSessionLifecycleIntegrationTest`)
+- [x] Integration test: player disconnects mid-turn, doesn't reconnect within 90 seconds, ends up `Left`, and a later reconnect attempt after that point doesn't restore active status (`GameSessionLifecycleIntegrationTest`)
 
 ## Story 11: Real-time game sync over WebSocket
 
 Checked against real code: no WebSocket layer exists, this is greenfield work. Based on the sync model in `ARCHITECTURE.md` (REST for group/session creation and join, WebSocket for state changes). Covers both the group and the game session, not just the session.
 
-This batch built the general STOMP infrastructure and the full group-side half only. Story 10 (game session) doesn't exist yet, it's the next batch, and owns the session-side half; the two frontend tasks are deferred project-wide for this phase of batches, backend only. See `DECISIONS.md`'s corresponding entry for the destination-naming convention, the messaging pattern chosen, and the full list of deferrals.
+This batch built the general STOMP infrastructure and the full group-side half. Story 10's batch (`feature/game-session`) then built the session-side half on top of it in full: destinations, broadcast, disconnect handling, and presence registration. The two frontend tasks stay deferred project-wide for this phase of batches, backend only. See `DECISIONS.md`'s corresponding entries for the destination-naming convention, the messaging pattern chosen, and the full list of deferrals.
 
 - [x] Add the Spring WebSocket/STOMP dependency and base config to the core service (`WebSocketConfig`, `spring-boot-starter-websocket`)
 - [x] Authenticate the WebSocket handshake against the existing JWT auth (`StompAuthenticationChannelInterceptor`, validated on the STOMP CONNECT frame)
 - [x] Define per-group STOMP destinations for broadcast (membership, settings changes, chat, voice signaling) and a client-to-server channel for admin actions (`GroupDestinations`); chat and voice are naming-convention placeholders only, no send/receive logic, stories 13 and 12 still own that
-- [ ] Define per-session STOMP destinations for broadcast (round events) and a client-to-server channel for actions (guess, bet, reveal). Deferred to story 10, no session model exists yet; `GroupDestinations`' javadoc documents the parallel `/topic/sessions/{sessionId}/...` convention story 10 should follow
+- [x] Define per-session STOMP destinations for broadcast (round events) and a client-to-server channel for actions (guess, bet, reveal). Built in story 10's batch (`SessionDestinations`), following the parallel convention `GroupDestinations`' javadoc had already reserved
 - [x] Broadcast group events: member joined/left, settings changed, game session started (`GroupService` publishes a `GroupBroadcastEvent` via `ApplicationEventPublisher`, `GroupBroadcastListener` forwards it to the right STOMP topic); member connection changes (disconnect/reconnect) and admin transfer broadcast the same way, a natural extension of "membership changes" beyond the story's literal four events, see `DECISIONS.md`
-- [ ] Broadcast round events: round started, guess locked, bet placed, reveal triggered, round scored, next round. Deferred to story 10, no round/guess/bet concept exists yet
+- [x] Broadcast round events: round started, guess locked, bet placed, reveal triggered, round scored, next round. Built in story 10's batch (`GameSessionService` publishes a `SessionBroadcastEvent`, `SessionBroadcastListener` forwards it to the session's round or ended topic)
 - [x] Handle disconnect, group-member half: on WebSocket disconnect, mark the member's `isConnected` flag false without ending the group (`GroupSessionEventListener` reacting to `SessionDisconnectEvent`, calling `GroupService.disconnectMember`)
-- [ ] Handle disconnect, in-session-player half: deferred to story 10, no `Player` entity exists yet
+- [x] Handle disconnect, in-session-player half: built in story 10's batch (`SessionSessionEventListener` reacting to `SessionDisconnectEvent`, calling `GameSessionService.disconnectPlayer`, which also starts the 90-second turn-timeout clock when the disconnecting player is mid-turn)
 - [x] Wire group creation/join to register the joining client on the group's topic: the client subscribing to its group's membership topic is what registers presence in `GroupPresenceRegistry` (`GroupSessionEventListener` reacting to the subscription)
-- [ ] Wire game session start to register the joining client on the session's topic. Deferred to story 10, no session topic exists yet
+- [x] Wire game session start to register the joining client on the session's topic. Built in story 10's batch: a client subscribes to the session's round topic once `GAME_SESSION_STARTED` fires, which `SessionSessionEventListener` reacts to the same way `GroupSessionEventListener` reacts to the membership-topic subscription
 - [x] Log the group-side state events this story broadcasts (membership, settings changes) on a per-group timeline: a structured `groupEvent type=... groupId=...` line (`GroupBroadcastListener`), a shape a later addition can log alongside using the same two fields
-- [ ] Log round events alongside the WebRTC connection lifecycle events story 12 adds. Deferred alongside the round-event broadcast itself, story 10's scope
+- [x] Log round events alongside the WebRTC connection lifecycle events story 12 adds. Built in story 10's batch on the same two-field shape (`sessionEvent type=... sessionId=...`, `SessionBroadcastListener`); story 12's WebRTC events, not yet built, can log alongside it later
 - [ ] Frontend: keep the group/session WebSocket connection alive while navigating to other parts of the app, minimize the game to a small persistent widget instead of requiring the player stay on the game screen. Deferred: this batch is backend only, per standing instruction; revisit alongside story 28's redesign or whenever story 10's frontend lands
 - [ ] Frontend: turn notification, a sound plus a clickable visual banner when it's the player's turn and the game screen isn't focused, clicking either returns them to the game. Deferred alongside the item above, and also depends on story 10's turn concept existing
 
@@ -94,7 +96,7 @@ Tests:
 - [x] Integration test: a client can disconnect and reconnect to a group's topic and keep receiving broadcasts correctly, membership state isn't lost or duplicated across the reconnect (`GroupWebSocketIntegrationTest`, asserted against the real STOMP simple broker's own subscription registry)
 - [ ] Integration test: turn notification fires when the player's turn starts while they're on a different route, and doesn't fire when they're already on the game screen. Deferred alongside the frontend turn-notification task, entirely frontend/game-session behavior that doesn't exist on either side yet
 - [x] Unit tests for the disconnect handler, group-member half: the flag flips without ending the group (`GroupServiceTest`, `GroupSessionEventListenerTest`)
-- [ ] Unit tests for the disconnect handler, in-session-player half: deferred to story 10, no `Player` entity exists yet
+- [x] Unit tests for the disconnect handler, in-session-player half: built in story 10's batch (`GameSessionServiceTest`'s and `GameSessionLifecycleIntegrationTest`'s disconnect/turn-timeout tests)
 - [x] Unit tests for JWT handshake authentication: a valid token connects (sets the STOMP session's user), an invalid or missing one is rejected (`StompAuthenticationChannelInterceptorTest`)
 - [x] Tests that the right group events actually get broadcast when `GroupService`'s methods run: member joins/leaves, settings change, session starts, disconnect/reconnect, admin transfer (`GroupServiceTest`'s event-publishing tests, `GroupBroadcastListenerTest`'s destination-routing tests)
 

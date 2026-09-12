@@ -10,10 +10,10 @@ import java.util.regex.Pattern;
 // GroupPresenceRegistry (see GroupSessionEventListener).
 //
 // Story 10 (game session) extends this same convention with a parallel, session-scoped
-// set once it exists: broadcast topics under "/topic/sessions/{sessionId}/..." (round
-// started, guess locked, bet placed, reveal triggered, round scored, next round) and a
-// client-to-server action channel under "/app/sessions/{sessionId}/...". Neither exists
-// yet, there is no session model to key it on.
+// set: broadcast topics under "/topic/sessions/{sessionId}/..." (round started, guess
+// locked, bet placed, reveal triggered, round scored, next round) and a client-to-server
+// action channel under "/app/sessions/{sessionId}/..." (place, guess, bet, skip-betting).
+// See SessionDestinations.
 public final class GroupDestinations {
 
     private static final String GROUP_TOPIC_PREFIX = "/topic/groups/";

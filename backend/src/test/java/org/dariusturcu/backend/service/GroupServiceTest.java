@@ -357,6 +357,63 @@ class GroupServiceTest {
     }
 
     @Test
+    void updateGroupSettingsAcceptsTheMinimumBoundaryForASmallGroup() {
+        Group group = groupWithAdmin();
+        when(groupRepository.findById(10L)).thenReturn(Optional.of(group));
+
+        GroupDetailDTO result = groupService.updateGroupSettings(
+                10L, new UpdateGroupSettingsRequest(null, null, 5));
+
+        assertThat(result.winConditionCardCount()).isEqualTo(5);
+    }
+
+    @Test
+    void updateGroupSettingsAcceptsTheMaximumBoundaryForASmallGroup() {
+        Group group = groupWithAdmin();
+        when(groupRepository.findById(10L)).thenReturn(Optional.of(group));
+
+        GroupDetailDTO result = groupService.updateGroupSettings(
+                10L, new UpdateGroupSettingsRequest(null, null, 20));
+
+        assertThat(result.winConditionCardCount()).isEqualTo(20);
+    }
+
+    @Test
+    void updateGroupSettingsRejectsAWinConditionCountAboveTheLargeGroupMaximum() {
+        Group group = groupWithAdmin();
+        memberOf(group, otherUser, false, Instant.now());
+        User thirdUser = new User();
+        thirdUser.setId(3L);
+        User fourthUser = new User();
+        fourthUser.setId(4L);
+        memberOf(group, thirdUser, false, Instant.now());
+        memberOf(group, fourthUser, false, Instant.now());
+        when(groupRepository.findById(10L)).thenReturn(Optional.of(group));
+
+        assertThatThrownBy(() -> groupService.updateGroupSettings(
+                10L, new UpdateGroupSettingsRequest(null, null, 16)))
+                .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    void updateGroupSettingsAcceptsTheMaximumBoundaryForALargeGroup() {
+        Group group = groupWithAdmin();
+        memberOf(group, otherUser, false, Instant.now());
+        User thirdUser = new User();
+        thirdUser.setId(3L);
+        User fourthUser = new User();
+        fourthUser.setId(4L);
+        memberOf(group, thirdUser, false, Instant.now());
+        memberOf(group, fourthUser, false, Instant.now());
+        when(groupRepository.findById(10L)).thenReturn(Optional.of(group));
+
+        GroupDetailDTO result = groupService.updateGroupSettings(
+                10L, new UpdateGroupSettingsRequest(null, null, 15));
+
+        assertThat(result.winConditionCardCount()).isEqualTo(15);
+    }
+
+    @Test
     void updateGroupSettingsAppliesALargeGroupMaximumOnceFourOrMoreMembersHaveJoined() {
         Group group = groupWithAdmin();
         memberOf(group, otherUser, false, Instant.now());
@@ -398,6 +455,7 @@ class GroupServiceTest {
         GroupDetailDTO result = groupService.recordGameSessionEnded(10L);
 
         assertThat(result.expiresAt()).isAfter(Instant.now());
+        assertThat(result.status()).isEqualTo(GroupStatus.OPEN);
     }
 
     @Test
