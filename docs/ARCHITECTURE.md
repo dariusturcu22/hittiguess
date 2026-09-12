@@ -137,7 +137,7 @@ Players can report a song's year as incorrect, with a message, the year they bel
 
 ### RAG and deduplication (AI microservice)
 
-Before running the full pipeline for a new submission: normalize `artist + title`, generate an embedding, check pgvector similarity against existing verified songs. On a high-confidence match, reuse the existing data and skip the LLM call. Goals: keep the database free of duplicate rows, and avoid unnecessary LLM cost. Exact matching thresholds, and how this interacts with the playlist/song relational model, are still being worked out.
+Before running the full pipeline for a new submission: normalize `artist + title`, generate a `text-embedding-3-small` embedding, check pgvector cosine-distance similarity against existing verified songs. On a match at or below the high-confidence threshold, reuse the existing data and skip the LLM call. Goals: keep the database free of duplicate rows, and avoid unnecessary LLM cost. The threshold and the AI microservice's database client choice are decided (story 16, `DECISIONS.md`). How this interacts with story 15's song/playlist relational model is an open coordination point, also logged there, since story 15 hadn't merged when story 16 shipped.
 
 ### Admin tools
 
