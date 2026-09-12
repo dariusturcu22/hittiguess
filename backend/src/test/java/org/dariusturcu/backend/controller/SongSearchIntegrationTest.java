@@ -90,7 +90,7 @@ class SongSearchIntegrationTest {
     }
 
     @Container
-    static final PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:18-alpine");
+    static final PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("pgvector/pgvector:pg18");
 
     @DynamicPropertySource
     static void configureDataSource(DynamicPropertyRegistry registry) {
@@ -134,6 +134,7 @@ class SongSearchIntegrationTest {
 
         Playlist playlist = new Playlist();
         playlist.setInviteCode("INV-" + youtubeId);
+        playlist.setOwner(owner);
         playlist = playlistRepository.save(playlist);
 
         Song song = new Song();

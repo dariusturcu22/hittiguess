@@ -28,7 +28,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class SongPlaylistJoinTableMigrationTest {
 
     @Container
-    static final PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:18-alpine");
+    static final PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("pgvector/pgvector:pg18");
 
     private static Connection connection;
     private static long firstSongId;
@@ -79,8 +79,11 @@ class SongPlaylistJoinTableMigrationTest {
             }
         }
 
+        // Stops at V6, before V7's playlist and song data wipe, since this test checks V5's
+        // playlist_id-to-join-table migration, not anything V7 does.
         Flyway.configure()
                 .dataSource(postgres.getJdbcUrl(), postgres.getUsername(), postgres.getPassword())
+                .target("6")
                 .load()
                 .migrate();
     }

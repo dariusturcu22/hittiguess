@@ -28,7 +28,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class SongGenreMigrationTest {
 
     @Container
-    static final PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:18-alpine");
+    static final PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("pgvector/pgvector:pg18");
 
     private static Connection connection;
     private static long taggedSongId;
@@ -60,8 +60,11 @@ class SongGenreMigrationTest {
             statement.execute("INSERT INTO song_tags (song_id, tag) VALUES (" + taggedSongId + ", 'SPECIAL')");
         }
 
+        // Stops at V6, the genre migration itself: V7 clears every song and playlist outright,
+        // which would wipe the legacy row this test exists to check.
         Flyway.configure()
                 .dataSource(postgres.getJdbcUrl(), postgres.getUsername(), postgres.getPassword())
+                .target("6")
                 .load()
                 .migrate();
     }

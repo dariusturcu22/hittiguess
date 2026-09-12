@@ -15,12 +15,17 @@ Structured reference for what exists in the code today, distinct from [ARCHITECT
 | GET | `/api/enums/countries` | `EnumController` |
 | GET | `/api/playlists/{playlistId}/export/info` | `ExportController`, `paperSize` query param (`A4`/`LETTER`, default `A4`) |
 | GET | `/api/playlists/{playlistId}/export/qr` | `ExportController`, same `paperSize` query param |
-| GET | `/api/playlists/{playlistId}` | `PlaylistController` |
-| PATCH | `/api/playlists/{playlistId}` | `PlaylistController` |
-| GET | `/api/playlists/{playlistId}/songs/{songId}` | `PlaylistController` |
-| POST | `/api/playlists/{playlistId}/songs` | `PlaylistController` |
-| PATCH | `/api/playlists/{playlistId}/songs/{songId}` | `PlaylistController` |
-| DELETE | `/api/playlists/{playlistId}/songs/{songId}` | `PlaylistController` |
+| GET | `/api/playlists/{playlistId}` | `PlaylistController`, requires `canRead` |
+| PATCH | `/api/playlists/{playlistId}` | `PlaylistController`, owner only |
+| GET | `/api/playlists/{playlistId}/songs/{songId}` | `PlaylistController`, requires `canRead` |
+| POST | `/api/playlists/{playlistId}/songs` | `PlaylistController`, requires `canWrite` |
+| PATCH | `/api/playlists/{playlistId}/songs/{songId}` | `PlaylistController`, requires `canWrite` |
+| DELETE | `/api/playlists/{playlistId}/songs/{songId}` | `PlaylistController`, requires `canDelete` |
+| GET | `/api/playlists/{playlistId}/members` | `PlaylistController`, requires `canRead`, story 46 |
+| PATCH | `/api/playlists/{playlistId}/members/{userId}` | `PlaylistController`, owner only, updates a member's grants, story 46 |
+| DELETE | `/api/playlists/{playlistId}/members/{userId}` | `PlaylistController`, owner only, kicks a member, story 46 |
+| POST | `/api/playlists/{playlistId}/members/{userId}/ban` | `PlaylistController`, owner only, bans a member, story 46 |
+| POST | `/api/playlists/{playlistId}/members/{userId}/promote` | `PlaylistController`, owner only, transfers ownership, previous owner stays a member, story 46 |
 | GET | `/api/metadata/song` | `SongMetadataController`, one-in-flight-request-per-user limit, see story 27 |
 | GET | `/api/users/me` | `UserController` |
 | GET | `/api/users/{userId}` | `UserController` |
@@ -28,8 +33,8 @@ Structured reference for what exists in the code today, distinct from [ARCHITECT
 | DELETE | `/api/users/me` | `UserController`, has the real bugs logged in `TASKS.md`'s Bug fixes section |
 | POST | `/api/users/me/playlists` | `UserController` |
 | GET | `/api/users/me/playlists` | `UserController` |
-| POST | `/api/users/me/playlists/{playlistInviteCode}` | `UserController` |
-| DELETE | `/api/users/me/playlists/{playlistId}` | `UserController` |
+| POST | `/api/users/me/playlists/{playlistInviteCode}` | `UserController`, optional body carries a per-playlist display name and avatar, rejects a banned user, story 46 |
+| DELETE | `/api/users/me/playlists/{playlistId}` | `UserController`, the owner can leave at any time, leadership passes to the earliest-joined remaining member, story 46 |
 
 ### AI microservice (FastAPI)
 
@@ -43,20 +48,36 @@ Every endpoint stories 9-13, 17, 30, 39-41 add (group, game session, WebSocket d
 
 ### Current (JPA entities, core service)
 
-Five entities exist today: `User`, `Playlist`, `Song`, `SongArtist`, `RefreshToken`.
+Seven entities exist today: `User`, `Playlist`, `PlaylistMembership`, `PlaylistBan`, `Song`, `SongArtist`, `RefreshToken`.
 
 ```
 User
   ├── id, username, email, password, imageUrl
   ├── authProvider, authProviderId
-  ├── role (USER only today, see story 40 for ADMIN and story 44 for TEST)
-  └── playlists: Set<Playlist>  (@ManyToMany, EAGER)
+  └── role (USER only today, see story 40 for ADMIN and story 44 for TEST)
 
 Playlist
   ├── id, name, color, inviteCode (unique, immutable)
+  ├── owner: User  (@ManyToOne, set to the creator on creation, story 46; only the owner can rename,
+  │     change color, delete the playlist, or manage members)
   ├── songs: List<Song>  (@ManyToMany, owning side, joins through song_playlists; removing a song here
   │     only ever unlinks it, a Song is never deleted as a side effect of playlist membership)
-  └── users: Set<User>   (@ManyToMany, mappedBy "playlists")
+  └── memberships: List<PlaylistMembership>  (@OneToMany, cascade ALL, orphanRemoval, story 46 replaces
+        the old plain users many-to-many)
+
+PlaylistMembership
+  ├── id, canRead, canWrite, canDelete  (independently revocable, story 46; an owner has all three
+  │     implicitly and holds no override here)
+  ├── displayName, avatarUrl  (per-playlist identity, defaults to the account's own at join time)
+  ├── joinedAt
+  ├── playlist: Playlist  (@ManyToOne, owns the FK)
+  └── user: User  (@ManyToOne)
+
+PlaylistBan
+  ├── id, bannedAt
+  ├── playlist: Playlist  (@ManyToOne)
+  └── user: User  (@ManyToOne; existence of a row blocks that user's future join-by-invite attempts
+        against this playlist, independent of PlaylistMembership, story 46)
 
 Song
   ├── id, title, releaseYear, youtubeId, gradientColor1, gradientColor2

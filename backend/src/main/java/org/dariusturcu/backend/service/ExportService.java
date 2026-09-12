@@ -17,7 +17,6 @@ import org.dariusturcu.backend.util.CardGenerator;
 import org.dariusturcu.backend.util.PaperSize;
 import org.dariusturcu.backend.util.QRGenerator;
 import org.springframework.http.HttpStatus;
-import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
@@ -36,6 +35,7 @@ public class ExportService {
     private static final int MAX_SONGS_PER_EXPORT = 500;
 
     private final PlaylistRepository playlistRepository;
+    private final PlaylistAccessService playlistAccessService;
 
     private byte[] buildPdf(List<Song> songs, PaperSize paperSize, boolean isQr) throws IOException {
         PDDocument document = new PDDocument();
@@ -98,12 +98,7 @@ public class ExportService {
         Playlist playlist = playlistRepository.findById(playlistId)
                 .orElseThrow(() -> new ResourceNotFoundException(ResourceType.PLAYLIST, playlistId));
 
-        boolean hasAccess = playlist.getUsers().stream()
-                .anyMatch(user -> user.getId().equals(SecurityUtils.getCurrentUserId()));
-
-        if (!hasAccess) {
-            throw new AccessDeniedException("You are not a member of this playlist");
-        }
+        playlistAccessService.requireRead(playlist, SecurityUtils.getCurrentUser());
 
         List<Song> songs = playlist.getSongs();
 

@@ -2,6 +2,7 @@ package org.dariusturcu.backend.controller;
 
 
 import jakarta.validation.Valid;
+import org.dariusturcu.backend.model.playlist.JoinPlaylistRequest;
 import org.dariusturcu.backend.model.playlist.PlaylistDetailDTO;
 import org.dariusturcu.backend.model.playlist.PlaylistSummaryDTO;
 import org.dariusturcu.backend.model.user.UpdateUserRequest;
@@ -70,11 +71,12 @@ public class UserController {
         return ResponseEntity.ok(userPlaylists);
     }
 
-    @Operation(summary = "Join an existing playlist")
+    @Operation(summary = "Join an existing playlist, optionally with a per-playlist display name and avatar")
     @PostMapping("/me/playlists/{playlistInviteCode}")
     public ResponseEntity<PlaylistSummaryDTO> joinPlaylist(
-            @PathVariable String playlistInviteCode) {
-        PlaylistSummaryDTO joinedPlaylist = userService.joinPlaylist(playlistInviteCode);
+            @PathVariable String playlistInviteCode,
+            @RequestBody(required = false) JoinPlaylistRequest request) {
+        PlaylistSummaryDTO joinedPlaylist = userService.joinPlaylist(playlistInviteCode, request);
         return ResponseEntity.ok(joinedPlaylist);
     }
 
