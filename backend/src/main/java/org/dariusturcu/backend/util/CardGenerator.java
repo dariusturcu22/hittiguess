@@ -1,42 +1,51 @@
 package org.dariusturcu.backend.util;
 
 import org.dariusturcu.backend.model.song.ArtistRole;
-import org.dariusturcu.backend.model.song.Country;
 import org.dariusturcu.backend.model.song.Song;
 import org.dariusturcu.backend.model.song.SongArtist;
-import org.dariusturcu.backend.model.song.SongTag;
 import org.springframework.stereotype.Component;
 
 import java.awt.*;
+import java.awt.geom.RoundRectangle2D;
 import java.awt.image.BufferedImage;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
+// Matches the settled card design in docs/design/source/CardOptions.dc.html: square, one flat
+// color, no gradient, a thick dark border, and a hard (unblurred) offset shadow. Artist, year,
+// and title are the only content on the face, the settled design carries nothing else.
 @Component
 public class CardGenerator {
-    private static final int CARD_SIZE = 800;
-    private static final int CARDS_PER_ROW = 3;
-    private static final int ROWS_PER_PAGE = 4;
-    private static final int PAGE_WIDTH = CARD_SIZE * CARDS_PER_ROW;
-    private static final int PAGE_HEIGHT = CARD_SIZE * ROWS_PER_PAGE;
-    private static final int MARGIN_X = (PAGE_WIDTH - CARD_SIZE * CARDS_PER_ROW) / 2;
-    private static final int MARGIN_Y = (PAGE_HEIGHT - CARD_SIZE * ROWS_PER_PAGE) / 2;
+    public static final int CARD_SIZE = 800;
+    private static final int CORNER_RADIUS = 105;
+    private static final int BORDER_THICKNESS = 24;
+    private static final int SHADOW_OFFSET = 28;
+    private static final Color BORDER_COLOR = new Color(0x4c, 0x4f, 0x69);
+    private static final Color SHADOW_COLOR = new Color(0x4c, 0x4f, 0x69, 64);
+    private static final Color LIGHT_TEXT_COLOR = Color.WHITE;
+    private static final Color DARK_TEXT_COLOR = new Color(0x1e, 0x1e, 0x2e);
+    private static final int LUMINANCE_THRESHOLD_FOR_DARK_TEXT = 150;
 
+    public static BufferedImage generateInfoPage(List<Song> songs, PaperSize paperSize) {
+        int pageWidth = paperSize.getWidthPixels();
+        int pageHeight = paperSize.getHeightPixels();
+        int cardsPerRow = paperSize.cardsPerRow(CARD_SIZE);
+        int marginX = paperSize.marginX(CARD_SIZE);
+        int marginY = paperSize.marginY(CARD_SIZE);
 
-    public static BufferedImage generateInfoPage(List<Song> songs) {
-        BufferedImage page = new BufferedImage(PAGE_WIDTH, PAGE_HEIGHT, BufferedImage.TYPE_INT_RGB);
+        BufferedImage page = new BufferedImage(pageWidth, pageHeight, BufferedImage.TYPE_INT_RGB);
         Graphics2D graphics2D = page.createGraphics();
 
         graphics2D.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
         graphics2D.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
 
         graphics2D.setColor(Color.WHITE);
-        graphics2D.fillRect(0, 0, PAGE_WIDTH, PAGE_HEIGHT);
+        graphics2D.fillRect(0, 0, pageWidth, pageHeight);
 
         for (int i = 0; i < songs.size(); i++) {
-            int x = MARGIN_X + (i % CARDS_PER_ROW) * CARD_SIZE;
-            int y = MARGIN_Y + (i / CARDS_PER_ROW) * CARD_SIZE;
+            int x = marginX + (i % cardsPerRow) * CARD_SIZE;
+            int y = marginY + (i / cardsPerRow) * CARD_SIZE;
             drawFrontCard(graphics2D, x, y, CARD_SIZE, songs.get(i));
         }
 
@@ -45,14 +54,23 @@ public class CardGenerator {
     }
 
     private static void drawFrontCard(Graphics2D graphics2D, int x, int y, int size, Song song) {
-        Color color1 = decodeColorSafe(song.getGradientColor1());
-        Color color2 = decodeColorSafe(song.getGradientColor2());
+        Color fillColor = decodeColorSafe(song.getGradientColor1());
+        Color textColor = readableTextColorFor(fillColor);
 
-        GradientPaint gradientPaint = new GradientPaint(x, y, color1, x, y + size, color2);
-        graphics2D.setPaint(gradientPaint);
-        graphics2D.fillRect(x, y, size, size);
+        RoundRectangle2D shadowShape = new RoundRectangle2D.Double(
+                x + SHADOW_OFFSET, y + SHADOW_OFFSET, size, size, CORNER_RADIUS, CORNER_RADIUS);
+        graphics2D.setColor(SHADOW_COLOR);
+        graphics2D.fill(shadowShape);
 
-        graphics2D.setColor(Color.WHITE);
+        RoundRectangle2D cardShape = new RoundRectangle2D.Double(x, y, size, size, CORNER_RADIUS, CORNER_RADIUS);
+        graphics2D.setColor(fillColor);
+        graphics2D.fill(cardShape);
+
+        graphics2D.setColor(BORDER_COLOR);
+        graphics2D.setStroke(new BasicStroke(BORDER_THICKNESS));
+        graphics2D.draw(cardShape);
+
+        graphics2D.setColor(textColor);
         String fontName = "Kanit";
 
         Font artistFont = new Font(fontName, Font.PLAIN, 55);
@@ -71,12 +89,6 @@ public class CardGenerator {
 
         graphics2D.setFont(titleFont);
         drawCentered(graphics2D, song.getTitle(), x + padding, y + (int) (size * 0.88), size - padding * 2, 65);
-
-        drawTagTriangle(graphics2D, x, y, size, song);
-        drawCountryFlag(graphics2D, x, y, size, song);
-
-        graphics2D.setColor(new Color(0, 0, 0, 40));
-        graphics2D.drawRect(x, y, size, size);
     }
 
     private static void drawCentered(Graphics2D graphics2D, String text, int x, int y, int maxWidth, int lineHeight) {
@@ -131,56 +143,13 @@ public class CardGenerator {
         }
     }
 
-    // A song can carry more than one tag today; the card still shows a single
-    // corner triangle, so this picks the highest-priority tag present rather
-    // than stacking one triangle per tag.
-    private static final List<SongTag> TAG_TRIANGLE_PRIORITY = List.of(SongTag.SPECIAL, SongTag.ANIME, SongTag.PLAYLIST);
-
-    // No longer derived from a specific playlist's color: a song can belong to more than one
-    // playlist now, so there's no single playlist color left to draw this tag with.
-    private static final Color PLAYLIST_TAG_COLOR = new Color(138, 43, 226);
-
-    private static void drawTagTriangle(Graphics2D graphics2D, int x, int y, int size, Song song) {
-        SongTag tagToDraw = TAG_TRIANGLE_PRIORITY.stream()
-                .filter(song.getTags()::contains)
-                .findFirst()
-                .orElse(null);
-        if (tagToDraw == null) return;
-
-        Color tagColor = switch (tagToDraw) {
-            case SPECIAL -> new Color(0, 255, 0);
-            case ANIME -> new Color(255, 105, 180);
-            case PLAYLIST -> PLAYLIST_TAG_COLOR;
-        };
-
-        int triangleSize = (int) (size * 0.10);
-        int[] xPoints = {x, x + triangleSize, x};
-        int[] yPoints = {y, y, y + triangleSize};
-
-        graphics2D.setColor(tagColor);
-        graphics2D.fillPolygon(xPoints, yPoints, 3);
-    }
-
-    private static void drawCountryFlag(Graphics2D graphics2D, int x, int y, int size, Song song) {
-        if (song.getCountry() == null || song.getCountry() == Country.NONE) return;
-
-        int flagW = (int) (size * 0.10);
-        int flagH = (int) (flagW * 0.6);
-        int flagX = x + size - flagW;
-        int flagY = y + size - flagH;
-
-        switch (song.getCountry()) {
-            case RO -> drawRomanianFlag(graphics2D, flagX, flagY, flagW, flagH);
-        }
-    }
-
-    private static void drawRomanianFlag(Graphics2D graphics2D, int flagX, int flagY, int flagW, int flagH) {
-        int third = flagW / 3;
-        graphics2D.setColor(new Color(0, 43, 127));
-        graphics2D.fillRect(flagX, flagY, third, flagH);
-        graphics2D.setColor(new Color(252, 209, 22));
-        graphics2D.fillRect(flagX + third, flagY, third, flagH);
-        graphics2D.setColor(new Color(206, 17, 38));
-        graphics2D.fillRect(flagX + third * 2, flagY, flagW - third * 2, flagH);
+    // The settled design picks dark or light text per card so it stays legible against
+    // whichever flat color that song happens to store, rather than assuming one fixed color
+    // works against every possible background.
+    private static Color readableTextColorFor(Color backgroundColor) {
+        double luminance = 0.299 * backgroundColor.getRed()
+                + 0.587 * backgroundColor.getGreen()
+                + 0.114 * backgroundColor.getBlue();
+        return luminance > LUMINANCE_THRESHOLD_FOR_DARK_TEXT ? DARK_TEXT_COLOR : LIGHT_TEXT_COLOR;
     }
 }

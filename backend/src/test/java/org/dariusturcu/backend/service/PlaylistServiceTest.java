@@ -91,7 +91,7 @@ class PlaylistServiceTest {
     }
 
     private UpdateSongRequest anyUpdateRequest() {
-        return new UpdateSongRequest("Artist", "Title", 2000, "dQw4w9WgXcQ", "abcdef", "abcdef", Set.of(), null);
+        return new UpdateSongRequest("Artist", "Title", 2000, "dQw4w9WgXcQ", "abcdef", "abcdef", null);
     }
 
     @ParameterizedTest

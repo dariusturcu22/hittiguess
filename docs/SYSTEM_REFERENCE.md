@@ -12,10 +12,9 @@ Structured reference for what exists in the code today, distinct from [ARCHITECT
 | POST | `/auth/login` | `AuthController` |
 | POST | `/auth/refresh` | `AuthController` |
 | POST | `/auth/logout` | `AuthController` |
-| GET | `/api/enums/tags` | `EnumController` |
 | GET | `/api/enums/countries` | `EnumController` |
-| GET | `/api/playlists/{playlistId}/export/info` | `ExportController` |
-| GET | `/api/playlists/{playlistId}/export/qr` | `ExportController` |
+| GET | `/api/playlists/{playlistId}/export/info` | `ExportController`, `paperSize` query param (`A4`/`LETTER`, default `A4`) |
+| GET | `/api/playlists/{playlistId}/export/qr` | `ExportController`, same `paperSize` query param |
 | GET | `/api/playlists/{playlistId}` | `PlaylistController` |
 | PATCH | `/api/playlists/{playlistId}` | `PlaylistController` |
 | GET | `/api/playlists/{playlistId}/songs/{songId}` | `PlaylistController` |
@@ -63,8 +62,9 @@ Song
   ├── id, title, releaseYear, youtubeId, gradientColor1, gradientColor2
   ├── artists: List<SongArtist>  (@OneToMany, ordered by displayOrder; today always one MAIN entry,
   │     the submission flow has no multi-artist entry UI yet, see story 40's featured-artist extraction)
-  ├── tags: Set<SongTag>  (PLAYLIST/SPECIAL/ANIME; empty means no tags, story 30 needs genre/popularity
-  │     fields story 23 didn't cover)
+  ├── genre  (nullable String, populated by the metadata pipeline once it runs, not user-submitted,
+  │     same as confidence/metadataRaw below; replaces the old SongTag/PLAYLIST/SPECIAL/ANIME enum,
+  │     which had no analog in the settled design mockups, see DECISIONS.md's 2026-09 entry)
   ├── country
   ├── verificationStatus (UNVERIFIED default, VERIFIED, NEEDS_REVIEW, MANUAL_ENTRY; see the state
   │     diagram below, story 18 still owns the actual lock-evaluation logic that moves it)

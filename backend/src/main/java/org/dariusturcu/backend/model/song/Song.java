@@ -39,11 +39,9 @@ public class Song {
 
     private String gradientColor2;
 
-    @ElementCollection(targetClass = SongTag.class)
-    @CollectionTable(name = "song_tags", joinColumns = @JoinColumn(name = "song_id"))
-    @Enumerated(EnumType.STRING)
-    @Column(name = "tag")
-    private Set<SongTag> tags = new HashSet<>();
+    // Nullable, not settable through CreateSongRequest/UpdateSongRequest: populated by the
+    // metadata pipeline once it runs, same as confidence and metadataRaw below.
+    private String genre;
 
     @Enumerated(EnumType.STRING)
     private Country country;
