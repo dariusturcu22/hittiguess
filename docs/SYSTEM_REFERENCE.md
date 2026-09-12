@@ -54,7 +54,7 @@ Seven entities exist today: `User`, `Playlist`, `PlaylistMembership`, `PlaylistB
 User
   ├── id, username, email, password, imageUrl
   ├── authProvider, authProviderId
-  └── role (USER only today, see story 40 for ADMIN and story 44 for TEST)
+  └── role (USER, TEST; see story 40 for ADMIN)
 
 Playlist
   ├── id, name, color, inviteCode (unique, immutable)
@@ -117,7 +117,7 @@ Listed here so the entity picture is in one place; each is still greenfield work
 - `SongReport`, `SongConfirmation` (story 17)
 - `PendingImport`, an alternate-YouTube-ID-to-`Song` mapping table (story 40)
 - `SongDifficulty` aggregate view or table (story 30)
-- `TEST`/`ADMIN` values on `User.role` (stories 44 and 40)
+- `ADMIN` value on `User.role` (story 40)
 
 ## State diagrams
 
