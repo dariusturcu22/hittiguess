@@ -3,6 +3,9 @@ from urllib.parse import quote
 
 from app.metadata.sources.http_retry import get_with_backoff
 from app.metadata.sources.util import METADATA_SOURCE_USER_AGENT, escape_lucene
+from app.observability.error_reporting import report_source_failure
+
+SOURCE_NAME = "musicbrainz"
 
 REQUEST_TIMEOUT_SECONDS = 10.0
 RELEASE_GROUP_SEARCH_LIMIT = 10
@@ -137,5 +140,6 @@ def search(title: str, artist: str, album: str | None = None) -> list[dict]:
             candidates += _candidates_from_groups(album_groups, "album")
 
         return candidates
-    except Exception:
+    except Exception as musicbrainz_error:
+        report_source_failure(SOURCE_NAME, musicbrainz_error, title, artist)
         return []
