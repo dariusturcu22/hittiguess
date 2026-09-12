@@ -46,11 +46,15 @@ Run the relevant suite before opening a pull request.
 
 ## Secrets and API keys
 
-A new contributor needs sandbox-safe values for three variables, all cheap or free to obtain:
+A new contributor needs sandbox-safe values for three variables to run the app at all, all cheap or free to obtain:
 
 - **`YOUTUBE_API_KEY`** (`ai/.env`): a personal Google Cloud project with the YouTube Data API v3 enabled, and an API key generated from it. The free daily quota is enough for local development; nothing in this project's local dev flow burns through it.
 - **`OPENAI_API_KEY`** (`ai/.env`): a personal OpenAI API key. Set a low spending cap or hard limit on the account before using it, since this key gets billed per call by the metadata pipeline's LLM synthesis step.
 - **`INTERNAL_SERVICE_API_KEY`** (`backend/.env` and `ai/.env`): not an external credential. It's a shared secret the core service and the AI microservice use to authenticate requests to each other. Pick any string yourself and use the same value in both files.
+
+One more is a real production metadata source, not required for the app to start, but needed to exercise it fully:
+
+- **`DISCOGS_CONSUMER_KEY`** / **`DISCOGS_CONSUMER_SECRET`** (`ai/.env`): a free Discogs account and an application registered under Settings > Developers gives you both. Metadata submission works and falls back gracefully without these set, since `discogs.search` swallows any failure and returns no results, but a submission tested that way is missing one of its real sources.
 
 `DB_PASSWORD` and `JWT_SECRET` (`backend/.env`) are also arbitrary values you choose yourself, not external credentials.
 
