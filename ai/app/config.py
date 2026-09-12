@@ -6,6 +6,8 @@ class Settings(BaseSettings):
 
     openai_api_key: str
     youtube_api_key: str
+    discogs_consumer_key: str
+    discogs_consumer_secret: str
     internal_service_api_key: str
     openai_model: str = "gpt-5.1"
     embedding_model: str = "text-embedding-3-small"

@@ -33,7 +33,6 @@ A story can have draft tasks written against it in TASKS.md while still marked N
 | 18 | Criteria for promoting a reported or newly submitted song to verified | Backend | Needs Definition, criteria decided and validated against real data (`DECISIONS.md`), draft tasks exist; story 23's `verificationStatus`/`confidence`/`metadataRaw` fields have landed, but the draft tasks below still need checking against the real schema before this moves to Ready |
 | 22 | Test coverage for existing and new functionality | Quality | Ready |
 | 24 | Parallelize metadata pipeline fetches across sources | Backend / AI | Needs Definition, draft tasks exist, confirmed blocked, parallelizing today's mostly-stubbed source set is wasted work until story 25 (Discogs) and the spike-validated MusicBrainz/Wikidata/Wikipedia implementations actually ship |
-| 25 | Add Discogs as a metadata source | Backend / AI | Ready, implementation validated in `ai/spikes/discogs_spike.py`, including a live-confirmed fallback fix for releases with no linked master |
 | 26 | Cache metadata pipeline results by artist/title or YouTube ID | Backend / AI | Ready, first task is a scope-review decision on whether this is still worth building once stories 16 and 40 exist, see `TASKS.md` |
 | 27 | Rate limiting | Backend | Ready |
 | 28 | UI redesign | Frontend | Ready, one unified pass covering existing pages and the not-yet-built gameplay screens, fresh visual direction, see `DECISIONS.md` |

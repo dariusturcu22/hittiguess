@@ -8,7 +8,7 @@ from app.dedup.schemas import VerifiedSongMatch
 from app.metadata import prompt
 from app.metadata.llm import synthesize
 from app.metadata.schemas import MetadataResolveResponse, SongMetadataResult
-from app.metadata.sources import musicbrainz, wikidata, wikipedia, youtube
+from app.metadata.sources import discogs, musicbrainz, wikidata, wikipedia, youtube
 from app.metadata.sources.util import clean_youtube_text
 
 logger = logging.getLogger(__name__)
@@ -33,6 +33,7 @@ def _gather_all_metadata(youtube_data: dict[str, str], title: str, artist: str) 
     return {
         "youtube": youtube_data,
         "musicbrainz": musicbrainz.search(title, artist),
+        "discogs": discogs.search(title, artist),
         "wikidata": wikidata.search(title, artist),
         "wikipedia": wikipedia.search(title, artist),
     }
