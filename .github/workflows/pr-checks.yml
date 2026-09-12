@@ -11,7 +11,7 @@ concurrency:
 jobs:
   backend:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     defaults:
       run:
         working-directory: backend
@@ -22,7 +22,22 @@ jobs:
           distribution: temurin
           java-version: "25"
           cache: maven
-      - run: ./mvnw -B compile
+      - run: ./mvnw -B test
+
+  ai:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: ai
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -e ".[dev]"
+      - run: pytest -q
 
   frontend:
     runs-on: ubuntu-latest
