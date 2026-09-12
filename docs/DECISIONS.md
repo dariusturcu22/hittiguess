@@ -665,3 +665,11 @@ Decision: the playlist owner can leave at any time. If other members remain, the
 Why: blocking the owner from leaving until everyone else was gone, the prior decision, forced a departing owner to kick or ban every other member first just to leave their own playlist, destroying those memberships as a side effect of an unrelated decision to leave. Automatic promotion by join order gives every playlist a deterministic next owner without asking the departing owner to choose one under pressure. The separate transfer endpoint covers the case where the owner wants to hand off leadership deliberately, without leaving.
 
 ---
+
+## 2026-09 | Story 36 built: open-source collaboration readiness
+
+Decision: `CODE_OF_CONDUCT.md` adapts the Contributor Covenant, version 2.1, rather than a custom document, with only the enforcement section rewritten for a single-maintainer project instead of the template's committee-based process; reports route to the maintainer's own email. `CONTRIBUTING.md`'s secrets section documents exactly three variables a new contributor needs sandbox-safe values for (`YOUTUBE_API_KEY`, `OPENAI_API_KEY`, `INTERNAL_SERVICE_API_KEY`), even though `ai/.env.example` lists many more. The others (Discogs, DeepInfra, Wikidata/Wikipedia bot logins, and the story 20 spike-only providers) aren't called by the production pipeline a local `make dev` run exercises, so documenting setup instructions for them would describe accounts nobody actually needs to run the app.
+
+Why: the Contributor Covenant is the de facto standard for open-source codes of conduct; writing a custom one from scratch would trade a widely recognized document for a bespoke one with no real benefit at this project's scale. Scoping the secrets section to only the variables the running application actually reads keeps `CONTRIBUTING.md` accurate to what a contributor needs today, rather than becoming stale the moment the spike-only provider list in `ai/.env.example` changes.
+
+---
