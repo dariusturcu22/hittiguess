@@ -25,6 +25,12 @@ public class RateLimiterRegistry {
         return bucket.tryConsume(1);
     }
 
+    // Test-only: buckets otherwise live for the lifetime of the registry, so a shared Spring
+    // context across test methods would carry rate-limit state from one test into the next.
+    public void resetForTesting() {
+        bucketsByKey.clear();
+    }
+
     private Bucket newBucket() {
         return Bucket.builder()
                 .addLimit(limit -> limit.capacity(maxRequestsPerWindow).refillGreedy(maxRequestsPerWindow, window))

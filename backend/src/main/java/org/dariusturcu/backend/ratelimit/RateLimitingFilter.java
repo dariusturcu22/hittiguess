@@ -73,15 +73,18 @@ public class RateLimitingFilter extends OncePerRequestFilter {
         return "ip:" + clientIpAddress(request);
     }
 
+    // X-Forwarded-For is not trusted here: this deployment has no reverse proxy in front of
+    // it to set that header honestly (hosting platform is still undecided, see stories 7/8),
+    // so it's fully attacker-controlled. Keying on it would let an attacker bypass the limit
+    // by sending a different value on every request, defeating the point of IP-based keying.
     private String clientIpAddress(HttpServletRequest request) {
-        String forwardedFor = request.getHeader("X-Forwarded-For");
-        if (forwardedFor == null || forwardedFor.isBlank()) {
-            return request.getRemoteAddr();
-        }
-        int firstForwardedAddressEnd = forwardedFor.indexOf(',');
-        return firstForwardedAddressEnd >= 0
-                ? forwardedFor.substring(0, firstForwardedAddressEnd).trim()
-                : forwardedFor.trim();
+        return request.getRemoteAddr();
+    }
+
+    // Test-only: see RateLimiterRegistry.resetForTesting.
+    public void resetForTesting() {
+        generalLimiter.resetForTesting();
+        authEndpointLimiter.resetForTesting();
     }
 
     private void writeRateLimitExceededResponse(HttpServletResponse response) throws IOException {

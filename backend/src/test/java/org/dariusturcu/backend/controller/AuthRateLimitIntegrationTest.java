@@ -8,6 +8,7 @@ import org.dariusturcu.backend.security.util.JwtUtil;
 import org.dariusturcu.backend.service.AuthService;
 import org.dariusturcu.backend.util.CookieUtil;
 import org.flywaydb.core.Flyway;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -140,18 +141,21 @@ class AuthRateLimitIntegrationTest {
                 .migrate();
     }
 
-    private static final String RATE_LIMIT_KEY_HEADER = "X-Forwarded-For";
-
     @Autowired
     private MockMvc mockMvc;
 
-    // The filter under test keys its bucket by client address; MockMvc requests all carry
-    // the same loopback address by default, and the filter's buckets live for the whole
-    // Spring context, cached across every test method in this class. Each test claims its
-    // own fake address through X-Forwarded-For so its requests get an independent bucket,
-    // rather than bleeding rate-limit state into whichever test happens to run next.
-    private String uniqueRateLimitTestAddress() {
-        return "test-client-" + System.nanoTime();
+    @Autowired
+    private RateLimitingFilter rateLimitingFilter;
+
+    // The filter under test keys its bucket by client address, and every MockMvc request
+    // carries the same loopback address; the filter's buckets also live for the whole Spring
+    // context, cached across every test method in this class. Resetting between tests keeps
+    // one test's rate-limit state from bleeding into the next, without trusting a
+    // client-supplied header for keying (X-Forwarded-For is not trusted in production either,
+    // see RateLimitingFilter.clientIpAddress).
+    @AfterEach
+    void resetRateLimiter() {
+        rateLimitingFilter.resetForTesting();
     }
 
     private String registerRequestBody(String username) {
@@ -175,11 +179,9 @@ class AuthRateLimitIntegrationTest {
     @Test
     void registrationRequestsUnderTheLimitAreNotRateLimited() throws Exception {
         String usernamePrefix = shortUniqueUsername("reg");
-        String testAddress = uniqueRateLimitTestAddress();
 
         for (int requestNumber = 0; requestNumber < AUTH_MAX_REQUESTS_PER_WINDOW; requestNumber++) {
             mockMvc.perform(post("/auth/register")
-                            .header(RATE_LIMIT_KEY_HEADER, testAddress)
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(registerRequestBody(usernamePrefix + requestNumber)))
                     .andExpect(status().isOk());
@@ -189,17 +191,14 @@ class AuthRateLimitIntegrationTest {
     @Test
     void theRegistrationRequestOverTheLimitIsRejectedWithTheAppsStandardErrorShape() throws Exception {
         String usernamePrefix = shortUniqueUsername("regover");
-        String testAddress = uniqueRateLimitTestAddress();
 
         for (int requestNumber = 0; requestNumber < AUTH_MAX_REQUESTS_PER_WINDOW; requestNumber++) {
             mockMvc.perform(post("/auth/register")
-                    .header(RATE_LIMIT_KEY_HEADER, testAddress)
                     .contentType(MediaType.APPLICATION_JSON)
                     .content(registerRequestBody(usernamePrefix + "-" + requestNumber)));
         }
 
         mockMvc.perform(post("/auth/register")
-                        .header(RATE_LIMIT_KEY_HEADER, testAddress)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(registerRequestBody(usernamePrefix + "-overflow")))
                 .andExpect(status().isTooManyRequests())
@@ -211,17 +210,14 @@ class AuthRateLimitIntegrationTest {
     @Test
     void loginRequestsOverTheLimitAreRejectedRegardlessOfCredentialCorrectness() throws Exception {
         String email = "rate-limit-login-" + System.nanoTime() + "@example.com";
-        String testAddress = uniqueRateLimitTestAddress();
 
         for (int requestNumber = 0; requestNumber < AUTH_MAX_REQUESTS_PER_WINDOW; requestNumber++) {
             mockMvc.perform(post("/auth/login")
-                    .header(RATE_LIMIT_KEY_HEADER, testAddress)
                     .contentType(MediaType.APPLICATION_JSON)
                     .content(loginRequestBody(email)));
         }
 
         mockMvc.perform(post("/auth/login")
-                        .header(RATE_LIMIT_KEY_HEADER, testAddress)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(loginRequestBody(email)))
                 .andExpect(status().isTooManyRequests());
@@ -230,12 +226,10 @@ class AuthRateLimitIntegrationTest {
     @Test
     void theLoginRateLimitHoldsUnderRealConcurrentTraffic() throws Exception {
         String email = "rate-limit-login-concurrent-" + System.nanoTime() + "@example.com";
-        String testAddress = uniqueRateLimitTestAddress();
         ExecutorService executorService = Executors.newFixedThreadPool(CONCURRENT_LOGIN_ATTEMPTS);
 
         List<Callable<Integer>> loginAttempts = IntStream.range(0, CONCURRENT_LOGIN_ATTEMPTS)
                 .<Callable<Integer>>mapToObj(attemptNumber -> () -> mockMvc.perform(post("/auth/login")
-                                .header(RATE_LIMIT_KEY_HEADER, testAddress)
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content(loginRequestBody(email)))
                         .andReturn().getResponse().getStatus())
