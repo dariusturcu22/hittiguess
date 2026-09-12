@@ -12,6 +12,11 @@ dependencies = [
     "pydantic-settings>=2.6",
     "pg8000>=1.31",
     "pgvector>=0.3",
+    "prometheus-fastapi-instrumentator>=7.0",
+    "opentelemetry-sdk>=1.27",
+    "opentelemetry-instrumentation-fastapi>=0.48b0",
+    "opentelemetry-exporter-otlp-proto-http>=1.27",
+    "sentry-sdk>=2.17",
 ]
 
 [project.optional-dependencies]
