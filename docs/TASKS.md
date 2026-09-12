@@ -661,12 +661,12 @@ A dedicated `Role` for automated test/QA agents, separate from `USER` and story 
 Checked against real code: `Role.java` declares only `USER` today, confirming the first task below. No environment/profile mechanism exists anywhere in the backend, no `@Profile` annotation and no `spring.profiles.active` configuration anywhere, so "Production environment" isn't yet a concept the code can gate on; establishing that distinction is this story's own scope to build, not a dependency on another story. No root `CONTRIBUTING.md` exists yet either (story 36), the documentation task below already anticipates that with its dev-setup-doc fallback. Not blocked on anything else.
 
 - [x] Add a `TEST` value to `User.role`, alongside the existing `USER` and (once story 40 lands) `ADMIN`
-- [ ] Add a fixture or seed mechanism that creates one reusable test account with known credentials in local/dev environments, rather than a new account per test run
-- [ ] Document, in `CONTRIBUTING.md` (story 36) or a dev-setup doc, that agents and contributors running tests locally reuse the seeded test account's credentials instead of registering new ones
+- [x] Add a fixture or seed mechanism that creates one reusable test account with known credentials in local/dev environments, rather than a new account per test run
+- [x] Document, in `CONTRIBUTING.md` (story 36) or a dev-setup doc, that agents and contributors running tests locally reuse the seeded test account's credentials instead of registering new ones
 - [x] Add an environment/profile mechanism distinguishing a Production deployment from local/dev, none exists today, no `@Profile` or `spring.profiles.active` usage anywhere in the backend; every guardrail below depends on this existing
 - [x] Add an environment guardrail: any `TEST`-role account, and any endpoint or behavior gated on that role, is a no-op or outright rejected when running against a Production environment, even if a `TEST`-role row somehow exists there
 - [x] Add a startup or CI check that fails loudly if a `TEST`-role row is ever found in a Production database, rather than silently ignoring it
 
 Tests:
 - [x] Unit test confirming `TEST`-role behavior is disabled under a Production environment flag, including the case where a `TEST` row actually exists
-- [ ] Unit test for the seed/fixture mechanism producing the same reusable credentials across repeated runs
+- [x] Unit test for the seed/fixture mechanism producing the same reusable credentials across repeated runs
