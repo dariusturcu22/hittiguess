@@ -13,6 +13,4 @@ public interface PlaylistMembershipRepository extends JpaRepository<PlaylistMemb
     List<PlaylistMembership> findByUserId(Long userId);
 
     boolean existsByPlaylistIdAndUserId(Long playlistId, Long userId);
-
-    long countByPlaylistId(Long playlistId);
 }

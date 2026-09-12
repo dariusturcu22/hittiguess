@@ -26,6 +26,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
+import java.util.Comparator;
 import java.util.List;
 import java.util.UUID;
 
@@ -169,18 +170,25 @@ public class UserService {
         PlaylistMembership membership = playlistMembershipRepository.findByPlaylistIdAndUserId(playlistId, currentUser.getId())
                 .orElseThrow(() -> new ResourceNotFoundException(ResourceType.PLAYLIST_MEMBER, currentUser.getId()));
 
-        long remainingMembersAfterLeaving = playlistMembershipRepository.countByPlaylistId(playlistId) - 1;
+        List<PlaylistMembership> remainingMembers = playlist.getMemberships().stream()
+                .filter(candidate -> candidate != membership)
+                .toList();
 
-        if (playlist.isOwnedBy(currentUser) && remainingMembersAfterLeaving > 0) {
-            throw new ConflictException("The playlist owner can't leave while other members remain");
+        if (remainingMembers.isEmpty()) {
+            playlistRepository.delete(playlist);
+            return;
+        }
+
+        // The owner can leave at any time; a playlist with other members left never goes
+        // without an owner, so leadership passes automatically to whoever joined earliest.
+        if (playlist.isOwnedBy(currentUser)) {
+            PlaylistMembership nextOwnerMembership = remainingMembers.stream()
+                    .min(Comparator.comparing(PlaylistMembership::getJoinedAt))
+                    .orElseThrow();
+            playlist.setOwner(nextOwnerMembership.getUser());
         }
 
         playlist.removeMembership(membership);
-
-        if (remainingMembersAfterLeaving == 0) {
-            playlistRepository.delete(playlist);
-        } else {
-            playlistRepository.save(playlist);
-        }
+        playlistRepository.save(playlist);
     }
 }

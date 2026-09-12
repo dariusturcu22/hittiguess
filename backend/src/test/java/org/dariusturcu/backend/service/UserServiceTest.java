@@ -24,6 +24,7 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 
+import java.time.Instant;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -148,7 +149,6 @@ class UserServiceTest {
         when(playlistRepository.findById(PLAYLIST_ID)).thenReturn(Optional.of(playlist));
         when(playlistMembershipRepository.findByPlaylistIdAndUserId(PLAYLIST_ID, USER_ID))
                 .thenReturn(Optional.of(membership));
-        when(playlistMembershipRepository.countByPlaylistId(PLAYLIST_ID)).thenReturn(1L);
 
         userService.leavePlaylist(PLAYLIST_ID);
 
@@ -157,32 +157,40 @@ class UserServiceTest {
     }
 
     @Test
-    void leavePlaylistRejectsTheOwnerWhileOtherMembersRemain() {
-        User otherMember = new User();
-        otherMember.setId(99L);
+    void leavePlaylistPromotesTheEarliestJoinedRemainingMemberWhenTheOwnerLeaves() {
+        User earlierMember = new User();
+        earlierMember.setId(99L);
+        User laterMember = new User();
+        laterMember.setId(98L);
 
         PlaylistMembership ownerMembership = new PlaylistMembership();
         ownerMembership.setUser(currentUser);
-        PlaylistMembership otherMembership = new PlaylistMembership();
-        otherMembership.setUser(otherMember);
+        ownerMembership.setJoinedAt(Instant.parse("2026-01-01T00:00:00Z"));
+        PlaylistMembership earlierMembership = new PlaylistMembership();
+        earlierMembership.setUser(earlierMember);
+        earlierMembership.setJoinedAt(Instant.parse("2026-01-02T00:00:00Z"));
+        PlaylistMembership laterMembership = new PlaylistMembership();
+        laterMembership.setUser(laterMember);
+        laterMembership.setJoinedAt(Instant.parse("2026-01-03T00:00:00Z"));
         playlist.addMembership(ownerMembership);
-        playlist.addMembership(otherMembership);
+        playlist.addMembership(earlierMembership);
+        playlist.addMembership(laterMembership);
         playlist.setOwner(currentUser);
 
         when(playlistRepository.findById(PLAYLIST_ID)).thenReturn(Optional.of(playlist));
         when(playlistMembershipRepository.findByPlaylistIdAndUserId(PLAYLIST_ID, USER_ID))
                 .thenReturn(Optional.of(ownerMembership));
-        when(playlistMembershipRepository.countByPlaylistId(PLAYLIST_ID)).thenReturn(2L);
 
-        assertThatThrownBy(() -> userService.leavePlaylist(PLAYLIST_ID))
-                .isInstanceOf(ConflictException.class);
+        userService.leavePlaylist(PLAYLIST_ID);
 
+        assertThat(playlist.getOwner()).isEqualTo(earlierMember);
+        assertThat(playlist.getMemberships()).containsExactly(earlierMembership, laterMembership);
+        verify(playlistRepository).save(playlist);
         verify(playlistRepository, never()).delete(any());
-        verify(playlistRepository, never()).save(any());
     }
 
     @Test
-    void leavePlaylistRemovesOnlyTheOwnMembershipWhenOtherMembersRemain() {
+    void leavePlaylistRemovesOnlyTheOwnMembershipAndLeavesOwnershipUnchangedForANonOwner() {
         User otherMember = new User();
         otherMember.setId(99L);
         User owner = new User();
@@ -199,10 +207,10 @@ class UserServiceTest {
         when(playlistRepository.findById(PLAYLIST_ID)).thenReturn(Optional.of(playlist));
         when(playlistMembershipRepository.findByPlaylistIdAndUserId(PLAYLIST_ID, USER_ID))
                 .thenReturn(Optional.of(memberMembership));
-        when(playlistMembershipRepository.countByPlaylistId(PLAYLIST_ID)).thenReturn(2L);
 
         userService.leavePlaylist(PLAYLIST_ID);
 
+        assertThat(playlist.getOwner()).isEqualTo(owner);
         assertThat(playlist.getMemberships()).containsExactly(otherMembership);
         verify(playlistRepository).save(playlist);
         verify(playlistRepository, never()).delete(any());
