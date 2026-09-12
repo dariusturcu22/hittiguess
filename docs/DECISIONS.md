@@ -534,6 +534,28 @@ Why: the spike ran real accuracy numbers against a 70-song test set (99% patient
 
 ---
 
+## 2026-09 | Story 39's timer lifecycle runs on a scheduled sweep, not a per-group in-JVM timer
+
+Decision: the group lifecycle's two 30-minute timers (creation to first session, and session end to the next one) share a single nullable `expiresAt` column on `Group`. A `@Scheduled` job (`GroupExpirySweeper`, running every 60 seconds) deletes any group whose `expiresAt` has passed, covering both windows through the same mechanism rather than one timer implementation per case. `expiresAt` is null while a session is actually in progress, since neither timer should run then.
+
+Why: a per-group `Timer` or `ScheduledExecutorService` task can't be exercised in a test without actually waiting out its delay. A sweep can: a test sets `expiresAt` to an already-past instant and calls the sweep method directly, no real waiting involved. This is also the first `@Scheduled` usage in the backend, `@EnableScheduling` is added on `BackendApplication` for it.
+
+---
+
+## 2026-09 | Story 39 ships group settings persistence without the real-time broadcast; voice and chat stay presence-only or entirely deferred
+
+Decision: story 39 builds `Group` and `Member` fully, including the admin-only settings update endpoint, but three pieces of its original task list don't ship complete, each already scoped to a story ROADMAP.md sequences right after this one.
+
+Settings changes (playlist(s), DJ mode, win-condition card count) persist correctly through `GroupService.updateGroupSettings`, a single method left clean for story 11 to call from its WebSocket handler or publish an event from. Nothing pushes the update to other members yet, since story 11 (real-time sync over WebSocket) doesn't exist in this codebase and is the very next batch after this one; ROADMAP.md's Phase 1 note already calls out building story 11 alongside stories 10 and 39 for exactly this reason.
+
+Voice gets a plain `isInVoice` presence flag on `Member` and join/leave-voice endpoints that flip it, nothing more. The actual WebRTC mesh and signaling belong to story 12, which is blocked on stories 11 and 39 both shipping and owns that mechanism on its own terms.
+
+Chat isn't built at all: no `ChatMessage` entity, no send/receive/persistence endpoint. Story 13 owns group-scoped text chat outright and is also blocked on stories 11 and 39. `Group` keeps a normal `Long` primary key, which is all story 13 needs to attach messages to it later.
+
+Why: building real-time broadcast, WebRTC signaling, or message persistence into story 39 would duplicate work story 11, 12, and 13 already own, ahead of the WebSocket layer all three actually depend on. Shipping the group/member model and its REST surface now, with clean extension points for the deferred pieces, unblocks those later stories without guessing at a transport layer that doesn't exist yet.
+
+---
+
 ## 2026-09 | Story 46 migration: owner selection for pre-existing playlists
 
 Decision: the story 46 migration assigns each pre-existing playlist's owner as the lowest user id among its `user_playlists` members, its earliest-created account. A playlist that held songs but never had a `user_playlists` row of its own falls back further: the contributor of its oldest song becomes both owner and sole member, since a song's `added_by` is always a real account and nothing else ties such a playlist to a user at all. A playlist matching neither case, no members and no songs, is dropped by the migration; the application never leaves a playlist in that state outside of migration, since the last member leaving already deletes it.

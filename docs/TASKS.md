@@ -128,32 +128,32 @@ Tests:
 
 Checked against real code: no group model exists, this is greenfield work. Based on `ARCHITECTURE.md`'s Group shape and lifecycle, and `GAME_DESIGN.md`'s Groups section.
 
-- [ ] Implement `Group` and `Member` as ephemeral Postgres rows; `Member` carries a per-group display name and avatar, separate from the user's account profile
-- [ ] `POST` endpoint to create a group; creator becomes admin
-- [ ] Enforce one active group membership per user
-- [ ] Generate a unique 4-letter join code alongside the existing invite link when a group is created
-- [ ] `POST` endpoint to join a group via invite link or join code, only while the group hasn't started a game session yet
-- [ ] On join, prompt for a per-group display name and avatar, defaulting to the user's account values but editable; other members only ever see this per-group identity, never the account profile
-- [ ] Settings (playlist(s), DJ mode, win-condition card count), editable by the admin only, broadcast to all members in real time
-- [ ] Chat available from group creation, stored for the life of the group
-- [ ] Voice joinable and leavable at any time (see story 12 for the WebRTC mechanics)
-- [ ] 30-minute timer from group creation to the admin starting a game session, delete the group if it fires
-- [ ] Admin action to start a game session (see story 10), locks the group to new members
-- [ ] 30-minute timer from a game session ending to the admin starting another, delete the group and remove every member if it fires
-- [ ] Explicit leave vs. disconnect: disconnect only flips `isConnected`, explicit leave removes membership
-- [ ] Admin explicitly leaves: promote the next-earliest-joined member to admin, or delete the group if none remain
-- [ ] Admin action to voluntarily promote another member to admin at any time, independent of leaving
-- [ ] On app load, check the logged-in user's active group membership and prompt to return or leave, no link-based reconnect
-- [ ] Frontend: visually mark the admin, a crown icon, distinct from regular members
+- [x] Implement `Group` and `Member` as ephemeral Postgres rows; `Member` carries a per-group display name and avatar, separate from the user's account profile
+- [x] `POST` endpoint to create a group; creator becomes admin
+- [x] Enforce one active group membership per user
+- [x] Generate a unique 4-letter join code alongside the existing invite link when a group is created
+- [x] `POST` endpoint to join a group via invite link or join code, only while the group hasn't started a game session yet
+- [x] On join, prompt for a per-group display name and avatar, defaulting to the user's account values but editable; other members only ever see this per-group identity, never the account profile
+- [ ] Settings (playlist(s), DJ mode, win-condition card count), editable by the admin only, broadcast to all members in real time. The data model and the admin-only update endpoint (`GroupService.updateGroupSettings`) are built and persist correctly; the real-time broadcast half is deferred to story 11 (no WebSocket layer exists yet), see `DECISIONS.md`. `updateGroupSettings` is the single method story 11 will call from its WebSocket handler or publish an event from.
+- [ ] Chat available from group creation, stored for the life of the group. Deferred entirely to story 13, which owns `ChatMessage` and actual send/receive/persistence; `Group` uses a plain `Long` primary key, no special preparation needed for story 13 to attach messages to it later. See `DECISIONS.md`.
+- [x] Voice joinable and leavable at any time (see story 12 for the WebRTC mechanics). Built as a plain `isInVoice` presence flag on `Member` plus join/leave-voice endpoints that flip it; the actual WebRTC mesh/signaling belongs to story 12, blocked on this story and story 11 both shipping. See `DECISIONS.md`.
+- [x] 30-minute timer from group creation to the admin starting a game session, delete the group if it fires
+- [x] Admin action to start a game session (see story 10), locks the group to new members. Only the group-side state transition (`GroupService.startGameSession`) exists; story 10's own session model doesn't, so nothing calls this yet outside tests.
+- [x] 30-minute timer from a game session ending to the admin starting another, delete the group and remove every member if it fires. Both timers share one `expiresAt` column swept by a scheduled job (`GroupExpirySweeper`); `GroupService.recordGameSessionEnded` is the extension point story 10 calls once a real session ends, restarting this timer. See `DECISIONS.md` for the sweep-versus-per-instance-timer design choice.
+- [x] Explicit leave vs. disconnect: disconnect only flips `isConnected`, explicit leave removes membership
+- [x] Admin explicitly leaves: promote the next-earliest-joined member to admin, or delete the group if none remain
+- [x] Admin action to voluntarily promote another member to admin at any time, independent of leaving
+- [x] On app load, check the logged-in user's active group membership and prompt to return or leave, no link-based reconnect
+- [ ] Frontend: visually mark the admin, a crown icon, distinct from regular members. Deferred: this batch is backend-only, the frontend gets a full redesign under story 28.
 
 Tests:
-- [ ] Unit tests for join-code generation: uniqueness, and the 4-letter format
-- [ ] Unit tests for the one-active-group-per-user constraint
-- [ ] Unit tests for per-group profile isolation: a member's account profile is never exposed through group-scoped endpoints, only their per-group identity
-- [ ] Unit tests for admin transfer: both the explicit-promote action and the auto-promote-on-leave path, including the no-members-remain deletion case
-- [ ] Integration test: full group lifecycle, create, join via both invite link and join code, settings broadcast live, admin starts a session, group locks to new members
-- [ ] Integration test: both 30-minute timers, pre-session and between-sessions, including that they don't fire early or fail to fire
-- [ ] Integration test: explicit leave removes membership while disconnect only flips the connection flag
+- [x] Unit tests for join-code generation: uniqueness, and the 4-letter format
+- [x] Unit tests for the one-active-group-per-user constraint
+- [x] Unit tests for per-group profile isolation: a member's account profile is never exposed through group-scoped endpoints, only their per-group identity
+- [x] Unit tests for admin transfer: both the explicit-promote action and the auto-promote-on-leave path, including the no-members-remain deletion case
+- [x] Integration test: full group lifecycle, create, join via both invite link and join code, admin-only settings update persists, admin starts a session, group locks to new members. The live-broadcast half of the settings update isn't tested, there's no WebSocket layer yet to broadcast over, see the settings task note above.
+- [x] Integration test: both 30-minute timers, pre-session and between-sessions, including that they don't fire early or fail to fire
+- [x] Integration test: explicit leave removes membership while disconnect only flips the connection flag
 
 ## Story 30: Difficulty-tuned game session generation
 
