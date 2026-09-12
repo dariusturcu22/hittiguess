@@ -10,6 +10,7 @@ def _base_metadata(**overrides):
             "description": "Released in 1999.",
         },
         "musicbrainz": [],
+        "discogs": [],
         "wikidata": [],
         "wikipedia": [],
     }
@@ -28,6 +29,7 @@ def test_build_includes_youtube_section():
 def test_build_shows_no_candidates_for_empty_structured_sources():
     text = prompt.build(_base_metadata())
     assert "=== MUSICBRAINZ DATABASE ===" in text
+    assert "=== DISCOGS ===" in text
     assert "=== WIKIDATA ===" in text
     assert "=== WIKIPEDIA ===" in text
     assert "(no candidates returned)" in text
@@ -47,6 +49,21 @@ def test_build_includes_musicbrainz_results_when_present():
     assert "Album query:" in text
     assert '"Test Song" by Test Artist - date: 1999-05-01 - type: Single - score: 95/100' in text
     assert '"Test Album" by Test Artist - date: 2001-01-01 - type: Album - score: 90/100' in text
+
+
+def test_build_includes_discogs_results_when_present():
+    text = prompt.build(
+        _base_metadata(
+            discogs=[
+                {"query": "track", "title": "Test Song", "year": 1999},
+                {"query": "album", "title": "Test Album", "year": 2001},
+            ]
+        )
+    )
+    assert "Track query:" in text
+    assert "Album query:" in text
+    assert '  - master "Test Song" - year: 1999' in text
+    assert '  - master "Test Album" - year: 2001' in text
 
 
 def test_build_includes_wikidata_results_when_present():

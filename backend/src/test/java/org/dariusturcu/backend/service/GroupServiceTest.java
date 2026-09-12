@@ -54,6 +54,8 @@ class GroupServiceTest {
     private MemberRepository memberRepository;
     @Mock
     private PlaylistRepository playlistRepository;
+    @Mock
+    private PlaylistAccessService playlistAccessService;
 
     private GroupMapper groupMapper;
 
@@ -76,8 +78,8 @@ class GroupServiceTest {
         otherUser.setImageUrl("other-avatar.png");
         otherUser.setRole(Role.USER);
 
-        groupMapper = new GroupMapper(new PlaylistMapper(null, null));
-        groupService = new GroupService(groupRepository, memberRepository, playlistRepository, groupMapper);
+        groupMapper = new GroupMapper(new PlaylistMapper(null));
+        groupService = new GroupService(groupRepository, memberRepository, playlistRepository, groupMapper, playlistAccessService);
 
         lenient().when(groupRepository.save(any(Group.class))).thenAnswer(invocation -> invocation.getArgument(0));
         lenient().when(memberRepository.save(any(Member.class))).thenAnswer(invocation -> invocation.getArgument(0));

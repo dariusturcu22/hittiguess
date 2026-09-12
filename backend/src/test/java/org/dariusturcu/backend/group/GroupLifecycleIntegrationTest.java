@@ -16,10 +16,12 @@ import org.dariusturcu.backend.model.user.Role;
 import org.dariusturcu.backend.model.user.User;
 import org.dariusturcu.backend.repository.GroupRepository;
 import org.dariusturcu.backend.repository.MemberRepository;
+import org.dariusturcu.backend.repository.PlaylistMembershipRepository;
 import org.dariusturcu.backend.repository.PlaylistRepository;
 import org.dariusturcu.backend.repository.UserRepository;
 import org.dariusturcu.backend.security.UserPrincipal;
 import org.dariusturcu.backend.service.GroupService;
+import org.dariusturcu.backend.service.PlaylistAccessService;
 import org.flywaydb.core.Flyway;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
@@ -77,14 +79,20 @@ class GroupLifecycleIntegrationTest {
         }
 
         @Bean
+        PlaylistAccessService playlistAccessService(PlaylistMembershipRepository playlistMembershipRepository) {
+            return new PlaylistAccessService(playlistMembershipRepository);
+        }
+
+        @Bean
         GroupService groupService(GroupRepository groupRepository, MemberRepository memberRepository,
-                                   PlaylistRepository playlistRepository, GroupMapper groupMapper) {
-            return new GroupService(groupRepository, memberRepository, playlistRepository, groupMapper);
+                                   PlaylistRepository playlistRepository, GroupMapper groupMapper,
+                                   PlaylistAccessService playlistAccessService) {
+            return new GroupService(groupRepository, memberRepository, playlistRepository, groupMapper, playlistAccessService);
         }
     }
 
     @Container
-    static final PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:18-alpine");
+    static final PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("pgvector/pgvector:pg18");
 
     // Flyway runs by hand before the Spring context exists, same reasoning as
     // SongApiCompatibilityAfterMigrationTest: the autoconfigured Flyway bean's timing
@@ -163,7 +171,7 @@ class GroupLifecycleIntegrationTest {
         playlist.setName("Lifecycle Playlist");
         playlist.setColor("112233");
         playlist.setInviteCode("lifecycle-playlist-invite");
-        playlist.addUser(admin);
+        playlist.setOwner(admin);
         Playlist savedPlaylist = playlistRepository.save(playlist);
 
         authenticateAs(admin);

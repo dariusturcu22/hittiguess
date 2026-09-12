@@ -45,7 +45,7 @@ class SongMultiplePlaylistsIntegrationTest {
     }
 
     @Container
-    static final PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:18-alpine");
+    static final PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("pgvector/pgvector:pg18");
 
     @DynamicPropertySource
     static void configureDataSource(DynamicPropertyRegistry registry) {
@@ -73,6 +73,7 @@ class SongMultiplePlaylistsIntegrationTest {
     private Playlist newPlaylist(String inviteCode) {
         Playlist playlist = new Playlist();
         playlist.setInviteCode(inviteCode);
+        playlist.setOwner(songOwner);
         return playlistRepository.save(playlist);
     }
 

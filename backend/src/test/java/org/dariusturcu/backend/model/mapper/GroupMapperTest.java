@@ -23,7 +23,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  */
 class GroupMapperTest {
 
-    private final GroupMapper groupMapper = new GroupMapper(new PlaylistMapper(null, null));
+    private final GroupMapper groupMapper = new GroupMapper(new PlaylistMapper(null));
 
     @Test
     void memberDtoCarriesThePerGroupIdentityInsteadOfTheAccountProfile() {
