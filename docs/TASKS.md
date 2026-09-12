@@ -524,19 +524,19 @@ Flutter is kept, not dropped, deprioritized behind the web app per the existing 
 
 ## Story 22: Test coverage
 
-Checked against real code: the backend has exactly one test file, an empty `contextLoads()` smoke test, zero controller/service/security coverage. The AI microservice has unit tests only for pure functions (`llm.synthesize`, `prompt.build`, `sources/util.py` helpers), nothing for `router.py`, `service.py`'s orchestration, or `auth.py`. The frontend has no test runner installed at all. `.github/workflows/pr-checks.yml` runs `mvnw compile` and `npm run lint && npm run build`, no test execution step for either service, and no job at all for the AI microservice, so even its existing pytest tests never run in CI today.
+Checked against real code at the start of this batch: stories since this list was first written had already added substantial backend and AI-microservice coverage (playlists, groups, game sessions, WebSocket, migrations). What was actually still missing: zero backend controller tests, zero `AuthService`/`SongMetadataService`/`ExportService` tests (`PlaylistService` and `UserService` already had thorough access-control coverage), no dedicated Spring Security test, no `router.py`/`auth.py` tests in the AI microservice (`service.py`'s orchestration already had thorough coverage), no frontend test runner at all, and `.github/workflows/pr-checks.yml` only compiling the backend and linting/building the frontend, no test execution anywhere and no AI microservice job.
 
-- [ ] Add a CI job for the AI microservice (none exists today) running its existing `pytest` suite
-- [ ] Add a `mvnw test` step to the backend CI job (currently compile-only)
-- [ ] Add JUnit/Mockito tests for every backend service (`PlaylistService`, `SongMetadataService`, `UserService`, `AuthService`, `ExportService`), covering the access-control checks in `PlaylistService`, the rate limiter in `SongMetadataService`, and the account-enumeration-avoidance logic in `AuthService`
-- [ ] Add `@WebMvcTest`/MockMvc tests for every controller
-- [ ] Add a Spring Security test covering JWT auth, refresh-token rotation, and CSRF
-- [ ] Add tests for `ai/app/metadata/router.py`, `service.py`'s orchestration, and `auth.py`'s internal-key check, using FastAPI's `TestClient`
-- [ ] Add a frontend unit test runner (Vitest or Jest, neither installed today) plus React Testing Library, and a `test` script in `package.json`
-- [ ] Add frontend unit tests for the song forms' hand-written validation (`AddSongForm.tsx`, `SongForm.tsx`) and the auth forms
-- [ ] Add Playwright for frontend integration/end-to-end tests, none exist today; separate from the unit test runner above, drives the real browser against the real backend rather than mocking it
-- [ ] Add Playwright coverage for the core flows that exist today: login/register, playlist CRUD, song add/edit, export
-- [ ] Add the new test steps to `.github/workflows/pr-checks.yml` for all three services
+- [x] Add a CI job for the AI microservice (none exists today) running its existing `pytest` suite
+- [x] Add a `mvnw test` step to the backend CI job (currently compile-only)
+- [x] Add JUnit/Mockito tests for every backend service (`PlaylistService`, `SongMetadataService`, `UserService`, `AuthService`, `ExportService`), covering the access-control checks in `PlaylistService`, the rate limiter in `SongMetadataService`, and the account-enumeration-avoidance logic in `AuthService` — `PlaylistServiceTest` and `UserServiceTest` already existed with this coverage; added `AuthServiceTest`, `SongMetadataServiceTest`, `ExportServiceTest`
+- [x] Add `@WebMvcTest`/MockMvc tests for every controller — used standalone `MockMvc` (`MockMvcBuilders.standaloneSetup`) instead of `@WebMvcTest`, since the real `@WebMvcTest` slice still builds the app's security auto-configuration, which pulls in `JwtAuthenticationFilter`'s OAuth2/HttpClient dependency chain this sandbox JDK can't construct (the same limitation `SongSearchIntegrationTest` documents); `GameActionController` (STOMP, not REST) got a plain Mockito unit test instead of MockMvc
+- [x] Add a Spring Security test covering JWT auth, refresh-token rotation, and CSRF — `JwtRefreshAndCsrfSecurityIntegrationTest`, a minimal real security filter chain (JWT filter, CSRF, `/auth/**` exemption) over Testcontainers Postgres, same pattern as `SongSearchIntegrationTest`
+- [x] Add tests for `ai/app/metadata/router.py`, `service.py`'s orchestration, and `auth.py`'s internal-key check, using FastAPI's `TestClient` — `service.py` already had thorough coverage in `test_service.py`; added `test_router.py` and `test_auth.py`
+- [x] Add a frontend unit test runner (Vitest or Jest, neither installed today) plus React Testing Library, and a `test` script in `package.json` — Vitest, per current official Next.js 16 guidance (`docs/01-app/02-guides/testing/vitest.mdx`); see `DECISIONS.md` for why, including the `--legacy-peer-deps` install workaround this pinned dependency set needed
+- [x] Add frontend unit tests for the song forms' hand-written validation (`AddSongForm.tsx`, `SongForm.tsx`) and the auth forms
+- [ ] Add Playwright for frontend integration/end-to-end tests, none exist today; separate from the unit test runner above, drives the real browser against the real backend rather than mocking it — not started this batch; needs the full stack (frontend, backend, AI microservice, its own Postgres instance) running simultaneously, and this batch's session shared a machine with a concurrent session's Postgres container, too much infrastructure risk to attempt safely alongside that. Follow-up work, see `DECISIONS.md`
+- [ ] Add Playwright coverage for the core flows that exist today: login/register, playlist CRUD, song add/edit, export — blocked on the task above
+- [x] Add the new test steps to `.github/workflows/pr-checks.yml` for all three services — the frontend step doesn't cover Playwright, since that suite doesn't exist yet
 
 ## Story 27: Rate limiting
 
