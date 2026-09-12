@@ -54,7 +54,8 @@ User
 
 Playlist
   ├── id, name, color, inviteCode (unique, immutable)
-  ├── songs: List<Song>  (@OneToMany, cascade ALL, orphanRemoval, story 15 replaces this with a join table)
+  ├── songs: List<Song>  (@ManyToMany, owning side, joins through song_playlists; removing a song here
+  │     only ever unlinks it, a Song is never deleted as a side effect of playlist membership)
   └── users: Set<User>   (@ManyToMany, mappedBy "playlists")
 
 Song
@@ -68,7 +69,9 @@ Song
   ├── verificationStatus (UNVERIFIED default, VERIFIED, NEEDS_REVIEW, MANUAL_ENTRY; see the state
   │     diagram below, story 18 still owns the actual lock-evaluation logic that moves it)
   ├── confidence, metadataRaw (populated once story 18's pipeline actually runs; both nullable today)
-  ├── playlist: Playlist  (@ManyToOne, story 15 replaces this with the join table above)
+  ├── playlists: Set<Playlist>  (@ManyToMany, mappedBy "songs"; a song can belong to more than one
+  │     playlist since story 15, and to zero, a song is a standalone catalog entity independent of
+  │     any playlist, see DECISIONS.md's 2026-09 "Song deletion reversed" entry)
   └── addedBy: User       (@ManyToOne, no inverse mapping, no cascade, the DELETE /me bug in TASKS.md's Bug fixes)
 
 SongArtist

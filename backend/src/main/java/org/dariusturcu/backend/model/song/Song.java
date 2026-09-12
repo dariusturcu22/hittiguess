@@ -8,7 +8,9 @@ import lombok.Setter;
 import org.dariusturcu.backend.model.user.User;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 @Entity
 @Getter
@@ -55,9 +57,8 @@ public class Song {
     @Column(columnDefinition = "TEXT")
     private String metadataRaw;
 
-    @ManyToOne
-    @JoinColumn(name = "playlist_id", nullable = false)
-    private Playlist playlist;
+    @ManyToMany(mappedBy = "songs")
+    private Set<Playlist> playlists = new HashSet<>();
 
     @ManyToOne
     @JoinColumn(name = "added_by", nullable = false)
