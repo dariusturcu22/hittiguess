@@ -254,53 +254,44 @@ Tests:
 
 Surfaced during story 28's design pass on the Edit playlist and Join by invite screens, not part of the original backlog mapping. Checked against real code: `Playlist.users` is a plain `@ManyToMany` with no per-member attributes and no owner/admin field anywhere on `Playlist`; joining today (`UserController`'s playlist-join endpoint) just adds the row, no per-playlist identity is captured. See `DECISIONS.md`'s 2026-09 "Playlist membership" entry for the decided shape. Not blocked, only coordinating with story 15 on `Playlist`'s relations. Marked Ready in `PROJECT_STATE.md`.
 
-- [ ] Add an owner/admin concept to `Playlist`: an `ownerId` (or equivalent), set to the creator on creation; only the owner can rename, change cover/color/description, toggle `isPublic` (story 30), delete the playlist, or manage other members
-- [ ] Replace the plain `Playlist.users` many-to-many with a `PlaylistMembership` entity (playlist, user, `canRead`/`canWrite`/`canDelete` booleans, joined-at, per-playlist display name and avatar), coordinate with story 15 since both touch `Playlist`'s relations
-- [ ] Data migration for existing memberships: default all three grants to true, owner determined by whichever user the migration treats as creator (decide the exact rule against real data, today's schema has no creator field to read from)
-- [ ] Gate `PlaylistService`'s existing access checks by the new grants: reading requires `canRead`, adding a song requires `canWrite`, removing a song requires `canDelete`; an owner always has all three implicitly
-- [ ] Add owner-only endpoints to update a member's `canRead`/`canWrite`/`canDelete` grants independently, each revocable without affecting the others
-- [ ] Add a kick endpoint (owner only): ends the membership, the existing invite link or code still lets the kicked user rejoin
-- [ ] Add a `PlaylistBan` entity (playlist, user, banned-at) and a ban endpoint (owner only): ends the membership and blocks that user's future join attempts against this playlist
-- [ ] Update the join-by-invite endpoint to reject a banned user's join attempt, and to accept the per-playlist display name/avatar submitted with the join request, defaulting to the account's own when not overridden
+- [x] Add an owner/admin concept to `Playlist`: an `ownerId` (or equivalent), set to the creator on creation; only the owner can rename, change cover/color/description, toggle `isPublic` (story 30), delete the playlist, or manage other members
+- [x] Replace the plain `Playlist.users` many-to-many with a `PlaylistMembership` entity (playlist, user, `canRead`/`canWrite`/`canDelete` booleans, joined-at, per-playlist display name and avatar), coordinate with story 15 since both touch `Playlist`'s relations
+- [x] Migration for existing data: no pre-story-46 playlist or song has a real owner to assign, so the migration clears every existing playlist and song rather than backfilling a guessed one; users are untouched
+- [x] The owner can leave a playlist at any time; if other members remain, leadership passes automatically to whichever member joined earliest, a playlist with other members left is never without an owner
+- [x] Add an owner-only endpoint to transfer ownership to any current member at any time; the previous owner stays on as a regular member with their existing grants
+- [x] Gate `PlaylistService`'s existing access checks by the new grants: reading requires `canRead`, adding a song requires `canWrite`, removing a song requires `canDelete`; an owner always has all three implicitly
+- [x] Add owner-only endpoints to update a member's `canRead`/`canWrite`/`canDelete` grants independently, each revocable without affecting the others
+- [x] Add a kick endpoint (owner only): ends the membership, the existing invite link or code still lets the kicked user rejoin
+- [x] Add a `PlaylistBan` entity (playlist, user, banned-at) and a ban endpoint (owner only): ends the membership and blocks that user's future join attempts against this playlist
+- [x] Update the join-by-invite endpoint to reject a banned user's join attempt, and to accept the per-playlist display name/avatar submitted with the join request, defaulting to the account's own when not overridden
 - [ ] Frontend: Edit playlist's member list (per-member read/write/delete toggles, kick and ban actions), owner-only, already designed
 - [ ] Frontend: Join by invite's identity step (avatar and display name, pre-filled from the account, editable before joining), already designed
 
 Tests:
-- [ ] Unit tests for the owner-only gate: every owner-only action (rename, cover/color/description, public toggle, delete, kick, ban, grant changes) rejects a non-owner member
-- [ ] Unit tests for each of the three grants enforced independently: a member with `canRead` false can't view, `canWrite` false can't add a song, `canDelete` false can't remove one, and combinations of the three don't interfere with each other
-- [ ] Unit tests for kick versus ban: a kicked user's subsequent join-by-invite succeeds, a banned user's is rejected
-- [ ] Integration test: full lifecycle, join with a custom per-playlist identity, owner revokes a grant, the affected action is blocked, owner kicks the member, the member rejoins successfully, owner bans a different member, that member's rejoin attempt is rejected
-- [ ] Integration test: the data migration assigns every existing membership full grants and a determinable owner, with no playlist left without one
+- [x] Unit tests for the owner-only gate: every owner-only action (rename, cover/color/description, public toggle, delete, kick, ban, grant changes) rejects a non-owner member
+- [x] Unit tests for each of the three grants enforced independently: a member with `canRead` false can't view, `canWrite` false can't add a song, `canDelete` false can't remove one, and combinations of the three don't interfere with each other
+- [x] Unit tests for kick versus ban: a kicked user's subsequent join-by-invite succeeds, a banned user's is rejected
+- [x] Integration test: full lifecycle, join with a custom per-playlist identity, owner revokes a grant, the affected action is blocked, owner kicks the member, the member rejoins successfully, owner bans a different member, that member's rejoin attempt is rejected
+- [x] Integration test: the migration clears every pre-existing playlist and song and leaves users untouched
+- [x] Unit tests: the owner leaving a playlist with other members promotes the earliest-joined remaining member; the owner leaving alone deletes the playlist; a non-owner leaving never changes ownership
+- [x] Unit tests: ownership transfer moves the owner to the chosen member and the previous owner stays a member; a non-owner can't transfer ownership; transferring to a non-member is rejected
 
 ## Story 14: Song search by link or keyword before submission
 
 Checked against real code: `SongRepository` has zero custom query methods, no backend search capability exists. The only "search" today is `DataTable`'s client-side substring filter over an already-loaded playlist's songs, not a real query.
 
-- [ ] Add a backend search endpoint, `SongRepository` has no query methods to build on today
-- [ ] Support search by artist/title keyword and by YouTube link/ID (the link-parsing logic already exists client-side as `extractYoutubeId` in `AddSongForm.tsx`, currently not shared with the backend)
-- [ ] Decide search scope: within one playlist, across the user's playlists, or catalog-wide, affects both the query and which of `PlaylistService`'s access checks apply (catalog-wide search would need one, since it isn't a per-playlist access check)
-- [ ] Wire `AddSongForm.tsx`'s submission flow to check search results first, so a song already in the catalog isn't resubmitted as a near-duplicate (distinct from story 16's pgvector-based similarity check; this is a plain keyword/link pre-check)
-- [ ] Add the frontend search UI, replacing or extending the current client-side-only title filter in `DataTable`
+Backend-only for this batch, matching how the song-genre-and-print-redesign batch split its own backend/frontend work: the frontend is getting a full visual redesign under story 28 (mockups exist under `docs/design/source/` but aren't implemented yet), so building UI against the current, soon-to-be-replaced design would be redone almost immediately. The three frontend-facing items below are deferred to story 28's implementation phase, not dropped. See DECISIONS.md for the search-scope decision.
+
+- [x] Add a backend search endpoint, `SongRepository` has no query methods to build on today (`GET /api/songs/search`, the first top-level `/api/songs/...` route)
+- [x] Support search by artist/title keyword and by YouTube link/ID (the link-parsing logic already exists client-side as `extractYoutubeId` in `AddSongForm.tsx`; replicated server-side as `YoutubeLinkParser`)
+- [x] Decide search scope: within one playlist, across the user's playlists, or catalog-wide, affects both the query and which of `PlaylistService`'s access checks apply (catalog-wide search would need one, since it isn't a per-playlist access check). Decided catalog-wide, see DECISIONS.md
+- [ ] Deferred to story 28: Wire `AddSongForm.tsx`'s submission flow to check search results first, so a song already in the catalog isn't resubmitted as a near-duplicate (distinct from story 16's pgvector-based similarity check; this is a plain keyword/link pre-check)
+- [ ] Deferred to story 28: Add the frontend search UI, replacing or extending the current client-side-only title filter in `DataTable`
 
 Tests:
-- [ ] Unit tests for the search query: keyword matching and YouTube link/ID matching
-- [ ] Integration test: search results respect the chosen scope's access checks
-- [ ] Frontend test: the search UI returns and displays results correctly
-
-## Story 16: pgvector-based duplicate detection
-
-Checked against real code: no pgvector dependency in `pom.xml`, no vector-DB client or embedding code anywhere in `ai/app`, this is greenfield on both services. Based on `ARCHITECTURE.md`'s RAG/dedup section (line 127-129): normalize `artist + title`, embed, check similarity before running the full pipeline, reuse existing data on a high-confidence match.
-
-- [ ] Enable the pgvector Postgres extension (coordinate with story 8/23 if a migration tool lands around the same time)
-- [ ] Add an embedding step to the AI microservice: normalize `artist + title`, generate an embedding via OpenAI's embeddings API, no embedding client exists in `ai/app` today
-- [ ] Store embeddings for verified songs
-- [ ] Add a similarity-check step before the source fetch/LLM synthesis in `metadata/service.py`'s `resolve_metadata`, reuse existing data on a high-confidence match instead of re-running the pipeline
-- [ ] Decide and document the similarity threshold for "high-confidence match", flagged as still unresolved in `ARCHITECTURE.md`
-- [ ] Coordinate with story 15 if dedup needs to consider a song already existing under a different playlist relationship
-
-Tests:
-- [ ] Unit tests for the similarity-check step (mocked embedding client): a high-confidence match reuses existing data, a low-confidence match proceeds to the full pipeline
-- [ ] Integration test: submitting a near-duplicate song reuses existing verified data instead of re-running the LLM
+- [x] Unit tests for the search query: keyword matching and YouTube link/ID matching
+- [x] Integration test: search results respect the chosen scope's access checks (catalog-wide plus plain authentication: any authenticated user can search the whole catalog, an unauthenticated request is rejected)
+- [ ] Deferred to story 28: Frontend test: the search UI returns and displays results correctly
 
 ## Story 40: Catalog seeding queue and user-facing bulk import
 
@@ -435,25 +426,6 @@ Tests:
 - [ ] Unit test confirming the three sources are fetched concurrently, not sequentially (mock call-order/timing assertion)
 - [ ] Unit test for the per-source timeout: a slow source doesn't block the others
 - [ ] Unit test confirming each source's own rate limiter still throttles correctly when called concurrently with the other two, not just when called alone
-
-## Story 25: Add Discogs as a metadata source
-
-Rechecked against current code: `ai/app/metadata/sources/musicbrainz.py`, `wikipedia.py`, and `genius.py` are stubs returning empty results, each commented with a reference to the 2026-08 pause decision (`DECISIONS.md`). No `discogs.py` or `wikidata.py` file exists yet. The resolved source set stays MusicBrainz, Discogs, and Wikidata (`PROJECT_STATE.md`), settled through the sourcing spike, not open for reconsideration. This story covers Discogs only; un-stubbing MusicBrainz and building Wikidata are tracked separately under "Spike: MusicBrainz and Wikidata sourcing," now handoff tasks off that spike rather than an open design question.
-
-- [ ] Add `ai/app/metadata/sources/discogs.py`, copy and adapt `ai/spikes/discogs_spike.py`'s validated implementation: the search-and-select logic, and the `masterless_release_years` fallback (a release with no linked master still often carries its own correct `year` field directly in the search result, silently discarded without this, a real bug the spike caught live)
-- [ ] Apply the "check every candidate, take the earliest" rule already used for MusicBrainz: a track can belong to more than one Discogs master (its own standalone-single release and an album it also appears on), each with its own year, trusting whichever master a search result lists first picked a wrong year for a real playlist song during the spike
-- [ ] Treat Discogs' `year: 0` on its master resource as unknown, not a literal date, a live-confirmed bug the spike caught on a real release ("Titanium")
-- [ ] Carry over `DiscogsRateLimiter` from the same spike file, live-tracking Discogs' own `X-Discogs-Ratelimit`/`X-Discogs-Ratelimit-Remaining` response headers rather than a fixed guessed rate, matching the adaptive-limiter treatment MusicBrainz's own un-stub task already calls for
-- [ ] Follow `sources/youtube.py`'s existing pattern (the only currently-live production source) for HTTP client usage, timeout, and broad-exception-to-`UNKNOWN_DEFAULTS` fallback
-- [ ] Add the Discogs API token to AI service config (`config.py`), following the existing `youtube_api_key`/`openai_api_key` pattern
-- [ ] Wire Discogs into `_gather_all_metadata` and add a `_append_discogs_data` function in `prompt.py`, matching the existing per-source prompt-section pattern; Discogs only feeds the lock-evaluation and reconciliation steps (story 18), it makes no LLM call of its own
-- [ ] Confirm Discogs' API terms of use permit this usage, matching the review MusicBrainz and Wikidata already got (`PROJECT_STATE.md`)
-
-Tests:
-- [ ] Unit tests for `discogs.py`'s request building and response parsing, mirroring `youtube.py`'s existing test pattern
-- [ ] Unit test for the `masterless_release_years` fallback and the `year: 0`-as-unknown handling, both real bugs the spike found
-- [ ] Unit test for the fallback behavior on a failed Discogs call
-- [ ] Unit test for `DiscogsRateLimiter` pacing correctly off live response headers, not a fixed guessed interval
 
 ## Spike: MusicBrainz and Wikidata sourcing
 

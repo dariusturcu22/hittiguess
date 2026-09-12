@@ -30,6 +30,7 @@ import org.dariusturcu.backend.repository.GroupRepository;
 import org.dariusturcu.backend.repository.GuessRepository;
 import org.dariusturcu.backend.repository.MemberRepository;
 import org.dariusturcu.backend.repository.PlayerRepository;
+import org.dariusturcu.backend.repository.PlaylistMembershipRepository;
 import org.dariusturcu.backend.repository.PlaylistRepository;
 import org.dariusturcu.backend.repository.RoundRepository;
 import org.dariusturcu.backend.repository.SongRepository;
@@ -39,6 +40,7 @@ import org.dariusturcu.backend.security.UserPrincipal;
 import org.dariusturcu.backend.service.GameSessionService;
 import org.dariusturcu.backend.service.GameSessionStartListener;
 import org.dariusturcu.backend.service.GroupService;
+import org.dariusturcu.backend.service.PlaylistAccessService;
 import org.dariusturcu.backend.service.SessionResultsStore;
 
 import org.flywaydb.core.Flyway;
@@ -144,12 +146,17 @@ class GameSessionLifecycleIntegrationTest {
 
         @Bean
         PlaylistMapper playlistMapper() {
-            return new PlaylistMapper(null, null);
+            return new PlaylistMapper(null);
         }
 
         @Bean
         GroupMapper groupMapper(PlaylistMapper playlistMapper) {
             return new GroupMapper(playlistMapper);
+        }
+
+        @Bean
+        PlaylistAccessService playlistAccessService(PlaylistMembershipRepository playlistMembershipRepository) {
+            return new PlaylistAccessService(playlistMembershipRepository);
         }
 
         @Bean
@@ -175,8 +182,8 @@ class GameSessionLifecycleIntegrationTest {
         @Bean
         GroupService groupService(GroupRepository groupRepository, MemberRepository memberRepository,
                                    PlaylistRepository playlistRepository, GroupMapper groupMapper,
-                                   ApplicationEventPublisher eventPublisher) {
-            return new GroupService(groupRepository, memberRepository, playlistRepository, groupMapper, eventPublisher);
+                                   ApplicationEventPublisher eventPublisher, PlaylistAccessService playlistAccessService) {
+            return new GroupService(groupRepository, memberRepository, playlistRepository, groupMapper, eventPublisher, playlistAccessService);
         }
 
         @Bean
@@ -198,7 +205,7 @@ class GameSessionLifecycleIntegrationTest {
     }
 
     @Container
-    static final PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:18-alpine");
+    static final PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("pgvector/pgvector:pg18");
 
     @DynamicPropertySource
     static void configureDataSource(DynamicPropertyRegistry registry) {
@@ -292,7 +299,7 @@ class GameSessionLifecycleIntegrationTest {
         playlist.setName("Lifecycle Playlist");
         playlist.setColor("112233");
         playlist.setInviteCode("lifecycle-playlist-" + System.nanoTime());
-        playlist.addUser(admin);
+        playlist.setOwner(admin);
         Playlist savedPlaylist = playlistRepository.save(playlist);
         for (int songIndex = 0; songIndex < 15; songIndex++) {
             persistSong(savedPlaylist, admin, 1950 + songIndex, "Song " + songIndex);
@@ -426,7 +433,7 @@ class GameSessionLifecycleIntegrationTest {
         playlist.setName(label + " Playlist");
         playlist.setColor("445566");
         playlist.setInviteCode(label + "-playlist-" + System.nanoTime());
-        playlist.addUser(admin);
+        playlist.setOwner(admin);
         Playlist savedPlaylist = playlistRepository.save(playlist);
         for (int songIndex = 0; songIndex < 10; songIndex++) {
             persistSong(savedPlaylist, admin, 1960 + songIndex, label + " Song " + songIndex);

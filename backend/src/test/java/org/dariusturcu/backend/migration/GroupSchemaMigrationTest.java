@@ -16,14 +16,14 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
- * Verifies V5's groups/members/group_playlists tables carry the constraints
+ * Verifies V9's groups/members/group_playlists tables carry the constraints
  * story 39's one-active-group-per-user rule and join-code uniqueness depend on.
  */
 @Testcontainers
 class GroupSchemaMigrationTest {
 
     @Container
-    static final PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:18-alpine");
+    static final PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("pgvector/pgvector:pg18");
 
     private static Connection connection;
     private static long firstUserId;

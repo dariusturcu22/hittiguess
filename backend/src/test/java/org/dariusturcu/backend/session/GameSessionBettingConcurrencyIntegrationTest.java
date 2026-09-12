@@ -25,6 +25,7 @@ import org.dariusturcu.backend.repository.GroupRepository;
 import org.dariusturcu.backend.repository.GuessRepository;
 import org.dariusturcu.backend.repository.MemberRepository;
 import org.dariusturcu.backend.repository.PlayerRepository;
+import org.dariusturcu.backend.repository.PlaylistMembershipRepository;
 import org.dariusturcu.backend.repository.PlaylistRepository;
 import org.dariusturcu.backend.repository.RoundRepository;
 import org.dariusturcu.backend.repository.SongRepository;
@@ -34,6 +35,7 @@ import org.dariusturcu.backend.security.UserPrincipal;
 import org.dariusturcu.backend.service.GameSessionService;
 import org.dariusturcu.backend.service.GameSessionStartListener;
 import org.dariusturcu.backend.service.GroupService;
+import org.dariusturcu.backend.service.PlaylistAccessService;
 import org.dariusturcu.backend.service.SessionResultsStore;
 
 import org.flywaydb.core.Flyway;
@@ -102,12 +104,17 @@ class GameSessionBettingConcurrencyIntegrationTest {
 
         @Bean
         PlaylistMapper playlistMapper() {
-            return new PlaylistMapper(null, null);
+            return new PlaylistMapper(null);
         }
 
         @Bean
         GroupMapper groupMapper(PlaylistMapper playlistMapper) {
             return new GroupMapper(playlistMapper);
+        }
+
+        @Bean
+        PlaylistAccessService playlistAccessService(PlaylistMembershipRepository playlistMembershipRepository) {
+            return new PlaylistAccessService(playlistMembershipRepository);
         }
 
         @Bean
@@ -136,8 +143,8 @@ class GameSessionBettingConcurrencyIntegrationTest {
         @Bean
         GroupService groupService(GroupRepository groupRepository, MemberRepository memberRepository,
                                    PlaylistRepository playlistRepository, GroupMapper groupMapper,
-                                   ApplicationEventPublisher eventPublisher) {
-            return new GroupService(groupRepository, memberRepository, playlistRepository, groupMapper, eventPublisher);
+                                   ApplicationEventPublisher eventPublisher, PlaylistAccessService playlistAccessService) {
+            return new GroupService(groupRepository, memberRepository, playlistRepository, groupMapper, eventPublisher, playlistAccessService);
         }
 
         @Bean
@@ -159,7 +166,7 @@ class GameSessionBettingConcurrencyIntegrationTest {
     }
 
     @Container
-    static final PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:18-alpine");
+    static final PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("pgvector/pgvector:pg18");
 
     @DynamicPropertySource
     static void configureDataSource(DynamicPropertyRegistry registry) {
@@ -230,13 +237,8 @@ class GameSessionBettingConcurrencyIntegrationTest {
         playlist.setName("Betting Race Playlist");
         playlist.setColor("889900");
         playlist.setInviteCode("betting-race-playlist-" + System.nanoTime());
+        playlist.setOwner(admin);
         Playlist savedPlaylist = playlistRepository.save(playlist);
-        // Playlist.users is the mappedBy (inverse) side of this many-to-many; only
-        // updating User.playlists, the owning side, actually writes the join table row.
-        // Each service call in this non-transactional test opens its own persistence
-        // context, so an inverse-side-only update here would never reach the database.
-        admin.getPlaylists().add(savedPlaylist);
-        userRepository.save(admin);
         for (int songIndex = 0; songIndex < 10; songIndex++) {
             Song song = new Song();
             song.setTitle("Betting Race Song " + songIndex);
