@@ -65,10 +65,7 @@ public class PlaylistService {
     }
 
     private void checkSongBelongsToPlaylist(Song song, Long playlistId) {
-        boolean belongsToPlaylist = song.getPlaylists().stream()
-                .anyMatch(songPlaylist -> songPlaylist.getId().equals(playlistId));
-
-        if (!belongsToPlaylist) {
+        if (!songRepository.existsByIdAndPlaylistsId(song.getId(), playlistId)) {
             throw new ResourceNotFoundException(ResourceType.SONG_NOT_IN_PLAYLIST, song.getId(), playlistId);
         }
     }
@@ -164,15 +161,10 @@ public class PlaylistService {
 
         checkSongBelongsToPlaylist(song, playlistId);
 
+        // Unlinking only, never a real delete: a song is independent of any playlist it happens
+        // to belong to, a song with zero playlists is a valid, permanent state, not a signal to
+        // remove the row (see DECISIONS.md's 2026-09 "Song deletion" entries).
         playlist.removeSong(song);
         playlistRepository.save(playlist);
-
-        // A song only exists to belong to a playlist, there's no catalog view that can reach one
-        // with zero playlists left. Unlinking the last playlist is a real delete, not just this
-        // playlist's link, to avoid leaving unreachable rows behind (see DECISIONS.md's 2026-09
-        // "Song deletion" entry).
-        if (song.getPlaylists().isEmpty()) {
-            songRepository.delete(song);
-        }
     }
 }

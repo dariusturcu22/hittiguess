@@ -36,7 +36,7 @@ public class ExportService {
 
     private final PlaylistRepository playlistRepository;
 
-    private byte[] buildPdf(List<Song> songs, String playlistColor, boolean isQr) throws IOException {
+    private byte[] buildPdf(List<Song> songs, boolean isQr) throws IOException {
         PDDocument document = new PDDocument();
 
         List<List<Song>> chunks = new ArrayList<>();
@@ -50,7 +50,7 @@ public class ExportService {
         for (List<Song> chunk : chunks) {
             BufferedImage image = isQr
                     ? QRGenerator.generateQRPage(chunk)
-                    : CardGenerator.generateInfoPage(chunk, playlistColor);
+                    : CardGenerator.generateInfoPage(chunk);
             addImagePage(document, image);
         }
 
@@ -76,24 +76,24 @@ public class ExportService {
     }
 
     public byte[] generateInfoPdf(Long playlistId) {
-        Playlist playlist = getValidatedPlaylist(playlistId);
+        List<Song> songs = getValidatedSongs(playlistId);
         try {
-            return buildPdf(playlist.getSongs(), playlist.getColor(), false);
+            return buildPdf(songs, false);
         } catch (Exception e) {
             throw new RuntimeException("Failed to generate PDF: " + e.getMessage());
         }
     }
 
     public byte[] generateQrPdf(Long playlistId) {
-        Playlist playlist = getValidatedPlaylist(playlistId);
+        List<Song> songs = getValidatedSongs(playlistId);
         try {
-            return buildPdf(playlist.getSongs(), playlist.getColor(), true);
+            return buildPdf(songs, true);
         } catch (Exception e) {
             throw new RuntimeException("Failed to generate PDF: " + e.getMessage());
         }
     }
 
-    private Playlist getValidatedPlaylist(Long playlistId) {
+    private List<Song> getValidatedSongs(Long playlistId) {
         Playlist playlist = playlistRepository.findById(playlistId)
                 .orElseThrow(() -> new ResourceNotFoundException(ResourceType.PLAYLIST, playlistId));
 
@@ -113,6 +113,6 @@ public class ExportService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
                     "Playlist has more than " + MAX_SONGS_PER_EXPORT + " songs, too many to export at once");
         }
-        return playlist;
+        return songs;
     }
 }

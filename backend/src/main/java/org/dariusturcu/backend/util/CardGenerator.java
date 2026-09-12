@@ -24,7 +24,7 @@ public class CardGenerator {
     private static final int MARGIN_Y = (PAGE_HEIGHT - CARD_SIZE * ROWS_PER_PAGE) / 2;
 
 
-    public static BufferedImage generateInfoPage(List<Song> songs, String playlistColor) {
+    public static BufferedImage generateInfoPage(List<Song> songs) {
         BufferedImage page = new BufferedImage(PAGE_WIDTH, PAGE_HEIGHT, BufferedImage.TYPE_INT_RGB);
         Graphics2D graphics2D = page.createGraphics();
 
@@ -37,14 +37,14 @@ public class CardGenerator {
         for (int i = 0; i < songs.size(); i++) {
             int x = MARGIN_X + (i % CARDS_PER_ROW) * CARD_SIZE;
             int y = MARGIN_Y + (i / CARDS_PER_ROW) * CARD_SIZE;
-            drawFrontCard(graphics2D, x, y, CARD_SIZE, songs.get(i), playlistColor);
+            drawFrontCard(graphics2D, x, y, CARD_SIZE, songs.get(i));
         }
 
         graphics2D.dispose();
         return page;
     }
 
-    private static void drawFrontCard(Graphics2D graphics2D, int x, int y, int size, Song song, String playlistColor) {
+    private static void drawFrontCard(Graphics2D graphics2D, int x, int y, int size, Song song) {
         Color color1 = decodeColorSafe(song.getGradientColor1());
         Color color2 = decodeColorSafe(song.getGradientColor2());
 
@@ -72,7 +72,7 @@ public class CardGenerator {
         graphics2D.setFont(titleFont);
         drawCentered(graphics2D, song.getTitle(), x + padding, y + (int) (size * 0.88), size - padding * 2, 65);
 
-        drawTagTriangle(graphics2D, x, y, size, song, playlistColor);
+        drawTagTriangle(graphics2D, x, y, size, song);
         drawCountryFlag(graphics2D, x, y, size, song);
 
         graphics2D.setColor(new Color(0, 0, 0, 40));
@@ -136,7 +136,11 @@ public class CardGenerator {
     // than stacking one triangle per tag.
     private static final List<SongTag> TAG_TRIANGLE_PRIORITY = List.of(SongTag.SPECIAL, SongTag.ANIME, SongTag.PLAYLIST);
 
-    private static void drawTagTriangle(Graphics2D graphics2D, int x, int y, int size, Song song, String playlistColor) {
+    // No longer derived from a specific playlist's color: a song can belong to more than one
+    // playlist now, so there's no single playlist color left to draw this tag with.
+    private static final Color PLAYLIST_TAG_COLOR = new Color(138, 43, 226);
+
+    private static void drawTagTriangle(Graphics2D graphics2D, int x, int y, int size, Song song) {
         SongTag tagToDraw = TAG_TRIANGLE_PRIORITY.stream()
                 .filter(song.getTags()::contains)
                 .findFirst()
@@ -146,7 +150,7 @@ public class CardGenerator {
         Color tagColor = switch (tagToDraw) {
             case SPECIAL -> new Color(0, 255, 0);
             case ANIME -> new Color(255, 105, 180);
-            case PLAYLIST -> decodeColorSafe(playlistColor);
+            case PLAYLIST -> PLAYLIST_TAG_COLOR;
         };
 
         int triangleSize = (int) (size * 0.10);

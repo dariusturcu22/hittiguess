@@ -26,9 +26,11 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * Confirms the song_playlists join table actually supports a song belonging
- * to more than one playlist at once, and that unlinking it from one playlist
- * leaves it intact in the other, exercised against a real Postgres database
- * through the full migration chain rather than mocks.
+ * to more than one playlist at once, that unlinking it from one playlist
+ * leaves it intact in the other, and that a song is independent of any
+ * playlist: unlinking its last one leaves the row itself untouched, exercised
+ * against a real Postgres database through the full migration chain rather
+ * than mocks.
  */
 @Testcontainers
 @SpringBootTest(classes = SongMultiplePlaylistsIntegrationTest.JpaTestConfig.class)
@@ -114,5 +116,20 @@ class SongMultiplePlaylistsIntegrationTest {
 
         Song reloadedSong = songRepository.findById(song.getId()).orElseThrow();
         assertThat(reloadedSong.getPlaylists()).containsExactly(secondPlaylist);
+    }
+
+    @Test
+    void unlinkingASongsOnlyPlaylistLeavesTheSongRowIntact() {
+        Playlist onlyPlaylist = newPlaylist("ONLY0001");
+        Song song = newSong();
+
+        onlyPlaylist.addSong(song);
+        playlistRepository.save(onlyPlaylist);
+
+        onlyPlaylist.removeSong(song);
+        playlistRepository.save(onlyPlaylist);
+
+        Song reloadedSong = songRepository.findById(song.getId()).orElseThrow();
+        assertThat(reloadedSong.getPlaylists()).isEmpty();
     }
 }
