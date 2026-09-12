@@ -136,6 +136,10 @@ public class CardGenerator {
     // than stacking one triangle per tag.
     private static final List<SongTag> TAG_TRIANGLE_PRIORITY = List.of(SongTag.SPECIAL, SongTag.ANIME, SongTag.PLAYLIST);
 
+    // No longer derived from a specific playlist's color: a song can belong to more than one
+    // playlist now, so there's no single playlist color left to draw this tag with.
+    private static final Color PLAYLIST_TAG_COLOR = new Color(138, 43, 226);
+
     private static void drawTagTriangle(Graphics2D graphics2D, int x, int y, int size, Song song) {
         SongTag tagToDraw = TAG_TRIANGLE_PRIORITY.stream()
                 .filter(song.getTags()::contains)
@@ -146,7 +150,7 @@ public class CardGenerator {
         Color tagColor = switch (tagToDraw) {
             case SPECIAL -> new Color(0, 255, 0);
             case ANIME -> new Color(255, 105, 180);
-            case PLAYLIST -> decodeColorSafe(song.getPlaylist().getColor());
+            case PLAYLIST -> PLAYLIST_TAG_COLOR;
         };
 
         int triangleSize = (int) (size * 0.10);
