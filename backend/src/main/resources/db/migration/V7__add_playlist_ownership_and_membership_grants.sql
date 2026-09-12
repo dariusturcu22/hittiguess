@@ -2,7 +2,17 @@
 -- replacing the plain user_playlists many-to-many with playlist_memberships,
 -- plus a durable ban record independent of membership.
 
-ALTER TABLE playlists ADD COLUMN owner_id BIGINT REFERENCES users (id);
+-- Every playlist and song predating this migration was created before
+-- ownership existed as a concept, so there is no real owner to assign one
+-- retroactively. They are cleared rather than backfilled with a guessed
+-- owner; users are untouched.
+DELETE FROM song_artists;
+DELETE FROM song_playlists;
+DELETE FROM user_playlists;
+DELETE FROM songs;
+DELETE FROM playlists;
+
+ALTER TABLE playlists ADD COLUMN owner_id BIGINT NOT NULL REFERENCES users (id);
 
 CREATE TABLE playlist_memberships (
     id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
@@ -24,50 +34,5 @@ CREATE TABLE playlist_bans (
     banned_at TIMESTAMP NOT NULL DEFAULT now(),
     UNIQUE (playlist_id, user_id)
 );
-
--- Every existing membership carries full grants forward: nothing before this
--- migration distinguished read, write, and delete, so a member who could
--- already view and edit a playlist keeps doing exactly that. The per-playlist
--- display name and avatar default to the account's own, the same default the
--- join flow now applies going forward.
-INSERT INTO playlist_memberships (playlist_id, user_id, can_read, can_write, can_delete, display_name, avatar_url, joined_at)
-SELECT user_playlists.playlist_id, user_playlists.user_id, TRUE, TRUE, TRUE, users.username, users.image_url, now()
-FROM user_playlists
-JOIN users ON users.id = user_playlists.user_id;
-
--- A playlist can hold songs without ever having had a user_playlists row of
--- its own; a song's contributor is a real user, so that contributor becomes
--- the fallback owner and sole member for a playlist the join table never
--- covered, one membership per playlist from whichever of its songs is oldest.
--- Reads through song_playlists (story 15's join table), not a direct
--- songs.playlist_id column, which no longer exists by the time this runs.
-INSERT INTO playlist_memberships (playlist_id, user_id, can_read, can_write, can_delete, display_name, avatar_url, joined_at)
-SELECT DISTINCT ON (song_playlists.playlist_id) song_playlists.playlist_id, songs.added_by, TRUE, TRUE, TRUE, users.username, users.image_url, now()
-FROM song_playlists
-JOIN songs ON songs.id = song_playlists.song_id
-JOIN users ON users.id = songs.added_by
-WHERE song_playlists.playlist_id NOT IN (SELECT playlist_id FROM playlist_memberships)
-ORDER BY song_playlists.playlist_id, songs.id ASC;
-
--- A playlist left with neither a membership nor a song by this point has
--- nothing pointing at it and no user to migrate an owner from; the
--- application never leaves one in that state (the last member leaving
--- deletes the playlist), so this only guards against a genuinely orphaned row.
-DELETE FROM playlists
-WHERE id NOT IN (SELECT playlist_id FROM playlist_memberships);
-
--- No creation timestamp exists to identify who actually created a playlist,
--- so the lowest user id among its existing members, its earliest-created
--- account, stands in as the owner for pre-migration data.
-UPDATE playlists
-SET owner_id = earliest_member.user_id
-FROM (
-    SELECT DISTINCT ON (playlist_id) playlist_id, user_id
-    FROM playlist_memberships
-    ORDER BY playlist_id, user_id ASC
-) AS earliest_member
-WHERE playlists.id = earliest_member.playlist_id;
-
-ALTER TABLE playlists ALTER COLUMN owner_id SET NOT NULL;
 
 DROP TABLE user_playlists;
