@@ -223,28 +223,11 @@ Tests:
 - [ ] Integration test: the dashboard/query surface returns correct aggregates for known event data
 - [ ] Integration test: a user's game history page returns only their own game summaries, not other users'
 
-## Story 15: Song/playlist relational fix
-
-Checked against real code: `Song.playlist` is a required singular `@ManyToOne`, one song belongs to exactly one playlist today. Touches the same table as story 23; sequencing or combining the two migrations avoids two separate schema changes to `Song`.
-
-- [ ] Introduce a join table between `Song` and `Playlist`, replacing the singular `@ManyToOne playlist` on `Song`
-- [ ] Rewrite `Playlist.songs`'s `@OneToMany(mappedBy = "playlist", cascade = CascadeType.ALL, orphanRemoval = true)` relation and its `addSong`/`removeSong` helpers, both of which assume the singular back-reference (`song.setPlaylist(this)`/`song.setPlaylist(null)`) that a join table removes
-- [ ] Migrate existing data: each song's current single playlist link becomes one row in the new join table
-- [ ] Update `PlaylistService`'s `checkSongBelongsToPlaylist`, which currently assumes one song belongs to exactly one playlist; `checkPlaylistAccess` doesn't need changing, it checks playlist-user membership and doesn't touch the song relation
-- [ ] Decide song deletion semantics once a song isn't playlist-exclusive: does removing a song from one playlist delete it outright, or only unlink it? `PlaylistController`'s current delete-song endpoint, via `Playlist.removeSong` and `orphanRemoval = true`, does a real delete today
-- [ ] Update `SongDTO`/`PlaylistDetailDTO`, `PlaylistMapper.toDetailDTO` (the code path that assembles a playlist's song list), and the frontend to reflect a song appearing in multiple playlists
-- [ ] Coordinate with story 23 (schema reconciliation), both touch `Song`'s shape
-
-Tests:
-- [ ] Unit tests for `checkSongBelongsToPlaylist` against the new many-to-many relation, plus a regression check that `checkPlaylistAccess` is unaffected
-- [ ] Integration test: migrating existing data preserves each song's original playlist link
-- [ ] Integration test: a song in multiple playlists behaves correctly for access checks and the decided deletion semantics
-
 ## Story 45: Import songs from an existing playlist
 
 Surfaced during story 28's design pass, not part of the original backlog mapping. Playlist detail already offers two ways to add content: search-and-add from the catalog (story 14) and importing a whole YouTube playlist (story 40's user-facing bulk import). This is a third, distinct path: copying songs directly from a playlist the player already has access to, owned, a member of, or published publicly, straight into the playlist they're editing. No metadata pipeline involvement, every song is already a resolved `Song` row, so the copy is instant rather than a fetch-and-verify flow.
 
-Blocked on story 15: today a `Song` belongs to exactly one playlist via a singular `@ManyToOne`, so "copying" a song into a second playlist has nowhere to attach without the join table story 15 introduces. Once that lands, this story is mostly wiring: pick a source playlist, link its songs' existing rows into the target playlist via the same join table.
+No longer blocked: story 15 has landed the `song_playlists` join table a `Song` needed to attach to more than one playlist. This story is mostly wiring on top of it: pick a source playlist, link its songs' existing rows into the target playlist via the same join table.
 
 - [ ] Add an endpoint accepting a source playlist ID and a target playlist ID, validating the requester can read the source (owned, member, or `isPublic`, coordinate with story 30's access model) and can write to the target
 - [ ] Link every song from the source playlist into the target playlist via story 15's join table; skip songs already present in the target rather than erroring or duplicating the link

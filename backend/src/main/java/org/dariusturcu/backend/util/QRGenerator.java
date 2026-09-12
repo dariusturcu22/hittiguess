@@ -14,32 +14,34 @@ import java.util.List;
 
 @Component
 public class QRGenerator {
-    private static final int CARD_SIZE = 800;
-    private static final int CARDS_PER_ROW = 3;
-    private static final int ROWS_PER_PAGE = 4;
-    private static final int PAGE_WIDTH = CARD_SIZE * CARDS_PER_ROW;
-    private static final int PAGE_HEIGHT = CARD_SIZE * ROWS_PER_PAGE;
     private static final int QR_SIZE = 500;
-    private static final int MARGIN_X = (PAGE_WIDTH - CARD_SIZE * CARDS_PER_ROW) / 2;  // 40
-    private static final int MARGIN_Y = (PAGE_HEIGHT - CARD_SIZE * ROWS_PER_PAGE) / 2;  // 54
 
-    public static BufferedImage generateQRPage(List<Song> songs) {
-        BufferedImage page = new BufferedImage(PAGE_WIDTH, PAGE_HEIGHT, BufferedImage.TYPE_INT_RGB);
+    public static BufferedImage generateQRPage(List<Song> songs, PaperSize paperSize) {
+        int cardSize = CardGenerator.CARD_SIZE;
+        int pageWidth = paperSize.getWidthPixels();
+        int pageHeight = paperSize.getHeightPixels();
+        int cardsPerRow = paperSize.cardsPerRow(cardSize);
+        int marginX = paperSize.marginX(cardSize);
+        int marginY = paperSize.marginY(cardSize);
+
+        BufferedImage page = new BufferedImage(pageWidth, pageHeight, BufferedImage.TYPE_INT_RGB);
         Graphics2D graphics2D = page.createGraphics();
 
         graphics2D.setColor(Color.WHITE);
-        graphics2D.fillRect(0, 0, PAGE_WIDTH, PAGE_HEIGHT);
+        graphics2D.fillRect(0, 0, pageWidth, pageHeight);
 
         for (int i = 0; i < songs.size(); i++) {
-            int row = i / CARDS_PER_ROW;
-            int col = i % CARDS_PER_ROW;
+            int row = i / cardsPerRow;
+            int col = i % cardsPerRow;
 
-            int backColumn = (CARDS_PER_ROW - 1) - col;
+            // Mirrored so a double-sided, flip-on-the-long-edge print lines each QR code up
+            // behind its corresponding front card.
+            int backColumn = (cardsPerRow - 1) - col;
 
-            int x = MARGIN_X + backColumn * CARD_SIZE;
-            int y = MARGIN_Y + row * CARD_SIZE;
+            int x = marginX + backColumn * cardSize;
+            int y = marginY + row * cardSize;
 
-            drawQRCard(graphics2D, x, y, CARD_SIZE, songs.get(i));
+            drawQRCard(graphics2D, x, y, cardSize, songs.get(i));
         }
 
         graphics2D.dispose();
