@@ -215,6 +215,40 @@ Tests:
 - [x] Integration test: existing API responses (`SongDTO`) don't break for rows migrated from the old shape (`SongApiCompatibilityAfterMigrationTest`); a separate test (`FlywayAutoConfigurationRunsOnStartupTest`) confirms Spring Boot's own Flyway bean, not just the Java API called directly, actually migrates a fresh database on startup
 - [x] Unit tests for the edit-access gate: a `MANUAL_ENTRY` or `UNVERIFIED` song accepts an edit, `VERIFIED` and `NEEDS_REVIEW` reject one server-side regardless of frontend state (`PlaylistServiceTest`)
 
+## Story 15: Song/playlist relational fix
+
+Checked against real code: `Song.playlist` is a required singular `@ManyToOne`, one song belongs to exactly one playlist today. Touches the same table as story 23; sequencing or combining the two migrations avoids two separate schema changes to `Song`.
+
+- [x] Introduce a join table between `Song` and `Playlist`, replacing the singular `@ManyToOne playlist` on `Song`
+- [x] Rewrite `Playlist.songs`'s `@OneToMany(mappedBy = "playlist", cascade = CascadeType.ALL, orphanRemoval = true)` relation and its `addSong`/`removeSong` helpers, both of which assume the singular back-reference (`song.setPlaylist(this)`/`song.setPlaylist(null)`) that a join table removes
+- [x] Migrate existing data: each song's current single playlist link becomes one row in the new join table
+- [x] Update `PlaylistService`'s `checkSongBelongsToPlaylist`, which currently assumes one song belongs to exactly one playlist; `checkPlaylistAccess` doesn't need changing, it checks playlist-user membership and doesn't touch the song relation
+- [x] Decide song deletion semantics once a song isn't playlist-exclusive: does removing a song from one playlist delete it outright, or only unlink it? `PlaylistController`'s current delete-song endpoint, via `Playlist.removeSong` and `orphanRemoval = true`, does a real delete today. Decided: always unlink, never delete the song itself, a song is independent of any playlist it belongs to, see `DECISIONS.md`'s 2026-09 "Song deletion reversed" entry (superseding this same entry's earlier "unlink first, delete only when orphaned everywhere" decision)
+- [x] Update `SongDTO`/`PlaylistDetailDTO`, `PlaylistMapper.toDetailDTO` (the code path that assembles a playlist's song list), and the frontend to reflect a song appearing in multiple playlists. Neither DTO ever exposed the singular relation directly, so their shape is unchanged; `PlaylistMapper.toDetailDTO` and the frontend continue to work against `Playlist.getSongs()` as before, now backed by the join table
+- [x] Coordinate with story 23 (schema reconciliation), both touch `Song`'s shape. Built directly on top of story 23's `Song` entity rewrite rather than against a stale copy
+
+Tests:
+- [x] Unit tests for `checkSongBelongsToPlaylist` against the new many-to-many relation, plus a regression check that `checkPlaylistAccess` is unaffected
+- [x] Integration test: migrating existing data preserves each song's original playlist link
+- [x] Integration test: a song in multiple playlists behaves correctly for access checks and the decided deletion semantics
+
+## Story 47: Replace SongTag with genre, redraw the printed card, add real paper-size export
+
+Surfaced from `docs/design/source`'s settled mockups (`CardOptions.dc.html`, `SongDetailLight.dc.html`, the submission-flow mockups), which were built before story 23 and predate story 28's implementation phase, so they were never cross-checked against the current schema. Checked against the real code: `SongTag` (`PLAYLIST`/`SPECIAL`/`ANIME`) has no analog anywhere in the mockups; `SongDetailLight.dc.html` instead shows a single genre chip ("Alternative Rock") next to the year and duration, and no mockup shows a manual tag picker at submission, consistent with `genre` being pipeline-populated like `confidence`/`metadataRaw` rather than user-submitted. `CardOptions.dc.html` explicitly settles the printed/timeline card's look: square, one flat color, no gradient, thick border, hard offset shadow, artist/year/title only, no tag triangle or country flag. Separately, `CardGenerator`'s page math was never actually tied to a real paper size: `PAGE_WIDTH`/`PAGE_HEIGHT` are defined as exactly `CARD_SIZE * CARDS_PER_ROW`/`CARD_SIZE * ROWS_PER_PAGE`, so the margin calculation is always zero and the resulting PDF page doesn't correspond to A4, Letter, or any standard paper size.
+
+Backend only. The frontend side, the tag/genre input surface and a still-missing print-settings screen for choosing paper size, is deferred to story 28's implementation phase; no design for that screen exists yet either.
+
+- [x] Delete `SongTag` and the `song_tags` table; add a nullable `genre` string column to `Song` via Flyway, no automatic backfill from the old tags, there's no reliable mapping from `PLAYLIST`/`SPECIAL`/`ANIME` to a real genre
+- [x] Remove `genre` from `CreateSongRequest`/`UpdateSongRequest`, it isn't user-submitted, same as `confidence`/`metadataRaw`; expose it read-only on `SongDTO`
+- [x] Remove the now-meaningless `GET /api/enums/tags` endpoint and `SongMapper`'s tag-handling code
+- [x] Redraw `CardGenerator`'s printed card to match `CardOptions.dc.html`: a single flat color (`gradientColor1`) instead of a two-color gradient, rounded corners, a thick border, a hard offset shadow, artist/year/title only; drop the tag-triangle and country-flag decorations the settled design doesn't show, including the fixed placeholder color a different PR had briefly given the tag triangle in the meantime. Also picks readable dark-versus-light text per card by the fill color's luminance, since a single arbitrary flat color (unlike the old two-stop gradient) can be light enough that fixed white text stops being legible
+- [x] Add a `PaperSize` enum (A4, Letter) to the card/QR export endpoints, defaulting to A4; compute each page's actual card grid and margins from the paper's real dimensions at 300 DPI instead of today's fixed, arbitrary grid, for both `CardGenerator` and `QRGenerator`
+
+Tests:
+- [x] Unit tests for the `PaperSize`-driven grid math: page dimensions and cards-per-page for both A4 and Letter
+- [x] Migration test: existing `song_tags` rows and the column are gone after migrating, `genre` exists and is nullable
+- [x] Unit test: `SongMapper.toDTO` maps `genre` straight through; neither `CreateSongRequest` nor `UpdateSongRequest` accepts it
+
 ## Story 25: Add Discogs as a metadata source
 
 Rechecked against current code: `ai/app/metadata/sources/musicbrainz.py`, `wikipedia.py`, and `genius.py` are stubs returning empty results, each commented with a reference to the 2026-08 pause decision (`DECISIONS.md`). No `discogs.py` or `wikidata.py` file exists yet. The resolved source set stays MusicBrainz, Discogs, and Wikidata (`PROJECT_STATE.md`), settled through the sourcing spike, not open for reconsideration. This story covers Discogs only; un-stubbing MusicBrainz and building Wikidata are tracked separately under "Spike: MusicBrainz and Wikidata sourcing," now handoff tasks off that spike rather than an open design question.

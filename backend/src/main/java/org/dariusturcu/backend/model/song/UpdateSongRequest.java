@@ -5,8 +5,6 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
 import org.dariusturcu.backend.validation.NotFutureYear;
 
-import java.util.Set;
-
 public record UpdateSongRequest(
         @NotBlank(message = "Artist name is required")
         String artist,
@@ -29,8 +27,6 @@ public record UpdateSongRequest(
         @NotBlank(message = "Both gradient colors are required")
         @Pattern(regexp = "^[0-9a-fA-F]{6}$", message = "Must be a 6-character hex color without #")
         String gradientColor2,
-
-        Set<SongTag> tags,
 
         Country country
 ) {
