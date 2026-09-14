@@ -282,3 +282,15 @@ Checked against real code: no pgvector dependency in `pom.xml`, no vector-DB cli
 Tests:
 - [x] Unit tests for the similarity-check step (mocked embedding client): a high-confidence match reuses existing data, a low-confidence match proceeds to the full pipeline
 - [x] Integration test: submitting a near-duplicate song reuses existing verified data instead of re-running the LLM
+
+## Story 33: Analytics data store
+
+Story 42 owns the explicit domain boundary this story's provisioning assumes: every transactional entity stays in the core Postgres+pgvector instance, only this story's usage/event data goes in the separate store it provisions below.
+
+- [x] Choose and provision a separate append-heavy store for usage/event data, apart from the transactional Postgres database (a separate schema, or a dedicated event/time-series store). A second Postgres database, `analytics-db` in `docker-compose.yml`, migrated through its own Flyway history under `db/analytics-migration`, independent of the core service's V1-V10 history
+- [x] Define the event schema: game session start/end (with a compact per-game summary, group, players, win/loss, cards won, final score, for story 34's game history feature), login, playlist created, song submitted, rate-limit-exceeded (user, endpoint), report submitted, failed login attempt. A single `analytics_events` table (event type, timestamp, JSONB payload) plus a typed payload record per event, in `backend/src/main/java/org/dariusturcu/backend/analytics`
+- [x] Decide a retention policy. 180 days, configurable through `analytics.retention.days`
+
+Tests:
+- [x] Integration test: an event write to the new store doesn't touch or block the transactional database
+- [x] Integration test for the retention policy's cleanup logic

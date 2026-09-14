@@ -119,6 +119,20 @@ Listed here so the entity picture is in one place; each is still greenfield work
 - `SongDifficulty` aggregate view or table (story 30)
 - `TEST`/`ADMIN` values on `User.role` (stories 44 and 40)
 
+### Analytics store (story 33)
+
+A separate database from the transactional one above, not JPA-mapped: its own Flyway history under `db/analytics-migration`, its own `DataSource`/`JdbcTemplate` wired in `AnalyticsDataSourceConfig` (`org.dariusturcu.backend.analytics`). One table, `analytics_events`:
+
+```
+analytics_events
+  ├── id (bigserial)
+  ├── event_type (text, matches AnalyticsEventType's enum names)
+  ├── occurred_at (timestamptz, defaults to insertion time)
+  └── payload (jsonb, one typed record per AnalyticsEventType)
+```
+
+`AnalyticsEventType` values: `GAME_SESSION_STARTED`, `GAME_SESSION_ENDED`, `LOGIN`, `PLAYLIST_CREATED`, `SONG_SUBMITTED`, `RATE_LIMIT_EXCEEDED`, `REPORT_SUBMITTED`, `FAILED_LOGIN_ATTEMPT`, each with its own payload record in the same package. `AnalyticsEventRecorder.recordEvent(AnalyticsEventType, Object)` is the write API; nothing calls it yet, story 34 instruments the real event-producing call sites. `AnalyticsRetentionService.purgeExpiredEvents()`, swept daily by `AnalyticsRetentionSweeper`, deletes events older than `analytics.retention.days` (180 by default).
+
 ## State diagrams
 
 ### Song verification status (stories 18, 23)
