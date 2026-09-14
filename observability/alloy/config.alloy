@@ -1,0 +1,33 @@
+// Scrapes both services' Prometheus endpoints and pushes the results to
+// Grafana Cloud. host.docker.internal reaches the host machine from inside
+// this container, since neither service runs as its own container; both
+// run as plain host processes via `make dev`.
+
+prometheus.scrape "backend" {
+	targets = [{
+		"__address__" = "host.docker.internal:8080",
+		"job"         = "hittiguess-backend",
+	}]
+	metrics_path = "/actuator/prometheus"
+	forward_to   = [prometheus.remote_write.grafana_cloud.receiver]
+}
+
+prometheus.scrape "ai_service" {
+	targets = [{
+		"__address__" = "host.docker.internal:8000",
+		"job"         = "hittiguess-ai",
+	}]
+	metrics_path = "/metrics"
+	forward_to   = [prometheus.remote_write.grafana_cloud.receiver]
+}
+
+prometheus.remote_write "grafana_cloud" {
+	endpoint {
+		url = sys.env("GRAFANA_CLOUD_PROMETHEUS_URL")
+
+		basic_auth {
+			username = sys.env("GRAFANA_CLOUD_PROMETHEUS_USERNAME")
+			password = sys.env("GRAFANA_CLOUD_PROMETHEUS_API_KEY")
+		}
+	}
+}
