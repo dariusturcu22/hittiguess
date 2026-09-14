@@ -616,3 +616,15 @@ Checked against real code, every remaining old-name occurrence:
 
 Tests:
 - [ ] Confirm the existing CORS-related backend tests still pass after the `SecurityConfig`/`WebSocketConfig` origin rename
+
+## Story 48: Comment cleanup
+
+`CLAUDE.md`'s code conventions already state the rule this story enforces: write as few comments as possible, only when the reasoning genuinely can't be inferred from the code, none that restate what the line already says, none that narrate a specific example instead of the general rule. AI-assisted batches built across this project have drifted from that rule in places, leaving comments that re-explain what adjacent code already makes obvious, or that narrate a past version's reasoning instead of documenting the code as it stands.
+
+- [ ] Audit every comment in `backend/src/main`, `ai/app`, and `frontend/app`/`frontend/components` against `CLAUDE.md`'s comment rule; remove any that restate the line below it, shorten any that are longer than the invariant they document actually requires
+- [ ] Remove or rewrite any comment that narrates a specific past decision, ticket, or debugging step instead of stating the current invariant as fact; that history belongs in `DECISIONS.md` and commit messages, not in code
+- [ ] Leave in place, and don't shorten past the point of losing the actual reasoning, comments documenting a genuinely non-obvious constraint (a hidden ordering dependency, a workaround for a specific external API's behavior, a security-relevant invariant)
+- [ ] Spot-check `DECISIONS.md` for the same drift, an entry that restates a decision already stated earlier in the same entry rather than adding new reasoning; `DECISIONS.md` stays append-only, so this means catching it going forward in new entries, not rewriting past ones
+
+Tests:
+- [ ] None; this story changes comments only, no behavior. Run each service's existing test suite once after the pass to confirm nothing was accidentally deleted along with a comment (a comment removal that took its statement's closing brace or trailing code with it)

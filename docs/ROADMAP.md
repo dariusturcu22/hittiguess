@@ -8,7 +8,7 @@ Within a phase, stories are independent of each other and can be worked in any o
 
 Three milestones sit above the phase breakdown below, each a different bar for who can actually use the app:
 
-- **Local**: the project owner can play it, alone or with one other person in the same house over a locally opened port, admin side included. Covers Phase 0, Phase 1, and Phase 2 below, plus story 47 (naming consistency) and story 22 (test coverage) tacked onto the end of Phase 2, in that order. Story 22 runs last within Local because it audits everything else Local built; running it earlier would mean rewriting its tests as the rest of Local's stories still land. Local doesn't require a real deployment target, story 7 and story 8 both stay undecided until Local ships.
+- **Local**: the project owner can play it, alone or with one other person in the same house over a locally opened port, admin side included. Covers Phase 0, Phase 1, and Phase 2 below, plus story 47 (naming consistency), story 48 (comment cleanup), and story 22 (test coverage) tacked onto the end of Phase 2, in that order. Story 22 runs last within Local because it audits everything else Local built; running it earlier would mean rewriting its tests as the rest of Local's stories still land. Local doesn't require a real deployment target, story 7 and story 8 both stay undecided until Local ships.
 - **Beta**: deployed somewhere real and played with friends and colleagues in demo matches, everything working correctly. Needs story 7 (hosting) and story 8 (database) actually decided and executed, on top of everything Local shipped.
 - **Finished**: the fully deployed, publicly announced version. Phase 3 only, and the lowest priority in this file, since nothing in Phase 3 blocks either Local or Beta.
 
@@ -58,6 +58,7 @@ Story 28's design phase (fresh visual direction across every existing page and e
 - Story 45: Import songs from an existing playlist, needs story 15's join table
 - Story 28: UI redesign, implementation phase, wires the already-designed visual system to the gameplay screens as stories 10/11/39 land
 - Story 47: Naming consistency, done after everything else above so it also catches any leftover old-name references those stories introduce along the way, not just the ones that exist today
+- Story 48: Comment cleanup, done after everything else above for the same reason, catches comment drift from every story that lands before it, not just the code that exists today
 - Story 22: Test coverage, the last story in Local, backfills and adds tests for everything Local shipped, including this phase, once there's a finished app surface to test rather than one still mid-implementation
 
 ## Phase 3: Depends on Phase 2, part of Finished, not Beta
@@ -101,4 +102,4 @@ Per `CLAUDE.md`'s batching workflow: only one PR from this list is open for revi
 - [ ] Batch 18: dropped. Was story 22, test coverage; story 22 moved to the end of Phase 2, see the Readiness tiers section above, and gets a new batch number once Phase 2 is sequenced
 - [ ] Batch 19: Story 42, database split cross-references, and story 43, metadata minimization, combined into one small batch, both are already fully satisfied except a couple of standing re-check notes
 - [ ] Batch 20: Story 28, UI redesign implementation phase for whatever of the gameplay screens Batches 9-11 have unlocked by this point; the design mockups themselves are done, see `docs/design/hittiguess-design.html`
-- Phase 2 stories, including story 47 and the relocated story 22, aren't broken into batches yet, their tasks may shift once Phase 1 actually ships (particularly stories 18, 40, and 30, which reference real entities Batches 3, 4, and 11 create); revisit this list once Phase 1 is done rather than pre-sequencing Phase 2 now
+- Phase 2 stories, including stories 47 and 48 and the relocated story 22, aren't broken into batches yet, their tasks may shift once Phase 1 actually ships (particularly stories 18, 40, and 30, which reference real entities Batches 3, 4, and 11 create); revisit this list once Phase 1 is done rather than pre-sequencing Phase 2 now
