@@ -298,3 +298,15 @@ Tests:
 - [x] Unit tests for the rate limiter: requests under the limit pass, requests over the limit get rejected, including the boundary value
 - [x] Integration test: `/auth/login` and `/auth/register` rate limiting specifically
 - [x] Integration test: the AI microservice's `/metadata/resolve` rate limit triggers independent of the core service's own limiting
+
+## Story 33: Analytics data store
+
+Story 42 owns the explicit domain boundary this story's provisioning assumes: every transactional entity stays in the core Postgres+pgvector instance, only this story's usage/event data goes in the separate store it provisions below.
+
+- [x] Choose and provision a separate append-heavy store for usage/event data, apart from the transactional Postgres database (a separate schema, or a dedicated event/time-series store). A second Postgres database, `analytics-db` in `docker-compose.yml`, migrated through its own Flyway history under `db/analytics-migration`, independent of the core service's V1-V10 history
+- [x] Define the event schema: game session start/end (with a compact per-game summary, group, players, win/loss, cards won, final score, for story 34's game history feature), login, playlist created, song submitted, rate-limit-exceeded (user, endpoint), report submitted, failed login attempt. A single `analytics_events` table (event type, timestamp, JSONB payload) plus a typed payload record per event, in `backend/src/main/java/org/dariusturcu/backend/analytics`
+- [x] Decide a retention policy. 180 days, configurable through `analytics.retention.days`
+
+Tests:
+- [x] Integration test: an event write to the new store doesn't touch or block the transactional database
+- [x] Integration test for the retention policy's cleanup logic
