@@ -665,3 +665,11 @@ Decision: the playlist owner can leave at any time. If other members remain, the
 Why: blocking the owner from leaving until everyone else was gone, the prior decision, forced a departing owner to kick or ban every other member first just to leave their own playlist, destroying those memberships as a side effect of an unrelated decision to leave. Automatic promotion by join order gives every playlist a deterministic next owner without asking the departing owner to choose one under pressure. The separate transfer endpoint covers the case where the owner wants to hand off leadership deliberately, without leaving.
 
 ---
+
+## 2026-09 | CLAUDE.md's content moves to AGENTS.md, the cross-tool convention
+
+Decision: the project's conventions (stack, commands, non-negotiable rules, writing style, code conventions, git workflow, task gate) move from `CLAUDE.md` into a new root `AGENTS.md`. `CLAUDE.md` becomes a short pointer to it. `.kiro/steering/agents-md.md` (always-included) and `.cursor/rules/agents-md.mdc` (`alwaysApply: true`) each inline `AGENTS.md`'s content via their own tool's live file-reference syntax, rather than copying it, so there's one file to keep current.
+
+Why: this project is worked on with more than one agentic coding tool, and `CLAUDE.md` is a Claude-Code-specific filename nothing else reads. AGENTS.md is the convention Codex, Cursor, Kiro, and Claude Code itself all read natively; keeping every convention in the one file both Codex and Kiro's baseline support already cover, plus a live-referenced pointer for Kiro and Cursor's own scoped-rule systems, avoids maintaining the same rules in three or four places that drift out of sync with each other.
+
+---
