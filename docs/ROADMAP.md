@@ -4,6 +4,14 @@ This is the sequential order remaining stories get worked in, derived from the r
 
 Within a phase, stories are independent of each other and can be worked in any order, including in parallel. A phase only starts once every story it depends on has actually shipped, not merely reached `Ready`.
 
+## Readiness tiers
+
+Three milestones sit above the phase breakdown below, each a different bar for who can actually use the app:
+
+- **Local**: the project owner can play it, alone or with one other person in the same house over a locally opened port, admin side included. Covers Phase 0, Phase 1, and Phase 2 below, plus story 47 (naming consistency), story 48 (comment cleanup), and story 22 (test coverage) tacked onto the end of Phase 2, in that order. Story 22 runs last within Local because it audits everything else Local built; running it earlier would mean rewriting its tests as the rest of Local's stories still land. Local doesn't require a real deployment target, story 7 and story 8 both stay undecided until Local ships.
+- **Beta**: deployed somewhere real and played with friends and colleagues in demo matches, everything working correctly. Needs story 7 (hosting) and story 8 (database) actually decided and executed, on top of everything Local shipped.
+- **Finished**: the fully deployed, publicly announced version. Phase 3 only, and the lowest priority in this file, since nothing in Phase 3 blocks either Local or Beta.
+
 ## Phase 0: Spike handoff completion
 
 Unlocks the metadata/AI track's remaining stories. The one remaining item is the last unstarted task under its own spike section in `TASKS.md`, not new scope. The spike's other handoff item, whether the fast/patient tier pipeline shape and shortlisted LLM candidate are worth building into production, is resolved: greenlit, see `DECISIONS.md` and story 20.
@@ -23,7 +31,6 @@ No blockers among these, and none block each other. Includes both game-session i
 - Story 16: pgvector-based duplicate detection
 - Story 25: Add Discogs as a metadata source
 - Story 14: Song search by link or keyword
-- Story 22: Test coverage
 - Story 27: Rate limiting
 - Story 33: Analytics data store
 - Story 36: Open-source collaboration readiness
@@ -32,8 +39,9 @@ No blockers among these, and none block each other. Includes both game-session i
 - Story 42: Explicit database split
 - Story 43: Metadata minimization
 - Story 44: Test user infrastructure
-- Story 28: UI redesign, design phase (the implementation phase moves to Phase 2, see below)
 - Story 20: LLM client infrastructure for the metadata pipeline, no schema dependency, moved here from Phase 2 once greenlit
+
+Story 28's design phase (fresh visual direction across every existing page and every not-yet-built gameplay screen) is done, see `docs/design/hittiguess-design.html` and `TASKS.md`. Its implementation phase moves to Phase 2 below. Story 22 (test coverage) moves out of this phase entirely, see the Readiness tiers section above; it now runs at the end of Phase 2 instead.
 
 ## Phase 2: Depends on Phase 0 and Phase 1
 
@@ -48,18 +56,31 @@ No blockers among these, and none block each other. Includes both game-session i
 - Story 13: Group-scoped text chat, needs stories 11 and 39 actually built
 - Story 30: Difficulty-tuned game session generation, needs story 10's `Guess` entity accumulating real data
 - Story 45: Import songs from an existing playlist, needs story 15's join table
-- Story 28: UI redesign, implementation phase, wires the new visual system to the gameplay screens as stories 10/11/39 land
+- Story 28: UI redesign, implementation phase, wires the already-designed visual system to the gameplay screens as stories 10/11/39 land
+- Story 47: Naming consistency, done after everything else above so it also catches any leftover old-name references those stories introduce along the way, not just the ones that exist today
+- Story 48: Comment cleanup, done after everything else above for the same reason, catches comment drift from every story that lands before it, not just the code that exists today
+- Story 22: Test coverage, the last story in Local, backfills and adds tests for everything Local shipped, including this phase, once there's a finished app surface to test rather than one still mid-implementation
 
-## Phase 3: Depends on Phase 2
+## Phase 3: Depends on Phase 2, part of Finished, not Beta
+
+Lowest priority in this file. Neither story blocks Beta; both wait until after Beta ships.
 
 - Story 34: First-party usage analytics, needs story 33 and, for its abuse-visibility events specifically, stories 10, 13, 17, and 27 actually shipped
 - Story 35: Public ground-truth data API, needs story 23's `verificationStatus` field and, in practice, story 18's lock rule actually producing verified rows to publish
+
+## Beta: deploy and validate
+
+Starts once every Local story above has actually shipped, not merely reached `Ready`.
+
+- Story 7: Hosting migration off Fly.io, target platform decided and executed
+- Story 8: Database migration off Supabase, whether to migrate at all and to what platform, decided and executed
+- Deploy the app for real, invite friends and colleagues for demo matches, confirm everything works correctly before calling it Beta
 
 ## Batch plan: one PR per batch, worked in this order
 
 Phase 1 lists its stories as independent and workable in any order, including in parallel. This section picks one concrete, sequential order for a single implementer working through them one PR at a time, so a session doesn't have to re-derive a starting point every time. A batch is normally one story; two batches combine a story's tasks only where the docs already say to (15 and 23 both touch `Song`). Update this list's checkmark as each batch's PR merges into `dev`; the list itself doesn't move to `ARCHIVE.md`, it stays as the reference for the next batch to work from.
 
-Per `CLAUDE.md`'s batching workflow: only one PR from this list is open for review at a time. Work on the next batch can proceed locally once the current PR is opened, but that next batch's own PR isn't opened until the current one merges.
+Per `AGENTS.md`'s batching workflow: only one PR from this list is open for review at a time. Work on the next batch can proceed locally once the current PR is opened, but that next batch's own PR isn't opened until the current one merges.
 
 - [x] Batch 1: Phase 0's metadata source implementation (`wikidata.py`, `musicbrainz.py`, `wikipedia.py`)
 - [x] Batch 2: Story 20, the DeepInfra client
@@ -78,14 +99,7 @@ Per `CLAUDE.md`'s batching workflow: only one PR from this list is open for revi
 - [ ] Batch 15: Story 37, Privacy policy, terms of service, GDPR compliance
 - [ ] Batch 16: Story 36, Open-source collaboration readiness
 - [ ] Batch 17: Story 44, Test user infrastructure
-- [ ] Batch 18: Story 22, Test coverage
+- [ ] Batch 18: dropped. Was story 22, test coverage; story 22 moved to the end of Phase 2, see the Readiness tiers section above, and gets a new batch number once Phase 2 is sequenced
 - [ ] Batch 19: Story 42, database split cross-references, and story 43, metadata minimization, combined into one small batch, both are already fully satisfied except a couple of standing re-check notes
-- [ ] Batch 20: Story 28, UI redesign implementation phase for whatever of the gameplay screens Batches 9-11 have unlocked by this point; verify the design mockups against the shipped screens before starting rather than assuming they still match
-- Phase 2 and Phase 3 stories aren't broken into batches yet, their tasks may shift once Phase 1 actually ships (particularly stories 18, 40, and 30, which reference real entities Batches 3, 4, and 11 create); revisit this list once Phase 1 is done rather than pre-sequencing Phase 2 now
-
-## Deferred by explicit decision, not blocked
-
-Both stay open questions rather than scheduled into a phase; see `PROJECT_STATE.md`'s open questions for the reasoning behind deferring each until the app is closer to feature-complete.
-
-- Story 7: Hosting migration off Fly.io
-- Story 8: Database migration off Supabase
+- [ ] Batch 20: Story 28, UI redesign implementation phase for whatever of the gameplay screens Batches 9-11 have unlocked by this point; the design mockups themselves are done, see `docs/design/hittiguess-design.html`
+- Phase 2 stories, including stories 47 and 48 and the relocated story 22, aren't broken into batches yet, their tasks may shift once Phase 1 actually ships (particularly stories 18, 40, and 30, which reference real entities Batches 3, 4, and 11 create); revisit this list once Phase 1 is done rather than pre-sequencing Phase 2 now
