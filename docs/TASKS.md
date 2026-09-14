@@ -207,18 +207,6 @@ Tests:
 - [ ] Integration test: publishing a playlist makes it selectable by a user who neither owns it nor is a member of it; unpublishing removes that access without affecting existing owners/members
 - [ ] Frontend test: the review UI lets a user inspect and confirm the generated set before saving
 
-## Story 33: Analytics data store
-
-Story 42 owns the explicit domain boundary this story's provisioning assumes: every transactional entity stays in the core Postgres+pgvector instance, only this story's usage/event data goes in the separate store it provisions below.
-
-- [ ] Choose and provision a separate append-heavy store for usage/event data, apart from the transactional Postgres database (a separate schema, or a dedicated event/time-series store)
-- [ ] Define the event schema: game session start/end (with a compact per-game summary, group, players, win/loss, cards won, final score, for story 34's game history feature), login, playlist created, song submitted, rate-limit-exceeded (user, endpoint), report submitted, failed login attempt
-- [ ] Decide a retention policy
-
-Tests:
-- [ ] Integration test: an event write to the new store doesn't touch or block the transactional database
-- [ ] Unit test for the retention policy's cleanup logic
-
 ## Story 34: First-party usage analytics
 
 Story 42 owns the explicit domain boundary this story reads and writes against: the transactional `GameSession`/`Round`/`Guess` rows this story's game-history task reads a summary from stay in the core database and purge exactly as story 10 specifies; only the compact event/summary data this story writes goes in story 33's separate analytics store. Depends on story 33's store existing, and also on the events it instruments actually existing: story 10 (game session, no `GameSession` model exists yet), story 17 (reports, no `SongReport` entity exists yet), and story 27 (rate limiting, only a narrow one-in-flight-request-per-user concurrency gate exists today on `/api/metadata/song`, not the general per-user/per-IP time-window limiter this depends on for login/register or other endpoints). Login and playlist-creation events can be instrumented once story 33 lands, independent of the others. Event scope is deliberately count/aggregate-based, not behavioral click-tracking: usage stats for the project's own understanding (games played, session length, playlists created, songs submitted, login activity), and abuse-visibility signals that turn existing enforcement into something reviewable (rate-limit-exceeded events from stories 13/27, report submissions from story 17, failed login attempts), not a new detection mechanism of its own.
@@ -512,7 +500,7 @@ OpenAI's own cheap tier (`gpt-5-nano`, `gpt-5-mini`) and the existing `gpt-5.1` 
 No story required for these. Fix on a `fix` branch.
 
 - [x] `SongMetadataResponse` (Java) silently drops the AI microservice's `confidence`, `source`, and `reasoning` fields: `SongMetadataResult` (Python) computes and returns all three today, but the Java record deserializing that response only declares `title/artist/releaseYear/gradientColor1/gradientColor2`, so the other three are read off the wire and discarded on every metadata call. Extend the record to keep them.
-- [ ] `DELETE /me` (`UserService.deleteUser()`) throws an unhandled `DataIntegrityViolationException` for any user who has ever added a song: `Song.addedBy` (`Song.java:41-43`) is a non-nullable `@ManyToOne` with no inverse mapping on `User` and no cascade rule, so the FK Hibernate generates under `ddl-auto=update` has no `ON DELETE` clause. It also orphans a playlist when the deleting user is its last remaining member: unlike `leavePlaylist()` (`UserService.java`), which deletes a playlist once `getUserCount() == 0`, `deleteUser()` has no equivalent check.
+- [x] `DELETE /me` (`UserService.deleteUser()`) throws an unhandled `DataIntegrityViolationException` for any user who has ever added a song: `Song.addedBy` (`Song.java:41-43`) is a non-nullable `@ManyToOne` with no inverse mapping on `User` and no cascade rule, so the FK Hibernate generates under `ddl-auto=update` has no `ON DELETE` clause. It also orphans a playlist when the deleting user is its last remaining member: unlike `leavePlaylist()` (`UserService.java`), which deletes a playlist once `getUserCount() == 0`, `deleteUser()` has no equivalent check. Fixed: `Song.addedBy` is now nullable and cleared rather than blocking deletion (`V11__make_song_added_by_nullable.sql`), and `deleteUser()` applies `leavePlaylist()`'s own departure logic per playlist. See `DECISIONS.md`.
 - [ ] `proxy.ts` gates every protected-route navigation on the presence of the `access_token` cookie alone, a 15-minute lifetime (`jwt.expiration=900000` in `application.properties`), instead of the 7-day `refresh_token` cookie. An idle user whose access token has expired gets redirected straight to `/login` on their next navigation, before `axios-instance.ts`'s response interceptor ever gets a chance to run and silently reissue a new access token through `/auth/refresh`, even though a valid refresh token still exists. Gate the middleware check on `refresh_token`'s presence instead, and let the client-side interceptor perform the actual reissue.
 
 ## Chore: Flutter DJ-model compliance
@@ -538,45 +526,21 @@ Checked against real code: the backend has exactly one test file, an empty `cont
 - [ ] Add Playwright coverage for the core flows that exist today: login/register, playlist CRUD, song add/edit, export
 - [ ] Add the new test steps to `.github/workflows/pr-checks.yml` for all three services
 
-## Story 27: Rate limiting
-
-Checked against real code: the only rate limiting anywhere is `SongMetadataService`'s single in-flight-request-per-user gate on `/api/metadata/song`, a `ConcurrentHashMap`-backed set, not a time-window limiter. No rate-limiting library (Bucket4j, resilience4j) exists in `pom.xml`. `/auth/login` and `/auth/register` have no rate limiting at all today.
-
-- [ ] Add a rate-limiting library (Bucket4j is the standard Spring choice) to `pom.xml`
-- [ ] Add per-user or per-IP request-window rate limits across public-facing endpoints, not just the existing single in-flight gate
-- [ ] Rate-limit `/auth/login` and `/auth/register` specifically, to blunt credential-stuffing and enumeration attempts
-- [ ] Standardize the 429 response shape; the metadata endpoint's current 429 uses Spring's default `ProblemDetail`, not the app's own `ErrorResponse` record used elsewhere in `GlobalExceptionHandler`
-- [ ] Rate-limit the AI microservice's `/metadata/resolve` endpoint directly, not just the core service's call into it, since anything holding the shared `X-Internal-Api-Key` secret can call it directly
-- [ ] Load-test every rate-limited entry point (both services) under concurrent traffic past the configured limit, confirming the limiter holds under real concurrency rather than only the single-threaded unit tests below
-
-Tests:
-- [ ] Unit tests for the rate limiter: requests under the limit pass, requests over the limit get rejected, including the boundary value
-- [ ] Integration test: `/auth/login` and `/auth/register` rate limiting specifically
-- [ ] Integration test: the AI microservice's `/metadata/resolve` rate limit triggers independent of the core service's own limiting
-
-## Story 36: Open-source collaboration readiness
-
-- [ ] Add `CONTRIBUTING.md`: local dev setup (`make dev`), the branch/PR workflow already defined in `CLAUDE.md` written for an external audience, how to pick up a story from `TASKS.md`
-- [x] Add `LICENSE`: MIT, chosen over AGPLv3/BSL since there's no revenue or scale to protect, and MIT is the stronger signal for a portfolio project, zero friction for anyone evaluating the code
-- [ ] Add `CODE_OF_CONDUCT.md`
-- [ ] Add GitHub issue templates (bug report, feature request) and a PR template matching the repo's actual PR description style (plain prose, no `## Summary`/`## Test plan`, see `CLAUDE.md`'s writing-style rules)
-- [ ] Document which secrets a new contributor needs (`YOUTUBE_API_KEY`, `OPENAI_API_KEY`, `INTERNAL_SERVICE_API_KEY`) and how they get sandbox-safe values, since both external API keys carry real cost/quota implications
-
 ## Story 37: Privacy policy, terms of service, and GDPR compliance
 
 Checked against real code: `DELETE /me` (`UserController` → `UserService.deleteUser()`) already does a real hard delete of the `User` row, not a deactivation. It's not just unaudited for `Song.addedBy` references and shared playlists, both are confirmed live bugs, see this file's Bug fixes section. No analytics exist yet (story 34), so there's nothing to disclose there until it ships.
 
 Scope decided: exactly two dedicated legal/static pages, Privacy Policy and Terms of Service. No separate cookie-consent page is needed yet, it's already gated below on story 34 shipping, and no other legal or static page (About, Contact) is planned.
 
-- [ ] Draft a privacy policy covering what's actually collected today: auth data (username, email, OAuth provider ID), playlist/song data
-- [ ] Draft terms of service
-- [ ] Add a GDPR data-export endpoint: a logged-in user can download their own account, playlist, and song data; `ExportController`/`ExportService` exist today but export playlist/song content, not a full personal-data dump, don't assume they already cover this
-- [ ] Fix the `DELETE /me` bug in this file's Bug fixes section (FK violation on `Song.addedBy`, orphaned playlists on last-member deletion), then confirm no other edge case leaves orphaned references or unexpectedly deletes other members' shared playlists
-- [ ] Add a cookie/consent notice, only needed once story 34 (first-party analytics) ships; skip until then since no third-party trackers are planned
+- [x] Draft a privacy policy covering what's actually collected today: auth data (username, email, OAuth provider ID), playlist/song data. Lives at `docs/legal/privacy-policy.md`, see `DECISIONS.md`
+- [x] Draft terms of service. Lives at `docs/legal/terms-of-service.md`, see `DECISIONS.md`
+- [x] Add a GDPR data-export endpoint: a logged-in user can download their own account, playlist, and song data; `ExportController`/`ExportService` exist today but export playlist/song content, not a full personal-data dump, don't assume they already cover this. Built as `GET /api/users/me/export` and `PersonalDataExportService`, kept separate from `ExportController`/`ExportService`
+- [x] Fix the `DELETE /me` bug in this file's Bug fixes section (FK violation on `Song.addedBy`, orphaned playlists on last-member deletion), then confirm no other edge case leaves orphaned references or unexpectedly deletes other members' shared playlists. Fixed; also found and fixed a related real bug surfaced while testing the shared-playlist ownership-transfer path against real Postgres, see `DECISIONS.md`
+- [ ] Add a cookie/consent notice, only needed once story 34 (first-party analytics) ships; skip until then since no third-party trackers are planned. Deliberately deferred, not a gap: there's nothing to consent to yet
 
 Tests:
-- [ ] Integration test: GDPR export endpoint returns the user's complete account, playlist, and song data
-- [ ] Integration test: `DELETE /me` with existing `Song.addedBy` references and shared-playlist memberships behaves per the decided handling, no orphaned references, no other member's playlist unexpectedly deleted
+- [x] Integration test: GDPR export endpoint returns the user's complete account, playlist, and song data
+- [x] Integration test: `DELETE /me` with existing `Song.addedBy` references and shared-playlist memberships behaves per the decided handling, no orphaned references, no other member's playlist unexpectedly deleted
 
 ## Story 38: Observability
 
