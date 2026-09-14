@@ -34,10 +34,16 @@ class Settings(BaseSettings):
     sentry_dsn: str | None = None
     sentry_traces_sample_rate: float = 0.1
 
-    # Distributed tracing (OpenTelemetry): spans are always created in-process so
-    # request logs can be correlated with a trace id, but nothing is exported over
-    # OTLP until this is pointed at a real collector or Grafana Cloud Tempo instance.
+    # OpenTelemetry (traces and logs): spans and log records are always created
+    # in-process so they can be correlated by trace id, but nothing is exported
+    # over OTLP until this is pointed at a real collector or Grafana Cloud's OTLP
+    # gateway. otel_exporter_otlp_headers authenticates against it, in the
+    # standard "Key=Value" OTLP header format; parsed with the same utility the
+    # OpenTelemetry SDK itself uses, not read from the process environment,
+    # since pydantic-settings loads .env into this object directly rather than
+    # into the real environment.
     otel_exporter_otlp_endpoint: str | None = None
+    otel_exporter_otlp_headers: str | None = None
 
 
 settings = Settings()
