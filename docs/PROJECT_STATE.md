@@ -46,7 +46,7 @@ A story can have draft tasks written against it in TASKS.md while still marked N
 | 45 | Import songs from an existing playlist (owned, member-of, or published-public) directly into another playlist, instant copy, no metadata pipeline involved | Backend / Frontend | Needs Definition, draft tasks exist, surfaced during story 28's design pass; no longer blocked now that story 15's song/playlist join table has landed, tasks still need checking against the real code before Ready |
 | 46 | Playlist membership: a real owner/admin per playlist, per-member read/write/delete grants, kick (can rejoin) versus ban (can't), and a per-playlist join identity (display name and avatar, defaulting to the account's own) | Backend / Frontend | Ready, surfaced during story 28's design pass, tasks checked against the real code (`Playlist.users`, `UserController`'s join endpoint) |
 | 47 | Naming consistency: replace leftover references to the project's earlier working names (`Hitster`, `My Hitster`, `HitGuessr`) with `hittiguess` everywhere except the legitimate reference to the real Hitster board game as the product's inspiration | Docs / Frontend / Backend | Ready, tasks checked against the real code |
-| 48 | Comment cleanup: trim redundant and narrative comments left over from AI-assisted development down to `CLAUDE.md`'s own comment rules | Backend / AI / Frontend | Ready, tasks checked against the real code |
+| 48 | Comment cleanup: trim redundant and narrative comments left over from AI-assisted development down to `AGENTS.md`'s own comment rules | Backend / AI / Frontend | Ready, tasks checked against the real code |
 
 ## Open questions
 

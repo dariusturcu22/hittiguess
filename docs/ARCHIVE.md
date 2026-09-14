@@ -283,6 +283,16 @@ Tests:
 - [x] Unit tests for the similarity-check step (mocked embedding client): a high-confidence match reuses existing data, a low-confidence match proceeds to the full pipeline
 - [x] Integration test: submitting a near-duplicate song reuses existing verified data instead of re-running the LLM
 
+## Chore: Cross-tool agent instructions
+
+`CLAUDE.md` held every project convention (stack, commands, non-negotiable rules, writing style, code conventions, git workflow, task gate) as a Claude-Code-only file, unreadable by any other agentic coding tool used on this project. `AGENTS.md`, the cross-tool convention read natively by Codex, Cursor, Claude Code, and others, replaces it as the source of truth; `CLAUDE.md` becomes a thin pointer to it.
+
+- [x] Move `CLAUDE.md`'s full content into a new root `AGENTS.md`
+- [x] Replace `CLAUDE.md`'s content with a short pointer to `AGENTS.md`
+- [x] Fix `CLAUDE.md`'s Tooling section, which pointed at `frontend/AGENTS.md` for a Next.js breaking-changes warning; that file never existed anywhere in the repo's history, confirmed via `git log --all`. Reworded to state the fact directly instead of citing a file that isn't there
+- [x] Add `.kiro/steering/agents-md.md` (always-included) that inlines `AGENTS.md` via Kiro's live file-reference syntax, so Kiro's own steering surface carries the same content without a second copy to keep in sync
+- [x] Add `.cursor/rules/agents-md.mdc` (`alwaysApply: true`) that references `AGENTS.md` the same way, using Cursor's `@file` reference syntax
+
 ## Story 42: Explicit database split
 
 Formalizes the boundary between the core transactional database and story 33's separate analytics/event store as its own architectural decision, rather than leaving it implicit in story 33's provisioning task alone. Story 33 still owns picking the actual analytics store; this defines which data belongs on which side of the line, and why.

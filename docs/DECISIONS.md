@@ -666,6 +666,14 @@ Why: blocking the owner from leaving until everyone else was gone, the prior dec
 
 ---
 
+## 2026-09 | CLAUDE.md's content moves to AGENTS.md, the cross-tool convention
+
+Decision: the project's conventions (stack, commands, non-negotiable rules, writing style, code conventions, git workflow, task gate) move from `CLAUDE.md` into a new root `AGENTS.md`. `CLAUDE.md` becomes a short pointer to it. `.kiro/steering/agents-md.md` (always-included) and `.cursor/rules/agents-md.mdc` (`alwaysApply: true`) each inline `AGENTS.md`'s content via their own tool's live file-reference syntax, rather than copying it, so there's one file to keep current.
+
+Why: this project is worked on with more than one agentic coding tool, and `CLAUDE.md` is a Claude-Code-specific filename nothing else reads. AGENTS.md is the convention Codex, Cursor, Kiro, and Claude Code itself all read natively; keeping every convention in the one file both Codex and Kiro's baseline support already cover, plus a live-referenced pointer for Kiro and Cursor's own scoped-rule systems, avoids maintaining the same rules in three or four places that drift out of sync with each other.
+
+---
+
 ## 2026-09 | Three readiness tiers replace an undifferentiated batch plan: Local, Beta, Finished
 
 Decision: `ROADMAP.md` now names three milestones above its phase breakdown. Local is Phase 0, Phase 1, and Phase 2, plus story 47 (naming consistency) and story 22 (test coverage), both moved to run last within Phase 2, in that order; it's playable by the project owner alone or with one other person over a locally opened port, no real deployment target needed. Beta adds story 7 and story 8, hosting and database migration, actually decided and executed, and covers deploying for real and demo matches with friends and colleagues. Finished is Phase 3 alone, the lowest priority, since neither of its stories blocks Local or Beta. Story 22 no longer runs partway through Phase 1; its existing partial implementation (batch 18, PR #85) is dropped rather than carried forward, since redoing it once Local's actual feature surface is finished is less work than maintaining partial coverage through every story that lands between now and then. Story 28's design phase is confirmed done, all 53 screens (auth, playlist management, song review, import, gameplay, plus the landing page, both themes) already exist in `docs/design/hittiguess-design.html`; only its implementation phase remains, staying in Phase 2 where it already was.

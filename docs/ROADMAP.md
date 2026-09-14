@@ -80,7 +80,7 @@ Starts once every Local story above has actually shipped, not merely reached `Re
 
 Phase 1 lists its stories as independent and workable in any order, including in parallel. This section picks one concrete, sequential order for a single implementer working through them one PR at a time, so a session doesn't have to re-derive a starting point every time. A batch is normally one story; two batches combine a story's tasks only where the docs already say to (15 and 23 both touch `Song`). Update this list's checkmark as each batch's PR merges into `dev`; the list itself doesn't move to `ARCHIVE.md`, it stays as the reference for the next batch to work from.
 
-Per `CLAUDE.md`'s batching workflow: only one PR from this list is open for review at a time. Work on the next batch can proceed locally once the current PR is opened, but that next batch's own PR isn't opened until the current one merges.
+Per `AGENTS.md`'s batching workflow: only one PR from this list is open for review at a time. Work on the next batch can proceed locally once the current PR is opened, but that next batch's own PR isn't opened until the current one merges.
 
 - [x] Batch 1: Phase 0's metadata source implementation (`wikidata.py`, `musicbrainz.py`, `wikipedia.py`)
 - [x] Batch 2: Story 20, the DeepInfra client
