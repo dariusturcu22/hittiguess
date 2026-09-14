@@ -282,3 +282,39 @@ Checked against real code: no pgvector dependency in `pom.xml`, no vector-DB cli
 Tests:
 - [x] Unit tests for the similarity-check step (mocked embedding client): a high-confidence match reuses existing data, a low-confidence match proceeds to the full pipeline
 - [x] Integration test: submitting a near-duplicate song reuses existing verified data instead of re-running the LLM
+
+## Story 36: Open-source collaboration readiness
+
+- [x] Add `CONTRIBUTING.md`: local dev setup (`make dev`), the branch/PR workflow already defined in `CLAUDE.md` written for an external audience, how to pick up a story from `TASKS.md`
+- [x] Add `LICENSE`: MIT, chosen over AGPLv3/BSL since there's no revenue or scale to protect, and MIT is the stronger signal for a portfolio project, zero friction for anyone evaluating the code
+- [x] Add `CODE_OF_CONDUCT.md`
+- [x] Add GitHub issue templates (bug report, feature request) and a PR template matching the repo's actual PR description style (plain prose, no `## Summary`/`## Test plan`, see `CLAUDE.md`'s writing-style rules)
+- [x] Document which secrets a new contributor needs (`YOUTUBE_API_KEY`, `OPENAI_API_KEY`, `INTERNAL_SERVICE_API_KEY`) and how they get sandbox-safe values, since both external API keys carry real cost/quota implications
+
+## Story 27: Rate limiting
+
+Checked against real code: the only rate limiting anywhere is `SongMetadataService`'s single in-flight-request-per-user gate on `/api/metadata/song`, a `ConcurrentHashMap`-backed set, not a time-window limiter. No rate-limiting library (Bucket4j, resilience4j) exists in `pom.xml`. `/auth/login` and `/auth/register` have no rate limiting at all today.
+
+- [x] Add a rate-limiting library (Bucket4j is the standard Spring choice) to `pom.xml`
+- [x] Add per-user or per-IP request-window rate limits across public-facing endpoints, not just the existing single in-flight gate
+- [x] Rate-limit `/auth/login` and `/auth/register` specifically, to blunt credential-stuffing and enumeration attempts
+- [x] Standardize the 429 response shape; the metadata endpoint's current 429 uses Spring's default `ProblemDetail`, not the app's own `ErrorResponse` record used elsewhere in `GlobalExceptionHandler`
+- [x] Rate-limit the AI microservice's `/metadata/resolve` endpoint directly, not just the core service's call into it, since anything holding the shared `X-Internal-Api-Key` secret can call it directly
+- [x] Load-test every rate-limited entry point (both services) under concurrent traffic past the configured limit, confirming the limiter holds under real concurrency rather than only the single-threaded unit tests below
+
+Tests:
+- [x] Unit tests for the rate limiter: requests under the limit pass, requests over the limit get rejected, including the boundary value
+- [x] Integration test: `/auth/login` and `/auth/register` rate limiting specifically
+- [x] Integration test: the AI microservice's `/metadata/resolve` rate limit triggers independent of the core service's own limiting
+
+## Story 33: Analytics data store
+
+Story 42 owns the explicit domain boundary this story's provisioning assumes: every transactional entity stays in the core Postgres+pgvector instance, only this story's usage/event data goes in the separate store it provisions below.
+
+- [x] Choose and provision a separate append-heavy store for usage/event data, apart from the transactional Postgres database (a separate schema, or a dedicated event/time-series store). A second Postgres database, `analytics-db` in `docker-compose.yml`, migrated through its own Flyway history under `db/analytics-migration`, independent of the core service's V1-V10 history
+- [x] Define the event schema: game session start/end (with a compact per-game summary, group, players, win/loss, cards won, final score, for story 34's game history feature), login, playlist created, song submitted, rate-limit-exceeded (user, endpoint), report submitted, failed login attempt. A single `analytics_events` table (event type, timestamp, JSONB payload) plus a typed payload record per event, in `backend/src/main/java/org/dariusturcu/backend/analytics`
+- [x] Decide a retention policy. 180 days, configurable through `analytics.retention.days`
+
+Tests:
+- [x] Integration test: an event write to the new store doesn't touch or block the transactional database
+- [x] Integration test for the retention policy's cleanup logic
