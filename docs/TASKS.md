@@ -207,18 +207,6 @@ Tests:
 - [ ] Integration test: publishing a playlist makes it selectable by a user who neither owns it nor is a member of it; unpublishing removes that access without affecting existing owners/members
 - [ ] Frontend test: the review UI lets a user inspect and confirm the generated set before saving
 
-## Story 33: Analytics data store
-
-Story 42 owns the explicit domain boundary this story's provisioning assumes: every transactional entity stays in the core Postgres+pgvector instance, only this story's usage/event data goes in the separate store it provisions below.
-
-- [ ] Choose and provision a separate append-heavy store for usage/event data, apart from the transactional Postgres database (a separate schema, or a dedicated event/time-series store)
-- [ ] Define the event schema: game session start/end (with a compact per-game summary, group, players, win/loss, cards won, final score, for story 34's game history feature), login, playlist created, song submitted, rate-limit-exceeded (user, endpoint), report submitted, failed login attempt
-- [ ] Decide a retention policy
-
-Tests:
-- [ ] Integration test: an event write to the new store doesn't touch or block the transactional database
-- [ ] Unit test for the retention policy's cleanup logic
-
 ## Story 34: First-party usage analytics
 
 Story 42 owns the explicit domain boundary this story reads and writes against: the transactional `GameSession`/`Round`/`Guess` rows this story's game-history task reads a summary from stay in the core database and purge exactly as story 10 specifies; only the compact event/summary data this story writes goes in story 33's separate analytics store. Depends on story 33's store existing, and also on the events it instruments actually existing: story 10 (game session, no `GameSession` model exists yet), story 17 (reports, no `SongReport` entity exists yet), and story 27 (rate limiting, only a narrow one-in-flight-request-per-user concurrency gate exists today on `/api/metadata/song`, not the general per-user/per-IP time-window limiter this depends on for login/register or other endpoints). Login and playlist-creation events can be instrumented once story 33 lands, independent of the others. Event scope is deliberately count/aggregate-based, not behavioral click-tracking: usage stats for the project's own understanding (games played, session length, playlists created, songs submitted, login activity), and abuse-visibility signals that turn existing enforcement into something reviewable (rate-limit-exceeded events from stories 13/27, report submissions from story 17, failed login attempts), not a new detection mechanism of its own.
@@ -512,7 +500,7 @@ OpenAI's own cheap tier (`gpt-5-nano`, `gpt-5-mini`) and the existing `gpt-5.1` 
 No story required for these. Fix on a `fix` branch.
 
 - [x] `SongMetadataResponse` (Java) silently drops the AI microservice's `confidence`, `source`, and `reasoning` fields: `SongMetadataResult` (Python) computes and returns all three today, but the Java record deserializing that response only declares `title/artist/releaseYear/gradientColor1/gradientColor2`, so the other three are read off the wire and discarded on every metadata call. Extend the record to keep them.
-- [ ] `DELETE /me` (`UserService.deleteUser()`) throws an unhandled `DataIntegrityViolationException` for any user who has ever added a song: `Song.addedBy` (`Song.java:41-43`) is a non-nullable `@ManyToOne` with no inverse mapping on `User` and no cascade rule, so the FK Hibernate generates under `ddl-auto=update` has no `ON DELETE` clause. It also orphans a playlist when the deleting user is its last remaining member: unlike `leavePlaylist()` (`UserService.java`), which deletes a playlist once `getUserCount() == 0`, `deleteUser()` has no equivalent check.
+- [x] `DELETE /me` (`UserService.deleteUser()`) throws an unhandled `DataIntegrityViolationException` for any user who has ever added a song: `Song.addedBy` (`Song.java:41-43`) is a non-nullable `@ManyToOne` with no inverse mapping on `User` and no cascade rule, so the FK Hibernate generates under `ddl-auto=update` has no `ON DELETE` clause. It also orphans a playlist when the deleting user is its last remaining member: unlike `leavePlaylist()` (`UserService.java`), which deletes a playlist once `getUserCount() == 0`, `deleteUser()` has no equivalent check. Fixed: `Song.addedBy` is now nullable and cleared rather than blocking deletion (`V11__make_song_added_by_nullable.sql`), and `deleteUser()` applies `leavePlaylist()`'s own departure logic per playlist. See `DECISIONS.md`.
 - [ ] `proxy.ts` gates every protected-route navigation on the presence of the `access_token` cookie alone, a 15-minute lifetime (`jwt.expiration=900000` in `application.properties`), instead of the 7-day `refresh_token` cookie. An idle user whose access token has expired gets redirected straight to `/login` on their next navigation, before `axios-instance.ts`'s response interceptor ever gets a chance to run and silently reissue a new access token through `/auth/refresh`, even though a valid refresh token still exists. Gate the middleware check on `refresh_token`'s presence instead, and let the client-side interceptor perform the actual reissue.
 
 ## Chore: Flutter DJ-model compliance
@@ -538,45 +526,21 @@ Checked against real code: the backend has exactly one test file, an empty `cont
 - [ ] Add Playwright coverage for the core flows that exist today: login/register, playlist CRUD, song add/edit, export
 - [ ] Add the new test steps to `.github/workflows/pr-checks.yml` for all three services
 
-## Story 27: Rate limiting
-
-Checked against real code: the only rate limiting anywhere is `SongMetadataService`'s single in-flight-request-per-user gate on `/api/metadata/song`, a `ConcurrentHashMap`-backed set, not a time-window limiter. No rate-limiting library (Bucket4j, resilience4j) exists in `pom.xml`. `/auth/login` and `/auth/register` have no rate limiting at all today.
-
-- [ ] Add a rate-limiting library (Bucket4j is the standard Spring choice) to `pom.xml`
-- [ ] Add per-user or per-IP request-window rate limits across public-facing endpoints, not just the existing single in-flight gate
-- [ ] Rate-limit `/auth/login` and `/auth/register` specifically, to blunt credential-stuffing and enumeration attempts
-- [ ] Standardize the 429 response shape; the metadata endpoint's current 429 uses Spring's default `ProblemDetail`, not the app's own `ErrorResponse` record used elsewhere in `GlobalExceptionHandler`
-- [ ] Rate-limit the AI microservice's `/metadata/resolve` endpoint directly, not just the core service's call into it, since anything holding the shared `X-Internal-Api-Key` secret can call it directly
-- [ ] Load-test every rate-limited entry point (both services) under concurrent traffic past the configured limit, confirming the limiter holds under real concurrency rather than only the single-threaded unit tests below
-
-Tests:
-- [ ] Unit tests for the rate limiter: requests under the limit pass, requests over the limit get rejected, including the boundary value
-- [ ] Integration test: `/auth/login` and `/auth/register` rate limiting specifically
-- [ ] Integration test: the AI microservice's `/metadata/resolve` rate limit triggers independent of the core service's own limiting
-
-## Story 36: Open-source collaboration readiness
-
-- [ ] Add `CONTRIBUTING.md`: local dev setup (`make dev`), the branch/PR workflow already defined in `CLAUDE.md` written for an external audience, how to pick up a story from `TASKS.md`
-- [x] Add `LICENSE`: MIT, chosen over AGPLv3/BSL since there's no revenue or scale to protect, and MIT is the stronger signal for a portfolio project, zero friction for anyone evaluating the code
-- [ ] Add `CODE_OF_CONDUCT.md`
-- [ ] Add GitHub issue templates (bug report, feature request) and a PR template matching the repo's actual PR description style (plain prose, no `## Summary`/`## Test plan`, see `CLAUDE.md`'s writing-style rules)
-- [ ] Document which secrets a new contributor needs (`YOUTUBE_API_KEY`, `OPENAI_API_KEY`, `INTERNAL_SERVICE_API_KEY`) and how they get sandbox-safe values, since both external API keys carry real cost/quota implications
-
 ## Story 37: Privacy policy, terms of service, and GDPR compliance
 
 Checked against real code: `DELETE /me` (`UserController` → `UserService.deleteUser()`) already does a real hard delete of the `User` row, not a deactivation. It's not just unaudited for `Song.addedBy` references and shared playlists, both are confirmed live bugs, see this file's Bug fixes section. No analytics exist yet (story 34), so there's nothing to disclose there until it ships.
 
 Scope decided: exactly two dedicated legal/static pages, Privacy Policy and Terms of Service. No separate cookie-consent page is needed yet, it's already gated below on story 34 shipping, and no other legal or static page (About, Contact) is planned.
 
-- [ ] Draft a privacy policy covering what's actually collected today: auth data (username, email, OAuth provider ID), playlist/song data
-- [ ] Draft terms of service
-- [ ] Add a GDPR data-export endpoint: a logged-in user can download their own account, playlist, and song data; `ExportController`/`ExportService` exist today but export playlist/song content, not a full personal-data dump, don't assume they already cover this
-- [ ] Fix the `DELETE /me` bug in this file's Bug fixes section (FK violation on `Song.addedBy`, orphaned playlists on last-member deletion), then confirm no other edge case leaves orphaned references or unexpectedly deletes other members' shared playlists
-- [ ] Add a cookie/consent notice, only needed once story 34 (first-party analytics) ships; skip until then since no third-party trackers are planned
+- [x] Draft a privacy policy covering what's actually collected today: auth data (username, email, OAuth provider ID), playlist/song data. Lives at `docs/legal/privacy-policy.md`, see `DECISIONS.md`
+- [x] Draft terms of service. Lives at `docs/legal/terms-of-service.md`, see `DECISIONS.md`
+- [x] Add a GDPR data-export endpoint: a logged-in user can download their own account, playlist, and song data; `ExportController`/`ExportService` exist today but export playlist/song content, not a full personal-data dump, don't assume they already cover this. Built as `GET /api/users/me/export` and `PersonalDataExportService`, kept separate from `ExportController`/`ExportService`
+- [x] Fix the `DELETE /me` bug in this file's Bug fixes section (FK violation on `Song.addedBy`, orphaned playlists on last-member deletion), then confirm no other edge case leaves orphaned references or unexpectedly deletes other members' shared playlists. Fixed; also found and fixed a related real bug surfaced while testing the shared-playlist ownership-transfer path against real Postgres, see `DECISIONS.md`
+- [ ] Add a cookie/consent notice, only needed once story 34 (first-party analytics) ships; skip until then since no third-party trackers are planned. Deliberately deferred, not a gap: there's nothing to consent to yet
 
 Tests:
-- [ ] Integration test: GDPR export endpoint returns the user's complete account, playlist, and song data
-- [ ] Integration test: `DELETE /me` with existing `Song.addedBy` references and shared-playlist memberships behaves per the decided handling, no orphaned references, no other member's playlist unexpectedly deleted
+- [x] Integration test: GDPR export endpoint returns the user's complete account, playlist, and song data
+- [x] Integration test: `DELETE /me` with existing `Song.addedBy` references and shared-playlist memberships behaves per the decided handling, no orphaned references, no other member's playlist unexpectedly deleted
 
 ## Story 38: Observability
 
@@ -621,9 +585,11 @@ Checked against real code: the frontend today covers auth (login, register, forg
 
 Scope decided: one unified redesign pass covering both the existing pages and the not-yet-built gameplay screens, not two separate efforts. A fresh visual direction, not constrained to the current shadcn/Tailwind theme tokens, though the underlying component library stays unless a specific component doesn't hold up under the new direction. Mockups are built as a multi-artboard canvas via the `design` skill, reviewed before any implementation code is written.
 
-- [ ] Design phase: establish the fresh visual direction (color, type, spacing, component style) and apply it across every existing page: landing, login, register, forgot-password, dashboard/playlist list, playlist detail, song detail, add song, join-by-invite
-- [ ] Design phase: extend the same visual system to the gameplay screens `GAME_DESIGN.md` specs but that don't exist as code yet: group lobby (member list, admin crown, join code/link, settings), game session/timeline (drag-and-drop cards, guess box, token count, betting window), DJ view (open-in-YouTube link-out), voice sidebar, text chat overlay, turn notification banner, the minimized "playing while away" widget state, and the results/leaderboard screen
-- [ ] Review pass against every mockup with the project owner before implementation starts, checking each gameplay screen against `GAME_DESIGN.md`'s spec for anything the design missed
+Design phase complete: `docs/design/hittiguess-design.html` covers all 53 screens across auth, playlist management, song review, import, and gameplay, plus the landing page, in both light and dark themes, iterated and reviewed directly by the project owner. Only the implementation tasks below remain.
+
+- [x] Design phase: establish the fresh visual direction (color, type, spacing, component style) and apply it across every existing page: landing, login, register, forgot-password, dashboard/playlist list, playlist detail, song detail, add song, join-by-invite. See `docs/design/hittiguess-design.html`
+- [x] Design phase: extend the same visual system to the gameplay screens `GAME_DESIGN.md` specs but that don't exist as code yet: group lobby (member list, admin crown, join code/link, settings), game session/timeline (drag-and-drop cards, guess box, token count, betting window), DJ view (open-in-YouTube link-out), voice sidebar, text chat overlay, turn notification banner, the minimized "playing while away" widget state, and the results/leaderboard screen. See `docs/design/hittiguess-design.html`
+- [x] Review pass against every mockup with the project owner before implementation starts, checking each gameplay screen against `GAME_DESIGN.md`'s spec for anything the design missed
 - [ ] Implementation: apply the new visual system to the existing pages/components in `frontend/app` and `frontend/components`, replacing the current shadcn theme tokens with the new ones
 - [ ] Implementation: build the new gameplay screens as real Next.js components/routes; wire to stories 10/11/39's actual backend once those land, using representative mock state in the meantime so this doesn't block on their implementation timing
 - [ ] Decide and document the actual component/token boundary: shadcn stays as the underlying primitive library with new theme tokens, versus specific components getting replaced outright, per what the mockups actually need
@@ -634,42 +600,22 @@ Tests:
 - [ ] Frontend test: the drag-and-drop timeline placement and the guess box's animated feedback behave per `GAME_DESIGN.md`'s Interaction and animation section
 - [ ] Accessibility check: color contrast and keyboard navigation for the new visual direction, specifically the semi-transparent chat overlay and the voice sidebar
 
-## Story 42: Explicit database split
+## Story 47: Naming consistency
 
-Formalizes the boundary between the core transactional database and story 33's separate analytics/event store as its own architectural decision, rather than leaving it implicit in story 33's provisioning task alone. Story 33 still owns picking the actual analytics store; this defines which data belongs on which side of the line, and why.
+The project's real name is `hittiguess`. Earlier working names (`Hitster`, `My Hitster`, `HitGuessr`) still appear in a handful of places that were never updated after the rename. A reference to the actual Hitster board game as the product's inspiration, in `README.md` and the landing page copy, is correct as written and stays.
 
-Checked against real code and the current docs: `ARCHITECTURE.md`'s Database domain boundary section already states the boundary this story's first task calls for, word for word, including "no entity is planned to live in both, or move between them." Not blocked on anything, the one real remaining gap is that stories 33 and 34 don't cross-reference this story yet.
+Checked against real code, every remaining old-name occurrence:
 
-- [x] Document, in `ARCHITECTURE.md`'s Database section, the explicit domain boundary: every entity either service reads or writes today, users, groups, sessions, rounds, guesses, songs, playlists, and pgvector embeddings, stays in the transactional Postgres+pgvector instance; only story 33's append-heavy usage/event data goes in the separate analytics store. Already present in `ARCHITECTURE.md`'s Database domain boundary section
-- [ ] Confirm no entity currently planned for either service needs to live in both places or move between them; already stated as true in `ARCHITECTURE.md`, re-check and note it here if one turns up during story 33 or 34's actual implementation
-- [x] Cross-reference this story from stories 33 and 34 so the boundary isn't restated inconsistently in three places
-
-## Story 43: Metadata minimization
-
-A cross-cutting principle rather than a single implementation: curb `metadataRaw`'s growth so it doesn't bloat the database. Story 40 already flags this as a real constraint (Wikidata's own entity dumps ran tens of KB per song during the sourcing spike; at that size the 500MB Supabase free-tier cap holds roughly 10,000-50,000 songs instead of 170,000+ with a curated version), and story 23 already decides the fix (`metadataRaw` persists the curated, actually-used subset of each source's response, not the full raw API response). This story applies that same rule everywhere raw pipeline output gets persisted, not just at those two stories' specific call sites.
-
-Checked against real code: no field anywhere in the backend or AI microservice persists a raw external API response today, `metadataRaw` itself doesn't exist yet (story 23's scope), so the audit below currently finds nothing outside stories 23/40 to fix. `ARCHITECTURE.md`'s Song and playlist database section already documents the curation rule as a standing constraint. Not blocked on anything, the one real remaining gap is the explicit cross-reference to story 40's retention requirement.
-
-- [x] Audit every place raw source or pipeline output is persisted (`metadataRaw` on `Song`, any raw YouTube API Data fields) against the curated-subset rule already decided in stories 23 and 40, confirm nothing outside those two stories ends up persisting an uncurated raw response. Confirmed clean today, nothing in the backend or AI microservice persists a raw response anywhere; re-run once story 23 actually adds `metadataRaw`
-- [x] Document the curation rule in `ARCHITECTURE.md` as a standing constraint on any future field that persists external API output, not just `metadataRaw`. Already present in `ARCHITECTURE.md`'s Song and playlist database section
-- [x] Coordinate with story 40's YouTube-API-Data 30-day refresh/delete requirement: both are limits on the same field, one on size, one on retention. Cross-referenced from story 40's own task now
-
-## Story 44: Test user infrastructure (dev only)
-
-A dedicated `Role` for automated test/QA agents, separate from `USER` and story 40's `ADMIN`. Exists so automated agents, this project's own AI-assisted development workflow included, reuse one seeded test account's credentials across runs instead of registering a fresh throwaway account every time. Coordinates with story 22 (test coverage): this is test infrastructure, not test coverage itself.
-
-Checked against real code: `Role.java` declares only `USER` today, confirming the first task below. No environment/profile mechanism exists anywhere in the backend, no `@Profile` annotation and no `spring.profiles.active` configuration anywhere, so "Production environment" isn't yet a concept the code can gate on; establishing that distinction is this story's own scope to build, not a dependency on another story. No root `CONTRIBUTING.md` exists yet either (story 36), the documentation task below already anticipates that with its dev-setup-doc fallback. Not blocked on anything else.
-
-- [ ] Add a `TEST` value to `User.role`, alongside the existing `USER` and (once story 40 lands) `ADMIN`
-- [ ] Add a fixture or seed mechanism that creates one reusable test account with known credentials in local/dev environments, rather than a new account per test run
-- [ ] Document, in `CONTRIBUTING.md` (story 36) or a dev-setup doc, that agents and contributors running tests locally reuse the seeded test account's credentials instead of registering new ones
-- [ ] Add an environment/profile mechanism distinguishing a Production deployment from local/dev, none exists today, no `@Profile` or `spring.profiles.active` usage anywhere in the backend; every guardrail below depends on this existing
-- [ ] Add an environment guardrail: any `TEST`-role account, and any endpoint or behavior gated on that role, is a no-op or outright rejected when running against a Production environment, even if a `TEST`-role row somehow exists there
-- [ ] Add a startup or CI check that fails loudly if a `TEST`-role row is ever found in a Production database, rather than silently ignoring it
+- [ ] `backend/docker-compose.yml`: rename the `my-hitster-postgres` container and the `hitster_postgres_data` volume
+- [ ] `backend/src/main/java/org/dariusturcu/backend/config/SecurityConfig.java`: update the hardcoded `https://my-hitster.dariusturcu22.com` allowed CORS origin
+- [ ] `backend/src/main/java/org/dariusturcu/backend/websocket/WebSocketConfig.java`: update the same hardcoded `https://my-hitster.dariusturcu22.com` allowed origin
+- [ ] `ai/app/main.py`: rename the FastAPI app's `title` from `"hitguessr AI microservice"`
+- [ ] `frontend/components/app-sidebar.tsx` and `frontend/components/logo.tsx`: rename the displayed `"My Hitster"` brand text
+- [ ] `frontend/orval.config.ts`: rename the `myHitster` and `myHitsterZod` generator config keys
+- [ ] Re-run the same search across the codebase once the above land, to catch anything this pass missed (generated API client output, environment variable names, deployment config)
 
 Tests:
-- [ ] Unit test confirming `TEST`-role behavior is disabled under a Production environment flag, including the case where a `TEST` row actually exists
-- [ ] Unit test for the seed/fixture mechanism producing the same reusable credentials across repeated runs
+- [ ] Confirm the existing CORS-related backend tests still pass after the `SecurityConfig`/`WebSocketConfig` origin rename
 
 ## Story 48: Comment cleanup
 

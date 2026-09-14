@@ -282,3 +282,76 @@ Checked against real code: no pgvector dependency in `pom.xml`, no vector-DB cli
 Tests:
 - [x] Unit tests for the similarity-check step (mocked embedding client): a high-confidence match reuses existing data, a low-confidence match proceeds to the full pipeline
 - [x] Integration test: submitting a near-duplicate song reuses existing verified data instead of re-running the LLM
+
+## Story 42: Explicit database split
+
+Formalizes the boundary between the core transactional database and story 33's separate analytics/event store as its own architectural decision, rather than leaving it implicit in story 33's provisioning task alone. Story 33 still owns picking the actual analytics store; this defines which data belongs on which side of the line, and why.
+
+Checked against real code and the current docs: `ARCHITECTURE.md`'s Database domain boundary section already states the boundary this story's first task calls for, word for word, including "no entity is planned to live in both, or move between them." Not blocked on anything, the one real remaining gap is that stories 33 and 34 don't cross-reference this story yet.
+
+- [x] Document, in `ARCHITECTURE.md`'s Database section, the explicit domain boundary: every entity either service reads or writes today, users, groups, sessions, rounds, guesses, songs, playlists, and pgvector embeddings, stays in the transactional Postgres+pgvector instance; only story 33's append-heavy usage/event data goes in the separate analytics store. Already present in `ARCHITECTURE.md`'s Database domain boundary section
+- [x] Confirm no entity currently planned for either service needs to live in both places or move between them; already stated as true in `ARCHITECTURE.md`, re-check and note it here if one turns up during story 33 or 34's actual implementation. Re-checked against story 33's actual implementation (`feature/analytics-data-store`): the analytics store holds a single `analytics_events` table (event type, timestamp, JSONB payload), no transactional entity is duplicated or moved into it, still holds
+- [x] Cross-reference this story from stories 33 and 34 so the boundary isn't restated inconsistently in three places
+
+## Story 43: Metadata minimization
+
+A cross-cutting principle rather than a single implementation: curb `metadataRaw`'s growth so it doesn't bloat the database. Story 40 already flags this as a real constraint (Wikidata's own entity dumps ran tens of KB per song during the sourcing spike; at that size the 500MB Supabase free-tier cap holds roughly 10,000-50,000 songs instead of 170,000+ with a curated version), and story 23 already decides the fix (`metadataRaw` persists the curated, actually-used subset of each source's response, not the full raw API response). This story applies that same rule everywhere raw pipeline output gets persisted, not just at those two stories' specific call sites.
+
+Checked against real code: `metadataRaw` now exists on `Song` (story 23 landed), but no code anywhere in the backend or AI microservice ever sets it, no `setMetadataRaw` call exists in the codebase. `ARCHITECTURE.md`'s Song and playlist database section already documents the curation rule as a standing constraint. Not blocked on anything.
+
+- [x] Audit every place raw source or pipeline output is persisted (`metadataRaw` on `Song`, any raw YouTube API Data fields) against the curated-subset rule already decided in stories 23 and 40, confirm nothing outside those two stories ends up persisting an uncurated raw response. Re-audited now that story 23 has landed: `metadataRaw` exists as a column but nothing writes to it yet, that's story 40's scope; still confirmed clean
+- [x] Document the curation rule in `ARCHITECTURE.md` as a standing constraint on any future field that persists external API output, not just `metadataRaw`. Already present in `ARCHITECTURE.md`'s Song and playlist database section
+- [x] Coordinate with story 40's YouTube-API-Data 30-day refresh/delete requirement: both are limits on the same field, one on size, one on retention. Cross-referenced from story 40's own task now
+
+## Story 44: Test user infrastructure (dev only)
+
+A dedicated `Role` for automated test/QA agents, separate from `USER` and story 40's `ADMIN`. Exists so automated agents, this project's own AI-assisted development workflow included, reuse one seeded test account's credentials across runs instead of registering a fresh throwaway account every time. Coordinates with story 22 (test coverage): this is test infrastructure, not test coverage itself.
+
+Checked against real code: `Role.java` declares only `USER` today, confirming the first task below. No environment/profile mechanism exists anywhere in the backend, no `@Profile` annotation and no `spring.profiles.active` configuration anywhere, so "Production environment" isn't yet a concept the code can gate on; establishing that distinction is this story's own scope to build, not a dependency on another story. No root `CONTRIBUTING.md` exists yet either (story 36), the documentation task below already anticipates that with its dev-setup-doc fallback. Not blocked on anything else.
+
+- [x] Add a `TEST` value to `User.role`, alongside the existing `USER` and (once story 40 lands) `ADMIN`
+- [x] Add a fixture or seed mechanism that creates one reusable test account with known credentials in local/dev environments, rather than a new account per test run
+- [x] Document, in `CONTRIBUTING.md` (story 36) or a dev-setup doc, that agents and contributors running tests locally reuse the seeded test account's credentials instead of registering new ones
+- [x] Add an environment/profile mechanism distinguishing a Production deployment from local/dev, none exists today, no `@Profile` or `spring.profiles.active` usage anywhere in the backend; every guardrail below depends on this existing
+- [x] Add an environment guardrail: any `TEST`-role account, and any endpoint or behavior gated on that role, is a no-op or outright rejected when running against a Production environment, even if a `TEST`-role row somehow exists there
+- [x] Add a startup or CI check that fails loudly if a `TEST`-role row is ever found in a Production database, rather than silently ignoring it
+
+Tests:
+- [x] Unit test confirming `TEST`-role behavior is disabled under a Production environment flag, including the case where a `TEST` row actually exists
+- [x] Unit test for the seed/fixture mechanism producing the same reusable credentials across repeated runs
+
+## Story 36: Open-source collaboration readiness
+
+- [x] Add `CONTRIBUTING.md`: local dev setup (`make dev`), the branch/PR workflow already defined in `CLAUDE.md` written for an external audience, how to pick up a story from `TASKS.md`
+- [x] Add `LICENSE`: MIT, chosen over AGPLv3/BSL since there's no revenue or scale to protect, and MIT is the stronger signal for a portfolio project, zero friction for anyone evaluating the code
+- [x] Add `CODE_OF_CONDUCT.md`
+- [x] Add GitHub issue templates (bug report, feature request) and a PR template matching the repo's actual PR description style (plain prose, no `## Summary`/`## Test plan`, see `CLAUDE.md`'s writing-style rules)
+- [x] Document which secrets a new contributor needs (`YOUTUBE_API_KEY`, `OPENAI_API_KEY`, `INTERNAL_SERVICE_API_KEY`) and how they get sandbox-safe values, since both external API keys carry real cost/quota implications
+
+## Story 27: Rate limiting
+
+Checked against real code: the only rate limiting anywhere is `SongMetadataService`'s single in-flight-request-per-user gate on `/api/metadata/song`, a `ConcurrentHashMap`-backed set, not a time-window limiter. No rate-limiting library (Bucket4j, resilience4j) exists in `pom.xml`. `/auth/login` and `/auth/register` have no rate limiting at all today.
+
+- [x] Add a rate-limiting library (Bucket4j is the standard Spring choice) to `pom.xml`
+- [x] Add per-user or per-IP request-window rate limits across public-facing endpoints, not just the existing single in-flight gate
+- [x] Rate-limit `/auth/login` and `/auth/register` specifically, to blunt credential-stuffing and enumeration attempts
+- [x] Standardize the 429 response shape; the metadata endpoint's current 429 uses Spring's default `ProblemDetail`, not the app's own `ErrorResponse` record used elsewhere in `GlobalExceptionHandler`
+- [x] Rate-limit the AI microservice's `/metadata/resolve` endpoint directly, not just the core service's call into it, since anything holding the shared `X-Internal-Api-Key` secret can call it directly
+- [x] Load-test every rate-limited entry point (both services) under concurrent traffic past the configured limit, confirming the limiter holds under real concurrency rather than only the single-threaded unit tests below
+
+Tests:
+- [x] Unit tests for the rate limiter: requests under the limit pass, requests over the limit get rejected, including the boundary value
+- [x] Integration test: `/auth/login` and `/auth/register` rate limiting specifically
+- [x] Integration test: the AI microservice's `/metadata/resolve` rate limit triggers independent of the core service's own limiting
+
+## Story 33: Analytics data store
+
+Story 42 owns the explicit domain boundary this story's provisioning assumes: every transactional entity stays in the core Postgres+pgvector instance, only this story's usage/event data goes in the separate store it provisions below.
+
+- [x] Choose and provision a separate append-heavy store for usage/event data, apart from the transactional Postgres database (a separate schema, or a dedicated event/time-series store). A second Postgres database, `analytics-db` in `docker-compose.yml`, migrated through its own Flyway history under `db/analytics-migration`, independent of the core service's V1-V10 history
+- [x] Define the event schema: game session start/end (with a compact per-game summary, group, players, win/loss, cards won, final score, for story 34's game history feature), login, playlist created, song submitted, rate-limit-exceeded (user, endpoint), report submitted, failed login attempt. A single `analytics_events` table (event type, timestamp, JSONB payload) plus a typed payload record per event, in `backend/src/main/java/org/dariusturcu/backend/analytics`
+- [x] Decide a retention policy. 180 days, configurable through `analytics.retention.days`
+
+Tests:
+- [x] Integration test: an event write to the new store doesn't touch or block the transactional database
+- [x] Integration test for the retention policy's cleanup logic
