@@ -7,7 +7,9 @@ from app.config import settings
 from app.metadata.sources.http_retry import get_with_backoff
 from app.metadata.sources.mediawiki_auth import build_authenticated_client
 from app.metadata.sources.util import METADATA_SOURCE_USER_AGENT
+from app.observability.error_reporting import report_source_failure
 
+SOURCE_NAME = "wikidata"
 API_URL = "https://www.wikidata.org/w/api.php"
 REQUEST_TIMEOUT_SECONDS = 10.0
 DEFAULT_SEARCH_LIMIT = 20  # a common title can bury the real song many results down a narrow window
@@ -171,5 +173,6 @@ def search(title: str, artist: str) -> list[dict]:
             candidates.append(album_candidate)
 
         return candidates
-    except Exception:
+    except Exception as wikidata_error:
+        report_source_failure(SOURCE_NAME, wikidata_error, title, artist)
         return []

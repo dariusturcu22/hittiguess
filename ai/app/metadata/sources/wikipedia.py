@@ -7,7 +7,9 @@ from app.config import settings
 from app.metadata.sources.http_retry import get_with_backoff
 from app.metadata.sources.mediawiki_auth import build_authenticated_client
 from app.metadata.sources.util import METADATA_SOURCE_USER_AGENT
+from app.observability.error_reporting import report_source_failure
 
+SOURCE_NAME = "wikipedia"
 API_URL = "https://en.wikipedia.org/w/api.php"
 REQUEST_TIMEOUT_SECONDS = 10.0
 SEARCH_RESULT_LIMIT = 5
@@ -162,5 +164,6 @@ def search(title: str, artist: str, album: str | None = None) -> list[dict]:
                 entries.append(album_entry)
 
         return entries
-    except Exception:
+    except Exception as wikipedia_error:
+        report_source_failure(SOURCE_NAME, wikipedia_error, title, artist)
         return []

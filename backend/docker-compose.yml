@@ -25,6 +25,26 @@ services:
     volumes:
       - hitster_analytics_postgres_data:/var/lib/postgresql
 
+  # Scrapes both services' Prometheus endpoints and pushes metrics to Grafana
+  # Cloud (observability/alloy/config.alloy). Neither service runs as its own
+  # container, both are plain host processes started by `make dev`; Alloy
+  # reaches them through host.docker.internal, which extra_hosts makes work
+  # on Linux Docker hosts too, not just Docker Desktop.
+  alloy:
+    image: grafana/alloy:v1.19.2
+    restart: unless-stopped
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    env_file:
+      - .env
+    volumes:
+      - ../observability/alloy/config.alloy:/etc/alloy/config.alloy:ro
+    command:
+      - run
+      - --server.http.listen-addr=0.0.0.0:12345
+      - --storage.path=/var/lib/alloy/data
+      - /etc/alloy/config.alloy
+
 volumes:
   hitster_postgres_data:
   hitster_analytics_postgres_data:

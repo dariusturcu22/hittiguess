@@ -7,6 +7,7 @@ from app.clients.deepinfra_client import client as deepinfra_client
 from app.clients.openai_client import client
 from app.config import settings
 from app.metadata.schemas import SongMetadataResult
+from app.observability.error_reporting import report_openai_failure
 
 # Non-zero temperature produces real run-to-run answer variance on close
 # extraction calls, not just wording differences in a reasoning field.
@@ -18,12 +19,16 @@ ResponseModel = TypeVar("ResponseModel", bound=BaseModel)
 
 
 def synthesize(prompt: str) -> SongMetadataResult:
-    completion = client.chat.completions.parse(
-        model=settings.openai_model,
-        temperature=0.1,
-        messages=[{"role": "user", "content": prompt}],
-        response_format=SongMetadataResult,
-    )
+    try:
+        completion = client.chat.completions.parse(
+            model=settings.openai_model,
+            temperature=0.1,
+            messages=[{"role": "user", "content": prompt}],
+            response_format=SongMetadataResult,
+        )
+    except Exception as openai_error:
+        report_openai_failure(openai_error)
+        raise
 
     parsed = completion.choices[0].message.parsed
     if parsed is None:

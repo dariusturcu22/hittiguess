@@ -5,7 +5,9 @@ import httpx
 from app.config import settings
 from app.metadata.sources.http_retry import get_with_backoff
 from app.metadata.sources.util import METADATA_SOURCE_USER_AGENT
+from app.observability.error_reporting import report_source_failure
 
+SOURCE_NAME = "discogs"
 SEARCH_URL = "https://api.discogs.com/database/search"
 MASTER_URL_TEMPLATE = "https://api.discogs.com/masters/{master_id}"
 REQUEST_TIMEOUT_SECONDS = 10.0
@@ -173,5 +175,6 @@ def search(title: str, artist: str, album: str | None = None) -> list[dict]:
             candidates += _candidates_for_query(album, artist, "album")
 
         return candidates
-    except Exception:
+    except Exception as discogs_error:
+        report_source_failure(SOURCE_NAME, discogs_error, title, artist)
         return []
