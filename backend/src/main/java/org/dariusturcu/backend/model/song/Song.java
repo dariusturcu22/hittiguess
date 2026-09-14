@@ -60,7 +60,11 @@ public class Song {
     @ManyToMany(mappedBy = "songs")
     private Set<Playlist> playlists = new HashSet<>();
 
+    // Nullable: a song is a standalone catalog entity, independent of the account that
+    // submitted it. Deleting that account clears this reference rather than blocking the
+    // deletion or deleting the song, matching the same independence already established for
+    // a song's relationship to its playlists.
     @ManyToOne
-    @JoinColumn(name = "added_by", nullable = false)
+    @JoinColumn(name = "added_by")
     private User addedBy;
 }
