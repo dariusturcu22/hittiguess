@@ -4,7 +4,15 @@
         <encoder class="org.dariusturcu.backend.observability.logging.JsonLineEncoder"/>
     </appender>
 
+    <!-- Ships every log record through the OpenTelemetry SDK the Spring Boot
+         starter already configures; a safe no-op until OTEL_SDK_DISABLED=false
+         and OTEL_EXPORTER_OTLP_ENDPOINT point at a real collector. -->
+    <appender name="OTEL" class="io.opentelemetry.instrumentation.logback.appender.v1_0.OpenTelemetryAppender">
+        <captureMdcAttributes>*</captureMdcAttributes>
+    </appender>
+
     <root level="INFO">
         <appender-ref ref="CONSOLE_JSON"/>
+        <appender-ref ref="OTEL"/>
     </root>
 </configuration>

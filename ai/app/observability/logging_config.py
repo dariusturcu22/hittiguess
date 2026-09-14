@@ -4,11 +4,21 @@ import sys
 from datetime import datetime, timezone
 
 from opentelemetry import trace
+from opentelemetry._logs import set_logger_provider
+from opentelemetry.exporter.otlp.proto.http._log_exporter import OTLPLogExporter
+from opentelemetry.instrumentation.logging.handler import LoggingHandler
+from opentelemetry.sdk._logs import LoggerProvider
+from opentelemetry.sdk._logs.export import BatchLogRecordProcessor
+from opentelemetry.sdk.resources import SERVICE_NAME, Resource
 
+from app.config import settings
+from app.observability.otlp import otlp_headers
 from app.observability.request_context import get_current_request_id
+from app.observability.tracing import SERVICE_NAME_VALUE
 
 TRACE_ID_HEX_DIGITS = "032x"
 SPAN_ID_HEX_DIGITS = "016x"
+OTLP_LOGS_PATH = "/v1/logs"
 
 
 class JsonLineFormatter(logging.Formatter):
@@ -42,9 +52,32 @@ class JsonLineFormatter(logging.Formatter):
 
 
 def configure_logging(level: int = logging.INFO) -> None:
-    handler = logging.StreamHandler(sys.stdout)
-    handler.setFormatter(JsonLineFormatter())
+    """Every log record always goes to stdout as JSON, independent of whether
+    OTLP export is configured. A second handler ships the same records over
+    OTLP once otel_exporter_otlp_endpoint points at a real collector or
+    Grafana Cloud's OTLP gateway; until then this stays a safe no-op beyond
+    the stdout output, the same pattern setup_tracing uses for spans."""
+    stdout_handler = logging.StreamHandler(sys.stdout)
+    stdout_handler.setFormatter(JsonLineFormatter())
 
     root_logger = logging.getLogger()
-    root_logger.handlers = [handler]
+    root_logger.handlers = [stdout_handler]
     root_logger.setLevel(level)
+
+    if settings.otel_exporter_otlp_endpoint:
+        resource = Resource.create({SERVICE_NAME: SERVICE_NAME_VALUE})
+        logger_provider = LoggerProvider(resource=resource)
+        set_logger_provider(logger_provider)
+
+        exporter = OTLPLogExporter(
+            endpoint=f"{settings.otel_exporter_otlp_endpoint}{OTLP_LOGS_PATH}",
+            headers=otlp_headers(),
+        )
+        logger_provider.add_log_record_processor(BatchLogRecordProcessor(exporter))
+
+        # Attached to the "app" logger, not the root logger: the exporter's own
+        # HTTP calls log through urllib3, which sits outside this namespace.
+        # Attaching to root would capture those transport logs too, triggering
+        # another export on every export, an unbounded feedback loop.
+        otlp_handler = LoggingHandler(level=logging.NOTSET, logger_provider=logger_provider)
+        logging.getLogger("app").addHandler(otlp_handler)
