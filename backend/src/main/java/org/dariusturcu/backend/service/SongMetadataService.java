@@ -2,14 +2,13 @@ package org.dariusturcu.backend.service;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.dariusturcu.backend.exception.RateLimitExceededException;
 import org.dariusturcu.backend.model.ai.AiResponse;
 import org.dariusturcu.backend.model.ai.AiServiceResolveResponse;
 import org.dariusturcu.backend.model.ai.MetadataResolveRequest;
 import org.dariusturcu.backend.security.util.SecurityUtils;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
-import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDateTime;
 import java.util.Set;
@@ -29,7 +28,7 @@ public class SongMetadataService {
     public AiResponse fetchMetadata(String youtubeUrl) {
         Long userId = SecurityUtils.getCurrentUserId();
         if (!usersWithRequestInFlight.add(userId)) {
-            throw new ResponseStatusException(HttpStatus.TOO_MANY_REQUESTS, "A metadata request is already in progress");
+            throw new RateLimitExceededException("A metadata request is already in progress");
         }
 
         long startTime = System.currentTimeMillis();

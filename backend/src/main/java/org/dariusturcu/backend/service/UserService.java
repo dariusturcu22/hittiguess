@@ -14,9 +14,11 @@ import org.dariusturcu.backend.model.playlist.PlaylistSummaryDTO;
 import org.dariusturcu.backend.model.user.UpdateUserRequest;
 import org.dariusturcu.backend.model.user.User;
 import org.dariusturcu.backend.model.user.UserDetailDTO;
+import org.dariusturcu.backend.model.song.Song;
 import org.dariusturcu.backend.repository.PlaylistBanRepository;
 import org.dariusturcu.backend.repository.PlaylistMembershipRepository;
 import org.dariusturcu.backend.repository.PlaylistRepository;
+import org.dariusturcu.backend.repository.SongRepository;
 import org.dariusturcu.backend.repository.UserRepository;
 
 import org.dariusturcu.backend.security.util.SecurityUtils;
@@ -40,6 +42,7 @@ public class UserService {
     private final PlaylistMapper playlistMapper;
     private final PlaylistMembershipRepository playlistMembershipRepository;
     private final PlaylistBanRepository playlistBanRepository;
+    private final SongRepository songRepository;
 
     private List<PlaylistSummaryDTO> getPlaylistSummaries(Long userId) {
         return playlistMembershipRepository.findByUserId(userId).stream()
@@ -96,6 +99,16 @@ public class UserService {
 
     public void deleteUser() {
         User user = SecurityUtils.getCurrentUser();
+
+        List<Song> submittedSongs = songRepository.findByAddedById(user.getId());
+        submittedSongs.forEach(song -> song.setAddedBy(null));
+        songRepository.saveAll(submittedSongs);
+
+        List<PlaylistMembership> memberships = playlistMembershipRepository.findByUserId(user.getId());
+        for (PlaylistMembership membership : memberships) {
+            departFromPlaylist(membership.getPlaylist(), user, membership);
+        }
+
         userRepository.delete(user);
     }
 
@@ -170,6 +183,13 @@ public class UserService {
         PlaylistMembership membership = playlistMembershipRepository.findByPlaylistIdAndUserId(playlistId, currentUser.getId())
                 .orElseThrow(() -> new ResourceNotFoundException(ResourceType.PLAYLIST_MEMBER, currentUser.getId()));
 
+        departFromPlaylist(playlist, currentUser, membership);
+    }
+
+    // A user's departure from one playlist, whether from an explicit leave or as part of
+    // deleting their account: delete the playlist outright once they were its last member,
+    // otherwise pass ownership to the earliest-joined remaining member if they were the owner.
+    private void departFromPlaylist(Playlist playlist, User departingUser, PlaylistMembership membership) {
         List<PlaylistMembership> remainingMembers = playlist.getMemberships().stream()
                 .filter(candidate -> candidate != membership)
                 .toList();
@@ -179,9 +199,7 @@ public class UserService {
             return;
         }
 
-        // The owner can leave at any time; a playlist with other members left never goes
-        // without an owner, so leadership passes automatically to whoever joined earliest.
-        if (playlist.isOwnedBy(currentUser)) {
+        if (playlist.isOwnedBy(departingUser)) {
             PlaylistMembership nextOwnerMembership = remainingMembers.stream()
                     .min(Comparator.comparing(PlaylistMembership::getJoinedAt))
                     .orElseThrow();
@@ -190,5 +208,11 @@ public class UserService {
 
         playlist.removeMembership(membership);
         playlistRepository.save(playlist);
+        // Explicit, not left to the collection's own orphanRemoval: deleteUser() deletes the
+        // departing user's account row in this same transaction, and the two operations flush
+        // together. Leaving this membership's removal implicit races against that user
+        // deletion; Hibernate can try to null this row's not-null user_id first to break the
+        // apparent dependency cycle, before it works out the membership needs deleting outright.
+        playlistMembershipRepository.delete(membership);
     }
 }

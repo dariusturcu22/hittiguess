@@ -101,9 +101,10 @@ class PlaylistMembershipLifecycleIntegrationTest {
                 UserMapper userMapper,
                 PlaylistMapper playlistMapper,
                 PlaylistMembershipRepository playlistMembershipRepository,
-                PlaylistBanRepository playlistBanRepository) {
+                PlaylistBanRepository playlistBanRepository,
+                SongRepository songRepository) {
             return new UserService(userRepository, playlistRepository, userMapper, playlistMapper,
-                    playlistMembershipRepository, playlistBanRepository);
+                    playlistMembershipRepository, playlistBanRepository, songRepository);
         }
     }
 

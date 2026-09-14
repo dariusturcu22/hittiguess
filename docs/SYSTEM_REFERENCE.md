@@ -4,12 +4,14 @@ Structured reference for what exists in the code today, distinct from [ARCHITECT
 
 ## API contracts
 
+Every rate-limited request the core service rejects, whichever limiter caught it, returns 429 with the same body every other error response uses: `ErrorResponse` (`status`, `message`, `timestamp`), never Spring's default `ProblemDetail`. `RateLimitingFilter` applies a 60-requests-per-minute limit to every request, keyed by authenticated user where one exists and by client IP otherwise, except `/auth/login` and `/auth/register`, which always share a stricter 5-requests-per-minute bucket keyed by IP regardless of authentication state. See story 27 in `DECISIONS.md`.
+
 ### Core service (Spring Boot)
 
 | Method | Path | Controller |
 |---|---|---|
-| POST | `/auth/register` | `AuthController` |
-| POST | `/auth/login` | `AuthController` |
+| POST | `/auth/register` | `AuthController`, rate-limited, see story 27 |
+| POST | `/auth/login` | `AuthController`, rate-limited, see story 27 |
 | POST | `/auth/refresh` | `AuthController` |
 | POST | `/auth/logout` | `AuthController` |
 | GET | `/api/enums/countries` | `EnumController` |
@@ -26,11 +28,12 @@ Structured reference for what exists in the code today, distinct from [ARCHITECT
 | DELETE | `/api/playlists/{playlistId}/members/{userId}` | `PlaylistController`, owner only, kicks a member, story 46 |
 | POST | `/api/playlists/{playlistId}/members/{userId}/ban` | `PlaylistController`, owner only, bans a member, story 46 |
 | POST | `/api/playlists/{playlistId}/members/{userId}/promote` | `PlaylistController`, owner only, transfers ownership, previous owner stays a member, story 46 |
-| GET | `/api/metadata/song` | `SongMetadataController`, one-in-flight-request-per-user limit, see story 27 |
+| GET | `/api/metadata/song` | `SongMetadataController`, one-in-flight-request-per-user limit plus the general time-window rate limit, see story 27 |
 | GET | `/api/users/me` | `UserController` |
 | GET | `/api/users/{userId}` | `UserController` |
 | PATCH | `/api/users/me` | `UserController` |
-| DELETE | `/api/users/me` | `UserController`, has the real bugs logged in `TASKS.md`'s Bug fixes section |
+| DELETE | `/api/users/me` | `UserController`, story 37 fixed the FK violation and playlist-orphaning bugs formerly logged in `TASKS.md`'s Bug fixes section |
+| GET | `/api/users/me/export` | `UserController`, `PersonalDataExportService`, GDPR personal-data export: account fields, every playlist membership, every submitted song, story 37, distinct from `ExportController`'s playlist-content PDFs |
 | POST | `/api/users/me/playlists` | `UserController` |
 | GET | `/api/users/me/playlists` | `UserController` |
 | POST | `/api/users/me/playlists/{playlistInviteCode}` | `UserController`, optional body carries a per-playlist display name and avatar, rejects a banned user, story 46 |
@@ -40,7 +43,7 @@ Structured reference for what exists in the code today, distinct from [ARCHITECT
 
 | Method | Path | Notes |
 |---|---|---|
-| POST | `/metadata/resolve` | Internal only, gated by `X-Internal-Api-Key`, called by the core service's `SongMetadataService`, never exposed publicly |
+| POST | `/metadata/resolve` | Internal only, gated by `X-Internal-Api-Key`, called by the core service's `SongMetadataService`, never exposed publicly. Independently rate-limited at 30 requests per minute per client address, evaluated before the internal-key check, since anyone holding that shared key could otherwise call it directly. See story 27 |
 
 Every endpoint stories 9-13, 17, 30, 39-41 add (group, game session, WebSocket destinations, reports, admin backlog, bulk import) doesn't exist yet, see those stories in `TASKS.md` for the planned shape. This table only lists what's live today.
 
@@ -54,7 +57,7 @@ Seven entities exist today: `User`, `Playlist`, `PlaylistMembership`, `PlaylistB
 User
   ├── id, username, email, password, imageUrl
   ├── authProvider, authProviderId
-  └── role (USER only today, see story 40 for ADMIN and story 44 for TEST)
+  └── role (USER, TEST; see story 40 for ADMIN)
 
 Playlist
   ├── id, name, color, inviteCode (unique, immutable)
@@ -93,7 +96,8 @@ Song
   ├── playlists: Set<Playlist>  (@ManyToMany, mappedBy "songs"; a song can belong to more than one
   │     playlist since story 15, and to zero, a song is a standalone catalog entity independent of
   │     any playlist, see DECISIONS.md's 2026-09 "Song deletion reversed" entry)
-  └── addedBy: User       (@ManyToOne, no inverse mapping, no cascade, the DELETE /me bug in TASKS.md's Bug fixes)
+  └── addedBy: User       (@ManyToOne, nullable since story 37, no inverse mapping; cleared, not blocked
+        or cascaded, when the submitting account is deleted)
 
 SongArtist
   ├── id, name, role (MAIN/FEATURED), displayOrder
@@ -117,7 +121,21 @@ Listed here so the entity picture is in one place; each is still greenfield work
 - `SongReport`, `SongConfirmation` (story 17)
 - `PendingImport`, an alternate-YouTube-ID-to-`Song` mapping table (story 40)
 - `SongDifficulty` aggregate view or table (story 30)
-- `TEST`/`ADMIN` values on `User.role` (stories 44 and 40)
+- `ADMIN` value on `User.role` (story 40)
+
+### Analytics store (story 33)
+
+A separate database from the transactional one above, not JPA-mapped: its own Flyway history under `db/analytics-migration`, its own `DataSource`/`JdbcTemplate` wired in `AnalyticsDataSourceConfig` (`org.dariusturcu.backend.analytics`). One table, `analytics_events`:
+
+```
+analytics_events
+  ├── id (bigserial)
+  ├── event_type (text, matches AnalyticsEventType's enum names)
+  ├── occurred_at (timestamptz, defaults to insertion time)
+  └── payload (jsonb, one typed record per AnalyticsEventType)
+```
+
+`AnalyticsEventType` values: `GAME_SESSION_STARTED`, `GAME_SESSION_ENDED`, `LOGIN`, `PLAYLIST_CREATED`, `SONG_SUBMITTED`, `RATE_LIMIT_EXCEEDED`, `REPORT_SUBMITTED`, `FAILED_LOGIN_ATTEMPT`, each with its own payload record in the same package. `AnalyticsEventRecorder.recordEvent(AnalyticsEventType, Object)` is the write API; nothing calls it yet, story 34 instruments the real event-producing call sites. `AnalyticsRetentionService.purgeExpiredEvents()`, swept daily by `AnalyticsRetentionSweeper`, deletes events older than `analytics.retention.days` (180 by default).
 
 ## State diagrams
 
