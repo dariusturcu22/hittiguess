@@ -4,12 +4,14 @@ Structured reference for what exists in the code today, distinct from [ARCHITECT
 
 ## API contracts
 
+Every rate-limited request the core service rejects, whichever limiter caught it, returns 429 with the same body every other error response uses: `ErrorResponse` (`status`, `message`, `timestamp`), never Spring's default `ProblemDetail`. `RateLimitingFilter` applies a 60-requests-per-minute limit to every request, keyed by authenticated user where one exists and by client IP otherwise, except `/auth/login` and `/auth/register`, which always share a stricter 5-requests-per-minute bucket keyed by IP regardless of authentication state. See story 27 in `DECISIONS.md`.
+
 ### Core service (Spring Boot)
 
 | Method | Path | Controller |
 |---|---|---|
-| POST | `/auth/register` | `AuthController` |
-| POST | `/auth/login` | `AuthController` |
+| POST | `/auth/register` | `AuthController`, rate-limited, see story 27 |
+| POST | `/auth/login` | `AuthController`, rate-limited, see story 27 |
 | POST | `/auth/refresh` | `AuthController` |
 | POST | `/auth/logout` | `AuthController` |
 | GET | `/api/enums/countries` | `EnumController` |
@@ -26,7 +28,7 @@ Structured reference for what exists in the code today, distinct from [ARCHITECT
 | DELETE | `/api/playlists/{playlistId}/members/{userId}` | `PlaylistController`, owner only, kicks a member, story 46 |
 | POST | `/api/playlists/{playlistId}/members/{userId}/ban` | `PlaylistController`, owner only, bans a member, story 46 |
 | POST | `/api/playlists/{playlistId}/members/{userId}/promote` | `PlaylistController`, owner only, transfers ownership, previous owner stays a member, story 46 |
-| GET | `/api/metadata/song` | `SongMetadataController`, one-in-flight-request-per-user limit, see story 27 |
+| GET | `/api/metadata/song` | `SongMetadataController`, one-in-flight-request-per-user limit plus the general time-window rate limit, see story 27 |
 | GET | `/api/users/me` | `UserController` |
 | GET | `/api/users/{userId}` | `UserController` |
 | PATCH | `/api/users/me` | `UserController` |
@@ -40,7 +42,7 @@ Structured reference for what exists in the code today, distinct from [ARCHITECT
 
 | Method | Path | Notes |
 |---|---|---|
-| POST | `/metadata/resolve` | Internal only, gated by `X-Internal-Api-Key`, called by the core service's `SongMetadataService`, never exposed publicly |
+| POST | `/metadata/resolve` | Internal only, gated by `X-Internal-Api-Key`, called by the core service's `SongMetadataService`, never exposed publicly. Independently rate-limited at 30 requests per minute per client address, evaluated before the internal-key check, since anyone holding that shared key could otherwise call it directly. See story 27 |
 
 Every endpoint stories 9-13, 17, 30, 39-41 add (group, game session, WebSocket destinations, reports, admin backlog, bulk import) doesn't exist yet, see those stories in `TASKS.md` for the planned shape. This table only lists what's live today.
 
