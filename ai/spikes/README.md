@@ -84,7 +84,7 @@ GLM-4.5-Flash's forced tool-calling produces corrupted output (a malformed
 float literal, a leaked `</tool_call>` tag inside the arguments string);
 GLM-4.7-Flash's forced tool-calling instead hung indefinitely with no
 response at all, two different failure modes on the same mechanism. Both
-are the "best-effort JSON" failure mode `CLAUDE.md`'s rule against
+are the "best-effort JSON" failure mode `AGENTS.md`'s rule against
 regex-parsing exists to catch. Paid tier: GLM-5.3-Flash, the newest and
 cheapest paid option, isn't price-competitive regardless, its list price
 ($0.15/$0.50 per million) and promo price ($0.075/$0.25 through

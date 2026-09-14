@@ -467,7 +467,7 @@ Tests:
 
 ## Spike: Local/cheap LLM option for bulk metadata processing
 
-Handoff item 2. Its own branch, separate from the metadata-source spike, per the handoff's explicit instruction. Covers both hosted-API and locally-runnable options, any provider, closed or open-weight, the constraint is Pydantic-compatible structured output (`CLAUDE.md`'s non-negotiable rule against regex-parsing LLM output), not a specific deployment shape.
+Handoff item 2. Its own branch, separate from the metadata-source spike, per the handoff's explicit instruction. Covers both hosted-API and locally-runnable options, any provider, closed or open-weight, the constraint is Pydantic-compatible structured output (`AGENTS.md`'s non-negotiable rule against regex-parsing LLM output), not a specific deployment shape.
 
 Survey complete, verified against each provider's own official docs across three research passes. Shortlist, all confirmed with a hard structured-output guarantee (constrained decoding or strict JSON-schema mode, not best-effort JSON):
 
