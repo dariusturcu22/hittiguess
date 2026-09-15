@@ -127,6 +127,13 @@ class PlaylistAccessServiceTest {
     }
 
     @Test
+    void requireReadAllowsANonMemberWhenThePlaylistIsPublic() {
+        playlist.setPublic(true);
+
+        assertThatCode(() -> playlistAccessService.requireRead(playlist, member)).doesNotThrowAnyException();
+    }
+
+    @Test
     void everyCheckRejectsAUserWithNoMembershipRowAtAll() {
         when(playlistMembershipRepository.findByPlaylistIdAndUserId(PLAYLIST_ID, MEMBER_ID))
                 .thenReturn(Optional.empty());

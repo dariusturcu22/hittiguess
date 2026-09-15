@@ -13,6 +13,7 @@ import org.dariusturcu.backend.model.user.User;
 import org.dariusturcu.backend.repository.PlaylistBanRepository;
 import org.dariusturcu.backend.repository.PlaylistMembershipRepository;
 import org.dariusturcu.backend.repository.PlaylistRepository;
+import org.dariusturcu.backend.repository.SavedPlaylistRepository;
 import org.dariusturcu.backend.repository.SongRepository;
 import org.dariusturcu.backend.repository.UserRepository;
 import org.dariusturcu.backend.security.UserPrincipal;
@@ -98,9 +99,10 @@ class PlaylistImportIntegrationTest {
                 PlaylistMapper playlistMapper,
                 PlaylistMembershipRepository playlistMembershipRepository,
                 PlaylistBanRepository playlistBanRepository,
-                SongRepository songRepository) {
+                SongRepository songRepository,
+                SavedPlaylistRepository savedPlaylistRepository) {
             return new UserService(userRepository, playlistRepository, userMapper, playlistMapper,
-                    playlistMembershipRepository, playlistBanRepository, songRepository);
+                    playlistMembershipRepository, playlistBanRepository, songRepository, savedPlaylistRepository);
         }
     }
 
@@ -264,6 +266,30 @@ class PlaylistImportIntegrationTest {
         Long sourceId = source.getId();
         assertThatThrownBy(() -> playlistImportService.importFromPlaylist(targetId, sourceId))
                 .isInstanceOf(AccessDeniedException.class);
+    }
+
+    @Test
+    void importsFromAPublicPlaylistTheRequesterNeitherOwnsNorIsAMemberOf() {
+        User sourceOwner = persistUser("source-owner");
+        User importer = persistUser("importer");
+
+        actAs(sourceOwner);
+        Playlist source = persistPlaylist(sourceOwner, "SRCPUB01");
+        source.setPublic(true);
+        playlistRepository.save(source);
+        Song song = persistSong(sourceOwner, "Public Song");
+        linkSong(source, song);
+
+        actAs(importer);
+        Playlist target = persistPlaylist(importer, "TGTPUB01");
+
+        ImportFromPlaylistResultDTO result =
+                playlistImportService.importFromPlaylist(target.getId(), source.getId());
+
+        assertThat(result.importedCount()).isEqualTo(1);
+        assertThat(reload(target.getId()).getSongs())
+                .extracting(Song::getId)
+                .containsExactly(song.getId());
     }
 
     @Test
