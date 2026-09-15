@@ -17,6 +17,7 @@ import org.dariusturcu.backend.model.session.PlayerResultDTO;
 import org.dariusturcu.backend.model.session.PlayerStatus;
 import org.dariusturcu.backend.model.session.Round;
 import org.dariusturcu.backend.model.session.RoundStatus;
+import org.dariusturcu.backend.model.session.RoundLinkOutDTO;
 import org.dariusturcu.backend.model.session.SessionResultsDTO;
 import org.dariusturcu.backend.model.session.SessionStatus;
 import org.dariusturcu.backend.model.session.TitleArtistGuessRequest;
@@ -30,6 +31,7 @@ import org.dariusturcu.backend.repository.RoundRepository;
 import org.dariusturcu.backend.repository.SongRepository;
 import org.dariusturcu.backend.scheduling.GameSessionScheduler;
 import org.dariusturcu.backend.util.GuessMatcher;
+import org.dariusturcu.backend.util.YoutubeLinkParser;
 import org.dariusturcu.backend.websocket.SessionBroadcastEvent;
 import org.dariusturcu.backend.websocket.SessionEventType;
 
@@ -310,6 +312,31 @@ public class GameSessionService {
         round.setStatus(RoundStatus.REVEALED);
         roundRepository.save(round);
         self.revealEffect(round.getId());
+    }
+
+    // The current round's YouTube link-out, for the DJ to open playback on the real
+    // YouTube page or app. Restricted to the round's DJ, and only before the reveal:
+    // once the round is REVEALED or SCORED the song is already public and the DJ's
+    // playback window is over.
+    @Transactional(readOnly = true)
+    public RoundLinkOutDTO getCurrentRoundLinkOut(Long sessionId, Long userId) {
+        GameSession session = getSession(sessionId);
+        Player player = findPlayerByUserId(session, userId);
+        Round round = requireCurrentRound(session);
+
+        if (!round.getDjPlayer().getId().equals(player.getId())) {
+            throw new AccessDeniedException("Only the DJ for this round can open the YouTube link");
+        }
+        if (round.getStatus() == RoundStatus.REVEALED || round.getStatus() == RoundStatus.SCORED) {
+            throw new ConflictException("The DJ's playback window for this round has closed");
+        }
+
+        Song song = round.getSong();
+        return new RoundLinkOutDTO(
+                round.getId(),
+                round.getRoundNumber(),
+                song.getYoutubeId(),
+                YoutubeLinkParser.buildWatchUrl(song.getYoutubeId()));
     }
 
     // Effect method for the betting-window-close timer, and called directly whenever the

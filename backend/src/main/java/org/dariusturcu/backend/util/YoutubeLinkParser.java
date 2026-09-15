@@ -20,8 +20,19 @@ public final class YoutubeLinkParser {
     private static final String YOUTUBE_WATCH_QUERY_PARAM = "v";
     private static final String QUERY_PARAM_SEPARATOR = "&";
     private static final String QUERY_PARAM_ASSIGNMENT = "=";
+    private static final String YOUTUBE_WATCH_URL_PREFIX = "https://www.youtube.com/watch?v=";
 
     private YoutubeLinkParser() {
+    }
+
+    // The canonical watch URL for a stored video id, resolving on the real YouTube page
+    // or app rather than an embedded player.
+    public static String buildWatchUrl(String videoId) {
+        String trimmedVideoId = videoId.trim();
+        if (!YOUTUBE_VIDEO_ID_PATTERN.matcher(trimmedVideoId).matches()) {
+            throw new IllegalArgumentException("Not a valid YouTube video id: " + videoId);
+        }
+        return YOUTUBE_WATCH_URL_PREFIX + trimmedVideoId;
     }
 
     public static Optional<String> parseVideoId(String input) {
