@@ -133,12 +133,12 @@ class CatalogSeedingIntegrationTest {
         public AiResponse resolveByYoutubeId(String youtubeId) {
             resolutionOrder.add(youtubeId);
             if (unresolvableYoutubeIds.contains(youtubeId)) {
-                return new AiResponse(null, "stub-model", 0, LocalDateTime.now(), "ERROR");
+                return new AiResponse(null, "stub-model", 0, LocalDateTime.now(), "ERROR", null, null);
             }
             SongMetadataResponse content = new SongMetadataResponse(
                     "Title for " + youtubeId, "Artist for " + youtubeId, 1999,
-                    "111111", "222222", "high", "musicbrainz", "stubbed");
-            return new AiResponse(content, "stub-model", 0, LocalDateTime.now(), "SUCCESS");
+                    "111111", "222222", "high", "musicbrainz", "stubbed", "NEEDS_REVIEW");
+            return new AiResponse(content, "stub-model", 0, LocalDateTime.now(), "SUCCESS", null, null);
         }
     }
 

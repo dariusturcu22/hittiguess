@@ -5,7 +5,7 @@ from app.dedup.embedding_client import generate_embedding
 from app.dedup.normalize import normalize_artist_and_title
 from app.dedup.repository import find_best_verified_match
 from app.dedup.schemas import VerifiedSongMatch
-from app.metadata import prompt
+from app.metadata import content_safety, prompt
 from app.metadata.llm import synthesize
 from app.metadata.schemas import MetadataResolveResponse, SongMetadataResult
 from app.metadata.sources import discogs, musicbrainz, wikidata, wikipedia, youtube
@@ -20,6 +20,12 @@ from app.metadata.verification import (
 
 logger = logging.getLogger(__name__)
 
+REJECTED_STATUS = "REJECTED"
+
+# Cosine distance (0 identical, 2 opposite) below which an existing verified song counts
+# as the same song under a different submission, not just a similar one. text-embedding-3-small
+# clusters near-identical "artist title" strings (differing only in casing, punctuation, or minor
+# wording) far tighter than this, while distinct songs land well above it; see docs/DECISIONS.md.
 HIGH_CONFIDENCE_COSINE_DISTANCE_THRESHOLD = 0.08
 
 DUPLICATE_MATCH_SOURCE_LABEL = "pgvector-duplicate-match"
@@ -163,6 +169,16 @@ def resolve_metadata(youtube_url: str) -> MetadataResolveResponse:
         duplicate_match_result = _check_for_duplicate(title, artist)
         if duplicate_match_result is not None:
             return MetadataResolveResponse(status="SUCCESS", model=settings.openai_model, content=duplicate_match_result)
+
+        content_safety_outcome = content_safety.evaluate(youtube_data)
+        if content_safety_outcome.rejected:
+            return MetadataResolveResponse(
+                status=REJECTED_STATUS,
+                model=settings.openai_model,
+                content=None,
+                rejection_reason=content_safety_outcome.rejection_reason,
+                rejection_detail=content_safety_outcome.rejection_detail,
+            )
 
         result = _run_verification_pipeline(youtube_data, title, artist)
         return MetadataResolveResponse(status="SUCCESS", model=settings.openai_model, content=result)

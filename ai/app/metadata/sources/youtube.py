@@ -1,7 +1,11 @@
 import httpx
 
 from app.config import settings
-from app.metadata.sources.util import build_youtube_api_url, extract_youtube_video_id
+from app.metadata.sources.util import (
+    build_youtube_api_url,
+    extract_youtube_video_id,
+    parse_iso8601_duration_seconds,
+)
 from app.observability.error_reporting import report_source_failure
 
 SOURCE_NAME = "youtube"
@@ -12,6 +16,8 @@ UNKNOWN_DEFAULTS = {
     "upload_date": "unknown",
     "upload_year": "unknown",
     "tags": "[]",
+    "category_id": "unknown",
+    "duration_seconds": None,
 }
 
 
@@ -27,7 +33,9 @@ def fetch_youtube_metadata(url: str) -> dict[str, str]:
         if not items:
             return dict(UNKNOWN_DEFAULTS)
 
-        snippet = items[0].get("snippet", {})
+        first_item = items[0]
+        snippet = first_item.get("snippet", {})
+        content_details = first_item.get("contentDetails", {})
         published_at = snippet.get("publishedAt", "unknown")
 
         return {
@@ -37,6 +45,8 @@ def fetch_youtube_metadata(url: str) -> dict[str, str]:
             "tags": str(snippet.get("tags", [])),
             "upload_date": published_at[:10] if len(published_at) >= 10 else "unknown",
             "upload_year": published_at[:4] if len(published_at) >= 4 else "unknown",
+            "category_id": snippet.get("categoryId", "unknown"),
+            "duration_seconds": parse_iso8601_duration_seconds(content_details.get("duration")),
         }
     except Exception as youtube_error:
         report_source_failure(SOURCE_NAME, youtube_error, title=url, artist="unknown")

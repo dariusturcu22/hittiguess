@@ -347,19 +347,24 @@ Two things settled through discussion:
 - Reject compilations outright, even genuinely musical ones, a compilation isn't a single song and has no one correct answer for a round.
 - Precision over recall on the non-music gate: a false reject is a cheap, recoverable resubmit or manual override; a false accept puts non-music content in front of a player mid-game, a worse and more visible failure. This project already holds itself to a "professional-grade, not just working" bar (`DECISIONS.md`).
 
-- [ ] Add a hard pre-pipeline filter, no LLM involved: reject when duration falls outside a generous song-length window (roughly 1-12 minutes) combined with YouTube's own `categoryId` not being Music (10), already-fetched data, no extra API cost
-- [ ] For the ambiguous remainder, non-Music category but song-length duration, add an LLM classification pass (structured output: `is_song`, `is_compilation`, confidence, reasoning) reading title, channel, and description for song-like versus gameplay-like signals
+- [x] Add a hard pre-pipeline filter, no LLM involved: reject when duration falls outside a generous song-length window (roughly 1-12 minutes) combined with YouTube's own `categoryId` not being Music (10), already-fetched data, no extra API cost
+- [x] For the ambiguous remainder, non-Music category but song-length duration, add an LLM classification pass (structured output: `is_song`, `is_compilation`, confidence, reasoning) reading title, channel, and description for song-like versus gameplay-like signals
 - [ ] Use a match (or lack of one) against MusicBrainz/Discogs/Wikidata as a secondary signal for this same ambiguous tier, not a standalone gate: a real game-soundtrack track should resolve to an actual catalogued release, resolving to nothing across all three lowers confidence but doesn't reject outright on its own, this project explicitly wants niche/underground coverage, which also won't always resolve
+  - Deferred: tuning how a source non-match lowers confidence needs real submission data to set the weighting without over-rejecting niche tracks, the same data-tuning dependency story 30 carries; the classifier ships without it rather than guessing a threshold
 - [ ] Still-uncertain cases after all of the above route to manual review, not a hard reject, the same "escalate, don't guess" principle already set for artist/title verification
-- [ ] Add a dedicated structured-output prompt-injection check (`contains_injection_attempt`, plus reasoning) run over raw title/channel/description before any extraction or classification LLM call uses that text, separate from relying on the existing delimiting alone to both resist injection and do its actual job
-- [ ] Apply this injection check everywhere untrusted YouTube text reaches an LLM: the existing synthesis call, story 40's artist-extraction fallback, and this story's own classification pass, not just one of the three
+  - Deferred: this manual-review tier depends on the source-match secondary signal above to define "still uncertain" without a threshold; deferred with it. A confident non-music or compilation verdict rejects, and a genuine no-answer song still reaches story 18's MANUAL_ENTRY route downstream
+- [x] Add a dedicated structured-output prompt-injection check (`contains_injection_attempt`, plus reasoning) run over raw title/channel/description before any extraction or classification LLM call uses that text, separate from relying on the existing delimiting alone to both resist injection and do its actual job
+- [x] Apply this injection check everywhere untrusted YouTube text reaches an LLM: the existing synthesis call, story 40's artist-extraction fallback, and this story's own classification pass, not just one of the three
+  - The gate runs before both LLM calls that exist today (this story's classification pass and the synthesis call). Story 40's artist-extraction fallback is not built yet; the injection check attaches to it when story 40 adds it
 - [x] Decided: a flagged injection attempt writes an abuse-visibility event (story 34's scope, alongside rate-limit-exceeded and report-submitted events), an attempted injection is evidence of intent, not just an uncertain submission, so it's tracked, not silently handled the same as an honestly ambiguous song. Depends on story 34's event pipeline existing. Whether the submission itself is also outright rejected, versus routed to manual review, still needs a call, not yet made
+  - Settled and built: the submission is rejected outright (`DECISIONS.md`, 2026-09). The event write is a stubbed structured log line marked `TODO: story 34` until story 34's event pipeline ships
 
 Tests:
-- [ ] Unit tests for the hard duration+category filter, including the boundary values of the song-length window
-- [ ] Unit tests for compilation rejection
-- [ ] Unit tests for the injection-detection check (mocked LLM call): flags known injection patterns, passes clean text through unaffected
-- [ ] Integration test: a submission through any path, single-song or bulk, that fails classification never reaches the full metadata pipeline
+- [x] Unit tests for the hard duration+category filter, including the boundary values of the song-length window
+- [x] Unit tests for compilation rejection
+- [x] Unit tests for the injection-detection check (mocked LLM call): flags known injection patterns, passes clean text through unaffected
+- [x] Integration test: a submission through any path, single-song or bulk, that fails classification never reaches the full metadata pipeline
+  - Covered for the resolve path: a rejected submission is asserted never to reach source gathering or the synthesis call. The bulk-import path is story 40 and does not exist yet
 
 ## Story 17: Community song reports and confirmations
 
