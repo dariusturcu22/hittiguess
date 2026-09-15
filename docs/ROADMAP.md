@@ -12,11 +12,11 @@ Three milestones sit above the phase breakdown below, each a different bar for w
 - **Beta**: deployed somewhere real and played with friends and colleagues in demo matches, everything working correctly. Needs story 7 (hosting) and story 8 (database) actually decided and executed, on top of everything Local shipped.
 - **Finished**: the fully deployed, publicly announced version. Phase 3 only, and the lowest priority in this file, since nothing in Phase 3 blocks either Local or Beta.
 
-## Phase 0: Spike handoff completion
+## Phase 0: Spike handoff completion (shipped)
 
-Unlocks the metadata/AI track's remaining stories. The one remaining item is the last unstarted task under its own spike section in `TASKS.md`, not new scope. The spike's other handoff item, whether the fast/patient tier pipeline shape and shortlisted LLM candidate are worth building into production, is resolved: greenlit, see `DECISIONS.md` and story 20.
+Shipped in batch 1. Unlocked the metadata/AI track's remaining stories. The spike's other handoff item, whether the fast/patient tier pipeline shape and shortlisted LLM candidate are worth building into production, is resolved: greenlit, see `DECISIONS.md` and story 20.
 
-- Build `ai/app/metadata/sources/wikidata.py`, un-stub `musicbrainz.py`, add `wikipedia.py` ("Spike: MusicBrainz and Wikidata sourcing")
+- [x] Build `ai/app/metadata/sources/wikidata.py`, un-stub `musicbrainz.py`, add `wikipedia.py` ("Spike: MusicBrainz and Wikidata sourcing")
 
 ## Phase 1: Independent foundational work
 
@@ -45,12 +45,10 @@ Story 28's design phase (fresh visual direction across every existing page and e
 
 ## Phase 2: Depends on Phase 0 and Phase 1
 
-- Story 18: Criteria for promoting a song to verified, needs story 23's `verificationStatus` field, and in practice story 20's DeepInfra client for its Wikipedia-extraction step
-- Story 40: Catalog seeding queue and user-facing bulk import, needs story 23 (schema) and Phase 0's sourcing-spike implementation
-- Story 24: Parallelize metadata pipeline fetches, needs story 25 and Phase 0's sourcing-spike implementation
-- Story 41: Submission content safety, needs Phase 0's sourcing-spike implementation
+Stories 18, 40, 41, and 24 shipped in batches 20 through 23 and are in `ARCHIVE.md`. What remains:
+
 - Story 17: Community song reports and confirmations, the report/confirmation submission flow itself is unblocked, but the admin review surface needs story 40's admin role
-- Story 26: Cache metadata pipeline results, first task is the scope-review decision already noted in `TASKS.md`, may not proceed past it
+- Story 26: Cache metadata pipeline results, dropped; story 40's batch YouTube-ID lookup and story 16's pgvector check cover the exact-repeat and near-duplicate cases, see `ARCHIVE.md`'s dropped section
 - Story 45: Import songs from an existing playlist, needs story 15's join table
 - Story 9: DJ real YouTube link-out, needs stories 10, 11, and 39 actually built, not just `Ready`
 - Story 13: Group-scoped text chat, needs stories 11 and 39 actually built
@@ -101,17 +99,17 @@ Per `AGENTS.md`'s batching workflow: open a PR per batch as each is finished, se
 - [x] Batch 17: Story 44, Test user infrastructure
 - [ ] Batch 18: dropped. Was story 22, test coverage; story 22 moved to the end of Phase 2, see the Readiness tiers section above, and gets a new batch number once Phase 2 is sequenced
 - [x] Batch 19: Story 42, database split cross-references, and story 43, metadata minimization, combined into one small batch, both are already fully satisfied except a couple of standing re-check notes
-- [ ] Batch 20: Story 18, verification promotion criteria (lock-evaluation logic, Wikipedia+reconciliation path, manual-entry escalation, wired into story 40's submission pipeline)
-- [ ] Batch 21: Story 40, catalog seeding queue and user-facing bulk import; tasks need confirming against the real code before starting (see `PROJECT_STATE.md`)
-- [ ] Batch 22: Story 41, submission content safety (non-music rejection, compilation rejection, prompt-injection defense); tasks need confirming against the real code before starting
-- [ ] Batch 23: Story 24, parallelize metadata pipeline fetches across sources
-- [ ] Batch 24: Story 17, community song reports and confirmations; the report/confirmation submission flow is buildable now, the admin review surface depends on story 40's admin role (Batch 21) existing first
+- [x] Batch 20: Story 18, verification promotion criteria (lock-evaluation logic, Wikipedia+reconciliation path, manual-entry escalation, wired into story 40's submission pipeline)
+- [x] Batch 21: Story 40, catalog seeding queue and user-facing bulk import
+- [x] Batch 22: Story 41, submission content safety (non-music rejection, compilation rejection, prompt-injection defense)
+- [x] Batch 23: Story 24, parallelize metadata pipeline fetches across sources
+- [ ] Batch 24: Story 17, community song reports and confirmations; backend built with PR #100 open against `dev`, not yet merged. Story 40's admin role that the review surface depends on has shipped
 - [ ] Batch 25: Story 45, import songs from an existing playlist; tasks need confirming against the real code before starting
-- [ ] Batch 26: Story 9, DJ real YouTube link-out; tasks need confirming against the real code before starting
+- [ ] Batch 26: Story 9, DJ real YouTube link-out
 - [ ] Batch 27: Story 13, group-scoped text chat; tasks need confirming against the real code before starting
 - [ ] Batch 28: Story 12, voice chat; tasks need confirming against the real code before starting
 - [ ] Batch 29: Story 30, difficulty-tuned game session generation; tasks need confirming against the real code before starting
-- [ ] Batch 30: Story 26, cache metadata pipeline results; first task is the scope-review decision in `TASKS.md`, may not proceed past it
+- [ ] Batch 30: dropped. Was story 26, cache metadata pipeline results; the scope review resolved to skip it, story 40's batch YouTube-ID lookup and story 16's pgvector check already cover the exact-repeat and near-duplicate cases, see `ARCHIVE.md`'s dropped section
 - [ ] Batch 31: Story 28, UI redesign implementation phase; moved last among feature stories so gameplay screens (stories 9, 12, 13) exist to wire rather than mock; design mockups done, see `docs/design/hittiguess-design.html`
 - [ ] Batch 32: Story 48, comment cleanup
 - [ ] Batch 33: Story 49, naming consistency
