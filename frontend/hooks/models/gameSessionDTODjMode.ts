@@ -5,12 +5,11 @@
  * OpenAPI spec version: v0
  */
 
-export type GetTags200Item = typeof GetTags200Item[keyof typeof GetTags200Item];
+export type GameSessionDTODjMode = typeof GameSessionDTODjMode[keyof typeof GameSessionDTODjMode];
 
 
 // eslint-disable-next-line @typescript-eslint/no-redeclare
-export const GetTags200Item = {
-  PLAYLIST: 'PLAYLIST',
-  SPECIAL: 'SPECIAL',
-  ANIME: 'ANIME',
+export const GameSessionDTODjMode = {
+  FIXED: 'FIXED',
+  ROTATING: 'ROTATING',
 } as const;

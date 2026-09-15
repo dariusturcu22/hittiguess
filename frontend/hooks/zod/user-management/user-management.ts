@@ -8,10 +8,15 @@ import * as zod from 'zod';
 
 
 /**
- * @summary Join an existing playlist
+ * @summary Join an existing playlist, optionally with a per-playlist display name and avatar
  */
 export const joinPlaylistParams = zod.object({
   "playlistInviteCode": zod.string()
+})
+
+export const joinPlaylistBody = zod.object({
+  "displayName": zod.string().optional(),
+  "avatarUrl": zod.string().optional()
 })
 
 /**

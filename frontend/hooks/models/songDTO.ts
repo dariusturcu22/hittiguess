@@ -5,7 +5,6 @@
  * OpenAPI spec version: v0
  */
 import type { SongArtistDTO } from './songArtistDTO';
-import type { SongDTOTagsItem } from './songDTOTagsItem';
 import type { SongDTOCountry } from './songDTOCountry';
 import type { SongDTOVerificationStatus } from './songDTOVerificationStatus';
 import type { UserSummaryDTO } from './userSummaryDTO';
@@ -18,9 +17,9 @@ export interface SongDTO {
   youtubeId: string;
   gradientColor1?: string;
   gradientColor2?: string;
-  tags?: SongDTOTagsItem[];
+  genre?: string;
   country?: SongDTOCountry;
   verificationStatus: SongDTOVerificationStatus;
   confidence?: string;
-  addedBy: UserSummaryDTO;
+  addedBy?: UserSummaryDTO;
 }

@@ -5,12 +5,11 @@
  * OpenAPI spec version: v0
  */
 
-export type SongDTOTagsItem = typeof SongDTOTagsItem[keyof typeof SongDTOTagsItem];
+export type ExportPlaylistQrPaperSize = typeof ExportPlaylistQrPaperSize[keyof typeof ExportPlaylistQrPaperSize];
 
 
 // eslint-disable-next-line @typescript-eslint/no-redeclare
-export const SongDTOTagsItem = {
-  PLAYLIST: 'PLAYLIST',
-  SPECIAL: 'SPECIAL',
-  ANIME: 'ANIME',
+export const ExportPlaylistQrPaperSize = {
+  A4: 'A4',
+  LETTER: 'LETTER',
 } as const;

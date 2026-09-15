@@ -6,11 +6,7 @@ import { Label } from "@/components/shadcn/label";
 import { Button } from "@/components/shadcn/button";
 import { IconExternalLink } from "@tabler/icons-react";
 import Link from "next/link";
-import {
-  CreateSongRequestCountry,
-  CreateSongRequestTagsItem,
-  SongDTO,
-} from "@/hooks/models";
+import { CreateSongRequestCountry, SongDTO } from "@/hooks/models";
 import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import {
@@ -36,7 +32,6 @@ interface SongFormData {
   releaseYear: number | string;
   gradientColor1: string;
   gradientColor2: string;
-  tags: CreateSongRequestTagsItem[];
   country: CreateSongRequestCountry;
 }
 
@@ -55,7 +50,6 @@ export function SongForm({ song, backPath, playlistId }: SongFormProps) {
     releaseYear: song.releaseYear,
     gradientColor1: song.gradientColor1 ? `#${song.gradientColor1}` : "#8B5CF6",
     gradientColor2: song.gradientColor2 ? `#${song.gradientColor2}` : "#EC4899",
-    tags: song.tags ?? [],
     country: song.country ?? CreateSongRequestCountry.NONE,
   });
 
@@ -114,7 +108,6 @@ export function SongForm({ song, backPath, playlistId }: SongFormProps) {
           releaseYear,
           gradientColor1: formData.gradientColor1.replace("#", ""),
           gradientColor2: formData.gradientColor2.replace("#", ""),
-          tags: formData.tags,
           country: formData.country,
         },
       },
@@ -203,34 +196,6 @@ export function SongForm({ song, backPath, playlistId }: SongFormProps) {
           onChange={handleChange}
           className="text-left"
         />
-      </div>
-
-      <div className="grid gap-2">
-        <Label>Tags</Label>
-        <div className="flex gap-3 flex-wrap">
-          {Object.values(CreateSongRequestTagsItem).map((tag) => (
-            <label
-              key={tag}
-              className="flex items-center gap-1.5 cursor-pointer"
-            >
-              <input
-                type="checkbox"
-                name="tags"
-                value={tag}
-                checked={formData.tags.includes(tag)}
-                onChange={(e) =>
-                  setFormData((prev) => ({
-                    ...prev,
-                    tags: e.target.checked
-                      ? [...prev.tags, tag]
-                      : prev.tags.filter((selected) => selected !== tag),
-                  }))
-                }
-              />
-              <span className="text-sm">{tag}</span>
-            </label>
-          ))}
-        </div>
       </div>
 
       <div className="grid gap-2">
