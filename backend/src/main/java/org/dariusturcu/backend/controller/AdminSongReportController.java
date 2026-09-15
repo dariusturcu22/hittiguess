@@ -2,14 +2,17 @@ package org.dariusturcu.backend.controller;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.dariusturcu.backend.model.song.AdminReviewItemDTO;
+import org.dariusturcu.backend.model.song.ResolveReportRequest;
 import org.dariusturcu.backend.security.AdminAccessGuard;
 import org.dariusturcu.backend.service.SongReportService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -31,11 +34,11 @@ public class AdminSongReportController {
         return ResponseEntity.ok(songReportService.reviewQueue());
     }
 
-    @Operation(summary = "Uphold a song's open reports, admin only; a locked song's year stays immutable, an editable song moves to manual entry")
-    @PostMapping("/{songId}/uphold")
-    public ResponseEntity<Void> uphold(@PathVariable Long songId) {
+    @Operation(summary = "Resolve a song's open reports, admin only; applies the admin's chosen year and verification status unconditionally, overriding even a locked, VERIFIED song")
+    @PostMapping("/{songId}/resolve")
+    public ResponseEntity<Void> resolve(@PathVariable Long songId, @Valid @RequestBody ResolveReportRequest request) {
         adminAccessGuard.requireAdmin();
-        songReportService.upholdReports(songId);
+        songReportService.resolveReport(songId, request);
         return ResponseEntity.noContent().build();
     }
 
