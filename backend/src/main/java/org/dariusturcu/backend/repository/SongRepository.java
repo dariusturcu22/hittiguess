@@ -5,11 +5,15 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.util.Collection;
 import java.util.List;
 
 public interface SongRepository extends JpaRepository<Song, Long> {
 
     List<Song> findByYoutubeId(String youtubeId);
+
+    @Query("select song.youtubeId from Song song where song.youtubeId in :youtubeIds")
+    List<String> findKnownYoutubeIds(@Param("youtubeIds") Collection<String> youtubeIds);
 
     List<Song> findByAddedById(Long userId);
 
