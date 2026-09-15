@@ -1,3 +1,5 @@
+from enum import Enum
+
 from pydantic import BaseModel
 
 
@@ -18,6 +20,24 @@ class MetadataResolveRequest(BaseModel):
     youtube_url: str
 
 
+class RejectionReason(str, Enum):
+    NOT_MUSIC = "NOT_MUSIC"
+    COMPILATION = "COMPILATION"
+    PROMPT_INJECTION = "PROMPT_INJECTION"
+
+
+class SongClassification(BaseModel):
+    is_song: bool
+    is_compilation: bool
+    confidence: str
+    reasoning: str
+
+
+class InjectionCheckResult(BaseModel):
+    contains_injection_attempt: bool
+    reasoning: str
+
+
 class SongMetadataResult(BaseModel):
     title: str
     artist: str
@@ -34,3 +54,5 @@ class MetadataResolveResponse(BaseModel):
     status: str
     model: str
     content: SongMetadataResult | None = None
+    rejection_reason: RejectionReason | None = None
+    rejection_detail: str | None = None

@@ -3,6 +3,7 @@ from app.metadata.sources.util import (
     clean_youtube_text,
     escape_lucene,
     extract_youtube_video_id,
+    parse_iso8601_duration_seconds,
 )
 
 
@@ -65,3 +66,26 @@ def test_build_youtube_api_url_includes_id_and_key():
         "https://www.googleapis.com/youtube/v3/videos"
         "?part=snippet,contentDetails&id=dQw4w9WgXcQ&key=my-key"
     )
+
+
+def test_parse_iso8601_duration_seconds_minutes_and_seconds():
+    assert parse_iso8601_duration_seconds("PT3M52S") == 232
+
+
+def test_parse_iso8601_duration_seconds_hours_minutes_seconds():
+    assert parse_iso8601_duration_seconds("PT1H2M3S") == 3723
+
+
+def test_parse_iso8601_duration_seconds_seconds_only():
+    assert parse_iso8601_duration_seconds("PT45S") == 45
+
+
+def test_parse_iso8601_duration_seconds_minutes_only():
+    assert parse_iso8601_duration_seconds("PT10M") == 600
+
+
+def test_parse_iso8601_duration_seconds_handles_missing_or_malformed():
+    assert parse_iso8601_duration_seconds(None) is None
+    assert parse_iso8601_duration_seconds("") is None
+    assert parse_iso8601_duration_seconds("3:52") is None
+    assert parse_iso8601_duration_seconds("P1D") is None

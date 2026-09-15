@@ -2,7 +2,8 @@ import time
 
 from app.dedup.schemas import VerifiedSongMatch
 from app.metadata import service
-from app.metadata.schemas import SongMetadataResult
+from app.metadata.content_safety import ContentSafetyOutcome, PASSED_OUTCOME
+from app.metadata.schemas import RejectionReason, SongMetadataResult
 from app.metadata.verification import VerificationRoute
 
 
@@ -12,6 +13,8 @@ def _youtube_data():
         "channel_title": "Test Artist",
         "upload_year": 2020,
         "description": "",
+        "category_id": "10",
+        "duration_seconds": 210,
     }
 
 
@@ -51,6 +54,7 @@ def _patch_pipeline_dependencies(mocker, duplicate_match, embedding=None):
     mocker.patch.object(service.youtube, "fetch_youtube_metadata", return_value=_youtube_data())
     mocker.patch.object(service, "generate_embedding", return_value=embedding or [0.1, 0.2, 0.3])
     mocker.patch.object(service, "find_best_verified_match", return_value=duplicate_match)
+    mocker.patch.object(service.content_safety, "evaluate", return_value=PASSED_OUTCOME)
     mocker.patch.object(service.musicbrainz, "search", return_value=[])
     mocker.patch.object(service.discogs, "search", return_value=[])
     mocker.patch.object(service.wikidata, "search", return_value=[])
@@ -98,6 +102,7 @@ def test_low_confidence_match_proceeds_to_the_full_pipeline(mocker):
 def test_duplicate_check_failure_falls_back_to_the_full_pipeline(mocker):
     mocker.patch.object(service.youtube, "fetch_youtube_metadata", return_value=_youtube_data())
     mocker.patch.object(service, "generate_embedding", side_effect=RuntimeError("embedding API down"))
+    mocker.patch.object(service.content_safety, "evaluate", return_value=PASSED_OUTCOME)
     mocker.patch.object(service.musicbrainz, "search", return_value=[])
     mocker.patch.object(service.discogs, "search", return_value=[])
     mocker.patch.object(service.wikidata, "search", return_value=[])
@@ -146,6 +151,7 @@ def test_structured_sources_are_fetched_concurrently_not_sequentially(mocker):
     mocker.patch.object(service.youtube, "fetch_youtube_metadata", return_value=_youtube_data())
     mocker.patch.object(service, "generate_embedding", return_value=[0.1, 0.2, 0.3])
     mocker.patch.object(service, "find_best_verified_match", return_value=None)
+    mocker.patch.object(service.content_safety, "evaluate", return_value=PASSED_OUTCOME)
     for structured_source in (service.musicbrainz, service.discogs, service.wikidata):
         mocker.patch.object(structured_source, "search", side_effect=_delayed_search(PER_SOURCE_DELAY_SECONDS))
     mocker.patch.object(service.wikipedia, "search", return_value=[])
@@ -164,6 +170,7 @@ def test_one_structured_source_raising_does_not_prevent_the_others_from_being_us
     mocker.patch.object(service.youtube, "fetch_youtube_metadata", return_value=_youtube_data())
     mocker.patch.object(service, "generate_embedding", return_value=[0.1, 0.2, 0.3])
     mocker.patch.object(service, "find_best_verified_match", return_value=None)
+    mocker.patch.object(service.content_safety, "evaluate", return_value=PASSED_OUTCOME)
 
     musicbrainz_candidates = [_candidate_for_year(MATCHING_RELEASE_YEAR)]
     mocker.patch.object(service.musicbrainz, "search", return_value=musicbrainz_candidates)
@@ -193,6 +200,7 @@ def test_three_structured_sources_are_gathered_and_passed_to_synthesis(mocker):
     mocker.patch.object(service.youtube, "fetch_youtube_metadata", return_value=_youtube_data())
     mocker.patch.object(service, "generate_embedding", return_value=[0.1, 0.2, 0.3])
     mocker.patch.object(service, "find_best_verified_match", return_value=None)
+    mocker.patch.object(service.content_safety, "evaluate", return_value=PASSED_OUTCOME)
     structured_source_mocks = {
         "musicbrainz": mocker.patch.object(service.musicbrainz, "search", return_value=[]),
         "discogs": mocker.patch.object(service.discogs, "search", return_value=[]),
@@ -224,6 +232,7 @@ def test_wikipedia_is_not_fetched_when_the_three_structured_sources_lock(mocker)
     mocker.patch.object(service.youtube, "fetch_youtube_metadata", return_value=_youtube_data())
     mocker.patch.object(service, "generate_embedding", return_value=[0.1, 0.2, 0.3])
     mocker.patch.object(service, "find_best_verified_match", return_value=None)
+    mocker.patch.object(service.content_safety, "evaluate", return_value=PASSED_OUTCOME)
 
     agreeing_candidates = [_candidate_for_year(MATCHING_RELEASE_YEAR)]
     mocker.patch.object(service.musicbrainz, "search", return_value=agreeing_candidates)
@@ -244,6 +253,7 @@ def test_wikipedia_is_fetched_after_the_gather_when_the_structured_sources_disag
     mocker.patch.object(service.youtube, "fetch_youtube_metadata", return_value=_youtube_data())
     mocker.patch.object(service, "generate_embedding", return_value=[0.1, 0.2, 0.3])
     mocker.patch.object(service, "find_best_verified_match", return_value=None)
+    mocker.patch.object(service.content_safety, "evaluate", return_value=PASSED_OUTCOME)
 
     mocker.patch.object(service.musicbrainz, "search", return_value=[_candidate_for_year(MATCHING_RELEASE_YEAR)])
     mocker.patch.object(service.discogs, "search", return_value=[_candidate_for_year(DISAGREEING_RELEASE_YEAR)])
@@ -259,3 +269,55 @@ def test_wikipedia_is_fetched_after_the_gather_when_the_structured_sources_disag
     assert result.status == "SUCCESS"
     assert result.content.source == service.RECONCILED_SOURCE_LABEL
     wikipedia_mock.assert_called_once()
+
+
+def _reject(reason):
+    return ContentSafetyOutcome(rejected=True, rejection_reason=reason, rejection_detail=f"rejected: {reason.value}")
+
+
+def _patch_gated_pipeline(mocker, outcome):
+    mocker.patch.object(service.youtube, "fetch_youtube_metadata", return_value=_youtube_data())
+    mocker.patch.object(service, "generate_embedding", return_value=[0.1, 0.2, 0.3])
+    mocker.patch.object(service, "find_best_verified_match", return_value=None)
+    mocker.patch.object(service.content_safety, "evaluate", return_value=outcome)
+    return mocker.patch.object(service, "_run_verification_pipeline", return_value=_synthesized_result())
+
+
+def test_injection_flagged_submission_is_rejected_and_never_reaches_the_pipeline(mocker):
+    pipeline_mock = _patch_gated_pipeline(mocker, _reject(RejectionReason.PROMPT_INJECTION))
+
+    result = service.resolve_metadata("https://youtube.com/watch?v=abc12345678")
+
+    assert result.status == service.REJECTED_STATUS
+    assert result.rejection_reason == RejectionReason.PROMPT_INJECTION
+    assert result.content is None
+    pipeline_mock.assert_not_called()
+
+
+def test_non_music_submission_is_rejected_and_never_reaches_the_pipeline(mocker):
+    pipeline_mock = _patch_gated_pipeline(mocker, _reject(RejectionReason.NOT_MUSIC))
+
+    result = service.resolve_metadata("https://youtube.com/watch?v=abc12345678")
+
+    assert result.status == service.REJECTED_STATUS
+    assert result.rejection_reason == RejectionReason.NOT_MUSIC
+    pipeline_mock.assert_not_called()
+
+
+def test_compilation_submission_is_rejected_and_never_reaches_the_pipeline(mocker):
+    pipeline_mock = _patch_gated_pipeline(mocker, _reject(RejectionReason.COMPILATION))
+
+    result = service.resolve_metadata("https://youtube.com/watch?v=abc12345678")
+
+    assert result.status == service.REJECTED_STATUS
+    assert result.rejection_reason == RejectionReason.COMPILATION
+    pipeline_mock.assert_not_called()
+
+
+def test_clean_music_passes_the_gate_and_reaches_the_pipeline(mocker):
+    pipeline_mock = _patch_gated_pipeline(mocker, PASSED_OUTCOME)
+
+    result = service.resolve_metadata("https://youtube.com/watch?v=abc12345678")
+
+    assert result.status == "SUCCESS"
+    pipeline_mock.assert_called_once()
