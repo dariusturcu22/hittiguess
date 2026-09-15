@@ -4,7 +4,6 @@
  * OpenAPI definition
  * OpenAPI spec version: v0
  */
-import type { CreateSongRequestTagsItem } from './createSongRequestTagsItem';
 import type { CreateSongRequestCountry } from './createSongRequestCountry';
 
 export interface CreateSongRequest {
@@ -12,13 +11,22 @@ export interface CreateSongRequest {
   artist: string;
   /** @minLength 1 */
   title: string;
+  /** @minimum 1000 */
   releaseYear?: number;
-  /** @minLength 1 */
+  /**
+   * @minLength 1
+   * @pattern ^[a-zA-Z0-9_-]{11}$
+   */
   youtubeId: string;
-  /** @minLength 1 */
+  /**
+   * @minLength 1
+   * @pattern ^[0-9a-fA-F]{6}$
+   */
   gradientColor1: string;
-  /** @minLength 1 */
+  /**
+   * @minLength 1
+   * @pattern ^[0-9a-fA-F]{6}$
+   */
   gradientColor2: string;
-  tags?: CreateSongRequestTagsItem[];
   country?: CreateSongRequestCountry;
 }

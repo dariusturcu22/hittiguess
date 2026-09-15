@@ -25,8 +25,12 @@ import type {
 
 import type {
   CreateSongRequest,
+  ImportFromPlaylistRequest,
+  ImportFromPlaylistResultDTO,
   PlaylistDetailDTO,
+  PlaylistMemberDTO,
   SongDTO,
+  UpdateMembershipGrantsRequest,
   UpdatePlaylistRequest,
   UpdateSongRequest
 } from '../../models';
@@ -100,6 +104,197 @@ export const useCreateSong = <TError = unknown,
       > => {
 
       const mutationOptions = getCreateSongMutationOptions(options);
+
+      return useMutation(mutationOptions, queryClient);
+    }
+    /**
+ * @summary Transfer ownership to another member, owner only; the previous owner stays a regular member
+ */
+export const promoteMember = (
+    playlistId: number,
+    userId: number,
+ options?: SecondParameter<typeof customInstance>,signal?: AbortSignal
+) => {
+      
+      
+      return customInstance<PlaylistDetailDTO>(
+      {url: `/api/playlists/${playlistId}/members/${userId}/promote`, method: 'POST', signal
+    },
+      options);
+    }
+  
+
+
+export const getPromoteMemberMutationOptions = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof promoteMember>>, TError,{playlistId: number;userId: number}, TContext>, request?: SecondParameter<typeof customInstance>}
+): UseMutationOptions<Awaited<ReturnType<typeof promoteMember>>, TError,{playlistId: number;userId: number}, TContext> => {
+
+const mutationKey = ['promoteMember'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+      
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof promoteMember>>, {playlistId: number;userId: number}> = (props) => {
+          const {playlistId,userId} = props ?? {};
+
+          return  promoteMember(playlistId,userId,requestOptions)
+        }
+
+        
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type PromoteMemberMutationResult = NonNullable<Awaited<ReturnType<typeof promoteMember>>>
+    
+    export type PromoteMemberMutationError = unknown
+
+    /**
+ * @summary Transfer ownership to another member, owner only; the previous owner stays a regular member
+ */
+export const usePromoteMember = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof promoteMember>>, TError,{playlistId: number;userId: number}, TContext>, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof promoteMember>>,
+        TError,
+        {playlistId: number;userId: number},
+        TContext
+      > => {
+
+      const mutationOptions = getPromoteMemberMutationOptions(options);
+
+      return useMutation(mutationOptions, queryClient);
+    }
+    /**
+ * @summary Ban a member, owner only; blocks their future join attempts
+ */
+export const banMember = (
+    playlistId: number,
+    userId: number,
+ options?: SecondParameter<typeof customInstance>,signal?: AbortSignal
+) => {
+      
+      
+      return customInstance<void>(
+      {url: `/api/playlists/${playlistId}/members/${userId}/ban`, method: 'POST', signal
+    },
+      options);
+    }
+  
+
+
+export const getBanMemberMutationOptions = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof banMember>>, TError,{playlistId: number;userId: number}, TContext>, request?: SecondParameter<typeof customInstance>}
+): UseMutationOptions<Awaited<ReturnType<typeof banMember>>, TError,{playlistId: number;userId: number}, TContext> => {
+
+const mutationKey = ['banMember'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+      
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof banMember>>, {playlistId: number;userId: number}> = (props) => {
+          const {playlistId,userId} = props ?? {};
+
+          return  banMember(playlistId,userId,requestOptions)
+        }
+
+        
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type BanMemberMutationResult = NonNullable<Awaited<ReturnType<typeof banMember>>>
+    
+    export type BanMemberMutationError = unknown
+
+    /**
+ * @summary Ban a member, owner only; blocks their future join attempts
+ */
+export const useBanMember = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof banMember>>, TError,{playlistId: number;userId: number}, TContext>, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof banMember>>,
+        TError,
+        {playlistId: number;userId: number},
+        TContext
+      > => {
+
+      const mutationOptions = getBanMemberMutationOptions(options);
+
+      return useMutation(mutationOptions, queryClient);
+    }
+    /**
+ * @summary Copy the songs of a source playlist into this playlist, skipping songs already present
+ */
+export const importFromPlaylist = (
+    playlistId: number,
+    importFromPlaylistRequest: ImportFromPlaylistRequest,
+ options?: SecondParameter<typeof customInstance>,signal?: AbortSignal
+) => {
+      
+      
+      return customInstance<ImportFromPlaylistResultDTO>(
+      {url: `/api/playlists/${playlistId}/imports`, method: 'POST',
+      headers: {'Content-Type': 'application/json', },
+      data: importFromPlaylistRequest, signal
+    },
+      options);
+    }
+  
+
+
+export const getImportFromPlaylistMutationOptions = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof importFromPlaylist>>, TError,{playlistId: number;data: ImportFromPlaylistRequest}, TContext>, request?: SecondParameter<typeof customInstance>}
+): UseMutationOptions<Awaited<ReturnType<typeof importFromPlaylist>>, TError,{playlistId: number;data: ImportFromPlaylistRequest}, TContext> => {
+
+const mutationKey = ['importFromPlaylist'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+      
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof importFromPlaylist>>, {playlistId: number;data: ImportFromPlaylistRequest}> = (props) => {
+          const {playlistId,data} = props ?? {};
+
+          return  importFromPlaylist(playlistId,data,requestOptions)
+        }
+
+        
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ImportFromPlaylistMutationResult = NonNullable<Awaited<ReturnType<typeof importFromPlaylist>>>
+    export type ImportFromPlaylistMutationBody = ImportFromPlaylistRequest
+    export type ImportFromPlaylistMutationError = unknown
+
+    /**
+ * @summary Copy the songs of a source playlist into this playlist, skipping songs already present
+ */
+export const useImportFromPlaylist = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof importFromPlaylist>>, TError,{playlistId: number;data: ImportFromPlaylistRequest}, TContext>, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof importFromPlaylist>>,
+        TError,
+        {playlistId: number;data: ImportFromPlaylistRequest},
+        TContext
+      > => {
+
+      const mutationOptions = getImportFromPlaylistMutationOptions(options);
 
       return useMutation(mutationOptions, queryClient);
     }
@@ -485,4 +680,222 @@ export const useUpdateSong = <TError = unknown,
 
       return useMutation(mutationOptions, queryClient);
     }
+    /**
+ * @summary Kick a member, owner only; the invite still lets them rejoin
+ */
+export const kickMember = (
+    playlistId: number,
+    userId: number,
+ options?: SecondParameter<typeof customInstance>,) => {
+      
+      
+      return customInstance<void>(
+      {url: `/api/playlists/${playlistId}/members/${userId}`, method: 'DELETE'
+    },
+      options);
+    }
+  
+
+
+export const getKickMemberMutationOptions = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof kickMember>>, TError,{playlistId: number;userId: number}, TContext>, request?: SecondParameter<typeof customInstance>}
+): UseMutationOptions<Awaited<ReturnType<typeof kickMember>>, TError,{playlistId: number;userId: number}, TContext> => {
+
+const mutationKey = ['kickMember'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+      
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof kickMember>>, {playlistId: number;userId: number}> = (props) => {
+          const {playlistId,userId} = props ?? {};
+
+          return  kickMember(playlistId,userId,requestOptions)
+        }
+
+        
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type KickMemberMutationResult = NonNullable<Awaited<ReturnType<typeof kickMember>>>
     
+    export type KickMemberMutationError = unknown
+
+    /**
+ * @summary Kick a member, owner only; the invite still lets them rejoin
+ */
+export const useKickMember = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof kickMember>>, TError,{playlistId: number;userId: number}, TContext>, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof kickMember>>,
+        TError,
+        {playlistId: number;userId: number},
+        TContext
+      > => {
+
+      const mutationOptions = getKickMemberMutationOptions(options);
+
+      return useMutation(mutationOptions, queryClient);
+    }
+    /**
+ * @summary Update a member's read, write, and delete grants, owner only
+ */
+export const updateMemberGrants = (
+    playlistId: number,
+    userId: number,
+    updateMembershipGrantsRequest: UpdateMembershipGrantsRequest,
+ options?: SecondParameter<typeof customInstance>,) => {
+      
+      
+      return customInstance<PlaylistMemberDTO>(
+      {url: `/api/playlists/${playlistId}/members/${userId}`, method: 'PATCH',
+      headers: {'Content-Type': 'application/json', },
+      data: updateMembershipGrantsRequest
+    },
+      options);
+    }
+  
+
+
+export const getUpdateMemberGrantsMutationOptions = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateMemberGrants>>, TError,{playlistId: number;userId: number;data: UpdateMembershipGrantsRequest}, TContext>, request?: SecondParameter<typeof customInstance>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateMemberGrants>>, TError,{playlistId: number;userId: number;data: UpdateMembershipGrantsRequest}, TContext> => {
+
+const mutationKey = ['updateMemberGrants'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+      
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateMemberGrants>>, {playlistId: number;userId: number;data: UpdateMembershipGrantsRequest}> = (props) => {
+          const {playlistId,userId,data} = props ?? {};
+
+          return  updateMemberGrants(playlistId,userId,data,requestOptions)
+        }
+
+        
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateMemberGrantsMutationResult = NonNullable<Awaited<ReturnType<typeof updateMemberGrants>>>
+    export type UpdateMemberGrantsMutationBody = UpdateMembershipGrantsRequest
+    export type UpdateMemberGrantsMutationError = unknown
+
+    /**
+ * @summary Update a member's read, write, and delete grants, owner only
+ */
+export const useUpdateMemberGrants = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateMemberGrants>>, TError,{playlistId: number;userId: number;data: UpdateMembershipGrantsRequest}, TContext>, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof updateMemberGrants>>,
+        TError,
+        {playlistId: number;userId: number;data: UpdateMembershipGrantsRequest},
+        TContext
+      > => {
+
+      const mutationOptions = getUpdateMemberGrantsMutationOptions(options);
+
+      return useMutation(mutationOptions, queryClient);
+    }
+    /**
+ * @summary Get the playlist's members and their per-playlist identity and grants
+ */
+export const getMembers = (
+    playlistId: number,
+ options?: SecondParameter<typeof customInstance>,signal?: AbortSignal
+) => {
+      
+      
+      return customInstance<PlaylistMemberDTO[]>(
+      {url: `/api/playlists/${playlistId}/members`, method: 'GET', signal
+    },
+      options);
+    }
+  
+
+
+
+export const getGetMembersQueryKey = (playlistId?: number,) => {
+    return [
+    `/api/playlists/${playlistId}/members`
+    ] as const;
+    }
+
+    
+export const getGetMembersQueryOptions = <TData = Awaited<ReturnType<typeof getMembers>>, TError = unknown>(playlistId: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getMembers>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetMembersQueryKey(playlistId);
+
+  
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getMembers>>> = ({ signal }) => getMembers(playlistId, requestOptions, signal);
+
+      
+
+      
+
+   return  { queryKey, queryFn, enabled: !!(playlistId), ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getMembers>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetMembersQueryResult = NonNullable<Awaited<ReturnType<typeof getMembers>>>
+export type GetMembersQueryError = unknown
+
+
+export function useGetMembers<TData = Awaited<ReturnType<typeof getMembers>>, TError = unknown>(
+ playlistId: number, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getMembers>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getMembers>>,
+          TError,
+          Awaited<ReturnType<typeof getMembers>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetMembers<TData = Awaited<ReturnType<typeof getMembers>>, TError = unknown>(
+ playlistId: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getMembers>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getMembers>>,
+          TError,
+          Awaited<ReturnType<typeof getMembers>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetMembers<TData = Awaited<ReturnType<typeof getMembers>>, TError = unknown>(
+ playlistId: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getMembers>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary Get the playlist's members and their per-playlist identity and grants
+ */
+
+export function useGetMembers<TData = Awaited<ReturnType<typeof getMembers>>, TError = unknown>(
+ playlistId: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getMembers>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient 
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetMembersQueryOptions(playlistId,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  query.queryKey = queryOptions.queryKey ;
+
+  return query;
+}
+
+
+
+

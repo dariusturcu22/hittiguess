@@ -7,8 +7,8 @@ export default defineConfig({
     },
     output: {
       mode: "tags-split",
-      target: "api/generated",
-      schemas: "api/models",
+      target: "hooks/generated",
+      schemas: "hooks/models",
       client: "react-query",
       mock: false,
       override: {
@@ -25,7 +25,7 @@ export default defineConfig({
     },
     output: {
       mode: "tags-split",
-      target: "api/zod",
+      target: "hooks/zod",
       client: "zod",
     },
   },

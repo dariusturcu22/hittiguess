@@ -20,106 +20,13 @@ import type {
 } from '@tanstack/react-query';
 
 import type {
-  GetCountries200Item,
-  GetTags200Item
+  GetCountries200Item
 } from '../../models';
 
 import { customInstance } from '../../../lib/axios-instance';
 
 
 type SecondParameter<T extends (...args: never) => unknown> = Parameters<T>[1];
-
-
-
-/**
- * @summary Get all available tag types
- */
-export const getTags = (
-    
- options?: SecondParameter<typeof customInstance>,signal?: AbortSignal
-) => {
-      
-      
-      return customInstance<GetTags200Item[]>(
-      {url: `/api/enums/tags`, method: 'GET', signal
-    },
-      options);
-    }
-  
-
-
-
-export const getGetTagsQueryKey = () => {
-    return [
-    `/api/enums/tags`
-    ] as const;
-    }
-
-    
-export const getGetTagsQueryOptions = <TData = Awaited<ReturnType<typeof getTags>>, TError = unknown>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getTags>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
-) => {
-
-const {query: queryOptions, request: requestOptions} = options ?? {};
-
-  const queryKey =  queryOptions?.queryKey ?? getGetTagsQueryKey();
-
-  
-
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof getTags>>> = ({ signal }) => getTags(requestOptions, signal);
-
-      
-
-      
-
-   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getTags>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
-}
-
-export type GetTagsQueryResult = NonNullable<Awaited<ReturnType<typeof getTags>>>
-export type GetTagsQueryError = unknown
-
-
-export function useGetTags<TData = Awaited<ReturnType<typeof getTags>>, TError = unknown>(
-  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getTags>>, TError, TData>> & Pick<
-        DefinedInitialDataOptions<
-          Awaited<ReturnType<typeof getTags>>,
-          TError,
-          Awaited<ReturnType<typeof getTags>>
-        > , 'initialData'
-      >, request?: SecondParameter<typeof customInstance>}
- , queryClient?: QueryClient
-  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useGetTags<TData = Awaited<ReturnType<typeof getTags>>, TError = unknown>(
-  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getTags>>, TError, TData>> & Pick<
-        UndefinedInitialDataOptions<
-          Awaited<ReturnType<typeof getTags>>,
-          TError,
-          Awaited<ReturnType<typeof getTags>>
-        > , 'initialData'
-      >, request?: SecondParameter<typeof customInstance>}
- , queryClient?: QueryClient
-  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useGetTags<TData = Awaited<ReturnType<typeof getTags>>, TError = unknown>(
-  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getTags>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
- , queryClient?: QueryClient
-  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-/**
- * @summary Get all available tag types
- */
-
-export function useGetTags<TData = Awaited<ReturnType<typeof getTags>>, TError = unknown>(
-  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getTags>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
- , queryClient?: QueryClient 
- ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
-
-  const queryOptions = getGetTagsQueryOptions(options)
-
-  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
-
-  query.queryKey = queryOptions.queryKey ;
-
-  return query;
-}
-
 
 
 

@@ -16,20 +16,54 @@ export const createSongParams = zod.object({
 
 
 
+export const createSongBodyReleaseYearMin = 1000;
 
 
 
+export const createSongBodyYoutubeIdRegExp = new RegExp('^[a-zA-Z0-9_-]{11}$');
+
+
+export const createSongBodyGradientColor1RegExp = new RegExp('^[0-9a-fA-F]{6}$');
+
+
+export const createSongBodyGradientColor2RegExp = new RegExp('^[0-9a-fA-F]{6}$');
 
 
 export const createSongBody = zod.object({
   "artist": zod.string().min(1),
   "title": zod.string().min(1),
-  "releaseYear": zod.number().optional(),
-  "youtubeId": zod.string().min(1),
-  "gradientColor1": zod.string().min(1),
-  "gradientColor2": zod.string().min(1),
-  "tags": zod.array(zod.enum(['PLAYLIST', 'SPECIAL', 'ANIME'])).optional(),
+  "releaseYear": zod.number().min(createSongBodyReleaseYearMin).optional(),
+  "youtubeId": zod.string().min(1).regex(createSongBodyYoutubeIdRegExp),
+  "gradientColor1": zod.string().min(1).regex(createSongBodyGradientColor1RegExp),
+  "gradientColor2": zod.string().min(1).regex(createSongBodyGradientColor2RegExp),
   "country": zod.enum(['NONE', 'RO']).optional()
+})
+
+/**
+ * @summary Transfer ownership to another member, owner only; the previous owner stays a regular member
+ */
+export const promoteMemberParams = zod.object({
+  "playlistId": zod.number(),
+  "userId": zod.number()
+})
+
+/**
+ * @summary Ban a member, owner only; blocks their future join attempts
+ */
+export const banMemberParams = zod.object({
+  "playlistId": zod.number(),
+  "userId": zod.number()
+})
+
+/**
+ * @summary Copy the songs of a source playlist into this playlist, skipping songs already present
+ */
+export const importFromPlaylistParams = zod.object({
+  "playlistId": zod.number()
+})
+
+export const importFromPlaylistBody = zod.object({
+  "sourcePlaylistId": zod.number()
 })
 
 /**
@@ -46,9 +80,12 @@ export const updatePlaylistParams = zod.object({
   "playlistId": zod.number()
 })
 
+export const updatePlaylistBodyColorRegExp = new RegExp('^[0-9a-fA-F]{6}$');
+
+
 export const updatePlaylistBody = zod.object({
   "name": zod.string().optional(),
-  "color": zod.string().optional()
+  "color": zod.string().regex(updatePlaylistBodyColorRegExp).optional()
 })
 
 /**
@@ -75,14 +112,57 @@ export const updateSongParams = zod.object({
   "songId": zod.number()
 })
 
+
+
+export const updateSongBodyReleaseYearMin = 1000;
+
+
+
+export const updateSongBodyYoutubeIdRegExp = new RegExp('^[a-zA-Z0-9_-]{11}$');
+
+
+export const updateSongBodyGradientColor1RegExp = new RegExp('^[0-9a-fA-F]{6}$');
+
+
+export const updateSongBodyGradientColor2RegExp = new RegExp('^[0-9a-fA-F]{6}$');
+
+
 export const updateSongBody = zod.object({
-  "artist": zod.string().optional(),
-  "title": zod.string().optional(),
-  "releaseYear": zod.number().optional(),
-  "youtubeId": zod.string().optional(),
-  "gradientColor1": zod.string().optional(),
-  "gradientColor2": zod.string().optional(),
-  "tags": zod.array(zod.enum(['PLAYLIST', 'SPECIAL', 'ANIME'])).optional(),
+  "artist": zod.string().min(1),
+  "title": zod.string().min(1),
+  "releaseYear": zod.number().min(updateSongBodyReleaseYearMin).optional(),
+  "youtubeId": zod.string().min(1).regex(updateSongBodyYoutubeIdRegExp),
+  "gradientColor1": zod.string().min(1).regex(updateSongBodyGradientColor1RegExp),
+  "gradientColor2": zod.string().min(1).regex(updateSongBodyGradientColor2RegExp),
   "country": zod.enum(['NONE', 'RO']).optional()
+})
+
+/**
+ * @summary Kick a member, owner only; the invite still lets them rejoin
+ */
+export const kickMemberParams = zod.object({
+  "playlistId": zod.number(),
+  "userId": zod.number()
+})
+
+/**
+ * @summary Update a member's read, write, and delete grants, owner only
+ */
+export const updateMemberGrantsParams = zod.object({
+  "playlistId": zod.number(),
+  "userId": zod.number()
+})
+
+export const updateMemberGrantsBody = zod.object({
+  "canRead": zod.boolean().optional(),
+  "canWrite": zod.boolean().optional(),
+  "canDelete": zod.boolean().optional()
+})
+
+/**
+ * @summary Get the playlist's members and their per-playlist identity and grants
+ */
+export const getMembersParams = zod.object({
+  "playlistId": zod.number()
 })
 

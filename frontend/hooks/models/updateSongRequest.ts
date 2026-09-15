@@ -4,16 +4,29 @@
  * OpenAPI definition
  * OpenAPI spec version: v0
  */
-import type { UpdateSongRequestTagsItem } from './updateSongRequestTagsItem';
 import type { UpdateSongRequestCountry } from './updateSongRequestCountry';
 
 export interface UpdateSongRequest {
-  artist?: string;
-  title?: string;
+  /** @minLength 1 */
+  artist: string;
+  /** @minLength 1 */
+  title: string;
+  /** @minimum 1000 */
   releaseYear?: number;
-  youtubeId?: string;
-  gradientColor1?: string;
-  gradientColor2?: string;
-  tags?: UpdateSongRequestTagsItem[];
+  /**
+   * @minLength 1
+   * @pattern ^[a-zA-Z0-9_-]{11}$
+   */
+  youtubeId: string;
+  /**
+   * @minLength 1
+   * @pattern ^[0-9a-fA-F]{6}$
+   */
+  gradientColor1: string;
+  /**
+   * @minLength 1
+   * @pattern ^[0-9a-fA-F]{6}$
+   */
+  gradientColor2: string;
   country?: UpdateSongRequestCountry;
 }

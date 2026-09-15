@@ -5,7 +5,7 @@
  * OpenAPI spec version: v0
  */
 import type { SongDTO } from './songDTO';
-import type { UserSummaryDTO } from './userSummaryDTO';
+import type { PlaylistMemberDTO } from './playlistMemberDTO';
 
 export interface PlaylistDetailDTO {
   id: number;
@@ -14,5 +14,6 @@ export interface PlaylistDetailDTO {
   inviteCode: string;
   songCount: number;
   songs?: SongDTO[];
-  users: UserSummaryDTO[];
+  ownerId: number;
+  members: PlaylistMemberDTO[];
 }

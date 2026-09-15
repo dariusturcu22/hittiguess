@@ -73,7 +73,9 @@ export default function SongDetailPage({ params }: PageProps) {
               )}
 
               <div className="text-center text-[10px] text-muted-foreground mt-4">
-                Added by {song.addedBy.username}
+                {song.addedBy
+                  ? `Added by ${song.addedBy.username}`
+                  : "Added by a deleted account"}
               </div>
             </>
           )}

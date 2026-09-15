@@ -83,7 +83,7 @@ export function AppSidebar({
     }
 
     joinPlaylist(
-      { playlistInviteCode: joinId },
+      { playlistInviteCode: joinId, data: {} },
       {
         onSuccess: (playlist) => {
           queryClient.invalidateQueries({

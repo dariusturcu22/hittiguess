@@ -24,7 +24,7 @@ export default function JoinPlaylistPage({ params }: PageProps) {
     if (hasAttempted.current) return;
     hasAttempted.current = true;
 
-    joinPlaylist({ playlistInviteCode: inviteCode })
+    joinPlaylist({ playlistInviteCode: inviteCode, data: {} })
       .then((playlist) => {
         queryClient.invalidateQueries({
           queryKey: getGetUserPlaylistsQueryKey(),

@@ -18,10 +18,7 @@ import {
   useCreateSong,
 } from "@/hooks/generated/playlist-management/playlist-management";
 import { getSongMetadata } from "@/hooks/generated/song-metadata/song-metadata";
-import {
-  CreateSongRequestCountry,
-  CreateSongRequestTagsItem,
-} from "@/hooks/models";
+import { CreateSongRequestCountry } from "@/hooks/models";
 
 type Step = "youtube" | "preview" | "details";
 
@@ -31,7 +28,6 @@ interface SongDetails {
   releaseYear: string | number;
   gradientColor1: string;
   gradientColor2: string;
-  tags: CreateSongRequestTagsItem[];
   country: CreateSongRequestCountry;
 }
 
@@ -83,7 +79,6 @@ export function AddSongForm({
     releaseYear: "",
     gradientColor1: "#8B5CF6",
     gradientColor2: "#EC4899",
-    tags: [],
     country: CreateSongRequestCountry.NONE,
   });
 
@@ -116,14 +111,13 @@ export function AddSongForm({
       setFormData({
         title: songData.content?.title ?? "",
         artist: songData.content?.artist ?? "",
-        releaseYear: songData.content?.release_year ?? "",
-        gradientColor1: songData.content?.gradient_color1
-          ? `#${songData.content.gradient_color1}`
+        releaseYear: songData.content?.releaseYear ?? "",
+        gradientColor1: songData.content?.gradientColor1
+          ? `#${songData.content.gradientColor1}`
           : "#8B5CF6",
-        gradientColor2: songData.content?.gradient_color2
-          ? `#${songData.content.gradient_color2}`
+        gradientColor2: songData.content?.gradientColor2
+          ? `#${songData.content.gradientColor2}`
           : "#EC4899",
-        tags: [],
         country: CreateSongRequestCountry.NONE,
       });
       setStep("details");
@@ -185,7 +179,6 @@ export function AddSongForm({
           releaseYear,
           gradientColor1: formData.gradientColor1.replace("#", ""),
           gradientColor2: formData.gradientColor2.replace("#", ""),
-          tags: formData.tags,
           country: formData.country,
         },
       },
@@ -343,34 +336,6 @@ export function AddSongForm({
               value={formData.releaseYear}
               onChange={handleChange}
             />
-          </div>
-
-          <div className="grid gap-2">
-            <Label>Tags</Label>
-            <div className="flex gap-3 flex-wrap">
-              {Object.values(CreateSongRequestTagsItem).map((tag) => (
-                <label
-                  key={tag}
-                  className="flex items-center gap-1.5 cursor-pointer"
-                >
-                  <input
-                    type="checkbox"
-                    name="tags"
-                    value={tag}
-                    checked={formData.tags.includes(tag)}
-                    onChange={(e) =>
-                      setFormData((prev) => ({
-                        ...prev,
-                        tags: e.target.checked
-                          ? [...prev.tags, tag]
-                          : prev.tags.filter((selected) => selected !== tag),
-                      }))
-                    }
-                  />
-                  <span className="text-sm">{tag}</span>
-                </label>
-              ))}
-            </div>
           </div>
 
           <div className="grid gap-2">
