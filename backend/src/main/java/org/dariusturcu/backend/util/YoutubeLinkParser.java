@@ -2,6 +2,8 @@ package org.dariusturcu.backend.util;
 
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 import java.util.regex.Pattern;
 
@@ -46,6 +48,19 @@ public final class YoutubeLinkParser {
         return candidate != null && YOUTUBE_VIDEO_ID_PATTERN.matcher(candidate).matches()
                 ? Optional.of(candidate)
                 : Optional.empty();
+    }
+
+    // Parses each submitted video id or link, dropping any input that doesn't resolve to
+    // a valid video id, rather than failing the whole submission over one bad entry.
+    public static List<String> parseAllVideoIds(List<String> inputs) {
+        if (inputs == null) {
+            return List.of();
+        }
+        List<String> parsedIds = new ArrayList<>();
+        for (String submittedInput : inputs) {
+            parseVideoId(submittedInput).ifPresent(parsedIds::add);
+        }
+        return parsedIds;
     }
 
     private static String extractCandidateFromUrl(String trimmedInput) {
