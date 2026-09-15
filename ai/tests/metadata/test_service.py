@@ -1,6 +1,7 @@
 from app.dedup.schemas import VerifiedSongMatch
 from app.metadata import service
 from app.metadata.schemas import SongMetadataResult
+from app.metadata.verification import VerificationRoute
 
 
 def _youtube_data():
@@ -22,6 +23,7 @@ def _synthesized_result():
         confidence="high",
         source="MusicBrainz",
         reasoning="Matched exactly.",
+        verification_status=None,
     )
 
 
@@ -38,13 +40,20 @@ def _verified_match():
     )
 
 
+def _locked_verification_result():
+    """Simulates evaluate_lock returning a locked result: all three sources agreed."""
+    return 1999, "high", VerificationRoute.LOCKED
+
+
 def _patch_pipeline_dependencies(mocker, duplicate_match, embedding=None):
     mocker.patch.object(service.youtube, "fetch_youtube_metadata", return_value=_youtube_data())
     mocker.patch.object(service, "generate_embedding", return_value=embedding or [0.1, 0.2, 0.3])
     mocker.patch.object(service, "find_best_verified_match", return_value=duplicate_match)
     mocker.patch.object(service.musicbrainz, "search", return_value=[])
+    mocker.patch.object(service.discogs, "search", return_value=[])
     mocker.patch.object(service.wikidata, "search", return_value=[])
     mocker.patch.object(service.wikipedia, "search", return_value=[])
+    mocker.patch("app.metadata.service.evaluate_lock", return_value=_locked_verification_result())
     return mocker.patch.object(service, "synthesize", return_value=_synthesized_result())
 
 
@@ -65,7 +74,9 @@ def test_no_match_proceeds_to_the_full_pipeline(mocker):
     result = service.resolve_metadata("https://youtube.com/watch?v=abc12345678")
 
     assert result.status == "SUCCESS"
-    assert result.content == _synthesized_result()
+    assert result.content.title == "Test Song"
+    assert result.content.release_year == 1999
+    assert result.content.source == service.LOCKED_SOURCE_LABEL
     synthesize_mock.assert_called_once()
 
 
@@ -78,7 +89,7 @@ def test_low_confidence_match_proceeds_to_the_full_pipeline(mocker):
     result = service.resolve_metadata("https://youtube.com/watch?v=abc12345678")
 
     assert result.status == "SUCCESS"
-    assert result.content == _synthesized_result()
+    assert result.content.source == service.LOCKED_SOURCE_LABEL
     synthesize_mock.assert_called_once()
 
 
@@ -86,14 +97,16 @@ def test_duplicate_check_failure_falls_back_to_the_full_pipeline(mocker):
     mocker.patch.object(service.youtube, "fetch_youtube_metadata", return_value=_youtube_data())
     mocker.patch.object(service, "generate_embedding", side_effect=RuntimeError("embedding API down"))
     mocker.patch.object(service.musicbrainz, "search", return_value=[])
+    mocker.patch.object(service.discogs, "search", return_value=[])
     mocker.patch.object(service.wikidata, "search", return_value=[])
     mocker.patch.object(service.wikipedia, "search", return_value=[])
+    mocker.patch("app.metadata.service.evaluate_lock", return_value=_locked_verification_result())
     synthesize_mock = mocker.patch.object(service, "synthesize", return_value=_synthesized_result())
 
     result = service.resolve_metadata("https://youtube.com/watch?v=abc12345678")
 
     assert result.status == "SUCCESS"
-    assert result.content == _synthesized_result()
+    assert result.content.source == service.LOCKED_SOURCE_LABEL
     synthesize_mock.assert_called_once()
 
 
