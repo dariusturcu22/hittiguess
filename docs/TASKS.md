@@ -31,20 +31,25 @@ An audit found several docs describe already-merged work as still pending. Batch
 
 Stories 10, 11, and 39 have all shipped (backend). Story 9's draft tasks confirmed accurate against the real code: no DJ view exists in the frontend, the backend session model tracks the DJ per round but no link-out, audio capture, or DJ-role enforcement is built. Ready.
 
-The DJ's only in-app action is "Open YouTube Link"; playback, pausing, and closing the tab or app all happen on YouTube itself, never mirrored into the game. The round's own flow, the betting countdown and window, the reveal, and advancing to the next player, runs automatically off timers the game already has once the DJ opens the link, with no manual trigger from the DJ or any player (see `GAME_DESIGN.md`'s Roles section and story 10's automatic-reveal task).
+The DJ's only in-app action is "Open YouTube Link"; playback, pausing, and closing the tab or app all happen on YouTube itself, never mirrored into the game. The round's own flow, the betting countdown and window, the reveal, and advancing to the next player, runs automatically off timers the game already has once the active player locks in a placement, with no manual trigger from the DJ or any player (see `GAME_DESIGN.md`'s Roles section and story 10's automatic-reveal task).
 
-- [ ] Build the DJ view: an "open in YouTube" link-out for remote sessions, opening a new browser tab, never an embedded player, behind an explicit "Open YouTube Link" action
-- [ ] Add a UI warning shown alongside that action, explicit that clicking it starts broadcasting the DJ's tab or system audio to the rest of the group
-- [ ] Wire WebRTC tab audio capture to that new tab and stream it to the other players, starting only once the DJ has actually opened the link, not before
-- [ ] Add deep-link handling for in-person sessions (Android intent, iOS universal link, fallback to a plain browser link)
-- [ ] Wire the active player's audio-stream cutoff over WebSocket: cuts off immediately on guess lock-in, regardless of what's still playing on the DJ's end
-- [ ] Restrict the "Open YouTube Link" action to the DJ role specifically, a non-DJ player's attempt to invoke it is rejected
+Backend slice (this batch). The DJ needs the current round's YouTube watch URL to link out, and the round DTO deliberately withholds a song's `youtubeId` until the reveal, so playback data reaches only the DJ and only during the playback window. `GET /api/sessions/{sessionId}/link-out` returns the current round's video id and canonical watch URL, restricted to that round's DJ and refused once the round is REVEALED or SCORED. The watch URL is built by `YoutubeLinkParser.buildWatchUrl` from the stored video id rather than assembled inline. Round flow stays driven by placement-lock-in timers, so "the DJ opened the link" needs no server-side state and belongs to story 28 along with the rest of the frontend. The audio-stream cutoff on guess lock-in is a client reaction to the existing `GUESS_LOCKED` broadcast, so it too is a story-28 concern with no new backend state.
+
+- [x] Backend: expose the current round's YouTube link-out (video id plus canonical watch URL) to the round's DJ, gated so only that DJ can fetch it and only before the reveal (`GameSessionService.getCurrentRoundLinkOut`, `GameSessionController` `GET /api/sessions/{sessionId}/link-out`, `RoundLinkOutDTO`)
+- [x] Backend: build the watch URL from the stored video id through `YoutubeLinkParser.buildWatchUrl` rather than a hardcoded URL string
+- [ ] Build the DJ view: an "open in YouTube" link-out for remote sessions, opening a new browser tab, never an embedded player, behind an explicit "Open YouTube Link" action (story 28)
+- [ ] Add a UI warning shown alongside that action, explicit that clicking it starts broadcasting the DJ's tab or system audio to the rest of the group (story 28)
+- [ ] Wire WebRTC tab audio capture to that new tab and stream it to the other players, starting only once the DJ has actually opened the link, not before (story 28)
+- [ ] Add deep-link handling for in-person sessions (Android intent, iOS universal link, fallback to a plain browser link) (story 28)
+- [ ] Wire the active player's audio-stream cutoff over WebSocket: cuts off immediately on guess lock-in, regardless of what's still playing on the DJ's end (story 28, client reaction to the existing `GUESS_LOCKED` broadcast)
+- [x] Backend: restrict the link-out to the DJ role specifically, a non-DJ player's or non-member's attempt is rejected
 
 Tests:
-- [ ] Unit test: the audio-stream cutoff fires on guess lock-in regardless of playback state, and only for the active player's stream
-- [ ] Unit test: the "Open YouTube Link" action is rejected when attempted by a non-DJ player
-- [ ] Frontend test: the "Open YouTube Link" action shows the audio-sharing warning before WebRTC tab capture starts
-- [ ] Integration test: deep-link handling falls back to a plain browser link when the YouTube app isn't installed
+- [x] Unit test: `YoutubeLinkParser.buildWatchUrl` produces the canonical watch URL and rejects a non-video-id input (`YoutubeLinkParserTest`)
+- [x] Integration test: the round's DJ fetches the link-out and gets the correct watch URL for the current round's song; a non-DJ player is denied; a non-member is denied; the link-out is refused once the round is revealed (`GameSessionLinkOutIntegrationTest`)
+- [ ] Unit test: the audio-stream cutoff fires on guess lock-in regardless of playback state, and only for the active player's stream (story 28)
+- [ ] Frontend test: the "Open YouTube Link" action shows the audio-sharing warning before WebRTC tab capture starts (story 28)
+- [ ] Integration test: deep-link handling falls back to a plain browser link when the YouTube app isn't installed (story 28)
 
 ## Story 10: Game session
 

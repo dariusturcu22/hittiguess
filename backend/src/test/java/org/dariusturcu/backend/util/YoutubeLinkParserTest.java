@@ -7,6 +7,7 @@ import org.junit.jupiter.params.provider.ValueSource;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class YoutubeLinkParserTest {
 
@@ -54,5 +55,26 @@ class YoutubeLinkParserTest {
         Optional<String> videoId = YoutubeLinkParser.parseVideoId(nonYoutubeInput);
 
         assertThat(videoId).isEmpty();
+    }
+
+    @Test
+    void buildsTheCanonicalWatchUrlForAVideoId() {
+        String watchUrl = YoutubeLinkParser.buildWatchUrl(EXPECTED_VIDEO_ID);
+
+        assertThat(watchUrl).isEqualTo("https://www.youtube.com/watch?v=" + EXPECTED_VIDEO_ID);
+    }
+
+    @Test
+    void buildsTheWatchUrlAfterTrimmingSurroundingWhitespace() {
+        String watchUrl = YoutubeLinkParser.buildWatchUrl("  " + EXPECTED_VIDEO_ID + "  ");
+
+        assertThat(watchUrl).isEqualTo("https://www.youtube.com/watch?v=" + EXPECTED_VIDEO_ID);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"short", "waytoolongtobeavalidvideoid", "not a url"})
+    void rejectsAWatchUrlRequestForAnythingThatIsNotAValidVideoId(String invalidVideoId) {
+        assertThatThrownBy(() -> YoutubeLinkParser.buildWatchUrl(invalidVideoId))
+                .isInstanceOf(IllegalArgumentException.class);
     }
 }
