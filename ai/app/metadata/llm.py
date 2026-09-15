@@ -37,6 +37,28 @@ def synthesize(prompt: str) -> SongMetadataResult:
     return parsed
 
 
+def synthesize_with_model(prompt: str, model: str, response_model: type[ResponseModel]) -> ResponseModel:
+    """Runs a structured-output call against OpenAI with an explicit model
+    and response schema. Used by the four-source reconciliation step, which
+    runs on gpt-5-nano rather than the main synthesis model."""
+    try:
+        completion = client.chat.completions.parse(
+            model=model,
+            temperature=STRUCTURED_OUTPUT_TEMPERATURE,
+            messages=[{"role": "user", "content": prompt}],
+            response_format=response_model,
+        )
+    except Exception as openai_error:
+        report_openai_failure(openai_error)
+        raise
+
+    parsed = completion.choices[0].message.parsed
+    if parsed is None:
+        raise ValueError(f"{model} response did not match the expected schema")
+
+    return parsed
+
+
 def _extract_via_tool_call(prompt: str, response_model: type[ResponseModel]) -> ResponseModel:
     """Fallback for a model that rejects response_format's json_schema mode
     outright (observed live on a different DeepInfra-hosted model,

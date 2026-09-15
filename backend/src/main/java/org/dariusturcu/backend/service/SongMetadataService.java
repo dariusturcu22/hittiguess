@@ -18,6 +18,8 @@ import java.util.concurrent.ConcurrentHashMap;
 @Service
 @RequiredArgsConstructor
 public class SongMetadataService {
+    private static final String YOUTUBE_WATCH_URL_PREFIX = "https://www.youtube.com/watch?v=";
+
     private final RestClient aiServiceRestClient;
 
     // The metadata pipeline chains several rate-limited external calls plus a paid LLM call,
@@ -35,6 +37,22 @@ public class SongMetadataService {
             throw new RateLimitExceededException("A metadata request is already in progress");
         }
 
+        try {
+            return resolve(youtubeUrl);
+        } finally {
+            usersWithRequestInFlight.remove(userId);
+        }
+    }
+
+    // The per-user in-flight gate above is request-scoped and has no meaning for the scheduled
+    // backlog drain, which runs with no authenticated user, so resolution by raw ID skips it.
+    // The priority coordinator, not a per-user cap, is what paces the drain against on-the-spot
+    // traffic for the shared external rate-limit budget.
+    public AiResponse resolveByYoutubeId(String youtubeId) {
+        return resolve(YOUTUBE_WATCH_URL_PREFIX + youtubeId);
+    }
+
+    private AiResponse resolve(String youtubeUrl) {
         long startTime = System.currentTimeMillis();
 
         try {
@@ -60,11 +78,9 @@ public class SongMetadataService {
             }
 
             return new AiResponse(response.content(), response.model(), duration, LocalDateTime.now(), SUCCESS_STATUS, null, null);
-        } catch (Exception e) {
-            log.warn("AI microservice call failed: {}", e.getMessage());
+        } catch (Exception aiServiceCallFailure) {
+            log.warn("AI microservice call failed: {}", aiServiceCallFailure.getMessage());
             return new AiResponse(null, null, System.currentTimeMillis() - startTime, LocalDateTime.now(), ERROR_STATUS, null, null);
-        } finally {
-            usersWithRequestInFlight.remove(userId);
         }
     }
 }
