@@ -790,3 +790,13 @@ Why: both items were phrased as still-open in entries this log never revisited, 
 Decision: upholding a song's open reports marks those reports upheld and, for a song still in an editable status (`UNVERIFIED` or `MANUAL_ENTRY`), moves it to `MANUAL_ENTRY`. A locked song (`VERIFIED` or `NEEDS_REVIEW`) keeps its year and status unchanged when its reports are upheld; the upheld reports surface it for admin judgment but nothing overwrites the locked year. Dismissing a song's open reports moves them to dismissed and changes nothing about the song. Confirmations are accepted only on `NEEDS_REVIEW`/`MANUAL_ENTRY` cards. A report is allowed on any card, including `VERIFIED` ones.
 
 Why: story 40's re-resolution pipeline does not exist yet, so uphold cannot trigger an automated re-fetch. Routing an editable song to `MANUAL_ENTRY` puts it in the tier an admin fills in by hand, which is the available manual path today. The locked-year rule reuses `PlaylistService.EDITABLE_VERIFICATION_STATUSES` so a report can never do through the back door what a direct edit is already forbidden from doing. The report-submitted abuse-visibility event stays a stubbed structured log line until story 34 ships its event pipeline.
+
+---
+
+## 2026-09 | Story 45 import from playlist: reuse existing mechanisms, defer the public-source path
+
+Decision: importing songs from one playlist into another links the source playlist's existing `Song` rows into the target through story 15's `song_playlists` join table, using `Playlist.addSong`. Songs already present in the target are skipped rather than re-linked or erroring. The requester must be able to read the source (owner or member, through `PlaylistAccessService.requireRead`) and write to the target (`requireWrite`). The endpoint is `POST /api/playlists/{playlistId}/imports`, where the path playlist is the target and the body carries the source playlist ID. No new schema ships with this story.
+
+The draft tasks described the source read check as accepting a public source (`isPublic`). `Playlist` has no `isPublic` field: public playlists are story 30, which is not built. The public-source path and its test are deferred to story 30 rather than inventing a public flag ahead of that story. Source readability today is owner-or-member, matching every other playlist read in the codebase.
+
+Why: the copy is a catalog-level link operation, not a metadata fetch, so it reuses the join table and the grant checks that already gate every playlist read and write. Building the public-source branch now would require adding the story 30 mechanism early and guessing its shape, so it waits for the story that owns it. The frontend picker is story 28, per the standing all-frontend-in-story-28 policy.

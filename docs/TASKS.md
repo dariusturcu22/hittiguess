@@ -245,15 +245,22 @@ Surfaced during story 28's design pass, not part of the original backlog mapping
 
 No longer blocked: story 15 has landed the `song_playlists` join table a `Song` needed to attach to more than one playlist. This story is mostly wiring on top of it: pick a source playlist, link its songs' existing rows into the target playlist via the same join table.
 
-- [ ] Add an endpoint accepting a source playlist ID and a target playlist ID, validating the requester can read the source (owned, member, or `isPublic`, coordinate with story 30's access model) and can write to the target
-- [ ] Link every song from the source playlist into the target playlist via story 15's join table; skip songs already present in the target rather than erroring or duplicating the link
-- [ ] Add the frontend picker: choose a playlist from owned/joined/public, show a confirm step naming how many songs will be added (and how many are already present and will be skipped)
-- [ ] Since the copy is synchronous and immediate, no background-job or progress-tracking UI is needed for this path specifically, unlike story 40's YouTube-crawl import
+Confirmed against the real code before starting. The `song_playlists` join table is the owning side of `Playlist.songs`, linked through `Playlist.addSong` and unlinked through `Playlist.removeSong`; there is no ordering column or added-by column on the join itself. Ordering is `@OrderBy("id ASC")` on the collection, and added-by lives on the `Song` row, set once at song creation, so linking a song into another playlist neither reorders nor reassigns it. Access is enforced by `PlaylistAccessService`: `requireRead` and `requireWrite` pass for the owner, otherwise check the member's `canRead`/`canWrite` grant. `AccessDeniedException` from those checks maps to a 403 at the HTTP boundary through Spring Security. No new schema is needed: the story reuses the existing join table, so no migration ships with it (latest on `dev` stays V13).
+
+Correction to the draft: `Playlist` has no `isPublic` field today. Public playlists are story 30, which is not built, so the public-source path can't be enforced yet. Source readability is owner-or-member through `requireRead`, matching every other playlist read in the codebase. The public-source path and its test are deferred to story 30, called out below.
+
+- [x] Add an endpoint accepting a source playlist ID and a target playlist ID, validating the requester can read the source (owner or member through `requireRead`) and can write to the target (`requireWrite`). `POST /api/playlists/{playlistId}/imports`, body carries the source playlist ID; the path playlist is the target
+- [x] Link every song from the source playlist into the target playlist via story 15's join table; skip songs already present in the target rather than erroring or duplicating the link. Returns how many songs were linked and how many were skipped as already present
+- [ ] Deferred to story 30: extend the source read check to accept a public source the requester neither owns nor is a member of, once `isPublic` exists on `Playlist`
+- [ ] Story 28: the frontend picker, choose a playlist from owned/joined/public, show a confirm step naming how many songs will be added (and how many are already present and will be skipped)
+- [x] Since the copy is synchronous and immediate, no background-job or progress-tracking UI is needed for this path specifically, unlike story 40's YouTube-crawl import
 
 Tests:
-- [ ] Unit tests for the access check: a source playlist the requester can't read (not owned, not a member, not public) is rejected
-- [ ] Integration test: importing from a playlist with overlapping songs only links the ones not already in the target
-- [ ] Integration test: importing from a public playlist the requester neither owns nor is a member of succeeds
+- [x] Unit/integration tests for the access check: a source playlist the requester can't read (not owned, not a member) is rejected; a requester without write access to the target is rejected
+- [x] Integration test: importing from a playlist with overlapping songs only links the ones not already in the target
+- [x] Integration test: importing all of a source playlist's songs into an empty target links every one
+- [x] Integration test: importing from an empty source links nothing
+- [ ] Deferred to story 30: integration test that importing from a public playlist the requester neither owns nor is a member of succeeds
 
 ## Story 46: Playlist membership: owner/admin, granular permissions, kick and ban, per-playlist identity
 
