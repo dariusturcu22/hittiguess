@@ -3,12 +3,19 @@ import httpx
 from app.config import settings
 from app.metadata.sources.util import (
     build_youtube_api_url,
+    build_youtube_playlist_items_api_url,
     extract_youtube_video_id,
     parse_iso8601_duration_seconds,
 )
 from app.observability.error_reporting import report_source_failure
 
 SOURCE_NAME = "youtube"
+
+
+class PlaylistFetchError(Exception):
+    """Raised when the first page of a playlist fetch fails, so a caller can
+    distinguish a real API or lookup failure from a playlist that simply has
+    no items (which is not an error and yields an empty list instead)."""
 UNKNOWN_DEFAULTS = {
     "channel_title": "unknown",
     "video_title": "unknown",
@@ -51,3 +58,40 @@ def fetch_youtube_metadata(url: str) -> dict[str, str]:
     except Exception as youtube_error:
         report_source_failure(SOURCE_NAME, youtube_error, title=url, artist="unknown")
         return dict(UNKNOWN_DEFAULTS)
+
+
+def fetch_playlist_video_ids(playlist_id: str) -> list[str]:
+    """Crawls a YouTube playlist to every video id it contains, paginating
+    through playlistItems.list until nextPageToken is absent. A failure on the
+    first page raises PlaylistFetchError, since that page failing means the
+    playlist could not be read at all; a failure on a later page instead stops
+    pagination and returns whatever was collected so far."""
+    video_ids: list[str] = []
+    page_token: str | None = None
+    is_first_page = True
+
+    while True:
+        api_url = build_youtube_playlist_items_api_url(playlist_id, settings.youtube_api_key, page_token)
+        try:
+            response = httpx.get(api_url, timeout=5.0)
+            response.raise_for_status()
+            page_payload = response.json()
+        except Exception as playlist_page_error:
+            report_source_failure(SOURCE_NAME, playlist_page_error, title=playlist_id, artist="unknown")
+            if is_first_page:
+                raise PlaylistFetchError(
+                    f"Failed to fetch playlist {playlist_id}"
+                ) from playlist_page_error
+            break
+
+        for playlist_item in page_payload.get("items", []):
+            video_id = playlist_item.get("contentDetails", {}).get("videoId")
+            if video_id:
+                video_ids.append(video_id)
+
+        page_token = page_payload.get("nextPageToken")
+        is_first_page = False
+        if not page_token:
+            break
+
+    return video_ids
