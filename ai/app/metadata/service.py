@@ -1,4 +1,5 @@
 import logging
+from concurrent.futures import ThreadPoolExecutor
 
 from app.config import settings
 from app.dedup.embedding_client import generate_embedding
@@ -12,6 +13,16 @@ from app.metadata.sources import discogs, musicbrainz, wikidata, wikipedia, yout
 from app.metadata.sources.util import clean_youtube_text
 
 logger = logging.getLogger(__name__)
+
+# The four structured/prose sources take the same title and artist and share
+# nothing, so they run in a thread pool rather than one after another: each is
+# network-bound and spends almost all its time blocked on an outbound request.
+# One worker per source keeps the wall-clock cost bounded by the slowest single
+# source instead of their sum. Each source function already isolates its own
+# failures internally and returns an empty list, and a future that raises anyway
+# is caught per source below, so one source failing never sinks the others.
+STRUCTURED_SOURCE_WORKER_COUNT = 4
+EMPTY_SOURCE_RESULT: list = []
 
 # Cosine distance (0 identical, 2 opposite) below which an existing verified song counts
 # as the same song under a different submission, not just a similar one. text-embedding-3-small
@@ -29,14 +40,29 @@ def _clean_title_and_artist(youtube_data: dict[str, str]) -> tuple[str, str]:
     return title, artist
 
 
+def _fetch_source(source_search, title: str, artist: str) -> object:
+    try:
+        return source_search(title, artist)
+    except Exception as source_error:
+        logger.warning("Metadata source %s failed, continuing without it: %s", source_search.__module__, source_error)
+        return EMPTY_SOURCE_RESULT
+
+
 def _gather_all_metadata(youtube_data: dict[str, str], title: str, artist: str) -> dict[str, object]:
-    return {
-        "youtube": youtube_data,
-        "musicbrainz": musicbrainz.search(title, artist),
-        "discogs": discogs.search(title, artist),
-        "wikidata": wikidata.search(title, artist),
-        "wikipedia": wikipedia.search(title, artist),
+    source_searches = {
+        "musicbrainz": musicbrainz.search,
+        "discogs": discogs.search,
+        "wikidata": wikidata.search,
+        "wikipedia": wikipedia.search,
     }
+    with ThreadPoolExecutor(max_workers=STRUCTURED_SOURCE_WORKER_COUNT) as executor:
+        pending = {
+            source_name: executor.submit(_fetch_source, source_search, title, artist)
+            for source_name, source_search in source_searches.items()
+        }
+        gathered = {source_name: future.result() for source_name, future in pending.items()}
+
+    return {"youtube": youtube_data, **gathered}
 
 
 def _build_duplicate_match_result(match: VerifiedSongMatch) -> SongMetadataResult:
