@@ -227,6 +227,7 @@ class GameSessionServiceTest {
         Round round = round(session, 10L, 1, active, dj, roundSong);
         round.setPlacementCorrect(false);
         round.setBettorPlayer(bettor);
+        round.setBetPosition(1);
 
         gameSessionService.scoreRoundEffect(round.getId());
 
@@ -234,6 +235,29 @@ class GameSessionServiceTest {
         assertThat(bettor.getTimeline()).hasSize(2);
         assertThat(bettor.getTimeline().get(1).getReleaseYear()).isEqualTo(2000);
         verify(groupService).recordGameSessionEnded(session.getGroupId());
+    }
+
+    @Test
+    void wrongPlacementWithAnIncorrectBetPositionDiscardsTheCard() {
+        GameSession session = session(DjMode.ROTATING, 2);
+        Player active = player(session, 1L, 0, PlayerStatus.ACTIVE);
+        Player dj = player(session, 2L, 1, PlayerStatus.ACTIVE);
+        Player bettor = player(session, 3L, 2, PlayerStatus.ACTIVE);
+        anchorCard(active, song(100, "Active Anchor", 1990));
+        anchorCard(bettor, song(101, "Bettor Anchor", 1990));
+        anchorCard(dj, song(102, "DJ Anchor", 1990));
+        Song roundSong = song(200, "Round Song", 2000);
+        Round round = round(session, 10L, 1, active, dj, roundSong);
+        round.setPlacementCorrect(false);
+        round.setBettorPlayer(bettor);
+        // The bettor's own anchor card is from 1990 and the round song is from 2000, so
+        // staking a bet at position 0 (before the anchor card) is the wrong position.
+        round.setBetPosition(0);
+
+        gameSessionService.scoreRoundEffect(round.getId());
+
+        assertThat(active.getTimeline()).hasSize(1);
+        assertThat(bettor.getTimeline()).hasSize(1);
     }
 
     @Test
@@ -252,6 +276,48 @@ class GameSessionServiceTest {
         assertThat(active.getTimeline()).hasSize(1);
         assertThat(dj.getTimeline()).hasSize(1);
         verify(groupService, org.mockito.Mockito.never()).recordGameSessionEnded(anyLong());
+    }
+
+    // --- Betting -----------------------------------------------------------
+
+    @Test
+    void placingABetAtAValidPositionPassesThatPositionThroughToTheRepository() {
+        GameSession session = session(DjMode.ROTATING, 10);
+        Player active = player(session, 1L, 0, PlayerStatus.ACTIVE);
+        Player dj = player(session, 2L, 1, PlayerStatus.ACTIVE);
+        Player bettor = player(session, 3L, 2, PlayerStatus.ACTIVE);
+        anchorCard(bettor, song(101, "Bettor Anchor", 1990));
+        bettor.setTokenCount(1);
+        Song roundSong = song(200, "Round Song", 2000);
+        Round round = round(session, 10L, 1, active, dj, roundSong);
+        round.setStatus(RoundStatus.BETTING);
+        lenient().when(roundRepository.tryAcceptBet(anyLong(), any(Player.class), any(), org.mockito.ArgumentMatchers.anyInt()))
+                .thenReturn(1);
+
+        boolean accepted = gameSessionService.placeBet(session.getId(), bettor.getUser().getId(), 1);
+
+        assertThat(accepted).isTrue();
+        verify(roundRepository).tryAcceptBet(org.mockito.ArgumentMatchers.eq(round.getId()), org.mockito.ArgumentMatchers.eq(bettor),
+                org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.eq(1));
+        verify(playerRepository).deductToken(bettor.getId());
+    }
+
+    @Test
+    void placingABetAtAnOutOfRangePositionIsRejectedTheSameWayAnOutOfRangePlacementIs() {
+        GameSession session = session(DjMode.ROTATING, 10);
+        Player active = player(session, 1L, 0, PlayerStatus.ACTIVE);
+        Player dj = player(session, 2L, 1, PlayerStatus.ACTIVE);
+        Player bettor = player(session, 3L, 2, PlayerStatus.ACTIVE);
+        anchorCard(bettor, song(101, "Bettor Anchor", 1990));
+        bettor.setTokenCount(1);
+        Song roundSong = song(200, "Round Song", 2000);
+        Round round = round(session, 10L, 1, active, dj, roundSong);
+        round.setStatus(RoundStatus.BETTING);
+
+        // The bettor's timeline has one card, so 0 and 1 are the only in-range positions.
+        org.assertj.core.api.Assertions.assertThatThrownBy(() ->
+                gameSessionService.placeBet(session.getId(), bettor.getUser().getId(), 2))
+                .isInstanceOf(IllegalArgumentException.class);
     }
 
     // --- Leaderboard tallies ---------------------------------------------------
