@@ -155,7 +155,7 @@ Schema changes now go through Flyway migrations (`backend/src/main/resources/db/
 Listed here so the entity picture is in one place; each is still greenfield work under its own story.
 
 - `ChatMessage` (story 13)
-- `SongDifficulty` aggregate view or table (story 30)
+- `SongDifficulty` aggregate view or table (story 30): not built as an entity. Story 30's backend computes the per-song play-derived difficulty signal on the fly through `RoundRepository.aggregatePlacementStatsBySong`, a grouped aggregate query over scored rounds, so no stored table or view exists
 
 ### Analytics store (story 33)
 
