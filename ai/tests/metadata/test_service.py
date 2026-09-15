@@ -1,3 +1,5 @@
+import time
+
 from app.dedup.schemas import VerifiedSongMatch
 from app.metadata import service
 from app.metadata.schemas import SongMetadataResult
@@ -104,3 +106,91 @@ def test_resolve_metadata_returns_error_status_when_the_full_pipeline_raises(moc
 
     assert result.status == "ERROR"
     assert result.content is None
+
+
+PER_SOURCE_DELAY_SECONDS = 0.3
+SOURCE_COUNT = 4
+SEQUENTIAL_TOTAL_SECONDS = PER_SOURCE_DELAY_SECONDS * SOURCE_COUNT
+CONCURRENCY_ELAPSED_CEILING_SECONDS = SEQUENTIAL_TOTAL_SECONDS / 2
+
+
+def _delayed_search(delay_seconds):
+    def search(title, artist):
+        time.sleep(delay_seconds)
+        return []
+
+    return search
+
+
+def test_structured_sources_are_fetched_concurrently_not_sequentially(mocker):
+    mocker.patch.object(service.youtube, "fetch_youtube_metadata", return_value=_youtube_data())
+    mocker.patch.object(service, "generate_embedding", return_value=[0.1, 0.2, 0.3])
+    mocker.patch.object(service, "find_best_verified_match", return_value=None)
+    for source in (service.musicbrainz, service.discogs, service.wikidata, service.wikipedia):
+        mocker.patch.object(source, "search", side_effect=_delayed_search(PER_SOURCE_DELAY_SECONDS))
+    mocker.patch.object(service, "synthesize", return_value=_synthesized_result())
+
+    start_time = time.perf_counter()
+    result = service.resolve_metadata("https://youtube.com/watch?v=abc12345678")
+    elapsed_seconds = time.perf_counter() - start_time
+
+    assert result.status == "SUCCESS"
+    assert elapsed_seconds < CONCURRENCY_ELAPSED_CEILING_SECONDS
+
+
+def test_one_source_raising_does_not_prevent_the_others_from_being_used(mocker):
+    mocker.patch.object(service.youtube, "fetch_youtube_metadata", return_value=_youtube_data())
+    mocker.patch.object(service, "generate_embedding", return_value=[0.1, 0.2, 0.3])
+    mocker.patch.object(service, "find_best_verified_match", return_value=None)
+
+    musicbrainz_candidates = [{"query": "track", "title": "Test Song", "artist": "Test Artist", "date": "1999", "type": "Single", "score": 100}]
+    mocker.patch.object(service.musicbrainz, "search", return_value=musicbrainz_candidates)
+    mocker.patch.object(service.discogs, "search", side_effect=RuntimeError("Discogs API down"))
+    mocker.patch.object(service.wikidata, "search", return_value=[])
+    mocker.patch.object(service.wikipedia, "search", return_value=[])
+
+    captured_metadata = {}
+
+    def capture_prompt(all_metadata):
+        captured_metadata.update(all_metadata)
+        return "prompt"
+
+    mocker.patch.object(service.prompt, "build", side_effect=capture_prompt)
+    synthesize_mock = mocker.patch.object(service, "synthesize", return_value=_synthesized_result())
+
+    result = service.resolve_metadata("https://youtube.com/watch?v=abc12345678")
+
+    assert result.status == "SUCCESS"
+    synthesize_mock.assert_called_once()
+    assert captured_metadata["musicbrainz"] == musicbrainz_candidates
+    assert captured_metadata["discogs"] == []
+
+
+def test_all_four_structured_sources_are_fetched_and_passed_to_synthesis(mocker):
+    mocker.patch.object(service.youtube, "fetch_youtube_metadata", return_value=_youtube_data())
+    mocker.patch.object(service, "generate_embedding", return_value=[0.1, 0.2, 0.3])
+    mocker.patch.object(service, "find_best_verified_match", return_value=None)
+    source_mocks = {
+        "musicbrainz": mocker.patch.object(service.musicbrainz, "search", return_value=[]),
+        "discogs": mocker.patch.object(service.discogs, "search", return_value=[]),
+        "wikidata": mocker.patch.object(service.wikidata, "search", return_value=[]),
+        "wikipedia": mocker.patch.object(service.wikipedia, "search", return_value=[]),
+    }
+
+    captured_metadata = {}
+
+    def capture_prompt(all_metadata):
+        captured_metadata.update(all_metadata)
+        return "prompt"
+
+    mocker.patch.object(service.prompt, "build", side_effect=capture_prompt)
+    synthesize_mock = mocker.patch.object(service, "synthesize", return_value=_synthesized_result())
+
+    result = service.resolve_metadata("https://youtube.com/watch?v=abc12345678")
+
+    assert result.status == "SUCCESS"
+    for source_name, source_mock in source_mocks.items():
+        source_mock.assert_called_once()
+        assert source_name in captured_metadata
+    assert "youtube" in captured_metadata
+    synthesize_mock.assert_called_once()
