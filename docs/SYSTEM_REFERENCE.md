@@ -52,6 +52,7 @@ Every rate-limited request the core service rejects, whichever limiter caught it
 | POST | `/api/groups/{groupId}/voice/leave` | `GroupController`, clears the `isInVoice` presence flag and broadcasts voice presence, story 39 and story 12 |
 | GET | `/api/groups/{groupId}/voice/turn-credentials` | `GroupController`, member only, the ICE server list a client feeds `RTCPeerConnection`, STUN always, Cloudflare TURN only when a key is configured, story 12 |
 | GET | `/api/sessions/{sessionId}` | `GameSessionController`, story 10 |
+| GET | `/api/sessions/{sessionId}/link-out` | `GameSessionController`, the current round's YouTube watch URL for the round's DJ only, refused after reveal, story 9 |
 | GET | `/api/sessions/groups/{groupId}/results` | `GameSessionController`, a completed session's downloadable results export, story 10 |
 | POST | `/api/admin/catalog-seeding/enqueue` | `AdminCatalogSeedingController`, admin only via `AdminAccessGuard`, enqueues submitted YouTube IDs the catalog does not already have, story 40 |
 | GET | `/api/admin/catalog-seeding/status` | `AdminCatalogSeedingController`, admin only, the backlog view (pending, done, failed counts), story 40 |

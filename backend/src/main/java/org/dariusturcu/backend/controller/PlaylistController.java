@@ -1,6 +1,8 @@
 package org.dariusturcu.backend.controller;
 
 import jakarta.validation.Valid;
+import org.dariusturcu.backend.model.playlist.ImportFromPlaylistRequest;
+import org.dariusturcu.backend.model.playlist.ImportFromPlaylistResultDTO;
 import org.dariusturcu.backend.model.playlist.PlaylistDetailDTO;
 import org.dariusturcu.backend.model.playlist.PlaylistMemberDTO;
 import org.dariusturcu.backend.model.playlist.UpdateMembershipGrantsRequest;
@@ -8,6 +10,7 @@ import org.dariusturcu.backend.model.playlist.UpdatePlaylistRequest;
 import org.dariusturcu.backend.model.song.CreateSongRequest;
 import org.dariusturcu.backend.model.song.SongDTO;
 import org.dariusturcu.backend.model.song.UpdateSongRequest;
+import org.dariusturcu.backend.service.PlaylistImportService;
 import org.dariusturcu.backend.service.PlaylistService;
 
 import org.springframework.http.ResponseEntity;
@@ -25,6 +28,7 @@ import java.util.List;
 @Tag(name = "Playlist management", description = "Handles operations regarding playlist management")
 public class PlaylistController {
     private final PlaylistService playlistService;
+    private final PlaylistImportService playlistImportService;
 
     @Operation(summary = "Get playlist information")
     @GetMapping("/{playlistId}")
@@ -78,6 +82,16 @@ public class PlaylistController {
             @PathVariable Long songId) {
         playlistService.deleteSong(playlistId, songId);
         return ResponseEntity.noContent().build();
+    }
+
+    @Operation(summary = "Copy the songs of a source playlist into this playlist, skipping songs already present")
+    @PostMapping("/{playlistId}/imports")
+    public ResponseEntity<ImportFromPlaylistResultDTO> importFromPlaylist(
+            @PathVariable Long playlistId,
+            @Valid @RequestBody ImportFromPlaylistRequest request) {
+        ImportFromPlaylistResultDTO result =
+                playlistImportService.importFromPlaylist(playlistId, request.sourcePlaylistId());
+        return ResponseEntity.ok(result);
     }
 
     @Operation(summary = "Get the playlist's members and their per-playlist identity and grants")

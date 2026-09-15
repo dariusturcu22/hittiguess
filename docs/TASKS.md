@@ -31,20 +31,25 @@ An audit found several docs describe already-merged work as still pending. Batch
 
 Stories 10, 11, and 39 have all shipped (backend). Story 9's draft tasks confirmed accurate against the real code: no DJ view exists in the frontend, the backend session model tracks the DJ per round but no link-out, audio capture, or DJ-role enforcement is built. Ready.
 
-The DJ's only in-app action is "Open YouTube Link"; playback, pausing, and closing the tab or app all happen on YouTube itself, never mirrored into the game. The round's own flow, the betting countdown and window, the reveal, and advancing to the next player, runs automatically off timers the game already has once the DJ opens the link, with no manual trigger from the DJ or any player (see `GAME_DESIGN.md`'s Roles section and story 10's automatic-reveal task).
+The DJ's only in-app action is "Open YouTube Link"; playback, pausing, and closing the tab or app all happen on YouTube itself, never mirrored into the game. The round's own flow, the betting countdown and window, the reveal, and advancing to the next player, runs automatically off timers the game already has once the active player locks in a placement, with no manual trigger from the DJ or any player (see `GAME_DESIGN.md`'s Roles section and story 10's automatic-reveal task).
 
-- [ ] Build the DJ view: an "open in YouTube" link-out for remote sessions, opening a new browser tab, never an embedded player, behind an explicit "Open YouTube Link" action
-- [ ] Add a UI warning shown alongside that action, explicit that clicking it starts broadcasting the DJ's tab or system audio to the rest of the group
-- [ ] Wire WebRTC tab audio capture to that new tab and stream it to the other players, starting only once the DJ has actually opened the link, not before
-- [ ] Add deep-link handling for in-person sessions (Android intent, iOS universal link, fallback to a plain browser link)
-- [ ] Wire the active player's audio-stream cutoff over WebSocket: cuts off immediately on guess lock-in, regardless of what's still playing on the DJ's end
-- [ ] Restrict the "Open YouTube Link" action to the DJ role specifically, a non-DJ player's attempt to invoke it is rejected
+Backend slice (this batch). The DJ needs the current round's YouTube watch URL to link out, and the round DTO deliberately withholds a song's `youtubeId` until the reveal, so playback data reaches only the DJ and only during the playback window. `GET /api/sessions/{sessionId}/link-out` returns the current round's video id and canonical watch URL, restricted to that round's DJ and refused once the round is REVEALED or SCORED. The watch URL is built by `YoutubeLinkParser.buildWatchUrl` from the stored video id rather than assembled inline. Round flow stays driven by placement-lock-in timers, so "the DJ opened the link" needs no server-side state and belongs to story 28 along with the rest of the frontend. The audio-stream cutoff on guess lock-in is a client reaction to the existing `GUESS_LOCKED` broadcast, so it too is a story-28 concern with no new backend state.
+
+- [x] Backend: expose the current round's YouTube link-out (video id plus canonical watch URL) to the round's DJ, gated so only that DJ can fetch it and only before the reveal (`GameSessionService.getCurrentRoundLinkOut`, `GameSessionController` `GET /api/sessions/{sessionId}/link-out`, `RoundLinkOutDTO`)
+- [x] Backend: build the watch URL from the stored video id through `YoutubeLinkParser.buildWatchUrl` rather than a hardcoded URL string
+- [ ] Build the DJ view: an "open in YouTube" link-out for remote sessions, opening a new browser tab, never an embedded player, behind an explicit "Open YouTube Link" action (story 28)
+- [ ] Add a UI warning shown alongside that action, explicit that clicking it starts broadcasting the DJ's tab or system audio to the rest of the group (story 28)
+- [ ] Wire WebRTC tab audio capture to that new tab and stream it to the other players, starting only once the DJ has actually opened the link, not before (story 28)
+- [ ] Add deep-link handling for in-person sessions (Android intent, iOS universal link, fallback to a plain browser link) (story 28)
+- [ ] Wire the active player's audio-stream cutoff over WebSocket: cuts off immediately on guess lock-in, regardless of what's still playing on the DJ's end (story 28, client reaction to the existing `GUESS_LOCKED` broadcast)
+- [x] Backend: restrict the link-out to the DJ role specifically, a non-DJ player's or non-member's attempt is rejected
 
 Tests:
-- [ ] Unit test: the audio-stream cutoff fires on guess lock-in regardless of playback state, and only for the active player's stream
-- [ ] Unit test: the "Open YouTube Link" action is rejected when attempted by a non-DJ player
-- [ ] Frontend test: the "Open YouTube Link" action shows the audio-sharing warning before WebRTC tab capture starts
-- [ ] Integration test: deep-link handling falls back to a plain browser link when the YouTube app isn't installed
+- [x] Unit test: `YoutubeLinkParser.buildWatchUrl` produces the canonical watch URL and rejects a non-video-id input (`YoutubeLinkParserTest`)
+- [x] Integration test: the round's DJ fetches the link-out and gets the correct watch URL for the current round's song; a non-DJ player is denied; a non-member is denied; the link-out is refused once the round is revealed (`GameSessionLinkOutIntegrationTest`)
+- [ ] Unit test: the audio-stream cutoff fires on guess lock-in regardless of playback state, and only for the active player's stream (story 28)
+- [ ] Frontend test: the "Open YouTube Link" action shows the audio-sharing warning before WebRTC tab capture starts (story 28)
+- [ ] Integration test: deep-link handling falls back to a plain browser link when the YouTube app isn't installed (story 28)
 
 ## Story 10: Game session
 
@@ -137,18 +142,18 @@ Tests:
 
 Checked against real code: no chat model or endpoint exists. Blocked on story 11 (WebSocket layer) and story 39 (group): chat is scoped to the group's lifetime, not the game session's, and rides the WebSocket layer. Both have now shipped (backend). Draft tasks confirmed accurate: no `ChatMessage` entity or send/receive endpoint exists. Ready.
 
-- [ ] Implement `ChatMessage` as an ephemeral Postgres row (sender, group, body, timestamp)
-- [ ] Client-to-server STOMP channel to send a message, riding the WebSocket layer built in story 11
-- [ ] Broadcast new messages to the group's STOMP topic
-- [ ] Load message history when a client joins or reconnects to a group
-- [ ] Purge chat history when the group is deleted, matching the group's ephemeral lifecycle
-- [ ] Message length limit (500 characters) and a per-user send rate limit (5 messages per 10 seconds) to prevent spam within a group
-- [ ] Frontend: semi-transparent bottom-left overlay, toggled by a keybind or a clickable button, rather than a persistent input field, plain username-and-message lines, no threading (see `GAME_DESIGN.md`'s Interaction and animation section)
+- [x] Implement `ChatMessage` as an ephemeral Postgres row (sender, group, body, timestamp). Built as `ChatMessage` with a `group_id`, `sender_id`, `content`, and `createdAt`, table `chat_messages` in migration `V14`, scoped to the group's lifetime rather than a game session's.
+- [x] Client-to-server STOMP channel to send a message, riding the WebSocket layer built in story 11. `GroupChatController` maps `/app/groups/{groupId}/chat` (destination `GroupDestinations.chatDestination`), resolving the sender from the socket's authenticated principal the same way `GameActionController` does.
+- [x] Broadcast new messages to the group's STOMP topic. `ChatService` sends the persisted message to `GroupDestinations.chatTopic` through `SimpMessagingTemplate`, serializing with the application `ObjectMapper` for the same reason `GroupBroadcastListener` does.
+- [x] Load message history when a client joins or reconnects to a group. `GET /api/groups/{groupId}/chat/messages` returns the most recent messages, member only, bounded by a named page-size constant.
+- [x] Purge chat history when the group is deleted, matching the group's ephemeral lifecycle. The `chat_messages` group foreign key is `ON DELETE CASCADE`, so both the expiry sweep and an admin's final leave clear a group's messages with the group.
+- [x] Message length limit (500 characters) and a per-user send rate limit (5 messages per 10 seconds) to prevent spam within a group. Enforced in `ChatService` against named constants, reusing `RateLimiterRegistry`; a breach rejects the send and writes the stubbed `TODO: story 34` rate-limit event through `AbuseVisibilityEvents`.
+- [ ] Frontend: semi-transparent bottom-left overlay, toggled by a keybind or a clickable button, rather than a persistent input field, plain username-and-message lines, no threading (story 28, see `GAME_DESIGN.md`'s Interaction and animation section)
 
 Tests:
-- [ ] Unit tests for the message length limit and the per-user send rate limit, including the boundary values
-- [ ] Integration test: message history loads correctly on join and on reconnect
-- [ ] Integration test: chat history is gone once the group is deleted
+- [x] Unit tests for the message length limit and the per-user send rate limit, including the boundary values (`ChatServiceTest`: at-limit passes, over-limit rejects, blank rejected, under the rate limit passes, over it rejects and fires the stubbed event, and the limit is per user)
+- [x] Integration test: message history loads correctly on join and on reconnect (`GroupChatIntegrationTest`: a member reads history most-recent-first, a non-member is denied)
+- [x] Integration test: chat history is gone once the group is deleted (`GroupChatIntegrationTest`: the expiry sweep removes the group and its chat rows)
 
 ## Story 39: Group
 
@@ -161,7 +166,7 @@ Checked against real code: no group model exists, this is greenfield work. Based
 - [x] `POST` endpoint to join a group via invite link or join code, only while the group hasn't started a game session yet
 - [x] On join, prompt for a per-group display name and avatar, defaulting to the user's account values but editable; other members only ever see this per-group identity, never the account profile
 - [x] Settings (playlist(s), DJ mode, win-condition card count), editable by the admin only, broadcast to all members in real time. The data model and the admin-only update endpoint (`GroupService.updateGroupSettings`) persist correctly; `updateGroupSettings` now publishes a `SETTINGS_CHANGED` event story 11's `GroupBroadcastListener` forwards to the group's settings STOMP topic, see `DECISIONS.md`.
-- [ ] Chat available from group creation, stored for the life of the group. Deferred entirely to story 13, which owns `ChatMessage` and actual send/receive/persistence; `Group` uses a plain `Long` primary key, no special preparation needed for story 13 to attach messages to it later. See `DECISIONS.md`.
+- [x] Chat available from group creation, stored for the life of the group. Backend built under story 13, which owns `ChatMessage` and send/receive/persistence; the chat overlay UI stays with story 28. `Group` uses a plain `Long` primary key, which is all `ChatMessage` needs to attach to it. See `DECISIONS.md`.
 - [x] Voice joinable and leavable at any time (see story 12 for the WebRTC mechanics). Built as a plain `isInVoice` presence flag on `Member` plus join/leave-voice endpoints that flip it; the actual WebRTC mesh/signaling belongs to story 12, blocked on this story and story 11 both shipping. See `DECISIONS.md`.
 - [x] 30-minute timer from group creation to the admin starting a game session, delete the group if it fires
 - [x] Admin action to start a game session (see story 10), locks the group to new members. Only the group-side state transition (`GroupService.startGameSession`) exists; story 10's own session model doesn't, so nothing calls this yet outside tests.
@@ -243,15 +248,22 @@ Surfaced during story 28's design pass, not part of the original backlog mapping
 
 No longer blocked: story 15 has landed the `song_playlists` join table a `Song` needed to attach to more than one playlist. This story is mostly wiring on top of it: pick a source playlist, link its songs' existing rows into the target playlist via the same join table.
 
-- [ ] Add an endpoint accepting a source playlist ID and a target playlist ID, validating the requester can read the source (owned, member, or `isPublic`, coordinate with story 30's access model) and can write to the target
-- [ ] Link every song from the source playlist into the target playlist via story 15's join table; skip songs already present in the target rather than erroring or duplicating the link
-- [ ] Add the frontend picker: choose a playlist from owned/joined/public, show a confirm step naming how many songs will be added (and how many are already present and will be skipped)
-- [ ] Since the copy is synchronous and immediate, no background-job or progress-tracking UI is needed for this path specifically, unlike story 40's YouTube-crawl import
+Confirmed against the real code before starting. The `song_playlists` join table is the owning side of `Playlist.songs`, linked through `Playlist.addSong` and unlinked through `Playlist.removeSong`; there is no ordering column or added-by column on the join itself. Ordering is `@OrderBy("id ASC")` on the collection, and added-by lives on the `Song` row, set once at song creation, so linking a song into another playlist neither reorders nor reassigns it. Access is enforced by `PlaylistAccessService`: `requireRead` and `requireWrite` pass for the owner, otherwise check the member's `canRead`/`canWrite` grant. `AccessDeniedException` from those checks maps to a 403 at the HTTP boundary through Spring Security. No new schema is needed: the story reuses the existing join table, so no migration ships with it (latest on `dev` stays V13).
+
+Correction to the draft: `Playlist` has no `isPublic` field today. Public playlists are story 30, which is not built, so the public-source path can't be enforced yet. Source readability is owner-or-member through `requireRead`, matching every other playlist read in the codebase. The public-source path and its test are deferred to story 30, called out below.
+
+- [x] Add an endpoint accepting a source playlist ID and a target playlist ID, validating the requester can read the source (owner or member through `requireRead`) and can write to the target (`requireWrite`). `POST /api/playlists/{playlistId}/imports`, body carries the source playlist ID; the path playlist is the target
+- [x] Link every song from the source playlist into the target playlist via story 15's join table; skip songs already present in the target rather than erroring or duplicating the link. Returns how many songs were linked and how many were skipped as already present
+- [ ] Deferred to story 30: extend the source read check to accept a public source the requester neither owns nor is a member of, once `isPublic` exists on `Playlist`
+- [ ] Story 28: the frontend picker, choose a playlist from owned/joined/public, show a confirm step naming how many songs will be added (and how many are already present and will be skipped)
+- [x] Since the copy is synchronous and immediate, no background-job or progress-tracking UI is needed for this path specifically, unlike story 40's YouTube-crawl import
 
 Tests:
-- [ ] Unit tests for the access check: a source playlist the requester can't read (not owned, not a member, not public) is rejected
-- [ ] Integration test: importing from a playlist with overlapping songs only links the ones not already in the target
-- [ ] Integration test: importing from a public playlist the requester neither owns nor is a member of succeeds
+- [x] Unit/integration tests for the access check: a source playlist the requester can't read (not owned, not a member) is rejected; a requester without write access to the target is rejected
+- [x] Integration test: importing from a playlist with overlapping songs only links the ones not already in the target
+- [x] Integration test: importing all of a source playlist's songs into an empty target links every one
+- [x] Integration test: importing from an empty source links nothing
+- [ ] Deferred to story 30: integration test that importing from a public playlist the requester neither owns nor is a member of succeeds
 
 ## Story 46: Playlist membership: owner/admin, granular permissions, kick and ban, per-playlist identity
 
