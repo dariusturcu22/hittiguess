@@ -10,6 +10,8 @@ import org.dariusturcu.backend.model.playlist.PlaylistBan;
 import org.dariusturcu.backend.model.playlist.PlaylistDetailDTO;
 import org.dariusturcu.backend.model.playlist.PlaylistMemberDTO;
 import org.dariusturcu.backend.model.playlist.PlaylistMembership;
+import org.dariusturcu.backend.model.playlist.PublicPlaylistSummaryDTO;
+import org.dariusturcu.backend.model.playlist.SavedPlaylist;
 import org.dariusturcu.backend.model.playlist.UpdateMembershipGrantsRequest;
 import org.dariusturcu.backend.model.playlist.UpdatePlaylistRequest;
 import org.dariusturcu.backend.model.song.CreateSongRequest;
@@ -21,6 +23,7 @@ import org.dariusturcu.backend.model.user.User;
 import org.dariusturcu.backend.repository.PlaylistBanRepository;
 import org.dariusturcu.backend.repository.PlaylistMembershipRepository;
 import org.dariusturcu.backend.repository.PlaylistRepository;
+import org.dariusturcu.backend.repository.SavedPlaylistRepository;
 
 import org.dariusturcu.backend.repository.SongRepository;
 import org.dariusturcu.backend.security.util.SecurityUtils;
@@ -46,6 +49,7 @@ public class PlaylistService {
     private final PlaylistAccessService playlistAccessService;
     private final PlaylistMembershipRepository playlistMembershipRepository;
     private final PlaylistBanRepository playlistBanRepository;
+    private final SavedPlaylistRepository savedPlaylistRepository;
 
     // VERIFIED is a pipeline-established lock and NEEDS_REVIEW is an LLM-reconciled year;
     // hand-editing either undermines the trust tier the pipeline already assigned it.
@@ -256,5 +260,64 @@ public class PlaylistService {
             ban.setBannedAt(Instant.now());
             playlistBanRepository.save(ban);
         }
+    }
+
+    public PlaylistDetailDTO publishPlaylist(Long playlistId) {
+        Playlist playlist = findPlaylist(playlistId);
+        playlistAccessService.requireOwner(playlist, SecurityUtils.getCurrentUser());
+
+        playlist.setPublic(true);
+        Playlist savedPlaylist = playlistRepository.save(playlist);
+
+        return playlistMapper.toDetailDTO(savedPlaylist);
+    }
+
+    public PlaylistDetailDTO unpublishPlaylist(Long playlistId) {
+        Playlist playlist = findPlaylist(playlistId);
+        playlistAccessService.requireOwner(playlist, SecurityUtils.getCurrentUser());
+
+        playlist.setPublic(false);
+        Playlist savedPlaylist = playlistRepository.save(playlist);
+
+        return playlistMapper.toDetailDTO(savedPlaylist);
+    }
+
+    @Transactional(readOnly = true)
+    public List<PublicPlaylistSummaryDTO> getPublicPlaylists() {
+        return playlistRepository.findByIsPublicTrue().stream()
+                .map(playlistMapper::toPublicSummaryDTO)
+                .toList();
+    }
+
+    public PublicPlaylistSummaryDTO savePlaylist(Long playlistId) {
+        User user = SecurityUtils.getCurrentUser();
+        Playlist playlist = findPlaylist(playlistId);
+
+        if (!playlist.isPublic()) {
+            throw new ConflictException("Only a publicly published playlist can be saved");
+        }
+        if (playlist.isOwnedBy(user)) {
+            throw new ConflictException("The playlist owner already has it in their own library");
+        }
+        if (savedPlaylistRepository.existsByUserIdAndPlaylistId(user.getId(), playlistId)) {
+            throw new ConflictException("This playlist is already saved");
+        }
+
+        SavedPlaylist savedPlaylist = new SavedPlaylist();
+        savedPlaylist.setUser(user);
+        savedPlaylist.setPlaylist(playlist);
+        savedPlaylist.setSavedAt(Instant.now());
+        savedPlaylistRepository.save(savedPlaylist);
+
+        return playlistMapper.toPublicSummaryDTO(playlist);
+    }
+
+    public void unsavePlaylist(Long playlistId) {
+        User user = SecurityUtils.getCurrentUser();
+
+        SavedPlaylist savedPlaylist = savedPlaylistRepository.findByUserIdAndPlaylistId(user.getId(), playlistId)
+                .orElseThrow(() -> new ResourceNotFoundException(ResourceType.SAVED_PLAYLIST, playlistId));
+
+        savedPlaylistRepository.delete(savedPlaylist);
     }
 }

@@ -21,5 +21,6 @@ public record PlaylistDetailDTO(
         @NotNull
         Long ownerId,
         @NotNull
-        Set<PlaylistMemberDTO> members) {
+        Set<PlaylistMemberDTO> members,
+        boolean isPublic) {
 }
