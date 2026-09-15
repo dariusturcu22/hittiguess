@@ -16,17 +16,6 @@ Every story other than story 28 is backend-only. Any frontend task a story would
 
 Stories that would write an abuse-visibility event (story 41's flagged-injection event, story 17's report-submitted event, story 27's rate-limit-exceeded event) write a stubbed no-op (a structured log line marked `TODO: story 34`) rather than a real event, since story 34's analytics event pipeline is Phase 3 and not built. Story 34 replaces these stubs with real writes. See `DECISIONS.md`.
 
-## Docs: fix status inconsistencies (docs/fix-status-inconsistencies)
-
-An audit found several docs describe already-merged work as still pending. Batches 20 (story 18), 21 (story 40), 22 (story 41), 23 (story 24), and 24 (story 17) merged to `dev`; story 26 is dropped. The four metadata sources, the `@Scheduled` sweepers, the game/group/report entities, `Role.ADMIN`, and Flyway through V13 all exist in the real code. This is docs-only cleanup against that ground truth.
-
-- [x] `PROJECT_STATE.md`: stories 18, 40, 41 move from Needs Definition to Implemented; drop story 41's stale metadata-sourcing-spike blocker clause; story 17 is Implemented (PR #100 merged)
-- [x] `ROADMAP.md`: check off batches 20, 21, 22, 23 and drop their "tasks need confirming" caveats; remove stories 18, 40, 41, 24 from the active Phase 2 list; mark batch 30 (story 26 cache) dropped; mark Phase 0 shipped and stop describing the sources as still to build; drop the "needs confirming" tail on batch 26 (story 9)
-- [x] `ARCHITECTURE.md`: change the story 18 lock-before-LLM line from decided-not-implemented to implemented; drop stories 18, 24, 40, 41 and story 26 from "Not yet built", keeping 9, 12, 13; add the story 41 content-safety gate to the metadata pipeline description
-- [x] `SYSTEM_REFERENCE.md`: expand the entity list to include the game/group/report entities plus `AlternateYoutubeId` and `PendingImport`; drop those and `ADMIN` from "Planned (not yet code)", leaving `ChatMessage` and `SongDifficulty`; set `User.role` to (USER, TEST, ADMIN); add the live group, session, admin, and report controllers to the API table; note migrations reach V13 on `dev`
-- [x] `TASKS.md`: correct story 40's false "No `@Scheduled` usage" intro claim; correct story 18's "lock-evaluation logic itself still hasn't happened" intro claim
-- [x] `DECISIONS.md`: append one dated entry recording that the verified-promotion criteria and build-into-real-microservice open items are resolved (append-only, existing entries untouched)
-
 ## Story 9: DJ real YouTube link-out
 
 Stories 10, 11, and 39 have all shipped (backend). Story 9's draft tasks confirmed accurate against the real code: no DJ view exists in the frontend, the backend session model tracks the DJ per round but no link-out, audio capture, or DJ-role enforcement is built. Ready.
@@ -210,7 +199,9 @@ Backend slice built on `feature/difficulty-generation`: the difficulty model liv
 - [ ] Persist Wikidata's sitelinks count on `Song` (coordinate with story 23), both the international-scope signal and the popularity signal for difficulty-generated sets; decide and add the actual thresholds (international-scope cutoff, and the easy/medium/hard popularity weighting) once there's enough real catalog data to check them against, not guessed (deferred: the sitelinks count is captured only in `ai/spikes/`, not the real metadata pipeline, and persisting it is a story-23 schema change; the scorer already reads it through an `Optional` seam and falls back to a neutral default while it is absent)
 - [x] Add the sitelinks-based popularity weighting to song selection: easy weights toward higher-sitelink songs, hard applies no such weighting, medium sits between; blends with, doesn't replace, the aggregate/personalized scoring below, and is what a newly-verified song with no real guesses yet falls back on (the weighting is built into `SongDifficultyScorer` as the cold-start fallback and blends with the play-derived signal by history weight; it produces the neutral default until the sitelinks column above lands, at which point real values flow in with no scorer change)
 - [ ] Add the Difficulty-Based generation endpoint: given a group, a difficulty tier, and a target card count, score the full verified catalog for the group's actual players (blending personalized predictions where available, the aggregate baseline for first-time players, and the sitelinks-based popularity weighting above), filter to international scope, return enough songs with headroom above the win-condition card count so a session doesn't run out or repeat (the scoring and selection core is built as `DifficultyTunedSongSelector.selectForGroup`; the endpoint and session-creation wiring, plus the international-scope filter which needs the sitelinks column, are deferred)
-- [ ] Add an `isPublic` flag (or equivalent) to `Playlist` (coordinate with story 15), and an endpoint to publish/unpublish one
+- [x] Add an `isPublic` flag (or equivalent) to `Playlist` (coordinate with story 15), and an endpoint to publish/unpublish one (built as a `boolean isPublic` field on `Playlist`, default false, with owner-only `POST /api/playlists/{playlistId}/publish` and `POST /api/playlists/{playlistId}/unpublish` endpoints on `PlaylistController`/`PlaylistService`, enforced through the existing `PlaylistAccessService.requireOwner` check; `V15__add_public_playlists_and_saved_playlists` adds the column. `PlaylistAccessService.requireRead` now also passes for any playlist with `isPublic` true regardless of ownership or membership, which is what makes a published playlist readable and importable by anyone, see story 45. Built narrowly as its own slice ahead of the rest of this story, see `PROJECT_STATE.md` and `DECISIONS.md`)
+- [x] Add a public-browse endpoint (`GET /api/playlists/public`) returning every playlist with `isPublic` true as a `PublicPlaylistSummaryDTO` (id, name, color, songCount, owner), open to any authenticated user, not owner/member-restricted
+- [x] Add a "Save" capability distinct from membership: a `SavedPlaylist` entity (user, playlist, savedAt) with a unique constraint on (user, playlist), `POST`/`DELETE /api/playlists/{playlistId}/save`, and `GET /api/users/me/saved-playlists`; rejects saving a non-public playlist, the caller's own playlist, or an already-saved playlist
 - [ ] Add the Custom-mode endpoint: start a session from a playlist the player owns, is a member of, or that's published publicly, or from a playlist link or ID pasted directly
 - [ ] Train the personalized collaborative-filtering model on accumulated `Guess` data (story 10) once there's enough of it to evaluate (scaffolded: `PersonalizedDifficultyPredictor` is the plug point, `AggregateBaselinePredictor` is the shipped baseline; training needs real accumulated `Guess` data that does not exist until real play)
 - [ ] Add a scheduled retraining job for the personalized model
@@ -222,6 +213,11 @@ Tests:
 - [x] Unit tests for all three group-scoring strategies (worst-case-protected for easy, median for medium, average for hard), including groups with a mix of experienced and first-time players
 - [x] Unit test for the sitelinks-based popularity weighting: easy-tier selection biased toward higher-sitelink songs, hard-tier selection unweighted and able to draw low-sitelink songs, using a synthetic catalog with a controlled sitelinks spread (covered by the scorer tests over a controlled sitelinks spread and the selector tests over a synthetic verified catalog; the on-disk sitelinks column is not persisted yet, so the values are supplied directly through the scorer's `Optional` seam)
 - [x] Unit test: a song with zero recorded guesses still gets a usable difficulty placement from its sitelinks count alone (covered against the neutral fallback while the sitelinks column is absent, and against a supplied sitelinks value through the scorer seam)
+- [x] Unit tests for publish/unpublish: a non-owner is rejected the same way other owner-only playlist actions are rejected, an owner succeeds and the playlist's `isPublic` flag flips
+- [x] Unit test for the public-browse endpoint: only playlists with `isPublic` true are returned, an unpublished playlist does not appear
+- [x] Unit tests for the save/unsave flow: saving a public playlist succeeds, saving a non-public playlist is rejected, saving the caller's own playlist is rejected, saving an already-saved playlist is rejected as a conflict, unsaving a playlist that was never saved is rejected
+- [x] Unit test: `PlaylistAccessService.requireRead` allows a non-member when the playlist is public
+- [x] Migration test verifying `is_public` is not-null/default-false on `playlists` and `saved_playlists` carries a unique constraint on (user, playlist)
 - [ ] Unit tests for the personalized model's predictions against a held-out set of real guesses (deferred with the model itself; no trained model or real held-out guesses exist yet)
 - [ ] Integration test: Difficulty-Based generation for a full-sized group (up to 8 players) returns a scored card set in well under a second (deferred with the generation endpoint)
 - [ ] Integration test: the retraining job runs and the monitoring check correctly flags a model that's stopped beating the baseline
@@ -254,9 +250,11 @@ Confirmed against the real code before starting. The `song_playlists` join table
 
 Correction to the draft: `Playlist` has no `isPublic` field today. Public playlists are story 30, which is not built, so the public-source path can't be enforced yet. Source readability is owner-or-member through `requireRead`, matching every other playlist read in the codebase. The public-source path and its test are deferred to story 30, called out below.
 
+Story 30 has since added `isPublic` as its own narrow slice. The deferred source-read extension below is implemented by extending `PlaylistAccessService.requireRead` itself, the same check this story's import already calls: a public playlist now passes `requireRead` for any authenticated user, owner and member or not.
+
 - [x] Add an endpoint accepting a source playlist ID and a target playlist ID, validating the requester can read the source (owner or member through `requireRead`) and can write to the target (`requireWrite`). `POST /api/playlists/{playlistId}/imports`, body carries the source playlist ID; the path playlist is the target
 - [x] Link every song from the source playlist into the target playlist via story 15's join table; skip songs already present in the target rather than erroring or duplicating the link. Returns how many songs were linked and how many were skipped as already present
-- [ ] Deferred to story 30: extend the source read check to accept a public source the requester neither owns nor is a member of, once `isPublic` exists on `Playlist`
+- [x] Deferred to story 30: extend the source read check to accept a public source the requester neither owns nor is a member of, once `isPublic` exists on `Playlist` (implemented by extending `PlaylistAccessService.requireRead` to pass for any public playlist, which `PlaylistImportService` already calls for the source check)
 - [ ] Story 28: the frontend picker, choose a playlist from owned/joined/public, show a confirm step naming how many songs will be added (and how many are already present and will be skipped)
 - [x] Since the copy is synchronous and immediate, no background-job or progress-tracking UI is needed for this path specifically, unlike story 40's YouTube-crawl import
 
@@ -265,7 +263,7 @@ Tests:
 - [x] Integration test: importing from a playlist with overlapping songs only links the ones not already in the target
 - [x] Integration test: importing all of a source playlist's songs into an empty target links every one
 - [x] Integration test: importing from an empty source links nothing
-- [ ] Deferred to story 30: integration test that importing from a public playlist the requester neither owns nor is a member of succeeds
+- [x] Deferred to story 30: integration test that importing from a public playlist the requester neither owns nor is a member of succeeds
 
 ## Story 46: Playlist membership: owner/admin, granular permissions, kick and ban, per-playlist identity
 

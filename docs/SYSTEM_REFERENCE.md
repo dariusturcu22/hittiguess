@@ -28,6 +28,11 @@ Every rate-limited request the core service rejects, whichever limiter caught it
 | DELETE | `/api/playlists/{playlistId}/members/{userId}` | `PlaylistController`, owner only, kicks a member, story 46 |
 | POST | `/api/playlists/{playlistId}/members/{userId}/ban` | `PlaylistController`, owner only, bans a member, story 46 |
 | POST | `/api/playlists/{playlistId}/members/{userId}/promote` | `PlaylistController`, owner only, transfers ownership, previous owner stays a member, story 46 |
+| POST | `/api/playlists/{playlistId}/publish` | `PlaylistController`, owner only, sets `isPublic` true, story 30 |
+| POST | `/api/playlists/{playlistId}/unpublish` | `PlaylistController`, owner only, sets `isPublic` false, story 30 |
+| GET | `/api/playlists/public` | `PlaylistController`, any authenticated user, every playlist with `isPublic` true, story 30 |
+| POST | `/api/playlists/{playlistId}/save` | `PlaylistController`, any authenticated user, saves a public playlist into the caller's own library without creating a membership, rejects a non-public playlist, the caller's own playlist, or an already-saved playlist, story 30 |
+| DELETE | `/api/playlists/{playlistId}/save` | `PlaylistController`, any authenticated user, unsaves a previously saved playlist, story 30 |
 | GET | `/api/metadata/song` | `SongMetadataController`, one-in-flight-request-per-user limit plus the general time-window rate limit, see story 27 |
 | GET | `/api/users/me` | `UserController` |
 | GET | `/api/users/{userId}` | `UserController` |
@@ -38,6 +43,7 @@ Every rate-limited request the core service rejects, whichever limiter caught it
 | GET | `/api/users/me/playlists` | `UserController` |
 | POST | `/api/users/me/playlists/{playlistInviteCode}` | `UserController`, optional body carries a per-playlist display name and avatar, rejects a banned user, story 46 |
 | DELETE | `/api/users/me/playlists/{playlistId}` | `UserController`, the owner can leave at any time, leadership passes to the earliest-joined remaining member, story 46 |
+| GET | `/api/users/me/saved-playlists` | `UserController`, the current user's saved public playlists, distinct from `/api/users/me/playlists`, story 30 |
 | POST | `/api/groups` | `GroupController`, creates a group, the creator becomes its admin, story 39 |
 | POST | `/api/groups/join` | `GroupController`, join by invite link, rejects a banned or already-in-a-group user, story 39 |
 | GET | `/api/groups/active` | `GroupController`, the caller's current active group, story 39 |
@@ -92,7 +98,7 @@ The endpoints stories 9, 13, and 30 add (DJ link-out, group text chat, difficult
 
 ### Current (JPA entities, core service)
 
-Current JPA entities: `User`, `Playlist`, `PlaylistMembership`, `PlaylistBan`, `Song`, `SongArtist`, `RefreshToken`, plus `Group` and `Member` (story 39), `GameSession`, `Player`, `Round`, and `Guess` (story 10), `AlternateYoutubeId` and `PendingImport` (story 40), and `SongReport` and `SongConfirmation` (story 17). The core seven are detailed below; the game and group entities follow the shapes in `ARCHITECTURE.md` and their own story sections in `TASKS.md`.
+Current JPA entities: `User`, `Playlist`, `PlaylistMembership`, `PlaylistBan`, `SavedPlaylist`, `Song`, `SongArtist`, `RefreshToken`, plus `Group` and `Member` (story 39), `GameSession`, `Player`, `Round`, and `Guess` (story 10), `AlternateYoutubeId` and `PendingImport` (story 40), and `SongReport` and `SongConfirmation` (story 17). The core seven are detailed below; the game and group entities follow the shapes in `ARCHITECTURE.md` and their own story sections in `TASKS.md`.
 
 ```
 User
@@ -102,6 +108,8 @@ User
 
 Playlist
   ├── id, name, color, inviteCode (unique, immutable)
+  ├── isPublic (default false, story 30; only the owner can publish/unpublish; a public playlist is
+  │     readable by any authenticated user through requireRead, independent of ownership or membership)
   ├── owner: User  (@ManyToOne, set to the creator on creation, story 46; only the owner can rename,
   │     change color, delete the playlist, or manage members)
   ├── songs: List<Song>  (@ManyToMany, owning side, joins through song_playlists; removing a song here
@@ -122,6 +130,14 @@ PlaylistBan
   ├── playlist: Playlist  (@ManyToOne)
   └── user: User  (@ManyToOne; existence of a row blocks that user's future join-by-invite attempts
         against this playlist, independent of PlaylistMembership, story 46)
+
+SavedPlaylist
+  ├── id, savedAt
+  ├── user: User  (@ManyToOne)
+  └── playlist: Playlist  (@ManyToOne; unique on (user, playlist), story 30. A bookmark into the
+        user's own library, not a membership: grants no read/write/delete access and creates no
+        per-playlist identity, distinct from PlaylistMembership and unrelated to PlaylistBan. Only
+        a currently public playlist can be saved, and the owner cannot save their own playlist)
 
 Song
   ├── id, title, releaseYear, youtubeId, gradientColor1, gradientColor2
@@ -150,7 +166,7 @@ RefreshToken
   └── expiresAt
 ```
 
-Schema changes now go through Flyway migrations (`backend/src/main/resources/db/migration/`), not Hibernate's `ddl-auto` (moved to `validate`); `spring-boot-flyway` is a required dependency alongside the third-party `flyway-core`/`flyway-database-postgresql` libraries for Spring Boot's own autoconfiguration to actually run it. Migrations on `dev` run through V13 (`V13__add_song_reports_and_confirmations`, story 17; `V12__add_alternate_youtube_ids_and_pending_imports`, story 40).
+Schema changes now go through Flyway migrations (`backend/src/main/resources/db/migration/`), not Hibernate's `ddl-auto` (moved to `validate`); `spring-boot-flyway` is a required dependency alongside the third-party `flyway-core`/`flyway-database-postgresql` libraries for Spring Boot's own autoconfiguration to actually run it. Migrations on `dev` run through V15 (`V15__add_public_playlists_and_saved_playlists`, story 30; `V14__add_chat_messages`, story 13; `V13__add_song_reports_and_confirmations`, story 17; `V12__add_alternate_youtube_ids_and_pending_imports`, story 40).
 
 ### Planned (not yet code, target shape per ARCHITECTURE.md and TASKS.md)
 
