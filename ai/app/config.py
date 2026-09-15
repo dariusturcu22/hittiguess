@@ -10,6 +10,7 @@ class Settings(BaseSettings):
     discogs_consumer_secret: str
     internal_service_api_key: str
     openai_model: str = "gpt-5.1"
+    reconciliation_model: str = "gpt-5-nano"
     embedding_model: str = "text-embedding-3-small"
 
     deepinfra_api_key: str

@@ -11,17 +11,26 @@ from app.metadata.llm import synthesize
 from app.metadata.schemas import MetadataResolveResponse, SongMetadataResult
 from app.metadata.sources import discogs, musicbrainz, wikidata, wikipedia, youtube
 from app.metadata.sources.util import clean_youtube_text
+from app.metadata.verification import (
+    VerificationRoute,
+    _all_three_agree,
+    _extract_earliest_year,
+    evaluate_lock,
+    route_to_verification_status,
+)
 
 logger = logging.getLogger(__name__)
 
-# The four structured/prose sources take the same title and artist and share
-# nothing, so they run in a thread pool rather than one after another: each is
-# network-bound and spends almost all its time blocked on an outbound request.
-# One worker per source keeps the wall-clock cost bounded by the slowest single
-# source instead of their sum. Each source function already isolates its own
-# failures internally and returns an empty list, and a future that raises anyway
-# is caught per source below, so one source failing never sinks the others.
-STRUCTURED_SOURCE_WORKER_COUNT = 4
+# The three structured sources take the same title and artist and share nothing,
+# so the first gather runs them in a thread pool rather than one after another:
+# each is network-bound and spends almost all its time blocked on an outbound
+# request. One worker per source keeps the wall-clock cost bounded by the slowest
+# single source instead of their sum. Each source function already isolates its
+# own failures internally and returns an empty list, and a future that raises
+# anyway is caught per source, so one source failing never sinks the others.
+# Wikipedia is deliberately not part of this pool: it is fetched only after the
+# lock check, and only when the three sources do not agree.
+STRUCTURED_SOURCE_WORKER_COUNT = 3
 EMPTY_SOURCE_RESULT: list = []
 
 # Cosine distance (0 identical, 2 opposite) below which an existing verified song counts
@@ -32,6 +41,9 @@ HIGH_CONFIDENCE_COSINE_DISTANCE_THRESHOLD = 0.08
 
 DUPLICATE_MATCH_SOURCE_LABEL = "pgvector-duplicate-match"
 DEFAULT_DUPLICATE_MATCH_CONFIDENCE = "high"
+LOCKED_SOURCE_LABEL = "musicbrainz+discogs+wikidata-lock"
+RECONCILED_SOURCE_LABEL = "four-source-reconciliation"
+MANUAL_REVIEW_SOURCE_LABEL = "no-source-data"
 
 
 def _clean_title_and_artist(youtube_data: dict[str, str]) -> tuple[str, str]:
@@ -48,21 +60,24 @@ def _fetch_source(source_search, title: str, artist: str) -> object:
         return EMPTY_SOURCE_RESULT
 
 
-def _gather_all_metadata(youtube_data: dict[str, str], title: str, artist: str) -> dict[str, object]:
+def _gather_structured_sources(title: str, artist: str) -> dict[str, list[dict]]:
+    """Fetches the three structured sources (MusicBrainz, Discogs, Wikidata)
+    concurrently in a thread pool. This is the first gather in the story 18
+    pipeline, run before the lock check. Wikipedia is not fetched here: it is
+    conditional on the lock not being met and is fetched separately afterward.
+    Each source resolves through a per-source guard so one source raising does
+    not sink the others."""
     source_searches = {
         "musicbrainz": musicbrainz.search,
         "discogs": discogs.search,
         "wikidata": wikidata.search,
-        "wikipedia": wikipedia.search,
     }
     with ThreadPoolExecutor(max_workers=STRUCTURED_SOURCE_WORKER_COUNT) as executor:
         pending = {
             source_name: executor.submit(_fetch_source, source_search, title, artist)
             for source_name, source_search in source_searches.items()
         }
-        gathered = {source_name: future.result() for source_name, future in pending.items()}
-
-    return {"youtube": youtube_data, **gathered}
+        return {source_name: future.result() for source_name, future in pending.items()}
 
 
 def _build_duplicate_match_result(match: VerifiedSongMatch) -> SongMetadataResult:
@@ -80,6 +95,7 @@ def _build_duplicate_match_result(match: VerifiedSongMatch) -> SongMetadataResul
             f"{HIGH_CONFIDENCE_COSINE_DISTANCE_THRESHOLD} high-confidence threshold. "
             "Reused its data instead of re-running the metadata pipeline."
         ),
+        verification_status=None,
     )
 
 
@@ -103,6 +119,88 @@ def _check_for_duplicate(title: str, artist: str) -> SongMetadataResult | None:
     return _build_duplicate_match_result(best_match)
 
 
+def _run_verification_pipeline(
+    youtube_data: dict[str, str],
+    title: str,
+    artist: str,
+) -> SongMetadataResult:
+    """Runs story 18's lock-or-LLM verification pipeline alongside the
+    existing synthesize call (which handles title, artist, and gradient
+    colors). The verification pipeline determines release_year, confidence,
+    source, reasoning, and verification_status; synthesize's release_year
+    is discarded in favor of the verified one.
+
+    The three structured sources are gathered concurrently first. Wikipedia
+    is fetched only when those three don't lock, matching the conditional
+    design that keeps 53% of songs LLM-free. The synthesize call remains for
+    gradient colors until story 40 restructures the full submission pipeline."""
+    structured_candidates = _gather_structured_sources(title, artist)
+    musicbrainz_candidates = structured_candidates["musicbrainz"]
+    discogs_candidates = structured_candidates["discogs"]
+    wikidata_candidates = structured_candidates["wikidata"]
+
+    musicbrainz_year = _extract_earliest_year(musicbrainz_candidates)
+    discogs_year = _extract_earliest_year(discogs_candidates)
+    wikidata_year = _extract_earliest_year(wikidata_candidates)
+
+    wikipedia_entries: list[dict] = []
+    if not _all_three_agree(musicbrainz_year, discogs_year, wikidata_year):
+        wikipedia_entries = wikipedia.search(title, artist)
+
+    release_year, confidence, route = evaluate_lock(
+        title,
+        artist,
+        musicbrainz_candidates,
+        discogs_candidates,
+        wikidata_candidates,
+        wikipedia_entries,
+    )
+    verification_status = route_to_verification_status(route)
+
+    source_label = {
+        VerificationRoute.LOCKED: LOCKED_SOURCE_LABEL,
+        VerificationRoute.LLM_RECONCILED: RECONCILED_SOURCE_LABEL,
+        VerificationRoute.MANUAL_REVIEW: MANUAL_REVIEW_SOURCE_LABEL,
+    }[route]
+
+    reasoning_by_route = {
+        VerificationRoute.LOCKED: (
+            f"All three structured sources (MusicBrainz, Discogs, Wikidata) agree on {release_year}. "
+            "Locked with no LLM call."
+        ),
+        VerificationRoute.LLM_RECONCILED: (
+            "Structured sources disagreed or one or more returned no data. "
+            f"Wikipedia was fetched and four-source reconciliation produced {release_year}."
+        ),
+        VerificationRoute.MANUAL_REVIEW: (
+            "No source, including Wikipedia, returned any data for this song. "
+            "Routes to manual review for human entry of the release year."
+        ),
+    }
+
+    all_metadata = {
+        "youtube": youtube_data,
+        "musicbrainz": musicbrainz_candidates,
+        "discogs": discogs_candidates,
+        "wikidata": wikidata_candidates,
+        "wikipedia": wikipedia_entries,
+    }
+    built_prompt = prompt.build(all_metadata)
+    display_result = synthesize(built_prompt)
+
+    return SongMetadataResult(
+        title=display_result.title,
+        artist=display_result.artist,
+        release_year=release_year,
+        gradient_color1=display_result.gradient_color1,
+        gradient_color2=display_result.gradient_color2,
+        confidence=confidence,
+        source=source_label,
+        reasoning=reasoning_by_route[route],
+        verification_status=verification_status.value,
+    )
+
+
 def resolve_metadata(youtube_url: str) -> MetadataResolveResponse:
     try:
         youtube_data = youtube.fetch_youtube_metadata(youtube_url)
@@ -112,11 +210,8 @@ def resolve_metadata(youtube_url: str) -> MetadataResolveResponse:
         if duplicate_match_result is not None:
             return MetadataResolveResponse(status="SUCCESS", model=settings.openai_model, content=duplicate_match_result)
 
-        all_metadata = _gather_all_metadata(youtube_data, title, artist)
-        built_prompt = prompt.build(all_metadata)
-        result = synthesize(built_prompt)
-
+        result = _run_verification_pipeline(youtube_data, title, artist)
         return MetadataResolveResponse(status="SUCCESS", model=settings.openai_model, content=result)
-    except Exception as e:
-        logger.warning("Metadata pipeline failed: %s", e)
+    except Exception as pipeline_error:
+        logger.warning("Metadata pipeline failed: %s", pipeline_error)
         return MetadataResolveResponse(status="ERROR", model=settings.openai_model, content=None)

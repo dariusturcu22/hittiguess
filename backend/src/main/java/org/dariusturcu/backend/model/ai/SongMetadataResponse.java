@@ -12,7 +12,8 @@ public record SongMetadataResponse(
         String gradientColor2,
         String confidence,
         String source,
-        String reasoning
+        String reasoning,
+        String verificationStatus
 ) {
 
 }
