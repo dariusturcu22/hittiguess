@@ -4,15 +4,13 @@ This is the source of truth for day-to-day work. Consult PROJECT_STATE.md only w
 
 The tasks below, under stories 9 and 12, are drafts and have not yet been confirmed against the real implementation, except where noted. Before starting any of them, check them against the current code: some tasks may already be done, some may not apply the way they're written, and some may be missing. Once a story's tasks are confirmed accurate, update its status to Ready in PROJECT_STATE.md.
 
-Stories 10, 11, and 39 were checked against the real code: no `Group`, `Session`, `Round`, `Guess`, or WebSocket/STOMP code exists anywhere in the backend, so their draft tasks stand as accurate greenfield work. Marked Ready in PROJECT_STATE.md.
-
-Story 9 and story 12 were checked against the real code and confirmed blocked: both assume a group (story 39), a game session (story 10), and a WebSocket layer (story 11) that don't exist yet. Neither can move to Ready until 10, 11, and 39 do.
+Stories 10, 11, and 39 are implemented (backend). Stories 9 and 12 were confirmed blocked on those three; their blockers have now shipped, but their draft tasks still need confirming against the real code before either moves to Ready.
 
 "Next available task" means the earliest unchecked box under a Ready or In Progress story.
 
 ## Story 9: DJ real YouTube link-out
 
-Confirmed against the real code: there's no DJ view, no group, no session concept, and no WebSocket layer today, so this is new work, not a removal. The QR code task was split out and done separately, see `ARCHIVE.md`'s Bug fixes entry. Blocked on story 39 (group), story 10 (game session), and story 11 (WebSocket sync).
+Stories 10, 11, and 39 have all shipped (backend). Story 9's draft tasks need confirming against the real code before it moves to Ready. Blocked on story 39 (group), story 10 (game session), and story 11 (WebSocket sync) being available to build on top of.
 
 The DJ's only in-app action is "Open YouTube Link"; playback, pausing, and closing the tab or app all happen on YouTube itself, never mirrored into the game. The round's own flow, the betting countdown and window, the reveal, and advancing to the next player, runs automatically off timers the game already has once the DJ opens the link, with no manual trigger from the DJ or any player (see `GAME_DESIGN.md`'s Roles section and story 10's automatic-reveal task).
 
@@ -102,7 +100,7 @@ Tests:
 
 ## Story 12: Voice chat
 
-Blocked on story 11 (WebSocket layer) and story 39 (group): voice is scoped to the group's lifetime, not the game session's, and its signaling rides the WebSocket layer, neither exists yet.
+Blocked on story 11 (WebSocket layer) and story 39 (group): voice is scoped to the group's lifetime, not the game session's, and its signaling rides the WebSocket layer. Both have now shipped (backend); draft tasks need confirming against the real code before story 12 moves to Ready.
 
 - [ ] Implement WebRTC signaling over the WebSocket layer built in story 11
 - [ ] Implement mesh peer connection setup between group members
@@ -120,7 +118,7 @@ Tests:
 
 ## Story 13: Group-scoped text chat
 
-Checked against real code: no chat model or endpoint exists. Blocked on story 11 (WebSocket layer) and story 39 (group): chat is scoped to the group's lifetime, not the game session's, and rides the WebSocket layer, neither exists yet.
+Checked against real code: no chat model or endpoint exists. Blocked on story 11 (WebSocket layer) and story 39 (group): chat is scoped to the group's lifetime, not the game session's, and rides the WebSocket layer. Both have now shipped (backend); draft tasks need confirming against the real code before story 13 moves to Ready.
 
 - [ ] Implement `ChatMessage` as an ephemeral Postgres row (sender, group, body, timestamp)
 - [ ] Client-to-server STOMP channel to send a message, riding the WebSocket layer built in story 11
@@ -240,7 +238,7 @@ Tests:
 
 ## Story 46: Playlist membership: owner/admin, granular permissions, kick and ban, per-playlist identity
 
-Surfaced during story 28's design pass on the Edit playlist and Join by invite screens, not part of the original backlog mapping. Checked against real code: `Playlist.users` is a plain `@ManyToMany` with no per-member attributes and no owner/admin field anywhere on `Playlist`; joining today (`UserController`'s playlist-join endpoint) just adds the row, no per-playlist identity is captured. See `DECISIONS.md`'s 2026-09 "Playlist membership" entry for the decided shape. Not blocked, only coordinating with story 15 on `Playlist`'s relations. Marked Ready in `PROJECT_STATE.md`.
+Surfaced during story 28's design pass on the Edit playlist and Join by invite screens, not part of the original backlog mapping. Backend built on `feature/playlist-membership`; two frontend tasks remain deferred to story 28. See `DECISIONS.md`'s 2026-09 "Playlist membership" entry for the decided shape.
 
 - [x] Add an owner/admin concept to `Playlist`: an `ownerId` (or equivalent), set to the creator on creation; only the owner can rename, change cover/color/description, toggle `isPublic` (story 30), delete the playlist, or manage other members
 - [x] Replace the plain `Playlist.users` many-to-many with a `PlaylistMembership` entity (playlist, user, `canRead`/`canWrite`/`canDelete` booleans, joined-at, per-playlist display name and avatar), coordinate with story 15 since both touch `Playlist`'s relations
