@@ -48,9 +48,11 @@ Every rate-limited request the core service rejects, whichever limiter caught it
 | POST | `/api/groups/{groupId}/disconnect` | `GroupController`, marks the caller disconnected without ending membership, story 39 |
 | POST | `/api/groups/{groupId}/reconnect` | `GroupController`, story 39 |
 | POST | `/api/groups/{groupId}/members/{memberId}/promote` | `GroupController`, admin only, promotes another member to admin, story 39 |
-| POST | `/api/groups/{groupId}/voice/join` | `GroupController`, sets the caller's `isInVoice` presence flag, story 39 |
-| POST | `/api/groups/{groupId}/voice/leave` | `GroupController`, clears the `isInVoice` presence flag, story 39 |
+| POST | `/api/groups/{groupId}/voice/join` | `GroupController`, sets the caller's `isInVoice` presence flag and broadcasts voice presence on the group's voice topic, story 39 and story 12 |
+| POST | `/api/groups/{groupId}/voice/leave` | `GroupController`, clears the `isInVoice` presence flag and broadcasts voice presence, story 39 and story 12 |
+| GET | `/api/groups/{groupId}/voice/turn-credentials` | `GroupController`, member only, the ICE server list a client feeds `RTCPeerConnection`, STUN always, Cloudflare TURN only when a key is configured, story 12 |
 | GET | `/api/sessions/{sessionId}` | `GameSessionController`, story 10 |
+| GET | `/api/sessions/{sessionId}/link-out` | `GameSessionController`, the current round's YouTube watch URL for the round's DJ only, refused after reveal, story 9 |
 | GET | `/api/sessions/groups/{groupId}/results` | `GameSessionController`, a completed session's downloadable results export, story 10 |
 | POST | `/api/admin/catalog-seeding/enqueue` | `AdminCatalogSeedingController`, admin only via `AdminAccessGuard`, enqueues submitted YouTube IDs the catalog does not already have, story 40 |
 | GET | `/api/admin/catalog-seeding/status` | `AdminCatalogSeedingController`, admin only, the backlog view (pending, done, failed counts), story 40 |
@@ -84,7 +86,7 @@ Story 39's group endpoints, story 10's game-session endpoints, story 40's admin 
 | `/app/sessions/{sessionId}/bet` | `GameActionController` | Place a bet after the active player's guess locks, story 10 |
 | `/app/sessions/{sessionId}/skip-betting` | `GameActionController` | Skip the betting window, story 10 |
 
-The endpoints stories 9, 12, 13, and 30 add (DJ link-out, voice signaling, group text chat, difficulty-tuned generation) do not exist on `dev` yet. See those stories in `TASKS.md` for the planned shape. This table only lists what's live on `dev` today.
+The endpoints stories 9, 13, and 30 add (DJ link-out, group text chat, difficulty-tuned generation) do not exist on `dev` yet. See those stories in `TASKS.md` for the planned shape. Story 12's voice signaling relay is live as a STOMP mapping on `/app/groups/{groupId}/voice/signal`, which forwards one WebRTC offer, answer, or ICE candidate onto the group's `/topic/groups/{groupId}/voice` topic for member-to-member routing; the WebRTC mesh it drives is frontend, deferred to story 28. This table lists the REST surface live on `dev` today.
 
 ## Entity model
 

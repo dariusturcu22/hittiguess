@@ -63,6 +63,18 @@ class GroupBroadcastListenerTest {
     }
 
     @Test
+    void voicePresenceChangedRoutesToTheVoiceTopic() {
+        listener = new GroupBroadcastListener(messagingTemplate, objectMapper);
+        GroupDetailDTO group = groupDetail(4L);
+
+        listener.onGroupBroadcastEvent(new GroupBroadcastEvent(GroupEventType.VOICE_PRESENCE_CHANGED, group));
+
+        ArgumentCaptor<String> payloadCaptor = ArgumentCaptor.forClass(String.class);
+        verify(messagingTemplate).convertAndSend(eq(GroupDestinations.voiceTopic(4L)), payloadCaptor.capture());
+        assertThat(payloadCaptor.getValue()).contains("VOICE_PRESENCE_CHANGED");
+    }
+
+    @Test
     void memberLeftAdminChangedConnectionChangedAndSessionStartedAllRouteToTheMembershipTopic() {
         listener = new GroupBroadcastListener(messagingTemplate, objectMapper);
         GroupDetailDTO group = groupDetail(3L);

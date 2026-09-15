@@ -4,6 +4,7 @@ import org.dariusturcu.backend.exception.ResourceNotFoundException;
 import org.dariusturcu.backend.model.mapper.SessionMapper;
 import org.dariusturcu.backend.model.session.GameSession;
 import org.dariusturcu.backend.model.session.GameSessionDTO;
+import org.dariusturcu.backend.model.session.RoundLinkOutDTO;
 import org.dariusturcu.backend.model.session.SessionResultsDTO;
 import org.dariusturcu.backend.security.util.SecurityUtils;
 import org.dariusturcu.backend.service.GameSessionService;
@@ -43,6 +44,13 @@ public class GameSessionController {
         return resultsStore.get(groupId)
                 .map(ResponseEntity::ok)
                 .orElseThrow(() -> new ResourceNotFoundException("No completed session results found for group {id=" + groupId + "}"));
+    }
+
+    @Operation(summary = "Get the current round's YouTube link-out, must be the round's DJ")
+    @GetMapping("/{sessionId}/link-out")
+    public ResponseEntity<RoundLinkOutDTO> getCurrentRoundLinkOut(@PathVariable Long sessionId) {
+        Long currentUserId = SecurityUtils.getCurrentUserId();
+        return ResponseEntity.ok(gameSessionService.getCurrentRoundLinkOut(sessionId, currentUserId));
     }
 
     private void requirePlayerMembership(GameSession session) {

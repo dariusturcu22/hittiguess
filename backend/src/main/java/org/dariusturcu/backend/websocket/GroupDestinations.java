@@ -21,10 +21,11 @@ public final class GroupDestinations {
 
     private static final String MEMBERSHIP_SEGMENT = "/membership";
     private static final String SETTINGS_SEGMENT = "/settings";
-    // Reserved for story 13, not implemented here: only the naming convention is fixed.
     private static final String CHAT_SEGMENT = "/chat";
-    // Reserved for story 12, not implemented here: only the naming convention is fixed.
     private static final String VOICE_SEGMENT = "/voice";
+    // Client-to-server channel a member sends a single WebRTC signaling step to, relayed
+    // onto the voice topic by VoiceSignalingController.
+    private static final String VOICE_SIGNAL_SEGMENT = "/voice/signal";
     // Reserved client-to-server channel for admin actions sent over the socket instead of
     // REST. Nothing publishes to it yet: every admin action this batch broadcasts
     // (settings, start session) is still triggered over REST and broadcast from
@@ -50,12 +51,20 @@ public final class GroupDestinations {
         return GROUP_TOPIC_PREFIX + groupId + CHAT_SEGMENT;
     }
 
+    public static String chatDestination(Long groupId) {
+        return GROUP_APP_PREFIX + groupId + CHAT_SEGMENT;
+    }
+
     public static String voiceTopic(Long groupId) {
         return GROUP_TOPIC_PREFIX + groupId + VOICE_SEGMENT;
     }
 
     public static String adminActionsDestination(Long groupId) {
         return GROUP_APP_PREFIX + groupId + ADMIN_ACTIONS_SEGMENT;
+    }
+
+    public static String voiceSignalDestination(Long groupId) {
+        return GROUP_APP_PREFIX + groupId + VOICE_SIGNAL_SEGMENT;
     }
 
     // Used by GroupSessionEventListener to recognize a client's subscription to its
