@@ -16,6 +16,17 @@ Every story other than story 28 is backend-only. Any frontend task a story would
 
 Stories that would write an abuse-visibility event (story 41's flagged-injection event, story 17's report-submitted event, story 27's rate-limit-exceeded event) write a stubbed no-op (a structured log line marked `TODO: story 34`) rather than a real event, since story 34's analytics event pipeline is Phase 3 and not built. Story 34 replaces these stubs with real writes. See `DECISIONS.md`.
 
+## Docs: fix status inconsistencies (docs/fix-status-inconsistencies)
+
+An audit found several docs describe already-merged work as still pending. Batches 20 (story 18), 21 (story 40), 22 (story 41), and 23 (story 24) merged to `dev`; story 17 has open PR #100 and is in progress; story 26 is dropped. The four metadata sources, the `@Scheduled` sweepers, the game/group/report entities, `Role.ADMIN`, and Flyway through V13 all exist in the real code. This is docs-only cleanup against that ground truth.
+
+- [ ] `PROJECT_STATE.md`: stories 18, 40, 41 move from Needs Definition to Implemented; drop story 41's stale metadata-sourcing-spike blocker clause; story 17 moves from Implemented to In Progress (PR #100 open)
+- [ ] `ROADMAP.md`: check off batches 20, 21, 22, 23 and drop their "tasks need confirming" caveats; remove stories 18, 40, 41, 24 from the active Phase 2 list; mark batch 30 (story 26 cache) dropped; mark Phase 0 shipped and stop describing the sources as still to build; drop the "needs confirming" tail on batch 26 (story 9)
+- [ ] `ARCHITECTURE.md`: change the story 18 lock-before-LLM line from decided-not-implemented to implemented; drop stories 18, 24, 40, 41 and story 26 from "Not yet built", keeping 9, 12, 13; add the story 41 content-safety gate to the metadata pipeline description
+- [ ] `SYSTEM_REFERENCE.md`: expand the entity list to include the game/group/report entities plus `AlternateYoutubeId` and `PendingImport`; drop those and `ADMIN` from "Planned (not yet code)", leaving `ChatMessage` and `SongDifficulty`; set `User.role` to (USER, TEST, ADMIN); add the live group, session, report, and admin controllers to the API table; note migrations reach V13
+- [ ] `TASKS.md`: correct story 40's false "No `@Scheduled` usage" intro claim; correct story 18's "lock-evaluation logic itself still hasn't happened" intro claim
+- [ ] `DECISIONS.md`: append one dated entry recording that the verified-promotion criteria and build-into-real-microservice open items are resolved (append-only, existing entries untouched)
+
 ## Story 9: DJ real YouTube link-out
 
 Stories 10, 11, and 39 have all shipped (backend). Story 9's draft tasks confirmed accurate against the real code: no DJ view exists in the frontend, the backend session model tracks the DJ per round but no link-out, audio capture, or DJ-role enforcement is built. Ready.
