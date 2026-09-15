@@ -8,7 +8,7 @@ Within a phase, stories are independent of each other and can be worked in any o
 
 Three milestones sit above the phase breakdown below, each a different bar for who can actually use the app:
 
-- **Local**: the project owner can play it, alone or with one other person in the same house over a locally opened port, admin side included. Covers Phase 0, Phase 1, and Phase 2 below, plus story 48 (comment cleanup), story 49 (naming consistency), and story 22 (test coverage) tacked onto the end of Phase 2, in that order. Story 22 runs last within Local because it audits everything else Local built; running it earlier would mean rewriting its tests as the rest of Local's stories still land. Local doesn't require a real deployment target, story 7 and story 8 both stay undecided until Local ships.
+- **Local**: the project owner can play it, alone or with one other person in the same house over a locally opened port, admin side included. Covers Phase 0, Phase 1, and Phase 2 below. Within Phase 2, story 28 (UI redesign implementation) runs last among feature stories so the gameplay screens (stories 9, 12, 13) exist to wire rather than mock; stories 48 (comment cleanup), 49 (naming consistency), and 22 (test coverage) run after story 28, in that order. Story 22 runs last within Local because it audits everything else Local built; running it earlier would mean rewriting its tests as the rest of Local's stories still land. Local doesn't require a real deployment target, story 7 and story 8 both stay undecided until Local ships.
 - **Beta**: deployed somewhere real and played with friends and colleagues in demo matches, everything working correctly. Needs story 7 (hosting) and story 8 (database) actually decided and executed, on top of everything Local shipped.
 - **Finished**: the fully deployed, publicly announced version. Phase 3 only, and the lowest priority in this file, since nothing in Phase 3 blocks either Local or Beta.
 
@@ -51,12 +51,12 @@ Story 28's design phase (fresh visual direction across every existing page and e
 - Story 41: Submission content safety, needs Phase 0's sourcing-spike implementation
 - Story 17: Community song reports and confirmations, the report/confirmation submission flow itself is unblocked, but the admin review surface needs story 40's admin role
 - Story 26: Cache metadata pipeline results, first task is the scope-review decision already noted in `TASKS.md`, may not proceed past it
-- Story 9: DJ real YouTube link-out, needs stories 10, 11, and 39 actually built, not just `Ready`
-- Story 12: Voice chat, needs stories 11 and 39 actually built
-- Story 13: Group-scoped text chat, needs stories 11 and 39 actually built
-- Story 30: Difficulty-tuned game session generation, needs story 10's `Guess` entity accumulating real data
 - Story 45: Import songs from an existing playlist, needs story 15's join table
-- Story 28: UI redesign, implementation phase, wires the already-designed visual system to the gameplay screens as stories 10/11/39 land
+- Story 9: DJ real YouTube link-out, needs stories 10, 11, and 39 actually built, not just `Ready`
+- Story 13: Group-scoped text chat, needs stories 11 and 39 actually built
+- Story 12: Voice chat, needs stories 11 and 39 actually built
+- Story 30: Difficulty-tuned game session generation, needs story 10's `Guess` entity accumulating real data
+- Story 28: UI redesign, implementation phase; moved last among feature stories so the gameplay screens (stories 9, 12, 13) exist to wire against the real backend rather than mock state; design mockups done, see `docs/design/hittiguess-design.html`
 - Story 48: Comment cleanup, done after everything else above for the same reason, catches comment drift from every story that lands before it, not just the code that exists today
 - Story 49: Naming consistency, done after everything else above so it also catches any leftover old-name references those stories introduce along the way, not just the ones that exist today
 - Story 22: Test coverage, the last story in Local, backfills and adds tests for everything Local shipped, including this phase, once there's a finished app surface to test rather than one still mid-implementation
@@ -101,5 +101,18 @@ Per `AGENTS.md`'s batching workflow: only one PR from this list is open for revi
 - [x] Batch 17: Story 44, Test user infrastructure
 - [ ] Batch 18: dropped. Was story 22, test coverage; story 22 moved to the end of Phase 2, see the Readiness tiers section above, and gets a new batch number once Phase 2 is sequenced
 - [x] Batch 19: Story 42, database split cross-references, and story 43, metadata minimization, combined into one small batch, both are already fully satisfied except a couple of standing re-check notes
-- [ ] Batch 20: Story 28, UI redesign implementation phase for whatever of the gameplay screens Batches 9-11 have unlocked by this point; the design mockups themselves are done, see `docs/design/hittiguess-design.html`
-- Phase 2 stories, including stories 48 and 49 and the relocated story 22, aren't broken into batches yet, their tasks may shift once Phase 1 actually ships (particularly stories 18, 40, and 30, which reference real entities Batches 3, 4, and 11 create); revisit this list once Phase 1 is done rather than pre-sequencing Phase 2 now
+- [ ] Batch 20: Story 18, verification promotion criteria (lock-evaluation logic, Wikipedia+reconciliation path, manual-entry escalation, wired into story 40's submission pipeline)
+- [ ] Batch 21: Story 40, catalog seeding queue and user-facing bulk import; tasks need confirming against the real code before starting (see `PROJECT_STATE.md`)
+- [ ] Batch 22: Story 41, submission content safety (non-music rejection, compilation rejection, prompt-injection defense); tasks need confirming against the real code before starting
+- [ ] Batch 23: Story 24, parallelize metadata pipeline fetches across sources
+- [ ] Batch 24: Story 17, community song reports and confirmations; the report/confirmation submission flow is buildable now, the admin review surface depends on story 40's admin role (Batch 21) existing first
+- [ ] Batch 25: Story 45, import songs from an existing playlist; tasks need confirming against the real code before starting
+- [ ] Batch 26: Story 9, DJ real YouTube link-out; tasks need confirming against the real code before starting
+- [ ] Batch 27: Story 13, group-scoped text chat; tasks need confirming against the real code before starting
+- [ ] Batch 28: Story 12, voice chat; tasks need confirming against the real code before starting
+- [ ] Batch 29: Story 30, difficulty-tuned game session generation; tasks need confirming against the real code before starting
+- [ ] Batch 30: Story 26, cache metadata pipeline results; first task is the scope-review decision in `TASKS.md`, may not proceed past it
+- [ ] Batch 31: Story 28, UI redesign implementation phase; moved last among feature stories so gameplay screens (stories 9, 12, 13) exist to wire rather than mock; design mockups done, see `docs/design/hittiguess-design.html`
+- [ ] Batch 32: Story 48, comment cleanup
+- [ ] Batch 33: Story 49, naming consistency
+- [ ] Batch 34: Story 22, test coverage; last story in Local, audits everything Phase 2 built
