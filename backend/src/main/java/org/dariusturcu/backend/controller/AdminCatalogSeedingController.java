@@ -3,6 +3,7 @@ package org.dariusturcu.backend.controller;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
+import org.dariusturcu.backend.model.song.AdminCatalogSeedingRequest;
 import org.dariusturcu.backend.model.song.BacklogStatusDTO;
 import org.dariusturcu.backend.model.song.EnqueueResultDTO;
 import org.dariusturcu.backend.security.AdminAccessGuard;
@@ -14,8 +15,6 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.util.List;
-
 @RestController
 @RequestMapping("/api/admin/catalog-seeding")
 @RequiredArgsConstructor
@@ -25,11 +24,12 @@ public class AdminCatalogSeedingController {
     private final CatalogSeedingService catalogSeedingService;
     private final AdminAccessGuard adminAccessGuard;
 
-    @Operation(summary = "Bulk-enqueue YouTube IDs into the seeding backlog, admin only; already-known songs are skipped")
+    @Operation(summary = "Bulk-enqueue a YouTube playlist link and/or video IDs into the seeding backlog, "
+            + "admin only; already-known songs are skipped")
     @PostMapping("/enqueue")
-    public ResponseEntity<EnqueueResultDTO> enqueue(@RequestBody List<String> youtubeIds) {
+    public ResponseEntity<EnqueueResultDTO> enqueue(@RequestBody AdminCatalogSeedingRequest request) {
         adminAccessGuard.requireAdmin();
-        return ResponseEntity.ok(catalogSeedingService.enqueue(youtubeIds));
+        return ResponseEntity.ok(catalogSeedingService.enqueue(request));
     }
 
     @Operation(summary = "Backlog status, admin only: pending count, processed today, quota remaining")
