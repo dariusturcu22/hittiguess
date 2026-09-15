@@ -124,21 +124,19 @@ Tests:
 
 ## Story 12: Voice chat
 
-Blocked on story 11 (WebSocket layer) and story 39 (group): voice is scoped to the group's lifetime, not the game session's, and its signaling rides the WebSocket layer. Both have now shipped (backend). Draft tasks confirmed accurate: only the `isInVoice` presence flag on `Member` exists, no WebRTC signaling or mesh setup is built. Ready.
+Blocked on story 11 (WebSocket layer) and story 39 (group): voice is scoped to the group's lifetime, not the game session's, and its signaling rides the WebSocket layer. Both have now shipped (backend). Confirmed against real code: `Member.isInVoice` and the member-gated `/api/groups/{groupId}/voice/join` and `/api/groups/{groupId}/voice/leave` endpoints already exist from story 39, flipping the presence flag but not broadcasting it. No WebRTC signaling relay, no TURN-credentials endpoint. The WebRTC mesh itself, `RTCPeerConnection`, `getUserMedia`, ICE handling, audio elements, and every piece of join/leave/mute UI live in the browser and belong to story 28's gameplay pass, per this file's frontend-consolidation preamble. Voice is inherently browser-side, so the backend slice is only the parts that must run server-side: relaying signaling between members, broadcasting presence, and minting TURN credentials.
 
-- [ ] Implement WebRTC signaling over the WebSocket layer built in story 11
-- [ ] Implement mesh peer connection setup between group members
-- [ ] Enforce the 8-participant cap per group
-- [ ] Integrate Cloudflare TURN, pay-as-you-go, as the ICE server fallback
-- [ ] Add join/leave voice UI, joinable and leavable at any time, not tied to starting a call
-- [ ] Frontend: persistent, collapsible right-hand sidebar, vertically stacked circular avatars with names, speaking indicator ring, mute/deafen icon overlays, a trailing join-call button; visible with no speaking indicators when not in the call
-- [ ] Frontend: leave animation on a participant departing, remaining avatars animate into the gap
-- [ ] Frontend: sidebar stays available during story 11's minimized "playing while away" widget state
+Backend slice:
+- [x] STOMP signaling relay: a member-gated `@MessageMapping` on `/app/groups/{groupId}/voice/signal` that forwards an SDP offer, SDP answer, or ICE candidate from one member to the group's voice topic, tagged with the sender and the intended recipient so peers route it client-side. Reuses the story 11 STOMP config, the CONNECT-frame JWT principal, and the group membership check, matching the `GameActionController` pattern
+- [x] Broadcast voice presence on join and leave so other members see the roster change live, reusing story 11's group broadcast-event and listener indirection rather than a bespoke channel
+- [x] TURN credentials endpoint: member-gated `GET /api/groups/{groupId}/voice/turn-credentials` returning the ICE server list a client feeds `RTCPeerConnection`. Reads the Cloudflare TURN key from a config property; when the key is absent, returns STUN-only ICE servers and omits TURN, deferred until the real Cloudflare key is provisioned in this environment
+- Deferred to story 28: WebRTC mesh peer setup, `RTCPeerConnection` lifecycle, `getUserMedia`/microphone, ICE negotiation, audio elements, the join/leave/mute/deafen UI, the speaking-indicator sidebar, and its animations
+- The 8-participant cap is enforced structurally: a group is capped at `Group.MAX_MEMBERS` (8), and only members can join voice, so a voice room can never exceed the group size. No separate voice-participant counter exists server-side; the mesh's own per-peer connection cap is a story 28 client concern
 
 Tests:
-- [ ] Unit tests for the 8-participant cap, including the boundary
-- [ ] Integration test: TURN fallback engages when a direct peer connection fails
-- [ ] Integration test: join/leave voice at arbitrary times, independent of whether a game session is active
+- [x] Signaling relay forwards a member's offer, answer, and candidate to the voice topic, and rejects a non-member
+- [x] TURN credentials endpoint is member-gated and returns STUN-only ICE servers when the Cloudflare key is absent
+- [ ] Frontend: WebRTC mesh, TURN fallback engaging on a failed direct connection, and join/leave-at-arbitrary-times behavior verified against a real browser (story 28)
 
 ## Story 13: Group-scoped text chat
 

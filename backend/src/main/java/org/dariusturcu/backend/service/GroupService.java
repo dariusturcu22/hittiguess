@@ -238,6 +238,17 @@ public class GroupService {
         setConnectedAndBroadcast(group, member, false);
     }
 
+    // Gate for STOMP-driven voice signaling, which resolves the caller from the socket's
+    // authenticated principal (a user id) rather than a request-scoped SecurityContext.
+    // A missing group or a non-member is not a member.
+    @Transactional(readOnly = true)
+    public boolean isGroupMember(Long groupId, Long userId) {
+        return groupRepository.findById(groupId)
+                .map(group -> group.getMembers().stream()
+                        .anyMatch(member -> member.getUser().getId().equals(userId)))
+                .orElse(false);
+    }
+
     private void setConnectedAndBroadcast(Group group, Member member, boolean connected) {
         member.setConnected(connected);
         memberRepository.save(member);
@@ -267,20 +278,25 @@ public class GroupService {
         return result;
     }
 
-    // Only a presence flag: the WebRTC mesh/signaling mechanics that make voice
-    // actually work belong to story 12, blocked on this story and story 11 both shipping.
+    // Presence only: the WebRTC mesh and signaling that make voice actually work are
+    // relayed over STOMP by VoiceSignalingController and negotiated client-side.
+    // Flipping the flag broadcasts the fresh group snapshot on the voice topic so every
+    // member's roster reflects who is in the room.
     public void joinVoice(Long groupId) {
-        Group group = findGroup(groupId);
-        Member member = requireMembership(group, SecurityUtils.getCurrentUser());
-        member.setInVoice(true);
-        memberRepository.save(member);
+        setVoicePresenceAndBroadcast(groupId, true);
     }
 
     public void leaveVoice(Long groupId) {
+        setVoicePresenceAndBroadcast(groupId, false);
+    }
+
+    private void setVoicePresenceAndBroadcast(Long groupId, boolean inVoice) {
         Group group = findGroup(groupId);
         Member member = requireMembership(group, SecurityUtils.getCurrentUser());
-        member.setInVoice(false);
+        member.setInVoice(inVoice);
         memberRepository.save(member);
+        GroupDetailDTO result = groupMapper.toDetailDTO(group);
+        eventPublisher.publishEvent(new GroupBroadcastEvent(GroupEventType.VOICE_PRESENCE_CHANGED, result));
     }
 
     // Invoked by the scheduled sweep, never by a per-group timer: a sweep can be

@@ -607,6 +607,22 @@ Note, 2026-09: reversed, see the 2026-09 "Story 46 migration reversed" entry bel
 
 ---
 
+## 2026-09 | Story 12: voice-chat backend is a signaling relay, a presence broadcast, and a config-gated TURN endpoint
+
+Decision: voice chat's server side is three pieces, and only three. The WebRTC mesh itself lives in the browser and belongs to story 28's gameplay pass, so the backend builds only what cannot run client-side.
+
+Signaling relays over the existing STOMP layer, not a new transport. `VoiceSignalingController` handles `/app/groups/{groupId}/voice/signal`, resolves the sender from the CONNECT-frame principal the same way `GameActionController` does, gates on group membership through a new read-only `GroupService.isGroupMember(groupId, userId)`, and forwards the signal onto the group's existing `/topic/groups/{groupId}/voice` topic. The relayed message carries the signal type (offer, answer, or candidate), the sender's user id taken from the principal, the target member's user id echoed from the request, and the opaque SDP or ICE-candidate payload the server never inspects. Fanning one signaling step out to the whole voice topic and letting each peer ignore anything not addressed to it matches the group layer's broadcast-the-whole-thing convention and avoids configuring the broker's user-destination support, which nothing else in the codebase uses. The sender id comes from the authenticated principal, never the request, so a member cannot forge signaling as another member.
+
+Presence rides the same event indirection story 11 built. `GroupService.joinVoice` and `leaveVoice` already flipped `Member.isInVoice`; they now also publish a `GroupBroadcastEvent` of a new `VOICE_PRESENCE_CHANGED` type, and `GroupBroadcastListener` routes that type to the voice topic while every other non-settings type still routes to the membership topic. The broadcast is the fresh group snapshot, whose `MemberDTO` already carries `isInVoice`, so no bespoke presence payload is needed.
+
+TURN credentials come from a member-gated `GET /api/groups/{groupId}/voice/turn-credentials`, gated by reusing `GroupService.getGroup`, which already throws for a non-member. `TurnCredentialsService` always returns a STUN entry so most peers connect directly, and adds a Cloudflare TURN entry only when both a key id and an API token are configured. The Cloudflare key does not exist in any environment yet, so the key-absent branch returns STUN-only credentials with `turnAvailable=false` rather than failing, and the actual short-lived-credential mint against Cloudflare's API is deferred behind the key. Both config values are read from properties with blank defaults, never hardcoded, and the API token is treated as a secret in `.env.example`.
+
+The 8-participant cap is structural, not a new counter. A group is already capped at `Group.MAX_MEMBERS` (8) and only members can join voice, so a voice room can never exceed the group size; the mesh's own per-peer connection budget is a client concern.
+
+Why: relaying over the existing group STOMP layer reuses story 11's authentication, membership, and broadcast machinery instead of standing up a parallel transport for one message shape, and keeping the payload opaque leaves every WebRTC decision where it belongs, in the browser. Handing out STUN unconditionally and TURN only behind a configured key means the endpoint is useful the moment the frontend exists, degrades to direct-only rather than erroring when no relay is provisioned, and needs no code change once the key lands, only configuration. Testing followed the same Mockito-driven approach the group broadcast layer already uses: the relay controller and the routing switch are proven against a mocked `SimpMessagingTemplate` with an `ArgumentCaptor`, and the TURN service's key-absent behavior against a direct constructor call, none of which needs the real network socket this sandbox cannot open.
+
+---
+
 ## 2026-09 | Story 46: the playlist owner can't leave while other members remain
 
 Decision: leaving a playlist you own is only allowed once you're its last remaining member, in which case leaving deletes the playlist exactly as it already did before this story. While other members are still on the playlist, the owner's leave attempt is rejected; kicking or banning every other member first, or waiting for them to leave, clears the way.
