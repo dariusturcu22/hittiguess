@@ -5,7 +5,9 @@ import org.dariusturcu.backend.model.group.CreateGroupRequest;
 import org.dariusturcu.backend.model.group.GroupDetailDTO;
 import org.dariusturcu.backend.model.group.JoinGroupRequest;
 import org.dariusturcu.backend.model.group.UpdateGroupSettingsRequest;
+import org.dariusturcu.backend.model.voice.TurnCredentialsResponse;
 import org.dariusturcu.backend.service.GroupService;
+import org.dariusturcu.backend.service.TurnCredentialsService;
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -19,6 +21,7 @@ import lombok.RequiredArgsConstructor;
 @Tag(name = "Group management", description = "Handles operations regarding group lobbies")
 public class GroupController {
     private final GroupService groupService;
+    private final TurnCredentialsService turnCredentialsService;
 
     @Operation(summary = "Create a group, the creator becomes its admin")
     @PostMapping
@@ -116,5 +119,13 @@ public class GroupController {
             @PathVariable Long groupId) {
         groupService.leaveVoice(groupId);
         return ResponseEntity.noContent().build();
+    }
+
+    @Operation(summary = "Get the ICE server list for the group's voice room, member only")
+    @GetMapping("/{groupId}/voice/turn-credentials")
+    public ResponseEntity<TurnCredentialsResponse> getVoiceTurnCredentials(
+            @PathVariable Long groupId) {
+        groupService.getGroup(groupId);
+        return ResponseEntity.ok(turnCredentialsService.issueCredentials());
     }
 }
