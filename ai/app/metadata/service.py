@@ -1,4 +1,5 @@
 import logging
+from concurrent.futures import ThreadPoolExecutor
 
 from app.config import settings
 from app.dedup.embedding_client import generate_embedding
@@ -20,6 +21,18 @@ from app.metadata.verification import (
 
 logger = logging.getLogger(__name__)
 
+# The three structured sources take the same title and artist and share nothing,
+# so the first gather runs them in a thread pool rather than one after another:
+# each is network-bound and spends almost all its time blocked on an outbound
+# request. One worker per source keeps the wall-clock cost bounded by the slowest
+# single source instead of their sum. Each source function already isolates its
+# own failures internally and returns an empty list, and a future that raises
+# anyway is caught per source, so one source failing never sinks the others.
+# Wikipedia is deliberately not part of this pool: it is fetched only after the
+# lock check, and only when the three sources do not agree.
+STRUCTURED_SOURCE_WORKER_COUNT = 3
+EMPTY_SOURCE_RESULT: list = []
+
 REJECTED_STATUS = "REJECTED"
 
 # Cosine distance (0 identical, 2 opposite) below which an existing verified song counts
@@ -39,6 +52,34 @@ def _clean_title_and_artist(youtube_data: dict[str, str]) -> tuple[str, str]:
     title = clean_youtube_text(youtube_data.get("video_title"))
     artist = clean_youtube_text(youtube_data.get("channel_title"))
     return title, artist
+
+
+def _fetch_source(source_search, title: str, artist: str) -> object:
+    try:
+        return source_search(title, artist)
+    except Exception as source_error:
+        logger.warning("Metadata source %s failed, continuing without it: %s", source_search.__module__, source_error)
+        return EMPTY_SOURCE_RESULT
+
+
+def _gather_structured_sources(title: str, artist: str) -> dict[str, list[dict]]:
+    """Fetches the three structured sources (MusicBrainz, Discogs, Wikidata)
+    concurrently in a thread pool. This is the first gather in the story 18
+    pipeline, run before the lock check. Wikipedia is not fetched here: it is
+    conditional on the lock not being met and is fetched separately afterward.
+    Each source resolves through a per-source guard so one source raising does
+    not sink the others."""
+    source_searches = {
+        "musicbrainz": musicbrainz.search,
+        "discogs": discogs.search,
+        "wikidata": wikidata.search,
+    }
+    with ThreadPoolExecutor(max_workers=STRUCTURED_SOURCE_WORKER_COUNT) as executor:
+        pending = {
+            source_name: executor.submit(_fetch_source, source_search, title, artist)
+            for source_name, source_search in source_searches.items()
+        }
+        return {source_name: future.result() for source_name, future in pending.items()}
 
 
 def _build_duplicate_match_result(match: VerifiedSongMatch) -> SongMetadataResult:
@@ -91,13 +132,14 @@ def _run_verification_pipeline(
     source, reasoning, and verification_status; synthesize's release_year
     is discarded in favor of the verified one.
 
-    Wikipedia is fetched only when the three structured sources don't lock,
-    matching the conditional design that keeps 53% of songs LLM-free.
-    The synthesize call remains for gradient colors until story 40
-    restructures the full submission pipeline."""
-    musicbrainz_candidates = musicbrainz.search(title, artist)
-    discogs_candidates = discogs.search(title, artist)
-    wikidata_candidates = wikidata.search(title, artist)
+    The three structured sources are gathered concurrently first. Wikipedia
+    is fetched only when those three don't lock, matching the conditional
+    design that keeps 53% of songs LLM-free. The synthesize call remains for
+    gradient colors until story 40 restructures the full submission pipeline."""
+    structured_candidates = _gather_structured_sources(title, artist)
+    musicbrainz_candidates = structured_candidates["musicbrainz"]
+    discogs_candidates = structured_candidates["discogs"]
+    wikidata_candidates = structured_candidates["wikidata"]
 
     musicbrainz_year = _extract_earliest_year(musicbrainz_candidates)
     discogs_year = _extract_earliest_year(discogs_candidates)
