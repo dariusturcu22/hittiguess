@@ -25,7 +25,7 @@ An audit found several docs describe already-merged work as still pending. Batch
 - [x] `ARCHITECTURE.md`: change the story 18 lock-before-LLM line from decided-not-implemented to implemented; drop stories 18, 24, 40, 41 and story 26 from "Not yet built", keeping 9, 12, 13; add the story 41 content-safety gate to the metadata pipeline description
 - [x] `SYSTEM_REFERENCE.md`: expand the entity list to include the game/group entities plus `AlternateYoutubeId` and `PendingImport`; drop those and `ADMIN` from "Planned (not yet code)", leaving `ChatMessage` and `SongDifficulty` (report entities stay Planned, not merged to `dev`); set `User.role` to (USER, TEST, ADMIN); add the live group, session, and admin controllers to the API table; note migrations reach V12 on `dev` (V13 lands with PR #100)
 - [x] `TASKS.md`: correct story 40's false "No `@Scheduled` usage" intro claim; correct story 18's "lock-evaluation logic itself still hasn't happened" intro claim
-- [ ] `DECISIONS.md`: append one dated entry recording that the verified-promotion criteria and build-into-real-microservice open items are resolved (append-only, existing entries untouched)
+- [x] `DECISIONS.md`: append one dated entry recording that the verified-promotion criteria and build-into-real-microservice open items are resolved (append-only, existing entries untouched)
 
 ## Story 9: DJ real YouTube link-out
 
