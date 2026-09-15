@@ -10,7 +10,7 @@ from app.metadata import content_safety, prompt
 from app.metadata.llm import synthesize
 from app.metadata.schemas import MetadataResolveResponse, SongMetadataResult
 from app.metadata.sources import discogs, musicbrainz, wikidata, wikipedia, youtube
-from app.metadata.sources.util import clean_youtube_text
+from app.metadata.sources.util import clean_youtube_text, extract_youtube_playlist_id
 from app.metadata.verification import (
     VerificationRoute,
     _all_three_agree,
@@ -201,6 +201,20 @@ def _run_verification_pipeline(
         reasoning=reasoning_by_route[route],
         verification_status=verification_status.value,
     )
+
+
+class InvalidPlaylistLinkError(Exception):
+    """Raised when a submitted playlist link or id does not parse to a valid
+    YouTube playlist id."""
+
+
+def expand_playlist(playlist_url_or_id: str) -> list[str]:
+    playlist_id = extract_youtube_playlist_id(playlist_url_or_id)
+    if playlist_id is None:
+        raise InvalidPlaylistLinkError(
+            f"Not a valid YouTube playlist link or id: {playlist_url_or_id}"
+        )
+    return youtube.fetch_playlist_video_ids(playlist_id)
 
 
 def resolve_metadata(youtube_url: str) -> MetadataResolveResponse:

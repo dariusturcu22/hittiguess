@@ -56,3 +56,11 @@ class MetadataResolveResponse(BaseModel):
     content: SongMetadataResult | None = None
     rejection_reason: RejectionReason | None = None
     rejection_detail: str | None = None
+
+
+class PlaylistVideoIdsRequest(BaseModel):
+    playlist_url_or_id: str
+
+
+class PlaylistVideoIdsResponse(BaseModel):
+    video_ids: list[str]
