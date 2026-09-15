@@ -13,9 +13,6 @@
     .navicon { width: 46px; height: 46px; border-radius: 14px; display: flex; align-items: center; justify-content: center; cursor: pointer; color: #6c7086; }
     .navicon.active { background: #cba6f7; box-shadow: 3px 3px 0 rgba(0,0,0,0.4); color: #11111b; }
     .divider { width: 32px; height: 2px; background: #313244; border-radius: 2px; margin: 14px auto; flex-shrink: 0; }
-    .genre-chip { font-family: 'Space Grotesk', sans-serif; font-weight: 600; font-size: 13px; padding: 9px 20px; border-radius: 100px; box-sizing: border-box; cursor: pointer; }
-    .genre-chip.active { background: #cba6f7; color: #11111b; box-shadow: 3px 3px 0 rgba(0,0,0,0.4); }
-    .genre-chip.inactive { color: #a6adc8; border: 2px solid #45475a; }
     .search-input { background: #181825; border: 2px solid #45475a; border-radius: 100px; padding: 12px 18px 12px 42px; font-family: 'Space Grotesk', sans-serif; font-size: 14px; color: #cdd6f4; box-sizing: border-box; }
     .search-input::placeholder { color: #6c7086; }
     .playlist-card { background: #313244; border: 3px solid #11111b; border-radius: 16px; box-shadow: 6px 6px 0 rgba(0,0,0,0.4); overflow: hidden; display: flex; flex-direction: column; }
@@ -69,14 +66,6 @@
     <div style="position: relative; width: 420px; margin-bottom: 20px;">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6c7086" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="position: absolute; left: 16px; top: 50%; transform: translateY(-50%);"><circle cx="11" cy="11" r="7"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
       <input class="search-input" style="width: 100%;" type="text" placeholder="Search public playlists...">
-    </div>
-
-    <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 28px;">
-      <div class="genre-chip active">All</div>
-      <div class="genre-chip inactive">Pop</div>
-      <div class="genre-chip inactive">Rock</div>
-      <div class="genre-chip inactive">2000s</div>
-      <div class="genre-chip inactive">Obscure</div>
     </div>
 
     <div class="custom-scroll" style="flex: 1; min-height: 0; overflow-y: auto; padding-right: 4px;">
