@@ -13,6 +13,7 @@ import org.dariusturcu.backend.model.user.User;
 import org.dariusturcu.backend.repository.PlaylistBanRepository;
 import org.dariusturcu.backend.repository.PlaylistMembershipRepository;
 import org.dariusturcu.backend.repository.PlaylistRepository;
+import org.dariusturcu.backend.repository.SavedPlaylistRepository;
 import org.dariusturcu.backend.repository.SongRepository;
 import org.dariusturcu.backend.repository.UserRepository;
 import org.dariusturcu.backend.security.UserPrincipal;
@@ -85,9 +86,10 @@ class PersonalDataExportIntegrationTest {
                 SongMapper songMapper,
                 PlaylistAccessService playlistAccessService,
                 PlaylistMembershipRepository playlistMembershipRepository,
-                PlaylistBanRepository playlistBanRepository) {
+                PlaylistBanRepository playlistBanRepository,
+                SavedPlaylistRepository savedPlaylistRepository) {
             return new PlaylistService(playlistRepository, songRepository, playlistMapper, songMapper,
-                    playlistAccessService, playlistMembershipRepository, playlistBanRepository);
+                    playlistAccessService, playlistMembershipRepository, playlistBanRepository, savedPlaylistRepository);
         }
 
         @Bean
@@ -98,9 +100,10 @@ class PersonalDataExportIntegrationTest {
                 PlaylistMapper playlistMapper,
                 PlaylistMembershipRepository playlistMembershipRepository,
                 PlaylistBanRepository playlistBanRepository,
-                SongRepository songRepository) {
+                SongRepository songRepository,
+                SavedPlaylistRepository savedPlaylistRepository) {
             return new UserService(userRepository, playlistRepository, userMapper, playlistMapper,
-                    playlistMembershipRepository, playlistBanRepository, songRepository);
+                    playlistMembershipRepository, playlistBanRepository, songRepository, savedPlaylistRepository);
         }
 
         @Bean

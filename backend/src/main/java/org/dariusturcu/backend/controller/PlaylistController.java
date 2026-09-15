@@ -5,6 +5,7 @@ import org.dariusturcu.backend.model.playlist.ImportFromPlaylistRequest;
 import org.dariusturcu.backend.model.playlist.ImportFromPlaylistResultDTO;
 import org.dariusturcu.backend.model.playlist.PlaylistDetailDTO;
 import org.dariusturcu.backend.model.playlist.PlaylistMemberDTO;
+import org.dariusturcu.backend.model.playlist.PublicPlaylistSummaryDTO;
 import org.dariusturcu.backend.model.playlist.UpdateMembershipGrantsRequest;
 import org.dariusturcu.backend.model.playlist.UpdatePlaylistRequest;
 import org.dariusturcu.backend.model.song.CreateSongRequest;
@@ -29,6 +30,13 @@ import java.util.List;
 public class PlaylistController {
     private final PlaylistService playlistService;
     private final PlaylistImportService playlistImportService;
+
+    @Operation(summary = "Browse every playlist published publicly")
+    @GetMapping("/public")
+    public ResponseEntity<List<PublicPlaylistSummaryDTO>> getPublicPlaylists() {
+        List<PublicPlaylistSummaryDTO> publicPlaylists = playlistService.getPublicPlaylists();
+        return ResponseEntity.ok(publicPlaylists);
+    }
 
     @Operation(summary = "Get playlist information")
     @GetMapping("/{playlistId}")
@@ -136,6 +144,38 @@ public class PlaylistController {
             @PathVariable Long playlistId,
             @PathVariable Long userId) {
         playlistService.banMember(playlistId, userId);
+        return ResponseEntity.noContent().build();
+    }
+
+    @Operation(summary = "Publish a playlist publicly, owner only")
+    @PostMapping("/{playlistId}/publish")
+    public ResponseEntity<PlaylistDetailDTO> publishPlaylist(
+            @PathVariable Long playlistId) {
+        PlaylistDetailDTO updatedPlaylist = playlistService.publishPlaylist(playlistId);
+        return ResponseEntity.ok(updatedPlaylist);
+    }
+
+    @Operation(summary = "Unpublish a playlist, owner only")
+    @PostMapping("/{playlistId}/unpublish")
+    public ResponseEntity<PlaylistDetailDTO> unpublishPlaylist(
+            @PathVariable Long playlistId) {
+        PlaylistDetailDTO updatedPlaylist = playlistService.unpublishPlaylist(playlistId);
+        return ResponseEntity.ok(updatedPlaylist);
+    }
+
+    @Operation(summary = "Save a public playlist into the current user's own library, without becoming a member")
+    @PostMapping("/{playlistId}/save")
+    public ResponseEntity<PublicPlaylistSummaryDTO> savePlaylist(
+            @PathVariable Long playlistId) {
+        PublicPlaylistSummaryDTO savedPlaylist = playlistService.savePlaylist(playlistId);
+        return ResponseEntity.ok(savedPlaylist);
+    }
+
+    @Operation(summary = "Unsave a previously saved playlist")
+    @DeleteMapping("/{playlistId}/save")
+    public ResponseEntity<Void> unsavePlaylist(
+            @PathVariable Long playlistId) {
+        playlistService.unsavePlaylist(playlistId);
         return ResponseEntity.noContent().build();
     }
 }

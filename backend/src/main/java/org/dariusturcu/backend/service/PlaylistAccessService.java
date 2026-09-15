@@ -32,6 +32,9 @@ public class PlaylistAccessService {
         if (playlist.isOwnedBy(user)) {
             return;
         }
+        if (playlist.isPublic()) {
+            return;
+        }
         if (!findMembership(playlist, user).isCanRead()) {
             throw new AccessDeniedException("You don't have read access to this playlist");
         }

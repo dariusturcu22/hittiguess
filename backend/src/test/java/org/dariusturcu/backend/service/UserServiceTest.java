@@ -6,12 +6,15 @@ import org.dariusturcu.backend.model.mapper.UserMapper;
 import org.dariusturcu.backend.model.playlist.JoinPlaylistRequest;
 import org.dariusturcu.backend.model.playlist.Playlist;
 import org.dariusturcu.backend.model.playlist.PlaylistMembership;
+import org.dariusturcu.backend.model.playlist.PublicPlaylistSummaryDTO;
+import org.dariusturcu.backend.model.playlist.SavedPlaylist;
 import org.dariusturcu.backend.model.song.Song;
 import org.dariusturcu.backend.model.user.Role;
 import org.dariusturcu.backend.model.user.User;
 import org.dariusturcu.backend.repository.PlaylistBanRepository;
 import org.dariusturcu.backend.repository.PlaylistMembershipRepository;
 import org.dariusturcu.backend.repository.PlaylistRepository;
+import org.dariusturcu.backend.repository.SavedPlaylistRepository;
 import org.dariusturcu.backend.repository.SongRepository;
 import org.dariusturcu.backend.repository.UserRepository;
 import org.dariusturcu.backend.security.UserPrincipal;
@@ -54,6 +57,8 @@ class UserServiceTest {
     private PlaylistBanRepository playlistBanRepository;
     @Mock
     private SongRepository songRepository;
+    @Mock
+    private SavedPlaylistRepository savedPlaylistRepository;
 
     @InjectMocks
     private UserService userService;
@@ -89,6 +94,19 @@ class UserServiceTest {
     @AfterEach
     void tearDown() {
         SecurityContextHolder.clearContext();
+    }
+
+    @Test
+    void getSavedPlaylistsReturnsTheCurrentUsersSavedPlaylists() {
+        SavedPlaylist savedPlaylist = new SavedPlaylist();
+        savedPlaylist.setPlaylist(playlist);
+        PublicPlaylistSummaryDTO summary = new PublicPlaylistSummaryDTO(PLAYLIST_ID, "Playlist", "abcdef", 0, null);
+        when(savedPlaylistRepository.findByUserId(USER_ID)).thenReturn(List.of(savedPlaylist));
+        when(playlistMapper.toPublicSummaryDTO(playlist)).thenReturn(summary);
+
+        List<PublicPlaylistSummaryDTO> result = userService.getSavedPlaylists();
+
+        assertThat(result).containsExactly(summary);
     }
 
     @Test
