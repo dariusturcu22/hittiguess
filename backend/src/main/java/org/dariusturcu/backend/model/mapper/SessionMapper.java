@@ -44,6 +44,7 @@ public class SessionMapper {
                 round.getPlacedPosition(),
                 round.getPlacementCorrect(),
                 round.getBettorPlayer() != null ? round.getBettorPlayer().getId() : null,
+                round.getBetPosition(),
                 isRevealedOrLater ? artistNames(round) : null,
                 isRevealedOrLater ? round.getSong().getTitle() : null,
                 isRevealedOrLater ? round.getSong().getReleaseYear() : null);

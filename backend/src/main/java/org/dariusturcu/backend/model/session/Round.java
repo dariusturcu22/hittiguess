@@ -58,6 +58,10 @@ public class Round {
     private Player bettorPlayer;
 
     private Instant betPlacedAt;
+
+    // The bettor's own stated insertion index into their own timeline, set atomically
+    // alongside bettorPlayer and betPlacedAt. Null until a bet is accepted.
+    private Integer betPosition;
     private Instant revealedAt;
     private Instant scoredAt;
 

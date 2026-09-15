@@ -91,6 +91,9 @@ class GameSessionBettingConcurrencyIntegrationTest {
 
     private static final int CONCURRENT_ATTEMPTS_PER_ELIGIBLE_BETTOR = 2;
     private static final int CONCURRENCY_TEST_TIMEOUT_SECONDS = 10;
+    // Every bettor in this test starts with a single anchor card, so position 0 (before
+    // that card) is in range regardless of which bettor wins the race.
+    private static final int BET_POSITION = 0;
 
     @Configuration
     @EnableAutoConfiguration(exclude = OAuth2ClientAutoConfiguration.class)
@@ -319,7 +322,7 @@ class GameSessionBettingConcurrencyIntegrationTest {
                                 AtomicInteger acceptedCount) {
         try {
             startLatch.await();
-            boolean accepted = gameSessionService.placeBet(sessionId, userId);
+            boolean accepted = gameSessionService.placeBet(sessionId, userId, BET_POSITION);
             if (accepted) {
                 acceptedCount.incrementAndGet();
             }

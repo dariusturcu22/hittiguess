@@ -1,5 +1,6 @@
 package org.dariusturcu.backend.controller;
 
+import org.dariusturcu.backend.model.session.PlaceBetRequest;
 import org.dariusturcu.backend.model.session.PlaceCardRequest;
 import org.dariusturcu.backend.model.session.TitleArtistGuessRequest;
 import org.dariusturcu.backend.security.UserPrincipal;
@@ -35,8 +36,8 @@ public class GameActionController {
     }
 
     @MessageMapping("/sessions/{sessionId}/bet")
-    public void placeBet(@DestinationVariable Long sessionId, Principal principal) {
-        gameSessionService.placeBet(sessionId, resolveUserId(principal));
+    public void placeBet(@DestinationVariable Long sessionId, @Payload PlaceBetRequest request, Principal principal) {
+        gameSessionService.placeBet(sessionId, resolveUserId(principal), request.position());
     }
 
     @MessageMapping("/sessions/{sessionId}/skip-betting")

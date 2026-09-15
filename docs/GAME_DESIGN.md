@@ -36,13 +36,13 @@ The DJ and the active player, whoever's turn it is, are separate roles.
 2. The active player places a guess: before, after, or between the cards already on their timeline. The guess is locked in, with a sound effect on lock-in.
 3. The active player's audio stream cuts off immediately on lock-in, regardless of what's still playing on the DJ's end.
 4. A 3-5 second countdown follows lock-in, giving other players a moment to get ready to bet.
-5. A 15-second betting window opens: any player holding a token may bet on the active player's guess being wrong, first come, first served, one bet per round. If no player holds a token, this window is skipped entirely. A skip-betting button lets the group end the window early if no one wants to bet. Placing a bet is concurrency-safe: only the first successful bet is accepted, and a losing attempt doesn't cost the player their token.
+5. A 15-second betting window opens: any player holding a token may bet on the active player's guess being wrong, first come, first served, one bet per round. A bet is a position, before, after, or between the cards on the bettor's own timeline, staked at the same time as the bet itself. If no player holds a token, this window is skipped entirely. A skip-betting button lets the group end the window early if no one wants to bet. Placing a bet is concurrency-safe: only the first successful bet is accepted, and a losing attempt doesn't cost the player their token.
 6. Once the betting window closes, the song reveals automatically: artist, title, and year. Nobody triggers it manually, DJ included.
 7. Scoring:
    - If the active player's placement is correct, they keep the card. This holds even when the new song shares a release year with an existing card on the timeline; either order counts as correct.
    - If a player bet a token and the active player's placement was correct, the active player keeps the card regardless of the bet, and the bet is lost.
-   - If the active player's placement was wrong and a bet was correct, the card goes to whoever bet correctly instead.
-   - If the active player's placement was wrong and no one bet, the card is discarded.
+   - If the active player's placement was wrong, the bettor's own staked position is checked against the timeline the same way the active player's placement was: if it's also correct, the card goes to the bettor at that position instead.
+   - If the active player's placement was wrong and no one bet, or the bettor's staked position was also wrong, the card is discarded. A winning bettor only ever receives the card, never a bonus token.
 8. Next round: once scoring resolves, the active player role passes to the next player automatically, no manual step from anyone. The DJ role stays fixed or rotates, per the group setting.
 
 ## Earning tokens
