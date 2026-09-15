@@ -8,6 +8,14 @@ Stories 10, 11, and 39 are implemented (backend). Stories 9 and 12 were confirme
 
 "Next available task" means the earliest unchecked box under a Ready or In Progress story.
 
+## Standing policy: all frontend work lives in story 28
+
+Every story other than story 28 is backend-only. Any frontend task a story would otherwise carry (a page, a component, a WebRTC/browser-side piece, a frontend test) is tracked under story 28's implementation phase instead, not built in that story's own batch. Story 28 is the single place all frontend lands, wired against the real backends every prior batch shipped. Frontend tasks already written inline under other stories stay listed there marked "story 28" for traceability, but they are NOT part of that story's own batch completion; a backend story is done when its backend code and backend tests pass.
+
+## Standing policy: story 34 abuse-visibility event writes are stubbed until story 34 ships
+
+Stories that would write an abuse-visibility event (story 41's flagged-injection event, story 17's report-submitted event, story 27's rate-limit-exceeded event) write a stubbed no-op (a structured log line marked `TODO: story 34`) rather than a real event, since story 34's analytics event pipeline is Phase 3 and not built. Story 34 replaces these stubs with real writes. See `DECISIONS.md`.
+
 ## Story 9: DJ real YouTube link-out
 
 Stories 10, 11, and 39 have all shipped (backend). Story 9's draft tasks confirmed accurate against the real code: no DJ view exists in the frontend, the backend session model tracks the DJ per round but no link-out, audio capture, or DJ-role enforcement is built. Ready.
