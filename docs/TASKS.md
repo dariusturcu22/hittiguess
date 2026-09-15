@@ -10,7 +10,7 @@ Stories 10, 11, and 39 are implemented (backend). Stories 9 and 12 were confirme
 
 ## Story 9: DJ real YouTube link-out
 
-Stories 10, 11, and 39 have all shipped (backend). Story 9's draft tasks need confirming against the real code before it moves to Ready. Blocked on story 39 (group), story 10 (game session), and story 11 (WebSocket sync) being available to build on top of.
+Stories 10, 11, and 39 have all shipped (backend). Story 9's draft tasks confirmed accurate against the real code: no DJ view exists in the frontend, the backend session model tracks the DJ per round but no link-out, audio capture, or DJ-role enforcement is built. Ready.
 
 The DJ's only in-app action is "Open YouTube Link"; playback, pausing, and closing the tab or app all happen on YouTube itself, never mirrored into the game. The round's own flow, the betting countdown and window, the reveal, and advancing to the next player, runs automatically off timers the game already has once the DJ opens the link, with no manual trigger from the DJ or any player (see `GAME_DESIGN.md`'s Roles section and story 10's automatic-reveal task).
 
@@ -100,7 +100,7 @@ Tests:
 
 ## Story 12: Voice chat
 
-Blocked on story 11 (WebSocket layer) and story 39 (group): voice is scoped to the group's lifetime, not the game session's, and its signaling rides the WebSocket layer. Both have now shipped (backend); draft tasks need confirming against the real code before story 12 moves to Ready.
+Blocked on story 11 (WebSocket layer) and story 39 (group): voice is scoped to the group's lifetime, not the game session's, and its signaling rides the WebSocket layer. Both have now shipped (backend). Draft tasks confirmed accurate: only the `isInVoice` presence flag on `Member` exists, no WebRTC signaling or mesh setup is built. Ready.
 
 - [ ] Implement WebRTC signaling over the WebSocket layer built in story 11
 - [ ] Implement mesh peer connection setup between group members
@@ -118,7 +118,7 @@ Tests:
 
 ## Story 13: Group-scoped text chat
 
-Checked against real code: no chat model or endpoint exists. Blocked on story 11 (WebSocket layer) and story 39 (group): chat is scoped to the group's lifetime, not the game session's, and rides the WebSocket layer. Both have now shipped (backend); draft tasks need confirming against the real code before story 13 moves to Ready.
+Checked against real code: no chat model or endpoint exists. Blocked on story 11 (WebSocket layer) and story 39 (group): chat is scoped to the group's lifetime, not the game session's, and rides the WebSocket layer. Both have now shipped (backend). Draft tasks confirmed accurate: no `ChatMessage` entity or send/receive endpoint exists. Ready.
 
 - [ ] Implement `ChatMessage` as an ephemeral Postgres row (sender, group, body, timestamp)
 - [ ] Client-to-server STOMP channel to send a message, riding the WebSocket layer built in story 11
