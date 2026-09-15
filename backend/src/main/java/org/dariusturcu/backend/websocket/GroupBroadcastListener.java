@@ -29,11 +29,17 @@ public class GroupBroadcastListener {
     @EventListener
     public void onGroupBroadcastEvent(GroupBroadcastEvent event) {
         Long groupId = event.group().id();
-        String destination = event.type() == GroupEventType.SETTINGS_CHANGED
-                ? GroupDestinations.settingsTopic(groupId)
-                : GroupDestinations.membershipTopic(groupId);
+        String destination = resolveDestination(event.type(), groupId);
 
         messagingTemplate.convertAndSend(destination, objectMapper.writeValueAsString(event));
         log.info("groupEvent type={} groupId={}", event.type(), groupId);
+    }
+
+    private String resolveDestination(GroupEventType type, Long groupId) {
+        return switch (type) {
+            case SETTINGS_CHANGED -> GroupDestinations.settingsTopic(groupId);
+            case VOICE_PRESENCE_CHANGED -> GroupDestinations.voiceTopic(groupId);
+            default -> GroupDestinations.membershipTopic(groupId);
+        };
     }
 }
