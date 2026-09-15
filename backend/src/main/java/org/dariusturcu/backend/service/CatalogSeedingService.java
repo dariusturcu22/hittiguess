@@ -1,0 +1,117 @@
+package org.dariusturcu.backend.service;
+
+import lombok.extern.slf4j.Slf4j;
+import org.dariusturcu.backend.model.song.BacklogStatusDTO;
+import org.dariusturcu.backend.model.song.EnqueueResultDTO;
+import org.dariusturcu.backend.model.song.PendingImport;
+import org.dariusturcu.backend.model.song.PendingImportStatus;
+import org.dariusturcu.backend.model.song.YoutubeIdLookupResult;
+import org.dariusturcu.backend.repository.PendingImportRepository;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.domain.Limit;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
+import java.util.Collection;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Set;
+
+/**
+ * The admin catalog-seeding backlog: enqueue submitted YouTube IDs the catalog does
+ * not already know, report backlog status, and drain pending imports on the daily
+ * quota. The drain yields the shared external rate-limit budget to on-the-spot
+ * traffic through the priority coordinator, and re-runs no already-known song
+ * because enqueue filters those out first.
+ */
+@Slf4j
+@Service
+public class CatalogSeedingService {
+
+    private static final Set<PendingImportStatus> ACTIVE_BACKLOG_STATUSES =
+            Set.of(PendingImportStatus.PENDING, PendingImportStatus.PROCESSING);
+
+    private final PendingImportRepository pendingImportRepository;
+    private final YoutubeIdLookupService youtubeIdLookupService;
+    private final PendingImportProcessor pendingImportProcessor;
+    private final MetadataPriorityCoordinator metadataPriorityCoordinator;
+
+    private final long dailyDrainQuota;
+
+    public CatalogSeedingService(
+            PendingImportRepository pendingImportRepository,
+            YoutubeIdLookupService youtubeIdLookupService,
+            PendingImportProcessor pendingImportProcessor,
+            MetadataPriorityCoordinator metadataPriorityCoordinator,
+            @Value("${catalog.seeding.daily-drain-quota}") long dailyDrainQuota) {
+        this.pendingImportRepository = pendingImportRepository;
+        this.youtubeIdLookupService = youtubeIdLookupService;
+        this.pendingImportProcessor = pendingImportProcessor;
+        this.metadataPriorityCoordinator = metadataPriorityCoordinator;
+        this.dailyDrainQuota = dailyDrainQuota;
+    }
+
+    @Transactional
+    public EnqueueResultDTO enqueue(Collection<String> submittedYoutubeIds) {
+        YoutubeIdLookupResult lookupResult = youtubeIdLookupService.partitionKnownAndUnknown(submittedYoutubeIds);
+        Set<String> alreadyKnownIds = lookupResult.knownYoutubeIds();
+        Set<String> candidateIds = lookupResult.unknownYoutubeIds();
+
+        Set<String> alreadyQueuedIds = new LinkedHashSet<>(
+                pendingImportRepository.findYoutubeIdsAlreadyQueued(candidateIds, ACTIVE_BACKLOG_STATUSES));
+
+        Set<String> idsToEnqueue = new LinkedHashSet<>(candidateIds);
+        idsToEnqueue.removeAll(alreadyQueuedIds);
+
+        for (String youtubeId : idsToEnqueue) {
+            PendingImport pendingImport = new PendingImport();
+            pendingImport.setYoutubeId(youtubeId);
+            pendingImport.setStatus(PendingImportStatus.PENDING);
+            pendingImport.setEnqueuedAt(Instant.now());
+            pendingImportRepository.save(pendingImport);
+        }
+
+        return new EnqueueResultDTO(idsToEnqueue, alreadyKnownIds, alreadyQueuedIds);
+    }
+
+    @Transactional(readOnly = true)
+    public BacklogStatusDTO backlogStatus() {
+        long pendingCount = pendingImportRepository.countByStatus(PendingImportStatus.PENDING);
+        long processedTodayCount = processedTodayCount();
+        long quotaRemaining = Math.max(0, dailyDrainQuota - processedTodayCount);
+        return new BacklogStatusDTO(pendingCount, processedTodayCount, dailyDrainQuota, quotaRemaining);
+    }
+
+    /**
+     * Resolves pending imports up to the remaining daily quota, one at a time, stopping
+     * before the next item whenever on-the-spot traffic holds the shared external
+     * rate-limit budget. Returns how many items it resolved this run.
+     */
+    public int drainBacklog() {
+        long remainingQuota = dailyDrainQuota - processedTodayCount();
+        if (remainingQuota <= 0) {
+            return 0;
+        }
+
+        Limit drainLimit = Limit.of((int) Math.min(remainingQuota, Integer.MAX_VALUE));
+        List<PendingImport> batch = pendingImportRepository.findByStatusOrderByEnqueuedAtAsc(
+                PendingImportStatus.PENDING, drainLimit);
+
+        int resolvedCount = 0;
+        for (PendingImport pendingImport : batch) {
+            if (!metadataPriorityCoordinator.mayDrainProceed()) {
+                break;
+            }
+            pendingImportProcessor.process(pendingImport.getId());
+            resolvedCount++;
+        }
+        return resolvedCount;
+    }
+
+    private long processedTodayCount() {
+        return pendingImportRepository.countByStatusAndProcessedAtAfter(
+                PendingImportStatus.DONE, Instant.now().truncatedTo(ChronoUnit.DAYS));
+    }
+}
