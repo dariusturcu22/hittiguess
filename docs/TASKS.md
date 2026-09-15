@@ -144,18 +144,18 @@ Tests:
 
 Checked against real code: no chat model or endpoint exists. Blocked on story 11 (WebSocket layer) and story 39 (group): chat is scoped to the group's lifetime, not the game session's, and rides the WebSocket layer. Both have now shipped (backend). Draft tasks confirmed accurate: no `ChatMessage` entity or send/receive endpoint exists. Ready.
 
-- [ ] Implement `ChatMessage` as an ephemeral Postgres row (sender, group, body, timestamp)
-- [ ] Client-to-server STOMP channel to send a message, riding the WebSocket layer built in story 11
-- [ ] Broadcast new messages to the group's STOMP topic
-- [ ] Load message history when a client joins or reconnects to a group
-- [ ] Purge chat history when the group is deleted, matching the group's ephemeral lifecycle
-- [ ] Message length limit (500 characters) and a per-user send rate limit (5 messages per 10 seconds) to prevent spam within a group
-- [ ] Frontend: semi-transparent bottom-left overlay, toggled by a keybind or a clickable button, rather than a persistent input field, plain username-and-message lines, no threading (see `GAME_DESIGN.md`'s Interaction and animation section)
+- [x] Implement `ChatMessage` as an ephemeral Postgres row (sender, group, body, timestamp). Built as `ChatMessage` with a `group_id`, `sender_id`, `content`, and `createdAt`, table `chat_messages` in migration `V14`, scoped to the group's lifetime rather than a game session's.
+- [x] Client-to-server STOMP channel to send a message, riding the WebSocket layer built in story 11. `GroupChatController` maps `/app/groups/{groupId}/chat` (destination `GroupDestinations.chatDestination`), resolving the sender from the socket's authenticated principal the same way `GameActionController` does.
+- [x] Broadcast new messages to the group's STOMP topic. `ChatService` sends the persisted message to `GroupDestinations.chatTopic` through `SimpMessagingTemplate`, serializing with the application `ObjectMapper` for the same reason `GroupBroadcastListener` does.
+- [x] Load message history when a client joins or reconnects to a group. `GET /api/groups/{groupId}/chat/messages` returns the most recent messages, member only, bounded by a named page-size constant.
+- [x] Purge chat history when the group is deleted, matching the group's ephemeral lifecycle. The `chat_messages` group foreign key is `ON DELETE CASCADE`, so both the expiry sweep and an admin's final leave clear a group's messages with the group.
+- [x] Message length limit (500 characters) and a per-user send rate limit (5 messages per 10 seconds) to prevent spam within a group. Enforced in `ChatService` against named constants, reusing `RateLimiterRegistry`; a breach rejects the send and writes the stubbed `TODO: story 34` rate-limit event through `AbuseVisibilityEvents`.
+- [ ] Frontend: semi-transparent bottom-left overlay, toggled by a keybind or a clickable button, rather than a persistent input field, plain username-and-message lines, no threading (story 28, see `GAME_DESIGN.md`'s Interaction and animation section)
 
 Tests:
-- [ ] Unit tests for the message length limit and the per-user send rate limit, including the boundary values
-- [ ] Integration test: message history loads correctly on join and on reconnect
-- [ ] Integration test: chat history is gone once the group is deleted
+- [x] Unit tests for the message length limit and the per-user send rate limit, including the boundary values (`ChatServiceTest`: at-limit passes, over-limit rejects, blank rejected, under the rate limit passes, over it rejects and fires the stubbed event, and the limit is per user)
+- [x] Integration test: message history loads correctly on join and on reconnect (`GroupChatIntegrationTest`: a member reads history most-recent-first, a non-member is denied)
+- [x] Integration test: chat history is gone once the group is deleted (`GroupChatIntegrationTest`: the expiry sweep removes the group and its chat rows)
 
 ## Story 39: Group
 
@@ -168,7 +168,7 @@ Checked against real code: no group model exists, this is greenfield work. Based
 - [x] `POST` endpoint to join a group via invite link or join code, only while the group hasn't started a game session yet
 - [x] On join, prompt for a per-group display name and avatar, defaulting to the user's account values but editable; other members only ever see this per-group identity, never the account profile
 - [x] Settings (playlist(s), DJ mode, win-condition card count), editable by the admin only, broadcast to all members in real time. The data model and the admin-only update endpoint (`GroupService.updateGroupSettings`) persist correctly; `updateGroupSettings` now publishes a `SETTINGS_CHANGED` event story 11's `GroupBroadcastListener` forwards to the group's settings STOMP topic, see `DECISIONS.md`.
-- [ ] Chat available from group creation, stored for the life of the group. Deferred entirely to story 13, which owns `ChatMessage` and actual send/receive/persistence; `Group` uses a plain `Long` primary key, no special preparation needed for story 13 to attach messages to it later. See `DECISIONS.md`.
+- [x] Chat available from group creation, stored for the life of the group. Backend built under story 13, which owns `ChatMessage` and send/receive/persistence; the chat overlay UI stays with story 28. `Group` uses a plain `Long` primary key, which is all `ChatMessage` needs to attach to it. See `DECISIONS.md`.
 - [x] Voice joinable and leavable at any time (see story 12 for the WebRTC mechanics). Built as a plain `isInVoice` presence flag on `Member` plus join/leave-voice endpoints that flip it; the actual WebRTC mesh/signaling belongs to story 12, blocked on this story and story 11 both shipping. See `DECISIONS.md`.
 - [x] 30-minute timer from group creation to the admin starting a game session, delete the group if it fires
 - [x] Admin action to start a game session (see story 10), locks the group to new members. Only the group-side state transition (`GroupService.startGameSession`) exists; story 10's own session model doesn't, so nothing calls this yet outside tests.

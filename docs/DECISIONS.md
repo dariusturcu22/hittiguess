@@ -802,6 +802,16 @@ Why: story 40's re-resolution pipeline does not exist yet, so uphold cannot trig
 
 ---
 
+## 2026-09 | Story 13 group chat: history bound, deletion cascade, and where the length limit lives
+
+Decision: group-scoped text chat is a `ChatMessage` row (`group_id`, `sender_id`, `content`, `created_at`) in the `chat_messages` table (migration `V14`), scoped to the group's whole life rather than a game session's. Send rides the same STOMP convention story 11 fixed: a client sends to `/app/groups/{groupId}/chat` (`GroupChatController`), and `ChatService` persists the message and broadcasts it to `/topic/groups/{groupId}/chat` through `SimpMessagingTemplate`, serializing with the application `ObjectMapper` the same way `GroupBroadcastListener` does. History is a member-only REST read, `GET /api/groups/{groupId}/chat/messages`, returning the most recent `HISTORY_PAGE_SIZE` (50) messages most-recent-first.
+
+Three points settled here. The history read is bounded to a fixed most-recent page rather than returning a group's entire chat: a group lives at most a short, timer-bounded window and its overlay only ever shows recent lines, so an unbounded read buys nothing and a page size is the honest contract for what a joining or reconnecting client loads. Deletion cleanup is a database-level `ON DELETE CASCADE` on the `chat_messages` group foreign key, not a mapped `@OneToMany` cascade on `Group`: messages are not part of the group aggregate the way `members` is, and loading every message into memory just to delete a group would be wasteful, so the cascade lives in the schema and the expiry sweep's plain `groups` delete carries the messages with it. The 500-character limit is validated in `ChatService` against `ChatMessage.MAX_CONTENT_LENGTH` (which the column length also uses) rather than as a bean-validation annotation, because a STOMP payload does not pass through the REST `@Valid` path; the per-user rate limit (5 per 10 seconds) reuses `RateLimiterRegistry` keyed by group and user, and a breach rejects the send and writes the stubbed `TODO: story 34` rate-limit event through `AbuseVisibilityEvents`.
+
+Why: reusing the existing STOMP destination convention, broadcast indirection, membership check, rate limiter, and stubbed-event pattern keeps chat consistent with the group and report code already on `dev` instead of inventing parallel machinery. The chat overlay UI, unread indicators, and the input box stay with story 28, the single home for frontend, so this batch is backend only.
+
+---
+
 ## 2026-09 | Story 45 import from playlist: reuse existing mechanisms, defer the public-source path
 
 Decision: importing songs from one playlist into another links the source playlist's existing `Song` rows into the target through story 15's `song_playlists` join table, using `Playlist.addSong`. Songs already present in the target are skipped rather than re-linked or erroring. The requester must be able to read the source (owner or member, through `PlaylistAccessService.requireRead`) and write to the target (`requireWrite`). The endpoint is `POST /api/playlists/{playlistId}/imports`, where the path playlist is the target and the body carries the source playlist ID. No new schema ships with this story.

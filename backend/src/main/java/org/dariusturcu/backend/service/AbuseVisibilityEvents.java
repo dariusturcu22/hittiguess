@@ -16,9 +16,17 @@ public class AbuseVisibilityEvents {
 
     private static final String REPORT_SUBMITTED_EVENT = "report_submitted";
 
+    private static final String CHAT_RATE_LIMIT_EXCEEDED_EVENT = "chat_rate_limit_exceeded";
+
     // TODO: story 34, replace this log line with a real abuse-visibility event write.
     public void recordReportSubmitted(long reportingUserId, long songId) {
         logger.info("abuse_event={} reporting_user_id={} song_id={}",
                 REPORT_SUBMITTED_EVENT, reportingUserId, songId);
+    }
+
+    // TODO: story 34, replace this log line with a real abuse-visibility event write.
+    public void recordChatRateLimitExceeded(long senderUserId, long groupId) {
+        logger.info("abuse_event={} sender_user_id={} group_id={}",
+                CHAT_RATE_LIMIT_EXCEEDED_EVENT, senderUserId, groupId);
     }
 }
