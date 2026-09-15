@@ -21,7 +21,6 @@ public final class GroupDestinations {
 
     private static final String MEMBERSHIP_SEGMENT = "/membership";
     private static final String SETTINGS_SEGMENT = "/settings";
-    // Reserved for story 13, not implemented here: only the naming convention is fixed.
     private static final String CHAT_SEGMENT = "/chat";
     // Reserved for story 12, not implemented here: only the naming convention is fixed.
     private static final String VOICE_SEGMENT = "/voice";
@@ -48,6 +47,10 @@ public final class GroupDestinations {
 
     public static String chatTopic(Long groupId) {
         return GROUP_TOPIC_PREFIX + groupId + CHAT_SEGMENT;
+    }
+
+    public static String chatDestination(Long groupId) {
+        return GROUP_APP_PREFIX + groupId + CHAT_SEGMENT;
     }
 
     public static String voiceTopic(Long groupId) {
