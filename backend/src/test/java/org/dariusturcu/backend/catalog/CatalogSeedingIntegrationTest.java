@@ -255,23 +255,23 @@ class CatalogSeedingIntegrationTest {
 
     @Test
     void anOnTheSpotRequestResolvesEvenWhenTheSameIdIsInTheAdminBacklog() {
-        catalogSeedingService.enqueue(List.of("contended-id"));
+        catalogSeedingService.enqueue(List.of("contendedID"));
         assertThat(pendingImportRepository.countByStatus(PendingImportStatus.PENDING)).isEqualTo(1);
 
         BulkImportResultDTO result = bulkImportService.importImmediately(
-                new BulkImportRequest(null, List.of("contended-id")));
+                new BulkImportRequest(null, List.of("contendedID")));
 
-        assertThat(result.resolvedYoutubeIds()).contains("contended-id");
-        assertThat(songRepository.findByYoutubeId("contended-id")).isNotEmpty();
+        assertThat(result.resolvedYoutubeIds()).contains("contendedID");
+        assertThat(songRepository.findByYoutubeId("contendedID")).isNotEmpty();
     }
 
     @Test
     void anOnTheSpotResolvedSongIsReEnqueuedAndLaterResolvesThroughThePatientPipeline() {
-        bulkImportService.importImmediately(new BulkImportRequest(null, List.of("fast-tier-id")));
+        bulkImportService.importImmediately(new BulkImportRequest(null, List.of("fastTierID1")));
 
         List<PendingImport> reEnqueued = pendingImportRepository.findByStatusOrderByEnqueuedAtAsc(
                 PendingImportStatus.PENDING, org.springframework.data.domain.Limit.of(10));
-        assertThat(reEnqueued).extracting(PendingImport::getYoutubeId).contains("fast-tier-id");
+        assertThat(reEnqueued).extracting(PendingImport::getYoutubeId).contains("fastTierID1");
 
         int resolvedThisRun = catalogSeedingService.drainBacklog();
 
