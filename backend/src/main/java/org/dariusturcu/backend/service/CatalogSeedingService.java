@@ -76,6 +76,21 @@ public class CatalogSeedingService {
         return new EnqueueResultDTO(idsToEnqueue, alreadyKnownIds, alreadyQueuedIds);
     }
 
+    /**
+     * Re-enqueues a song the on-the-spot fast tier already resolved provisionally, so
+     * the patient pipeline reprocesses it at low priority. This deliberately bypasses
+     * the already-known filter that enqueue applies: the point is to reprocess a song
+     * the fast tier answered, not to skip it as already resolved.
+     */
+    @Transactional
+    public PendingImport reEnqueueForPatientReprocessing(String youtubeId) {
+        PendingImport pendingImport = new PendingImport();
+        pendingImport.setYoutubeId(youtubeId);
+        pendingImport.setStatus(PendingImportStatus.PENDING);
+        pendingImport.setEnqueuedAt(Instant.now());
+        return pendingImportRepository.save(pendingImport);
+    }
+
     @Transactional(readOnly = true)
     public BacklogStatusDTO backlogStatus() {
         long pendingCount = pendingImportRepository.countByStatus(PendingImportStatus.PENDING);
