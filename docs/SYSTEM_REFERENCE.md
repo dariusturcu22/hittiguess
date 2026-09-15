@@ -38,6 +38,28 @@ Every rate-limited request the core service rejects, whichever limiter caught it
 | GET | `/api/users/me/playlists` | `UserController` |
 | POST | `/api/users/me/playlists/{playlistInviteCode}` | `UserController`, optional body carries a per-playlist display name and avatar, rejects a banned user, story 46 |
 | DELETE | `/api/users/me/playlists/{playlistId}` | `UserController`, the owner can leave at any time, leadership passes to the earliest-joined remaining member, story 46 |
+| POST | `/api/groups` | `GroupController`, creates a group, the creator becomes its admin, story 39 |
+| POST | `/api/groups/join` | `GroupController`, join by invite link, rejects a banned or already-in-a-group user, story 39 |
+| GET | `/api/groups/active` | `GroupController`, the caller's current active group, story 39 |
+| GET | `/api/groups/{groupId}` | `GroupController`, story 39 |
+| PATCH | `/api/groups/{groupId}/settings` | `GroupController`, admin only, story 39 |
+| POST | `/api/groups/{groupId}/start-session` | `GroupController`, admin only, locks the group to new members, story 39 |
+| POST | `/api/groups/{groupId}/leave` | `GroupController`, an explicit leave, admin leave passes leadership to the earliest-joined member, story 39 |
+| POST | `/api/groups/{groupId}/disconnect` | `GroupController`, marks the caller disconnected without ending membership, story 39 |
+| POST | `/api/groups/{groupId}/reconnect` | `GroupController`, story 39 |
+| POST | `/api/groups/{groupId}/members/{memberId}/promote` | `GroupController`, admin only, promotes another member to admin, story 39 |
+| POST | `/api/groups/{groupId}/voice/join` | `GroupController`, sets the caller's `isInVoice` presence flag, story 39 |
+| POST | `/api/groups/{groupId}/voice/leave` | `GroupController`, clears the `isInVoice` presence flag, story 39 |
+| GET | `/api/sessions/{sessionId}` | `GameSessionController`, story 10 |
+| GET | `/api/sessions/groups/{groupId}/results` | `GameSessionController`, a completed session's downloadable results export, story 10 |
+| POST | `/api/admin/catalog-seeding/enqueue` | `AdminCatalogSeedingController`, admin only via `AdminAccessGuard`, enqueues submitted YouTube IDs the catalog does not already have, story 40 |
+| GET | `/api/admin/catalog-seeding/status` | `AdminCatalogSeedingController`, admin only, the backlog view (pending, done, failed counts), story 40 |
+| POST | `/api/bulk-import` | `BulkImportController`, any authenticated user, immediate on-the-spot resolution of a submitted YouTube playlist or ID list, never shares the admin backlog's queue, story 40 |
+| POST | `/api/songs/{songId}/reports` | `SongReportController`, any authenticated user reports a song's metadata with a message, suggested correct year, and sources, one report per user per song, story 17 |
+| POST | `/api/songs/{songId}/confirmations` | `SongReportController`, any authenticated user confirms a low-confidence card, one confirmation per user per song, story 17 |
+| GET | `/api/admin/song-reports/queue` | `AdminSongReportController`, admin only via `AdminAccessGuard`, the review queue ranked by the five-tier priority order, story 17 |
+| POST | `/api/admin/song-reports/{songId}/uphold` | `AdminSongReportController`, admin only, upholds a song's open reports, an editable song moves to `MANUAL_ENTRY` while a locked year is never mutated, story 17 |
+| POST | `/api/admin/song-reports/{songId}/dismiss` | `AdminSongReportController`, admin only, dismisses a song's open reports and changes nothing about the song, story 17 |
 | GET | `/actuator/health` | Actuator, unauthenticated at the top-level status; component detail gated by `management.endpoint.health.show-details=when-authorized`, story 38 |
 | GET | `/actuator/prometheus` | Actuator, Prometheus scrape format via `micrometer-registry-prometheus`, story 38 |
 
@@ -53,19 +75,28 @@ Every rate-limited request the core service rejects, whichever limiter caught it
 
 Both services accept and echo an `X-Request-Id` header on every request: the core service's `CorrelationIdFilter` and the AI microservice's `CorrelationIdMiddleware` reuse an incoming value or generate one, attach it to the active OpenTelemetry span as a `request.id` attribute, include it in every structured log line emitted while handling that request, and echo it back on the response. The core service's `CorrelationIdPropagatingInterceptor` forwards the current request's id onto the outgoing RestClient call to the AI microservice, so one user action stays traceable across both services' logs and correlates with a single trace.
 
-Every endpoint stories 9-13, 17, 30, 39-41 add (group, game session, WebSocket destinations, reports, admin backlog, bulk import) doesn't exist yet, see those stories in `TASKS.md` for the planned shape. This table only lists what's live today.
+Story 39's group endpoints, story 10's game-session endpoints, story 40's admin catalog-seeding and bulk-import endpoints, and story 17's report, confirmation, and admin review endpoints are live and listed above. Story 10 and 11 also add STOMP client-to-server destinations for in-session actions, handled by `GameActionController`:
+
+| Destination | Controller | Notes |
+|---|---|---|
+| `/app/sessions/{sessionId}/place` | `GameActionController` | Lock in a card placement, story 10 |
+| `/app/sessions/{sessionId}/guess` | `GameActionController` | Submit a title/artist guess, story 10 |
+| `/app/sessions/{sessionId}/bet` | `GameActionController` | Place a bet after the active player's guess locks, story 10 |
+| `/app/sessions/{sessionId}/skip-betting` | `GameActionController` | Skip the betting window, story 10 |
+
+The endpoints stories 9, 12, 13, and 30 add (DJ link-out, voice signaling, group text chat, difficulty-tuned generation) do not exist on `dev` yet. See those stories in `TASKS.md` for the planned shape. This table only lists what's live on `dev` today.
 
 ## Entity model
 
 ### Current (JPA entities, core service)
 
-Seven entities exist today: `User`, `Playlist`, `PlaylistMembership`, `PlaylistBan`, `Song`, `SongArtist`, `RefreshToken`.
+Current JPA entities: `User`, `Playlist`, `PlaylistMembership`, `PlaylistBan`, `Song`, `SongArtist`, `RefreshToken`, plus `Group` and `Member` (story 39), `GameSession`, `Player`, `Round`, and `Guess` (story 10), `AlternateYoutubeId` and `PendingImport` (story 40), and `SongReport` and `SongConfirmation` (story 17). The core seven are detailed below; the game and group entities follow the shapes in `ARCHITECTURE.md` and their own story sections in `TASKS.md`.
 
 ```
 User
   ├── id, username, email, password, imageUrl
   ├── authProvider, authProviderId
-  └── role (USER, TEST; see story 40 for ADMIN)
+  └── role (USER, TEST, ADMIN)
 
 Playlist
   ├── id, name, color, inviteCode (unique, immutable)
@@ -99,8 +130,8 @@ Song
   │     which had no analog in the settled design mockups, see DECISIONS.md's 2026-09 entry)
   ├── country
   ├── verificationStatus (UNVERIFIED default, VERIFIED, NEEDS_REVIEW, MANUAL_ENTRY; see the state
-  │     diagram below, story 18 still owns the actual lock-evaluation logic that moves it)
-  ├── confidence, metadataRaw (populated once story 18's pipeline actually runs; both nullable today)
+  │     diagram below; story 18's lock-evaluation pipeline that moves it is built)
+  ├── confidence, metadataRaw (populated by story 18's pipeline; both nullable until a song runs through it)
   ├── playlists: Set<Playlist>  (@ManyToMany, mappedBy "songs"; a song can belong to more than one
   │     playlist since story 15, and to zero, a song is a standalone catalog entity independent of
   │     any playlist, see DECISIONS.md's 2026-09 "Song deletion reversed" entry)
@@ -117,19 +148,14 @@ RefreshToken
   └── expiresAt
 ```
 
-Schema changes now go through Flyway migrations (`backend/src/main/resources/db/migration/`), not Hibernate's `ddl-auto` (moved to `validate`); `spring-boot-flyway` is a required dependency alongside the third-party `flyway-core`/`flyway-database-postgresql` libraries for Spring Boot's own autoconfiguration to actually run it.
+Schema changes now go through Flyway migrations (`backend/src/main/resources/db/migration/`), not Hibernate's `ddl-auto` (moved to `validate`); `spring-boot-flyway` is a required dependency alongside the third-party `flyway-core`/`flyway-database-postgresql` libraries for Spring Boot's own autoconfiguration to actually run it. Migrations on `dev` run through V13 (`V13__add_song_reports_and_confirmations`, story 17; `V12__add_alternate_youtube_ids_and_pending_imports`, story 40).
 
 ### Planned (not yet code, target shape per ARCHITECTURE.md and TASKS.md)
 
 Listed here so the entity picture is in one place; each is still greenfield work under its own story.
 
-- `Group`, `Member` (story 39)
-- `GameSession`, `Player`, `Round`, `Guess` (story 10)
 - `ChatMessage` (story 13)
-- `SongReport`, `SongConfirmation` (story 17)
-- `PendingImport`, an alternate-YouTube-ID-to-`Song` mapping table (story 40)
 - `SongDifficulty` aggregate view or table (story 30)
-- `ADMIN` value on `User.role` (story 40)
 
 ### Analytics store (story 33)
 

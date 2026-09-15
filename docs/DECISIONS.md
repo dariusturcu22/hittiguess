@@ -770,6 +770,19 @@ Decision: two open items from earlier entries are settled. A submission whose ra
 
 Why: an attempted prompt injection is evidence of intent, not an honestly ambiguous song, so treating it as disqualifying (reject) rather than sending it to a human matches its nature; a false positive is a recoverable resubmit. Story 26's only unique gap over the two existing dedup paths is a burst of the identical YouTube ID arriving before the first submission persists, a case rare enough at this scale that a whole cache layer with its own invalidation and backend-choice questions isn't justified.
 
+
+---
+
+## 2026-09 | Two earlier open items resolved: verified-promotion criteria and build-into-microservice
+
+Decision: two open items left hanging in earlier entries are now resolved, recorded here rather than by editing those entries.
+
+The 2026-08 "Community verification through reports, not thumbs up or down" entry closed with "what promotes a reported or newly submitted song to fully verified is not yet decided." That is decided and built: story 18's lock rule promotes a song to `VERIFIED` only on exact agreement among MusicBrainz, Discogs, and Wikidata, with no LLM call; anything short of that lands at `NEEDS_REVIEW` through Wikipedia extraction and four-source reconciliation, and a total no-answer at `MANUAL_ENTRY`. The rule and its tiers were fixed in the 2026-09 "Metadata pipeline final shape" and "Verification schema" entries and shipped to `dev` in batch 20 (`feature/verification-promotion`).
+
+The 2026-09 "Metadata pipeline final shape: two-tier lock-or-LLM" entry closed with an open item asking "whether any of this gets built into the real AI microservice versus staying validated-but-unbuilt in the spike." That is decided and built: the 2026-09 "Story 20 greenlit" entry committed to building the validated pipeline into the real microservice, and it shipped to `dev` across batches 20 (verification pipeline, story 18), 21 (catalog seeding and bulk import, story 40), 22 (content safety, story 41), and 23 (parallelized fetches, story 24). The pipeline now runs in `ai/app/metadata/`, not only in `ai/spikes/`.
+
+Why: both items were phrased as still-open in entries this log never revisited, so a reader reaching them has no signal that the question closed. Recording the resolution as its own append-only entry, pointing back to the entries it settles, keeps the log honest without editing past text.
+
 ---
 
 ## 2026-09 | Story 17 report resolution: uphold semantics without a re-resolution pipeline
