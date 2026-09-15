@@ -55,6 +55,11 @@ Every rate-limited request the core service rejects, whichever limiter caught it
 | POST | `/api/admin/catalog-seeding/enqueue` | `AdminCatalogSeedingController`, admin only via `AdminAccessGuard`, enqueues submitted YouTube IDs the catalog does not already have, story 40 |
 | GET | `/api/admin/catalog-seeding/status` | `AdminCatalogSeedingController`, admin only, the backlog view (pending, done, failed counts), story 40 |
 | POST | `/api/bulk-import` | `BulkImportController`, any authenticated user, immediate on-the-spot resolution of a submitted YouTube playlist or ID list, never shares the admin backlog's queue, story 40 |
+| POST | `/api/songs/{songId}/reports` | `SongReportController`, any authenticated user reports a song's metadata with a message, suggested correct year, and sources, one report per user per song, story 17 |
+| POST | `/api/songs/{songId}/confirmations` | `SongReportController`, any authenticated user confirms a low-confidence card, one confirmation per user per song, story 17 |
+| GET | `/api/admin/song-reports/queue` | `AdminSongReportController`, admin only via `AdminAccessGuard`, the review queue ranked by the five-tier priority order, story 17 |
+| POST | `/api/admin/song-reports/{songId}/uphold` | `AdminSongReportController`, admin only, upholds a song's open reports, an editable song moves to `MANUAL_ENTRY` while a locked year is never mutated, story 17 |
+| POST | `/api/admin/song-reports/{songId}/dismiss` | `AdminSongReportController`, admin only, dismisses a song's open reports and changes nothing about the song, story 17 |
 | GET | `/actuator/health` | Actuator, unauthenticated at the top-level status; component detail gated by `management.endpoint.health.show-details=when-authorized`, story 38 |
 | GET | `/actuator/prometheus` | Actuator, Prometheus scrape format via `micrometer-registry-prometheus`, story 38 |
 
@@ -70,7 +75,7 @@ Every rate-limited request the core service rejects, whichever limiter caught it
 
 Both services accept and echo an `X-Request-Id` header on every request: the core service's `CorrelationIdFilter` and the AI microservice's `CorrelationIdMiddleware` reuse an incoming value or generate one, attach it to the active OpenTelemetry span as a `request.id` attribute, include it in every structured log line emitted while handling that request, and echo it back on the response. The core service's `CorrelationIdPropagatingInterceptor` forwards the current request's id onto the outgoing RestClient call to the AI microservice, so one user action stays traceable across both services' logs and correlates with a single trace.
 
-Story 39's group endpoints, story 10's game-session endpoints, and story 40's admin catalog-seeding and bulk-import endpoints are live and listed above. Story 10 and 11 also add STOMP client-to-server destinations for in-session actions, handled by `GameActionController`:
+Story 39's group endpoints, story 10's game-session endpoints, story 40's admin catalog-seeding and bulk-import endpoints, and story 17's report, confirmation, and admin review endpoints are live and listed above. Story 10 and 11 also add STOMP client-to-server destinations for in-session actions, handled by `GameActionController`:
 
 | Destination | Controller | Notes |
 |---|---|---|
@@ -79,13 +84,13 @@ Story 39's group endpoints, story 10's game-session endpoints, and story 40's ad
 | `/app/sessions/{sessionId}/bet` | `GameActionController` | Place a bet after the active player's guess locks, story 10 |
 | `/app/sessions/{sessionId}/skip-betting` | `GameActionController` | Skip the betting window, story 10 |
 
-The endpoints stories 9, 12, 13, 17, and 30 add (DJ link-out, voice signaling, group text chat, community reports and confirmations, difficulty-tuned generation) do not exist on `dev` yet; story 17's report endpoints are built on `feature/community-reports` (PR #100 open) but not merged. See those stories in `TASKS.md` for the planned shape. This table only lists what's live on `dev` today.
+The endpoints stories 9, 12, 13, and 30 add (DJ link-out, voice signaling, group text chat, difficulty-tuned generation) do not exist on `dev` yet. See those stories in `TASKS.md` for the planned shape. This table only lists what's live on `dev` today.
 
 ## Entity model
 
 ### Current (JPA entities, core service)
 
-Current JPA entities: `User`, `Playlist`, `PlaylistMembership`, `PlaylistBan`, `Song`, `SongArtist`, `RefreshToken`, plus `Group` and `Member` (story 39), `GameSession`, `Player`, `Round`, and `Guess` (story 10), and `AlternateYoutubeId` and `PendingImport` (story 40). The core seven are detailed below; the game and group entities follow the shapes in `ARCHITECTURE.md` and their own story sections in `TASKS.md`. `SongReport` and `SongConfirmation` (story 17) exist on `feature/community-reports` but are not merged to `dev` yet (PR #100 open), so they are listed under Planned below.
+Current JPA entities: `User`, `Playlist`, `PlaylistMembership`, `PlaylistBan`, `Song`, `SongArtist`, `RefreshToken`, plus `Group` and `Member` (story 39), `GameSession`, `Player`, `Round`, and `Guess` (story 10), `AlternateYoutubeId` and `PendingImport` (story 40), and `SongReport` and `SongConfirmation` (story 17). The core seven are detailed below; the game and group entities follow the shapes in `ARCHITECTURE.md` and their own story sections in `TASKS.md`.
 
 ```
 User
@@ -143,7 +148,7 @@ RefreshToken
   └── expiresAt
 ```
 
-Schema changes now go through Flyway migrations (`backend/src/main/resources/db/migration/`), not Hibernate's `ddl-auto` (moved to `validate`); `spring-boot-flyway` is a required dependency alongside the third-party `flyway-core`/`flyway-database-postgresql` libraries for Spring Boot's own autoconfiguration to actually run it. Migrations on `dev` run through V12 (`V12__add_alternate_youtube_ids_and_pending_imports`, story 40); story 17's `V13__add_song_reports_and_confirmations` lands with PR #100 once it merges.
+Schema changes now go through Flyway migrations (`backend/src/main/resources/db/migration/`), not Hibernate's `ddl-auto` (moved to `validate`); `spring-boot-flyway` is a required dependency alongside the third-party `flyway-core`/`flyway-database-postgresql` libraries for Spring Boot's own autoconfiguration to actually run it. Migrations on `dev` run through V13 (`V13__add_song_reports_and_confirmations`, story 17; `V12__add_alternate_youtube_ids_and_pending_imports`, story 40).
 
 ### Planned (not yet code, target shape per ARCHITECTURE.md and TASKS.md)
 
@@ -151,7 +156,6 @@ Listed here so the entity picture is in one place; each is still greenfield work
 
 - `ChatMessage` (story 13)
 - `SongDifficulty` aggregate view or table (story 30)
-- `SongReport`, `SongConfirmation` (story 17): built on `feature/community-reports`, PR #100 open against `dev`, not merged yet
 
 ### Analytics store (story 33)
 

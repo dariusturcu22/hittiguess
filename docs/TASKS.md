@@ -18,12 +18,12 @@ Stories that would write an abuse-visibility event (story 41's flagged-injection
 
 ## Docs: fix status inconsistencies (docs/fix-status-inconsistencies)
 
-An audit found several docs describe already-merged work as still pending. Batches 20 (story 18), 21 (story 40), 22 (story 41), and 23 (story 24) merged to `dev`; story 17 has open PR #100 and is in progress; story 26 is dropped. The four metadata sources, the `@Scheduled` sweepers, the game/group/report entities, `Role.ADMIN`, and Flyway through V13 all exist in the real code. This is docs-only cleanup against that ground truth.
+An audit found several docs describe already-merged work as still pending. Batches 20 (story 18), 21 (story 40), 22 (story 41), 23 (story 24), and 24 (story 17) merged to `dev`; story 26 is dropped. The four metadata sources, the `@Scheduled` sweepers, the game/group/report entities, `Role.ADMIN`, and Flyway through V13 all exist in the real code. This is docs-only cleanup against that ground truth.
 
-- [x] `PROJECT_STATE.md`: stories 18, 40, 41 move from Needs Definition to Implemented; drop story 41's stale metadata-sourcing-spike blocker clause; story 17 moves from Implemented to In Progress (PR #100 open)
+- [x] `PROJECT_STATE.md`: stories 18, 40, 41 move from Needs Definition to Implemented; drop story 41's stale metadata-sourcing-spike blocker clause; story 17 is Implemented (PR #100 merged)
 - [x] `ROADMAP.md`: check off batches 20, 21, 22, 23 and drop their "tasks need confirming" caveats; remove stories 18, 40, 41, 24 from the active Phase 2 list; mark batch 30 (story 26 cache) dropped; mark Phase 0 shipped and stop describing the sources as still to build; drop the "needs confirming" tail on batch 26 (story 9)
 - [x] `ARCHITECTURE.md`: change the story 18 lock-before-LLM line from decided-not-implemented to implemented; drop stories 18, 24, 40, 41 and story 26 from "Not yet built", keeping 9, 12, 13; add the story 41 content-safety gate to the metadata pipeline description
-- [x] `SYSTEM_REFERENCE.md`: expand the entity list to include the game/group entities plus `AlternateYoutubeId` and `PendingImport`; drop those and `ADMIN` from "Planned (not yet code)", leaving `ChatMessage` and `SongDifficulty` (report entities stay Planned, not merged to `dev`); set `User.role` to (USER, TEST, ADMIN); add the live group, session, and admin controllers to the API table; note migrations reach V12 on `dev` (V13 lands with PR #100)
+- [x] `SYSTEM_REFERENCE.md`: expand the entity list to include the game/group/report entities plus `AlternateYoutubeId` and `PendingImport`; drop those and `ADMIN` from "Planned (not yet code)", leaving `ChatMessage` and `SongDifficulty`; set `User.role` to (USER, TEST, ADMIN); add the live group, session, admin, and report controllers to the API table; note migrations reach V13 on `dev`
 - [x] `TASKS.md`: correct story 40's false "No `@Scheduled` usage" intro claim; correct story 18's "lock-evaluation logic itself still hasn't happened" intro claim
 - [x] `DECISIONS.md`: append one dated entry recording that the verified-promotion criteria and build-into-real-microservice open items are resolved (append-only, existing entries untouched)
 
@@ -379,27 +379,32 @@ Tests:
 
 ## Story 17: Community song reports and confirmations
 
-Depends on story 40 for the admin review surface, which now owns the `ADMIN` role and access check absorbed from story 19. Resolution stays fully manual: an admin decides every report, nothing here auto-changes `verificationStatus` on its own, see `DECISIONS.md`. Every card is reportable, including `VERIFIED` ones.
+Depends on story 40 for the admin review surface, which now owns the `ADMIN` role and access check absorbed from story 19. Resolution stays fully manual: an admin decides every report, nothing here auto-changes `verificationStatus` on its own, see `DECISIONS.md`. Every card is reportable, including `VERIFIED` ones. Story 40's `ADMIN` role, `AdminAccessGuard`, and `AdminAccessRequiredException`-to-403 mapping have landed on `dev`; the admin endpoints below reuse them. All frontend affordances (report button, thumbs-up, review surface UI) belong to story 28 per this file's preamble policy. The report-submitted abuse-visibility event is a stubbed structured log line marked `TODO: story 34` until story 34's event pipeline ships, per the standing policy above.
 
-- [ ] Add a `SongReport` entity (reporter, song, message, suggested correct year, sources, status)
-- [ ] `POST` endpoint to submit a report, available to any authenticated user who can view the song
-- [ ] Add a report button to the song detail page (`SongForm.tsx`), which has no report affordance today, available on every card regardless of `verificationStatus`
-- [ ] Add a `SongConfirmation` entity (user, song, timestamp): the community thumbs-up, distinct from a report, shown only on `NEEDS_REVIEW`/`MANUAL_ENTRY` cards, one per user per song
-- [ ] `POST` endpoint to submit a confirmation, same visibility rule as the thumbs-up button below
-- [ ] Add a thumbs-up affordance to the song detail page, visible only for `NEEDS_REVIEW`/`MANUAL_ENTRY` cards, "is this correct?"
-- [ ] Admin review surface (needs story 40's admin role) ordered by priority, not submission time:
+- [x] Add a `SongReport` entity (reporter, song, message, suggested correct year, sources, status), unique per reporter per song
+- [x] `POST /api/songs/{songId}/reports` to submit a report, available to any authenticated user, on any card regardless of `verificationStatus`; fires the stubbed report-submitted event
+- [ ] Add a report button to the song detail page (`SongForm.tsx`), which has no report affordance today, available on every card regardless of `verificationStatus` (story 28)
+- [x] Add a `SongConfirmation` entity (user, song, timestamp): the community thumbs-up, distinct from a report, one per user per song
+- [x] `POST /api/songs/{songId}/confirmations` to submit a confirmation, accepted only on `NEEDS_REVIEW`/`MANUAL_ENTRY` cards
+- [ ] Add a thumbs-up affordance to the song detail page, visible only for `NEEDS_REVIEW`/`MANUAL_ENTRY` cards, "is this correct?" (story 28)
+- [x] Admin review endpoint `GET /api/admin/song-reports/queue` (reuses `AdminAccessGuard`, non-admin gets 403) ordered by priority, not submission time:
   1. Converging reports: two or more independent reports on the same card suggesting the same year, ranked highest regardless of current `verificationStatus`, including `VERIFIED` cards
   2. Reported, no convergence (a single report, or several that disagree with each other): ranked below convergent reports, by `verificationStatus` (`MANUAL_ENTRY`/`NEEDS_REVIEW` before `VERIFIED`)
   3. Unreported `NEEDS_REVIEW`/`MANUAL_ENTRY` cards with at least one confirmation, ranked by confirmation count, a fast confirm rather than research
   4. Unreported `NEEDS_REVIEW`/`MANUAL_ENTRY` cards with no confirmations, ranked by `verificationStatus` alone (`MANUAL_ENTRY` before `NEEDS_REVIEW`)
   5. `VERIFIED` cards with no report never appear in the queue
-- [ ] The review surface shows the admin every signal behind a card's ranking (report count and whether they converge, on what year, confirmation count) rather than a single opaque score, the admin makes the actual call
+- [x] Admin action endpoints (reuse `AdminAccessGuard`): `POST /api/admin/song-reports/{songId}/uphold` marks the open reports upheld and, for an editable song, moves it to `MANUAL_ENTRY`; a locked (`VERIFIED`/`NEEDS_REVIEW`) song's year stays immutable, matching `PlaylistService.EDITABLE_VERIFICATION_STATUSES`. `POST /api/admin/song-reports/{songId}/dismiss` clears the open reports
+- [x] The review endpoint exposes every signal behind a card's ranking (open report count, whether they converge and on what year, confirmation count) rather than a single opaque score, the admin makes the actual call
+- [ ] Review surface UI over the endpoint above (story 28)
 
 Tests:
-- [ ] Unit tests for `SongReport` and `SongConfirmation` validation
-- [ ] Unit tests for the queue-ranking logic covering all five priority tiers, including convergence overriding a `VERIFIED` card's default low priority
-- [ ] Integration test: submitting a report end to end, visible on the admin review surface at the correct priority tier
-- [ ] Integration test: two reports on the same card suggesting different years don't count as convergence, and rank below a genuinely convergent pair
+- [x] Unit tests for `SongReport` and `SongConfirmation` behavior: duplicate report/confirm prevention, confirmation rejected on a `VERIFIED` card
+- [x] Unit tests for the queue-ranking logic covering all five priority tiers, including convergence overriding a `VERIFIED` card's default low priority
+- [x] Unit test confirming the stubbed report-submitted event fires on submission
+- [x] Unit tests confirming an uphold on a locked song leaves its year and status untouched, and an uphold on an editable song moves it to `MANUAL_ENTRY`
+- [x] Integration test: submitting a report end to end, visible on the admin review surface at the correct priority tier
+- [x] Integration test: two reports on the same card suggesting different years don't count as convergence, and rank below a genuinely convergent pair
+- [x] Integration tests: admin-only access enforced via `AdminAccessGuard` (non-admin gets 403 on the queue and on uphold), unauthenticated submission gets 401
 
 ## Story 18: Criteria for promoting a reported or newly submitted song to verified
 

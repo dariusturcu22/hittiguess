@@ -782,3 +782,11 @@ The 2026-08 "Community verification through reports, not thumbs up or down" entr
 The 2026-09 "Metadata pipeline final shape: two-tier lock-or-LLM" entry closed with an open item asking "whether any of this gets built into the real AI microservice versus staying validated-but-unbuilt in the spike." That is decided and built: the 2026-09 "Story 20 greenlit" entry committed to building the validated pipeline into the real microservice, and it shipped to `dev` across batches 20 (verification pipeline, story 18), 21 (catalog seeding and bulk import, story 40), 22 (content safety, story 41), and 23 (parallelized fetches, story 24). The pipeline now runs in `ai/app/metadata/`, not only in `ai/spikes/`.
 
 Why: both items were phrased as still-open in entries this log never revisited, so a reader reaching them has no signal that the question closed. Recording the resolution as its own append-only entry, pointing back to the entries it settles, keeps the log honest without editing past text.
+
+---
+
+## 2026-09 | Story 17 report resolution: uphold semantics without a re-resolution pipeline
+
+Decision: upholding a song's open reports marks those reports upheld and, for a song still in an editable status (`UNVERIFIED` or `MANUAL_ENTRY`), moves it to `MANUAL_ENTRY`. A locked song (`VERIFIED` or `NEEDS_REVIEW`) keeps its year and status unchanged when its reports are upheld; the upheld reports surface it for admin judgment but nothing overwrites the locked year. Dismissing a song's open reports moves them to dismissed and changes nothing about the song. Confirmations are accepted only on `NEEDS_REVIEW`/`MANUAL_ENTRY` cards. A report is allowed on any card, including `VERIFIED` ones.
+
+Why: story 40's re-resolution pipeline does not exist yet, so uphold cannot trigger an automated re-fetch. Routing an editable song to `MANUAL_ENTRY` puts it in the tier an admin fills in by hand, which is the available manual path today. The locked-year rule reuses `PlaylistService.EDITABLE_VERIFICATION_STATUSES` so a report can never do through the back door what a direct edit is already forbidden from doing. The report-submitted abuse-visibility event stays a stubbed structured log line until story 34 ships its event pipeline.

@@ -145,7 +145,7 @@ Before running the full pipeline for a new submission: normalize `artist + title
 
 ### Admin tools
 
-Bulk import mechanism: built, story 40. Two separate paths, an admin-only patient backlog queue draining daily against an LLM tier's quota, and immediate on-the-spot resolution open to any user, never sharing a queue. Admin-submitted songs skip the pipeline and are trusted immediately. Review queue for reports: built on `feature/community-reports` with PR #100 open against `dev`, story 17, ranked by a five-tier priority order (converging reports first, then non-converging reports, then confirmed-but-unreported cards, then unconfirmed cards, `VERIFIED` cards with no report never appear).
+Bulk import mechanism: built, story 40. Two separate paths, an admin-only patient backlog queue draining daily against an LLM tier's quota, and immediate on-the-spot resolution open to any user, never sharing a queue. Admin-submitted songs skip the pipeline and are trusted immediately. Review queue for reports: built, story 17, ranked by a five-tier priority order (converging reports first, then non-converging reports, then confirmed-but-unreported cards, then unconfirmed cards, `VERIFIED` cards with no report never appear).
 
 ## Deployment
 

@@ -103,7 +103,7 @@ Per `AGENTS.md`'s batching workflow: open a PR per batch as each is finished, se
 - [x] Batch 21: Story 40, catalog seeding queue and user-facing bulk import
 - [x] Batch 22: Story 41, submission content safety (non-music rejection, compilation rejection, prompt-injection defense)
 - [x] Batch 23: Story 24, parallelize metadata pipeline fetches across sources
-- [ ] Batch 24: Story 17, community song reports and confirmations; backend built with PR #100 open against `dev`, not yet merged. Story 40's admin role that the review surface depends on has shipped
+- [x] Batch 24: Story 17, community song reports and confirmations; backend built and merged to `dev`. The three frontend affordances are deferred to story 28
 - [ ] Batch 25: Story 45, import songs from an existing playlist; tasks need confirming against the real code before starting
 - [ ] Batch 26: Story 9, DJ real YouTube link-out
 - [ ] Batch 27: Story 13, group-scoped text chat; tasks need confirming against the real code before starting
