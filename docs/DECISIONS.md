@@ -747,3 +747,25 @@ Decision: after PR #81 (story 38) merged, a full pass across `PROJECT_STATE.md`,
 Why: `TASKS.md` is what work actually happens from and `PROJECT_STATE.md` is the backlog's source of truth, so a stale or colliding story ID risks a future session picking up the wrong story's context under a shared number, and a stale `ARCHITECTURE.md` summary risks re-litigating or re-building something that's already done. None of this was caused by story 38's own changes; it surfaced only because reviewing story 38's doc updates prompted a full cross-file check rather than a narrow one.
 
 ---
+
+## 2026-09 | All frontend work consolidated into story 28; every other story is backend-only
+
+Decision: story 28 (UI redesign implementation) is the single home for all frontend work. Every other story, including the gameplay stories 9, 12, and 13, is backend-only: its frontend tasks (pages, components, WebRTC/browser-side pieces, frontend tests) are tracked under story 28 and built there, wired against the real backends the prior batches shipped, not built in the story's own batch. A backend story is complete when its backend code and backend tests pass; its inline frontend tasks stay listed for traceability but don't gate that story's batch.
+
+Why: the frontend was the real bottleneck and cross-cutting risk across stories 9, 12, 13, 28, and 30, all of which needed frontend that mostly doesn't exist (the frontend today is auth plus playlist/song CRUD only). Building each story's slice of frontend in its own batch, against a design system story 28 hasn't applied yet and gameplay screens that don't exist, would mean redoing it when story 28 lands. Consolidating every frontend piece into story 28 lets each backend batch be cleanly backend-testable with no frontend dependency, and lets story 28 build the whole UI once against a complete, real backend. This also extends the pattern stories 10, 11, 14, and 46 already used (deferring their frontend to story 28) to every remaining story uniformly.
+
+---
+
+## 2026-09 | Story 34 abuse-visibility event writes are stubbed until story 34 ships
+
+Decision: where a story would write an abuse-visibility event (story 41's flagged-injection event, story 17's report-submitted event, story 27's rate-limit-exceeded event), it writes a stubbed no-op instead, a structured log line marked `TODO: story 34`, rather than a real event. Story 34 (first-party usage analytics, Phase 3) replaces these stubs with real writes into its event pipeline when it ships.
+
+Why: story 34's analytics event store and write path are Phase 3 and not built, but stories 41, 17, and 27 (all earlier) reference writing abuse-visibility events. Blocking those stories on story 34, or pulling a partial story 34 forward, both cost more than a clearly-marked stub. The stub keeps each earlier story's own logic complete and testable (the flag fires, the log line proves it) while leaving one obvious integration point for story 34 to wire, the same deferral shape the project already uses elsewhere.
+
+---
+
+## 2026-09 | Story 41 flagged-injection submissions are rejected outright; story 26 cache skipped
+
+Decision: two open items from earlier entries are settled. A submission whose raw YouTube text is flagged by story 41's prompt-injection check is rejected outright, not routed to manual review; the abuse-visibility event is still written (stubbed per the entry above). Separately, story 26 (cache metadata pipeline results) is not built: its scope-review decision resolves to skip, since story 40's batch YouTube-ID lookup and story 16's pgvector near-duplicate check already cover the exact-repeat and near-duplicate cases, leaving only a rare same-ID double-submit burst that isn't worth a caching layer at the 100-200 user scale.
+
+Why: an attempted prompt injection is evidence of intent, not an honestly ambiguous song, so treating it as disqualifying (reject) rather than sending it to a human matches its nature; a false positive is a recoverable resubmit. Story 26's only unique gap over the two existing dedup paths is a burst of the identical YouTube ID arriving before the first submission persists, a case rare enough at this scale that a whole cache layer with its own invalidation and backend-choice questions isn't justified.
