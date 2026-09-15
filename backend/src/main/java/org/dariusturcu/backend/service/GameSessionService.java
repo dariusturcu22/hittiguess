@@ -275,7 +275,7 @@ public class GameSessionService {
         gameSessionScheduler.scheduleAfter(Duration.ofSeconds(BETTING_WINDOW_SECONDS), () -> self.revealEffect(roundId));
     }
 
-    public boolean placeBet(Long sessionId, Long userId) {
+    public boolean placeBet(Long sessionId, Long userId, int position) {
         GameSession session = getSession(sessionId);
         Player player = findPlayerByUserId(session, userId);
         Round round = requireCurrentRound(session);
@@ -290,8 +290,11 @@ public class GameSessionService {
         if (player.getTokenCount() <= 0) {
             throw new ConflictException("This player has no token to bet with");
         }
+        // Validates the position is in range for the bettor's own timeline; whether it's
+        // actually correct is only decided at scoring time, once the song is revealed.
+        isPlacementCorrect(player, position, round.getSong().getReleaseYear());
 
-        int betsAccepted = roundRepository.tryAcceptBet(round.getId(), player, Instant.now());
+        int betsAccepted = roundRepository.tryAcceptBet(round.getId(), player, Instant.now(), position);
         if (betsAccepted == 0) {
             return false;
         }
@@ -374,9 +377,11 @@ public class GameSessionService {
             cardWinner = activePlayer;
         } else if (round.hasBettor()) {
             Player bettor = round.getBettorPlayer();
-            int insertionIndex = correctInsertionIndex(bettor, round.getSong().getReleaseYear());
-            bettor.insertCardAt(PlayerCard.of(round.getSong()), insertionIndex);
-            cardWinner = bettor;
+            boolean isBetCorrect = isPlacementCorrect(bettor, round.getBetPosition(), round.getSong().getReleaseYear());
+            if (isBetCorrect) {
+                bettor.insertCardAt(PlayerCard.of(round.getSong()), round.getBetPosition());
+                cardWinner = bettor;
+            }
         }
 
         round.setStatus(RoundStatus.SCORED);
@@ -416,15 +421,6 @@ public class GameSessionService {
         boolean fitsAfterPreviousCard = position == 0 || timeline.get(position - 1).getReleaseYear() <= newSongReleaseYear;
         boolean fitsBeforeNextCard = position == timeline.size() || newSongReleaseYear <= timeline.get(position).getReleaseYear();
         return fitsAfterPreviousCard && fitsBeforeNextCard;
-    }
-
-    private int correctInsertionIndex(Player player, int newSongReleaseYear) {
-        List<PlayerCard> timeline = player.getTimeline();
-        int index = 0;
-        while (index < timeline.size() && timeline.get(index).getReleaseYear() <= newSongReleaseYear) {
-            index++;
-        }
-        return index;
     }
 
     private List<Player> eligibleBettors(Round round) {
