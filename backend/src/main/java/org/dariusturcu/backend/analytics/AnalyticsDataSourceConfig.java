@@ -32,7 +32,7 @@ public class AnalyticsDataSourceConfig {
         return analyticsDataSourceProperties.initializeDataSourceBuilder().build();
     }
 
-    @Bean
+    @Bean(defaultCandidate = false)
     public Flyway analyticsFlyway(@Qualifier("analyticsDataSource") DataSource analyticsDataSource) {
         Flyway flyway = Flyway.configure()
                 .dataSource(analyticsDataSource)
