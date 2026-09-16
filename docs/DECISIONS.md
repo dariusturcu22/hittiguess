@@ -910,6 +910,14 @@ Why: a batch plan earns its place by giving a session a starting point without r
 
 ---
 
+## 2026-09 | Test account seeding grows from one account to three
+
+Decision: `TestAccountSeeder` (story 44) now seeds three fixed `TEST`-role accounts (`test-agent-1`/`2`/`3@hittiguess.local`) instead of one, each idempotent independently. `seedTestAccount()` becomes a private per-account helper; the public entry point is `seedTestAccounts()`, iterating a `List<TestAccount>` record rather than three parallel constants.
+
+Why: testing a real multiplayer round needs three genuinely separate, simultaneously logged-in sessions, one DJ, one active player, one other player, not one account reused across browser tabs, which shares cookies and can't hold three independent WebSocket connections at once. Three fixed, reusable accounts let an agent or a Playwright script log in as all three at once without registering throwaway accounts per run, the same reasoning that motivated one reusable test account in the first place.
+
+---
+
 ## 2026-09 | Story 50 auth hardening: login blocks unverified accounts, totpSecret stays a plain column, and the 2FA login step uses a scoped JWT
 
 Decision: an unverified local account (`emailVerified` false) cannot log in at all; `AuthService.login` throws `EmailNotVerifiedException`, mapped to 403 with a message distinct from `BadCredentialsException`'s 401, so a future frontend can tell the two apart without parsing text. This is the task list's own stated simpler default and nothing in the real code argued against it: there is no existing partial-access mode for an unverified account to fall into, and gating every downstream endpoint individually would be far more code for the same outcome. `POST /auth/register` no longer logs the caller in immediately; it creates the account, sends the verification email, and returns `AuthResponse` with no cookies set, since auto-login would otherwise hand out a working session to an account the login endpoint itself would reject a moment later. Existing accounts are backfilled `emailVerified = true` by migration `V18` (`ADD COLUMN ... DEFAULT TRUE`, then the default flipped to `FALSE`), since they already log in successfully today and retroactively locking them out on deploy would be a regression, not hardening.

@@ -573,7 +573,7 @@ Checked against real code: the backend has exactly one test file, an empty `cont
 - [ ] Add tests for `ai/app/metadata/router.py`, `service.py`'s orchestration, and `auth.py`'s internal-key check, using FastAPI's `TestClient`
 - [ ] Add a frontend unit test runner (Vitest or Jest, neither installed today) plus React Testing Library, and a `test` script in `package.json`
 - [ ] Add frontend unit tests for the song forms' hand-written validation (`AddSongForm.tsx`, `SongForm.tsx`) and the auth forms
-- [ ] Add Playwright for frontend integration/end-to-end tests, none exist today; separate from the unit test runner above, drives the real browser against the real backend rather than mocking it
+- [x] Add Playwright for frontend integration/end-to-end tests, none exist today; separate from the unit test runner above, drives the real browser against the real backend rather than mocking it (see this file's Chore: Playwright end-to-end tooling section)
 - [ ] Add Playwright coverage for the core flows that exist today: login/register, playlist CRUD, song add/edit, export
 - [ ] Add the new test steps to `.github/workflows/pr-checks.yml` for all three services
 
@@ -641,9 +641,9 @@ Design phase complete: `docs/design/hittiguess-design.html` covers all 53 screen
 - [x] Design phase: establish the fresh visual direction (color, type, spacing, component style) and apply it across every existing page: landing, login, register, forgot-password, dashboard/playlist list, playlist detail, song detail, add song, join-by-invite. See `docs/design/hittiguess-design.html`
 - [x] Design phase: extend the same visual system to the gameplay screens `GAME_DESIGN.md` specs but that don't exist as code yet: group lobby (member list, admin crown, join code/link, settings), game session/timeline (drag-and-drop cards, guess box, token count, betting window), DJ view (open-in-YouTube link-out), voice sidebar, text chat overlay, turn notification banner, the minimized "playing while away" widget state, and the results/leaderboard screen. See `docs/design/hittiguess-design.html`
 - [x] Review pass against every mockup with the project owner before implementation starts, checking each gameplay screen against `GAME_DESIGN.md`'s spec for anything the design missed
-- [ ] Implementation: apply the new visual system to the existing pages/components in `frontend/app` and `frontend/components`, replacing the current shadcn theme tokens with the new ones
+- [x] Implementation: apply the new visual system to the existing pages/components in `frontend/app` and `frontend/components`, replacing the current shadcn theme tokens with the new ones
 - [ ] Implementation: build the new gameplay screens as real Next.js components/routes; wire to stories 10/11/39's actual backend once those land, using representative mock state in the meantime so this doesn't block on their implementation timing
-- [ ] Decide and document the actual component/token boundary: shadcn stays as the underlying primitive library with new theme tokens, versus specific components getting replaced outright, per what the mockups actually need
+- [x] Component/token boundary: retheme only. Every shadcn component (Button, Input, Card, Table, Sidebar, and the rest of `frontend/components/shadcn`) stays the underlying primitive on every screen; the new visual system is applied entirely through `globals.css` tokens and Tailwind/`cva` overrides on those same primitives (radius, border width and color, the hard-offset shadow scale, pill shape, font family). No shadcn component is swapped for hand-built markup anywhere a form control, button, card, or other interactive or structural element is involved. The one exception is genuinely decorative, non-interactive content with no shadcn analog (illustrated blobs, the landing page's step diagram, background dot grids), never a layout container or anything a user clicks or types into.
 
 Tests:
 - [ ] Frontend test: each redesigned existing page renders without regression (a smoke test per route)

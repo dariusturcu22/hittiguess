@@ -376,3 +376,12 @@ An audit found several docs describe already-merged work as still pending. Batch
 - [x] `SYSTEM_REFERENCE.md`: expand the entity list to include the game/group/report entities plus `AlternateYoutubeId` and `PendingImport`; drop those and `ADMIN` from "Planned (not yet code)", leaving `ChatMessage` and `SongDifficulty`; set `User.role` to (USER, TEST, ADMIN); add the live group, session, admin, and report controllers to the API table; note migrations reach V13 on `dev`
 - [x] `TASKS.md`: correct story 40's false "No `@Scheduled` usage" intro claim; correct story 18's "lock-evaluation logic itself still hasn't happened" intro claim
 - [x] `DECISIONS.md`: append one dated entry recording that the verified-promotion criteria and build-into-real-microservice open items are resolved (append-only, existing entries untouched)
+
+## Chore: Playwright end-to-end tooling
+
+Story 22 owns the frontend's broad test suite, still unbuilt. Ahead of that, real-time multiplayer behavior (WebSocket-synced game sessions, group lobbies) needs genuinely separate, simultaneously-authenticated browser sessions to test at all, not one tab reused for multiple roles. This adds the tool and one proof that the mechanism works, not the broad suite itself.
+
+- [x] Add `@playwright/test` as a frontend dev dependency and `playwright.config.ts` (chromium only, `http://localhost:3000`)
+- [x] Add `frontend/e2e/three-test-accounts-login.spec.ts`: three isolated `browser.newContext()` sessions log in as the three seeded TEST-role accounts and each lands on `/playlists`, proving the pattern a future DJ/active-player/other-player game-session test builds on
+- [x] Add an `e2e` script to `frontend/package.json`
+- [x] Document running the suite in `docs/DEV_SETUP.md`
