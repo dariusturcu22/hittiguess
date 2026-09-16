@@ -8,6 +8,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import React, { use } from "react";
 import { toast } from "sonner";
+import { IconLoader2 } from "@tabler/icons-react";
 
 interface PageProps {
   params: Promise<{ inviteCode: string }>;
@@ -38,8 +39,9 @@ export default function JoinPlaylistPage({ params }: PageProps) {
   }, [inviteCode, joinPlaylist, queryClient, router]);
 
   return (
-    <div className="flex items-center justify-center min-h-screen">
-      <p className="text-muted-foreground">Joining playlist...</p>
+    <div className="flex flex-col items-center justify-center min-h-screen gap-4 bg-dotted">
+      <IconLoader2 className="size-8 text-accent animate-spin" />
+      <p className="text-muted-foreground text-sm">Joining playlist...</p>
     </div>
   );
 }

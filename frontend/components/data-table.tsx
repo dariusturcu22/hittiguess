@@ -27,6 +27,7 @@ import {
 import Link from "next/link";
 import { toast } from "sonner";
 
+import { Badge } from "@/components/shadcn/badge";
 import { Button } from "@/components/shadcn/button";
 import { Checkbox } from "@/components/shadcn/checkbox";
 import { Input } from "@/components/shadcn/input";
@@ -63,7 +64,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/shadcn/alert-dialog";
-import { SongDTO } from "@/hooks/models";
+import { SongDTO, SongDTOVerificationStatus } from "@/hooks/models";
 import { useGetPlaylist } from "@/hooks/generated/playlist-management/playlist-management";
 
 interface SongsDataTableProps {
@@ -161,12 +162,22 @@ export function DataTable({
       accessorKey: "title",
       header: "Title",
       cell: ({ row }) => (
-        <Link
-          href={`/playlists/${playlistId}/songs/${row.original.id}`}
-          className="text-foreground hover:underline cursor-pointer font-medium"
-        >
-          {row.original.title}
-        </Link>
+        <div className="flex items-center gap-2">
+          <Link
+            href={`/playlists/${playlistId}/songs/${row.original.id}`}
+            className="text-foreground hover:underline cursor-pointer font-medium"
+          >
+            {row.original.title}
+          </Link>
+          {row.original.verificationStatus ===
+            SongDTOVerificationStatus.NEEDS_REVIEW && (
+            <Badge variant="warning">Needs review</Badge>
+          )}
+          {row.original.verificationStatus ===
+            SongDTOVerificationStatus.MANUAL_ENTRY && (
+            <Badge variant="destructive">Manual entry</Badge>
+          )}
+        </div>
       ),
     },
     {

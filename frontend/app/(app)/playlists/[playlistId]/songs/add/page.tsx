@@ -33,7 +33,7 @@ export default function AddSongPage({ params }: PageProps) {
         playlists={playlists}
         currentPlaylistId={playlistId}
       />
-      <SidebarInset>
+      <SidebarInset className="bg-dotted">
         <SiteHeader title="Add Song" />
         <div className="flex flex-1 flex-col p-4 md:p-6">
           <div className="mb-6">
