@@ -51,11 +51,6 @@
   --shadow-color: rgba(76, 79, 105, 0.25);
   --dot-color: rgba(76, 79, 105, 0.2);
 
-  --font-sans: var(--font-space-grotesk), "Space Grotesk", sans-serif;
-  --font-display: var(--font-bungee), "Bungee", sans-serif;
-  --font-wordmark: var(--font-baloo-2), "Baloo 2", sans-serif;
-  --font-mono: var(--font-space-grotesk), "Space Grotesk", monospace;
-  --font-serif: var(--font-space-grotesk), "Space Grotesk", serif;
   --radius: 1.125rem;
   --spacing: 0.25rem;
 }
@@ -134,11 +129,16 @@
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
 
-  --font-sans: var(--font-sans);
-  --font-mono: var(--font-mono);
-  --font-serif: var(--font-serif);
-  --font-display: var(--font-display);
-  --font-wordmark: var(--font-wordmark);
+  /* Bungee/Baloo 2/Space Grotesk don't change between light and dark, so
+     unlike the color tokens above these are declared directly here instead
+     of aliasing a same-named :root variable — a same-named alias is a
+     circular reference (invalid at computed-value time), which silently
+     drops the whole font-family declaration back to the browser default. */
+  --font-sans: var(--font-space-grotesk), "Space Grotesk", sans-serif;
+  --font-mono: var(--font-space-grotesk), "Space Grotesk", monospace;
+  --font-serif: var(--font-space-grotesk), "Space Grotesk", serif;
+  --font-display: var(--font-bungee), "Bungee", sans-serif;
+  --font-wordmark: var(--font-baloo-2), "Baloo 2", sans-serif;
 
   /* Cards/modals get the 18px radius from the mockups, fields/inputs 13px.
      These are literal values, not a calc() scale, since the design uses two

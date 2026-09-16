@@ -42,6 +42,7 @@ class TestAccountSeederTest {
         assertThat(savedUser.getUsername()).isEqualTo(testAccount.username());
         assertThat(savedUser.getEmail()).isEqualTo(testAccount.email());
         assertThat(savedUser.getRole()).isEqualTo(Role.TEST);
+        assertThat(savedUser.isEmailVerified()).isTrue();
 
         when(userRepository.existsUserByEmail(testAccount.email())).thenReturn(true);
         testAccountSeeder.seedTestAccounts();
