@@ -10,6 +10,35 @@ Start with [AGENTS.md](AGENTS.md). It links out to the product vision, game desi
 
 ## Running locally
 
+### Everything at once
+
+Copy `backend/.env.example` to `backend/.env`, `ai/.env.example` to `ai/.env`, and `frontend/.env.example` to `frontend/.env.local`, filling in real values, then set up the AI service's virtualenv (`cd ai && python -m venv .venv` and install its requirements) and run `npm install` in `frontend/`. After that, one command starts Postgres, the backend, the AI service, and the frontend together:
+
+```bash
+make dev
+# or, without make:
+./scripts/dev.sh
+```
+
+```powershell
+# Windows PowerShell, no Git Bash or make required:
+.\scripts\dev.ps1
+```
+
+Ctrl+C stops the backend, AI service, and frontend; the database containers keep running (`docker compose -f backend/docker-compose.yml down` to stop them too).
+
+Ports:
+
+| Service | URL |
+| --- | --- |
+| Frontend | http://localhost:3000 |
+| Backend | http://localhost:8080 |
+| AI service | http://localhost:8000 |
+| Postgres (core) | localhost:5500 |
+| Postgres (analytics) | localhost:5501 |
+
+### Running services individually
+
 Backend:
 
 ```bash
@@ -18,6 +47,17 @@ cd backend
 ```
 
 Needs Java 25 and a Postgres instance, either `docker-compose up -d` or your own. Copy `backend/.env.example` to `backend/.env` and fill in real values, or otherwise get its variables into your environment before running.
+
+AI service:
+
+```bash
+cd ai
+python -m venv .venv
+.venv/Scripts/pip install -e .   # .venv/bin/pip on macOS/Linux
+.venv/Scripts/python -m uvicorn app.main:app --reload
+```
+
+Copy `ai/.env.example` to `ai/.env` and fill in real values.
 
 Frontend:
 
