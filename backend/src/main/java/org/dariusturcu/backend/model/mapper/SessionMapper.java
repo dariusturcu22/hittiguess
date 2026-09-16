@@ -1,5 +1,6 @@
 package org.dariusturcu.backend.model.mapper;
 
+import org.dariusturcu.backend.model.session.BetDTO;
 import org.dariusturcu.backend.model.session.GameSession;
 import org.dariusturcu.backend.model.session.GameSessionDTO;
 import org.dariusturcu.backend.model.session.Player;
@@ -9,11 +10,16 @@ import org.dariusturcu.backend.model.session.PlayerDTO;
 import org.dariusturcu.backend.model.session.Round;
 import org.dariusturcu.backend.model.session.RoundDTO;
 import org.dariusturcu.backend.model.session.RoundStatus;
+import org.dariusturcu.backend.repository.BetRepository;
 
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
 @Component
+@RequiredArgsConstructor
 public class SessionMapper {
+
+    private final BetRepository betRepository;
 
     public PlayerCardDTO toCardDTO(PlayerCard card) {
         return new PlayerCardDTO(card.getSong().getId(), card.getSong().getTitle(), card.getReleaseYear(), card.getPosition());
@@ -43,8 +49,12 @@ public class SessionMapper {
                 round.getStatus(),
                 round.getPlacedPosition(),
                 round.getPlacementCorrect(),
-                round.getBettorPlayer() != null ? round.getBettorPlayer().getId() : null,
-                round.getBetPosition(),
+                // Queried directly rather than through round.getBets(): that association is
+                // lazy, and a round handed to this mapper isn't always still attached to an
+                // open persistence context by the time this runs.
+                betRepository.findByRoundId(round.getId()).stream()
+                        .map(bet -> new BetDTO(bet.getPlayer().getId(), bet.getPosition()))
+                        .toList(),
                 isRevealedOrLater ? artistNames(round) : null,
                 isRevealedOrLater ? round.getSong().getTitle() : null,
                 isRevealedOrLater ? round.getSong().getReleaseYear() : null);

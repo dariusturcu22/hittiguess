@@ -7,6 +7,7 @@ import org.dariusturcu.backend.model.group.DjMode;
 import org.dariusturcu.backend.model.group.Group;
 import org.dariusturcu.backend.model.group.Member;
 import org.dariusturcu.backend.model.mapper.SessionMapper;
+import org.dariusturcu.backend.model.session.Bet;
 import org.dariusturcu.backend.model.session.GameSession;
 import org.dariusturcu.backend.model.session.Guess;
 import org.dariusturcu.backend.model.session.LeaderboardEntryDTO;
@@ -23,6 +24,7 @@ import org.dariusturcu.backend.model.session.SessionStatus;
 import org.dariusturcu.backend.model.session.TitleArtistGuessRequest;
 import org.dariusturcu.backend.model.song.Song;
 import org.dariusturcu.backend.model.song.SongArtist;
+import org.dariusturcu.backend.repository.BetRepository;
 import org.dariusturcu.backend.repository.GameSessionRepository;
 import org.dariusturcu.backend.repository.GroupRepository;
 import org.dariusturcu.backend.repository.GuessRepository;
@@ -39,6 +41,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.annotation.Lazy;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -72,6 +75,7 @@ public class GameSessionService {
     private final PlayerRepository playerRepository;
     private final RoundRepository roundRepository;
     private final GuessRepository guessRepository;
+    private final BetRepository betRepository;
     private final GroupRepository groupRepository;
     private final SongRepository songRepository;
     private final GroupService groupService;
@@ -290,18 +294,23 @@ public class GameSessionService {
         if (player.getTokenCount() <= 0) {
             throw new ConflictException("This player has no token to bet with");
         }
-        // Validates the position is in range for the bettor's own timeline; whether it's
+        if (position == round.getPlacedPosition()) {
+            throw new IllegalArgumentException(
+                    "Cannot bet on the gap the active player already placed their own card in");
+        }
+        // Validates the position is in range for the active player's own timeline, the
+        // one shared timeline every bet this round is placed against; whether it's
         // actually correct is only decided at scoring time, once the song is revealed.
-        isPlacementCorrect(player, position, round.getSong().getReleaseYear());
+        isPlacementCorrect(round.getActivePlayer(), position, round.getSong().getReleaseYear());
 
-        int betsAccepted = roundRepository.tryAcceptBet(round.getId(), player, Instant.now(), position);
-        if (betsAccepted == 0) {
+        try {
+            betRepository.insertBet(round.getId(), player.getId(), position, Instant.now());
+        } catch (DataIntegrityViolationException exception) {
             return false;
         }
         playerRepository.deductToken(player.getId());
 
-        Round updatedRound = getRound(round.getId());
-        publishRoundEvent(SessionEventType.BET_PLACED, session, updatedRound);
+        publishRoundEvent(SessionEventType.BET_PLACED, session, round);
         return true;
     }
 
@@ -361,8 +370,8 @@ public class GameSessionService {
     // Effect method applying the four scoring outcome rules from GAME_DESIGN.md, then
     // either completing the session (win condition reached) or advancing to the next
     // round. Also the reuse point for the turn-timeout and explicit-leave paths: both set
-    // placementCorrect to false with no bettor before calling this, which discards the
-    // card exactly as a live wrong-guess-no-bet round would.
+    // placementCorrect to false with no bets before calling this, which discards the
+    // card exactly as a live wrong-guess-no-bets round would.
     public void scoreRoundEffect(Long roundId) {
         Round round = getRound(roundId);
         if (round.getStatus() == RoundStatus.SCORED) {
@@ -375,11 +384,17 @@ public class GameSessionService {
         if (Boolean.TRUE.equals(round.getPlacementCorrect())) {
             activePlayer.insertCardAt(PlayerCard.of(round.getSong()), round.getPlacedPosition());
             cardWinner = activePlayer;
-        } else if (round.hasBettor()) {
-            Player bettor = round.getBettorPlayer();
-            boolean isBetCorrect = isPlacementCorrect(bettor, round.getBetPosition(), round.getSong().getReleaseYear());
-            if (isBetCorrect) {
-                bettor.insertCardAt(PlayerCard.of(round.getSong()), round.getBetPosition());
+        } else {
+            // Positions are unique per round, so at most one accepted bet can sit on the
+            // gap that's objectively correct for the active player's own timeline.
+            Bet winningBet = betRepository.findByRoundId(round.getId()).stream()
+                    .filter(bet -> isPlacementCorrect(activePlayer, bet.getPosition(), round.getSong().getReleaseYear()))
+                    .findFirst()
+                    .orElse(null);
+            if (winningBet != null) {
+                Player bettor = winningBet.getPlayer();
+                int insertionIndex = correctInsertionIndex(bettor, round.getSong().getReleaseYear());
+                bettor.insertCardAt(PlayerCard.of(round.getSong()), insertionIndex);
                 cardWinner = bettor;
             }
         }
@@ -423,11 +438,26 @@ public class GameSessionService {
         return fitsAfterPreviousCard && fitsBeforeNextCard;
     }
 
+    // Where a winning bettor's card lands on THEIR OWN timeline: the first gap whose
+    // neighboring release years the new song's year fits between. Only ever called for
+    // the bettor who won the card, never to validate a bet itself (isPlacementCorrect
+    // does that, against the active player's timeline instead).
+    private int correctInsertionIndex(Player player, int newSongReleaseYear) {
+        List<PlayerCard> timeline = player.getTimeline();
+        int index = 0;
+        while (index < timeline.size() && timeline.get(index).getReleaseYear() <= newSongReleaseYear) {
+            index++;
+        }
+        return index;
+    }
+
     private List<Player> eligibleBettors(Round round) {
+        Set<Long> playersWhoAlreadyBet = betRepository.findPlayerIdsByRoundId(round.getId());
         return round.getSession().getPlayers().stream()
                 .filter(candidate -> candidate.getStatus() == PlayerStatus.ACTIVE)
                 .filter(candidate -> !candidate.getId().equals(round.getActivePlayer().getId()))
                 .filter(candidate -> !candidate.getId().equals(round.getDjPlayer().getId()))
+                .filter(candidate -> !playersWhoAlreadyBet.contains(candidate.getId()))
                 .toList();
     }
 
