@@ -2,9 +2,9 @@
 
 This is the source of truth for day-to-day work. Consult PROJECT_STATE.md only when you need the bigger picture behind one of these.
 
-The tasks below, under stories 9 and 12, are drafts and have not yet been confirmed against the real implementation, except where noted. Before starting any of them, check them against the current code: some tasks may already be done, some may not apply the way they're written, and some may be missing. Once a story's tasks are confirmed accurate, update its status to Ready in PROJECT_STATE.md.
+Before starting any task, check it against the current code: some tasks may already be done, some may not apply the way they're written, and some may be missing. Once a story's tasks are confirmed accurate, update its status to Ready (or Implemented, once its own backend batch is actually done) in PROJECT_STATE.md.
 
-Stories 10, 11, and 39 are implemented (backend). Stories 9 and 12 were confirmed blocked on those three; their blockers have now shipped, but their draft tasks still need confirming against the real code before either moves to Ready.
+Stories 9, 10, 11, 12, 13, 39, and most of the rest of Phase 1 and Phase 2 are now implemented (backend); see PROJECT_STATE.md for the current status of every story. Their frontend tasks stay open, deferred to story 28 per the standing policy below.
 
 "Next available task" means the earliest unchecked box under a Ready or In Progress story.
 
@@ -395,7 +395,7 @@ Tests:
 - [x] Unit tests for compilation rejection
 - [x] Unit tests for the injection-detection check (mocked LLM call): flags known injection patterns, passes clean text through unaffected
 - [x] Integration test: a submission through any path, single-song or bulk, that fails classification never reaches the full metadata pipeline
-  - Covered for the resolve path: a rejected submission is asserted never to reach source gathering or the synthesis call. The bulk-import path is story 40 and does not exist yet
+  - Covered for the resolve path: a rejected submission is asserted never to reach source gathering or the synthesis call. Story 40's bulk-import path has since landed but doesn't have this same integration test coverage yet
 
 ## Story 17: Community song reports and confirmations
 
@@ -456,8 +456,8 @@ Since the source functions are synchronous and `resolve_metadata` is a synchrono
 - [x] Preserve each source's failure isolation: one source raising or timing out does not sink the others, each future is resolved through a per-source guard that logs and yields an empty result on failure, on top of the sources' own internal try/except
 - [x] Preserve the synthesis ordering: the gather completes before the prompt is built and the synthesis call runs, unchanged from before
 - [ ] Add a per-source hard timeout at the gather boundary (a cap on how long the whole gather waits on any one source, distinct from each source's own request timeout): deferred, each source already carries its own request-level timeout through `get_with_backoff`, a gather-level cap is only worth adding alongside story 40's on-the-spot latency budget
-- [ ] Wire the concurrent gather into story 40's on-the-spot path specifically and keep the admin backlog drain sequential: deferred to story 40, neither path exists yet
-- [ ] Confirm the priority-queue rate-limit design (story 40, `DECISIONS.md`'s "Rate-limit contention" entry) still holds once fetches run concurrently: deferred to story 40, the pause/resume mechanism it describes is not built yet
+- [ ] Wire the concurrent gather into story 40's on-the-spot path specifically and keep the admin backlog drain sequential: story 40 has since landed with both paths built; confirm whether they already exercise this story's concurrent gather or still need wiring into it
+- [ ] Confirm the priority-queue rate-limit design (story 40, `DECISIONS.md`'s "Rate-limit contention" entry) still holds once fetches run concurrently: story 40's pause/resume mechanism has since been built; this is to verify the interaction, not to build either piece from scratch
 
 Tests:
 - [x] Unit test confirming the three structured sources are fetched concurrently, not sequentially (controlled per-source delay, asserts total elapsed is bounded well under the sequential sum)
