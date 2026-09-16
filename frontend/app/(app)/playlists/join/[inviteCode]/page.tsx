@@ -39,7 +39,7 @@ export default function JoinPlaylistPage({ params }: PageProps) {
   }, [inviteCode, joinPlaylist, queryClient, router]);
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen gap-4 bg-dotted">
+    <div className="flex h-full flex-col items-center justify-center gap-4">
       <IconLoader2 className="size-10 text-accent animate-spin" />
       <p
         className="font-display text-lg text-accent"

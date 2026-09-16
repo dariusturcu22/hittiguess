@@ -2,8 +2,6 @@
 
 import * as React from "react";
 import { IconCheck, IconPencil, IconX } from "@tabler/icons-react";
-import { Separator } from "@/components/shadcn/separator";
-import { SidebarTrigger } from "@/components/shadcn/sidebar";
 import { Input } from "@/components/shadcn/input";
 import { Button } from "@/components/shadcn/button";
 
@@ -58,13 +56,8 @@ export function SiteHeader({
   };
 
   return (
-    <header className="flex h-(--header-height) shrink-0 items-center gap-2 border-b-[3px] border-border transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-(--header-height)">
+    <header className="flex h-16 shrink-0 items-center gap-2 border-b-[3px] border-border">
       <div className="flex w-full items-center gap-1 px-4 lg:gap-2 lg:px-6">
-        <SidebarTrigger className="-ml-1" />
-        <Separator
-          orientation="vertical"
-          className="mx-2 data-[orientation=vertical]:h-4"
-        />
         {isEditing ? (
           <div className="flex items-center gap-1">
             <Input
