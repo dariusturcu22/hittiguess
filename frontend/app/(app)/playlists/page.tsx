@@ -36,7 +36,7 @@ export default function PlaylistPage() {
         playlists={playlists}
         currentPlaylistId={undefined}
       />
-      <SidebarInset className="bg-dotted">
+      <SidebarInset className="bg-dotted border-[3px] border-border">
         <SiteHeader title="-- No playlist selected --" />
       </SidebarInset>
     </SidebarProvider>

@@ -94,7 +94,7 @@ export default function PlaylistPage({ params }: PageProps) {
         playlists={playlists}
         currentPlaylistId={currentPlaylist?.id}
       />
-      <SidebarInset className="bg-dotted">
+      <SidebarInset className="bg-dotted border-[3px] border-border">
         <SiteHeader
           title={currentPlaylist?.name}
           color={
