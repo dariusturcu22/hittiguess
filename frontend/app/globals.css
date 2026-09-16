@@ -72,6 +72,14 @@
      on --background, not for icons on --sidebar). */
   --icon-muted: #9ca0b0;
 
+  /* Landing and auth headlines use a distinct accent from the app shell's
+     --accent: in dark mode the mockups color them pink (#f5c2e7), not the
+     mauve (#cba6f7) used for the sidebar's active icon and the playlist
+     pages' own titles. Light mode happens to use the same purple for both,
+     so this only diverges from --accent in dark mode, but needs its own
+     token rather than reading --accent directly. */
+  --marketing-accent: #8f4fe3;
+
   --radius: 1.125rem;
   --spacing: 0.25rem;
 }
@@ -123,6 +131,8 @@
   --surface-sunken: #181825;
 
   --icon-muted: #6c7086;
+
+  --marketing-accent: #f5c2e7;
 }
 
 @theme inline {
@@ -158,6 +168,7 @@
   --color-sidebar-ring: var(--sidebar-ring);
   --color-surface-sunken: var(--surface-sunken);
   --color-icon-muted: var(--icon-muted);
+  --color-marketing-accent: var(--marketing-accent);
 
   /* Bungee/Baloo 2/Space Grotesk don't change between light and dark, so
      unlike the color tokens above these are declared directly here instead

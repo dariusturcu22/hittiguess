@@ -125,7 +125,7 @@ export default function LandingPage() {
         <div className="relative z-10 grid md:grid-cols-2 gap-10 items-center max-w-6xl mx-auto">
           <div className="flex flex-col gap-6">
             <h1
-              className="font-display text-4xl sm:text-5xl md:text-6xl leading-[1.05] text-accent"
+              className="font-display text-4xl sm:text-5xl md:text-6xl leading-[1.05] text-marketing-accent"
               style={{ textShadow: "4px 4px 0 var(--text-shadow-on-page)" }}
             >
               PLACE IT.
@@ -145,7 +145,7 @@ export default function LandingPage() {
               </Button>
               <span className="font-display text-xs text-muted-foreground">
                 or{" "}
-                <Link href="/login" className="text-accent underline underline-offset-4">
+                <Link href="/login" className="text-marketing-accent underline underline-offset-4">
                   sign in
                 </Link>
               </span>
@@ -184,7 +184,7 @@ export default function LandingPage() {
 
       <section className="bg-dotted px-6 md:px-16 py-16 md:py-24">
         <h2
-          className="font-display text-2xl md:text-3xl text-accent text-center"
+          className="font-display text-2xl md:text-3xl text-marketing-accent text-center"
           style={{ textShadow: "3px 3px 0 var(--text-shadow-on-page)" }}
         >
           How a round works
@@ -210,7 +210,7 @@ export default function LandingPage() {
                 </svg>
               </div>
               <div>
-                <div className="font-display text-sm text-accent">
+                <div className="font-display text-sm text-marketing-accent">
                   {step.title}
                 </div>
                 <div className="text-muted-foreground text-sm mt-1.5">
@@ -239,7 +239,7 @@ export default function LandingPage() {
               index % 2 === 0 ? "text-left" : "md:text-right text-left"
             }`}
           >
-            <h2 className="font-display text-2xl md:text-3xl leading-tight text-accent">
+            <h2 className="font-display text-2xl md:text-3xl leading-tight text-marketing-accent">
               {highlight.heading}
             </h2>
             <p className="text-foreground/90 mt-4 leading-relaxed">
@@ -257,7 +257,7 @@ export default function LandingPage() {
           style={{ boxShadow: "8px 8px 0 var(--shadow-color)" }}
         >
           <h2
-            className="font-display text-2xl md:text-3xl text-accent"
+            className="font-display text-2xl md:text-3xl text-marketing-accent"
             style={{ textShadow: "3px 3px 0 var(--text-shadow-on-card)" }}
           >
             Ready?
@@ -297,10 +297,10 @@ export default function LandingPage() {
           </div>
           <div className="flex flex-col gap-2.5 text-sm text-muted-foreground">
             <span>How it works</span>
-            <Link href="/playlists" className="hover:text-accent">
+            <Link href="/playlists" className="hover:text-marketing-accent">
               Playlists
             </Link>
-            <Link href="/login" className="hover:text-accent">
+            <Link href="/login" className="hover:text-marketing-accent">
               Sign in
             </Link>
           </div>

@@ -28,7 +28,7 @@ export default function ForgotPasswordPage() {
 
         <div className="text-center mt-4 max-w-[340px]">
           <h1
-            className="font-display text-2xl text-accent"
+            className="font-display text-2xl text-marketing-accent"
             style={{ textShadow: "3px 3px 0 var(--text-shadow-on-card)" }}
           >
             Forgot password?
