@@ -32,7 +32,7 @@ import {
   useSubmitConfirmation,
   useSubmitReport,
 } from "@/hooks/generated/community-song-reports/community-song-reports";
-import { GameCard } from "./GameCard";
+import { GameCard } from "@/components/game-card";
 
 interface SongReadOnlyViewProps {
   song: SongDTO;

@@ -21,7 +21,7 @@ import {
   getGetSongQueryKey,
   useUpdateSong,
 } from "@/hooks/generated/playlist-management/playlist-management";
-import { GameCard } from "./GameCard";
+import { GameCard } from "@/components/game-card";
 
 const YOUTUBE_ID_PATTERN = /^[a-zA-Z0-9_-]{11}$/;
 const HEX_COLOR_PATTERN = /^#[0-9a-fA-F]{6}$/;
