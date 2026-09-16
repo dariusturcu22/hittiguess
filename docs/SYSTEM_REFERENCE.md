@@ -92,7 +92,7 @@ The endpoints stories 9, 13, and 30 add (DJ link-out, group text chat, difficult
 
 ### Current (JPA entities, core service)
 
-Current JPA entities: `User`, `Playlist`, `PlaylistMembership`, `PlaylistBan`, `Song`, `SongArtist`, `RefreshToken`, plus `Group` and `Member` (story 39), `GameSession`, `Player`, `Round`, and `Guess` (story 10), `AlternateYoutubeId` and `PendingImport` (story 40), and `SongReport` and `SongConfirmation` (story 17). The core seven are detailed below; the game and group entities follow the shapes in `ARCHITECTURE.md` and their own story sections in `TASKS.md`.
+Current JPA entities: `User`, `Playlist`, `PlaylistMembership`, `PlaylistBan`, `Song`, `SongArtist`, `RefreshToken`, plus `Group` and `Member` (story 39), `GameSession`, `Player`, `Round`, `Guess`, and `Bet` (story 10), `AlternateYoutubeId` and `PendingImport` (story 40), and `SongReport` and `SongConfirmation` (story 17). `Bet` (round, player, position, placedAt) is one accepted bet against a round's active-player timeline; a round can carry several, one per distinct gap, enforced by unique constraints on the `bets` table rather than a single bettor column on `Round`. The core seven are detailed below; the game and group entities follow the shapes in `ARCHITECTURE.md` and their own story sections in `TASKS.md`.
 
 ```
 User
