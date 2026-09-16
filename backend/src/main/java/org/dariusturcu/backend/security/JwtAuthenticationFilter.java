@@ -18,11 +18,20 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
+import java.util.Set;
 
 @Slf4j
 @Component
 @RequiredArgsConstructor
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
+    // Everything else under /auth/** is reached with no session yet (register, login, the
+    // token-based verify-email/password-reset/2fa-verify endpoints), so this filter has
+    // nothing useful to authenticate there. These three are the exception: 2FA setup,
+    // confirm, and disable act on the caller's own account and need a real principal.
+    private static final Set<String> AUTHENTICATED_AUTH_PATHS = Set.of(
+            "/auth/2fa/setup", "/auth/2fa/confirm", "/auth/2fa/disable"
+    );
+
     private final JwtUtil jwtUtil;
     private final CookieUtil cookieUtil;
     private final UserDetailsService userDetailsService;
@@ -41,7 +50,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
         String path = request.getRequestURI();
-        return path.startsWith("/auth/");
+        return path.startsWith("/auth/") && !AUTHENTICATED_AUTH_PATHS.contains(path);
     }
 
     @Override

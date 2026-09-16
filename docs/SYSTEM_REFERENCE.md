@@ -4,16 +4,24 @@ Structured reference for what exists in the code today, distinct from [ARCHITECT
 
 ## API contracts
 
-Every rate-limited request the core service rejects, whichever limiter caught it, returns 429 with the same body every other error response uses: `ErrorResponse` (`status`, `message`, `timestamp`), never Spring's default `ProblemDetail`. `RateLimitingFilter` applies a 60-requests-per-minute limit to every request, keyed by authenticated user where one exists and by client IP otherwise, except `/auth/login` and `/auth/register`, which always share a stricter 5-requests-per-minute bucket keyed by IP regardless of authentication state. See story 27 in `DECISIONS.md`.
+Every rate-limited request the core service rejects, whichever limiter caught it, returns 429 with the same body every other error response uses: `ErrorResponse` (`status`, `message`, `timestamp`), never Spring's default `ProblemDetail`. `RateLimitingFilter` applies a 60-requests-per-minute limit to every request, keyed by authenticated user where one exists and by client IP otherwise, except `/auth/login`, `/auth/register`, `/auth/resend-verification`, `/auth/password-reset/request`, and `/auth/2fa/verify`, which always share a stricter 5-requests-per-minute bucket keyed by IP regardless of authentication state. See story 27 and story 50 in `DECISIONS.md`.
 
 ### Core service (Spring Boot)
 
 | Method | Path | Controller |
 |---|---|---|
 | POST | `/auth/register` | `AuthController`, rate-limited, see story 27 |
-| POST | `/auth/login` | `AuthController`, rate-limited, see story 27 |
+| POST | `/auth/login` | `AuthController`, rate-limited, see story 27; returns a pending token instead of tokens for a `twoFactorEnabled` account, story 50 |
 | POST | `/auth/refresh` | `AuthController` |
 | POST | `/auth/logout` | `AuthController` |
+| POST | `/auth/verify-email` | `AuthController`, story 50 |
+| POST | `/auth/resend-verification` | `AuthController`, rate-limited, story 50 |
+| POST | `/auth/password-reset/request` | `AuthController`, always 200, story 50 |
+| POST | `/auth/password-reset/confirm` | `AuthController`, story 50 |
+| POST | `/auth/2fa/setup` | `AuthController`, authenticated, story 50 |
+| POST | `/auth/2fa/confirm` | `AuthController`, authenticated, story 50 |
+| POST | `/auth/2fa/disable` | `AuthController`, authenticated, requires current password or a valid code, story 50 |
+| POST | `/auth/2fa/verify` | `AuthController`, rate-limited, completes a two-factor login, story 50 |
 | GET | `/api/enums/countries` | `EnumController` |
 | GET | `/api/playlists/{playlistId}/export/info` | `ExportController`, `paperSize` query param (`A4`/`LETTER`, default `A4`) |
 | GET | `/api/playlists/{playlistId}/export/qr` | `ExportController`, same `paperSize` query param |
@@ -103,13 +111,28 @@ Story 30's Difficulty-Based-generation and Custom-mode session-start endpoints d
 
 ### Current (JPA entities, core service)
 
-Current JPA entities: `User`, `Playlist`, `PlaylistMembership`, `PlaylistBan`, `SavedPlaylist`, `Song`, `SongArtist`, `RefreshToken`, plus `Group` and `Member` (story 39), `GameSession`, `Player`, `Round`, `Guess`, and `Bet` (story 10), `AlternateYoutubeId` and `PendingImport` (story 40), and `SongReport` and `SongConfirmation` (story 17). `Bet` (round, player, position, placedAt) is one accepted bet against a round's active-player timeline; a round can carry several, one per distinct gap, enforced by unique constraints on the `bets` table rather than a single bettor column on `Round`. The core seven are detailed below; the game and group entities follow the shapes in `ARCHITECTURE.md` and their own story sections in `TASKS.md`.
+Current JPA entities: `User`, `Playlist`, `PlaylistMembership`, `PlaylistBan`, `SavedPlaylist`, `Song`, `SongArtist`, `RefreshToken`, `EmailVerificationToken`, `PasswordResetToken`, `TwoFactorBackupCode` (story 50), plus `Group` and `Member` (story 39), `GameSession`, `Player`, `Round`, `Guess`, and `Bet` (story 10), `AlternateYoutubeId` and `PendingImport` (story 40), and `SongReport` and `SongConfirmation` (story 17). `Bet` (round, player, position, placedAt) is one accepted bet against a round's active-player timeline; a round can carry several, one per distinct gap, enforced by unique constraints on the `bets` table rather than a single bettor column on `Round`. The core seven are detailed below; the game and group entities follow the shapes in `ARCHITECTURE.md` and their own story sections in `TASKS.md`.
 
 ```
 User
   ├── id, username, email, password, imageUrl
   ├── authProvider, authProviderId
+  ├── emailVerified (default false; true immediately for a Google OAuth2 signup, story 50)
+  ├── totpSecret (nullable, plain column, never returned by any DTO, story 50)
+  ├── twoFactorEnabled (default false, story 50)
   └── role (USER, TEST, ADMIN)
+
+EmailVerificationToken
+  ├── id, token (hashed, unique), expiresAt
+  └── user: User  (@OneToOne; a new request replaces the previous row, same pattern as RefreshToken)
+
+PasswordResetToken
+  ├── id, token (hashed, unique), expiresAt, used (default false)
+  └── user: User  (@OneToOne; a new request replaces the previous row)
+
+TwoFactorBackupCode
+  ├── id, codeHash (hashed like a password), used (default false)
+  └── user: User  (@ManyToOne; ten rows generated together on /auth/2fa/confirm)
 
 Playlist
   ├── id, name, color, inviteCode (unique, immutable)

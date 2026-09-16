@@ -1,9 +1,8 @@
 package org.dariusturcu.backend.model.auth;
 
-public record AuthResponse(
+public record RegisterResult(
         Long id,
         String username,
-        String email,
-        boolean emailVerificationRequired
+        String email
 ) {
 }

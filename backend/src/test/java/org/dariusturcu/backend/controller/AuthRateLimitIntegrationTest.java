@@ -1,11 +1,16 @@
 package org.dariusturcu.backend.controller;
 
 import org.dariusturcu.backend.ratelimit.RateLimitingFilter;
+import org.dariusturcu.backend.repository.EmailVerificationTokenRepository;
+import org.dariusturcu.backend.repository.PasswordResetTokenRepository;
 import org.dariusturcu.backend.repository.RefreshTokenRepository;
+import org.dariusturcu.backend.repository.TwoFactorBackupCodeRepository;
 import org.dariusturcu.backend.repository.UserRepository;
 import org.dariusturcu.backend.security.CustomUserDetailsService;
 import org.dariusturcu.backend.security.util.JwtUtil;
 import org.dariusturcu.backend.service.AuthService;
+import org.dariusturcu.backend.service.EmailService;
+import org.dariusturcu.backend.service.TwoFactorService;
 import org.dariusturcu.backend.util.CookieUtil;
 import org.flywaydb.core.Flyway;
 import org.junit.jupiter.api.AfterEach;
@@ -38,6 +43,8 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
+
+import static org.mockito.Mockito.mock;
 
 import java.sql.SQLException;
 import java.util.List;
@@ -78,16 +85,37 @@ class AuthRateLimitIntegrationTest {
     @EnableWebSecurity
     @Import({JwtUtil.class, CookieUtil.class, CustomUserDetailsService.class, RateLimitingFilter.class})
     static class WebTestConfig {
+        // A mocked EmailService means register/resendVerification/requestPasswordReset never
+        // attempt a real HTTP call in this rate-limit-focused test; EmailServiceTest covers
+        // EmailService's own send-vs-log-only behavior.
         @Bean
-        AuthService authService(UserRepository userRepository, RefreshTokenRepository refreshTokenRepository,
-                                 PasswordEncoder passwordEncoder, JwtUtil jwtUtil,
-                                 AuthenticationManager authenticationManager) {
-            return new AuthService(userRepository, refreshTokenRepository, passwordEncoder, jwtUtil, authenticationManager);
+        EmailService emailService() {
+            return mock(EmailService.class);
         }
 
         @Bean
-        AuthController authController(AuthService authService, CookieUtil cookieUtil, JwtUtil jwtUtil) {
-            return new AuthController(authService, cookieUtil, jwtUtil);
+        TwoFactorService twoFactorService(UserRepository userRepository,
+                                           TwoFactorBackupCodeRepository backupCodeRepository,
+                                           PasswordEncoder passwordEncoder) {
+            return new TwoFactorService(userRepository, backupCodeRepository, passwordEncoder);
+        }
+
+        @Bean
+        AuthService authService(UserRepository userRepository, RefreshTokenRepository refreshTokenRepository,
+                                 EmailVerificationTokenRepository emailVerificationTokenRepository,
+                                 PasswordResetTokenRepository passwordResetTokenRepository,
+                                 PasswordEncoder passwordEncoder, JwtUtil jwtUtil,
+                                 AuthenticationManager authenticationManager,
+                                 EmailService emailService, TwoFactorService twoFactorService) {
+            return new AuthService(userRepository, refreshTokenRepository, emailVerificationTokenRepository,
+                    passwordResetTokenRepository, passwordEncoder, jwtUtil, authenticationManager,
+                    emailService, twoFactorService);
+        }
+
+        @Bean
+        AuthController authController(AuthService authService, TwoFactorService twoFactorService,
+                                       CookieUtil cookieUtil, JwtUtil jwtUtil) {
+            return new AuthController(authService, twoFactorService, cookieUtil, jwtUtil);
         }
 
         @Bean
@@ -130,6 +158,10 @@ class AuthRateLimitIntegrationTest {
         registry.add("jwt.secret", () -> "integration-test-jwt-secret-integration-test-jwt-secret");
         registry.add("jwt.expiration", () -> "900000");
         registry.add("jwt.refresh-expiration", () -> "604800000");
+        registry.add("jwt.two-factor-pending-expiration", () -> "300000");
+        registry.add("email.verification-token-expiration", () -> "86400000");
+        registry.add("email.password-reset-token-expiration", () -> "3600000");
+        registry.add("frontend.url", () -> "http://localhost:3000");
         registry.add("app.env", () -> "test");
     }
 
@@ -246,6 +278,70 @@ class AuthRateLimitIntegrationTest {
 
         assertThat(notRateLimitedCount).isEqualTo(AUTH_MAX_REQUESTS_PER_WINDOW);
         assertThat(rateLimitedCount).isEqualTo(CONCURRENT_LOGIN_ATTEMPTS - AUTH_MAX_REQUESTS_PER_WINDOW);
+    }
+
+    private String resendVerificationRequestBody(String email) {
+        return """
+                {"email":"%s"}
+                """.formatted(email);
+    }
+
+    private String passwordResetRequestBody(String email) {
+        return """
+                {"email":"%s"}
+                """.formatted(email);
+    }
+
+    private String twoFactorVerifyRequestBody(String pendingToken, String code) {
+        return """
+                {"pendingToken":"%s","code":"%s"}
+                """.formatted(pendingToken, code);
+    }
+
+    @Test
+    void resendVerificationRequestsOverTheLimitAreRejected() throws Exception {
+        String email = "rate-limit-resend-" + System.nanoTime() + "@example.com";
+
+        for (int requestNumber = 0; requestNumber < AUTH_MAX_REQUESTS_PER_WINDOW; requestNumber++) {
+            mockMvc.perform(post("/auth/resend-verification")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(resendVerificationRequestBody(email)));
+        }
+
+        mockMvc.perform(post("/auth/resend-verification")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(resendVerificationRequestBody(email)))
+                .andExpect(status().isTooManyRequests());
+    }
+
+    @Test
+    void passwordResetRequestsOverTheLimitAreRejected() throws Exception {
+        String email = "rate-limit-reset-" + System.nanoTime() + "@example.com";
+
+        for (int requestNumber = 0; requestNumber < AUTH_MAX_REQUESTS_PER_WINDOW; requestNumber++) {
+            mockMvc.perform(post("/auth/password-reset/request")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(passwordResetRequestBody(email)));
+        }
+
+        mockMvc.perform(post("/auth/password-reset/request")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(passwordResetRequestBody(email)))
+                .andExpect(status().isTooManyRequests());
+    }
+
+    @Test
+    void twoFactorVerifyRequestsOverTheLimitAreRejected() throws Exception {
+        for (int requestNumber = 0; requestNumber < AUTH_MAX_REQUESTS_PER_WINDOW; requestNumber++) {
+            mockMvc.perform(post("/auth/2fa/verify")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(twoFactorVerifyRequestBody("not-a-real-token", "000000")));
+        }
+
+        mockMvc.perform(post("/auth/2fa/verify")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(twoFactorVerifyRequestBody("not-a-real-token", "000000")))
+                .andExpect(status().isTooManyRequests());
     }
 
     private int resultOrRateLimited(Future<Integer> future) {
