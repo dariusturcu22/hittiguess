@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import axios from "axios";
-import { AudioWaveform, Music, Plus, LogIn } from "lucide-react";
+import { Music, Plus, LogIn } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
@@ -22,6 +22,7 @@ import {
 } from "@/components/shadcn/sidebar";
 import { Input } from "@/components/shadcn/input";
 import { Button } from "@/components/shadcn/button";
+import { LogoBars } from "@/components/logo";
 
 import { PlaylistSummaryDTO } from "@/hooks/models";
 
@@ -37,10 +38,17 @@ interface AppSidebarProps extends React.ComponentProps<typeof Sidebar> {
   currentPlaylistId?: number;
 }
 
-const application = {
-  name: "My Hitster",
-  logo: AudioWaveform,
-};
+const APPLICATION_NAME = "hittiguess";
+
+/* The nav rail in the mockups draws its own separators and active state
+   rather than leaning on the shadcn defaults: 14px radius, an accent fill
+   with a hard offset shadow when active, a 2px outline when not. */
+const NAV_ITEM_CLASSES =
+  "rounded-[14px] h-10 border-2 border-transparent font-sans font-semibold " +
+  "data-[active=true]:bg-sidebar-primary data-[active=true]:text-sidebar-primary-foreground " +
+  "data-[active=true]:border-sidebar-primary data-[active=true]:shadow-xs " +
+  "data-[active=true]:font-display data-[active=true]:text-xs data-[active=true]:tracking-wide " +
+  "hover:border-sidebar-border";
 
 export function AppSidebar({
   playlists = [],
@@ -49,7 +57,6 @@ export function AppSidebar({
 }: AppSidebarProps) {
   playlists = Array.isArray(playlists) ? playlists : [];
 
-  const Logo = application.logo;
   const { state } = useSidebar();
   const router = useRouter();
   const queryClient = useQueryClient();
@@ -104,17 +111,21 @@ export function AppSidebar({
 
   return (
     <Sidebar collapsible="icon" {...props}>
-      <SidebarHeader>
+      <SidebarHeader className="border-b-[3px] border-sidebar-border pb-3">
         <div className="flex items-center gap-2 px-2 py-1.5">
-          <Logo className="h-5 w-5" />
+          <LogoBars />
           {state !== "collapsed" && (
-            <span className="font-semibold">{application.name}</span>
+            <span className="font-wordmark font-extrabold text-lg text-sidebar-foreground">
+              {APPLICATION_NAME}
+            </span>
           )}
         </div>
       </SidebarHeader>
       <SidebarContent>
         <SidebarGroup>
-          <SidebarGroupLabel>Playlists</SidebarGroupLabel>
+          <SidebarGroupLabel className="font-display text-[10px] tracking-widest text-muted-foreground">
+            Playlists
+          </SidebarGroupLabel>
           <SidebarMenu>
             {playlists.map((playlist) => (
               <SidebarMenuItem key={playlist.id}>
@@ -122,6 +133,7 @@ export function AppSidebar({
                   asChild
                   isActive={currentPlaylistId === playlist.id}
                   tooltip={playlist.name}
+                  className={NAV_ITEM_CLASSES}
                 >
                   <Link href={`/playlists/${playlist.id}`}>
                     <Music className="size-4" />
@@ -141,7 +153,7 @@ export function AppSidebar({
                 tooltip="Add Playlist"
                 onClick={handleAddPlaylist}
                 disabled={isCreating}
-                className="cursor-pointer text-muted-foreground hover:text-foreground"
+                className={`cursor-pointer text-muted-foreground hover:text-sidebar-foreground ${NAV_ITEM_CLASSES}`}
               >
                 <Plus className="size-4" />
                 {state !== "collapsed" && (
@@ -154,7 +166,7 @@ export function AppSidebar({
               <SidebarMenuButton
                 tooltip="Join Playlist"
                 onClick={() => setJoinExpanded((prev) => !prev)}
-                className="cursor-pointer text-muted-foreground hover:text-foreground"
+                className={`cursor-pointer text-muted-foreground hover:text-sidebar-foreground ${NAV_ITEM_CLASSES}`}
               >
                 <LogIn className="size-4" />
                 {state !== "collapsed" && <span>Join Playlist</span>}
@@ -175,11 +187,11 @@ export function AppSidebar({
                         if (e.key === "Enter") handleJoinPlaylist();
                         if (e.key === "Escape") setJoinExpanded(false);
                       }}
-                      className="h-7 text-xs"
+                      className="h-8 rounded-full text-xs border-sidebar-border"
                     />
                     <Button
-                      size="sm"
-                      className="h-7 px-2 text-xs shrink-0"
+                      size="xs"
+                      className="h-8 px-3 shrink-0"
                       onClick={handleJoinPlaylist}
                       disabled={isJoining}
                     >
@@ -195,7 +207,7 @@ export function AppSidebar({
           </SidebarMenu>
         </SidebarGroup>
       </SidebarContent>
-      <SidebarFooter>
+      <SidebarFooter className="border-t-[3px] border-sidebar-border pt-3">
         <NavUser />
       </SidebarFooter>
       <SidebarRail />

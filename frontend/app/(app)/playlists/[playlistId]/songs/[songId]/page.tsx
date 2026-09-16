@@ -45,7 +45,7 @@ export default function SongDetailPage({ params }: PageProps) {
         playlists={playlists}
         currentPlaylistId={playlistId}
       />
-      <SidebarInset className="bg-dotted">
+      <SidebarInset className="bg-dotted border-[3px] border-border">
         <SiteHeader title={song?.title} />
 
         <div className="flex flex-1 flex-col p-4 md:p-6">

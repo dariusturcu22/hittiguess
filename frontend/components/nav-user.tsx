@@ -68,6 +68,8 @@ export function NavUser() {
     logout();
   }
 
+  const avatarInitial = user?.username?.trim().charAt(0).toUpperCase() ?? "";
+
   return (
     <SidebarMenu>
       <SidebarMenuItem>
@@ -75,11 +77,13 @@ export function NavUser() {
           <DropdownMenuTrigger asChild>
             <SidebarMenuButton
               size="lg"
-              className="cursor-pointer data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
+              className="cursor-pointer rounded-[14px] border-2 border-transparent hover:border-sidebar-border data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
             >
-              <Avatar className="h-8 w-8 rounded-lg">
+              <Avatar className="h-8 w-8 rounded-full border-2 border-sidebar-border">
                 <AvatarImage src={user?.imageUrl} alt={user?.username} />
-                <AvatarFallback className="rounded-lg">CN</AvatarFallback>
+                <AvatarFallback className="rounded-full bg-primary font-display text-xs text-primary-foreground">
+                  {avatarInitial}
+                </AvatarFallback>
               </Avatar>
               <div className="grid flex-1 text-left text-sm px-1 leading-tight">
                 <span className="truncate font-medium">{user?.username}</span>
@@ -95,9 +99,11 @@ export function NavUser() {
           >
             <DropdownMenuLabel className="p-0 font-normal">
               <div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
-                <Avatar className="h-8 w-8 rounded-lg">
+                <Avatar className="h-8 w-8 rounded-full border-2 border-border">
                   <AvatarImage src={user?.imageUrl} alt={user?.username} />
-                  <AvatarFallback className="rounded-lg">CN</AvatarFallback>
+                  <AvatarFallback className="rounded-full bg-primary font-display text-xs text-primary-foreground">
+                    {avatarInitial}
+                  </AvatarFallback>
                 </Avatar>
                 <div className="grid flex-1 text-left text-sm leading-tight">
                   <span className="truncate font-medium">{user?.username}</span>

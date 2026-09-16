@@ -120,13 +120,13 @@ export default function LandingPage() {
   return (
     <div className="flex flex-col bg-background">
       <section className="relative overflow-hidden bg-dotted px-6 md:px-16 pt-4 pb-16 md:pb-24">
-        <div className="absolute -top-40 -right-40 size-[420px] md:size-[560px] rounded-full bg-accent pointer-events-none" />
+        <div className="absolute -top-[60px] -right-[35px] size-[170px] md:-top-40 md:-right-40 md:size-[560px] rounded-full bg-accent pointer-events-none" />
 
         <div className="relative z-10 grid md:grid-cols-2 gap-10 items-center max-w-6xl mx-auto">
           <div className="flex flex-col gap-6">
             <h1
               className="font-display text-4xl sm:text-5xl md:text-6xl leading-[1.05] text-accent"
-              style={{ textShadow: "4px 4px 0 var(--card)" }}
+              style={{ textShadow: "4px 4px 0 var(--text-shadow-on-page)" }}
             >
               PLACE IT.
               <br />
@@ -185,7 +185,7 @@ export default function LandingPage() {
       <section className="bg-dotted px-6 md:px-16 py-16 md:py-24">
         <h2
           className="font-display text-2xl md:text-3xl text-accent text-center"
-          style={{ textShadow: "3px 3px 0 var(--card)" }}
+          style={{ textShadow: "3px 3px 0 var(--text-shadow-on-page)" }}
         >
           How a round works
         </h2>
@@ -258,7 +258,7 @@ export default function LandingPage() {
         >
           <h2
             className="font-display text-2xl md:text-3xl text-accent"
-            style={{ textShadow: "3px 3px 0 var(--background)" }}
+            style={{ textShadow: "3px 3px 0 var(--text-shadow-on-card)" }}
           >
             Ready?
           </h2>

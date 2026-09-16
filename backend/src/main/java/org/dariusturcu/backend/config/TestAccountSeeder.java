@@ -22,6 +22,10 @@ import java.util.List;
  * Disabled outright in Production through the profile condition below, which
  * matches the profile EnvironmentGuard treats as Production. The accounts'
  * credentials are documented in docs/DEV_SETUP.md.
+ *
+ * Seeded with emailVerified already true: these accounts never go through
+ * registration, so nothing would otherwise clear the unverified default and
+ * story 50's login block would lock every one of them out.
  */
 @Component
 @Profile("!" + EnvironmentGuard.PRODUCTION_PROFILE)
@@ -69,6 +73,7 @@ public class TestAccountSeeder implements ApplicationRunner {
         user.setPassword(passwordEncoder.encode(testAccount.password()));
         user.setAuthProvider(AuthProvider.LOCAL);
         user.setRole(Role.TEST);
+        user.setEmailVerified(true);
         userRepository.save(user);
     }
 }

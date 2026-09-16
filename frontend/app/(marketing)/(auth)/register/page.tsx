@@ -68,10 +68,10 @@ export default function RegisterPage() {
 
   return (
     <section className="flex-1 flex items-center justify-center px-4 py-12 relative overflow-hidden bg-dotted">
-      <div className="absolute -top-44 -right-40 size-[560px] rounded-full bg-warning/15 pointer-events-none" />
+      <div className="absolute -top-44 -right-40 size-[560px] rounded-full bg-accent/15 pointer-events-none" />
       <div className="absolute -bottom-56 -left-40 size-[480px] bg-accent/10 rotate-12 pointer-events-none" />
 
-      <Card className="w-full max-w-[460px] px-8 py-11 relative z-10">
+      <Card className="w-full max-w-[460px] rounded-lg px-8 sm:px-12 pt-11 pb-12 relative z-10">
         <div className="flex items-center gap-1 bg-muted rounded-full p-1 w-full">
           <Button asChild variant="ghost" size="sm" className="flex-1">
             <Link href="/login">Log in</Link>
@@ -84,7 +84,7 @@ export default function RegisterPage() {
         <div className="text-center mt-2">
           <h1
             className="font-display text-2xl text-accent"
-            style={{ textShadow: "3px 3px 0 var(--background)" }}
+            style={{ textShadow: "3px 3px 0 var(--text-shadow-on-card)" }}
           >
             Join the game
           </h1>

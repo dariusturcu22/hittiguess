@@ -80,7 +80,7 @@ export default function LoginPage() {
         <OAuthErrorToast />
       </Suspense>
 
-      <Card className="w-full max-w-[460px] px-8 py-11 relative z-10">
+      <Card className="w-full max-w-[460px] rounded-lg px-8 sm:px-12 pt-11 pb-12 relative z-10">
         <div className="flex items-center gap-1 bg-muted rounded-full p-1 w-full">
           <Button asChild size="sm" className="flex-1">
             <Link href="/login">Log in</Link>
@@ -93,7 +93,7 @@ export default function LoginPage() {
         <div className="text-center mt-2">
           <h1
             className="font-display text-2xl text-accent"
-            style={{ textShadow: "3px 3px 0 var(--background)" }}
+            style={{ textShadow: "3px 3px 0 var(--text-shadow-on-card)" }}
           >
             Welcome back
           </h1>

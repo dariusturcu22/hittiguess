@@ -27,7 +27,7 @@ export default function OAuth2RedirectHandler() {
         <IconLoader2 className="size-10 text-accent animate-spin" />
         <p
           className="font-display text-lg text-accent mt-5"
-          style={{ textShadow: "2px 2px 0 var(--border-strong)" }}
+          style={{ textShadow: "2px 2px 0 var(--text-shadow-on-page)" }}
         >
           Signing you in&hellip;
         </p>

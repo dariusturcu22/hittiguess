@@ -40,8 +40,13 @@ export default function JoinPlaylistPage({ params }: PageProps) {
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen gap-4 bg-dotted">
-      <IconLoader2 className="size-8 text-accent animate-spin" />
-      <p className="text-muted-foreground text-sm">Joining playlist...</p>
+      <IconLoader2 className="size-10 text-accent animate-spin" />
+      <p
+        className="font-display text-lg text-accent"
+        style={{ textShadow: "2px 2px 0 var(--text-shadow-on-page)" }}
+      >
+        Joining playlist&hellip;
+      </p>
     </div>
   );
 }

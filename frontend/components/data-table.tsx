@@ -267,8 +267,8 @@ export function DataTable({
   return (
     <TooltipProvider>
       <div className="w-full flex flex-col gap-6">
-        <div className="flex items-center justify-between gap-4 px-4 lg:px-6">
-          <div className="relative flex-1 max-w-md">
+        <div className="flex flex-wrap items-center justify-between gap-4 px-4 lg:px-6">
+          <div className="relative flex-1 min-w-[220px] max-w-md">
             <IconSearch className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
             <Input
               placeholder="Search songs..."
@@ -283,7 +283,7 @@ export function DataTable({
           </div>
 
           <div className="flex items-center gap-2">
-            <span>
+            <span className="hidden truncate text-sm text-muted-foreground md:inline md:max-w-[220px]">
               {playlist?.members.map((member) => member.username).join(", ")}
             </span>
             <Link href={`/playlists/${playlistId}/songs/add`}>
