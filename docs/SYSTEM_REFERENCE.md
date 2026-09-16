@@ -66,7 +66,7 @@ Every rate-limited request the core service rejects, whichever limiter caught it
 | POST | `/api/songs/{songId}/reports` | `SongReportController`, any authenticated user reports a song's metadata with a message, suggested correct year, and sources, one report per user per song, story 17 |
 | POST | `/api/songs/{songId}/confirmations` | `SongReportController`, any authenticated user confirms a low-confidence card, one confirmation per user per song, story 17 |
 | GET | `/api/admin/song-reports/queue` | `AdminSongReportController`, admin only via `AdminAccessGuard`, the review queue ranked by the five-tier priority order, story 17 |
-| POST | `/api/admin/song-reports/{songId}/uphold` | `AdminSongReportController`, admin only, upholds a song's open reports, an editable song moves to `MANUAL_ENTRY` while a locked year is never mutated, story 17 |
+| POST | `/api/admin/song-reports/{songId}/resolve` | `AdminSongReportController`, admin only, body is `ResolveReportRequest` (`correctedYear` nullable, `verificationStatus` required, one of `VERIFIED`/`NEEDS_REVIEW`/`MANUAL_ENTRY`); marks the song's open reports upheld and applies the chosen year and status unconditionally, overriding even a `VERIFIED` song's lock, story 17 |
 | POST | `/api/admin/song-reports/{songId}/dismiss` | `AdminSongReportController`, admin only, dismisses a song's open reports and changes nothing about the song, story 17 |
 | GET | `/actuator/health` | Actuator, unauthenticated at the top-level status; component detail gated by `management.endpoint.health.show-details=when-authorized`, story 38 |
 | GET | `/actuator/prometheus` | Actuator, Prometheus scrape format via `micrometer-registry-prometheus`, story 38 |
@@ -200,10 +200,12 @@ stateDiagram-v2
     UNVERIFIED --> NEEDS_REVIEW: sources disagree, Wikipedia + four-source reconciliation runs
     UNVERIFIED --> MANUAL_ENTRY: no source, including Wikipedia, has any data
     NEEDS_REVIEW --> VERIFIED: never happens automatically, an admin's manual review is the only path
-    VERIFIED --> VERIFIED: locked, no code path may overwrite the year, including a story 17 report
+    VERIFIED --> VERIFIED: locked against every path except an admin resolving a story 17 report
+    VERIFIED --> NEEDS_REVIEW: an admin resolves a report and chooses this status instead
+    VERIFIED --> MANUAL_ENTRY: an admin resolves a report and chooses this status instead
 ```
 
-`VERIFIED` is a lock, not just a status: once set, nothing (including a community report) changes the year without going through the same manual review process, per the 2026-08/2026-09 `DECISIONS.md` entries. `MANUAL_ENTRY` is the least-trusted tier, distinct from `NEEDS_REVIEW`.
+`VERIFIED` is a lock against every automatic path and every other manual path, but not an absolute one: an admin resolving a song's open reports through `POST /api/admin/song-reports/{songId}/resolve` can set a corrected year and change the verification status even on a `VERIFIED` song, per the 2026-09 "Admin report resolution can override a locked song" `DECISIONS.md` entry. No other path, including a report simply being upheld with nothing else, overwrites a locked year. `MANUAL_ENTRY` is the least-trusted tier, distinct from `NEEDS_REVIEW`.
 
 ### Group and game session lifecycle (stories 10, 39)
 

@@ -1,6 +1,7 @@
 package org.dariusturcu.backend.controller;
 
 import tools.jackson.databind.ObjectMapper;
+import org.dariusturcu.backend.model.song.ResolveReportRequest;
 import org.dariusturcu.backend.model.song.Song;
 import org.dariusturcu.backend.model.song.SubmitReportRequest;
 import org.dariusturcu.backend.model.song.VerificationStatus;
@@ -40,6 +41,7 @@ import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -200,13 +202,34 @@ class SongReportEndpointIntegrationTest {
     }
 
     @Test
-    void aNonAdminIsForbiddenFromUpholdingReports() throws Exception {
+    void aNonAdminIsForbiddenFromResolvingReports() throws Exception {
         User plainUser = persistUser("plain", Role.USER);
         Song song = persistSong("Song", VerificationStatus.NEEDS_REVIEW);
 
-        mockMvc.perform(post("/api/admin/song-reports/{songId}/uphold", song.getId())
-                        .with(authentication(authFor(plainUser))))
+        mockMvc.perform(post("/api/admin/song-reports/{songId}/resolve", song.getId())
+                        .with(authentication(authFor(plainUser)))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(
+                                new ResolveReportRequest(null, VerificationStatus.MANUAL_ENTRY))))
                 .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void anAdminResolvingAVerifiedSongOverridesItsLockedYearAndStatus() throws Exception {
+        User admin = persistUser("admin", Role.ADMIN);
+        Song song = persistSong("Locked", VerificationStatus.VERIFIED);
+        report(persistUser("reporter", Role.USER), song, SUGGESTED_YEAR);
+
+        mockMvc.perform(post("/api/admin/song-reports/{songId}/resolve", song.getId())
+                        .with(authentication(authFor(admin)))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(
+                                new ResolveReportRequest(SUGGESTED_YEAR, VerificationStatus.VERIFIED))))
+                .andExpect(status().isNoContent());
+
+        Song reloaded = songRepository.findById(song.getId()).orElseThrow();
+        assertThat(reloaded.getReleaseYear()).isEqualTo(SUGGESTED_YEAR);
+        assertThat(reloaded.getVerificationStatus()).isEqualTo(VerificationStatus.VERIFIED);
     }
 
     @Test

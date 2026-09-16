@@ -403,7 +403,7 @@ Depends on story 40 for the admin review surface, which now owns the `ADMIN` rol
   3. Unreported `NEEDS_REVIEW`/`MANUAL_ENTRY` cards with at least one confirmation, ranked by confirmation count, a fast confirm rather than research
   4. Unreported `NEEDS_REVIEW`/`MANUAL_ENTRY` cards with no confirmations, ranked by `verificationStatus` alone (`MANUAL_ENTRY` before `NEEDS_REVIEW`)
   5. `VERIFIED` cards with no report never appear in the queue
-- [x] Admin action endpoints (reuse `AdminAccessGuard`): `POST /api/admin/song-reports/{songId}/uphold` marks the open reports upheld and, for an editable song, moves it to `MANUAL_ENTRY`; a locked (`VERIFIED`/`NEEDS_REVIEW`) song's year stays immutable, matching `PlaylistService.EDITABLE_VERIFICATION_STATUSES`. `POST /api/admin/song-reports/{songId}/dismiss` clears the open reports
+- [x] Admin action endpoints (reuse `AdminAccessGuard`): `POST /api/admin/song-reports/{songId}/resolve` marks the open reports upheld and applies the admin's chosen corrected year (optional) and verification status (required, one of `VERIFIED`/`NEEDS_REVIEW`/`MANUAL_ENTRY`) unconditionally, overriding even a `VERIFIED` song's locked year and status. `POST /api/admin/song-reports/{songId}/dismiss` clears the open reports
 - [x] The review endpoint exposes every signal behind a card's ranking (open report count, whether they converge and on what year, confirmation count) rather than a single opaque score, the admin makes the actual call
 - [ ] Review surface UI over the endpoint above (story 28)
 
@@ -411,10 +411,10 @@ Tests:
 - [x] Unit tests for `SongReport` and `SongConfirmation` behavior: duplicate report/confirm prevention, confirmation rejected on a `VERIFIED` card
 - [x] Unit tests for the queue-ranking logic covering all five priority tiers, including convergence overriding a `VERIFIED` card's default low priority
 - [x] Unit test confirming the stubbed report-submitted event fires on submission
-- [x] Unit tests confirming an uphold on a locked song leaves its year and status untouched, and an uphold on an editable song moves it to `MANUAL_ENTRY`
+- [x] Unit tests confirming a resolve on a `VERIFIED` song overrides its locked year and status, a resolve with no corrected year leaves the year untouched, and a resolve with no open reports throws
 - [x] Integration test: submitting a report end to end, visible on the admin review surface at the correct priority tier
 - [x] Integration test: two reports on the same card suggesting different years don't count as convergence, and rank below a genuinely convergent pair
-- [x] Integration tests: admin-only access enforced via `AdminAccessGuard` (non-admin gets 403 on the queue and on uphold), unauthenticated submission gets 401
+- [x] Integration tests: admin-only access enforced via `AdminAccessGuard` (non-admin gets 403 on the queue and on resolve), unauthenticated submission gets 401
 
 ## Story 18: Criteria for promoting a reported or newly submitted song to verified
 

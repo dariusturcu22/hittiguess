@@ -2,6 +2,7 @@ package org.dariusturcu.backend.service;
 
 import org.dariusturcu.backend.exception.ConflictException;
 import org.dariusturcu.backend.model.song.AdminReviewItemDTO;
+import org.dariusturcu.backend.model.song.ResolveReportRequest;
 import org.dariusturcu.backend.model.song.ReviewPriorityTier;
 import org.dariusturcu.backend.model.song.Song;
 import org.dariusturcu.backend.model.song.SongReportStatus;
@@ -246,11 +247,11 @@ class SongReportServiceTest {
     }
 
     @Test
-    void upholdingReportsOnAnEditableSongMovesItToManualEntry() {
+    void resolvingReportsOnAnEditableSongAppliesTheChosenStatus() {
         Song song = persistSong("Editable", VerificationStatus.UNVERIFIED);
         submitReportAs("reporter-one", song, NON_FUTURE_YEAR);
 
-        songReportService.upholdReports(song.getId());
+        songReportService.resolveReport(song.getId(), new ResolveReportRequest(null, VerificationStatus.MANUAL_ENTRY));
 
         Song reloaded = songRepository.findById(song.getId()).orElseThrow();
         assertThat(reloaded.getVerificationStatus()).isEqualTo(VerificationStatus.MANUAL_ENTRY);
@@ -258,17 +259,38 @@ class SongReportServiceTest {
     }
 
     @Test
-    void upholdingReportsOnALockedSongLeavesItsYearAndStatusUntouched() {
+    void resolvingReportsOnAVerifiedSongOverridesItsLockedYearAndStatus() {
+        Song song = persistSong("Locked", VerificationStatus.VERIFIED);
+        submitReportAs("reporter-one", song, OTHER_YEAR);
+
+        songReportService.resolveReport(song.getId(), new ResolveReportRequest(OTHER_YEAR, VerificationStatus.VERIFIED));
+
+        Song reloaded = songRepository.findById(song.getId()).orElseThrow();
+        assertThat(reloaded.getVerificationStatus()).isEqualTo(VerificationStatus.VERIFIED);
+        assertThat(reloaded.getReleaseYear()).isEqualTo(OTHER_YEAR);
+        assertThat(songReportRepository.countBySongIdAndStatus(song.getId(), SongReportStatus.UPHELD)).isEqualTo(1);
+    }
+
+    @Test
+    void resolvingWithNoCorrectedYearLeavesTheYearUntouched() {
         Song song = persistSong("Locked", VerificationStatus.VERIFIED);
         int originalYear = song.getReleaseYear();
         submitReportAs("reporter-one", song, OTHER_YEAR);
 
-        songReportService.upholdReports(song.getId());
+        songReportService.resolveReport(song.getId(), new ResolveReportRequest(null, VerificationStatus.NEEDS_REVIEW));
 
         Song reloaded = songRepository.findById(song.getId()).orElseThrow();
-        assertThat(reloaded.getVerificationStatus()).isEqualTo(VerificationStatus.VERIFIED);
+        assertThat(reloaded.getVerificationStatus()).isEqualTo(VerificationStatus.NEEDS_REVIEW);
         assertThat(reloaded.getReleaseYear()).isEqualTo(originalYear);
-        assertThat(songReportRepository.countBySongIdAndStatus(song.getId(), SongReportStatus.UPHELD)).isEqualTo(1);
+    }
+
+    @Test
+    void resolvingASongWithNoOpenReportsThrows() {
+        Song song = persistSong("Untouched", VerificationStatus.NEEDS_REVIEW);
+
+        assertThatThrownBy(() -> songReportService.resolveReport(
+                song.getId(), new ResolveReportRequest(OTHER_YEAR, VerificationStatus.VERIFIED)))
+                .isInstanceOf(ConflictException.class);
     }
 
     @Test
