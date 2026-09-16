@@ -45,6 +45,16 @@ public class GlobalExceptionHandler {
         return new ResponseEntity<>(errorResponse, HttpStatus.TOO_MANY_REQUESTS);
     }
 
+    @ExceptionHandler(PlaylistImportException.class)
+    public ResponseEntity<ErrorResponse> handlePlaylistImport(PlaylistImportException exception) {
+        ErrorResponse errorResponse = new ErrorResponse(
+                HttpStatus.BAD_REQUEST.value(),
+                exception.getMessage(),
+                LocalDateTime.now()
+        );
+        return new ResponseEntity<>(errorResponse, HttpStatus.BAD_REQUEST);
+    }
+
     @ExceptionHandler(AdminAccessRequiredException.class)
     public ResponseEntity<ErrorResponse> handleAdminAccessRequired(AdminAccessRequiredException exception) {
         ErrorResponse errorResponse = new ErrorResponse(

@@ -1,7 +1,9 @@
 from app.metadata.sources.util import (
     build_youtube_api_url,
+    build_youtube_playlist_items_api_url,
     clean_youtube_text,
     escape_lucene,
+    extract_youtube_playlist_id,
     extract_youtube_video_id,
     parse_iso8601_duration_seconds,
 )
@@ -89,3 +91,43 @@ def test_parse_iso8601_duration_seconds_handles_missing_or_malformed():
     assert parse_iso8601_duration_seconds("") is None
     assert parse_iso8601_duration_seconds("3:52") is None
     assert parse_iso8601_duration_seconds("P1D") is None
+
+
+def test_extract_youtube_playlist_id_from_bare_id():
+    assert extract_youtube_playlist_id("PLrAXtmRdnEQy6nuLMHjMZOz59Oq8B9bkA") == "PLrAXtmRdnEQy6nuLMHjMZOz59Oq8B9bkA"
+
+
+def test_extract_youtube_playlist_id_from_playlist_url_with_list_param():
+    assert (
+        extract_youtube_playlist_id("https://youtube.com/playlist?list=PLrAXtmRdnEQy6nuLMHjMZOz59Oq8B9bkA")
+        == "PLrAXtmRdnEQy6nuLMHjMZOz59Oq8B9bkA"
+    )
+
+
+def test_extract_youtube_playlist_id_from_watch_url_with_trailing_list_param():
+    assert (
+        extract_youtube_playlist_id("https://youtube.com/watch?v=dQw4w9WgXcQ&list=PLrAXtmRdnEQy6nuLMHjMZOz59Oq8B9bkA")
+        == "PLrAXtmRdnEQy6nuLMHjMZOz59Oq8B9bkA"
+    )
+
+
+def test_extract_youtube_playlist_id_rejects_a_plain_video_url_with_no_list_param():
+    assert extract_youtube_playlist_id("https://youtube.com/watch?v=dQw4w9WgXcQ") is None
+
+
+def test_extract_youtube_playlist_id_rejects_invalid_input():
+    assert extract_youtube_playlist_id(None) is None
+    assert extract_youtube_playlist_id("") is None
+
+
+def test_build_youtube_playlist_items_api_url_without_page_token():
+    url = build_youtube_playlist_items_api_url("PL123", "my-key")
+    assert url == (
+        "https://www.googleapis.com/youtube/v3/playlistItems"
+        "?part=contentDetails&playlistId=PL123&maxResults=50&key=my-key"
+    )
+
+
+def test_build_youtube_playlist_items_api_url_with_page_token():
+    url = build_youtube_playlist_items_api_url("PL123", "my-key", "next-page-token")
+    assert url.endswith("&pageToken=next-page-token")

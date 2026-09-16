@@ -28,6 +28,11 @@ Every rate-limited request the core service rejects, whichever limiter caught it
 | DELETE | `/api/playlists/{playlistId}/members/{userId}` | `PlaylistController`, owner only, kicks a member, story 46 |
 | POST | `/api/playlists/{playlistId}/members/{userId}/ban` | `PlaylistController`, owner only, bans a member, story 46 |
 | POST | `/api/playlists/{playlistId}/members/{userId}/promote` | `PlaylistController`, owner only, transfers ownership, previous owner stays a member, story 46 |
+| POST | `/api/playlists/{playlistId}/publish` | `PlaylistController`, owner only, sets `isPublic` true, story 30 |
+| POST | `/api/playlists/{playlistId}/unpublish` | `PlaylistController`, owner only, sets `isPublic` false, story 30 |
+| GET | `/api/playlists/public` | `PlaylistController`, any authenticated user, every playlist with `isPublic` true, story 30 |
+| POST | `/api/playlists/{playlistId}/save` | `PlaylistController`, any authenticated user, saves a public playlist into the caller's own library without creating a membership, rejects a non-public playlist, the caller's own playlist, or an already-saved playlist, story 30 |
+| DELETE | `/api/playlists/{playlistId}/save` | `PlaylistController`, any authenticated user, unsaves a previously saved playlist, story 30 |
 | GET | `/api/metadata/song` | `SongMetadataController`, one-in-flight-request-per-user limit plus the general time-window rate limit, see story 27 |
 | GET | `/api/users/me` | `UserController` |
 | GET | `/api/users/{userId}` | `UserController` |
@@ -38,6 +43,7 @@ Every rate-limited request the core service rejects, whichever limiter caught it
 | GET | `/api/users/me/playlists` | `UserController` |
 | POST | `/api/users/me/playlists/{playlistInviteCode}` | `UserController`, optional body carries a per-playlist display name and avatar, rejects a banned user, story 46 |
 | DELETE | `/api/users/me/playlists/{playlistId}` | `UserController`, the owner can leave at any time, leadership passes to the earliest-joined remaining member, story 46 |
+| GET | `/api/users/me/saved-playlists` | `UserController`, the current user's saved public playlists, distinct from `/api/users/me/playlists`, story 30 |
 | POST | `/api/groups` | `GroupController`, creates a group, the creator becomes its admin, story 39 |
 | POST | `/api/groups/join` | `GroupController`, join by invite link, rejects a banned or already-in-a-group user, story 39 |
 | GET | `/api/groups/active` | `GroupController`, the caller's current active group, story 39 |
@@ -54,13 +60,13 @@ Every rate-limited request the core service rejects, whichever limiter caught it
 | GET | `/api/sessions/{sessionId}` | `GameSessionController`, story 10 |
 | GET | `/api/sessions/{sessionId}/link-out` | `GameSessionController`, the current round's YouTube watch URL for the round's DJ only, refused after reveal, story 9 |
 | GET | `/api/sessions/groups/{groupId}/results` | `GameSessionController`, a completed session's downloadable results export, story 10 |
-| POST | `/api/admin/catalog-seeding/enqueue` | `AdminCatalogSeedingController`, admin only via `AdminAccessGuard`, enqueues submitted YouTube IDs the catalog does not already have, story 40 |
+| POST | `/api/admin/catalog-seeding/enqueue` | `AdminCatalogSeedingController`, admin only via `AdminAccessGuard`, body is `AdminCatalogSeedingRequest` (`playlistLink`, `youtubeIds`, both nullable), expands a submitted playlist link through the AI microservice and merges it with any submitted IDs or links before enqueueing whatever the catalog does not already have, story 40 |
 | GET | `/api/admin/catalog-seeding/status` | `AdminCatalogSeedingController`, admin only, the backlog view (pending, done, failed counts), story 40 |
-| POST | `/api/bulk-import` | `BulkImportController`, any authenticated user, immediate on-the-spot resolution of a submitted YouTube playlist or ID list, never shares the admin backlog's queue, story 40 |
+| POST | `/api/bulk-import` | `BulkImportController`, any authenticated user, immediate on-the-spot resolution of `BulkImportRequest` (`playlistLink`, `videoIdsOrLinks`), a submitted playlist link is expanded through the AI microservice and merged with any submitted IDs or links, never shares the admin backlog's queue, story 40 |
 | POST | `/api/songs/{songId}/reports` | `SongReportController`, any authenticated user reports a song's metadata with a message, suggested correct year, and sources, one report per user per song, story 17 |
 | POST | `/api/songs/{songId}/confirmations` | `SongReportController`, any authenticated user confirms a low-confidence card, one confirmation per user per song, story 17 |
 | GET | `/api/admin/song-reports/queue` | `AdminSongReportController`, admin only via `AdminAccessGuard`, the review queue ranked by the five-tier priority order, story 17 |
-| POST | `/api/admin/song-reports/{songId}/uphold` | `AdminSongReportController`, admin only, upholds a song's open reports, an editable song moves to `MANUAL_ENTRY` while a locked year is never mutated, story 17 |
+| POST | `/api/admin/song-reports/{songId}/resolve` | `AdminSongReportController`, admin only, body is `ResolveReportRequest` (`correctedYear` nullable, `verificationStatus` required, one of `VERIFIED`/`NEEDS_REVIEW`/`MANUAL_ENTRY`); marks the song's open reports upheld and applies the chosen year and status unconditionally, overriding even a `VERIFIED` song's lock, story 17 |
 | POST | `/api/admin/song-reports/{songId}/dismiss` | `AdminSongReportController`, admin only, dismisses a song's open reports and changes nothing about the song, story 17 |
 | GET | `/actuator/health` | Actuator, unauthenticated at the top-level status; component detail gated by `management.endpoint.health.show-details=when-authorized`, story 38 |
 | GET | `/actuator/prometheus` | Actuator, Prometheus scrape format via `micrometer-registry-prometheus`, story 38 |
@@ -70,12 +76,17 @@ Every rate-limited request the core service rejects, whichever limiter caught it
 | Method | Path | Notes |
 |---|---|---|
 | POST | `/metadata/resolve` | Internal only, gated by `X-Internal-Api-Key`, called by the core service's `SongMetadataService`, never exposed publicly. Independently rate-limited at 30 requests per minute per client address, evaluated before the internal-key check, since anyone holding that shared key could otherwise call it directly. See story 27 |
+| POST | `/metadata/playlist-video-ids` | Internal only, same `X-Internal-Api-Key` gate and rate limit as `/metadata/resolve`, called by the core service's `PlaylistExpansionService`. Body `{playlist_url_or_id}`, crawls the playlist through YouTube Data API's `playlistItems.list`, paginating on `nextPageToken`, and returns `{video_ids}`. A link or id that doesn't parse to a valid playlist returns 400; an upstream fetch failure on the first page returns 502. Story 40 |
 | GET | `/health` | Unauthenticated, story 38 |
 | GET | `/metrics` | Prometheus scrape format via `prometheus-fastapi-instrumentator`, story 38 |
 
 ### Correlation id (story 38)
 
 Both services accept and echo an `X-Request-Id` header on every request: the core service's `CorrelationIdFilter` and the AI microservice's `CorrelationIdMiddleware` reuse an incoming value or generate one, attach it to the active OpenTelemetry span as a `request.id` attribute, include it in every structured log line emitted while handling that request, and echo it back on the response. The core service's `CorrelationIdPropagatingInterceptor` forwards the current request's id onto the outgoing RestClient call to the AI microservice, so one user action stays traceable across both services' logs and correlates with a single trace.
+
+### Bulk import progress (story 40)
+
+The on-the-spot bulk-import path (`POST /api/bulk-import`) reports live per-song progress over a per-user STOMP destination rather than only its final response: `BulkImportService` publishes a `BulkImportProgressEvent` (`username`, `youtubeId`, `outcome`, one of `ALREADY_KNOWN`/`RESOLVED`/`UNRESOLVED`) for every submitted video id as its resolution loop reaches it, and `BulkImportProgressListener` forwards each one to `/user/queue/bulk-import-progress` through `SimpMessagingTemplate#convertAndSendToUser`, targeting the submitting user's own session rather than a shared group or session topic. `WebSocketConfig` registers `/queue` as a broker prefix alongside `/topic` so this per-user routing has somewhere to deliver to. The admin catalog-seeding backlog does not get this treatment: its own screen shows a backlog-count and quota summary, not live per-item progress, so its enqueue endpoint stays a synchronous request-response.
 
 Story 39's group endpoints, story 10's game-session endpoints, story 40's admin catalog-seeding and bulk-import endpoints, and story 17's report, confirmation, and admin review endpoints are live and listed above. Story 10 and 11 also add STOMP client-to-server destinations for in-session actions, handled by `GameActionController`:
 
@@ -92,7 +103,7 @@ The endpoints stories 9, 13, and 30 add (DJ link-out, group text chat, difficult
 
 ### Current (JPA entities, core service)
 
-Current JPA entities: `User`, `Playlist`, `PlaylistMembership`, `PlaylistBan`, `Song`, `SongArtist`, `RefreshToken`, plus `Group` and `Member` (story 39), `GameSession`, `Player`, `Round`, `Guess`, and `Bet` (story 10), `AlternateYoutubeId` and `PendingImport` (story 40), and `SongReport` and `SongConfirmation` (story 17). `Bet` (round, player, position, placedAt) is one accepted bet against a round's active-player timeline; a round can carry several, one per distinct gap, enforced by unique constraints on the `bets` table rather than a single bettor column on `Round`. The core seven are detailed below; the game and group entities follow the shapes in `ARCHITECTURE.md` and their own story sections in `TASKS.md`.
+Current JPA entities: `User`, `Playlist`, `PlaylistMembership`, `PlaylistBan`, `SavedPlaylist`, `Song`, `SongArtist`, `RefreshToken`, plus `Group` and `Member` (story 39), `GameSession`, `Player`, `Round`, `Guess`, and `Bet` (story 10), `AlternateYoutubeId` and `PendingImport` (story 40), and `SongReport` and `SongConfirmation` (story 17). `Bet` (round, player, position, placedAt) is one accepted bet against a round's active-player timeline; a round can carry several, one per distinct gap, enforced by unique constraints on the `bets` table rather than a single bettor column on `Round`. The core seven are detailed below; the game and group entities follow the shapes in `ARCHITECTURE.md` and their own story sections in `TASKS.md`.
 
 ```
 User
@@ -102,6 +113,8 @@ User
 
 Playlist
   ├── id, name, color, inviteCode (unique, immutable)
+  ├── isPublic (default false, story 30; only the owner can publish/unpublish; a public playlist is
+  │     readable by any authenticated user through requireRead, independent of ownership or membership)
   ├── owner: User  (@ManyToOne, set to the creator on creation, story 46; only the owner can rename,
   │     change color, delete the playlist, or manage members)
   ├── songs: List<Song>  (@ManyToMany, owning side, joins through song_playlists; removing a song here
@@ -122,6 +135,14 @@ PlaylistBan
   ├── playlist: Playlist  (@ManyToOne)
   └── user: User  (@ManyToOne; existence of a row blocks that user's future join-by-invite attempts
         against this playlist, independent of PlaylistMembership, story 46)
+
+SavedPlaylist
+  ├── id, savedAt
+  ├── user: User  (@ManyToOne)
+  └── playlist: Playlist  (@ManyToOne; unique on (user, playlist), story 30. A bookmark into the
+        user's own library, not a membership: grants no read/write/delete access and creates no
+        per-playlist identity, distinct from PlaylistMembership and unrelated to PlaylistBan. Only
+        a currently public playlist can be saved, and the owner cannot save their own playlist)
 
 Song
   ├── id, title, releaseYear, youtubeId, gradientColor1, gradientColor2
@@ -150,7 +171,7 @@ RefreshToken
   └── expiresAt
 ```
 
-Schema changes now go through Flyway migrations (`backend/src/main/resources/db/migration/`), not Hibernate's `ddl-auto` (moved to `validate`); `spring-boot-flyway` is a required dependency alongside the third-party `flyway-core`/`flyway-database-postgresql` libraries for Spring Boot's own autoconfiguration to actually run it. Migrations on `dev` run through V13 (`V13__add_song_reports_and_confirmations`, story 17; `V12__add_alternate_youtube_ids_and_pending_imports`, story 40).
+Schema changes now go through Flyway migrations (`backend/src/main/resources/db/migration/`), not Hibernate's `ddl-auto` (moved to `validate`); `spring-boot-flyway` is a required dependency alongside the third-party `flyway-core`/`flyway-database-postgresql` libraries for Spring Boot's own autoconfiguration to actually run it. Migrations on `dev` run through V15 (`V15__add_public_playlists_and_saved_playlists`, story 30; `V14__add_chat_messages`, story 13; `V13__add_song_reports_and_confirmations`, story 17; `V12__add_alternate_youtube_ids_and_pending_imports`, story 40).
 
 ### Planned (not yet code, target shape per ARCHITECTURE.md and TASKS.md)
 
@@ -184,10 +205,12 @@ stateDiagram-v2
     UNVERIFIED --> NEEDS_REVIEW: sources disagree, Wikipedia + four-source reconciliation runs
     UNVERIFIED --> MANUAL_ENTRY: no source, including Wikipedia, has any data
     NEEDS_REVIEW --> VERIFIED: never happens automatically, an admin's manual review is the only path
-    VERIFIED --> VERIFIED: locked, no code path may overwrite the year, including a story 17 report
+    VERIFIED --> VERIFIED: locked against every path except an admin resolving a story 17 report
+    VERIFIED --> NEEDS_REVIEW: an admin resolves a report and chooses this status instead
+    VERIFIED --> MANUAL_ENTRY: an admin resolves a report and chooses this status instead
 ```
 
-`VERIFIED` is a lock, not just a status: once set, nothing (including a community report) changes the year without going through the same manual review process, per the 2026-08/2026-09 `DECISIONS.md` entries. `MANUAL_ENTRY` is the least-trusted tier, distinct from `NEEDS_REVIEW`.
+`VERIFIED` is a lock against every automatic path and every other manual path, but not an absolute one: an admin resolving a song's open reports through `POST /api/admin/song-reports/{songId}/resolve` can set a corrected year and change the verification status even on a `VERIFIED` song, per the 2026-09 "Admin report resolution can override a locked song" `DECISIONS.md` entry. No other path, including a report simply being upheld with nothing else, overwrites a locked year. `MANUAL_ENTRY` is the least-trusted tier, distinct from `NEEDS_REVIEW`.
 
 ### Group and game session lifecycle (stories 10, 39)
 

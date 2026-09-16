@@ -5,6 +5,7 @@ import jakarta.validation.Valid;
 import org.dariusturcu.backend.model.playlist.JoinPlaylistRequest;
 import org.dariusturcu.backend.model.playlist.PlaylistDetailDTO;
 import org.dariusturcu.backend.model.playlist.PlaylistSummaryDTO;
+import org.dariusturcu.backend.model.playlist.PublicPlaylistSummaryDTO;
 import org.dariusturcu.backend.model.user.PersonalDataExportDTO;
 import org.dariusturcu.backend.model.user.UpdateUserRequest;
 import org.dariusturcu.backend.model.user.UserDetailDTO;
@@ -79,6 +80,13 @@ public class UserController {
     public ResponseEntity<List<PlaylistSummaryDTO>> getUserPlaylists() {
         List<PlaylistSummaryDTO> userPlaylists = userService.getUserPlaylists();
         return ResponseEntity.ok(userPlaylists);
+    }
+
+    @Operation(summary = "Get the current user's saved public playlists")
+    @GetMapping("/me/saved-playlists")
+    public ResponseEntity<List<PublicPlaylistSummaryDTO>> getSavedPlaylists() {
+        List<PublicPlaylistSummaryDTO> savedPlaylists = userService.getSavedPlaylists();
+        return ResponseEntity.ok(savedPlaylists);
     }
 
     @Operation(summary = "Join an existing playlist, optionally with a per-playlist display name and avatar")
