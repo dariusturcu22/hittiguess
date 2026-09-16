@@ -97,7 +97,7 @@ Story 39's group endpoints, story 10's game-session endpoints, story 40's admin 
 | `/app/sessions/{sessionId}/bet` | `GameActionController` | Place a bet after the active player's guess locks, story 10 |
 | `/app/sessions/{sessionId}/skip-betting` | `GameActionController` | Skip the betting window, story 10 |
 
-The endpoints stories 9, 13, and 30 add (DJ link-out, group text chat, difficulty-tuned generation) do not exist on `dev` yet. See those stories in `TASKS.md` for the planned shape. Story 12's voice signaling relay is live as a STOMP mapping on `/app/groups/{groupId}/voice/signal`, which forwards one WebRTC offer, answer, or ICE candidate onto the group's `/topic/groups/{groupId}/voice` topic for member-to-member routing; the WebRTC mesh it drives is frontend, deferred to story 28. This table lists the REST surface live on `dev` today.
+Story 30's Difficulty-Based-generation and Custom-mode session-start endpoints do not exist on `dev` yet. See that story in `TASKS.md` for the planned shape. Story 9's link-out endpoint is live and listed above. Story 13's group text chat has also shipped (`V14__add_chat_messages`, member-only STOMP send and REST history), though its routes aren't itemized in the tables above. Story 12's voice signaling relay is live as a STOMP mapping on `/app/groups/{groupId}/voice/signal`, which forwards one WebRTC offer, answer, or ICE candidate onto the group's `/topic/groups/{groupId}/voice` topic for member-to-member routing; the WebRTC mesh it drives is frontend, deferred to story 28. This table lists the REST surface live on `dev` today.
 
 ## Entity model
 
