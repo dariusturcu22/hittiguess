@@ -3,30 +3,11 @@ SHELL := bash
 
 .PHONY: dev db backend ai frontend
 
-# Starts the local Postgres container, the core service, the AI microservice,
-# and the frontend together. Ctrl+C stops all three app processes; the DB
-# container keeps running (see `docker compose down` in backend/).
-#
-# Cleanup on Ctrl+C is best-effort, not guaranteed. Windows has no real
-# process groups, so plain `kill` on the backgrounded job doesn't reach
-# grandchild processes; taskkill //T walks the real Windows process tree
-# instead, using the real Windows PID looked up through `ps` (Git Bash's own
-# PID for the job, $!, is a different number). This works reliably in
-# isolated testing, but Git Bash's signal emulation on Windows occasionally
-# misses one of the three under real Ctrl+C. If something's still running
-# after Ctrl+C: `tasklist` for java.exe/python.exe/node.exe and `taskkill //F
-# //T //PID <pid>` on whichever is left.
-dev: db
-	killtree() { \
-		w=$$(ps -p "$$1" 2>/dev/null | awk 'NR==2{print $$4}'); \
-		[ -n "$$w" ] && taskkill //F //T //PID "$$w" >/dev/null 2>&1; \
-		true; \
-	}; \
-	trap 'killtree $$bpid; killtree $$apid; killtree $$fpid' EXIT INT TERM; \
-	$(MAKE) backend & bpid=$$!; \
-	$(MAKE) ai & apid=$$!; \
-	$(MAKE) frontend & fpid=$$!; \
-	wait
+# Starts the local Postgres containers, the core service, the AI microservice,
+# and the frontend together, via scripts/dev.sh (the single source of truth
+# for this; PowerShell users without bash/make run scripts/dev.ps1 directly).
+dev:
+	./scripts/dev.sh
 
 db:
 	docker compose -f backend/docker-compose.yml up -d
