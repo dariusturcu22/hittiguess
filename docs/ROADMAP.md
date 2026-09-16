@@ -9,7 +9,7 @@ Phase 0, Phase 1, and nearly all of Phase 2 have shipped their backend scope; th
 Three milestones sit above the remaining work below, each a different bar for who can actually use the app:
 
 - **Local**: the project owner can play it, alone or with one other person in the same house over a locally opened port, admin side included. Every backend piece Local needs has shipped; what's left is story 28's frontend implementation (all of it, across every screen the newly-shipped backend stories unlocked), story 30's own remaining backend scope, and stories 22 (test coverage), 35, 38, 48, and 49 finishing up. Story 28 runs before story 22, 48, and 49 wrap up: story 22 audits the finished app surface rather than one still mid-implementation, and 48/49 catch drift the whole build introduces, frontend included. Local doesn't require a real deployment target, story 7 and story 8 both stay undecided until Local ships.
-- **Beta**: deployed somewhere real and played with friends and colleagues in demo matches, everything working correctly. Needs story 7 (hosting) and story 8 (database) actually decided and executed, on top of everything Local shipped.
+- **Beta**: deployed somewhere real and played with friends and colleagues in demo matches, everything working correctly. Needs story 50 (auth hardening: email verification, password reset, 2FA) built, and story 7 (hosting) and story 8 (database) actually decided and executed, on top of everything Local shipped.
 - **Finished**: the fully deployed, publicly announced version. Story 34 (first-party usage analytics) is the one piece of scope left for it, since nothing it covers blocks either Local or Beta.
 
 ## What's shipped
@@ -32,6 +32,7 @@ Every one of those stories still carries open frontend tasks, all deferred to st
 
 Starts once everything above has actually shipped, not merely reached `Ready`.
 
+- Story 50: Auth hardening, email verification, real password reset, and TOTP two-factor authentication, all needed before real accounts and real friends are involved
 - Story 7: Hosting migration off Fly.io, target platform decided and executed
 - Story 8: Database migration off Supabase, whether to migrate at all and to what platform, decided and executed
 - Deploy the app for real, invite friends and colleagues for demo matches, confirm everything works correctly before calling it Beta
