@@ -11,17 +11,22 @@ import org.dariusturcu.backend.model.song.PendingImport;
 import org.dariusturcu.backend.model.song.PendingImportStatus;
 import org.dariusturcu.backend.model.song.Song;
 import org.dariusturcu.backend.model.song.YoutubeIdLookupResult;
+import org.dariusturcu.backend.model.user.Role;
+import org.dariusturcu.backend.model.user.User;
 import org.dariusturcu.backend.repository.AlternateYoutubeIdRepository;
 import org.dariusturcu.backend.repository.PendingImportRepository;
 import org.dariusturcu.backend.repository.SongRepository;
+import org.dariusturcu.backend.security.UserPrincipal;
 import org.dariusturcu.backend.service.BulkImportService;
 import org.dariusturcu.backend.service.CatalogSeedingService;
 import org.dariusturcu.backend.service.MetadataPriorityCoordinator;
 import org.dariusturcu.backend.service.PendingImportProcessor;
+import org.dariusturcu.backend.service.PlaylistExpansionService;
 import org.dariusturcu.backend.service.SongMetadataService;
 import org.dariusturcu.backend.service.SongResolutionService;
 import org.dariusturcu.backend.service.YoutubeIdLookupService;
 import org.flywaydb.core.Flyway;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -31,9 +36,12 @@ import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
 import org.springframework.boot.persistence.autoconfigure.EntityScan;
 import org.springframework.boot.security.oauth2.client.autoconfigure.OAuth2ClientAutoConfiguration;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.testcontainers.containers.PostgreSQLContainer;
@@ -96,22 +104,33 @@ class CatalogSeedingIntegrationTest {
         }
 
         @Bean
+        PlaylistExpansionService playlistExpansionService() {
+            // No test here submits a playlist link, so the AI-service RestClient this
+            // service would call is never actually invoked.
+            return new PlaylistExpansionService(null);
+        }
+
+        @Bean
         CatalogSeedingService catalogSeedingService(PendingImportRepository pendingImportRepository,
                                                     YoutubeIdLookupService youtubeIdLookupService,
                                                     PendingImportProcessor pendingImportProcessor,
                                                     MetadataPriorityCoordinator metadataPriorityCoordinator,
+                                                    PlaylistExpansionService playlistExpansionService,
                                                     @Value("${catalog.seeding.daily-drain-quota}") long dailyDrainQuota) {
             return new CatalogSeedingService(pendingImportRepository, youtubeIdLookupService,
-                    pendingImportProcessor, metadataPriorityCoordinator, dailyDrainQuota);
+                    pendingImportProcessor, metadataPriorityCoordinator, playlistExpansionService, dailyDrainQuota);
         }
 
         @Bean
         BulkImportService bulkImportService(YoutubeIdLookupService youtubeIdLookupService,
                                             SongResolutionService songResolutionService,
                                             CatalogSeedingService catalogSeedingService,
-                                            MetadataPriorityCoordinator metadataPriorityCoordinator) {
+                                            MetadataPriorityCoordinator metadataPriorityCoordinator,
+                                            PlaylistExpansionService playlistExpansionService,
+                                            ApplicationEventPublisher applicationEventPublisher) {
             return new BulkImportService(youtubeIdLookupService, songResolutionService,
-                    catalogSeedingService, metadataPriorityCoordinator);
+                    catalogSeedingService, metadataPriorityCoordinator, playlistExpansionService,
+                    applicationEventPublisher);
         }
     }
 
@@ -189,6 +208,18 @@ class CatalogSeedingIntegrationTest {
         while (metadataPriorityCoordinator.isOnTheSpotTrafficActive()) {
             metadataPriorityCoordinator.endOnTheSpotWork();
         }
+
+        User submittingUser = new User();
+        submittingUser.setUsername("bulk-import-submitter");
+        submittingUser.setEmail("bulk-import-submitter@integration.test");
+        submittingUser.setRole(Role.USER);
+        SecurityContextHolder.getContext().setAuthentication(
+                new UsernamePasswordAuthenticationToken(new UserPrincipal(submittingUser), null, null));
+    }
+
+    @AfterEach
+    void clearSecurityContext() {
+        SecurityContextHolder.clearContext();
     }
 
     @Test

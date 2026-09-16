@@ -5,13 +5,15 @@ import lombok.extern.slf4j.Slf4j;
 import org.dariusturcu.backend.model.song.BulkImportRequest;
 import org.dariusturcu.backend.model.song.BulkImportResultDTO;
 import org.dariusturcu.backend.model.song.YoutubeIdLookupResult;
+import org.dariusturcu.backend.security.util.SecurityUtils;
 import org.dariusturcu.backend.util.YoutubeLinkParser;
+import org.dariusturcu.backend.websocket.BulkImportProgressEvent;
+import org.dariusturcu.backend.websocket.BulkImportProgressOutcome;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 
-import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Optional;
 import java.util.Set;
 
 /**
@@ -22,6 +24,10 @@ import java.util.Set;
  * through the coordinator so the backlog drain yields the shared external rate-limit
  * budget while it runs. Every ID resolved here is also re-enqueued into the admin
  * backlog so the patient pipeline reprocesses the provisional fast-tier answer.
+ *
+ * Publishes a BulkImportProgressEvent for every submitted video id, already-known ones
+ * included, so the submitting user's client can render live per-song progress against
+ * the full set it asked to import rather than only the ones this loop actively resolves.
  */
 @Slf4j
 @Service
@@ -32,10 +38,19 @@ public class BulkImportService {
     private final SongResolutionService songResolutionService;
     private final CatalogSeedingService catalogSeedingService;
     private final MetadataPriorityCoordinator metadataPriorityCoordinator;
+    private final PlaylistExpansionService playlistExpansionService;
+    private final ApplicationEventPublisher applicationEventPublisher;
 
     public BulkImportResultDTO importImmediately(BulkImportRequest request) {
-        List<String> parsedYoutubeIds = parseSubmittedInputs(request.videoIdsOrLinks());
-        YoutubeIdLookupResult lookupResult = youtubeIdLookupService.partitionKnownAndUnknown(parsedYoutubeIds);
+        String submittingUsername = SecurityUtils.getCurrentUser().getUsername();
+        List<String> parsedYoutubeIds = YoutubeLinkParser.parseAllVideoIds(request.videoIdsOrLinks());
+        List<String> mergedYoutubeIds = playlistExpansionService.expandAndMerge(request.playlistLink(), parsedYoutubeIds);
+
+        YoutubeIdLookupResult lookupResult = youtubeIdLookupService.partitionKnownAndUnknown(mergedYoutubeIds);
+
+        for (String alreadyKnownId : lookupResult.knownYoutubeIds()) {
+            publishProgress(submittingUsername, alreadyKnownId, BulkImportProgressOutcome.ALREADY_KNOWN);
+        }
 
         Set<String> resolvedIds = new LinkedHashSet<>();
         Set<String> unresolvedIds = new LinkedHashSet<>();
@@ -47,8 +62,10 @@ public class BulkImportService {
                 if (resolved) {
                     resolvedIds.add(youtubeId);
                     catalogSeedingService.reEnqueueForPatientReprocessing(youtubeId);
+                    publishProgress(submittingUsername, youtubeId, BulkImportProgressOutcome.RESOLVED);
                 } else {
                     unresolvedIds.add(youtubeId);
+                    publishProgress(submittingUsername, youtubeId, BulkImportProgressOutcome.UNRESOLVED);
                 }
             }
         } finally {
@@ -58,15 +75,7 @@ public class BulkImportService {
         return new BulkImportResultDTO(lookupResult.knownYoutubeIds(), resolvedIds, unresolvedIds);
     }
 
-    private List<String> parseSubmittedInputs(List<String> videoIdsOrLinks) {
-        if (videoIdsOrLinks == null) {
-            return List.of();
-        }
-        List<String> parsedIds = new ArrayList<>();
-        for (String submittedInput : videoIdsOrLinks) {
-            Optional<String> parsedId = YoutubeLinkParser.parseVideoId(submittedInput);
-            parsedId.ifPresent(parsedIds::add);
-        }
-        return parsedIds;
+    private void publishProgress(String username, String youtubeId, BulkImportProgressOutcome outcome) {
+        applicationEventPublisher.publishEvent(new BulkImportProgressEvent(username, youtubeId, outcome));
     }
 }

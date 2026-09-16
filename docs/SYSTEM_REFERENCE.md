@@ -60,9 +60,9 @@ Every rate-limited request the core service rejects, whichever limiter caught it
 | GET | `/api/sessions/{sessionId}` | `GameSessionController`, story 10 |
 | GET | `/api/sessions/{sessionId}/link-out` | `GameSessionController`, the current round's YouTube watch URL for the round's DJ only, refused after reveal, story 9 |
 | GET | `/api/sessions/groups/{groupId}/results` | `GameSessionController`, a completed session's downloadable results export, story 10 |
-| POST | `/api/admin/catalog-seeding/enqueue` | `AdminCatalogSeedingController`, admin only via `AdminAccessGuard`, enqueues submitted YouTube IDs the catalog does not already have, story 40 |
+| POST | `/api/admin/catalog-seeding/enqueue` | `AdminCatalogSeedingController`, admin only via `AdminAccessGuard`, body is `AdminCatalogSeedingRequest` (`playlistLink`, `youtubeIds`, both nullable), expands a submitted playlist link through the AI microservice and merges it with any submitted IDs or links before enqueueing whatever the catalog does not already have, story 40 |
 | GET | `/api/admin/catalog-seeding/status` | `AdminCatalogSeedingController`, admin only, the backlog view (pending, done, failed counts), story 40 |
-| POST | `/api/bulk-import` | `BulkImportController`, any authenticated user, immediate on-the-spot resolution of a submitted YouTube playlist or ID list, never shares the admin backlog's queue, story 40 |
+| POST | `/api/bulk-import` | `BulkImportController`, any authenticated user, immediate on-the-spot resolution of `BulkImportRequest` (`playlistLink`, `videoIdsOrLinks`), a submitted playlist link is expanded through the AI microservice and merged with any submitted IDs or links, never shares the admin backlog's queue, story 40 |
 | POST | `/api/songs/{songId}/reports` | `SongReportController`, any authenticated user reports a song's metadata with a message, suggested correct year, and sources, one report per user per song, story 17 |
 | POST | `/api/songs/{songId}/confirmations` | `SongReportController`, any authenticated user confirms a low-confidence card, one confirmation per user per song, story 17 |
 | GET | `/api/admin/song-reports/queue` | `AdminSongReportController`, admin only via `AdminAccessGuard`, the review queue ranked by the five-tier priority order, story 17 |
@@ -76,12 +76,17 @@ Every rate-limited request the core service rejects, whichever limiter caught it
 | Method | Path | Notes |
 |---|---|---|
 | POST | `/metadata/resolve` | Internal only, gated by `X-Internal-Api-Key`, called by the core service's `SongMetadataService`, never exposed publicly. Independently rate-limited at 30 requests per minute per client address, evaluated before the internal-key check, since anyone holding that shared key could otherwise call it directly. See story 27 |
+| POST | `/metadata/playlist-video-ids` | Internal only, same `X-Internal-Api-Key` gate and rate limit as `/metadata/resolve`, called by the core service's `PlaylistExpansionService`. Body `{playlist_url_or_id}`, crawls the playlist through YouTube Data API's `playlistItems.list`, paginating on `nextPageToken`, and returns `{video_ids}`. A link or id that doesn't parse to a valid playlist returns 400; an upstream fetch failure on the first page returns 502. Story 40 |
 | GET | `/health` | Unauthenticated, story 38 |
 | GET | `/metrics` | Prometheus scrape format via `prometheus-fastapi-instrumentator`, story 38 |
 
 ### Correlation id (story 38)
 
 Both services accept and echo an `X-Request-Id` header on every request: the core service's `CorrelationIdFilter` and the AI microservice's `CorrelationIdMiddleware` reuse an incoming value or generate one, attach it to the active OpenTelemetry span as a `request.id` attribute, include it in every structured log line emitted while handling that request, and echo it back on the response. The core service's `CorrelationIdPropagatingInterceptor` forwards the current request's id onto the outgoing RestClient call to the AI microservice, so one user action stays traceable across both services' logs and correlates with a single trace.
+
+### Bulk import progress (story 40)
+
+The on-the-spot bulk-import path (`POST /api/bulk-import`) reports live per-song progress over a per-user STOMP destination rather than only its final response: `BulkImportService` publishes a `BulkImportProgressEvent` (`username`, `youtubeId`, `outcome`, one of `ALREADY_KNOWN`/`RESOLVED`/`UNRESOLVED`) for every submitted video id as its resolution loop reaches it, and `BulkImportProgressListener` forwards each one to `/user/queue/bulk-import-progress` through `SimpMessagingTemplate#convertAndSendToUser`, targeting the submitting user's own session rather than a shared group or session topic. `WebSocketConfig` registers `/queue` as a broker prefix alongside `/topic` so this per-user routing has somewhere to deliver to. The admin catalog-seeding backlog does not get this treatment: its own screen shows a backlog-count and quota summary, not live per-item progress, so its enqueue endpoint stays a synchronous request-response.
 
 Story 39's group endpoints, story 10's game-session endpoints, story 40's admin catalog-seeding and bulk-import endpoints, and story 17's report, confirmation, and admin review endpoints are live and listed above. Story 10 and 11 also add STOMP client-to-server destinations for in-session actions, handled by `GameActionController`:
 
