@@ -88,6 +88,7 @@ Every task breakdown in `TASKS.md` must include explicit test tasks alongside th
 - Sequential implementation order for remaining stories: [docs/ROADMAP.md](docs/ROADMAP.md)
 - API contracts, entity model, and state diagrams: [docs/SYSTEM_REFERENCE.md](docs/SYSTEM_REFERENCE.md)
 - Frontend content requirements, independent of visual design: [docs/FRONTEND_CONTENT.md](docs/FRONTEND_CONTENT.md)
+- How to build any frontend page against its design mockup, and which mockup file covers which page: [docs/FRONTEND_IMPLEMENTATION_GUIDE.md](docs/FRONTEND_IMPLEMENTATION_GUIDE.md), authoritative over any existing frontend code it conflicts with
 
 ## Task archiving
 
