@@ -4,7 +4,8 @@ import { useState } from "react";
 import { Button } from "@/components/shadcn/button";
 import { Input } from "@/components/shadcn/input";
 import { Label } from "@/components/shadcn/label";
-import { IconArrowLeft } from "@tabler/icons-react";
+import { Card } from "@/components/shadcn/card";
+import { IconArrowLeft, IconLock } from "@tabler/icons-react";
 import Link from "next/link";
 
 export default function ForgotPasswordPage() {
@@ -16,23 +17,32 @@ export default function ForgotPasswordPage() {
   };
 
   return (
-    <section className="flex px-4 py-8">
-      <form className="max-w-92 m-auto h-fit w-full" onSubmit={handleSubmit}>
-        <div className="p-6">
-          <div>
-            <h1 className="mb-1 mt-4 text-xl font-semibold">
-              Reset your password
-            </h1>
-            <p className="text-muted-foreground text-sm">
-              Enter your email and we&apos;ll send you a link to reset your password.
-            </p>
-          </div>
+    <section className="flex-1 flex items-center justify-center px-4 py-12 relative overflow-hidden bg-dotted">
+      <div className="absolute -top-44 -right-40 size-[560px] rounded-full bg-warning/15 pointer-events-none" />
+      <div className="absolute -bottom-56 -left-40 size-[480px] bg-accent/15 rotate-12 pointer-events-none" />
 
-          <div className="mt-6 space-y-5">
+      <Card className="w-full max-w-[460px] px-8 py-11 items-center relative z-10">
+        <div className="size-11 rounded-full bg-primary/15 flex items-center justify-center mb-1">
+          <IconLock className="size-5 text-primary" />
+        </div>
+
+        <div className="text-center mt-4 max-w-[340px]">
+          <h1
+            className="font-display text-2xl text-accent"
+            style={{ textShadow: "3px 3px 0 var(--background)" }}
+          >
+            Forgot password?
+          </h1>
+          <p className="text-muted-foreground text-sm mt-2.5 leading-relaxed">
+            No worries. Enter the email on your account and we&apos;ll send
+            you a link to reset it.
+          </p>
+        </div>
+
+        <form className="w-full mt-6" onSubmit={handleSubmit}>
+          <div className="space-y-5">
             <div className="space-y-2">
-              <Label htmlFor="email" className="text-sm">
-                Email
-              </Label>
+              <Label htmlFor="email">Email</Label>
               <Input
                 type="email"
                 required
@@ -49,21 +59,19 @@ export default function ForgotPasswordPage() {
               </p>
             ) : (
               <Button type="submit" className="w-full">
-                Send Reset Link
+                Send reset link
               </Button>
             )}
           </div>
-        </div>
+        </form>
 
-        <p className="text-muted-foreground text-center text-sm">
-          <Button asChild variant="link" className="px-2 gap-1">
-            <Link href="/login">
-              <IconArrowLeft className="size-3" />
-              Back to sign in
-            </Link>
-          </Button>
-        </p>
-      </form>
+        <Button asChild variant="link" className="mt-5 gap-1.5 font-sans">
+          <Link href="/login">
+            <IconArrowLeft className="size-3.5" />
+            Back to log in
+          </Link>
+        </Button>
+      </Card>
     </section>
   );
 }
