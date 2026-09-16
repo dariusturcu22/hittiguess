@@ -17,8 +17,6 @@ const RAIL_ICON_BASE_CLASSES =
 const RAIL_ICON_ACTIVE_CLASSES =
   "bg-accent text-accent-foreground shadow-xs";
 
-const RAIL_ICON_INERT_CLASSES = "cursor-not-allowed";
-
 const RAIL_ICON_INTERACTIVE_CLASSES =
   "cursor-pointer transition-colors hover:text-sidebar-foreground";
 
@@ -116,7 +114,7 @@ export function AppSidebar() {
       <div className={RAIL_DIVIDER_CLASSES} />
 
       <div
-        className={`${RAIL_ICON_BASE_CLASSES} ${RAIL_ICON_INERT_CLASSES}`}
+        className={`${RAIL_ICON_BASE_CLASSES} ${RAIL_ICON_INTERACTIVE_CLASSES}`}
         title="Play / start a session"
         aria-disabled="true"
       >
@@ -138,7 +136,7 @@ export function AppSidebar() {
           <PlaylistsIcon />
         </Link>
         <div
-          className={`${RAIL_ICON_BASE_CLASSES} ${RAIL_ICON_INERT_CLASSES}`}
+          className={`${RAIL_ICON_BASE_CLASSES} ${RAIL_ICON_INTERACTIVE_CLASSES}`}
           title="Explore public playlists"
           aria-disabled="true"
         >
@@ -149,7 +147,7 @@ export function AppSidebar() {
       <div className={RAIL_DIVIDER_CLASSES} />
 
       <div
-        className={`${RAIL_ICON_BASE_CLASSES} ${RAIL_ICON_INERT_CLASSES}`}
+        className={`${RAIL_ICON_BASE_CLASSES} ${RAIL_ICON_INTERACTIVE_CLASSES}`}
         title="Group lobby"
         aria-disabled="true"
       >

@@ -57,6 +57,17 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { getPlaylistMosaicColors } from "@/lib/playlist-mosaic-colors";
 
+// EditPlaylistDark/Light.dc.html show exactly these six color-swatch
+// options for a playlist's color, not an open-ended picker.
+const PLAYLIST_COLOR_SWATCHES = [
+  "#cba6f7",
+  "#fab387",
+  "#a6e3a1",
+  "#89b4fa",
+  "#f5c2e7",
+  "#f9e2af",
+];
+
 const MEMBER_AVATAR_COLORS = [
   "var(--primary)",
   "#89b4fa",
@@ -271,12 +282,24 @@ export default function PlaylistContent({
                   }}
                   className="h-10 max-w-[240px] font-display text-sm"
                 />
-                <Input
-                  type="color"
-                  value={colorValue}
-                  onChange={(event) => setColorValue(event.target.value)}
-                  className="size-10 shrink-0 cursor-pointer overflow-hidden rounded-md border-2 border-border p-0.5"
-                />
+                <div className="flex items-center gap-1.5">
+                  {PLAYLIST_COLOR_SWATCHES.map((swatch) => (
+                    <button
+                      key={swatch}
+                      type="button"
+                      aria-label={`Set playlist color to ${swatch}`}
+                      onClick={() => setColorValue(swatch)}
+                      className="size-6 shrink-0 cursor-pointer rounded-full"
+                      style={{
+                        backgroundColor: swatch,
+                        boxShadow:
+                          colorValue.toLowerCase() === swatch.toLowerCase()
+                            ? `0 0 0 3px var(--card), 0 0 0 5px ${swatch}`
+                            : undefined,
+                      }}
+                    />
+                  ))}
+                </div>
                 <Button size="sm" onClick={handleSaveEdit}>
                   Save
                 </Button>
@@ -306,7 +329,6 @@ export default function PlaylistContent({
 
             <div className="flex flex-wrap items-center gap-3">
               <Button
-                disabled
                 title="Live sessions haven't shipped yet"
                 className="gap-2"
               >
@@ -471,7 +493,6 @@ export default function PlaylistContent({
           <Button
             variant="outline"
             size="sm"
-            disabled
             title="Playlist imports haven't shipped yet"
             className="gap-1.5"
           >
