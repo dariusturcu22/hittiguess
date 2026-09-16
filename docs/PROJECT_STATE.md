@@ -47,6 +47,7 @@ A story can have draft tasks written against it in TASKS.md while still marked N
 | 46 | Playlist membership: a real owner/admin per playlist, per-member read/write/delete grants, kick (can rejoin) versus ban (can't), and a per-playlist join identity (display name and avatar, defaulting to the account's own) | Backend / Frontend | Implemented, backend built on `feature/playlist-membership`; frontend tasks (Edit playlist member list, Join by invite identity step) deferred to story 28 |
 | 48 | Comment cleanup: trim redundant and narrative comments left over from AI-assisted development down to `AGENTS.md`'s own comment rules | Backend / AI / Frontend | Ready, tasks checked against the real code |
 | 49 | Naming consistency: replace leftover references to the project's earlier working names (`Hitster`, `My Hitster`, `HitGuessr`) with `hittiguess` everywhere except the legitimate reference to the real Hitster board game as the product's inspiration | Docs / Frontend / Backend | Ready, tasks checked against the real code |
+| 50 | Auth hardening: email verification on signup, a real password reset flow, and TOTP-based two-factor authentication with backup codes | Backend / Frontend | Ready, tasks checked against the real code; gates Beta (inviting friends to play with real accounts), not Local |
 
 ## Open questions
 
