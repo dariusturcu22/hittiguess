@@ -21,7 +21,7 @@ export default function ForgotPasswordPage() {
       <div className="absolute -top-44 -right-40 size-[560px] rounded-full bg-warning/15 pointer-events-none" />
       <div className="absolute -bottom-56 -left-40 size-[480px] bg-accent/15 rotate-12 pointer-events-none" />
 
-      <Card className="w-full max-w-[460px] px-8 py-11 items-center relative z-10">
+      <Card className="w-full max-w-[460px] rounded-lg px-8 sm:px-12 pt-11 pb-12 items-center relative z-10">
         <div className="size-11 rounded-full bg-primary/15 flex items-center justify-center mb-1">
           <IconLock className="size-5 text-primary" />
         </div>
@@ -29,7 +29,7 @@ export default function ForgotPasswordPage() {
         <div className="text-center mt-4 max-w-[340px]">
           <h1
             className="font-display text-2xl text-accent"
-            style={{ textShadow: "3px 3px 0 var(--background)" }}
+            style={{ textShadow: "3px 3px 0 var(--text-shadow-on-card)" }}
           >
             Forgot password?
           </h1>
