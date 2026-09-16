@@ -51,17 +51,6 @@ public class Round {
     private Instant lockedInAt;
     private Instant bettingWindowEndsAt;
 
-    // Set only through RoundRepository's atomic conditional UPDATE (tryAcceptBet):
-    // the first bet wins, everyone else's attempt leaves this column untouched.
-    @ManyToOne
-    @JoinColumn(name = "bettor_player_id")
-    private Player bettorPlayer;
-
-    private Instant betPlacedAt;
-
-    // The bettor's own stated insertion index into their own timeline, set atomically
-    // alongside bettorPlayer and betPlacedAt. Null until a bet is accepted.
-    private Integer betPosition;
     private Instant revealedAt;
     private Instant scoredAt;
 
@@ -69,7 +58,9 @@ public class Round {
     @BatchSize(size = 20)
     private List<Guess> guesses = new ArrayList<>();
 
-    public boolean hasBettor() {
-        return bettorPlayer != null;
-    }
+    // Every accepted bet against this round's active-player timeline, at most one per
+    // distinct gap and at most one per player (see V16 migration's unique constraints).
+    @OneToMany(mappedBy = "round", cascade = CascadeType.ALL, orphanRemoval = true)
+    @BatchSize(size = 20)
+    private List<Bet> bets = new ArrayList<>();
 }

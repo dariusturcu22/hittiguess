@@ -2,15 +2,12 @@ package org.dariusturcu.backend.repository;
 
 import org.dariusturcu.backend.difficulty.SongPlacementStats;
 import org.dariusturcu.backend.model.session.GameSession;
-import org.dariusturcu.backend.model.session.Player;
 import org.dariusturcu.backend.model.session.Round;
 import org.dariusturcu.backend.model.session.RoundStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
-import java.time.Instant;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
@@ -43,16 +40,4 @@ public interface RoundRepository extends JpaRepository<Round, Long> {
     List<SongPlacementStats> aggregatePlacementStatsBySong(
             @Param("scoredStatus") RoundStatus scoredStatus,
             @Param("songIds") Collection<Long> songIds);
-
-    // The concurrency-safe core of betting: a single conditional UPDATE, guarded by
-    // "bettor_player_id IS NULL" in the WHERE clause, that also records the bettor's
-    // stated position in the same atomic step. Postgres serializes concurrent UPDATEs
-    // against the same row, so of any number of simultaneous callers exactly one update
-    // affects a row (returns 1) and every other one affects zero rows, with no explicit
-    // locking or retry needed on the application side. See DECISIONS.md.
-    @Modifying(clearAutomatically = true)
-    @Query("UPDATE Round round SET round.bettorPlayer = :player, round.betPlacedAt = :now, round.betPosition = :betPosition "
-            + "WHERE round.id = :roundId AND round.bettorPlayer IS NULL")
-    int tryAcceptBet(@Param("roundId") Long roundId, @Param("player") Player player, @Param("now") Instant now,
-                      @Param("betPosition") int betPosition);
 }
