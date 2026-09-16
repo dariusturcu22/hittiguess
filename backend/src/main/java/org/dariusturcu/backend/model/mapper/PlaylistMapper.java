@@ -5,7 +5,9 @@ import org.dariusturcu.backend.model.playlist.PlaylistDetailDTO;
 import org.dariusturcu.backend.model.playlist.PlaylistMemberDTO;
 import org.dariusturcu.backend.model.playlist.PlaylistMembership;
 import org.dariusturcu.backend.model.playlist.PlaylistSummaryDTO;
+import org.dariusturcu.backend.model.playlist.PublicPlaylistSummaryDTO;
 import org.dariusturcu.backend.model.playlist.UpdatePlaylistRequest;
+import org.dariusturcu.backend.model.user.UserSummaryDTO;
 
 import org.springframework.stereotype.Component;
 import lombok.RequiredArgsConstructor;
@@ -40,7 +42,18 @@ public class PlaylistMapper {
                 ownerId,
                 playlist.getMemberships().stream()
                         .map(membership -> toMemberDTO(membership, membership.getUser().getId().equals(ownerId)))
-                        .collect(Collectors.toSet())
+                        .collect(Collectors.toSet()),
+                playlist.isPublic()
+        );
+    }
+
+    public PublicPlaylistSummaryDTO toPublicSummaryDTO(Playlist playlist) {
+        return new PublicPlaylistSummaryDTO(
+                playlist.getId(),
+                playlist.getName(),
+                playlist.getColor(),
+                playlist.getSongCount(),
+                new UserSummaryDTO(playlist.getOwner().getId(), playlist.getOwner().getUsername())
         );
     }
 

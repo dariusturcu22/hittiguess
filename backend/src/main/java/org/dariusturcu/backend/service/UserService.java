@@ -11,6 +11,8 @@ import org.dariusturcu.backend.model.playlist.Playlist;
 import org.dariusturcu.backend.model.playlist.PlaylistDetailDTO;
 import org.dariusturcu.backend.model.playlist.PlaylistMembership;
 import org.dariusturcu.backend.model.playlist.PlaylistSummaryDTO;
+import org.dariusturcu.backend.model.playlist.PublicPlaylistSummaryDTO;
+import org.dariusturcu.backend.model.playlist.SavedPlaylist;
 import org.dariusturcu.backend.model.user.UpdateUserRequest;
 import org.dariusturcu.backend.model.user.User;
 import org.dariusturcu.backend.model.user.UserDetailDTO;
@@ -18,6 +20,7 @@ import org.dariusturcu.backend.model.song.Song;
 import org.dariusturcu.backend.repository.PlaylistBanRepository;
 import org.dariusturcu.backend.repository.PlaylistMembershipRepository;
 import org.dariusturcu.backend.repository.PlaylistRepository;
+import org.dariusturcu.backend.repository.SavedPlaylistRepository;
 import org.dariusturcu.backend.repository.SongRepository;
 import org.dariusturcu.backend.repository.UserRepository;
 
@@ -43,6 +46,7 @@ public class UserService {
     private final PlaylistMembershipRepository playlistMembershipRepository;
     private final PlaylistBanRepository playlistBanRepository;
     private final SongRepository songRepository;
+    private final SavedPlaylistRepository savedPlaylistRepository;
 
     private List<PlaylistSummaryDTO> getPlaylistSummaries(Long userId) {
         return playlistMembershipRepository.findByUserId(userId).stream()
@@ -140,6 +144,15 @@ public class UserService {
     public List<PlaylistSummaryDTO> getUserPlaylists() {
         User user = SecurityUtils.getCurrentUser();
         return getPlaylistSummaries(user.getId());
+    }
+
+    @Transactional(readOnly = true)
+    public List<PublicPlaylistSummaryDTO> getSavedPlaylists() {
+        User user = SecurityUtils.getCurrentUser();
+        return savedPlaylistRepository.findByUserId(user.getId()).stream()
+                .map(SavedPlaylist::getPlaylist)
+                .map(playlistMapper::toPublicSummaryDTO)
+                .toList();
     }
 
     public PlaylistSummaryDTO joinPlaylist(String playlistInviteCode, JoinPlaylistRequest request) {

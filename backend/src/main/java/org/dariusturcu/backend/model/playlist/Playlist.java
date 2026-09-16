@@ -27,6 +27,9 @@ public class Playlist {
     @Column(nullable = false, updatable = false, unique = true)
     private String inviteCode;
 
+    @Column(nullable = false)
+    private boolean isPublic = false;
+
     @ManyToOne
     @JoinColumn(name = "owner_id", nullable = false)
     private User owner;

@@ -6,6 +6,8 @@ import org.dariusturcu.backend.model.mapper.PlaylistMapper;
 import org.dariusturcu.backend.model.mapper.SongMapper;
 import org.dariusturcu.backend.model.playlist.Playlist;
 import org.dariusturcu.backend.model.playlist.PlaylistMembership;
+import org.dariusturcu.backend.model.playlist.PublicPlaylistSummaryDTO;
+import org.dariusturcu.backend.model.playlist.SavedPlaylist;
 import org.dariusturcu.backend.model.playlist.UpdateMembershipGrantsRequest;
 import org.dariusturcu.backend.model.playlist.UpdatePlaylistRequest;
 import org.dariusturcu.backend.model.song.Song;
@@ -16,6 +18,7 @@ import org.dariusturcu.backend.model.user.User;
 import org.dariusturcu.backend.repository.PlaylistBanRepository;
 import org.dariusturcu.backend.repository.PlaylistMembershipRepository;
 import org.dariusturcu.backend.repository.PlaylistRepository;
+import org.dariusturcu.backend.repository.SavedPlaylistRepository;
 import org.dariusturcu.backend.repository.SongRepository;
 import org.dariusturcu.backend.security.UserPrincipal;
 import org.junit.jupiter.api.AfterEach;
@@ -33,6 +36,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 
@@ -40,6 +44,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -61,6 +66,8 @@ class PlaylistServiceTest {
     private PlaylistMembershipRepository playlistMembershipRepository;
     @Mock
     private PlaylistBanRepository playlistBanRepository;
+    @Mock
+    private SavedPlaylistRepository savedPlaylistRepository;
 
     @InjectMocks
     private PlaylistService playlistService;
@@ -69,6 +76,7 @@ class PlaylistServiceTest {
     private static final Long SONG_ID = 2L;
     private static final Long OWNER_ID = 10L;
     private static final Long MEMBER_ID = 20L;
+    private static final Long OTHER_USER_ID = 30L;
 
     private User currentUser;
     private User owner;
@@ -92,7 +100,9 @@ class PlaylistServiceTest {
                 new UsernamePasswordAuthenticationToken(new UserPrincipal(currentUser), null, null)
         );
 
-        when(playlistRepository.findById(PLAYLIST_ID)).thenReturn(Optional.of(playlist));
+        // Lenient: getPublicPlaylists and unsavePlaylist never look a playlist up by ID, so a
+        // strict stub here would fail those tests as an unused stubbing.
+        lenient().when(playlistRepository.findById(PLAYLIST_ID)).thenReturn(Optional.of(playlist));
     }
 
     @AfterEach
@@ -376,5 +386,131 @@ class PlaylistServiceTest {
 
         assertThat(song.getPlaylists()).isEmpty();
         verify(songRepository, never()).delete(any());
+    }
+
+    @Test
+    void publishPlaylistRejectsANonOwnerMember() {
+        doThrow(new AccessDeniedException("Only the playlist owner can perform this action"))
+                .when(playlistAccessService).requireOwner(playlist, currentUser);
+
+        assertThatThrownBy(() -> playlistService.publishPlaylist(PLAYLIST_ID))
+                .isInstanceOf(AccessDeniedException.class);
+
+        verify(playlistRepository, never()).save(any());
+    }
+
+    @Test
+    void publishPlaylistMarksThePlaylistPublic() {
+        when(playlistRepository.save(playlist)).thenReturn(playlist);
+
+        playlistService.publishPlaylist(PLAYLIST_ID);
+
+        assertThat(playlist.isPublic()).isTrue();
+        verify(playlistMapper).toDetailDTO(playlist);
+    }
+
+    @Test
+    void unpublishPlaylistRejectsANonOwnerMember() {
+        doThrow(new AccessDeniedException("Only the playlist owner can perform this action"))
+                .when(playlistAccessService).requireOwner(playlist, currentUser);
+
+        assertThatThrownBy(() -> playlistService.unpublishPlaylist(PLAYLIST_ID))
+                .isInstanceOf(AccessDeniedException.class);
+
+        verify(playlistRepository, never()).save(any());
+    }
+
+    @Test
+    void unpublishPlaylistMarksThePlaylistPrivateAgain() {
+        playlist.setPublic(true);
+        when(playlistRepository.save(playlist)).thenReturn(playlist);
+
+        playlistService.unpublishPlaylist(PLAYLIST_ID);
+
+        assertThat(playlist.isPublic()).isFalse();
+        verify(playlistMapper).toDetailDTO(playlist);
+    }
+
+    @Test
+    void getPublicPlaylistsReturnsOnlyPlaylistsPublishedPublicly() {
+        Playlist publicPlaylist = new Playlist();
+        publicPlaylist.setId(99L);
+        publicPlaylist.setPublic(true);
+        PublicPlaylistSummaryDTO summary = new PublicPlaylistSummaryDTO(99L, "Public", "abcdef", 0, null);
+        when(playlistRepository.findByIsPublicTrue()).thenReturn(List.of(publicPlaylist));
+        when(playlistMapper.toPublicSummaryDTO(publicPlaylist)).thenReturn(summary);
+
+        var result = playlistService.getPublicPlaylists();
+
+        assertThat(result).containsExactly(summary);
+    }
+
+    @Test
+    void savePlaylistRejectsAPlaylistThatIsNotPublic() {
+        assertThatThrownBy(() -> playlistService.savePlaylist(PLAYLIST_ID))
+                .isInstanceOf(ConflictException.class);
+
+        verify(savedPlaylistRepository, never()).save(any());
+    }
+
+    @Test
+    void savePlaylistRejectsTheOwnerSavingTheirOwnPlaylist() {
+        playlist.setPublic(true);
+
+        assertThatThrownBy(() -> playlistService.savePlaylist(PLAYLIST_ID))
+                .isInstanceOf(ConflictException.class);
+
+        verify(savedPlaylistRepository, never()).save(any());
+    }
+
+    @Test
+    void savePlaylistRejectsAnAlreadySavedPlaylist() {
+        User anotherOwner = new User();
+        anotherOwner.setId(OTHER_USER_ID);
+        playlist.setOwner(anotherOwner);
+        playlist.setPublic(true);
+        when(savedPlaylistRepository.existsByUserIdAndPlaylistId(OWNER_ID, PLAYLIST_ID)).thenReturn(true);
+
+        assertThatThrownBy(() -> playlistService.savePlaylist(PLAYLIST_ID))
+                .isInstanceOf(ConflictException.class);
+
+        verify(savedPlaylistRepository, never()).save(any());
+    }
+
+    @Test
+    void savePlaylistSavesAPublicPlaylistOwnedByAnotherUser() {
+        User anotherOwner = new User();
+        anotherOwner.setId(OTHER_USER_ID);
+        playlist.setOwner(anotherOwner);
+        playlist.setPublic(true);
+        PublicPlaylistSummaryDTO summary = new PublicPlaylistSummaryDTO(PLAYLIST_ID, "Playlist", "abcdef", 0, null);
+        when(savedPlaylistRepository.existsByUserIdAndPlaylistId(OWNER_ID, PLAYLIST_ID)).thenReturn(false);
+        when(playlistMapper.toPublicSummaryDTO(playlist)).thenReturn(summary);
+
+        PublicPlaylistSummaryDTO result = playlistService.savePlaylist(PLAYLIST_ID);
+
+        assertThat(result).isEqualTo(summary);
+        verify(savedPlaylistRepository).save(any(SavedPlaylist.class));
+    }
+
+    @Test
+    void unsavePlaylistRejectsAPlaylistThatWasNeverSaved() {
+        when(savedPlaylistRepository.findByUserIdAndPlaylistId(OWNER_ID, PLAYLIST_ID)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> playlistService.unsavePlaylist(PLAYLIST_ID))
+                .isInstanceOf(ResourceNotFoundException.class);
+
+        verify(savedPlaylistRepository, never()).delete(any());
+    }
+
+    @Test
+    void unsavePlaylistRemovesAnExistingSavedPlaylist() {
+        SavedPlaylist savedPlaylist = new SavedPlaylist();
+        when(savedPlaylistRepository.findByUserIdAndPlaylistId(OWNER_ID, PLAYLIST_ID))
+                .thenReturn(Optional.of(savedPlaylist));
+
+        playlistService.unsavePlaylist(PLAYLIST_ID);
+
+        verify(savedPlaylistRepository).delete(savedPlaylist);
     }
 }
