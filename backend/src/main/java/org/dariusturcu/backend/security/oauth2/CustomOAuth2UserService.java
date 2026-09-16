@@ -49,6 +49,9 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
                 user.setUsername(resolveUniqueUsername(oAuth2UserInfo.getName()));
             }
             user.setImageUrl(oAuth2UserInfo.getImageUrl());
+            // Google re-confirms this email on every login, so an existing account is kept
+            // verified even if it somehow predates this flag.
+            user.setEmailVerified(true);
             return userRepository.save(user);
         }
 
@@ -66,6 +69,9 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
         user.setEmail(oAuth2UserInfo.getEmail());
         user.setImageUrl(oAuth2UserInfo.getImageUrl());
         user.setRole(Role.USER);
+        // Google has already verified this email; a local signup is the only one that
+        // starts unverified.
+        user.setEmailVerified(true);
 
         return userRepository.save(user);
     }

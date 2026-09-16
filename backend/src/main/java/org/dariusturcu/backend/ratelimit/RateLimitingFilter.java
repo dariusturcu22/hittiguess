@@ -33,7 +33,18 @@ public class RateLimitingFilter extends OncePerRequestFilter {
     private static final Duration RATE_LIMIT_WINDOW = Duration.ofMinutes(1);
     private static final int GENERAL_MAX_REQUESTS_PER_WINDOW = 60;
     private static final int AUTH_MAX_REQUESTS_PER_WINDOW = 5;
-    private static final Set<String> IP_ONLY_RATE_LIMITED_PATHS = Set.of("/auth/login", "/auth/register");
+    // /auth/resend-verification is the one story 50 explicitly calls out; /auth/2fa/verify
+    // and /auth/password-reset/request are added for the same reason /auth/login is here,
+    // a second factor code and a reset request are both brute-force/enumeration targets an
+    // unauthenticated caller can hit repeatedly, and the general 60-per-minute bucket is far
+    // too loose to matter against either.
+    private static final Set<String> IP_ONLY_RATE_LIMITED_PATHS = Set.of(
+            "/auth/login",
+            "/auth/register",
+            "/auth/resend-verification",
+            "/auth/password-reset/request",
+            "/auth/2fa/verify"
+    );
     private static final String RATE_LIMIT_EXCEEDED_MESSAGE = "Too many requests, try again later";
 
     private final ObjectMapper objectMapper;
