@@ -51,6 +51,15 @@
   --shadow-color: rgba(76, 79, 105, 0.25);
   --dot-color: rgba(76, 79, 105, 0.2);
 
+  /* Bungee headlines carry a hard, no-blur text shadow. Its color tracks the
+     surface the headline sits on, so it needs two values rather than one:
+     -on-page for headlines over --background, -on-card for headlines over
+     --card. Neither can reuse --card or --background directly, because the
+     shadow would then match the surface it sits on in one of the themes and
+     disappear. */
+  --text-shadow-on-page: #ccd0da;
+  --text-shadow-on-card: #ccd0da;
+
   --radius: 1.125rem;
   --spacing: 0.25rem;
 }
@@ -95,6 +104,9 @@
 
   --shadow-color: rgba(0, 0, 0, 0.4);
   --dot-color: rgba(108, 112, 134, 0.25);
+
+  --text-shadow-on-page: #313244;
+  --text-shadow-on-card: #1e1e2e;
 }
 
 @theme inline {
@@ -164,8 +176,13 @@
   * {
     @apply border-border outline-ring/50;
   }
+  /* The next/font variables are declared on <body>, and Tailwind's own
+     preflight sets font-family on <html>, where those variables don't
+     resolve. Applying font-sans here is what actually puts Space Grotesk on
+     body text; without it every unstyled element falls back to the browser
+     default sans. */
   body {
-    @apply bg-background text-foreground transition-colors duration-300;
+    @apply bg-background text-foreground font-sans transition-colors duration-300;
   }
 }
 
