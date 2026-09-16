@@ -67,6 +67,11 @@
      needs its own token rather than approximating one of those. */
   --surface-sunken: #ffffff;
 
+  /* The app shell's icon-only nav rail uses a dedicated muted color for its
+     inactive icons, distinct from --muted-foreground (tuned for body text
+     on --background, not for icons on --sidebar). */
+  --icon-muted: #9ca0b0;
+
   --radius: 1.125rem;
   --spacing: 0.25rem;
 }
@@ -116,6 +121,8 @@
   --text-shadow-on-card: #1e1e2e;
 
   --surface-sunken: #181825;
+
+  --icon-muted: #6c7086;
 }
 
 @theme inline {
@@ -150,6 +157,7 @@
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-surface-sunken: var(--surface-sunken);
+  --color-icon-muted: var(--icon-muted);
 
   /* Bungee/Baloo 2/Space Grotesk don't change between light and dark, so
      unlike the color tokens above these are declared directly here instead
@@ -202,5 +210,23 @@
   .bg-dotted {
     background-image: radial-gradient(circle, var(--dot-color) 1.5px, transparent 1.5px);
     background-size: 22px 22px;
+  }
+
+  /* The wordmark's four bars read as an audio waveform; the mockups are
+     static images and can't show that, but a still waveform reads as
+     broken rather than as a deliberate mark, so each bar pulses its height
+     on a staggered delay (set via inline animation-delay per bar). */
+  .waveform-bar-pulse {
+    animation: waveform-bar-pulse 1.2s ease-in-out infinite;
+  }
+}
+
+@keyframes waveform-bar-pulse {
+  0%,
+  100% {
+    transform: scaleY(0.5);
+  }
+  50% {
+    transform: scaleY(1);
   }
 }

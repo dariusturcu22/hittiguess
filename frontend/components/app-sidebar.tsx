@@ -12,7 +12,7 @@ import { NavUser } from "@/components/nav-user";
 const RAIL_DIVIDER_CLASSES = "w-8 h-0.5 my-3.5 shrink-0 rounded-full bg-sidebar-border";
 
 const RAIL_ICON_BASE_CLASSES =
-  "flex h-[46px] w-[46px] items-center justify-center rounded-[14px] text-muted-foreground";
+  "flex h-[46px] w-[46px] items-center justify-center rounded-[14px] text-icon-muted";
 
 const RAIL_ICON_ACTIVE_CLASSES =
   "bg-accent text-accent-foreground shadow-xs";
