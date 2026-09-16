@@ -1,6 +1,5 @@
 "use client";
 
-import { SiteHeader } from "@/components/site-header";
 import React, { use } from "react";
 
 import { toast } from "sonner";
@@ -62,22 +61,26 @@ export default function PlaylistPage({ params }: PageProps) {
   };
 
   if (isLoading) {
-    return <div>Loading playlists...</div>;
+    return (
+      <div className="flex h-full flex-col p-6 md:p-11">
+        <p className="text-sm text-muted-foreground">Loading playlist...</p>
+      </div>
+    );
   }
 
   if (isError || !currentPlaylist) {
-    return <div>Failed to load playlist</div>;
+    return (
+      <div className="flex h-full flex-col p-6 md:p-11">
+        <p className="text-sm text-destructive">Failed to load playlist.</p>
+      </div>
+    );
   }
 
   return (
-    <div className="flex h-full flex-col">
-      <SiteHeader
-        title={currentPlaylist.name}
-        color={`#${currentPlaylist.color}`}
-        onTitleChange={handleTitleChange}
-        onColorChange={handleColorChange}
-      />
-      <PlaylistContent playlistId={playlistId} />
-    </div>
+    <PlaylistContent
+      playlistId={playlistId}
+      onTitleChange={handleTitleChange}
+      onColorChange={handleColorChange}
+    />
   );
 }
