@@ -15,3 +15,17 @@ The seed mechanism is idempotent per account. Running the application again with
 This account never exists in Production. The seeder itself is disabled by a Spring profile condition when `APP_ENV` is `prod`, and a separate startup check fails the application if a `TEST`-role row is ever found while running against Production, regardless of how it got there.
 
 This section belongs in `CONTRIBUTING.md` once story 36's open-source-readiness branch merges. Until then it lives here.
+
+## Running the Playwright end-to-end suite
+
+The `frontend/e2e` suite runs against a real, running backend and frontend,
+not a mocked stack. Start the local stack first with `make dev` from the
+repository root (or the equivalent manual two-terminal backend and frontend
+start), then run the suite from `frontend`:
+
+```
+npm run e2e
+```
+
+This targets `http://localhost:3000` by default. The seeded test accounts
+above are what the suite logs in with; it does not register its own users.
