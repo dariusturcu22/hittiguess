@@ -10,6 +10,7 @@ import org.dariusturcu.backend.model.mapper.PlaylistMapper;
 import org.dariusturcu.backend.model.mapper.SessionMapper;
 import org.dariusturcu.backend.model.mapper.SongMapper;
 import org.dariusturcu.backend.model.playlist.Playlist;
+import org.dariusturcu.backend.model.session.Bet;
 import org.dariusturcu.backend.model.session.GameSession;
 import org.dariusturcu.backend.model.session.Player;
 import org.dariusturcu.backend.model.session.Round;
@@ -20,6 +21,7 @@ import org.dariusturcu.backend.model.song.SongArtist;
 import org.dariusturcu.backend.model.user.AuthProvider;
 import org.dariusturcu.backend.model.user.Role;
 import org.dariusturcu.backend.model.user.User;
+import org.dariusturcu.backend.repository.BetRepository;
 import org.dariusturcu.backend.repository.GameSessionRepository;
 import org.dariusturcu.backend.repository.GroupRepository;
 import org.dariusturcu.backend.repository.GuessRepository;
@@ -74,7 +76,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 /**
  * Proves betting is concurrency-safe against a real Postgres instance and real threads,
  * not a single-threaded simulation: several threads call GameSessionService.placeBet
- * against the very same round simultaneously, and exactly one of them succeeds.
+ * against the same gap in the same round's active-player timeline simultaneously, and
+ * exactly one of them succeeds, relying on the bets table's own unique constraint on
+ * (round_id, position) rather than application-level locking.
  *
  * Deliberately not class-level @Transactional, unlike GameSessionLifecycleIntegrationTest:
  * the round this test races bets against must actually be committed and visible to other
@@ -91,8 +95,10 @@ class GameSessionBettingConcurrencyIntegrationTest {
 
     private static final int CONCURRENT_ATTEMPTS_PER_ELIGIBLE_BETTOR = 2;
     private static final int CONCURRENCY_TEST_TIMEOUT_SECONDS = 10;
-    // Every bettor in this test starts with a single anchor card, so position 0 (before
-    // that card) is in range regardless of which bettor wins the race.
+    // The active player starts with a single anchor card, so positions 0 and 1 are both
+    // in range. The active player's own placement is locked at position 1, leaving
+    // position 0 as the one gap both bettors race for.
+    private static final int ACTIVE_PLAYER_PLACED_POSITION = 1;
     private static final int BET_POSITION = 0;
 
     @Configuration
@@ -121,8 +127,8 @@ class GameSessionBettingConcurrencyIntegrationTest {
         }
 
         @Bean
-        SessionMapper sessionMapper() {
-            return new SessionMapper();
+        SessionMapper sessionMapper(BetRepository betRepository) {
+            return new SessionMapper(betRepository);
         }
 
         @Bean
@@ -153,12 +159,12 @@ class GameSessionBettingConcurrencyIntegrationTest {
         @Bean
         GameSessionService gameSessionService(
                 GameSessionRepository gameSessionRepository, PlayerRepository playerRepository,
-                RoundRepository roundRepository, GuessRepository guessRepository, GroupRepository groupRepository,
-                SongRepository songRepository, GroupService groupService, SessionMapper sessionMapper,
-                SessionResultsStore resultsStore, GameSessionScheduler gameSessionScheduler,
-                ApplicationEventPublisher eventPublisher) {
+                RoundRepository roundRepository, GuessRepository guessRepository, BetRepository betRepository,
+                GroupRepository groupRepository, SongRepository songRepository, GroupService groupService,
+                SessionMapper sessionMapper, SessionResultsStore resultsStore,
+                GameSessionScheduler gameSessionScheduler, ApplicationEventPublisher eventPublisher) {
             return new GameSessionService(gameSessionRepository, playerRepository, roundRepository, guessRepository,
-                    groupRepository, songRepository, groupService, sessionMapper, resultsStore,
+                    betRepository, groupRepository, songRepository, groupService, sessionMapper, resultsStore,
                     gameSessionScheduler, eventPublisher);
         }
 
@@ -203,6 +209,8 @@ class GameSessionBettingConcurrencyIntegrationTest {
     private PlayerRepository playerRepository;
     @Autowired
     private RoundRepository roundRepository;
+    @Autowired
+    private BetRepository betRepository;
 
     @AfterEach
     void tearDown() {
@@ -223,7 +231,7 @@ class GameSessionBettingConcurrencyIntegrationTest {
     }
 
     @Test
-    void exactlyOneOfSeveralSimultaneousBetsIsAcceptedAndTheOthersLoseNothing() throws InterruptedException {
+    void exactlyOneOfSeveralSimultaneousBetsOnTheSameGapIsAcceptedAndTheOthersLoseNothing() throws InterruptedException {
         User admin = persistUser("betting-race-admin-" + System.nanoTime());
         User dj = persistUser("betting-race-dj-" + System.nanoTime());
         User bettorOne = persistUser("betting-race-bettor-one-" + System.nanoTime());
@@ -280,6 +288,10 @@ class GameSessionBettingConcurrencyIntegrationTest {
         playerRepository.save(bettorOnePlayer);
         playerRepository.save(bettorTwoPlayer);
 
+        // The active player's own placement is locked at a different gap than the one
+        // both bettors race for, matching the real flow where a bettor can never target
+        // the gap the active player already claimed.
+        round.setPlacedPosition(ACTIVE_PLAYER_PLACED_POSITION);
         round.setStatus(RoundStatus.BETTING);
         round.setBettingWindowEndsAt(java.time.Instant.now().plusSeconds(30));
         roundRepository.save(round);
@@ -303,12 +315,13 @@ class GameSessionBettingConcurrencyIntegrationTest {
         assertThat(completedInTime).isTrue();
         assertThat(acceptedCount.get()).isEqualTo(1);
 
-        Round finalRound = roundRepository.findById(round.getId()).orElseThrow();
-        assertThat(finalRound.getBettorPlayer()).isNotNull();
+        List<Bet> betsOnTheGap = betRepository.findByRoundId(round.getId());
+        assertThat(betsOnTheGap).hasSize(1);
+        assertThat(betsOnTheGap.get(0).getPosition()).isEqualTo(BET_POSITION);
         Player finalBettorOne = playerRepository.findById(bettorOnePlayer.getId()).orElseThrow();
         Player finalBettorTwo = playerRepository.findById(bettorTwoPlayer.getId()).orElseThrow();
 
-        boolean bettorOneWonTheRace = finalRound.getBettorPlayer().getId().equals(bettorOnePlayer.getId());
+        boolean bettorOneWonTheRace = betsOnTheGap.get(0).getPlayer().getId().equals(bettorOnePlayer.getId());
         if (bettorOneWonTheRace) {
             assertThat(finalBettorOne.getTokenCount()).isZero();
             assertThat(finalBettorTwo.getTokenCount()).isEqualTo(1);

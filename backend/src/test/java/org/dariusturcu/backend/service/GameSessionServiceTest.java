@@ -2,6 +2,7 @@ package org.dariusturcu.backend.service;
 
 import org.dariusturcu.backend.model.group.DjMode;
 import org.dariusturcu.backend.model.mapper.SessionMapper;
+import org.dariusturcu.backend.model.session.Bet;
 import org.dariusturcu.backend.model.session.GameSession;
 import org.dariusturcu.backend.model.session.PlaceCardRequest;
 import org.dariusturcu.backend.model.session.Player;
@@ -15,6 +16,7 @@ import org.dariusturcu.backend.model.song.ArtistRole;
 import org.dariusturcu.backend.model.song.Song;
 import org.dariusturcu.backend.model.song.SongArtist;
 import org.dariusturcu.backend.model.user.User;
+import org.dariusturcu.backend.repository.BetRepository;
 import org.dariusturcu.backend.repository.GameSessionRepository;
 import org.dariusturcu.backend.repository.GroupRepository;
 import org.dariusturcu.backend.repository.GuessRepository;
@@ -29,6 +31,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.test.util.ReflectionTestUtils;
 
@@ -38,11 +41,16 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
 @ExtendWith(MockitoExtension.class)
@@ -57,6 +65,8 @@ class GameSessionServiceTest {
     @Mock
     private GuessRepository guessRepository;
     @Mock
+    private BetRepository betRepository;
+    @Mock
     private GroupRepository groupRepository;
     @Mock
     private SongRepository songRepository;
@@ -67,16 +77,19 @@ class GameSessionServiceTest {
     @Mock
     private ApplicationEventPublisher eventPublisher;
 
-    private final SessionMapper sessionMapper = new SessionMapper();
     private final SessionResultsStore resultsStore = new SessionResultsStore();
 
+    // Built in setUp(), not as a field initializer: SessionMapper needs the betRepository
+    // mock, which Mockito injects only after this instance's fields are constructed.
+    private SessionMapper sessionMapper;
     private GameSessionService gameSessionService;
     private final Map<Long, Song> songsById = new HashMap<>();
 
     @BeforeEach
     void setUp() {
+        sessionMapper = new SessionMapper(betRepository);
         gameSessionService = new GameSessionService(
-                gameSessionRepository, playerRepository, roundRepository, guessRepository,
+                gameSessionRepository, playerRepository, roundRepository, guessRepository, betRepository,
                 groupRepository, songRepository, groupService, sessionMapper, resultsStore,
                 gameSessionScheduler, eventPublisher);
         // Self-injection (see GameSessionService's @Lazy self field): the production
@@ -89,6 +102,9 @@ class GameSessionServiceTest {
         lenient().when(roundRepository.save(any(Round.class))).thenAnswer(invocation -> invocation.getArgument(0));
         lenient().when(songRepository.findById(anyLong()))
                 .thenAnswer(invocation -> Optional.ofNullable(songsById.get((Long) invocation.getArgument(0))));
+        // No player has an existing bet on any round unless a test says otherwise.
+        lenient().when(betRepository.findPlayerIdsByRoundId(anyLong())).thenReturn(Set.of());
+        lenient().when(betRepository.findByRoundId(anyLong())).thenReturn(List.of());
     }
 
     private Song song(long id, String title, int year, SongArtist... artists) {
@@ -135,6 +151,21 @@ class GameSessionServiceTest {
         PlayerCard card = PlayerCard.of(song);
         player.addCard(card);
         return card;
+    }
+
+    // Adds an already-accepted bet directly to a round, bypassing placeBet: used by the
+    // scoring tests, which start from the round already in its post-betting-window state.
+    // scoreRoundEffect reads accepted bets through BetRepository, not Round's own lazy
+    // association, so this keeps that stub in sync rather than mutating the entity.
+    private Bet bet(Round round, Player bettor, int position) {
+        Bet placedBet = new Bet();
+        placedBet.setRound(round);
+        placedBet.setPlayer(bettor);
+        placedBet.setPosition(position);
+        placedBet.setPlacedAt(Instant.now());
+        round.getBets().add(placedBet);
+        lenient().when(betRepository.findByRoundId(round.getId())).thenAnswer(invocation -> round.getBets());
+        return placedBet;
     }
 
     private GameSession session(DjMode djMode, int winConditionCardCount) {
@@ -191,7 +222,7 @@ class GameSessionServiceTest {
     }
 
     @Test
-    void correctPlacementAwardsTheCardToTheActivePlayerAndABetIsLostRegardless() {
+    void correctPlacementAwardsTheCardToTheActivePlayerAndEveryBetIsLostRegardless() {
         GameSession session = session(DjMode.ROTATING, 2);
         Player active = player(session, 1L, 0, PlayerStatus.ACTIVE);
         Player dj = player(session, 2L, 1, PlayerStatus.ACTIVE);
@@ -203,7 +234,7 @@ class GameSessionServiceTest {
         Round round = round(session, 10L, 1, active, dj, roundSong);
         round.setPlacementCorrect(true);
         round.setPlacedPosition(1);
-        round.setBettorPlayer(bettor);
+        bet(round, bettor, 0);
         bettor.setTokenCount(0); // already spent placing the bet
 
         gameSessionService.scoreRoundEffect(round.getId());
@@ -215,53 +246,57 @@ class GameSessionServiceTest {
     }
 
     @Test
-    void wrongPlacementWithACorrectBetGivesTheCardToTheBettor() {
+    void wrongPlacementWithABetOnTheObjectivelyCorrectGapGivesTheCardToThatBettorsOwnTimeline() {
         GameSession session = session(DjMode.ROTATING, 2);
         Player active = player(session, 1L, 0, PlayerStatus.ACTIVE);
         Player dj = player(session, 2L, 1, PlayerStatus.ACTIVE);
         Player bettor = player(session, 3L, 2, PlayerStatus.ACTIVE);
         anchorCard(active, song(100, "Active Anchor", 1990));
-        anchorCard(bettor, song(101, "Bettor Anchor", 1990));
+        anchorCard(bettor, song(101, "Bettor Anchor", 1995));
         anchorCard(dj, song(102, "DJ Anchor", 1990));
         Song roundSong = song(200, "Round Song", 2000);
         Round round = round(session, 10L, 1, active, dj, roundSong);
         round.setPlacementCorrect(false);
-        round.setBettorPlayer(bettor);
-        round.setBetPosition(1);
+        // The active player wrongly placed before their own 1990 anchor; gap 1 (after it)
+        // is objectively correct for the 2000 round song, and that's what the bettor bet.
+        round.setPlacedPosition(0);
+        bet(round, bettor, 1);
 
         gameSessionService.scoreRoundEffect(round.getId());
 
         assertThat(active.getTimeline()).hasSize(1);
         assertThat(bettor.getTimeline()).hasSize(2);
+        // Computed automatically on the bettor's OWN timeline, not the gap they bet on.
         assertThat(bettor.getTimeline().get(1).getReleaseYear()).isEqualTo(2000);
         verify(groupService).recordGameSessionEnded(session.getGroupId());
     }
 
     @Test
-    void wrongPlacementWithAnIncorrectBetPositionDiscardsTheCard() {
-        GameSession session = session(DjMode.ROTATING, 2);
+    void wrongPlacementWithNoBetOnTheCorrectGapDiscardsTheCard() {
+        GameSession session = session(DjMode.ROTATING, 10);
         Player active = player(session, 1L, 0, PlayerStatus.ACTIVE);
         Player dj = player(session, 2L, 1, PlayerStatus.ACTIVE);
         Player bettor = player(session, 3L, 2, PlayerStatus.ACTIVE);
-        anchorCard(active, song(100, "Active Anchor", 1990));
+        anchorCard(active, song(100, "Active Anchor One", 1980));
+        anchorCard(active, song(103, "Active Anchor Two", 2010));
         anchorCard(bettor, song(101, "Bettor Anchor", 1990));
         anchorCard(dj, song(102, "DJ Anchor", 1990));
         Song roundSong = song(200, "Round Song", 2000);
         Round round = round(session, 10L, 1, active, dj, roundSong);
         round.setPlacementCorrect(false);
-        round.setBettorPlayer(bettor);
-        // The bettor's own anchor card is from 1990 and the round song is from 2000, so
-        // staking a bet at position 0 (before the anchor card) is the wrong position.
-        round.setBetPosition(0);
+        // Gap 1 (between 1980 and 2010) is objectively correct; the active player wrongly
+        // placed at gap 0, and the bettor bet gap 2, both wrong, so the card is discarded.
+        round.setPlacedPosition(0);
+        bet(round, bettor, 2);
 
         gameSessionService.scoreRoundEffect(round.getId());
 
-        assertThat(active.getTimeline()).hasSize(1);
+        assertThat(active.getTimeline()).hasSize(2);
         assertThat(bettor.getTimeline()).hasSize(1);
     }
 
     @Test
-    void wrongPlacementWithNoBetDiscardsTheCard() {
+    void wrongPlacementWithNoBetsAtAllDiscardsTheCard() {
         GameSession session = session(DjMode.ROTATING, 10);
         Player active = player(session, 1L, 0, PlayerStatus.ACTIVE);
         Player dj = player(session, 2L, 1, PlayerStatus.ACTIVE);
@@ -270,51 +305,174 @@ class GameSessionServiceTest {
         Song roundSong = song(200, "Round Song", 2000);
         Round round = round(session, 10L, 1, active, dj, roundSong);
         round.setPlacementCorrect(false);
+        round.setPlacedPosition(0);
 
         gameSessionService.scoreRoundEffect(round.getId());
 
         assertThat(active.getTimeline()).hasSize(1);
         assertThat(dj.getTimeline()).hasSize(1);
-        verify(groupService, org.mockito.Mockito.never()).recordGameSessionEnded(anyLong());
+        verify(groupService, never()).recordGameSessionEnded(anyLong());
+    }
+
+    @Test
+    void wrongPlacementWithSeveralBetsOnlyTheObjectivelyCorrectBettorWinsTheCard() {
+        GameSession session = session(DjMode.ROTATING, 10);
+        Player active = player(session, 1L, 0, PlayerStatus.ACTIVE);
+        Player dj = player(session, 2L, 1, PlayerStatus.ACTIVE);
+        Player correctBettor = player(session, 3L, 2, PlayerStatus.ACTIVE);
+        Player wrongBettor = player(session, 4L, 3, PlayerStatus.ACTIVE);
+        anchorCard(active, song(100, "Active Anchor One", 1980));
+        anchorCard(active, song(103, "Active Anchor Two", 2010));
+        anchorCard(correctBettor, song(101, "Correct Bettor Anchor", 1995));
+        anchorCard(wrongBettor, song(104, "Wrong Bettor Anchor", 1970));
+        anchorCard(dj, song(102, "DJ Anchor", 1990));
+        Song roundSong = song(200, "Round Song", 2000);
+        Round round = round(session, 10L, 1, active, dj, roundSong);
+        round.setPlacementCorrect(false);
+        round.setPlacedPosition(0);
+        bet(round, correctBettor, 1); // between 1980 and 2010: objectively correct
+        bet(round, wrongBettor, 2); // after 2010: wrong
+
+        gameSessionService.scoreRoundEffect(round.getId());
+
+        assertThat(active.getTimeline()).hasSize(2);
+        assertThat(correctBettor.getTimeline()).hasSize(2);
+        assertThat(correctBettor.getTimeline().get(1).getReleaseYear()).isEqualTo(2000);
+        assertThat(wrongBettor.getTimeline()).hasSize(1);
     }
 
     // --- Betting -----------------------------------------------------------
 
     @Test
-    void placingABetAtAValidPositionPassesThatPositionThroughToTheRepository() {
+    void placingABetAtAValidGapInsertsItAndDeductsAToken() {
         GameSession session = session(DjMode.ROTATING, 10);
         Player active = player(session, 1L, 0, PlayerStatus.ACTIVE);
         Player dj = player(session, 2L, 1, PlayerStatus.ACTIVE);
         Player bettor = player(session, 3L, 2, PlayerStatus.ACTIVE);
-        anchorCard(bettor, song(101, "Bettor Anchor", 1990));
+        anchorCard(active, song(100, "Active Anchor", 1990));
         bettor.setTokenCount(1);
         Song roundSong = song(200, "Round Song", 2000);
         Round round = round(session, 10L, 1, active, dj, roundSong);
         round.setStatus(RoundStatus.BETTING);
-        lenient().when(roundRepository.tryAcceptBet(anyLong(), any(Player.class), any(), org.mockito.ArgumentMatchers.anyInt()))
-                .thenReturn(1);
+        round.setPlacedPosition(1);
 
-        boolean accepted = gameSessionService.placeBet(session.getId(), bettor.getUser().getId(), 1);
+        boolean accepted = gameSessionService.placeBet(session.getId(), bettor.getUser().getId(), 0);
 
         assertThat(accepted).isTrue();
-        verify(roundRepository).tryAcceptBet(org.mockito.ArgumentMatchers.eq(round.getId()), org.mockito.ArgumentMatchers.eq(bettor),
-                org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.eq(1));
+        verify(betRepository).insertBet(eq(round.getId()), eq(bettor.getId()), eq(0), any());
         verify(playerRepository).deductToken(bettor.getId());
     }
 
     @Test
-    void placingABetAtAnOutOfRangePositionIsRejectedTheSameWayAnOutOfRangePlacementIs() {
+    void twoEligiblePlayersCanBetOnDifferentGapsInTheSameRound() {
+        GameSession session = session(DjMode.ROTATING, 10);
+        Player active = player(session, 1L, 0, PlayerStatus.ACTIVE);
+        Player dj = player(session, 2L, 1, PlayerStatus.ACTIVE);
+        Player bettorOne = player(session, 3L, 2, PlayerStatus.ACTIVE);
+        Player bettorTwo = player(session, 4L, 3, PlayerStatus.ACTIVE);
+        anchorCard(active, song(100, "Active Anchor One", 1980));
+        anchorCard(active, song(103, "Active Anchor Two", 2010));
+        bettorOne.setTokenCount(1);
+        bettorTwo.setTokenCount(1);
+        Song roundSong = song(200, "Round Song", 2000);
+        Round round = round(session, 10L, 1, active, dj, roundSong);
+        round.setStatus(RoundStatus.BETTING);
+        round.setPlacedPosition(1);
+
+        boolean bettorOneAccepted = gameSessionService.placeBet(session.getId(), bettorOne.getUser().getId(), 0);
+        boolean bettorTwoAccepted = gameSessionService.placeBet(session.getId(), bettorTwo.getUser().getId(), 2);
+
+        assertThat(bettorOneAccepted).isTrue();
+        assertThat(bettorTwoAccepted).isTrue();
+        verify(betRepository).insertBet(eq(round.getId()), eq(bettorOne.getId()), eq(0), any());
+        verify(betRepository).insertBet(eq(round.getId()), eq(bettorTwo.getId()), eq(2), any());
+        verify(playerRepository).deductToken(bettorOne.getId());
+        verify(playerRepository).deductToken(bettorTwo.getId());
+    }
+
+    @Test
+    void twoEligiblePlayersBettingOnTheSameGapOnlyOneSucceedsAndTheLoserKeepsTheirToken() {
+        GameSession session = session(DjMode.ROTATING, 10);
+        Player active = player(session, 1L, 0, PlayerStatus.ACTIVE);
+        Player dj = player(session, 2L, 1, PlayerStatus.ACTIVE);
+        Player bettorOne = player(session, 3L, 2, PlayerStatus.ACTIVE);
+        Player bettorTwo = player(session, 4L, 3, PlayerStatus.ACTIVE);
+        anchorCard(active, song(100, "Active Anchor", 1990));
+        bettorOne.setTokenCount(1);
+        bettorTwo.setTokenCount(1);
+        Song roundSong = song(200, "Round Song", 2000);
+        Round round = round(session, 10L, 1, active, dj, roundSong);
+        round.setStatus(RoundStatus.BETTING);
+        round.setPlacedPosition(1);
+        // Simulates the bets_round_position unique constraint: the second INSERT for the
+        // same round and gap is a genuine conflict, mirroring what Postgres itself rejects.
+        lenient().doThrow(new DataIntegrityViolationException("duplicate key value violates unique constraint"))
+                .when(betRepository).insertBet(eq(round.getId()), eq(bettorTwo.getId()), eq(0), any());
+
+        boolean bettorOneAccepted = gameSessionService.placeBet(session.getId(), bettorOne.getUser().getId(), 0);
+        boolean bettorTwoAccepted = gameSessionService.placeBet(session.getId(), bettorTwo.getUser().getId(), 0);
+
+        assertThat(bettorOneAccepted).isTrue();
+        assertThat(bettorTwoAccepted).isFalse();
+        verify(playerRepository).deductToken(bettorOne.getId());
+        verify(playerRepository, never()).deductToken(bettorTwo.getId());
+    }
+
+    @Test
+    void bettingOnTheGapTheActivePlayerAlreadyLockedInIsRejected() {
         GameSession session = session(DjMode.ROTATING, 10);
         Player active = player(session, 1L, 0, PlayerStatus.ACTIVE);
         Player dj = player(session, 2L, 1, PlayerStatus.ACTIVE);
         Player bettor = player(session, 3L, 2, PlayerStatus.ACTIVE);
-        anchorCard(bettor, song(101, "Bettor Anchor", 1990));
+        anchorCard(active, song(100, "Active Anchor", 1990));
         bettor.setTokenCount(1);
         Song roundSong = song(200, "Round Song", 2000);
         Round round = round(session, 10L, 1, active, dj, roundSong);
         round.setStatus(RoundStatus.BETTING);
+        round.setPlacedPosition(1);
 
-        // The bettor's timeline has one card, so 0 and 1 are the only in-range positions.
+        org.assertj.core.api.Assertions.assertThatThrownBy(() ->
+                gameSessionService.placeBet(session.getId(), bettor.getUser().getId(), 1))
+                .isInstanceOf(IllegalArgumentException.class);
+
+        verify(betRepository, never()).insertBet(anyLong(), anyLong(), anyInt(), any());
+    }
+
+    @Test
+    void aPlayerCannotBetTwiceInTheSameRound() {
+        GameSession session = session(DjMode.ROTATING, 10);
+        Player active = player(session, 1L, 0, PlayerStatus.ACTIVE);
+        Player dj = player(session, 2L, 1, PlayerStatus.ACTIVE);
+        Player bettor = player(session, 3L, 2, PlayerStatus.ACTIVE);
+        anchorCard(active, song(100, "Active Anchor", 1990));
+        bettor.setTokenCount(1);
+        Song roundSong = song(200, "Round Song", 2000);
+        Round round = round(session, 10L, 1, active, dj, roundSong);
+        round.setStatus(RoundStatus.BETTING);
+        round.setPlacedPosition(1);
+        lenient().when(betRepository.findPlayerIdsByRoundId(round.getId())).thenReturn(Set.of(bettor.getId()));
+
+        org.assertj.core.api.Assertions.assertThatThrownBy(() ->
+                gameSessionService.placeBet(session.getId(), bettor.getUser().getId(), 0))
+                .isInstanceOf(AccessDeniedException.class);
+
+        verify(betRepository, never()).insertBet(anyLong(), anyLong(), anyInt(), any());
+    }
+
+    @Test
+    void placingABetAtAnOutOfRangeGapForTheActivePlayersTimelineIsRejected() {
+        GameSession session = session(DjMode.ROTATING, 10);
+        Player active = player(session, 1L, 0, PlayerStatus.ACTIVE);
+        Player dj = player(session, 2L, 1, PlayerStatus.ACTIVE);
+        Player bettor = player(session, 3L, 2, PlayerStatus.ACTIVE);
+        anchorCard(active, song(100, "Active Anchor", 1990));
+        bettor.setTokenCount(1);
+        Song roundSong = song(200, "Round Song", 2000);
+        Round round = round(session, 10L, 1, active, dj, roundSong);
+        round.setStatus(RoundStatus.BETTING);
+        round.setPlacedPosition(1);
+
+        // The active player's timeline has one card, so 0 and 1 are the only in-range gaps.
         org.assertj.core.api.Assertions.assertThatThrownBy(() ->
                 gameSessionService.placeBet(session.getId(), bettor.getUser().getId(), 2))
                 .isInstanceOf(IllegalArgumentException.class);

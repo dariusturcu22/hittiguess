@@ -22,6 +22,7 @@ import org.dariusturcu.backend.model.song.SongArtist;
 import org.dariusturcu.backend.model.user.AuthProvider;
 import org.dariusturcu.backend.model.user.Role;
 import org.dariusturcu.backend.model.user.User;
+import org.dariusturcu.backend.repository.BetRepository;
 import org.dariusturcu.backend.repository.GameSessionRepository;
 import org.dariusturcu.backend.repository.GroupRepository;
 import org.dariusturcu.backend.repository.GuessRepository;
@@ -149,8 +150,8 @@ class GameSessionLinkOutIntegrationTest {
         }
 
         @Bean
-        SessionMapper sessionMapper() {
-            return new SessionMapper();
+        SessionMapper sessionMapper(BetRepository betRepository) {
+            return new SessionMapper(betRepository);
         }
 
         @Bean
@@ -178,12 +179,12 @@ class GameSessionLinkOutIntegrationTest {
         @Bean
         GameSessionService gameSessionService(
                 GameSessionRepository gameSessionRepository, PlayerRepository playerRepository,
-                RoundRepository roundRepository, GuessRepository guessRepository, GroupRepository groupRepository,
-                SongRepository songRepository, GroupService groupService, SessionMapper sessionMapper,
-                SessionResultsStore resultsStore, GameSessionScheduler gameSessionScheduler,
-                ApplicationEventPublisher eventPublisher) {
+                RoundRepository roundRepository, GuessRepository guessRepository, BetRepository betRepository,
+                GroupRepository groupRepository, SongRepository songRepository, GroupService groupService,
+                SessionMapper sessionMapper, SessionResultsStore resultsStore,
+                GameSessionScheduler gameSessionScheduler, ApplicationEventPublisher eventPublisher) {
             return new GameSessionService(gameSessionRepository, playerRepository, roundRepository, guessRepository,
-                    groupRepository, songRepository, groupService, sessionMapper, resultsStore,
+                    betRepository, groupRepository, songRepository, groupService, sessionMapper, resultsStore,
                     gameSessionScheduler, eventPublisher);
         }
 
