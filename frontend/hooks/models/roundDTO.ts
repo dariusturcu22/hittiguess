@@ -5,6 +5,7 @@
  * OpenAPI spec version: v0
  */
 import type { RoundDTOStatus } from './roundDTOStatus';
+import type { BetDTO } from './betDTO';
 
 export interface RoundDTO {
   id?: number;
@@ -14,7 +15,7 @@ export interface RoundDTO {
   status?: RoundDTOStatus;
   placedPosition?: number;
   placementCorrect?: boolean;
-  bettorPlayerId?: number;
+  bets?: BetDTO[];
   revealedArtist?: string;
   revealedTitle?: string;
   revealedYear?: number;

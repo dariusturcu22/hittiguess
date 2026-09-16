@@ -8,6 +8,13 @@ import * as zod from 'zod';
 
 
 /**
+ * @summary Unpublish a playlist, owner only
+ */
+export const unpublishPlaylistParams = zod.object({
+  "playlistId": zod.number()
+})
+
+/**
  * @summary Add a new song to the playlist
  */
 export const createSongParams = zod.object({
@@ -37,6 +44,27 @@ export const createSongBody = zod.object({
   "gradientColor1": zod.string().min(1).regex(createSongBodyGradientColor1RegExp),
   "gradientColor2": zod.string().min(1).regex(createSongBodyGradientColor2RegExp),
   "country": zod.enum(['NONE', 'RO']).optional()
+})
+
+/**
+ * @summary Save a public playlist into the current user's own library, without becoming a member
+ */
+export const savePlaylistParams = zod.object({
+  "playlistId": zod.number()
+})
+
+/**
+ * @summary Unsave a previously saved playlist
+ */
+export const unsavePlaylistParams = zod.object({
+  "playlistId": zod.number()
+})
+
+/**
+ * @summary Publish a playlist publicly, owner only
+ */
+export const publishPlaylistParams = zod.object({
+  "playlistId": zod.number()
 })
 
 /**

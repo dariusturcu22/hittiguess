@@ -24,6 +24,7 @@ import type {
 } from '@tanstack/react-query';
 
 import type {
+  AdminCatalogSeedingRequest,
   BacklogStatusDTO,
   EnqueueResultDTO
 } from '../../models';
@@ -36,10 +37,10 @@ type SecondParameter<T extends (...args: never) => unknown> = Parameters<T>[1];
 
 
 /**
- * @summary Bulk-enqueue YouTube IDs into the seeding backlog, admin only; already-known songs are skipped
+ * @summary Bulk-enqueue a YouTube playlist link and/or video IDs into the seeding backlog, admin only; already-known songs are skipped
  */
 export const enqueue = (
-    enqueueBody: string[],
+    adminCatalogSeedingRequest: AdminCatalogSeedingRequest,
  options?: SecondParameter<typeof customInstance>,signal?: AbortSignal
 ) => {
       
@@ -47,7 +48,7 @@ export const enqueue = (
       return customInstance<EnqueueResultDTO>(
       {url: `/api/admin/catalog-seeding/enqueue`, method: 'POST',
       headers: {'Content-Type': 'application/json', },
-      data: enqueueBody, signal
+      data: adminCatalogSeedingRequest, signal
     },
       options);
     }
@@ -55,8 +56,8 @@ export const enqueue = (
 
 
 export const getEnqueueMutationOptions = <TError = unknown,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof enqueue>>, TError,{data: string[]}, TContext>, request?: SecondParameter<typeof customInstance>}
-): UseMutationOptions<Awaited<ReturnType<typeof enqueue>>, TError,{data: string[]}, TContext> => {
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof enqueue>>, TError,{data: AdminCatalogSeedingRequest}, TContext>, request?: SecondParameter<typeof customInstance>}
+): UseMutationOptions<Awaited<ReturnType<typeof enqueue>>, TError,{data: AdminCatalogSeedingRequest}, TContext> => {
 
 const mutationKey = ['enqueue'];
 const {mutation: mutationOptions, request: requestOptions} = options ?
@@ -68,7 +69,7 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
       
 
 
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof enqueue>>, {data: string[]}> = (props) => {
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof enqueue>>, {data: AdminCatalogSeedingRequest}> = (props) => {
           const {data} = props ?? {};
 
           return  enqueue(data,requestOptions)
@@ -80,18 +81,18 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
   return  { mutationFn, ...mutationOptions }}
 
     export type EnqueueMutationResult = NonNullable<Awaited<ReturnType<typeof enqueue>>>
-    export type EnqueueMutationBody = string[]
+    export type EnqueueMutationBody = AdminCatalogSeedingRequest
     export type EnqueueMutationError = unknown
 
     /**
- * @summary Bulk-enqueue YouTube IDs into the seeding backlog, admin only; already-known songs are skipped
+ * @summary Bulk-enqueue a YouTube playlist link and/or video IDs into the seeding backlog, admin only; already-known songs are skipped
  */
 export const useEnqueue = <TError = unknown,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof enqueue>>, TError,{data: string[]}, TContext>, request?: SecondParameter<typeof customInstance>}
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof enqueue>>, TError,{data: AdminCatalogSeedingRequest}, TContext>, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof enqueue>>,
         TError,
-        {data: string[]},
+        {data: AdminCatalogSeedingRequest},
         TContext
       > => {
 

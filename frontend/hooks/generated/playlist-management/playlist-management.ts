@@ -29,6 +29,7 @@ import type {
   ImportFromPlaylistResultDTO,
   PlaylistDetailDTO,
   PlaylistMemberDTO,
+  PublicPlaylistSummaryDTO,
   SongDTO,
   UpdateMembershipGrantsRequest,
   UpdatePlaylistRequest,
@@ -43,6 +44,68 @@ type SecondParameter<T extends (...args: never) => unknown> = Parameters<T>[1];
 
 
 /**
+ * @summary Unpublish a playlist, owner only
+ */
+export const unpublishPlaylist = (
+    playlistId: number,
+ options?: SecondParameter<typeof customInstance>,signal?: AbortSignal
+) => {
+      
+      
+      return customInstance<PlaylistDetailDTO>(
+      {url: `/api/playlists/${playlistId}/unpublish`, method: 'POST', signal
+    },
+      options);
+    }
+  
+
+
+export const getUnpublishPlaylistMutationOptions = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof unpublishPlaylist>>, TError,{playlistId: number}, TContext>, request?: SecondParameter<typeof customInstance>}
+): UseMutationOptions<Awaited<ReturnType<typeof unpublishPlaylist>>, TError,{playlistId: number}, TContext> => {
+
+const mutationKey = ['unpublishPlaylist'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+      
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof unpublishPlaylist>>, {playlistId: number}> = (props) => {
+          const {playlistId} = props ?? {};
+
+          return  unpublishPlaylist(playlistId,requestOptions)
+        }
+
+        
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UnpublishPlaylistMutationResult = NonNullable<Awaited<ReturnType<typeof unpublishPlaylist>>>
+    
+    export type UnpublishPlaylistMutationError = unknown
+
+    /**
+ * @summary Unpublish a playlist, owner only
+ */
+export const useUnpublishPlaylist = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof unpublishPlaylist>>, TError,{playlistId: number}, TContext>, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof unpublishPlaylist>>,
+        TError,
+        {playlistId: number},
+        TContext
+      > => {
+
+      const mutationOptions = getUnpublishPlaylistMutationOptions(options);
+
+      return useMutation(mutationOptions, queryClient);
+    }
+    /**
  * @summary Add a new song to the playlist
  */
 export const createSong = (
@@ -104,6 +167,191 @@ export const useCreateSong = <TError = unknown,
       > => {
 
       const mutationOptions = getCreateSongMutationOptions(options);
+
+      return useMutation(mutationOptions, queryClient);
+    }
+    /**
+ * @summary Save a public playlist into the current user's own library, without becoming a member
+ */
+export const savePlaylist = (
+    playlistId: number,
+ options?: SecondParameter<typeof customInstance>,signal?: AbortSignal
+) => {
+      
+      
+      return customInstance<PublicPlaylistSummaryDTO>(
+      {url: `/api/playlists/${playlistId}/save`, method: 'POST', signal
+    },
+      options);
+    }
+  
+
+
+export const getSavePlaylistMutationOptions = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof savePlaylist>>, TError,{playlistId: number}, TContext>, request?: SecondParameter<typeof customInstance>}
+): UseMutationOptions<Awaited<ReturnType<typeof savePlaylist>>, TError,{playlistId: number}, TContext> => {
+
+const mutationKey = ['savePlaylist'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+      
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof savePlaylist>>, {playlistId: number}> = (props) => {
+          const {playlistId} = props ?? {};
+
+          return  savePlaylist(playlistId,requestOptions)
+        }
+
+        
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SavePlaylistMutationResult = NonNullable<Awaited<ReturnType<typeof savePlaylist>>>
+    
+    export type SavePlaylistMutationError = unknown
+
+    /**
+ * @summary Save a public playlist into the current user's own library, without becoming a member
+ */
+export const useSavePlaylist = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof savePlaylist>>, TError,{playlistId: number}, TContext>, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof savePlaylist>>,
+        TError,
+        {playlistId: number},
+        TContext
+      > => {
+
+      const mutationOptions = getSavePlaylistMutationOptions(options);
+
+      return useMutation(mutationOptions, queryClient);
+    }
+    /**
+ * @summary Unsave a previously saved playlist
+ */
+export const unsavePlaylist = (
+    playlistId: number,
+ options?: SecondParameter<typeof customInstance>,) => {
+      
+      
+      return customInstance<void>(
+      {url: `/api/playlists/${playlistId}/save`, method: 'DELETE'
+    },
+      options);
+    }
+  
+
+
+export const getUnsavePlaylistMutationOptions = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof unsavePlaylist>>, TError,{playlistId: number}, TContext>, request?: SecondParameter<typeof customInstance>}
+): UseMutationOptions<Awaited<ReturnType<typeof unsavePlaylist>>, TError,{playlistId: number}, TContext> => {
+
+const mutationKey = ['unsavePlaylist'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+      
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof unsavePlaylist>>, {playlistId: number}> = (props) => {
+          const {playlistId} = props ?? {};
+
+          return  unsavePlaylist(playlistId,requestOptions)
+        }
+
+        
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UnsavePlaylistMutationResult = NonNullable<Awaited<ReturnType<typeof unsavePlaylist>>>
+    
+    export type UnsavePlaylistMutationError = unknown
+
+    /**
+ * @summary Unsave a previously saved playlist
+ */
+export const useUnsavePlaylist = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof unsavePlaylist>>, TError,{playlistId: number}, TContext>, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof unsavePlaylist>>,
+        TError,
+        {playlistId: number},
+        TContext
+      > => {
+
+      const mutationOptions = getUnsavePlaylistMutationOptions(options);
+
+      return useMutation(mutationOptions, queryClient);
+    }
+    /**
+ * @summary Publish a playlist publicly, owner only
+ */
+export const publishPlaylist = (
+    playlistId: number,
+ options?: SecondParameter<typeof customInstance>,signal?: AbortSignal
+) => {
+      
+      
+      return customInstance<PlaylistDetailDTO>(
+      {url: `/api/playlists/${playlistId}/publish`, method: 'POST', signal
+    },
+      options);
+    }
+  
+
+
+export const getPublishPlaylistMutationOptions = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof publishPlaylist>>, TError,{playlistId: number}, TContext>, request?: SecondParameter<typeof customInstance>}
+): UseMutationOptions<Awaited<ReturnType<typeof publishPlaylist>>, TError,{playlistId: number}, TContext> => {
+
+const mutationKey = ['publishPlaylist'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+      
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof publishPlaylist>>, {playlistId: number}> = (props) => {
+          const {playlistId} = props ?? {};
+
+          return  publishPlaylist(playlistId,requestOptions)
+        }
+
+        
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type PublishPlaylistMutationResult = NonNullable<Awaited<ReturnType<typeof publishPlaylist>>>
+    
+    export type PublishPlaylistMutationError = unknown
+
+    /**
+ * @summary Publish a playlist publicly, owner only
+ */
+export const usePublishPlaylist = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof publishPlaylist>>, TError,{playlistId: number}, TContext>, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof publishPlaylist>>,
+        TError,
+        {playlistId: number},
+        TContext
+      > => {
+
+      const mutationOptions = getPublishPlaylistMutationOptions(options);
 
       return useMutation(mutationOptions, queryClient);
     }
@@ -888,6 +1136,98 @@ export function useGetMembers<TData = Awaited<ReturnType<typeof getMembers>>, TE
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
   const queryOptions = getGetMembersQueryOptions(playlistId,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  query.queryKey = queryOptions.queryKey ;
+
+  return query;
+}
+
+
+
+
+/**
+ * @summary Browse every playlist published publicly
+ */
+export const getPublicPlaylists = (
+    
+ options?: SecondParameter<typeof customInstance>,signal?: AbortSignal
+) => {
+      
+      
+      return customInstance<PublicPlaylistSummaryDTO[]>(
+      {url: `/api/playlists/public`, method: 'GET', signal
+    },
+      options);
+    }
+  
+
+
+
+export const getGetPublicPlaylistsQueryKey = () => {
+    return [
+    `/api/playlists/public`
+    ] as const;
+    }
+
+    
+export const getGetPublicPlaylistsQueryOptions = <TData = Awaited<ReturnType<typeof getPublicPlaylists>>, TError = unknown>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getPublicPlaylists>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetPublicPlaylistsQueryKey();
+
+  
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getPublicPlaylists>>> = ({ signal }) => getPublicPlaylists(requestOptions, signal);
+
+      
+
+      
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getPublicPlaylists>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetPublicPlaylistsQueryResult = NonNullable<Awaited<ReturnType<typeof getPublicPlaylists>>>
+export type GetPublicPlaylistsQueryError = unknown
+
+
+export function useGetPublicPlaylists<TData = Awaited<ReturnType<typeof getPublicPlaylists>>, TError = unknown>(
+  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getPublicPlaylists>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getPublicPlaylists>>,
+          TError,
+          Awaited<ReturnType<typeof getPublicPlaylists>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetPublicPlaylists<TData = Awaited<ReturnType<typeof getPublicPlaylists>>, TError = unknown>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getPublicPlaylists>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getPublicPlaylists>>,
+          TError,
+          Awaited<ReturnType<typeof getPublicPlaylists>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetPublicPlaylists<TData = Awaited<ReturnType<typeof getPublicPlaylists>>, TError = unknown>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getPublicPlaylists>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary Browse every playlist published publicly
+ */
+
+export function useGetPublicPlaylists<TData = Awaited<ReturnType<typeof getPublicPlaylists>>, TError = unknown>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getPublicPlaylists>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient 
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetPublicPlaylistsQueryOptions(options)
 
   const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 
