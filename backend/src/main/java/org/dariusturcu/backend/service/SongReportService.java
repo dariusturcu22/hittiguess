@@ -6,6 +6,7 @@ import org.dariusturcu.backend.exception.ResourceNotFoundException;
 import org.dariusturcu.backend.exception.ResourceType;
 import org.dariusturcu.backend.model.song.AdminReviewItemDTO;
 import org.dariusturcu.backend.model.song.ReportSummaryDTO;
+import org.dariusturcu.backend.model.song.ResolveReportRequest;
 import org.dariusturcu.backend.model.song.ReviewPriorityTier;
 import org.dariusturcu.backend.model.song.Song;
 import org.dariusturcu.backend.model.song.SongConfirmation;
@@ -34,9 +35,9 @@ import java.util.stream.Collectors;
 
 /**
  * Community reports and confirmations against songs, and the admin review queue over them.
- * Resolution is manual: an admin decides every case and nothing here changes a song's
- * verification status on its own except the explicit uphold action, which never overwrites a
- * locked song's year, matching PlaylistService's editable-status rule.
+ * Resolution is manual: an admin decides every case. {@link #resolveReport} is the one path
+ * allowed to override even a locked (`VERIFIED`) song's year and status; every other path in
+ * this class leaves a locked song's year and status untouched.
  */
 @Service
 @RequiredArgsConstructor
@@ -52,12 +53,6 @@ public class SongReportService {
     // Once a song accumulates this many open reports it is flagged for admin review; recorded
     // as a log line here because story 34's real abuse-visibility pipeline is not built yet.
     private static final long REVIEW_FLAG_REPORT_THRESHOLD = 3;
-
-    // A song's year can only be edited while it sits in one of these statuses, the same rule
-    // PlaylistService enforces. Upholding a report against a locked song surfaces it for admin
-    // judgment without mutating the year.
-    private static final Set<VerificationStatus> EDITABLE_VERIFICATION_STATUSES =
-            Set.of(VerificationStatus.UNVERIFIED, VerificationStatus.MANUAL_ENTRY);
 
     private static final Set<VerificationStatus> CONFIRMABLE_VERIFICATION_STATUSES =
             Set.of(VerificationStatus.NEEDS_REVIEW, VerificationStatus.MANUAL_ENTRY);
@@ -134,20 +129,21 @@ public class SongReportService {
         return queue;
     }
 
-    public void upholdReports(Long songId) {
+    public void resolveReport(Long songId, ResolveReportRequest request) {
         Song song = findSong(songId);
         List<SongReport> openReports = songReportRepository.findBySongIdAndStatus(songId, SongReportStatus.OPEN);
         if (openReports.isEmpty()) {
-            throw new ConflictException("This song has no open reports to uphold");
+            throw new ConflictException("This song has no open reports to resolve");
         }
 
         for (SongReport report : openReports) {
             report.setStatus(SongReportStatus.UPHELD);
         }
 
-        if (EDITABLE_VERIFICATION_STATUSES.contains(song.getVerificationStatus())) {
-            song.setVerificationStatus(VerificationStatus.MANUAL_ENTRY);
+        if (request.correctedYear() != null) {
+            song.setReleaseYear(request.correctedYear());
         }
+        song.setVerificationStatus(request.verificationStatus());
     }
 
     public void dismissReports(Long songId) {
