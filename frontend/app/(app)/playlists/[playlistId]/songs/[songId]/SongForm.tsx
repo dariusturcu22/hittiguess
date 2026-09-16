@@ -1,28 +1,40 @@
 "use client";
 
 import React, { useState } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
+import { ChevronDown, ExternalLink, HelpCircle } from "lucide-react";
+
 import { Input } from "@/components/shadcn/input";
 import { Label } from "@/components/shadcn/label";
 import { Button } from "@/components/shadcn/button";
-import { IconExternalLink } from "@tabler/icons-react";
-import Link from "next/link";
-import { CreateSongRequestCountry, SongDTO } from "@/hooks/models";
-import { useRouter } from "next/navigation";
-import { useQueryClient } from "@tanstack/react-query";
+import { Badge } from "@/components/shadcn/badge";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/shadcn/collapsible";
+import { CreateSongRequestCountry, SongDTO, SongDTOVerificationStatus } from "@/hooks/models";
 import {
   getGetPlaylistQueryKey,
   getGetSongQueryKey,
   useUpdateSong,
 } from "@/hooks/generated/playlist-management/playlist-management";
+import { GameCard } from "./GameCard";
 
 const YOUTUBE_ID_PATTERN = /^[a-zA-Z0-9_-]{11}$/;
 const HEX_COLOR_PATTERN = /^#[0-9a-fA-F]{6}$/;
 const MIN_RELEASE_YEAR = 1000;
 
+const EDIT_FIELD_CLASSES =
+  "border-2 border-destructive/70 bg-background focus-visible:border-destructive focus-visible:ring-destructive/20";
+
 interface SongFormProps {
   song: SongDTO;
-  backPath: string;
   playlistId: number;
+  playlistName?: string;
+  backPath: string;
 }
 
 interface SongFormData {
@@ -35,14 +47,18 @@ interface SongFormData {
   country: CreateSongRequestCountry;
 }
 
-export function SongForm({ song, backPath, playlistId }: SongFormProps) {
+export function SongForm({
+  song,
+  playlistId,
+  playlistName,
+  backPath,
+}: SongFormProps) {
   const router = useRouter();
   const queryClient = useQueryClient();
   const { mutate: updateSong, isPending } = useUpdateSong();
   const [submitError, setSubmitError] = useState("");
+  const [advancedOpen, setAdvancedOpen] = useState(false);
 
-  // Today's submission flow has no multi-artist entry, so this edits the sole MAIN
-  // artist story 23's schema still stores as an ordered list underneath.
   const [formData, setFormData] = useState<SongFormData>({
     youtubeId: song.youtubeId,
     title: song.title,
@@ -128,182 +144,236 @@ export function SongForm({ song, backPath, playlistId }: SongFormProps) {
     );
   };
 
+  const isManualEntry =
+    song.verificationStatus === SongDTOVerificationStatus.MANUAL_ENTRY;
+
   return (
-    <div className="mx-auto w-full max-w-xl flex flex-col gap-6">
-      <div className="grid gap-4">
-        <div className="flex justify-center">
-          <div className="aspect-video w-full max-w-xs overflow-hidden rounded-lg border bg-muted shadow-sm">
-            <iframe
-              width="100%"
-              height="100%"
-              src={`https://www.youtube.com/embed/${formData.youtubeId}`}
-              title="YouTube video player"
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-              allowFullScreen
-            ></iframe>
-          </div>
+    <div className="flex w-full max-w-[560px] flex-col items-center">
+      <h1
+        className="mb-1.5 w-full text-center font-display text-2xl text-accent"
+        style={{ textShadow: "3px 3px 0 var(--text-shadow-on-card)" }}
+      >
+        Edit song details
+      </h1>
+      {playlistName && (
+        <div className="mb-4 text-center text-xs text-muted-foreground">
+          From {playlistName}
         </div>
-        <div className="grid gap-2">
-          <Label htmlFor="youtubeId">YouTube ID</Label>
-          <div className="flex gap-2">
-            <Input
-              id="youtubeId"
-              value={formData.youtubeId}
-              onChange={handleChange}
-              className="text-left"
-            />
-            <Button variant="outline" size="icon" asChild>
-              <a
-                href={`https://www.youtube.com/watch?v=${formData.youtubeId}`}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                <IconExternalLink className="size-4" />
-              </a>
-            </Button>
-          </div>
-        </div>
-      </div>
-
-      <div className="grid gap-2">
-        <Label htmlFor="title">Title</Label>
-        <Input
-          id="title"
-          value={formData.title}
-          onChange={handleChange}
-          className="text-left"
-        />
-      </div>
-
-      <div className="grid gap-2">
-        <Label htmlFor="artist">Artist</Label>
-        <Input
-          id="artist"
-          value={formData.artist}
-          onChange={handleChange}
-          className="text-left"
-        />
-      </div>
-
-      <div className="grid gap-2">
-        <Label htmlFor="releaseYear">Release Year</Label>
-        <Input
-          id="releaseYear"
-          type="number"
-          min={MIN_RELEASE_YEAR}
-          max={new Date().getFullYear()}
-          value={formData.releaseYear}
-          onChange={handleChange}
-          className="text-left"
-        />
-      </div>
-
-      <div className="grid gap-2">
-        <Label>Country</Label>
-        <div className="flex gap-3 flex-wrap">
-          {Object.values(CreateSongRequestCountry).map((c) => (
-            <label key={c} className="flex items-center gap-1.5 cursor-pointer">
-              <input
-                type="radio"
-                name="country"
-                value={c}
-                checked={formData.country === c}
-                onChange={() =>
-                  setFormData((prev) => ({ ...prev, country: c }))
-                }
-              />
-              <span className="text-sm">{c}</span>
-            </label>
-          ))}
-        </div>
-      </div>
-
-      <div className="grid grid-cols-2 gap-4">
-        <div className="flex items-center gap-3">
-          <Input
-            type="color"
-            value={formData.gradientColor1}
-            onChange={(e) =>
-              handleColorChange("gradientColor1", e.target.value)
-            }
-            className="size-8 p-0 border-none rounded shadow-sm shrink-0 cursor-pointer overflow-hidden"
-          />
-          <div className="grid gap-1 w-full">
-            <Label className="text-[10px] uppercase">Color 1</Label>
-            <Input
-              value={formData.gradientColor1}
-              onChange={(e) =>
-                handleColorChange("gradientColor1", e.target.value)
-              }
-              className="h-8 font-mono text-xs"
-            />
-          </div>
-        </div>
-        <div className="flex items-center gap-3">
-          <Input
-            type="color"
-            value={formData.gradientColor2}
-            onChange={(e) =>
-              handleColorChange("gradientColor2", e.target.value)
-            }
-            className="size-8 p-0 border-none rounded shadow-sm shrink-0 cursor-pointer overflow-hidden"
-          />
-          <div className="grid gap-1 w-full">
-            <Label className="text-[10px] uppercase">Color 2</Label>
-            <Input
-              value={formData.gradientColor2}
-              onChange={(e) =>
-                handleColorChange("gradientColor2", e.target.value)
-              }
-              className="h-8 font-mono text-xs"
-            />
-          </div>
-        </div>
-      </div>
-
-      <div className="flex flex-col items-center py-4">
-        <div
-          className="relative aspect-square w-50 rounded-lg shadow-xl flex flex-col items-center justify-between p-4 text-white overflow-hidden"
-          style={{
-            background: `linear-gradient(to bottom, ${formData.gradientColor1}, ${formData.gradientColor2})`,
-            fontFamily: "'Kanit', sans-serif",
-          }}
-        >
-          <div
-            className="mt-2 text-center font-normal leading-tight"
-            style={{ fontSize: "15px" }}
-          >
-            {formData.artist}
-          </div>
-
-          <div
-            className="font-medium tracking-tighter"
-            style={{ fontSize: "62px" }}
-          >
-            {formData.releaseYear}
-          </div>
-
-          <div
-            className="mb-2 text-center italic font-light leading-tight"
-            style={{ fontSize: "15px" }}
-          >
-            {formData.title}
-          </div>
-        </div>
-      </div>
-
-      {submitError && (
-        <p className="text-sm text-destructive text-center">{submitError}</p>
       )}
 
-      <div className="flex gap-3 justify-center">
-        <Button className="px-10" onClick={handleSubmit} disabled={isPending}>
-          {isPending ? "Saving..." : "Save Changes"}
+      {isManualEntry && (
+        <Badge variant="destructive" className="mb-5 gap-1.5 py-2 text-[11px]">
+          <HelpCircle className="size-3" />
+          Manual entry
+        </Badge>
+      )}
+
+      <div className="mb-6 w-[160px]">
+        <GameCard
+          size="sm"
+          artist={formData.artist}
+          year={formData.releaseYear}
+          title={formData.title}
+          gradientColor1={formData.gradientColor1}
+          gradientColor2={formData.gradientColor2}
+        />
+      </div>
+
+      <div className="w-full">
+        <div className="mb-4 grid gap-1.5">
+          <Label
+            htmlFor="title"
+            className="text-[11px] font-semibold tracking-wide text-muted-foreground uppercase"
+          >
+            Title
+          </Label>
+          <Input
+            id="title"
+            value={formData.title}
+            onChange={handleChange}
+            className={EDIT_FIELD_CLASSES}
+          />
+        </div>
+        <div className="mb-4 grid gap-1.5">
+          <Label
+            htmlFor="artist"
+            className="text-[11px] font-semibold tracking-wide text-muted-foreground uppercase"
+          >
+            Artist
+          </Label>
+          <Input
+            id="artist"
+            value={formData.artist}
+            onChange={handleChange}
+            className={EDIT_FIELD_CLASSES}
+          />
+        </div>
+        <div className="mb-5 grid gap-1.5">
+          <Label
+            htmlFor="releaseYear"
+            className="text-[11px] font-semibold tracking-wide text-muted-foreground uppercase"
+          >
+            Release year
+          </Label>
+          <Input
+            id="releaseYear"
+            type="number"
+            min={MIN_RELEASE_YEAR}
+            max={new Date().getFullYear()}
+            value={formData.releaseYear}
+            onChange={handleChange}
+            className={EDIT_FIELD_CLASSES}
+          />
+        </div>
+      </div>
+
+      <p className="mb-6 text-center text-xs leading-relaxed text-muted-foreground">
+        {isManualEntry
+          ? "No source had any data on this one, not even Wikipedia. These are the details entered by hand. Check them, fix anything that's wrong, then save."
+          : "This song hasn't been verified yet. Check the details below, fix anything that's wrong, then save."}
+      </p>
+
+      <Collapsible
+        open={advancedOpen}
+        onOpenChange={setAdvancedOpen}
+        className="mb-5 w-full"
+      >
+        <CollapsibleTrigger asChild>
+          <button
+            type="button"
+            className="flex w-full items-center justify-between text-[11px] font-semibold tracking-wide text-muted-foreground uppercase"
+          >
+            Advanced details
+            <ChevronDown
+              className={`size-3.5 transition-transform ${advancedOpen ? "rotate-180" : ""}`}
+            />
+          </button>
+        </CollapsibleTrigger>
+        <CollapsibleContent className="mt-4 flex flex-col gap-4">
+          <div className="grid gap-1.5">
+            <Label
+              htmlFor="youtubeId"
+              className="text-[11px] font-semibold tracking-wide text-muted-foreground uppercase"
+            >
+              YouTube ID
+            </Label>
+            <div className="flex gap-2">
+              <Input
+                id="youtubeId"
+                value={formData.youtubeId}
+                onChange={handleChange}
+              />
+              <Button variant="outline" size="icon" asChild>
+                <a
+                  href={`https://www.youtube.com/watch?v=${formData.youtubeId}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  <ExternalLink className="size-4" />
+                </a>
+              </Button>
+            </div>
+          </div>
+
+          <div className="grid gap-1.5">
+            <Label className="text-[11px] font-semibold tracking-wide text-muted-foreground uppercase">
+              Country
+            </Label>
+            <div className="flex flex-wrap gap-3">
+              {Object.values(CreateSongRequestCountry).map((country) => (
+                <label
+                  key={country}
+                  className="flex cursor-pointer items-center gap-1.5"
+                >
+                  <input
+                    type="radio"
+                    name="country"
+                    value={country}
+                    checked={formData.country === country}
+                    onChange={() =>
+                      setFormData((prev) => ({ ...prev, country }))
+                    }
+                  />
+                  <span className="text-sm">{country}</span>
+                </label>
+              ))}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="flex items-center gap-3">
+              <Input
+                type="color"
+                value={formData.gradientColor1}
+                onChange={(event) =>
+                  handleColorChange("gradientColor1", event.target.value)
+                }
+                className="size-8 shrink-0 cursor-pointer overflow-hidden rounded-md border-none p-0 shadow-sm"
+              />
+              <div className="grid w-full gap-1">
+                <Label className="text-[10px] uppercase">Color 1</Label>
+                <Input
+                  value={formData.gradientColor1}
+                  onChange={(event) =>
+                    handleColorChange("gradientColor1", event.target.value)
+                  }
+                  className="h-8 font-mono text-xs"
+                />
+              </div>
+            </div>
+            <div className="flex items-center gap-3">
+              <Input
+                type="color"
+                value={formData.gradientColor2}
+                onChange={(event) =>
+                  handleColorChange("gradientColor2", event.target.value)
+                }
+                className="size-8 shrink-0 cursor-pointer overflow-hidden rounded-md border-none p-0 shadow-sm"
+              />
+              <div className="grid w-full gap-1">
+                <Label className="text-[10px] uppercase">Color 2</Label>
+                <Input
+                  value={formData.gradientColor2}
+                  onChange={(event) =>
+                    handleColorChange("gradientColor2", event.target.value)
+                  }
+                  className="h-8 font-mono text-xs"
+                />
+              </div>
+            </div>
+          </div>
+        </CollapsibleContent>
+      </Collapsible>
+
+      {submitError && (
+        <p className="mb-4 text-center text-sm text-destructive">
+          {submitError}
+        </p>
+      )}
+
+      <div className="mb-4.5 flex w-full gap-3">
+        <Button
+          variant="outline"
+          className="flex-1"
+          onClick={() => router.push(backPath)}
+        >
+          Cancel
         </Button>
-        <Button variant="outline" className="px-10" asChild>
-          <Link href={backPath}>Cancel</Link>
+        <Button
+          className="flex-1"
+          onClick={handleSubmit}
+          disabled={isPending}
+        >
+          {isPending ? "Saving..." : "Save changes"}
         </Button>
       </div>
+
+      <Link
+        href={backPath}
+        className="text-xs text-muted-foreground hover:text-foreground"
+      >
+        ‹ Back to playlist
+      </Link>
     </div>
   );
 }
