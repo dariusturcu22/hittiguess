@@ -8,10 +8,19 @@ import * as zod from 'zod';
 
 
 /**
- * @summary Uphold a song's open reports, admin only; a locked song's year stays immutable, an editable song moves to manual entry
+ * @summary Resolve a song's open reports, admin only; applies the admin's chosen year and verification status unconditionally, overriding even a locked, VERIFIED song
  */
-export const upholdParams = zod.object({
+export const resolveParams = zod.object({
   "songId": zod.number()
+})
+
+export const resolveBodyCorrectedYearMin = 1000;
+
+
+
+export const resolveBody = zod.object({
+  "correctedYear": zod.number().min(resolveBodyCorrectedYearMin).optional(),
+  "verificationStatus": zod.enum(['UNVERIFIED', 'VERIFIED', 'NEEDS_REVIEW', 'MANUAL_ENTRY'])
 })
 
 /**

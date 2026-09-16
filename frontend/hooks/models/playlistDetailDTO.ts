@@ -16,4 +16,5 @@ export interface PlaylistDetailDTO {
   songs?: SongDTO[];
   ownerId: number;
   members: PlaylistMemberDTO[];
+  isPublic?: boolean;
 }

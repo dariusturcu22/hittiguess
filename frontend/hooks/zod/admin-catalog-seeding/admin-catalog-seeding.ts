@@ -8,8 +8,10 @@ import * as zod from 'zod';
 
 
 /**
- * @summary Bulk-enqueue YouTube IDs into the seeding backlog, admin only; already-known songs are skipped
+ * @summary Bulk-enqueue a YouTube playlist link and/or video IDs into the seeding backlog, admin only; already-known songs are skipped
  */
-export const enqueueBodyItem = zod.string()
-export const enqueueBody = zod.array(enqueueBodyItem)
+export const enqueueBody = zod.object({
+  "playlistLink": zod.string().optional(),
+  "youtubeIds": zod.array(zod.string()).optional()
+})
 

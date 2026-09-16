@@ -24,7 +24,8 @@ import type {
 } from '@tanstack/react-query';
 
 import type {
-  AdminReviewItemDTO
+  AdminReviewItemDTO,
+  ResolveReportRequest
 } from '../../models';
 
 import { customInstance } from '../../../lib/axios-instance';
@@ -35,27 +36,30 @@ type SecondParameter<T extends (...args: never) => unknown> = Parameters<T>[1];
 
 
 /**
- * @summary Uphold a song's open reports, admin only; a locked song's year stays immutable, an editable song moves to manual entry
+ * @summary Resolve a song's open reports, admin only; applies the admin's chosen year and verification status unconditionally, overriding even a locked, VERIFIED song
  */
-export const uphold = (
+export const resolve = (
     songId: number,
+    resolveReportRequest: ResolveReportRequest,
  options?: SecondParameter<typeof customInstance>,signal?: AbortSignal
 ) => {
       
       
       return customInstance<void>(
-      {url: `/api/admin/song-reports/${songId}/uphold`, method: 'POST', signal
+      {url: `/api/admin/song-reports/${songId}/resolve`, method: 'POST',
+      headers: {'Content-Type': 'application/json', },
+      data: resolveReportRequest, signal
     },
       options);
     }
   
 
 
-export const getUpholdMutationOptions = <TError = unknown,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof uphold>>, TError,{songId: number}, TContext>, request?: SecondParameter<typeof customInstance>}
-): UseMutationOptions<Awaited<ReturnType<typeof uphold>>, TError,{songId: number}, TContext> => {
+export const getResolveMutationOptions = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof resolve>>, TError,{songId: number;data: ResolveReportRequest}, TContext>, request?: SecondParameter<typeof customInstance>}
+): UseMutationOptions<Awaited<ReturnType<typeof resolve>>, TError,{songId: number;data: ResolveReportRequest}, TContext> => {
 
-const mutationKey = ['uphold'];
+const mutationKey = ['resolve'];
 const {mutation: mutationOptions, request: requestOptions} = options ?
       options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
       options
@@ -65,10 +69,10 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
       
 
 
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof uphold>>, {songId: number}> = (props) => {
-          const {songId} = props ?? {};
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof resolve>>, {songId: number;data: ResolveReportRequest}> = (props) => {
+          const {songId,data} = props ?? {};
 
-          return  uphold(songId,requestOptions)
+          return  resolve(songId,data,requestOptions)
         }
 
         
@@ -76,23 +80,23 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
   return  { mutationFn, ...mutationOptions }}
 
-    export type UpholdMutationResult = NonNullable<Awaited<ReturnType<typeof uphold>>>
-    
-    export type UpholdMutationError = unknown
+    export type ResolveMutationResult = NonNullable<Awaited<ReturnType<typeof resolve>>>
+    export type ResolveMutationBody = ResolveReportRequest
+    export type ResolveMutationError = unknown
 
     /**
- * @summary Uphold a song's open reports, admin only; a locked song's year stays immutable, an editable song moves to manual entry
+ * @summary Resolve a song's open reports, admin only; applies the admin's chosen year and verification status unconditionally, overriding even a locked, VERIFIED song
  */
-export const useUphold = <TError = unknown,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof uphold>>, TError,{songId: number}, TContext>, request?: SecondParameter<typeof customInstance>}
+export const useResolve = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof resolve>>, TError,{songId: number;data: ResolveReportRequest}, TContext>, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient): UseMutationResult<
-        Awaited<ReturnType<typeof uphold>>,
+        Awaited<ReturnType<typeof resolve>>,
         TError,
-        {songId: number},
+        {songId: number;data: ResolveReportRequest},
         TContext
       > => {
 
-      const mutationOptions = getUpholdMutationOptions(options);
+      const mutationOptions = getResolveMutationOptions(options);
 
       return useMutation(mutationOptions, queryClient);
     }
