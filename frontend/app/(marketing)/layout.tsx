@@ -14,23 +14,17 @@ export default function AuthLayout({
   const { theme, setTheme } = useTheme();
 
   return (
-    <div className="min-h-screen flex flex-col">
-      <header className="flex items-center justify-between px-6 py-4 border-b">
+    <div className="min-h-screen flex flex-col bg-background">
+      <header className="flex items-center justify-between px-6 md:px-16 py-6 relative z-10">
         <Link href="/" aria-label="go home">
           <LogoIcon />
         </Link>
 
-        <div className="flex items-center gap-2">
-          <Button asChild variant="ghost" size="sm">
-            <Link href="/login">Sign In</Link>
-          </Button>
-          <Button asChild size="sm">
-            <Link href="/register">Sign Up</Link>
-          </Button>
+        <div className="flex items-center gap-1 bg-card rounded-full p-1">
           <Button
             variant="ghost"
             size="icon"
-            className="size-8"
+            className="size-7 rounded-full"
             onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
           >
             <Sun className="size-4 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
@@ -40,7 +34,7 @@ export default function AuthLayout({
         </div>
       </header>
 
-      <main className="flex-1">{children}</main>
+      <main className="flex-1 flex flex-col">{children}</main>
     </div>
   );
 }

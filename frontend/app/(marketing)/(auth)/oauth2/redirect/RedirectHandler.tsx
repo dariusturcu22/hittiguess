@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { IconLoader2 } from "@tabler/icons-react";
 
 export default function OAuth2RedirectHandler() {
   const router = useRouter();
@@ -18,8 +19,22 @@ export default function OAuth2RedirectHandler() {
   }, [router, searchParams]);
 
   return (
-    <div className="flex items-center justify-center min-h-screen">
-      <p>Processing login... please wait.</p>
+    <div className="flex-1 flex flex-col items-center justify-center px-4 py-12 relative overflow-hidden bg-dotted">
+      <div className="absolute -top-44 -right-40 size-[560px] rounded-full bg-accent/15 pointer-events-none" />
+      <div className="absolute -bottom-56 -left-40 size-[480px] bg-accent/10 rotate-12 pointer-events-none" />
+
+      <div className="relative z-10 flex flex-col items-center">
+        <IconLoader2 className="size-10 text-accent animate-spin" />
+        <p
+          className="font-display text-lg text-accent mt-5"
+          style={{ textShadow: "2px 2px 0 var(--border-strong)" }}
+        >
+          Signing you in&hellip;
+        </p>
+        <p className="text-muted-foreground text-sm mt-2.5">
+          Finishing up with your account provider. This only takes a second.
+        </p>
+      </div>
     </div>
   );
 }

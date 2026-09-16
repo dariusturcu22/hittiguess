@@ -2,292 +2,311 @@
 
 import React from "react";
 import Link from "next/link";
+import { Button } from "@/components/shadcn/button";
 
-const cards = [
+const timelineCards = [
+  { color: "#a6e3a1", artist: "RADIOHEAD", year: "1994", title: "Creep" },
+  { color: "#f9e2af", artist: "SNOW PATROL", year: "2006", title: "Chasing Cars" },
+];
+
+const steps = [
   {
-    gradient: ["#cba6f7", "#89b4fa"],
-    year: "1994",
-    title: "Creep",
-    artist: "Radiohead",
+    color: "#cba6f7",
+    light: "#8f4fe3",
+    title: "DJ hits play",
+    body: "Real YouTube, nothing hidden.",
+    icon: (
+      <path d="M8 5v14l11-7z" />
+    ),
   },
   {
-    gradient: ["#fab387", "#f38ba8"],
-    year: "2006",
-    title: "Chasing Cars",
-    artist: "Snow Patrol",
+    color: "#fab387",
+    light: "#ed6f27",
+    title: "You place it",
+    body: "On your own timeline.",
+    icon: (
+      <path d="M12 21c-4.2-4.6-7-8.4-7-12a7 7 0 0 1 14 0c0 3.6-2.8 7.4-7 12z" />
+    ),
+    circle: true,
   },
   {
-    gradient: ["#a6e3a1", "#74c7ec"],
-    year: "1982",
-    title: "Africa",
-    artist: "Toto",
+    color: "#a6e3a1",
+    light: "#499f36",
+    title: "Others bet",
+    body: "Wrong guess, stolen card.",
+    icon: (
+      <>
+        <circle cx="12" cy="12" r="9" />
+        <circle cx="12" cy="12" r="4" />
+      </>
+    ),
+    stroke: true,
   },
   {
-    gradient: ["#f9e2af", "#fab387"],
-    year: "2015",
-    title: "Uptown Funk",
-    artist: "Bruno Mars",
-  },
-  {
-    gradient: ["#f5c2e7", "#cba6f7"],
-    year: "1999",
-    title: "...Baby One More Time",
-    artist: "Britney Spears",
+    color: "#f9e2af",
+    light: "#df8e1d",
+    title: "Reveal",
+    body: "Artist, title, year, truth.",
+    icon: (
+      <>
+        <path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z" />
+        <circle cx="12" cy="12" r="3" />
+      </>
+    ),
+    stroke: true,
   },
 ];
 
-function MusicCard({
-  gradient,
+const highlights = [
+  {
+    heading: "YOUR MUSIC. YOUR RULES.",
+    body: "Build your own playlist. Import one. Play someone else's, or let us generate one for you.",
+    blob: "bg-accent",
+  },
+  {
+    heading: "GUESS IT. BET IT.",
+    body: "Name the artist and title for a token. Save it to bet someone else got their placement wrong, and steal the card if you're right.",
+    blob: "bg-warning",
+  },
+  {
+    heading: "PLAY TOGETHER. TRUST BUILT IN.",
+    body: "Voice and text chat built in, no separate app needed. Official APIs only, GDPR-minded, no ads, no tracking, ever.",
+    blob: "bg-primary",
+  },
+];
+
+function TimelineCard({
+  color,
+  artist,
   year,
   title,
-  artist,
-  style,
+  rotate,
 }: {
-  gradient: string[];
+  color: string;
+  artist?: string;
   year: string;
-  title: string;
-  artist: string;
-  style?: React.CSSProperties;
+  title?: string;
+  rotate: number;
 }) {
   return (
     <div
-      className="absolute rounded-2xl shadow-2xl flex flex-col items-center justify-between p-4 text-white overflow-hidden select-none"
-      style={{
-        width: 160,
-        height: 160,
-        background: `linear-gradient(135deg, ${gradient[0]}, ${gradient[1]})`,
-        fontFamily: "var(--font-kanit), 'Kanit', sans-serif",
-        ...style,
-      }}
+      className="w-28 h-28 sm:w-36 sm:h-36 rounded-2xl border-[5px] flex flex-col items-center justify-center gap-1 p-3 text-center shrink-0"
+      style={
+        {
+          background: color,
+          borderColor: "var(--background)",
+          color: "var(--background)",
+          boxShadow: "6px 6px 0 var(--shadow-color)",
+          transform: `rotate(${rotate}deg)`,
+        } as React.CSSProperties
+      }
     >
-      <div className="text-center font-normal leading-tight text-xs opacity-90">
-        {artist}
+      {artist && (
+        <div className="text-[9px] sm:text-[10px] font-bold">{artist}</div>
+      )}
+      <div className="font-display text-2xl sm:text-4xl leading-none">
+        {year}
       </div>
-      <div className="font-semibold tracking-tighter text-5xl">{year}</div>
-      <div className="text-center italic font-light leading-tight text-xs opacity-90">
-        {title}
-      </div>
+      {title && (
+        <div className="text-[9px] sm:text-[10px] font-medium opacity-80">
+          {title}
+        </div>
+      )}
     </div>
   );
 }
 
-const features = [
-  {
-    icon: "🎵",
-    title: "Paste a YouTube link",
-    desc: "Drop any YouTube music video URL into the app.",
-  },
-  {
-    icon: "🤖",
-    title: "AI extracts the metadata",
-    desc: "MusicBrainz, Genius, and LLM synthesis identify artist, title, and release year.",
-  },
-  {
-    icon: "🎴",
-    title: "Get a beautiful card",
-    desc: "A gradient card is generated and added to your playlist, ready to print.",
-  },
-  {
-    icon: "🖨️",
-    title: "Print & play",
-    desc: "Export as PDF, print double-sided, and play Hitster with your custom songs.",
-  },
-];
-
 export default function LandingPage() {
-  const cardPositions = [
-    { top: "5%", left: "3%", rotate: "-14deg", animDuration: "4.2s" },
-    { top: "60%", left: "1%", rotate: "7deg", animDuration: "5.1s" },
-    { top: "10%", right: "3%", rotate: "11deg", animDuration: "4.7s" },
-    { top: "62%", right: "5%", rotate: "-9deg", animDuration: "3.9s" },
-  ];
-
   return (
-    <>
-      <style>{`
-        @keyframes floatCard {
-          0% { transform: translateY(0px) rotate(var(--card-rotate)); }
-          100% { transform: translateY(-16px) rotate(var(--card-rotate)); }
-        }
-        @keyframes fadeUp {
-          from { opacity: 0; transform: translateY(24px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-        .float-card {
-          animation: floatCard var(--card-dur, 4s) ease-in-out infinite alternate;
-        }
-        .fade-up {
-          opacity: 0;
-          animation: fadeUp 0.7s ease forwards;
-        }
-        .fade-up-1 { animation-delay: 0.1s; }
-        .fade-up-2 { animation-delay: 0.25s; }
-        .fade-up-3 { animation-delay: 0.4s; }
-        .fade-up-4 { animation-delay: 0.55s; }
-      `}</style>
+    <div className="flex flex-col bg-background">
+      <section className="relative overflow-hidden bg-dotted px-6 md:px-16 pt-4 pb-16 md:pb-24">
+        <div className="absolute -top-40 -right-40 size-[420px] md:size-[560px] rounded-full bg-accent pointer-events-none" />
 
-      <div className="min-h-screen bg-background text-foreground flex flex-col">
-        <section className="flex-1 flex flex-col items-center justify-center text-center px-6 py-20 relative overflow-hidden min-h-[80vh]">
-          <div className="absolute inset-0 pointer-events-none hidden lg:block">
-            {cards.slice(0, 4).map((card, i) => (
-              <MusicCard
-                key={i}
-                {...card}
-                style={
-                  {
-                    ...cardPositions[i],
-                    "--card-rotate": cardPositions[i].rotate,
-                    "--card-dur": cardPositions[i].animDuration,
-                    transform: `rotate(${cardPositions[i].rotate})`,
-                  } as unknown as React.CSSProperties
-                }
-              />
-            ))}
-          </div>
-
-          <div
-            className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full blur-3xl pointer-events-none"
-            style={{
-              width: 600,
-              height: 400,
-              background:
-                "radial-gradient(ellipse, color-mix(in oklch, var(--color-primary) 12%, transparent), transparent 70%)",
-            }}
-          />
-
-          <div className="relative z-10 max-w-2xl mx-auto flex flex-col items-center gap-6">
+        <div className="relative z-10 grid md:grid-cols-2 gap-10 items-center max-w-6xl mx-auto">
+          <div className="flex flex-col gap-6">
             <h1
-              className="fade-up fade-up-1 text-5xl md:text-7xl font-bold tracking-tight leading-none"
-              style={{ fontFamily: "var(--font-kanit), 'Kanit', sans-serif" }}
+              className="font-display text-4xl sm:text-5xl md:text-6xl leading-[1.05] text-accent"
+              style={{ textShadow: "4px 4px 0 var(--card)" }}
             >
-              Turn songs into
+              PLACE IT.
               <br />
-              <span style={{ color: "var(--color-primary)" }}>game cards.</span>
+              GUESS IT.
+              <br />
+              WIN IT.
             </h1>
-
-            <p className="fade-up fade-up-2 text-muted-foreground text-lg max-w-md leading-relaxed">
-              Paste a YouTube link. AI identifies the song. Get a beautiful
-              printable card for your Hitster game nights.
+            <p className="text-muted-foreground text-base md:text-lg leading-relaxed max-w-md">
+              Hear a song, guess the year, place it on your own timeline.
+              Bring your own playlist or import one, either way it just
+              works.
             </p>
-
-            <div className="fade-up fade-up-3 flex flex-col sm:flex-row gap-3 mt-2">
-              <Link
-                href="/register"
-                className="px-6 py-3 rounded-md font-semibold text-sm transition-all hover:opacity-90 active:scale-95"
-                style={{
-                  background: "var(--color-primary)",
-                  color: "var(--color-primary-foreground)",
-                }}
-              >
-                Start building your deck →
-              </Link>
-              <Link
-                href="/login"
-                className="px-6 py-3 rounded-md font-medium text-sm border border-border hover:bg-muted transition-colors"
-              >
-                Sign in
-              </Link>
+            <div className="flex flex-col sm:flex-row sm:items-center gap-4 mt-1">
+              <Button asChild size="lg">
+                <Link href="/register">Create free account</Link>
+              </Button>
+              <span className="font-display text-xs text-muted-foreground">
+                or{" "}
+                <Link href="/login" className="text-accent underline underline-offset-4">
+                  sign in
+                </Link>
+              </span>
             </div>
           </div>
-        </section>
 
-        <section className="px-6 py-20 border-t border-border">
-          <div className="max-w-4xl mx-auto">
-            <h2
-              className="text-3xl font-bold text-center mb-12"
-              style={{ fontFamily: "var(--font-kanit), 'Kanit', sans-serif" }}
-            >
-              How it works
-            </h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-              {features.map((f, i) => (
-                <div
-                  key={i}
-                  className="rounded-xl p-6 border border-border bg-card flex flex-col gap-3 hover:border-primary/50 transition-colors"
-                >
-                  <div className="text-3xl">{f.icon}</div>
-                  <div className="font-semibold text-sm">{f.title}</div>
-                  <div className="text-muted-foreground text-sm leading-relaxed">
-                    {f.desc}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        <section className="px-6 py-20 border-t border-border">
-          <div className="max-w-4xl mx-auto text-center">
-            <h2
-              className="text-3xl font-bold mb-4"
-              style={{ fontFamily: "var(--font-kanit), 'Kanit', sans-serif" }}
-            >
-              Beautiful cards, every time
-            </h2>
-            <p className="text-muted-foreground mb-12 text-sm">
-              Each card gets a unique AI-generated gradient based on the
-              song&apos;s mood.
-            </p>
-            <div className="flex flex-wrap justify-center gap-6">
-              {cards.map((card, i) => (
-                <div
-                  key={i}
-                  className="rounded-2xl shadow-xl flex flex-col items-center justify-between p-4 text-white transition-transform hover:-translate-y-1"
-                  style={{
-                    width: 140,
-                    height: 140,
-                    background: `linear-gradient(135deg, ${card.gradient[0]}, ${card.gradient[1]})`,
-                    fontFamily: "var(--font-kanit), 'Kanit', sans-serif",
-                    transform: `rotate(${[-3, 2, -1, 3, -2][i]}deg)`,
-                  }}
-                >
-                  <div className="text-center font-normal leading-tight text-xs opacity-90">
-                    {card.artist}
-                  </div>
-                  <div className="font-semibold tracking-tighter text-4xl">
-                    {card.year}
-                  </div>
-                  <div className="text-center italic font-light leading-tight text-xs opacity-90">
-                    {card.title}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        <section className="px-6 py-20 border-t border-border">
-          <div className="max-w-2xl mx-auto rounded-2xl p-12 text-center border border-border bg-card relative overflow-hidden">
-            <div
-              className="absolute inset-0 pointer-events-none rounded-2xl"
-              style={{
-                background:
-                  "radial-gradient(ellipse at 50% 0%, color-mix(in oklch, var(--color-primary) 10%, transparent), transparent 70%)",
-              }}
+          <div className="hidden md:flex items-end justify-end gap-3">
+            <TimelineCard
+              color={timelineCards[0].color}
+              artist={timelineCards[0].artist}
+              year={timelineCards[0].year}
+              title={timelineCards[0].title}
+              rotate={-8}
             />
-            <h2
-              className="relative text-3xl font-bold mb-3"
-              style={{ fontFamily: "var(--font-kanit), 'Kanit', sans-serif" }}
-            >
-              Ready to play?
-            </h2>
-            <p className="relative text-muted-foreground mb-6 text-sm">
-              Create your account and start building your custom Hitster deck
-              today.
-            </p>
-            <Link
-              href="/register"
-              className="relative inline-flex px-8 py-3 rounded-md font-semibold text-sm transition-all hover:opacity-90 active:scale-95"
+            <div
+              className="w-28 h-28 sm:w-36 sm:h-36 rounded-2xl border-[5px] border-border flex items-center justify-center mt-12"
               style={{
-                background: "var(--color-primary)",
-                color: "var(--color-primary-foreground)",
+                background: "var(--card)",
+                color: "var(--border)",
+                boxShadow: "6px 6px 0 var(--shadow-color)",
+                transform: "rotate(4deg)",
               }}
             >
-              Create free account
+              <span className="font-display text-4xl">?</span>
+            </div>
+            <TimelineCard
+              color={timelineCards[1].color}
+              artist={timelineCards[1].artist}
+              year={timelineCards[1].year}
+              title={timelineCards[1].title}
+              rotate={-4}
+            />
+          </div>
+        </div>
+      </section>
+
+      <section className="bg-dotted px-6 md:px-16 py-16 md:py-24">
+        <h2
+          className="font-display text-2xl md:text-3xl text-accent text-center"
+          style={{ textShadow: "3px 3px 0 var(--card)" }}
+        >
+          How a round works
+        </h2>
+        <div className="max-w-5xl mx-auto mt-12 grid grid-cols-2 md:grid-cols-4 gap-8">
+          {steps.map((step) => (
+            <div key={step.title} className="flex flex-col items-center gap-4 text-center">
+              <div
+                className="size-16 md:size-20 rounded-full border-[3px] border-border-strong flex items-center justify-center"
+                style={{ background: step.color, boxShadow: "4px 4px 0 var(--shadow-color)" }}
+              >
+                <svg
+                  width="28"
+                  height="28"
+                  viewBox="0 0 24 24"
+                  fill={step.stroke ? "none" : "var(--border-strong)"}
+                  stroke={step.stroke ? "var(--border-strong)" : "none"}
+                  strokeWidth={step.stroke ? 2.2 : 0}
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  {step.icon}
+                </svg>
+              </div>
+              <div>
+                <div className="font-display text-sm text-accent">
+                  {step.title}
+                </div>
+                <div className="text-muted-foreground text-sm mt-1.5">
+                  {step.body}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {highlights.map((highlight, index) => (
+        <section
+          key={highlight.heading}
+          className={`relative overflow-hidden bg-dotted px-6 md:px-16 py-16 flex ${
+            index % 2 === 0 ? "md:justify-end" : "md:justify-start"
+          } justify-center`}
+        >
+          <div
+            className={`absolute -top-32 size-72 md:size-96 rounded-full opacity-20 pointer-events-none ${highlight.blob} ${
+              index % 2 === 0 ? "-left-24" : "-right-24"
+            }`}
+          />
+          <div
+            className={`relative z-10 max-w-md rounded-3xl px-8 py-9 bg-card/80 ${
+              index % 2 === 0 ? "text-left" : "md:text-right text-left"
+            }`}
+          >
+            <h2 className="font-display text-2xl md:text-3xl leading-tight text-accent">
+              {highlight.heading}
+            </h2>
+            <p className="text-foreground/90 mt-4 leading-relaxed">
+              {highlight.body}
+            </p>
+          </div>
+        </section>
+      ))}
+
+      <section className="relative overflow-hidden bg-dotted px-6 md:px-16 py-20 flex justify-center">
+        <div className="absolute -top-32 left-1/4 size-72 rounded-full bg-accent/20 pointer-events-none" />
+        <div className="absolute -bottom-32 right-1/4 size-80 bg-primary/20 rotate-12 pointer-events-none" />
+        <div
+          className="relative z-10 bg-card border-[3px] border-border-strong rounded-3xl px-12 py-12 flex flex-col items-center text-center gap-4 -rotate-1"
+          style={{ boxShadow: "8px 8px 0 var(--shadow-color)" }}
+        >
+          <h2
+            className="font-display text-2xl md:text-3xl text-accent"
+            style={{ textShadow: "3px 3px 0 var(--background)" }}
+          >
+            Ready?
+          </h2>
+          <p className="text-muted-foreground text-sm max-w-sm">
+            Create your account and start building your custom playlist
+            today.
+          </p>
+          <Button asChild size="lg" className="mt-1">
+            <Link href="/register">Create free account</Link>
+          </Button>
+        </div>
+      </section>
+
+      <footer className="px-6 md:px-16 py-12 border-t-2 border-border flex flex-wrap gap-12">
+        <div className="flex flex-col gap-3 max-w-[280px]">
+          <div className="flex items-center gap-2.5">
+            <div className="flex items-end gap-[2px] h-[18px]">
+              <span className="w-1 h-2.5 rounded-full bg-muted-foreground" />
+              <span className="w-1 h-4 rounded-full bg-muted-foreground" />
+              <span className="w-1 h-3 rounded-full bg-muted-foreground" />
+              <span className="w-1 h-[18px] rounded-full bg-muted-foreground" />
+            </div>
+            <span className="font-wordmark font-extrabold text-sm text-muted-foreground">
+              hittiguess
+            </span>
+          </div>
+          <p className="text-muted-foreground text-xs leading-relaxed">
+            No ads. No tracking. Free, always. Built for friends, not for
+            profit.
+          </p>
+        </div>
+
+        <div>
+          <div className="text-[11px] tracking-widest uppercase text-muted-foreground font-semibold mb-3">
+            Product
+          </div>
+          <div className="flex flex-col gap-2.5 text-sm text-muted-foreground">
+            <span>How it works</span>
+            <Link href="/playlists" className="hover:text-accent">
+              Playlists
+            </Link>
+            <Link href="/login" className="hover:text-accent">
+              Sign in
             </Link>
           </div>
-        </section>
-      </div>
-    </>
+        </div>
+
+      </footer>
+    </div>
   );
 }

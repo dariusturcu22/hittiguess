@@ -4,74 +4,102 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/*
+ * Palette is Catppuccin-derived: Mocha for dark, Latte for light, with a
+ * handful of hand-tinted accents (primary orange/peach, mauve) that diverge
+ * from the stock Catppuccin values. Every hex below is copied from the
+ * design mockups in docs/design/source/*.dc.html, not approximated.
+ */
 :root {
-  --background: oklch(0.98 0.005 264.5);
-  --card: oklch(1 0 0);
-  --sidebar: oklch(0.97 0.008 264.5);
-  --foreground: oklch(0.4355 0.043 279.325);
-  --card-foreground: oklch(0.4355 0.043 279.325);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.4355 0.043 279.325);
+  --background: #eff1f5;
+  --foreground: #4c4f69;
+  --card: #ffffff;
+  --card-foreground: #4c4f69;
+  --sidebar: #e6e9ef;
+  --popover: #ffffff;
+  --popover-foreground: #4c4f69;
 
-  --primary: oklch(0.68 0.22 297);
-  --primary-foreground: oklch(1 0 0);
+  --primary: #ed6f27;
+  --primary-foreground: #ffffff;
 
-  --secondary: oklch(0.92 0.025 285);
-  --secondary-foreground: oklch(0.4355 0.043 279.325);
-  --muted: oklch(0.94 0.015 264.5);
-  --muted-foreground: oklch(0.55 0.04 279);
+  --secondary: #ccd0da;
+  --secondary-foreground: #4c4f69;
+  --muted: #e6e9ef;
+  --muted-foreground: #5c5f77;
 
-  --accent: oklch(0.72 0.18 297);
-  --accent-foreground: oklch(1 0 0);
+  --accent: #8f4fe3;
+  --accent-foreground: #ffffff;
 
-  --destructive: oklch(0.6 0.25 25);
-  --destructive-foreground: oklch(1 0 0);
-  --border: oklch(0.88 0.02 271.2);
-  --input: oklch(0.92 0.02 285);
-  --ring: oklch(0.68 0.22 297);
+  --warning: #df8e1d;
+  --warning-foreground: #ffffff;
 
-  --sidebar-foreground: oklch(0.4355 0.043 279.325);
-  --sidebar-primary: oklch(0.68 0.22 297);
-  --sidebar-primary-foreground: oklch(1 0 0);
-  --sidebar-accent: oklch(0.94 0.05 297);
-  --sidebar-accent-foreground: oklch(0.4355 0.043 279.325);
-  --sidebar-border: oklch(0.88 0.02 271.2);
-  --sidebar-ring: oklch(0.68 0.22 297);
+  --destructive: #d20f39;
+  --destructive-foreground: #ffffff;
+  --border: #ccd0da;
+  --border-strong: #4c4f69;
+  --input: #ccd0da;
+  --ring: #ed6f27;
 
-  --font-sans: Montserrat, sans-serif;
-  --font-serif: Georgia, serif;
-  --font-mono: Fira Code, monospace;
-  --radius: 0.35rem;
+  --sidebar-foreground: #4c4f69;
+  --sidebar-primary: #8f4fe3;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #ccd0da;
+  --sidebar-accent-foreground: #4c4f69;
+  --sidebar-border: #ccd0da;
+  --sidebar-ring: #ed6f27;
+
+  --shadow-color: rgba(76, 79, 105, 0.25);
+  --dot-color: rgba(76, 79, 105, 0.2);
+
+  --font-sans: var(--font-space-grotesk), "Space Grotesk", sans-serif;
+  --font-display: var(--font-bungee), "Bungee", sans-serif;
+  --font-wordmark: var(--font-baloo-2), "Baloo 2", sans-serif;
+  --font-mono: var(--font-space-grotesk), "Space Grotesk", monospace;
+  --font-serif: var(--font-space-grotesk), "Space Grotesk", serif;
+  --radius: 1.125rem;
   --spacing: 0.25rem;
 }
 
 .dark {
-  --background: oklch(0.25 0.0254 284.0647);
-  --card: oklch(0.28 0.0304 283.911);
-  --sidebar: oklch(0.22 0.02 284.2);
-  --foreground: oklch(0.95 0.015 272);
-  --card-foreground: oklch(0.95 0.015 272);
-  --popover: oklch(0.32 0.03 280);
-  --popover-foreground: oklch(0.95 0.015 272);
-  --primary: oklch(0.82 0.15 304.7);
-  --primary-foreground: oklch(0.15 0.02 284);
-  --secondary: oklch(0.35 0.04 278.6);
-  --secondary-foreground: oklch(0.95 0.015 272);
-  --muted: oklch(0.32 0.03 276.2);
-  --muted-foreground: oklch(0.78 0.03 273.9);
-  --accent: oklch(0.82 0.16 300);
-  --accent-foreground: oklch(0.15 0.02 284);
-  --destructive: oklch(0.65 0.22 20);
-  --destructive-foreground: oklch(1 0 0);
-  --border: oklch(0.38 0.04 282);
-  --input: oklch(0.38 0.04 282);
-  --ring: oklch(0.82 0.15 304.7);
-  --sidebar-foreground: oklch(0.95 0.015 272);
-  --sidebar-primary: oklch(0.82 0.15 304.7);
-  --sidebar-primary-foreground: oklch(0.15 0.02 284);
-  --sidebar-accent: oklch(0.32 0.04 284.2);
-  --sidebar-accent-foreground: oklch(0.95 0.015 272);
-  --sidebar-border: oklch(0.35 0.04 280);
+  --background: #1e1e2e;
+  --foreground: #cdd6f4;
+  --card: #313244;
+  --card-foreground: #cdd6f4;
+  --sidebar: #11111b;
+  --popover: #313244;
+  --popover-foreground: #cdd6f4;
+
+  --primary: #fab387;
+  --primary-foreground: #1e1e2e;
+
+  --secondary: #45475a;
+  --secondary-foreground: #cdd6f4;
+  --muted: #313244;
+  --muted-foreground: #a6adc8;
+
+  --accent: #cba6f7;
+  --accent-foreground: #11111b;
+
+  --warning: #f9e2af;
+  --warning-foreground: #11111b;
+
+  --destructive: #e78284;
+  --destructive-foreground: #1e1e2e;
+  --border: #45475a;
+  --border-strong: #11111b;
+  --input: #45475a;
+  --ring: #fab387;
+
+  --sidebar-foreground: #cdd6f4;
+  --sidebar-primary: #cba6f7;
+  --sidebar-primary-foreground: #11111b;
+  --sidebar-accent: #313244;
+  --sidebar-accent-foreground: #cdd6f4;
+  --sidebar-border: #313244;
+  --sidebar-ring: #fab387;
+
+  --shadow-color: rgba(0, 0, 0, 0.4);
+  --dot-color: rgba(108, 112, 134, 0.25);
 }
 
 @theme inline {
@@ -89,9 +117,12 @@
   --color-muted-foreground: var(--muted-foreground);
   --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-foreground);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
   --color-destructive: var(--destructive);
   --color-destructive-foreground: var(--destructive-foreground);
   --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
   --color-input: var(--input);
   --color-ring: var(--ring);
   --color-sidebar: var(--sidebar);
@@ -102,13 +133,31 @@
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
+
   --font-sans: var(--font-sans);
   --font-mono: var(--font-mono);
   --font-serif: var(--font-serif);
-  --radius-sm: calc(var(--radius) - 4px);
-  --radius-md: calc(var(--radius) - 2px);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) + 4px);
+  --font-display: var(--font-display);
+  --font-wordmark: var(--font-wordmark);
+
+  /* Cards/modals get the 18px radius from the mockups, fields/inputs 13px.
+     These are literal values, not a calc() scale, since the design uses two
+     unrelated radii rather than steps off one base. */
+  --radius-sm: 0.625rem;
+  --radius-md: 0.8125rem;
+  --radius-lg: 1.125rem;
+  --radius-xl: 1.25rem;
+
+  /* The design never uses a soft/blurred shadow: every elevated surface gets
+     a flat, no-blur offset shadow instead. Overriding the shadow scale here
+     means shadcn defaults like Card's `shadow-sm` pick this up for free. */
+  --shadow-2xs: 2px 2px 0 var(--shadow-color);
+  --shadow-xs: 3px 3px 0 var(--shadow-color);
+  --shadow-sm: 4px 4px 0 var(--shadow-color);
+  --shadow-md: 4px 4px 0 var(--shadow-color);
+  --shadow-lg: 6px 6px 0 var(--shadow-color);
+  --shadow-xl: 6px 6px 0 var(--shadow-color);
+  --shadow-2xl: 8px 8px 0 var(--shadow-color);
 }
 
 @layer base {
@@ -117,5 +166,14 @@
   }
   body {
     @apply bg-background text-foreground transition-colors duration-300;
+  }
+}
+
+@layer utilities {
+  /* Subtle dotted-grid backdrop used on full-page surfaces (auth, landing,
+     the app shell's main content area) in every mockup. */
+  .bg-dotted {
+    background-image: radial-gradient(circle, var(--dot-color) 1.5px, transparent 1.5px);
+    background-size: 22px 22px;
   }
 }

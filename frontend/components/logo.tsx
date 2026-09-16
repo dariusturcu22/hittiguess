@@ -1,12 +1,15 @@
-import { AudioWaveform } from "lucide-react";
-
 export const LogoIcon = () => {
   return (
     <div className="flex items-center gap-2">
-      <div className="bg-primary rounded-md p-1.5">
-        <AudioWaveform className="size-4 text-primary-foreground" />
+      <div className="flex items-end gap-[3px] h-6">
+        <span className="w-[5px] h-[11px] rounded-full bg-[#499f36] dark:bg-[#a6e3a1]" />
+        <span className="w-[5px] h-[22px] rounded-full bg-[#499f36] dark:bg-[#a6e3a1]" />
+        <span className="w-[5px] h-[15px] rounded-full bg-[#499f36] dark:bg-[#a6e3a1]" />
+        <span className="w-[5px] h-[24px] rounded-full bg-[#499f36] dark:bg-[#a6e3a1]" />
       </div>
-      <span className="font-semibold text-sm">My Hitster</span>
+      <span className="font-wordmark font-extrabold text-lg text-foreground">
+        hittiguess
+      </span>
     </div>
   );
 };
