@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
@@ -21,6 +21,15 @@ type Mode = "search" | "new-link" | "new-review";
 
 const DEFAULT_GRADIENT_1 = "#8B5CF6";
 const DEFAULT_GRADIENT_2 = "#EC4899";
+const REVIEW_PREVIEW_DETAILS: PendingSongDetails = {
+  title: "Dreams",
+  artist: "Fleetwood Mac",
+  releaseYear: "1977",
+  gradientColor1: "#89b4fa",
+  gradientColor2: "#cba6f7",
+  country: CreateSongRequestCountry.NONE,
+  isHighConfidence: false,
+};
 
 interface AddSongFormProps {
   playlistId: number;
@@ -29,15 +38,21 @@ interface AddSongFormProps {
 
 export function AddSongForm({ playlistId, backPath }: AddSongFormProps) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const queryClient = useQueryClient();
+  const previewState = searchParams.get("preview");
 
-  const [mode, setMode] = useState<Mode>("search");
+  const [mode, setMode] = useState<Mode>(
+    previewState === "link" ? "new-link" : previewState === "review" ? "new-review" : "search",
+  );
   const [queue, setQueue] = useState<SongDTO[]>([]);
   const [isSubmittingQueue, setIsSubmittingQueue] = useState(false);
 
   const [pendingYoutubeId, setPendingYoutubeId] = useState("");
   const [pendingDetails, setPendingDetails] =
-    useState<PendingSongDetails | null>(null);
+    useState<PendingSongDetails | null>(
+      previewState === "review" ? REVIEW_PREVIEW_DETAILS : null,
+    );
   const [isFetchingMetadata, setIsFetchingMetadata] = useState(false);
   const [metadataFetchError, setMetadataFetchError] = useState("");
 

@@ -9,8 +9,12 @@ import { AuthPageBackground } from "@/components/auth-page-background";
 export default function OAuth2RedirectHandler() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const isPreview = searchParams.get("preview") === "true";
 
   useEffect(() => {
+    if (isPreview) {
+      return;
+    }
     const error = searchParams.get("error");
 
     if (error) {
@@ -18,7 +22,7 @@ export default function OAuth2RedirectHandler() {
     } else {
       router.push("/playlists");
     }
-  }, [router, searchParams]);
+  }, [isPreview, router, searchParams]);
 
   return (
     <section className="flex-1 flex items-center justify-center px-4 py-12 relative overflow-hidden bg-dotted">

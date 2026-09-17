@@ -341,41 +341,15 @@ export default function PlaylistContent({
           </div>
         </div>
 
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <button
-              type="button"
-              className="mt-1 flex items-center pl-3"
-              title={`Members (${playlist.members.length})`}
-            >
-              {playlist.members.slice(0, 3).map((member, index) => (
-                <div key={member.userId ?? index} className="-ml-3 first:ml-0">
-                  <MemberAvatar
-                    initial={(member.displayName ?? member.username ?? "?")
-                      .charAt(0)
-                      .toUpperCase()}
-                    color={MEMBER_AVATAR_COLORS[index % MEMBER_AVATAR_COLORS.length]}
-                    isOwner={!!member.owner}
-                  />
-                </div>
-              ))}
-              {playlist.members.length > 3 && (
-                <div className="-ml-3 flex size-[34px] shrink-0 items-center justify-center rounded-full border-[3px] border-card bg-secondary font-display text-[11px] text-secondary-foreground">
-                  +{playlist.members.length - 3}
-                </div>
-              )}
-              <ChevronDown className="ml-1.5 size-4 text-muted-foreground" />
-            </button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-64">
-            <DropdownMenuLabel>
-              Members ({playlist.members.length})
-            </DropdownMenuLabel>
-            <DropdownMenuSeparator />
+        <aside className="w-[260px] shrink-0 overflow-hidden rounded-2xl border-[3px] border-border-strong bg-card shadow-lg">
+          <div className="border-b-2 border-background px-4 py-3 font-display text-[11px] text-muted-foreground">
+            Members ({playlist.members.length})
+          </div>
+          <div className="max-h-[170px] overflow-y-auto">
             {playlist.members.map((member, index) => (
               <div
                 key={member.userId ?? index}
-                className="flex items-center gap-2.5 px-2 py-1.5"
+                className="flex items-center gap-2.5 border-b border-background px-4 py-2.5 last:border-b-0"
               >
                 <MemberAvatar
                   initial={(member.displayName ?? member.username ?? "?")
@@ -392,8 +366,8 @@ export default function PlaylistContent({
                 )}
               </div>
             ))}
-          </DropdownMenuContent>
-        </DropdownMenu>
+          </div>
+        </aside>
       </div>
 
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">

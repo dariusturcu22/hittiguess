@@ -3,6 +3,7 @@ package org.dariusturcu.backend.service;
 import lombok.extern.slf4j.Slf4j;
 import org.dariusturcu.backend.model.song.AdminCatalogSeedingRequest;
 import org.dariusturcu.backend.model.song.BacklogStatusDTO;
+import org.dariusturcu.backend.model.song.BacklogQueueItemDTO;
 import org.dariusturcu.backend.model.song.EnqueueResultDTO;
 import org.dariusturcu.backend.model.song.PendingImport;
 import org.dariusturcu.backend.model.song.PendingImportStatus;
@@ -113,7 +114,13 @@ public class CatalogSeedingService {
         long pendingCount = pendingImportRepository.countByStatus(PendingImportStatus.PENDING);
         long processedTodayCount = processedTodayCount();
         long quotaRemaining = Math.max(0, dailyDrainQuota - processedTodayCount);
-        return new BacklogStatusDTO(pendingCount, processedTodayCount, dailyDrainQuota, quotaRemaining);
+        List<BacklogQueueItemDTO> queueItems = pendingImportRepository.findTop7ByOrderByEnqueuedAtDesc().stream()
+                .map(pendingImport -> new BacklogQueueItemDTO(
+                        pendingImport.getYoutubeId(),
+                        pendingImport.getStatus(),
+                        pendingImport.getFailureReason()))
+                .toList();
+        return new BacklogStatusDTO(pendingCount, processedTodayCount, dailyDrainQuota, quotaRemaining, queueItems);
     }
 
     /**

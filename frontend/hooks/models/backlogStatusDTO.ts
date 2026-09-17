@@ -4,10 +4,12 @@
  * OpenAPI definition
  * OpenAPI spec version: v0
  */
+import type { BacklogQueueItemDTO } from './backlogQueueItemDTO';
 
 export interface BacklogStatusDTO {
   pendingCount?: number;
   processedTodayCount?: number;
   dailyDrainQuota?: number;
   quotaRemainingToday?: number;
+  queueItems?: BacklogQueueItemDTO[];
 }

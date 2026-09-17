@@ -104,6 +104,7 @@ export default function CatalogBacklogPage() {
   const processedToday = status?.processedTodayCount ?? 0;
   const quotaRemaining = status?.quotaRemainingToday ?? 0;
   const dailyQuota = status?.dailyDrainQuota ?? 0;
+  const queueItems = status?.queueItems ?? [];
 
   return (
     <div className="flex-1 min-w-0 box-border bg-dotted flex flex-col px-14 pt-11 pb-10">
@@ -209,12 +210,40 @@ export default function CatalogBacklogPage() {
               {statusLoading ? "" : `${pending.toLocaleString()} waiting`}
             </span>
           </div>
-          <div className="flex-1 min-h-0 overflow-y-auto flex items-center justify-center p-6 text-center">
-            <p className="text-[12px] text-muted-foreground leading-[1.6] max-w-[360px]">
-              A per-item processing view is not exposed by the backend yet, the
-              seeding API reports aggregate counts only. The pending total above
-              reflects the live backlog depth.
-            </p>
+          <div className="flex-1 min-h-0 overflow-y-auto">
+            {queueItems.length === 0 ? (
+              <div className="h-full flex items-center justify-center p-6 text-center">
+                <p className="text-[12px] text-muted-foreground leading-[1.6] max-w-[360px]">
+                  The queue is clear. New catalog imports will appear here.
+                </p>
+              </div>
+            ) : (
+              queueItems.map((item) => {
+                const isFailed = item.status === "FAILED";
+                const statusLabel = item.status?.toLowerCase() ?? "pending";
+                return (
+                  <div
+                    key={`${item.youtubeId}-${item.status}`}
+                    className="flex items-center gap-4 px-5 py-[14px] border-b-2 border-background last:border-b-0"
+                  >
+                    <div className="w-10 h-10 rounded-md bg-secondary flex items-center justify-center font-display text-accent text-xs shrink-0">
+                      YT
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="font-mono text-[13px] text-card-foreground truncate">
+                        {item.youtubeId}
+                      </div>
+                      <div className={`mt-0.5 text-[11px] truncate ${isFailed ? "text-destructive" : "text-muted-foreground"}`}>
+                        {item.failureReason ?? "Waiting for catalog metadata"}
+                      </div>
+                    </div>
+                    <span className={`font-display text-[9px] uppercase px-[9px] py-1 rounded-full ${isFailed ? "bg-destructive/15 text-destructive" : "bg-warning/15 text-warning"}`}>
+                      {statusLabel}
+                    </span>
+                  </div>
+                );
+              })
+            )}
           </div>
         </div>
       </div>

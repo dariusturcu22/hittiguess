@@ -179,7 +179,7 @@ export default function RegisterPage() {
         href={`${process.env.NEXT_PUBLIC_API_URL}/oauth2/authorization/google`}
         className="w-full mt-5 block"
       >
-        <Button type="button" variant="outline" className="w-full">
+        <Button type="button" variant="outline" className="w-full bg-white text-[#1e1e2e] hover:bg-white/90">
           <svg
             xmlns="http://www.w3.org/2000/svg"
             width="18"

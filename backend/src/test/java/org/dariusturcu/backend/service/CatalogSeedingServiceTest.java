@@ -1,7 +1,10 @@
 package org.dariusturcu.backend.service;
 
 import org.dariusturcu.backend.model.song.AdminCatalogSeedingRequest;
+import org.dariusturcu.backend.model.song.BacklogStatusDTO;
 import org.dariusturcu.backend.model.song.EnqueueResultDTO;
+import org.dariusturcu.backend.model.song.PendingImport;
+import org.dariusturcu.backend.model.song.PendingImportStatus;
 import org.dariusturcu.backend.model.song.YoutubeIdLookupResult;
 import org.dariusturcu.backend.repository.PendingImportRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -89,5 +92,23 @@ class CatalogSeedingServiceTest {
                 new AdminCatalogSeedingRequest(null, List.of(PLAIN_VIDEO_ID)));
 
         assertThat(result.enqueuedYoutubeIds()).containsExactly(PLAIN_VIDEO_ID);
+    }
+
+    @Test
+    void backlogStatusIncludesRecentQueueItemsForTheAdminView() {
+        PendingImport pendingImport = new PendingImport();
+        pendingImport.setYoutubeId(PLAIN_VIDEO_ID);
+        pendingImport.setStatus(PendingImportStatus.PROCESSING);
+        when(pendingImportRepository.countByStatus(PendingImportStatus.PENDING)).thenReturn(12L);
+        when(pendingImportRepository.countByStatusAndProcessedAtAfter(eq(PendingImportStatus.DONE), org.mockito.ArgumentMatchers.any()))
+                .thenReturn(4L);
+        when(pendingImportRepository.findTop7ByOrderByEnqueuedAtDesc()).thenReturn(List.of(pendingImport));
+
+        BacklogStatusDTO status = catalogSeedingService.backlogStatus();
+
+        assertThat(status.queueItems()).singleElement().satisfies(queueItem -> {
+            assertThat(queueItem.youtubeId()).isEqualTo(PLAIN_VIDEO_ID);
+            assertThat(queueItem.status()).isEqualTo(PendingImportStatus.PROCESSING);
+        });
     }
 }

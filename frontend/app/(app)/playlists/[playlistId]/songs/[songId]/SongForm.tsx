@@ -148,7 +148,7 @@ export function SongForm({
     song.verificationStatus === SongDTOVerificationStatus.MANUAL_ENTRY;
 
   return (
-    <div className="flex w-full max-w-[560px] flex-col items-center">
+    <div className="flex w-full max-w-[640px] flex-col items-center">
       <h1
         className="mb-1.5 w-full text-center font-display text-2xl text-accent"
         style={{ textShadow: "3px 3px 0 var(--text-shadow-on-card)" }}

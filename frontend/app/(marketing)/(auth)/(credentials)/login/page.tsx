@@ -115,16 +115,10 @@ export default function LoginPage() {
             />
 
             <div>
-              <div className="flex items-center justify-between mb-[7px]">
+              <div className="mb-[7px]">
                 <FormLabel className="text-[13px] font-semibold text-muted-foreground">
                   Password
                 </FormLabel>
-                <Link
-                  href="/forgot-password"
-                  className="text-[13px] text-primary underline underline-offset-[3px]"
-                >
-                  Forgot password?
-                </Link>
               </div>
               <FormField
                 control={form.control}
@@ -145,14 +139,22 @@ export default function LoginPage() {
               />
             </div>
 
-            <label className="flex items-center gap-[9px] text-[13px] text-muted-foreground cursor-pointer">
-              <input
-                type="checkbox"
-                name="rememberMe"
-                className="size-[18px] rounded-[5px] border-2 border-border bg-background accent-primary"
-              />
-              Remember me
-            </label>
+            <div className="flex items-center justify-between">
+              <label className="flex items-center gap-[9px] text-[13px] text-muted-foreground cursor-pointer">
+                <input
+                  type="checkbox"
+                  name="rememberMe"
+                  className="size-[18px] rounded-[5px] border-2 border-border bg-background accent-primary"
+                />
+                Remember me
+              </label>
+              <Link
+                href="/forgot-password"
+                className="text-[13px] text-primary underline underline-offset-[3px]"
+              >
+                Forgot password?
+              </Link>
+            </div>
 
             <Button type="submit" className="w-full" disabled={isPending}>
               {isPending ? "Signing in..." : "Log in"}
@@ -171,7 +173,7 @@ export default function LoginPage() {
         href={`${process.env.NEXT_PUBLIC_API_URL}/oauth2/authorization/google`}
         className="w-full mt-5 block"
       >
-        <Button type="button" variant="outline" className="w-full">
+        <Button type="button" variant="outline" className="w-full bg-white text-[#1e1e2e] hover:bg-white/90">
           <svg
             xmlns="http://www.w3.org/2000/svg"
             width="18"

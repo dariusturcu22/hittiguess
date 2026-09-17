@@ -11,12 +11,14 @@ import type { ReportSummaryDTO } from './reportSummaryDTO';
 export interface AdminReviewItemDTO {
   songId?: number;
   songTitle?: string;
+  artistName?: string;
   releaseYear?: number;
   verificationStatus?: AdminReviewItemDTOVerificationStatus;
   priorityTier?: AdminReviewItemDTOPriorityTier;
   openReportCount?: number;
   reportsConverge?: boolean;
   convergingYear?: number;
+  convergingReportCount?: number;
   confirmationCount?: number;
   openReports?: ReportSummaryDTO[];
 }

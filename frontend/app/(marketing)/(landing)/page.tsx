@@ -284,7 +284,7 @@ export default function LandingPage() {
             </p>
             <div className="flex flex-col sm:flex-row sm:items-center gap-4 mt-1">
               <Button asChild size="lg">
-                <Link href="/register">Create free account</Link>
+                <Link href="/register">Start a session</Link>
               </Button>
               <span className="font-display text-xs text-muted-foreground">
                 or{" "}
@@ -295,7 +295,7 @@ export default function LandingPage() {
             </div>
           </div>
 
-          <div className="hidden md:flex items-end justify-end gap-3">
+          <div className="flex items-end justify-center gap-2 md:justify-end md:gap-3">
             <TimelineCard
               color={timelineCards[0].color}
               artist={timelineCards[0].artist}
@@ -304,7 +304,7 @@ export default function LandingPage() {
               rotate={-8}
             />
             <div
-              className="w-28 h-28 sm:w-36 sm:h-36 rounded-2xl border-[5px] border-border flex items-center justify-center mt-12"
+              className="w-24 h-24 sm:w-36 sm:h-36 rounded-2xl border-[5px] border-border flex items-center justify-center mt-12"
               style={{
                 background: "var(--card)",
                 color: "var(--border)",
@@ -531,11 +531,10 @@ export default function LandingPage() {
             Ready?
           </h2>
           <p className="text-muted-foreground text-sm max-w-sm">
-            Create your account and start building your custom playlist
-            today.
+            Start a session and find out who actually knows their music.
           </p>
           <Button asChild size="lg" className="mt-1">
-            <Link href="/register">Create free account</Link>
+            <Link href="/register">Start a session</Link>
           </Button>
         </div>
       </section>

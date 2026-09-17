@@ -240,31 +240,6 @@ Tests:
 - [ ] Integration test: the dashboard/query surface returns correct aggregates for known event data
 - [ ] Integration test: a user's game history page returns only their own game summaries, not other users'
 
-## Story 45: Import songs from an existing playlist
-
-Surfaced during story 28's design pass, not part of the original backlog mapping. Playlist detail already offers two ways to add content: search-and-add from the catalog (story 14) and importing a whole YouTube playlist (story 40's user-facing bulk import). This is a third, distinct path: copying songs directly from a playlist the player already has access to, owned, a member of, or published publicly, straight into the playlist they're editing. No metadata pipeline involvement, every song is already a resolved `Song` row, so the copy is instant rather than a fetch-and-verify flow.
-
-No longer blocked: story 15 has landed the `song_playlists` join table a `Song` needed to attach to more than one playlist. This story is mostly wiring on top of it: pick a source playlist, link its songs' existing rows into the target playlist via the same join table.
-
-Confirmed against the real code before starting. The `song_playlists` join table is the owning side of `Playlist.songs`, linked through `Playlist.addSong` and unlinked through `Playlist.removeSong`; there is no ordering column or added-by column on the join itself. Ordering is `@OrderBy("id ASC")` on the collection, and added-by lives on the `Song` row, set once at song creation, so linking a song into another playlist neither reorders nor reassigns it. Access is enforced by `PlaylistAccessService`: `requireRead` and `requireWrite` pass for the owner, otherwise check the member's `canRead`/`canWrite` grant. `AccessDeniedException` from those checks maps to a 403 at the HTTP boundary through Spring Security. No new schema is needed: the story reuses the existing join table, so no migration ships with it (latest on `dev` stays V13).
-
-Correction to the draft: `Playlist` has no `isPublic` field today. Public playlists are story 30, which is not built, so the public-source path can't be enforced yet. Source readability is owner-or-member through `requireRead`, matching every other playlist read in the codebase. The public-source path and its test are deferred to story 30, called out below.
-
-Story 30 has since added `isPublic` as its own narrow slice. The deferred source-read extension below is implemented by extending `PlaylistAccessService.requireRead` itself, the same check this story's import already calls: a public playlist now passes `requireRead` for any authenticated user, owner and member or not.
-
-- [x] Add an endpoint accepting a source playlist ID and a target playlist ID, validating the requester can read the source (owner or member through `requireRead`) and can write to the target (`requireWrite`). `POST /api/playlists/{playlistId}/imports`, body carries the source playlist ID; the path playlist is the target
-- [x] Link every song from the source playlist into the target playlist via story 15's join table; skip songs already present in the target rather than erroring or duplicating the link. Returns how many songs were linked and how many were skipped as already present
-- [x] Deferred to story 30: extend the source read check to accept a public source the requester neither owns nor is a member of, once `isPublic` exists on `Playlist` (implemented by extending `PlaylistAccessService.requireRead` to pass for any public playlist, which `PlaylistImportService` already calls for the source check)
-- [x] Story 28: the frontend picker, choose a playlist from owned/joined/public, show a confirm step naming how many songs will be added (and how many are already present and will be skipped)
-- [x] Since the copy is synchronous and immediate, no background-job or progress-tracking UI is needed for this path specifically, unlike story 40's YouTube-crawl import
-
-Tests:
-- [x] Unit/integration tests for the access check: a source playlist the requester can't read (not owned, not a member) is rejected; a requester without write access to the target is rejected
-- [x] Integration test: importing from a playlist with overlapping songs only links the ones not already in the target
-- [x] Integration test: importing all of a source playlist's songs into an empty target links every one
-- [x] Integration test: importing from an empty source links nothing
-- [x] Deferred to story 30: integration test that importing from a public playlist the requester neither owns nor is a member of succeeds
-
 ## Story 46: Playlist membership: owner/admin, granular permissions, kick and ban, per-playlist identity
 
 Surfaced during story 28's design pass on the Edit playlist and Join by invite screens, not part of the original backlog mapping. Backend built on `feature/playlist-membership`; two frontend tasks remain deferred to story 28. See `DECISIONS.md`'s 2026-09 "Playlist membership" entry for the decided shape.
@@ -546,12 +521,6 @@ OpenAI's own cheap tier (`gpt-5-nano`, `gpt-5-mini`) and the existing `gpt-5.1` 
 - [x] Design the report/re-verification system floated during this spike: settled in full detail since, not just the lowest-confidence-first sketch this line originally described, see story 17's five-tier priority queue and the 2026-09 "Report and confirmation resolution" `DECISIONS.md` entry
 - [x] `docs/TASKS.md`'s own story 18 section and `docs/PROJECT_STATE.md`'s story 18 row used to reference a `DECISIONS.md` "verification is a lock, not a score" entry that was explicitly retracted earlier in this project (never actually authorized). Both cleaned up, no longer point at the retracted entry; the lock concept it described is the same shape this spike later validated with real data (three-source agreement = lock), so the underlying idea held up even though that specific entry never existed
 
-## Bug fixes
-
-No story required for these. Fix on a `fix` branch.
-
-- [x] No endpoint returned a playlist's details for an invite code without the caller already being a member, so a join-by-invite screen has nothing to preview before the visitor accepts. `PlaylistController` now exposes `GET /api/playlists/invites/{inviteCode}/preview`, permitted without authentication, returning the playlist's name, color, song count, and members through a new `PlaylistInvitePreviewDTO`; an unknown invite code produces a 404. `frontend/app/(app)/playlists/join/[inviteCode]/page.tsx` on this branch still auto-joins immediately with a loading spinner, no preview card, no per-playlist display name/avatar step; wiring this endpoint into an actual preview UI depends on the visual redesign in progress on a separate branch, which already builds the avatar/member-avatar-stack components this would need.
-
 ## Chore: Flutter DJ-model compliance
 
 Flutter is kept, not dropped, deprioritized behind the web app per the existing 2026-06 `DECISIONS.md` entry. In the meantime it must follow the same non-negotiable rule as the rest of the product: the DJ is never shown an embedded YouTube player, playback happens on the real YouTube app.
@@ -650,17 +619,31 @@ Tests:
 - [ ] Frontend test: the drag-and-drop timeline placement and the guess box's animated feedback behave per `GAME_DESIGN.md`'s Interaction and animation section
 - [ ] Accessibility check: color contrast and keyboard navigation for the new visual direction, specifically the semi-transparent chat overlay and the voice sidebar
 
-## Batch C: Song review and catalog search wiring
+### Visual fidelity remediation for Batches A through D
 
-`ROADMAP.md`'s Batch C scope: wire `AddSongForm.tsx` and the song list to story 14's catalog search endpoint, and add the report button and thumbs-up confirmation affordances from story 17. Checked against real code: `AddSongForm.tsx` already searches the catalog through `SongSearchStep.tsx` and `useSearchSongs`, and `SongReadOnlyView.tsx` already carries the report button and thumbs-up confirmation. The remaining gap is the song list's empty state, which only linked out to the add-song page instead of offering catalog search directly. `docs/ROADMAP.md`'s wording names a generic `DataTable` component that doesn't exist in the current song list (`PlaylistContent.tsx`'s `SongRow`-based list predates that abstraction); this batch adds the missing wiring against the current list structure rather than introducing a new table component.
+The rendered Story 28 audit compares every existing page with its authoritative Dark mockup in `docs/design/source`, with Light and mobile variants where supplied. These tasks close the concrete layout and state gaps found by that audit.
 
-- [x] Add inline catalog search to the song list's empty state (`SongCatalogQuickAdd.tsx`), reusing `useSearchSongs` and `useCreateSong` so a song can be added without leaving the playlist page
-- [x] Extract the catalog-search-result-to-`CreateSongRequest` mapping shared by `AddSongForm.tsx` and `SongCatalogQuickAdd.tsx` into `songCatalogRequest.ts`, rather than duplicating it
-- [x] Set up Vitest and Testing Library (jsdom environment, `@/` alias, jest-dom matchers) as the frontend's first unit test infrastructure, since this batch is the first to need frontend tests
+- [x] Rebuild the shared app shell states from `AppShellDark`: active session, profile panel with statistics, and voice participant rail
+- [x] Match the landing desktop and mobile structure, CTA copy, card fan, feature sections, final CTA, and footer
+- [x] Match login and register control placement, card sizing, spacing, and Google button treatment
+- [x] Add a deterministic capture state for the transient OAuth2 redirect screen
+- [x] Match Your Playlists grid placement and remove the extra top-level join action
+- [x] Match Playlist Detail's permanent member panel, header proportions, toolbar, banner, and song rows
+- [x] Match Edit Playlist's description, cover edit affordance, explicit save and cancel actions, invite copy action, delete panel, and member metadata
+- [x] Match Join by Invite's playlist summary, cover, member avatars, and join identity controls
+- [x] Match verified, needs-review, and editable song detail card dimensions, actions, cover treatment, and footer structure
+- [x] Match Add Song result density and selected-song panel, with deterministic editable and locked review states
+- [x] Match Explore Public Playlists card mosaics and populated grid
+- [x] Match the YouTube import link step and implement the processing list, progress bar, temporary sidebar progress icon, and progress toast states
+- [ ] Preserve the matching choose-source and existing-playlist import layouts while adding designed loading, empty, and error states
+- [x] Expose and render the catalog backlog's per-item queue required by `AdminCatalogBacklogDark`
+- [x] Match the report queue's artist metadata, convergence count, tier badges, and designed loading, empty, and error states
 
 Tests:
-- [x] Frontend test: the confirm affordance shows only for a `NEEDS_REVIEW` song and submits a confirmation on click (`SongReadOnlyView.test.tsx`)
-- [x] Frontend test: the song list's empty-state catalog search calls the search endpoint and adds a matching result with its data (`SongCatalogQuickAdd.test.tsx`)
+- [ ] Frontend tests cover every new or changed interactive state in this remediation
+- [ ] Route smoke tests cover every Batch A through D route
+- [ ] Render every affected page at 1440x900 in Dark and Light and compare it directly with its mockup
+- [ ] Render the landing page at 390x844 in Dark and Light and compare it directly with its mobile mockups
 
 ## Story 48: Comment cleanup
 
