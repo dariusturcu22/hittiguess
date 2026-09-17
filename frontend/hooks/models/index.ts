@@ -59,6 +59,7 @@ export * from './playerCardDTO';
 export * from './playerDTO';
 export * from './playerDTOStatus';
 export * from './playerResultDTO';
+export * from './playlistInvitePreviewDTO';
 export * from './playlistMemberDTO';
 export * from './playlistMembershipExportDTO';
 export * from './publicPlaylistSummaryDTO';

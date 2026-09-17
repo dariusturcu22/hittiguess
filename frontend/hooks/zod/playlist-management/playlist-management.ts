@@ -194,3 +194,10 @@ export const getMembersParams = zod.object({
   "playlistId": zod.number()
 })
 
+/**
+ * @summary Preview a playlist by invite code, no membership or authentication required
+ */
+export const getInvitePreviewParams = zod.object({
+  "inviteCode": zod.string()
+})
+
