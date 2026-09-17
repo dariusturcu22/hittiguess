@@ -13,19 +13,29 @@
     .navicon { width: 46px; height: 46px; border-radius: 14px; display: flex; align-items: center; justify-content: center; cursor: pointer; color: #9ca0b0; }
     .navicon.active { background: #8f4fe3; box-shadow: 3px 3px 0 rgba(76,79,105,0.3); color: #ffffff; }
     .divider { width: 32px; height: 2px; background: #ccd0da; border-radius: 2px; margin: 14px auto; flex-shrink: 0; }
-    .search-input { width: 100%; box-sizing: border-box; background: #eff1f5; border: 2px solid #ccd0da; border-radius: 13px; padding: 13px 16px 13px 42px; font-family: 'Space Grotesk', sans-serif; font-size: 14px; color: #4c4f69; }
-    .search-input::placeholder { color: #9ca0b0; }
-    .result-row { display: flex; align-items: center; gap: 14px; padding: 12px 16px; border-bottom: 2px solid #eff1f5; }
+    .btn-primary { font-family: 'Bungee', sans-serif; font-size: 13px; color: #ffffff; background: #ed6f27; padding: 12px 24px; border-radius: 100px; box-shadow: 4px 4px 0 rgba(76,79,105,0.3); box-sizing: border-box; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 8px; border: none; }
+    .btn-secondary { font-family: 'Space Grotesk', sans-serif; font-weight: 600; font-size: 13px; color: #4c4f69; background: #eff1f5; padding: 11px 20px; border-radius: 100px; border: 2px solid #ccd0da; box-sizing: border-box; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; }
+    .search-input-lg { width: 100%; box-sizing: border-box; background: #eff1f5; border: 2px solid #ccd0da; border-radius: 100px; padding: 15px 20px 15px 46px; font-family: 'Space Grotesk', sans-serif; font-size: 15px; color: #4c4f69; }
+    .search-input-lg::placeholder { color: #9ca0b0; }
+    .results-panel { background: #ffffff; border: 3px solid #4c4f69; border-radius: 16px; box-shadow: 6px 6px 0 rgba(76,79,105,0.25); box-sizing: border-box; overflow: hidden; display: flex; flex-direction: column; flex: 1; min-height: 0; }
+    .results-scroll { flex: 1; min-height: 0; overflow-y: auto; }
+    .result-row { display: flex; align-items: center; gap: 14px; padding: 14px 20px; border-bottom: 2px solid #eff1f5; }
     .result-row:last-child { border-bottom: none; }
-    .add-icon-btn { width: 28px; height: 28px; border-radius: 9px; background: rgba(73,159,54,0.14); color: #499f36; display: flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0; }
-    .field-block { width: 100%; margin-bottom: 18px; }
-    .field-label { font-size: 13px; font-weight: 600; color: #5c5f77; margin-bottom: 7px; display: block; }
-    .field-input { width: 100%; box-sizing: border-box; background: #eff1f5; border: 2px solid #ccd0da; border-radius: 13px; padding: 13px 16px; font-family: 'Space Grotesk', sans-serif; font-size: 14px; color: #4c4f69; }
-    .field-input::placeholder { color: #9ca0b0; }
-    .btn-auth { width: 100%; text-align: center; background: #ed6f27; color: #ffffff; font-family: 'Bungee', sans-serif; font-size: 15px; padding: 16px 0; border-radius: 100px; box-shadow: 4px 4px 0 rgba(76,79,105,0.3); box-sizing: border-box; cursor: pointer; border: none; }
+    .add-btn { width: 32px; height: 32px; border-radius: 10px; display: flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0; background: #ed6f27; color: #ffffff; }
+    .add-btn.added { background: rgba(73,159,54,0.15); color: #499f36; }
+    .results-count { font-size: 12px; color: #9ca0b0; margin-bottom: 10px; }
+    .queue-panel { background: #ffffff; border: 3px solid #4c4f69; border-radius: 16px; box-shadow: 6px 6px 0 rgba(76,79,105,0.25); box-sizing: border-box; padding: 20px; display: flex; flex-direction: column; height: 100%; }
+    .queue-scroll { flex: 1; min-height: 0; overflow-y: auto; }
+    .queue-row { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 2px solid #eff1f5; }
+    .queue-row:last-of-type { border-bottom: none; }
+    .queue-remove { width: 24px; height: 24px; border-radius: 7px; display: flex; align-items: center; justify-content: center; color: #9ca0b0; cursor: pointer; flex-shrink: 0; }
+    .custom-scroll::-webkit-scrollbar { width: 8px; }
+    .custom-scroll::-webkit-scrollbar-track { background: transparent; }
+    .custom-scroll::-webkit-scrollbar-thumb { background: #ccd0da; border-radius: 100px; }
+    .custom-scroll::-webkit-scrollbar-thumb:hover { background: #9ca0b0; }
   </style>
 </helmet>
-<div style="width: 1440px; height: 1000px; background: #eff1f5; font-family: 'Space Grotesk', sans-serif; box-sizing: border-box; color: #4c4f69; display: flex; overflow: hidden; position: relative;">
+<div style="width: 1440px; height: 900px; background: #eff1f5; font-family: 'Space Grotesk', sans-serif; box-sizing: border-box; color: #4c4f69; display: flex; overflow: hidden; position: relative;">
 
   <div style="width: 76px; flex-shrink: 0; background: #e6e9ef; display: flex; flex-direction: column; align-items: center; padding: 20px 0; box-sizing: border-box; border-right: 3px solid #ccd0da;">
     <div style="display: flex; align-items: center; gap: 2px; height: 22px;">
@@ -59,80 +69,215 @@
     <div style="width: 44px; height: 44px; border-radius: 50%; background: #ed6f27; border: 2px solid #ccd0da; display: flex; align-items: center; justify-content: center; font-family: 'Bungee', sans-serif; font-size: 16px; color: #ffffff; cursor: pointer;">D</div>
   </div>
 
-  <div style="flex: 1; box-sizing: border-box; background-image: radial-gradient(circle, rgba(76,79,105,0.2) 1.5px, transparent 1.5px); background-size: 22px 22px; padding: 44px 0; display: flex; align-items: flex-start; justify-content: center;">
+  <div style="flex: 1; min-width: 0; min-height: 0; box-sizing: border-box; background-image: radial-gradient(circle, rgba(76,79,105,0.2) 1.5px, transparent 1.5px); background-size: 22px 22px; padding: 44px 56px 40px; display: flex; flex-direction: column;">
 
-    <div style="width: 640px; background: #ffffff; border: 3px solid #4c4f69; border-radius: 18px; box-shadow: 6px 6px 0 rgba(76,79,105,0.25); box-sizing: border-box; padding: 44px 48px 48px; display: flex; flex-direction: column; align-items: center;">
-
-      <div style="width: 100%; font-family: 'Bungee', sans-serif; font-size: 26px; color: #8f4fe3; text-shadow: 3px 3px 0 #ccd0da; text-align: center; margin-bottom: 20px;">Add a song</div>
-
-      <div style="position: relative; width: 100%; margin-bottom: 24px;">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#9ca0b0" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="position: absolute; left: 16px; top: 50%; transform: translateY(-50%);"><circle cx="11" cy="11" r="7"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-        <input class="search-input" type="text" placeholder="Search by title or artist...">
+    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 22px; flex-shrink: 0;">
+      <div>
+        <div style="font-family: 'Bungee', sans-serif; font-size: 30px; color: #8f4fe3; text-shadow: 3px 3px 0 #ffffff;">Add songs</div>
+        <div style="font-size: 13px; color: #5c5f77; margin-top: 6px;">Search the database, or add a track that isn't in it yet.</div>
       </div>
+      <button class="btn-secondary">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+        Add a new song
+      </button>
+    </div>
 
-      <div style="width: 100%; background: #eff1f5; border: 2px solid #ccd0da; border-radius: 14px; box-sizing: border-box; overflow: hidden; margin-bottom: 24px;">
+    <div style="display: flex; gap: 32px; flex: 1; min-height: 0;">
 
-        <div class="result-row">
-          <div style="flex: 1; min-width: 0;">
-            <div style="font-size: 14px; color: #4c4f69;">Heat Waves</div>
-            <div style="font-size: 12px; color: #5c5f77; margin-top: 2px;">Glass Animals &nbsp;•&nbsp; 2020</div>
-          </div>
-          <div class="add-icon-btn"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg></div>
+      <div style="flex: 1; min-width: 0; display: flex; flex-direction: column;">
+        <div style="position: relative; margin-bottom: 12px; flex-shrink: 0;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#9ca0b0" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="position: absolute; left: 18px; top: 50%; transform: translateY(-50%);"><circle cx="11" cy="11" r="7"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+          <input class="search-input-lg" type="text" value="chasing">
         </div>
 
-        <div class="result-row">
-          <div style="flex: 1; min-width: 0;">
-            <div style="font-size: 14px; color: #4c4f69;">Somebody Told Me</div>
-            <div style="font-size: 12px; color: #5c5f77; margin-top: 2px;">The Killers &nbsp;•&nbsp; 2004</div>
+        <div class="results-count" style="flex-shrink: 0;">32 results</div>
+
+        <div class="results-panel">
+          <div class="results-scroll custom-scroll">
+
+            <div class="result-row">
+              <div style="flex: 1; min-width: 0;">
+                <div style="font-size: 14px; color: #4c4f69;">Heat Waves</div>
+                <div style="font-size: 12px; color: #5c5f77; margin-top: 2px;">Glass Animals &nbsp;•&nbsp; 2020</div>
+              </div>
+              <div class="add-btn added"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg></div>
+            </div>
+
+            <div class="result-row">
+              <div style="flex: 1; min-width: 0;">
+                <div style="font-size: 14px; color: #4c4f69;">Somebody Told Me</div>
+                <div style="font-size: 12px; color: #5c5f77; margin-top: 2px;">The Killers &nbsp;•&nbsp; 2004</div>
+              </div>
+              <div class="add-btn added"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg></div>
+            </div>
+
+            <div class="result-row">
+              <div style="flex: 1; min-width: 0;">
+                <div style="font-size: 14px; color: #4c4f69;">Electric Feel</div>
+                <div style="font-size: 12px; color: #5c5f77; margin-top: 2px;">MGMT &nbsp;•&nbsp; 2007</div>
+              </div>
+              <div class="add-btn added"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg></div>
+            </div>
+
+            <div class="result-row">
+              <div style="flex: 1; min-width: 0;">
+                <div style="font-size: 14px; color: #4c4f69;">Just Like Heaven</div>
+                <div style="font-size: 12px; color: #5c5f77; margin-top: 2px;">The Cure &nbsp;•&nbsp; 1987</div>
+              </div>
+              <div class="add-btn"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg></div>
+            </div>
+
+            <div class="result-row">
+              <div style="flex: 1; min-width: 0;">
+                <div style="font-size: 14px; color: #4c4f69;">Africa</div>
+                <div style="font-size: 12px; color: #5c5f77; margin-top: 2px;">Toto &nbsp;•&nbsp; 1982</div>
+              </div>
+              <div class="add-btn"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg></div>
+            </div>
+
+            <div class="result-row">
+              <div style="flex: 1; min-width: 0;">
+                <div style="font-size: 14px; color: #4c4f69;">Creep</div>
+                <div style="font-size: 12px; color: #5c5f77; margin-top: 2px;">Radiohead &nbsp;•&nbsp; 1993</div>
+              </div>
+              <div class="add-btn"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg></div>
+            </div>
+
+            <div class="result-row">
+              <div style="flex: 1; min-width: 0;">
+                <div style="font-size: 14px; color: #4c4f69;">Mr. Brightside</div>
+                <div style="font-size: 12px; color: #5c5f77; margin-top: 2px;">The Killers &nbsp;•&nbsp; 2003</div>
+              </div>
+              <div class="add-btn added"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg></div>
+            </div>
+
+            <div class="result-row">
+              <div style="flex: 1; min-width: 0;">
+                <div style="font-size: 14px; color: #4c4f69;">Nightcall</div>
+                <div style="font-size: 12px; color: #5c5f77; margin-top: 2px;">Kavinsky &nbsp;•&nbsp; 2010</div>
+              </div>
+              <div class="add-btn added"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg></div>
+            </div>
+
+            <div class="result-row">
+              <div style="flex: 1; min-width: 0;">
+                <div style="font-size: 14px; color: #4c4f69;">Take On Me</div>
+                <div style="font-size: 12px; color: #5c5f77; margin-top: 2px;">a-ha &nbsp;•&nbsp; 1985</div>
+              </div>
+              <div class="add-btn"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg></div>
+            </div>
+
+            <div class="result-row">
+              <div style="flex: 1; min-width: 0;">
+                <div style="font-size: 14px; color: #4c4f69;">Dreams</div>
+                <div style="font-size: 12px; color: #5c5f77; margin-top: 2px;">Fleetwood Mac &nbsp;•&nbsp; 1977</div>
+              </div>
+              <div class="add-btn"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg></div>
+            </div>
+
+            <div class="result-row">
+              <div style="flex: 1; min-width: 0;">
+                <div style="font-size: 14px; color: #4c4f69;">Midnight City</div>
+                <div style="font-size: 12px; color: #5c5f77; margin-top: 2px;">M83 &nbsp;•&nbsp; 2011</div>
+              </div>
+              <div class="add-btn"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg></div>
+            </div>
+
+            <div class="result-row">
+              <div style="flex: 1; min-width: 0;">
+                <div style="font-size: 14px; color: #4c4f69;">Rolling in the Deep</div>
+                <div style="font-size: 12px; color: #5c5f77; margin-top: 2px;">Adele &nbsp;•&nbsp; 2011</div>
+              </div>
+              <div class="add-btn"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg></div>
+            </div>
+
+            <div class="result-row">
+              <div style="flex: 1; min-width: 0;">
+                <div style="font-size: 14px; color: #4c4f69;">Take Me Out</div>
+                <div style="font-size: 12px; color: #5c5f77; margin-top: 2px;">Franz Ferdinand &nbsp;•&nbsp; 2004</div>
+              </div>
+              <div class="add-btn"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg></div>
+            </div>
+
           </div>
-          <div class="add-icon-btn"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg></div>
         </div>
+      </div>
 
-        <div class="result-row">
-          <div style="flex: 1; min-width: 0;">
-            <div style="font-size: 14px; color: #4c4f69;">Electric Feel</div>
-            <div style="font-size: 12px; color: #5c5f77; margin-top: 2px;">MGMT &nbsp;•&nbsp; 2007</div>
+      <div style="width: 340px; flex-shrink: 0; display: flex;">
+        <div class="queue-panel">
+          <div style="font-family: 'Bungee', sans-serif; font-size: 11px; letter-spacing: 0.5px; color: #9ca0b0; margin-bottom: 4px; flex-shrink: 0;">SONGS TO ADD (8)</div>
+
+          <div class="queue-scroll custom-scroll">
+
+            <div class="queue-row">
+              <div style="flex: 1; min-width: 0;">
+                <div style="font-size: 13px; color: #4c4f69;">Heat Waves</div>
+                <div style="font-size: 11px; color: #5c5f77; margin-top: 1px;">Glass Animals</div>
+              </div>
+              <div class="queue-remove"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></div>
+            </div>
+
+            <div class="queue-row">
+              <div style="flex: 1; min-width: 0;">
+                <div style="font-size: 13px; color: #4c4f69;">Somebody Told Me</div>
+                <div style="font-size: 11px; color: #5c5f77; margin-top: 1px;">The Killers</div>
+              </div>
+              <div class="queue-remove"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></div>
+            </div>
+
+            <div class="queue-row">
+              <div style="flex: 1; min-width: 0;">
+                <div style="font-size: 13px; color: #4c4f69;">Electric Feel</div>
+                <div style="font-size: 11px; color: #5c5f77; margin-top: 1px;">MGMT</div>
+              </div>
+              <div class="queue-remove"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></div>
+            </div>
+
+            <div class="queue-row">
+              <div style="flex: 1; min-width: 0;">
+                <div style="font-size: 13px; color: #4c4f69;">Mr. Brightside</div>
+                <div style="font-size: 11px; color: #5c5f77; margin-top: 1px;">The Killers</div>
+              </div>
+              <div class="queue-remove"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></div>
+            </div>
+
+            <div class="queue-row">
+              <div style="flex: 1; min-width: 0;">
+                <div style="font-size: 13px; color: #4c4f69;">Nightcall</div>
+                <div style="font-size: 11px; color: #5c5f77; margin-top: 1px;">Kavinsky</div>
+              </div>
+              <div class="queue-remove"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></div>
+            </div>
+
+            <div class="queue-row">
+              <div style="flex: 1; min-width: 0;">
+                <div style="font-size: 13px; color: #4c4f69;">Roygbiv</div>
+                <div style="font-size: 11px; color: #5c5f77; margin-top: 1px;">Boards of Canada</div>
+              </div>
+              <div class="queue-remove"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></div>
+            </div>
+
+            <div class="queue-row">
+              <div style="flex: 1; min-width: 0;">
+                <div style="font-size: 13px; color: #4c4f69;">Aurore Boreale</div>
+                <div style="font-size: 11px; color: #5c5f77; margin-top: 1px;">Lewis OfMan</div>
+              </div>
+              <div class="queue-remove"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></div>
+            </div>
+
+            <div class="queue-row">
+              <div style="flex: 1; min-width: 0;">
+                <div style="font-size: 13px; color: #4c4f69;">Two Weeks</div>
+                <div style="font-size: 11px; color: #5c5f77; margin-top: 1px;">FKA twigs</div>
+              </div>
+              <div class="queue-remove"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></div>
+            </div>
+
           </div>
-          <div class="add-icon-btn"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg></div>
+
+          <button class="btn-primary" style="width: 100%; margin-top: 14px; flex-shrink: 0;">Add 8 songs to playlist</button>
         </div>
-
-        <div class="result-row">
-          <div style="flex: 1; min-width: 0;">
-            <div style="font-size: 14px; color: #4c4f69;">Just Like Heaven</div>
-            <div style="font-size: 12px; color: #5c5f77; margin-top: 2px;">The Cure &nbsp;•&nbsp; 1987</div>
-          </div>
-          <div class="add-icon-btn"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg></div>
-        </div>
-
       </div>
-
-      <div style="display: flex; align-items: center; gap: 12px; width: 100%; margin-bottom: 24px;">
-        <div style="flex: 1; height: 2px; background: #ccd0da;"></div>
-        <div style="font-size: 12px; color: #9ca0b0;">or add manually</div>
-        <div style="flex: 1; height: 2px; background: #ccd0da;"></div>
-      </div>
-
-      <div class="field-block">
-        <label class="field-label">Title</label>
-        <input class="field-input" type="text" placeholder="Song title">
-      </div>
-
-      <div class="field-block">
-        <label class="field-label">Artist</label>
-        <input class="field-input" type="text" placeholder="Artist name">
-      </div>
-
-      <div class="field-block">
-        <label class="field-label">Release year</label>
-        <input class="field-input" type="text" placeholder="2024">
-      </div>
-
-      <div class="field-block" style="margin-bottom: 28px;">
-        <label class="field-label">YouTube link</label>
-        <input class="field-input" type="text" placeholder="https://youtube.com/watch?v=...">
-      </div>
-
-      <button class="btn-auth">Add to playlist</button>
 
     </div>
 
