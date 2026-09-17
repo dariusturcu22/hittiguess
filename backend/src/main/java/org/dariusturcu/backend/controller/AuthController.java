@@ -190,6 +190,11 @@ public class AuthController {
                 cookieUtil.deleteCookie("refresh_token", "/auth/refresh")
                         .toString()
         );
+        response.addHeader(
+                HttpHeaders.SET_COOKIE,
+                cookieUtil.deleteCookie(CookieUtil.SESSION_HINT_COOKIE_NAME, "/")
+                        .toString()
+        );
 
         return ResponseEntity.ok().build();
     }
@@ -203,6 +208,10 @@ public class AuthController {
         response.addHeader(HttpHeaders.SET_COOKIE,
                 cookieUtil.createRefreshTokenCookie(
                         result.refreshToken(),
+                        jwtUtil.getRefreshExpirationSeconds()
+                ).toString());
+        response.addHeader(HttpHeaders.SET_COOKIE,
+                cookieUtil.createSessionHintCookie(
                         jwtUtil.getRefreshExpirationSeconds()
                 ).toString());
     }
