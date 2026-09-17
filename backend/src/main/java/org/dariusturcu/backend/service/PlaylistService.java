@@ -8,6 +8,7 @@ import org.dariusturcu.backend.model.mapper.SongMapper;
 import org.dariusturcu.backend.model.playlist.Playlist;
 import org.dariusturcu.backend.model.playlist.PlaylistBan;
 import org.dariusturcu.backend.model.playlist.PlaylistDetailDTO;
+import org.dariusturcu.backend.model.playlist.PlaylistInvitePreviewDTO;
 import org.dariusturcu.backend.model.playlist.PlaylistMemberDTO;
 import org.dariusturcu.backend.model.playlist.PlaylistMembership;
 import org.dariusturcu.backend.model.playlist.PublicPlaylistSummaryDTO;
@@ -64,6 +65,11 @@ public class PlaylistService {
                 .orElseThrow(() -> new ResourceNotFoundException(ResourceType.PLAYLIST, playlistId));
     }
 
+    private Playlist findPlaylistByInviteCode(String inviteCode) {
+        return playlistRepository.findPlaylistByInviteCode(inviteCode)
+                .orElseThrow(() -> new ResourceNotFoundException("Invite code {" + inviteCode + "} not found"));
+    }
+
     private Song findSong(Long songId) {
         return songRepository.findById(songId)
                 .orElseThrow(() -> new ResourceNotFoundException(ResourceType.SONG, songId));
@@ -99,6 +105,12 @@ public class PlaylistService {
         Playlist playlist = findPlaylist(playlistId);
         playlistAccessService.requireRead(playlist, SecurityUtils.getCurrentUser());
         return playlistMapper.toDetailDTO(playlist);
+    }
+
+    @Transactional(readOnly = true)
+    public PlaylistInvitePreviewDTO getInvitePreview(String inviteCode) {
+        Playlist playlist = findPlaylistByInviteCode(inviteCode);
+        return playlistMapper.toInvitePreviewDTO(playlist);
     }
 
     public PlaylistDetailDTO updatePlaylist(

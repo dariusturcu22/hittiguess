@@ -2,6 +2,7 @@ package org.dariusturcu.backend.model.mapper;
 
 import org.dariusturcu.backend.model.playlist.Playlist;
 import org.dariusturcu.backend.model.playlist.PlaylistDetailDTO;
+import org.dariusturcu.backend.model.playlist.PlaylistInvitePreviewDTO;
 import org.dariusturcu.backend.model.playlist.PlaylistMemberDTO;
 import org.dariusturcu.backend.model.playlist.PlaylistMembership;
 import org.dariusturcu.backend.model.playlist.PlaylistSummaryDTO;
@@ -68,6 +69,18 @@ public class PlaylistMapper {
                 membership.isCanWrite(),
                 membership.isCanDelete(),
                 membership.getJoinedAt()
+        );
+    }
+
+    public PlaylistInvitePreviewDTO toInvitePreviewDTO(Playlist playlist) {
+        Long ownerId = playlist.getOwner().getId();
+        return new PlaylistInvitePreviewDTO(
+                playlist.getName(),
+                playlist.getColor(),
+                playlist.getSongCount(),
+                playlist.getMemberships().stream()
+                        .map(membership -> toMemberDTO(membership, membership.getUser().getId().equals(ownerId)))
+                        .toList()
         );
     }
 
