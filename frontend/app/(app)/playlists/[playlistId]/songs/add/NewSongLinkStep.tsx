@@ -33,12 +33,14 @@ interface NewSongLinkStepProps {
   onFetch: (youtubeId: string) => void;
   isFetching: boolean;
   onBackToSearch: () => void;
+  fetchError: string;
 }
 
 export function NewSongLinkStep({
   onFetch,
   isFetching,
   onBackToSearch,
+  fetchError,
 }: NewSongLinkStepProps) {
   const [input, setInput] = useState("");
   const [error, setError] = useState("");
@@ -86,7 +88,9 @@ export function NewSongLinkStep({
           onKeyDown={(event) => event.key === "Enter" && handleFetch()}
           placeholder="https://youtube.com/watch?v=..."
         />
-        {error && <p className="text-sm text-destructive">{error}</p>}
+        {(error || fetchError) && (
+          <p className="text-sm text-destructive">{error || fetchError}</p>
+        )}
       </div>
 
       <Button

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { Check, Plus, Search, X } from "lucide-react";
 
 import { Button } from "@/components/shadcn/button";
@@ -11,6 +12,7 @@ import { useSearchSongs } from "@/hooks/generated/song-search/song-search";
 const MIN_QUERY_LENGTH = 2;
 
 interface SongSearchStepProps {
+  backPath: string;
   queue: SongDTO[];
   onToggleQueued: (song: SongDTO) => void;
   onSubmitQueue: () => void;
@@ -19,6 +21,7 @@ interface SongSearchStepProps {
 }
 
 export function SongSearchStep({
+  backPath,
   queue,
   onToggleQueued,
   onSubmitQueue,
@@ -37,6 +40,13 @@ export function SongSearchStep({
 
   return (
     <div className="flex h-full flex-col p-6 md:p-11">
+      <Link
+        href={backPath}
+        className="mb-3 flex-shrink-0 self-start text-xs text-muted-foreground hover:text-foreground"
+      >
+        ‹ Back to playlist
+      </Link>
+
       <div className="mb-5.5 flex flex-shrink-0 flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h1
