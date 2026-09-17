@@ -12,13 +12,17 @@ import { NavUser } from "@/components/nav-user";
 const RAIL_DIVIDER_CLASSES = "w-8 h-0.5 my-3.5 shrink-0 rounded-full bg-sidebar-border";
 
 const RAIL_ICON_BASE_CLASSES =
-  "flex h-[46px] w-[46px] items-center justify-center rounded-[14px] text-icon-muted";
+  "flex h-[46px] w-[46px] items-center justify-center rounded-[14px]";
 
 const RAIL_ICON_ACTIVE_CLASSES =
   "bg-accent text-accent-foreground shadow-xs";
 
+// text-icon-muted lives here, not in the base classes shared with the active
+// state: Tailwind's generated stylesheet order lets it win over
+// text-accent-foreground when both are present on the same element, which
+// left the active rail icon rendering in the inactive muted color.
 const RAIL_ICON_INTERACTIVE_CLASSES =
-  "cursor-pointer transition-colors hover:text-sidebar-foreground";
+  "text-icon-muted cursor-pointer transition-colors hover:text-sidebar-foreground";
 
 function PlayIcon() {
   return (
