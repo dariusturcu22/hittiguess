@@ -56,6 +56,7 @@ import { getGetUserPlaylistsQueryKey } from "@/hooks/generated/user-management/u
 import { useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { getPlaylistMosaicColors } from "@/lib/playlist-mosaic-colors";
+import { SongCatalogQuickAdd } from "./SongCatalogQuickAdd";
 
 const MEMBER_AVATAR_COLORS = [
   "var(--primary)",
@@ -452,11 +453,12 @@ export default function PlaylistContent({
 
       <div className="flex min-h-0 w-full min-w-0 flex-1 flex-col overflow-hidden rounded-2xl border-[3px] border-border-strong bg-card shadow-lg">
         <div className="min-h-0 min-w-0 flex-1 overflow-y-auto">
-          {visibleSongs.length === 0 && (
+          {visibleSongs.length === 0 && songs.length === 0 && (
+            <SongCatalogQuickAdd playlistId={playlistId} />
+          )}
+          {visibleSongs.length === 0 && songs.length > 0 && (
             <p className="p-8 text-center text-sm text-muted-foreground">
-              {songs.length === 0
-                ? "No songs in this playlist yet."
-                : "No songs match your search."}
+              No songs match your search.
             </p>
           )}
           {visibleSongs.map((song, index) => (
