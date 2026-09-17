@@ -5,6 +5,8 @@ import org.dariusturcu.backend.exception.ResourceNotFoundException;
 import org.dariusturcu.backend.model.mapper.PlaylistMapper;
 import org.dariusturcu.backend.model.mapper.SongMapper;
 import org.dariusturcu.backend.model.playlist.Playlist;
+import org.dariusturcu.backend.model.playlist.PlaylistInvitePreviewDTO;
+import org.dariusturcu.backend.model.playlist.PlaylistMemberDTO;
 import org.dariusturcu.backend.model.playlist.PlaylistMembership;
 import org.dariusturcu.backend.model.playlist.PublicPlaylistSummaryDTO;
 import org.dariusturcu.backend.model.playlist.SavedPlaylist;
@@ -77,6 +79,8 @@ class PlaylistServiceTest {
     private static final Long OWNER_ID = 10L;
     private static final Long MEMBER_ID = 20L;
     private static final Long OTHER_USER_ID = 30L;
+    private static final String INVITE_CODE = "invite-code-abc123";
+    private static final String UNKNOWN_INVITE_CODE = "unknown-invite-code";
 
     private User currentUser;
     private User owner;
@@ -443,6 +447,33 @@ class PlaylistServiceTest {
         var result = playlistService.getPublicPlaylists();
 
         assertThat(result).containsExactly(summary);
+    }
+
+    @Test
+    void getInvitePreviewReturnsTheMappedPreviewForAValidCode() {
+        PlaylistInvitePreviewDTO preview = new PlaylistInvitePreviewDTO(
+                "Midnight Radio",
+                "cba6f7",
+                1,
+                List.of(
+                        new PlaylistMemberDTO(OWNER_ID, "current-user", "owner", null, true, true, true, true, Instant.now()),
+                        new PlaylistMemberDTO(MEMBER_ID, "member", "member", null, false, true, true, true, Instant.now())
+                )
+        );
+        when(playlistRepository.findPlaylistByInviteCode(INVITE_CODE)).thenReturn(Optional.of(playlist));
+        when(playlistMapper.toInvitePreviewDTO(playlist)).thenReturn(preview);
+
+        PlaylistInvitePreviewDTO result = playlistService.getInvitePreview(INVITE_CODE);
+
+        assertThat(result).isEqualTo(preview);
+    }
+
+    @Test
+    void getInvitePreviewRejectsAnUnknownInviteCode() {
+        when(playlistRepository.findPlaylistByInviteCode(UNKNOWN_INVITE_CODE)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> playlistService.getInvitePreview(UNKNOWN_INVITE_CODE))
+                .isInstanceOf(ResourceNotFoundException.class);
     }
 
     @Test
