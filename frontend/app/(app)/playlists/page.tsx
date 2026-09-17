@@ -105,7 +105,7 @@ function NewPlaylistCard({
       type="button"
       onClick={onClick}
       disabled={isCreating}
-      className="flex aspect-square flex-col items-center justify-center gap-3 self-start rounded-2xl border-[3px] border-dashed border-border"
+      className="flex aspect-square cursor-pointer flex-col items-center justify-center gap-3 self-start rounded-2xl border-[3px] border-dashed border-border disabled:cursor-not-allowed disabled:opacity-50"
     >
       <div className="flex h-11 w-11 items-center justify-center rounded-full border-2 border-border">
         <PlusIcon className="text-muted-foreground" />
@@ -250,13 +250,13 @@ export default function PlaylistsPage() {
         {/* The list endpoint doesn't distinguish owned vs. joined playlists,
             so these pills reflect the mockup visually but don't filter. */}
         <span
-          className="rounded-full bg-accent px-6 py-2.5 font-display text-xs text-accent-foreground shadow-xs"
+          className="cursor-pointer rounded-full bg-accent px-6 py-2.5 font-display text-xs text-accent-foreground shadow-xs"
           title="Filtering by ownership isn't available yet"
         >
           Owned
         </span>
         <span
-          className="text-muted-foreground border-border rounded-full border-2 px-6 py-2.5 font-display text-xs"
+          className="text-muted-foreground border-border cursor-pointer rounded-full border-2 px-6 py-2.5 font-display text-xs"
           title="Filtering by ownership isn't available yet"
         >
           Joined

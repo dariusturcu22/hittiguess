@@ -57,17 +57,6 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { getPlaylistMosaicColors } from "@/lib/playlist-mosaic-colors";
 
-// EditPlaylistDark/Light.dc.html show exactly these six color-swatch
-// options for a playlist's color, not an open-ended picker.
-const PLAYLIST_COLOR_SWATCHES = [
-  "#cba6f7",
-  "#fab387",
-  "#a6e3a1",
-  "#89b4fa",
-  "#f5c2e7",
-  "#f9e2af",
-];
-
 const MEMBER_AVATAR_COLORS = [
   "var(--primary)",
   "#89b4fa",
@@ -79,8 +68,6 @@ const MEMBER_AVATAR_COLORS = [
 
 interface PlaylistContentProps {
   playlistId: number;
-  onTitleChange?: (name: string) => void;
-  onColorChange?: (color: string) => void;
 }
 
 function CoverMosaic({ color }: { color: string }) {
@@ -128,8 +115,6 @@ function MemberAvatar({
 
 export default function PlaylistContent({
   playlistId,
-  onTitleChange,
-  onColorChange,
 }: PlaylistContentProps) {
   const queryClient = useQueryClient();
   const router = useRouter();
@@ -140,21 +125,9 @@ export default function PlaylistContent({
   const { mutate: removeSong } = useDeleteSong();
   const { mutate: leavePlaylist } = useLeavePlaylist();
 
-  const [isEditing, setIsEditing] = React.useState(false);
-  const [nameValue, setNameValue] = React.useState(playlist?.name ?? "");
-  const [colorValue, setColorValue] = React.useState(
-    playlist ? `#${playlist.color}` : "#000000",
-  );
   const [searchQuery, setSearchQuery] = React.useState("");
   const [linkCopied, setLinkCopied] = React.useState(false);
   const [codeCopied, setCodeCopied] = React.useState(false);
-
-  React.useEffect(() => {
-    if (playlist && !isEditing) {
-      setNameValue(playlist.name);
-      setColorValue(`#${playlist.color}`);
-    }
-  }, [playlist, isEditing]);
 
   const handleDeleteSong = (songId: number) => {
     removeSong(
@@ -181,25 +154,6 @@ export default function PlaylistContent({
         },
       },
     );
-  };
-
-  const handleSaveEdit = () => {
-    const trimmedName = nameValue.trim();
-    if (trimmedName && trimmedName !== playlist?.name) {
-      onTitleChange?.(trimmedName);
-    }
-    if (colorValue.replace("#", "") !== playlist?.color) {
-      onColorChange?.(colorValue);
-    }
-    setIsEditing(false);
-  };
-
-  const handleCancelEdit = () => {
-    if (playlist) {
-      setNameValue(playlist.name);
-      setColorValue(`#${playlist.color}`);
-    }
-    setIsEditing(false);
   };
 
   const handleExport = async () => {
@@ -270,51 +224,12 @@ export default function PlaylistContent({
           <CoverMosaic color={playlist.color} />
 
           <div className="flex flex-col justify-center gap-2.5">
-            {isEditing ? (
-              <div className="flex flex-wrap items-center gap-2">
-                <Input
-                  autoFocus
-                  value={nameValue}
-                  onChange={(event) => setNameValue(event.target.value)}
-                  onKeyDown={(event) => {
-                    if (event.key === "Enter") handleSaveEdit();
-                    if (event.key === "Escape") handleCancelEdit();
-                  }}
-                  className="h-10 max-w-[240px] font-display text-sm"
-                />
-                <div className="flex items-center gap-1.5">
-                  {PLAYLIST_COLOR_SWATCHES.map((swatch) => (
-                    <button
-                      key={swatch}
-                      type="button"
-                      aria-label={`Set playlist color to ${swatch}`}
-                      onClick={() => setColorValue(swatch)}
-                      className="size-6 shrink-0 cursor-pointer rounded-full"
-                      style={{
-                        backgroundColor: swatch,
-                        boxShadow:
-                          colorValue.toLowerCase() === swatch.toLowerCase()
-                            ? `0 0 0 3px var(--card), 0 0 0 5px ${swatch}`
-                            : undefined,
-                      }}
-                    />
-                  ))}
-                </div>
-                <Button size="sm" onClick={handleSaveEdit}>
-                  Save
-                </Button>
-                <Button size="sm" variant="outline" onClick={handleCancelEdit}>
-                  Cancel
-                </Button>
-              </div>
-            ) : (
-              <h1
-                className="font-display text-[26px] text-accent sm:text-[32px]"
-                style={{ textShadow: "3px 3px 0 var(--text-shadow-on-page)" }}
-              >
-                {playlist.name}
-              </h1>
-            )}
+            <h1
+              className="font-display text-[26px] text-accent sm:text-[32px]"
+              style={{ textShadow: "3px 3px 0 var(--text-shadow-on-page)" }}
+            >
+              {playlist.name}
+            </h1>
 
             <div className="text-[13px] text-muted-foreground">
               {playlist.songCount} songs
@@ -340,8 +255,7 @@ export default function PlaylistContent({
                 variant="outline"
                 size="icon"
                 className="size-[46px] rounded-[13px]"
-                title="Edit playlist"
-                onClick={() => setIsEditing((prev) => !prev)}
+                title="Playlist editing hasn't shipped yet"
               >
                 <Pencil className="size-4" />
               </Button>
