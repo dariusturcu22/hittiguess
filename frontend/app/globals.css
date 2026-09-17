@@ -222,22 +222,4 @@
     background-image: radial-gradient(circle, var(--dot-color) 1.5px, transparent 1.5px);
     background-size: 22px 22px;
   }
-
-  /* The wordmark's four bars read as an audio waveform; the mockups are
-     static images and can't show that, but a still waveform reads as
-     broken rather than as a deliberate mark, so each bar pulses its height
-     on a staggered delay (set via inline animation-delay per bar). */
-  .waveform-bar-pulse {
-    animation: waveform-bar-pulse 1.2s ease-in-out infinite;
-  }
-}
-
-@keyframes waveform-bar-pulse {
-  0%,
-  100% {
-    transform: scaleY(0.5);
-  }
-  50% {
-    transform: scaleY(1);
-  }
 }
