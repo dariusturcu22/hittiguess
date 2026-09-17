@@ -15,6 +15,7 @@ import { CreateSongRequest, CreateSongRequestCountry, SongDTO } from "@/hooks/mo
 import { SongSearchStep } from "./SongSearchStep";
 import { NewSongLinkStep } from "./NewSongLinkStep";
 import { NewSongReviewStep, PendingSongDetails } from "./NewSongReviewStep";
+import { buildCreateSongRequestFromCatalog } from "./songCatalogRequest";
 
 type Mode = "search" | "new-link" | "new-review";
 
@@ -63,15 +64,7 @@ export function AddSongForm({ playlistId, backPath }: AddSongFormProps) {
     let failureCount = 0;
 
     for (const song of queue) {
-      const request: CreateSongRequest = {
-        youtubeId: song.youtubeId,
-        title: song.title,
-        artist: song.artists[0]?.name ?? "Unknown artist",
-        releaseYear: song.releaseYear,
-        gradientColor1: song.gradientColor1 ?? DEFAULT_GRADIENT_1.replace("#", ""),
-        gradientColor2: song.gradientColor2 ?? DEFAULT_GRADIENT_2.replace("#", ""),
-        country: song.country,
-      };
+      const request = buildCreateSongRequestFromCatalog(song);
       try {
         await createSong(playlistId, request);
       } catch {

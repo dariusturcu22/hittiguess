@@ -403,10 +403,10 @@ Depends on story 40 for the admin review surface, which now owns the `ADMIN` rol
 
 - [x] Add a `SongReport` entity (reporter, song, message, suggested correct year, sources, status), unique per reporter per song
 - [x] `POST /api/songs/{songId}/reports` to submit a report, available to any authenticated user, on any card regardless of `verificationStatus`; fires the stubbed report-submitted event
-- [ ] Add a report button to the song detail page (`SongForm.tsx`), which has no report affordance today, available on every card regardless of `verificationStatus` (story 28)
+- [x] Add a report button to the song detail page (`SongReadOnlyView.tsx`), available on every card regardless of `verificationStatus` (story 28)
 - [x] Add a `SongConfirmation` entity (user, song, timestamp): the community thumbs-up, distinct from a report, one per user per song
 - [x] `POST /api/songs/{songId}/confirmations` to submit a confirmation, accepted only on `NEEDS_REVIEW`/`MANUAL_ENTRY` cards
-- [ ] Add a thumbs-up affordance to the song detail page, visible only for `NEEDS_REVIEW`/`MANUAL_ENTRY` cards, "is this correct?" (story 28)
+- [x] Add a thumbs-up affordance to the song detail page (`SongReadOnlyView.tsx`), visible only for `NEEDS_REVIEW` cards, "is this correct?" (story 28). `MANUAL_ENTRY` cards route to the editable `SongForm.tsx` instead of the read-only view, so the thumbs-up doesn't appear there; the report button and confirmation entity remain reachable through the API regardless
 - [x] Admin review endpoint `GET /api/admin/song-reports/queue` (reuses `AdminAccessGuard`, non-admin gets 403) ordered by priority, not submission time:
   1. Converging reports: two or more independent reports on the same card suggesting the same year, ranked highest regardless of current `verificationStatus`, including `VERIFIED` cards
   2. Reported, no convergence (a single report, or several that disagree with each other): ranked below convergent reports, by `verificationStatus` (`MANUAL_ENTRY`/`NEEDS_REVIEW` before `VERIFIED`)
@@ -649,6 +649,18 @@ Tests:
 - [ ] Frontend test: the new gameplay screens render correctly against representative mock state (empty, mid-game, varying player counts)
 - [ ] Frontend test: the drag-and-drop timeline placement and the guess box's animated feedback behave per `GAME_DESIGN.md`'s Interaction and animation section
 - [ ] Accessibility check: color contrast and keyboard navigation for the new visual direction, specifically the semi-transparent chat overlay and the voice sidebar
+
+## Batch C: Song review and catalog search wiring
+
+`ROADMAP.md`'s Batch C scope: wire `AddSongForm.tsx` and the song list to story 14's catalog search endpoint, and add the report button and thumbs-up confirmation affordances from story 17. Checked against real code: `AddSongForm.tsx` already searches the catalog through `SongSearchStep.tsx` and `useSearchSongs`, and `SongReadOnlyView.tsx` already carries the report button and thumbs-up confirmation. The remaining gap is the song list's empty state, which only linked out to the add-song page instead of offering catalog search directly. `docs/ROADMAP.md`'s wording names a generic `DataTable` component that doesn't exist in the current song list (`PlaylistContent.tsx`'s `SongRow`-based list predates that abstraction); this batch adds the missing wiring against the current list structure rather than introducing a new table component.
+
+- [x] Add inline catalog search to the song list's empty state (`SongCatalogQuickAdd.tsx`), reusing `useSearchSongs` and `useCreateSong` so a song can be added without leaving the playlist page
+- [x] Extract the catalog-search-result-to-`CreateSongRequest` mapping shared by `AddSongForm.tsx` and `SongCatalogQuickAdd.tsx` into `songCatalogRequest.ts`, rather than duplicating it
+- [x] Set up Vitest and Testing Library (jsdom environment, `@/` alias, jest-dom matchers) as the frontend's first unit test infrastructure, since this batch is the first to need frontend tests
+
+Tests:
+- [x] Frontend test: the confirm affordance shows only for a `NEEDS_REVIEW` song and submits a confirmation on click (`SongReadOnlyView.test.tsx`)
+- [x] Frontend test: the song list's empty-state catalog search calls the search endpoint and adds a matching result with its data (`SongCatalogQuickAdd.test.tsx`)
 
 ## Story 48: Comment cleanup
 
