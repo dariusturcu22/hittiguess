@@ -84,6 +84,7 @@ public class SecurityConfig {
                                 "/v3/api-docs/**",
                                 "/v3/api-docs",
                                 "/api/enums/**",
+                                "/api/playlists/invites/*/preview",
                                 "/error"
                         ).permitAll()
                         .anyRequest().authenticated()

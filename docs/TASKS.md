@@ -546,6 +546,12 @@ OpenAI's own cheap tier (`gpt-5-nano`, `gpt-5-mini`) and the existing `gpt-5.1` 
 - [x] Design the report/re-verification system floated during this spike: settled in full detail since, not just the lowest-confidence-first sketch this line originally described, see story 17's five-tier priority queue and the 2026-09 "Report and confirmation resolution" `DECISIONS.md` entry
 - [x] `docs/TASKS.md`'s own story 18 section and `docs/PROJECT_STATE.md`'s story 18 row used to reference a `DECISIONS.md` "verification is a lock, not a score" entry that was explicitly retracted earlier in this project (never actually authorized). Both cleaned up, no longer point at the retracted entry; the lock concept it described is the same shape this spike later validated with real data (three-source agreement = lock), so the underlying idea held up even though that specific entry never existed
 
+## Bug fixes
+
+No story required for these. Fix on a `fix` branch.
+
+- [x] No endpoint returned a playlist's details for an invite code without the caller already being a member, so a join-by-invite screen has nothing to preview before the visitor accepts. `PlaylistController` now exposes `GET /api/playlists/invites/{inviteCode}/preview`, permitted without authentication, returning the playlist's name, color, song count, and members through a new `PlaylistInvitePreviewDTO`; an unknown invite code produces a 404. `frontend/app/(app)/playlists/join/[inviteCode]/page.tsx` on this branch still auto-joins immediately with a loading spinner, no preview card, no per-playlist display name/avatar step; wiring this endpoint into an actual preview UI depends on the visual redesign in progress on a separate branch, which already builds the avatar/member-avatar-stack components this would need.
+
 ## Chore: Flutter DJ-model compliance
 
 Flutter is kept, not dropped, deprioritized behind the web app per the existing 2026-06 `DECISIONS.md` entry. In the meantime it must follow the same non-negotiable rule as the rest of the product: the DJ is never shown an embedded YouTube player, playback happens on the real YouTube app.

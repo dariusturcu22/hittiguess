@@ -4,6 +4,7 @@ import jakarta.validation.Valid;
 import org.dariusturcu.backend.model.playlist.ImportFromPlaylistRequest;
 import org.dariusturcu.backend.model.playlist.ImportFromPlaylistResultDTO;
 import org.dariusturcu.backend.model.playlist.PlaylistDetailDTO;
+import org.dariusturcu.backend.model.playlist.PlaylistInvitePreviewDTO;
 import org.dariusturcu.backend.model.playlist.PlaylistMemberDTO;
 import org.dariusturcu.backend.model.playlist.PublicPlaylistSummaryDTO;
 import org.dariusturcu.backend.model.playlist.UpdateMembershipGrantsRequest;
@@ -36,6 +37,14 @@ public class PlaylistController {
     public ResponseEntity<List<PublicPlaylistSummaryDTO>> getPublicPlaylists() {
         List<PublicPlaylistSummaryDTO> publicPlaylists = playlistService.getPublicPlaylists();
         return ResponseEntity.ok(publicPlaylists);
+    }
+
+    @Operation(summary = "Preview a playlist by invite code, no membership or authentication required")
+    @GetMapping("/invites/{inviteCode}/preview")
+    public ResponseEntity<PlaylistInvitePreviewDTO> getInvitePreview(
+            @PathVariable String inviteCode) {
+        PlaylistInvitePreviewDTO preview = playlistService.getInvitePreview(inviteCode);
+        return ResponseEntity.ok(preview);
     }
 
     @Operation(summary = "Get playlist information")
