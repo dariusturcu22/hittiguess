@@ -18,8 +18,12 @@ export default function proxy(request: NextRequest) {
     return NextResponse.next();
   }
 
-  const hasAccessToken = request.cookies.has("access_token");
-  if (!hasAccessToken) {
+  // refresh_token itself is scoped to /auth/refresh on the backend, so this
+  // route-matching middleware never sees it directly; session_hint mirrors
+  // its lifetime at Path=/ purely as a signal the middleware can read. The
+  // actual API calls still authenticate off access_token/refresh_token.
+  const hasActiveSession = request.cookies.has("session_hint");
+  if (!hasActiveSession) {
     return NextResponse.redirect(new URL("/login", request.url));
   }
 

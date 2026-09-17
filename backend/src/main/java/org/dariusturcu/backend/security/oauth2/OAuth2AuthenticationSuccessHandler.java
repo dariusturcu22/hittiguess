@@ -65,6 +65,12 @@ public class OAuth2AuthenticationSuccessHandler extends SimpleUrlAuthenticationS
                         jwtUtil.getRefreshExpirationSeconds()
                 ).toString()
         );
+        response.addHeader(
+                HttpHeaders.SET_COOKIE,
+                cookieUtil.createSessionHintCookie(
+                        jwtUtil.getRefreshExpirationSeconds()
+                ).toString()
+        );
 
         getRedirectStrategy().sendRedirect(request, response, redirectUri);
     }
