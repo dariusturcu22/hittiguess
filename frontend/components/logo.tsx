@@ -42,27 +42,48 @@ function useWaveformBarHeights() {
   return heights;
 }
 
-export const LogoBars = () => {
+type LogoBarsProps = {
+  barWidthPx?: number;
+  colorClassName?: string;
+  containerClassName?: string;
+};
+
+export const LogoBars = ({
+  barWidthPx = 5,
+  colorClassName = "bg-[#499f36] dark:bg-[#a6e3a1]",
+  containerClassName = "h-6",
+}: LogoBarsProps = {}) => {
   const heights = useWaveformBarHeights();
 
   return (
-    <div className="flex items-center gap-[3px] h-6 shrink-0">
+    <div className={`flex items-center gap-[3px] shrink-0 ${containerClassName}`}>
       {heights.map((height, index) => (
         <span
           key={index}
-          className="w-[5px] rounded-full bg-[#499f36] dark:bg-[#a6e3a1]"
-          style={{ height: `${height}px` }}
+          className={`rounded-full ${colorClassName}`}
+          style={{ width: `${barWidthPx}px`, height: `${height}px` }}
         />
       ))}
     </div>
   );
 };
 
-export const LogoIcon = () => {
+type LogoIconProps = {
+  // "lg" matches the 26px wordmark the auth and join-invite card mockups
+  // use for the logo at the top of a centered card; "default" is the 18px
+  // size used in page headers and rails.
+  size?: "default" | "lg";
+};
+
+export const LogoIcon = ({ size = "default" }: LogoIconProps = {}) => {
+  const wordmarkSizeClassName = size === "lg" ? "text-[26px]" : "text-lg";
+
   return (
     <div className="flex items-center gap-2">
       <LogoBars />
-      <span className="font-wordmark font-extrabold text-lg text-foreground">
+      <span
+        className={`font-wordmark font-extrabold ${wordmarkSizeClassName} text-foreground`}
+      >
         hittiguess
       </span>
     </div>

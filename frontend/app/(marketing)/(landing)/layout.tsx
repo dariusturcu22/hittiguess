@@ -47,13 +47,17 @@ function ThemeToggle() {
   );
 }
 
-export default function AuthLayout({
+// The landing page is the only pre-login screen with a header: login,
+// register, forgot-password, and the OAuth2 redirect screen each put their
+// own logo inside their own card instead, per their own mockups, which have
+// no header or nav element at all. See frontend/app/(marketing)/(auth)/layout.tsx.
+export default function LandingLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
   return (
-    <div className="min-h-screen flex flex-col bg-dotted bg-background">
+    <div className="min-h-screen flex flex-col bg-background">
       <header className="flex items-center justify-between px-6 md:px-16 py-6 relative z-10">
         <Link href="/" aria-label="go home">
           <LogoIcon />
