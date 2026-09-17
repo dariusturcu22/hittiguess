@@ -255,9 +255,12 @@ export default function PlaylistContent({
                 variant="outline"
                 size="icon"
                 className="size-[46px] rounded-[13px]"
-                title="Playlist editing hasn't shipped yet"
+                title="Edit playlist"
+                asChild
               >
-                <Pencil className="size-4" />
+                <Link href={`/playlists/${playlistId}/edit`}>
+                  <Pencil className="size-4" />
+                </Link>
               </Button>
 
               <DropdownMenu>
@@ -407,11 +410,14 @@ export default function PlaylistContent({
           <Button
             variant="outline"
             size="sm"
-            title="Playlist imports haven't shipped yet"
+            title="Import playlist"
             className="gap-1.5"
+            asChild
           >
-            <ListMusic className="size-3.5" />
-            Import playlist
+            <Link href={`/playlists/${playlistId}/import`}>
+              <ListMusic className="size-3.5" />
+              Import playlist
+            </Link>
           </Button>
           <Button size="sm" className="gap-1.5" asChild>
             <Link href={`/playlists/${playlistId}/songs/add`}>

@@ -105,6 +105,7 @@ export function AppSidebar() {
   }, []);
 
   const isPlaylistsActive = pathname?.startsWith("/playlists") ?? false;
+  const isExploreActive = pathname?.startsWith("/explore") ?? false;
 
   return (
     <aside className="flex w-[76px] shrink-0 flex-col items-center border-r-[3px] border-sidebar-border bg-sidebar py-5">
@@ -139,13 +140,17 @@ export function AppSidebar() {
         >
           <PlaylistsIcon />
         </Link>
-        <div
-          className={`${RAIL_ICON_BASE_CLASSES} ${RAIL_ICON_INTERACTIVE_CLASSES}`}
+        <Link
+          href="/explore"
+          className={`${RAIL_ICON_BASE_CLASSES} ${
+            isExploreActive
+              ? RAIL_ICON_ACTIVE_CLASSES
+              : RAIL_ICON_INTERACTIVE_CLASSES
+          }`}
           title="Explore public playlists"
-          aria-disabled="true"
         >
           <ExploreIcon />
-        </div>
+        </Link>
       </div>
 
       <div className={RAIL_DIVIDER_CLASSES} />

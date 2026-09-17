@@ -222,4 +222,33 @@
     background-image: radial-gradient(circle, var(--dot-color) 1.5px, transparent 1.5px);
     background-size: 22px 22px;
   }
+
+  @keyframes ghost-float-a {
+    0%   { transform: translate(0px, 0px) rotate(0deg); }
+    25%  { transform: translate(-3px, -4px) rotate(-2deg); }
+    50%  { transform: translate(2px, -7px) rotate(1.5deg); }
+    75%  { transform: translate(-3px, -3px) rotate(-1deg); }
+    100% { transform: translate(0px, 0px) rotate(0deg); }
+  }
+  @keyframes ghost-float-b {
+    0%   { transform: translate(0px, 0px) rotate(0deg); }
+    20%  { transform: translate(2px, -4px) rotate(2deg); }
+    45%  { transform: translate(-2px, -8px) rotate(-1.5deg); }
+    70%  { transform: translate(3px, -3px) rotate(1deg); }
+    100% { transform: translate(0px, 0px) rotate(0deg); }
+  }
+  @keyframes ghost-float-c {
+    0%   { transform: translate(0px, 0px) rotate(0deg); }
+    30%  { transform: translate(3px, -3px) rotate(1.5deg); }
+    55%  { transform: translate(-2px, -6px) rotate(-2deg); }
+    80%  { transform: translate(1px, -2px) rotate(0.5deg); }
+    100% { transform: translate(0px, 0px) rotate(0deg); }
+  }
+  .ghost-float-a { animation: ghost-float-a 19s ease-in-out infinite; }
+  .ghost-float-b { animation: ghost-float-b 24s ease-in-out infinite -9s; }
+  .ghost-float-c { animation: ghost-float-c 21s ease-in-out infinite -15s; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .ghost-float-a, .ghost-float-b, .ghost-float-c { animation: none; }
+  }
 }
