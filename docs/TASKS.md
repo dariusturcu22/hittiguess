@@ -255,7 +255,7 @@ Story 30 has since added `isPublic` as its own narrow slice. The deferred source
 - [x] Add an endpoint accepting a source playlist ID and a target playlist ID, validating the requester can read the source (owner or member through `requireRead`) and can write to the target (`requireWrite`). `POST /api/playlists/{playlistId}/imports`, body carries the source playlist ID; the path playlist is the target
 - [x] Link every song from the source playlist into the target playlist via story 15's join table; skip songs already present in the target rather than erroring or duplicating the link. Returns how many songs were linked and how many were skipped as already present
 - [x] Deferred to story 30: extend the source read check to accept a public source the requester neither owns nor is a member of, once `isPublic` exists on `Playlist` (implemented by extending `PlaylistAccessService.requireRead` to pass for any public playlist, which `PlaylistImportService` already calls for the source check)
-- [ ] Story 28: the frontend picker, choose a playlist from owned/joined/public, show a confirm step naming how many songs will be added (and how many are already present and will be skipped)
+- [x] Story 28: the frontend picker, choose a playlist from owned/joined/public, show a confirm step naming how many songs will be added (and how many are already present and will be skipped)
 - [x] Since the copy is synchronous and immediate, no background-job or progress-tracking UI is needed for this path specifically, unlike story 40's YouTube-crawl import
 
 Tests:
@@ -279,7 +279,7 @@ Surfaced during story 28's design pass on the Edit playlist and Join by invite s
 - [x] Add a kick endpoint (owner only): ends the membership, the existing invite link or code still lets the kicked user rejoin
 - [x] Add a `PlaylistBan` entity (playlist, user, banned-at) and a ban endpoint (owner only): ends the membership and blocks that user's future join attempts against this playlist
 - [x] Update the join-by-invite endpoint to reject a banned user's join attempt, and to accept the per-playlist display name/avatar submitted with the join request, defaulting to the account's own when not overridden
-- [ ] Frontend: Edit playlist's member list (per-member read/write/delete toggles, kick and ban actions), owner-only, already designed
+- [x] Frontend: Edit playlist's member list (per-member read/write/delete toggles, kick and ban actions), owner-only, already designed
 - [ ] Frontend: Join by invite's identity step (avatar and display name, pre-filled from the account, editable before joining), already designed
 
 Tests:
