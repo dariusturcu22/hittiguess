@@ -24,6 +24,10 @@
     .cover-tile { display: flex; align-items: center; justify-content: center; }
     .mini-avatar { width: 22px; height: 22px; border-radius: 50%; border: 2px solid #ffffff; display: flex; align-items: center; justify-content: center; font-family: 'Bungee', sans-serif; font-size: 8px; color: #4c4f69; flex-shrink: 0; }
     .mini-avatar.overflow { background: #ccd0da; color: #5c5f77; }
+    .custom-scroll::-webkit-scrollbar { width: 8px; }
+    .custom-scroll::-webkit-scrollbar-track { background: transparent; }
+    .custom-scroll::-webkit-scrollbar-thumb { background: #ccd0da; border-radius: 100px; }
+    .custom-scroll::-webkit-scrollbar-thumb:hover { background: #9ca0b0; }
   </style>
 </helmet>
 <div style="width: 1440px; height: 964px; background: #eff1f5; font-family: 'Space Grotesk', sans-serif; box-sizing: border-box; color: #4c4f69; display: flex; overflow: hidden; position: relative;">
@@ -79,6 +83,7 @@
       <div class="filter-pill inactive">Joined</div>
     </div>
 
+    <div class="custom-scroll" style="flex: 1; min-height: 0; overflow-y: auto; padding-right: 4px;">
     <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 24px;">
 
       <div class="playlist-card">
@@ -204,6 +209,7 @@
         <div style="font-family: 'Bungee', sans-serif; font-size: 14px; color: #9ca0b0;">New playlist</div>
       </div>
 
+    </div>
     </div>
 
   </div>
