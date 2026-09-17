@@ -1,19 +1,9 @@
 "use client";
 
 import * as React from "react";
-import {
-  IconDotsVertical,
-  IconLogout,
-  IconMoon,
-  IconSun,
-} from "@tabler/icons-react";
+import { IconLogout, IconMoon, IconSun } from "@tabler/icons-react";
 import { useTheme } from "next-themes";
 
-import {
-  Avatar,
-  AvatarFallback,
-  AvatarImage,
-} from "@/components/shadcn/avatar";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -23,12 +13,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/shadcn/dropdown-menu";
-import {
-  SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuItem,
-  useSidebar,
-} from "@/components/shadcn/sidebar";
 import { useLogout } from "@/hooks/generated/authentication-management/authentication-management";
 import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
@@ -36,8 +20,7 @@ import { useGetCurrentUser } from "@/hooks/generated/user-management/user-manage
 
 export function NavUser() {
   const [mounted, setMounted] = React.useState(false);
-  const { isMobile } = useSidebar();
-  const { theme, setTheme } = useTheme();
+  const { resolvedTheme, setTheme } = useTheme();
 
   React.useEffect(() => {
     setMounted(true);
@@ -71,75 +54,70 @@ export function NavUser() {
   const avatarInitial = user?.username?.trim().charAt(0).toUpperCase() ?? "";
 
   return (
-    <SidebarMenu>
-      <SidebarMenuItem>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <SidebarMenuButton
-              size="lg"
-              className="cursor-pointer rounded-[14px] border-2 border-transparent hover:border-sidebar-border data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
-            >
-              <Avatar className="h-8 w-8 rounded-full border-2 border-sidebar-border">
-                <AvatarImage src={user?.imageUrl} alt={user?.username} />
-                <AvatarFallback className="rounded-full bg-primary font-display text-xs text-primary-foreground">
-                  {avatarInitial}
-                </AvatarFallback>
-              </Avatar>
-              <div className="grid flex-1 text-left text-sm px-1 leading-tight">
-                <span className="truncate font-medium">{user?.username}</span>
-              </div>
-              <IconDotsVertical className="ml-auto size-4" />
-            </SidebarMenuButton>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent
-            className="w-(--radix-dropdown-menu-trigger-width) min-w-56 rounded-lg"
-            side={isMobile ? "bottom" : "right"}
-            align="end"
-            sideOffset={4}
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <button
+          type="button"
+          className="flex h-11 w-11 shrink-0 cursor-pointer items-center justify-center rounded-full border-2 border-sidebar-border bg-primary font-display text-base text-primary-foreground"
+        >
+          {avatarInitial}
+        </button>
+      </DropdownMenuTrigger>
+      {/* Visual treatment (card background, border, radius, shadow) matches
+          the floating profile card in AppShellDark.dc.html / Light.dc.html.
+          "View profile" and "settings" entries from that mockup aren't real
+          routes yet, so the menu keeps its existing items: theme toggle and
+          log out. */}
+      <DropdownMenuContent
+        className="w-[290px] overflow-hidden rounded-[18px] border-[3px] border-border-strong bg-card p-0 shadow-lg"
+        side="right"
+        align="end"
+        sideOffset={12}
+      >
+        <DropdownMenuLabel className="rounded-none bg-primary/20 p-4 font-normal">
+          <div className="flex items-center gap-3 text-left text-sm">
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-primary font-display text-base text-primary-foreground">
+              {avatarInitial}
+            </div>
+            <div className="grid flex-1 text-left leading-tight">
+              <span className="truncate font-display text-base text-card-foreground">
+                {user?.username}
+              </span>
+              <span className="text-muted-foreground truncate text-xs">
+                {user?.email}
+              </span>
+            </div>
+          </div>
+        </DropdownMenuLabel>
+        <DropdownMenuSeparator />
+        <DropdownMenuGroup className="p-1">
+          <DropdownMenuItem
+            className="cursor-pointer"
+            onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
           >
-            <DropdownMenuLabel className="p-0 font-normal">
-              <div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
-                <Avatar className="h-8 w-8 rounded-full border-2 border-border">
-                  <AvatarImage src={user?.imageUrl} alt={user?.username} />
-                  <AvatarFallback className="rounded-full bg-primary font-display text-xs text-primary-foreground">
-                    {avatarInitial}
-                  </AvatarFallback>
-                </Avatar>
-                <div className="grid flex-1 text-left text-sm leading-tight">
-                  <span className="truncate font-medium">{user?.username}</span>
-                  <span className="text-muted-foreground truncate text-xs">
-                    {user?.email}
-                  </span>
-                </div>
-              </div>
-            </DropdownMenuLabel>
-            <DropdownMenuSeparator />
-            <DropdownMenuGroup>
-              <DropdownMenuItem
-                className="cursor-pointer"
-                onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-              >
-                {mounted ? (
-                  <>
-                    {theme === "dark" ? <IconSun /> : <IconMoon />}
-                    <span>{theme === "dark" ? "Light Mode" : "Dark Mode"}</span>
-                  </>
-                ) : (
-                  <>
-                    <div className="size-4 animate-pulse rounded-full bg-muted" />
-                    <span>Loading...</span>
-                  </>
-                )}
-              </DropdownMenuItem>
-            </DropdownMenuGroup>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={handleLogout} className="cursor-pointer">
-              <IconLogout />
-              Log out
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </SidebarMenuItem>
-    </SidebarMenu>
+            {mounted ? (
+              <>
+                {resolvedTheme === "dark" ? <IconSun /> : <IconMoon />}
+                <span>
+                  {resolvedTheme === "dark" ? "Light Mode" : "Dark Mode"}
+                </span>
+              </>
+            ) : (
+              <>
+                <div className="size-4 animate-pulse rounded-full bg-muted" />
+                <span>Loading...</span>
+              </>
+            )}
+          </DropdownMenuItem>
+        </DropdownMenuGroup>
+        <DropdownMenuSeparator />
+        <DropdownMenuGroup className="p-1">
+          <DropdownMenuItem onClick={handleLogout} className="cursor-pointer">
+            <IconLogout />
+            Log out
+          </DropdownMenuItem>
+        </DropdownMenuGroup>
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }

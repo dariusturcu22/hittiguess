@@ -1,216 +1,177 @@
 "use client";
 
 import * as React from "react";
-import axios from "axios";
-import { Music, Plus, LogIn } from "lucide-react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
+import { useTheme } from "next-themes";
+import { Moon, Sun } from "lucide-react";
 
-import { NavUser } from "@/components/nav-user";
-import {
-  Sidebar,
-  SidebarContent,
-  SidebarFooter,
-  SidebarHeader,
-  SidebarRail,
-  SidebarGroup,
-  SidebarGroupLabel,
-  SidebarMenu,
-  SidebarMenuItem,
-  SidebarMenuButton,
-  useSidebar,
-} from "@/components/shadcn/sidebar";
-import { Input } from "@/components/shadcn/input";
-import { Button } from "@/components/shadcn/button";
 import { LogoBars } from "@/components/logo";
+import { NavUser } from "@/components/nav-user";
 
-import { PlaylistSummaryDTO } from "@/hooks/models";
+const RAIL_DIVIDER_CLASSES = "w-8 h-0.5 my-3.5 shrink-0 rounded-full bg-sidebar-border";
 
-import {
-  useCreatePlaylist,
-  useJoinPlaylist,
-  getGetUserPlaylistsQueryKey,
-} from "@/hooks/generated/user-management/user-management";
-import { useQueryClient } from "@tanstack/react-query";
+const RAIL_ICON_BASE_CLASSES =
+  "flex h-[46px] w-[46px] items-center justify-center rounded-[14px] text-icon-muted";
 
-interface AppSidebarProps extends React.ComponentProps<typeof Sidebar> {
-  playlists?: PlaylistSummaryDTO[];
-  currentPlaylistId?: number;
+const RAIL_ICON_ACTIVE_CLASSES =
+  "bg-accent text-accent-foreground shadow-xs";
+
+const RAIL_ICON_INTERACTIVE_CLASSES =
+  "cursor-pointer transition-colors hover:text-sidebar-foreground";
+
+function PlayIcon() {
+  return (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
+      <path d="M8 5v14l11-7z" />
+    </svg>
+  );
 }
 
-const APPLICATION_NAME = "hittiguess";
+function PlaylistsIcon() {
+  return (
+    <svg
+      width="22"
+      height="22"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <line x1="4" y1="6" x2="13" y2="6" />
+      <line x1="4" y1="12" x2="13" y2="12" />
+      <line x1="4" y1="18" x2="9" y2="18" />
+      <circle cx="18" cy="16" r="2.3" />
+      <path d="M20.3 16V6.5l-2.8 1" />
+    </svg>
+  );
+}
 
-/* The nav rail in the mockups draws its own separators and active state
-   rather than leaning on the shadcn defaults: 14px radius, an accent fill
-   with a hard offset shadow when active, a 2px outline when not. */
-const NAV_ITEM_CLASSES =
-  "rounded-[14px] h-10 border-2 border-transparent font-sans font-semibold " +
-  "data-[active=true]:bg-sidebar-primary data-[active=true]:text-sidebar-primary-foreground " +
-  "data-[active=true]:border-sidebar-primary data-[active=true]:shadow-xs " +
-  "data-[active=true]:font-display data-[active=true]:text-xs data-[active=true]:tracking-wide " +
-  "hover:border-sidebar-border";
+function ExploreIcon() {
+  return (
+    <svg
+      width="22"
+      height="22"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <circle cx="12" cy="12" r="9" />
+      <polygon
+        points="15.5 8.5 13 13 8.5 15.5 11 11"
+        fill="currentColor"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
 
-export function AppSidebar({
-  playlists = [],
-  currentPlaylistId,
-  ...props
-}: AppSidebarProps) {
-  playlists = Array.isArray(playlists) ? playlists : [];
+function GroupLobbyIcon() {
+  return (
+    <svg
+      width="22"
+      height="22"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+      <circle cx="9" cy="7" r="4" />
+      <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+      <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+    </svg>
+  );
+}
 
-  const { state } = useSidebar();
-  const router = useRouter();
-  const queryClient = useQueryClient();
+export function AppSidebar() {
+  const pathname = usePathname();
+  const { resolvedTheme, setTheme } = useTheme();
+  const [mounted, setMounted] = React.useState(false);
 
-  const { mutate: createPlaylist, isPending: isCreating } = useCreatePlaylist();
-  const { mutate: joinPlaylist, isPending: isJoining } = useJoinPlaylist();
+  React.useEffect(() => {
+    setMounted(true);
+  }, []);
 
-  const [joinExpanded, setJoinExpanded] = React.useState(false);
-  const [joinId, setJoinId] = React.useState("");
-  const [joinError, setJoinError] = React.useState("");
-  const joinInputRef = React.useRef<HTMLInputElement>(null);
-
-  const handleAddPlaylist = () => {
-    createPlaylist(undefined, {
-      onSuccess: (newPlaylist) => {
-        queryClient.invalidateQueries({
-          queryKey: getGetUserPlaylistsQueryKey(),
-        });
-        router.push(`/playlists/${newPlaylist.id}`);
-      },
-      onError: () => {
-        setJoinError("Failed to create playlist");
-      },
-    });
-  };
-
-  const handleJoinPlaylist = () => {
-    if (!joinId.trim()) {
-      setJoinError("Enter a valid invite code");
-      return;
-    }
-
-    joinPlaylist(
-      { playlistInviteCode: joinId, data: {} },
-      {
-        onSuccess: (playlist) => {
-          queryClient.invalidateQueries({
-            queryKey: getGetUserPlaylistsQueryKey(),
-          });
-          setJoinExpanded(false);
-          router.push(`/playlists/${playlist.id}`);
-        },
-        onError: (error: unknown) => {
-          const message = axios.isAxiosError<{ message?: string }>(error)
-            ? error.response?.data?.message
-            : undefined;
-          setJoinError(message || "Playlist not found");
-        },
-      },
-    );
-  };
+  const isPlaylistsActive = pathname?.startsWith("/playlists") ?? false;
 
   return (
-    <Sidebar collapsible="icon" {...props}>
-      <SidebarHeader className="border-b-[3px] border-sidebar-border pb-3">
-        <div className="flex items-center gap-2 px-2 py-1.5">
-          <LogoBars />
-          {state !== "collapsed" && (
-            <span className="font-wordmark font-extrabold text-lg text-sidebar-foreground">
-              {APPLICATION_NAME}
-            </span>
-          )}
+    <aside className="flex w-[76px] shrink-0 flex-col items-center border-r-[3px] border-sidebar-border bg-sidebar py-5">
+      {/* A right-side voice-participant rail and a "lobby active" state on
+          the group lobby icon below attach here once group sessions
+          (stories 9-13, 39) ship; neither exists yet. */}
+      <div className="flex h-[22px] items-center justify-center">
+        <LogoBars />
+      </div>
+
+      <div className={RAIL_DIVIDER_CLASSES} />
+
+      <div
+        className={`${RAIL_ICON_BASE_CLASSES} ${RAIL_ICON_INTERACTIVE_CLASSES}`}
+        title="Play / start a session"
+        aria-disabled="true"
+      >
+        <PlayIcon />
+      </div>
+
+      <div className={RAIL_DIVIDER_CLASSES} />
+
+      <div className="flex flex-col gap-3.5">
+        <Link
+          href="/playlists"
+          className={`${RAIL_ICON_BASE_CLASSES} ${
+            isPlaylistsActive
+              ? RAIL_ICON_ACTIVE_CLASSES
+              : RAIL_ICON_INTERACTIVE_CLASSES
+          }`}
+          title="Your playlists"
+        >
+          <PlaylistsIcon />
+        </Link>
+        <div
+          className={`${RAIL_ICON_BASE_CLASSES} ${RAIL_ICON_INTERACTIVE_CLASSES}`}
+          title="Explore public playlists"
+          aria-disabled="true"
+        >
+          <ExploreIcon />
         </div>
-      </SidebarHeader>
-      <SidebarContent>
-        <SidebarGroup>
-          <SidebarGroupLabel className="font-display text-[10px] tracking-widest text-muted-foreground">
-            Playlists
-          </SidebarGroupLabel>
-          <SidebarMenu>
-            {playlists.map((playlist) => (
-              <SidebarMenuItem key={playlist.id}>
-                <SidebarMenuButton
-                  asChild
-                  isActive={currentPlaylistId === playlist.id}
-                  tooltip={playlist.name}
-                  className={NAV_ITEM_CLASSES}
-                >
-                  <Link href={`/playlists/${playlist.id}`}>
-                    <Music className="size-4" />
-                    <span>{playlist.name}</span>
-                    {state !== "collapsed" && (
-                      <span className="ml-auto text-xs text-muted-foreground">
-                        {playlist.songCount}
-                      </span>
-                    )}
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-            ))}
+      </div>
 
-            <SidebarMenuItem>
-              <SidebarMenuButton
-                tooltip="Add Playlist"
-                onClick={handleAddPlaylist}
-                disabled={isCreating}
-                className={`cursor-pointer text-muted-foreground hover:text-sidebar-foreground ${NAV_ITEM_CLASSES}`}
-              >
-                <Plus className="size-4" />
-                {state !== "collapsed" && (
-                  <span>{isCreating ? "Creating..." : "Add Playlist"}</span>
-                )}
-              </SidebarMenuButton>
-            </SidebarMenuItem>
+      <div className={RAIL_DIVIDER_CLASSES} />
 
-            <SidebarMenuItem>
-              <SidebarMenuButton
-                tooltip="Join Playlist"
-                onClick={() => setJoinExpanded((prev) => !prev)}
-                className={`cursor-pointer text-muted-foreground hover:text-sidebar-foreground ${NAV_ITEM_CLASSES}`}
-              >
-                <LogIn className="size-4" />
-                {state !== "collapsed" && <span>Join Playlist</span>}
-              </SidebarMenuButton>
+      <div
+        className={`${RAIL_ICON_BASE_CLASSES} ${RAIL_ICON_INTERACTIVE_CLASSES}`}
+        title="Group lobby"
+        aria-disabled="true"
+      >
+        <GroupLobbyIcon />
+      </div>
 
-              {joinExpanded && state !== "collapsed" && (
-                <div className="mt-1 px-2 flex flex-col gap-1.5 animate-in fade-in slide-in-from-top-1 duration-150">
-                  <div className="flex gap-1.5">
-                    <Input
-                      ref={joinInputRef}
-                      placeholder="Invite code"
-                      value={joinId}
-                      onChange={(e) => {
-                        setJoinId(e.target.value);
-                        setJoinError("");
-                      }}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") handleJoinPlaylist();
-                        if (e.key === "Escape") setJoinExpanded(false);
-                      }}
-                      className="h-8 rounded-full text-xs border-sidebar-border"
-                    />
-                    <Button
-                      size="xs"
-                      className="h-8 px-3 shrink-0"
-                      onClick={handleJoinPlaylist}
-                      disabled={isJoining}
-                    >
-                      {isJoining ? "..." : "Join"}
-                    </Button>
-                  </div>
-                  {joinError && (
-                    <p className="text-xs text-destructive px-1">{joinError}</p>
-                  )}
-                </div>
-              )}
-            </SidebarMenuItem>
-          </SidebarMenu>
-        </SidebarGroup>
-      </SidebarContent>
-      <SidebarFooter className="border-t-[3px] border-sidebar-border pt-3">
-        <NavUser />
-      </SidebarFooter>
-      <SidebarRail />
-    </Sidebar>
+      <div className="flex-1" />
+
+      <button
+        type="button"
+        onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
+        className={`${RAIL_ICON_BASE_CLASSES} ${RAIL_ICON_INTERACTIVE_CLASSES}`}
+        title="Toggle theme"
+      >
+        {mounted && resolvedTheme === "dark" ? (
+          <Sun className="size-5" />
+        ) : (
+          <Moon className="size-5" />
+        )}
+      </button>
+
+      <div className="h-4" />
+
+      <NavUser />
+    </aside>
   );
 }

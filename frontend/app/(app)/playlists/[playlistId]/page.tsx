@@ -1,21 +1,16 @@
 "use client";
 
-import { AppSidebar } from "@/components/app-sidebar";
-import { SiteHeader } from "@/components/site-header";
-import { SidebarInset, SidebarProvider } from "@/components/shadcn/sidebar";
 import React, { use } from "react";
 
 import { toast } from "sonner";
 
 import PlaylistContent from "./PlaylistContent";
 import {
-  getGetUserPlaylistsQueryKey,
-  useGetUserPlaylists,
-} from "@/hooks/generated/user-management/user-management";
-import {
   getGetPlaylistQueryKey,
+  useGetPlaylist,
   useUpdatePlaylist,
 } from "@/hooks/generated/playlist-management/playlist-management";
+import { getGetUserPlaylistsQueryKey } from "@/hooks/generated/user-management/user-management";
 import { useQueryClient } from "@tanstack/react-query";
 
 interface PageProps {
@@ -25,7 +20,8 @@ interface PageProps {
 export default function PlaylistPage({ params }: PageProps) {
   const { playlistId: rawId } = use(params);
   const playlistId = parseInt(rawId);
-  const { data: playlists, isLoading, isError } = useGetUserPlaylists();
+  const { data: currentPlaylist, isLoading, isError } =
+    useGetPlaylist(playlistId);
   const { mutate: updatePlaylist } = useUpdatePlaylist();
   const queryClient = useQueryClient();
 
@@ -65,46 +61,26 @@ export default function PlaylistPage({ params }: PageProps) {
   };
 
   if (isLoading) {
-    return <div>Loading playlists...</div>;
+    return (
+      <div className="flex h-full flex-col p-6 md:p-11">
+        <p className="text-sm text-muted-foreground">Loading playlist...</p>
+      </div>
+    );
   }
 
-  if (isError) {
-    return <div>Failed to load playlists</div>;
+  if (isError || !currentPlaylist) {
+    return (
+      <div className="flex h-full flex-col p-6 md:p-11">
+        <p className="text-sm text-destructive">Failed to load playlist.</p>
+      </div>
+    );
   }
-
-  if (!playlists) {
-    return <div>You are not a part of any playlist</div>;
-  }
-
-  const currentPlaylist = playlists.find(
-    (playlist) => playlist.id === playlistId,
-  );
 
   return (
-    <SidebarProvider
-      style={
-        {
-          "--sidebar-width": "calc(var(--spacing) * 72)",
-          "--header-height": "calc(var(--spacing) * 12)",
-        } as React.CSSProperties
-      }
-    >
-      <AppSidebar
-        variant="inset"
-        playlists={playlists}
-        currentPlaylistId={currentPlaylist?.id}
-      />
-      <SidebarInset className="bg-dotted border-[3px] border-border">
-        <SiteHeader
-          title={currentPlaylist?.name}
-          color={
-            currentPlaylist?.color ? `#${currentPlaylist.color}` : undefined
-          }
-          onTitleChange={handleTitleChange}
-          onColorChange={handleColorChange}
-        />
-        <PlaylistContent playlistId={playlistId} />
-      </SidebarInset>
-    </SidebarProvider>
+    <PlaylistContent
+      playlistId={playlistId}
+      onTitleChange={handleTitleChange}
+      onColorChange={handleColorChange}
+    />
   );
 }

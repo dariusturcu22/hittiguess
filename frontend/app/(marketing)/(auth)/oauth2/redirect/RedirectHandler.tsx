@@ -24,9 +24,9 @@ export default function OAuth2RedirectHandler() {
       <div className="absolute -bottom-56 -left-40 size-[480px] bg-accent/10 rotate-12 pointer-events-none" />
 
       <div className="relative z-10 flex flex-col items-center">
-        <IconLoader2 className="size-10 text-accent animate-spin" />
+        <IconLoader2 className="size-10 text-marketing-accent animate-spin" />
         <p
-          className="font-display text-lg text-accent mt-5"
+          className="font-display text-lg text-marketing-accent mt-5"
           style={{ textShadow: "2px 2px 0 var(--text-shadow-on-page)" }}
         >
           Signing you in&hellip;

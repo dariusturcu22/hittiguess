@@ -60,6 +60,26 @@
   --text-shadow-on-page: #ccd0da;
   --text-shadow-on-card: #ccd0da;
 
+  /* A sunken input surface, darker than --card in dark mode and used for
+     search fields over the dotted page background. Light mode's mockups
+     reuse plain white for this, which --card already covers, but dark
+     mode's value doesn't match --background, --card, or --sidebar, so it
+     needs its own token rather than approximating one of those. */
+  --surface-sunken: #ffffff;
+
+  /* The app shell's icon-only nav rail uses a dedicated muted color for its
+     inactive icons, distinct from --muted-foreground (tuned for body text
+     on --background, not for icons on --sidebar). */
+  --icon-muted: #9ca0b0;
+
+  /* Landing and auth headlines use a distinct accent from the app shell's
+     --accent: in dark mode the mockups color them pink (#f5c2e7), not the
+     mauve (#cba6f7) used for the sidebar's active icon and the playlist
+     pages' own titles. Light mode happens to use the same purple for both,
+     so this only diverges from --accent in dark mode, but needs its own
+     token rather than reading --accent directly. */
+  --marketing-accent: #8f4fe3;
+
   --radius: 1.125rem;
   --spacing: 0.25rem;
 }
@@ -107,6 +127,12 @@
 
   --text-shadow-on-page: #313244;
   --text-shadow-on-card: #1e1e2e;
+
+  --surface-sunken: #181825;
+
+  --icon-muted: #6c7086;
+
+  --marketing-accent: #f5c2e7;
 }
 
 @theme inline {
@@ -140,6 +166,9 @@
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
+  --color-surface-sunken: var(--surface-sunken);
+  --color-icon-muted: var(--icon-muted);
+  --color-marketing-accent: var(--marketing-accent);
 
   /* Bungee/Baloo 2/Space Grotesk don't change between light and dark, so
      unlike the color tokens above these are declared directly here instead
