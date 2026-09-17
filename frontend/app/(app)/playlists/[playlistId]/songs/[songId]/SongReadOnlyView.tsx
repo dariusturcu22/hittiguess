@@ -1,86 +1,311 @@
-import { Button } from "@/components/shadcn/button";
-import { IconExternalLink } from "@tabler/icons-react";
+"use client";
+
+import { useState } from "react";
 import Link from "next/link";
-import { SongDTO } from "@/hooks/models";
+import { useRouter } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
+import { AlertTriangle, ExternalLink, Flag, ShieldCheck, Trash2 } from "lucide-react";
+
+import { Button } from "@/components/shadcn/button";
+import { Badge } from "@/components/shadcn/badge";
+import { Input } from "@/components/shadcn/input";
+import { Label } from "@/components/shadcn/label";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/shadcn/alert-dialog";
+import { SongDTO, SongDTOVerificationStatus } from "@/hooks/models";
+import {
+  getGetPlaylistQueryKey,
+  getGetSongQueryKey,
+  useDeleteSong,
+} from "@/hooks/generated/playlist-management/playlist-management";
+import {
+  useSubmitConfirmation,
+  useSubmitReport,
+} from "@/hooks/generated/community-song-reports/community-song-reports";
+import { GameCard } from "@/components/game-card";
 
 interface SongReadOnlyViewProps {
   song: SongDTO;
+  playlistId: number;
   backPath: string;
 }
 
-// VERIFIED is a pipeline-established lock and NEEDS_REVIEW is an LLM-reconciled
-// year; hand-editing either would undermine the trust tier the pipeline already
-// assigned it, enforced server-side regardless of what this view shows.
-export function SongReadOnlyView({ song, backPath }: SongReadOnlyViewProps) {
+export function SongReadOnlyView({
+  song,
+  playlistId,
+  backPath,
+}: SongReadOnlyViewProps) {
+  const router = useRouter();
+  const queryClient = useQueryClient();
+  const { mutate: removeSong, isPending: isRemoving } = useDeleteSong();
+  const { mutate: confirmSong, isPending: isConfirming } =
+    useSubmitConfirmation();
+  const { mutate: submitReport, isPending: isReporting } = useSubmitReport();
+
+  const [reportOpen, setReportOpen] = useState(false);
+  const [reportMessage, setReportMessage] = useState("");
+  const [reportYear, setReportYear] = useState("");
+  const [reportSources, setReportSources] = useState("");
+  const [reportError, setReportError] = useState("");
+
   const artistNames = song.artists.map((artist) => artist.name).join(", ");
+  const isNeedsReview =
+    song.verificationStatus === SongDTOVerificationStatus.NEEDS_REVIEW;
+
+  const invalidateSong = () => {
+    queryClient.invalidateQueries({
+      queryKey: getGetSongQueryKey(playlistId, song.id),
+    });
+    queryClient.invalidateQueries({
+      queryKey: getGetPlaylistQueryKey(playlistId),
+    });
+  };
+
+  const handleRemove = () => {
+    removeSong(
+      { playlistId, songId: song.id },
+      {
+        onSuccess: () => {
+          queryClient.invalidateQueries({
+            queryKey: getGetPlaylistQueryKey(playlistId),
+          });
+          router.push(backPath);
+        },
+      },
+    );
+  };
+
+  const handleConfirm = () => {
+    confirmSong(
+      { songId: song.id },
+      {
+        onSuccess: () => {
+          invalidateSong();
+          toast.success("Thanks, this song's details are now confirmed.");
+        },
+        onError: () => {
+          toast.error("Couldn't submit the confirmation. Try again.");
+        },
+      },
+    );
+  };
+
+  const handleSubmitReport = () => {
+    setReportError("");
+    if (!reportMessage.trim()) {
+      setReportError("Describe what's wrong before submitting.");
+      return;
+    }
+
+    submitReport(
+      {
+        songId: song.id,
+        data: {
+          message: reportMessage.trim(),
+          suggestedCorrectYear: reportYear ? parseInt(reportYear) : undefined,
+          sources: reportSources.trim() || undefined,
+        },
+      },
+      {
+        onSuccess: () => {
+          setReportOpen(false);
+          setReportMessage("");
+          setReportYear("");
+          setReportSources("");
+          toast.success("Report submitted. Thanks for the flag.");
+        },
+        onError: () => {
+          setReportError("Couldn't submit the report. Try again.");
+        },
+      },
+    );
+  };
+
+  const reportDialog = (
+    <AlertDialog open={reportOpen} onOpenChange={setReportOpen}>
+      <AlertDialogTrigger asChild>
+        <Button variant="outline" className="min-w-0 flex-1 gap-2">
+          <Flag className="size-3.5" />
+          Report
+        </Button>
+      </AlertDialogTrigger>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Report this song</AlertDialogTitle>
+          <AlertDialogDescription>
+            Flag &quot;{song.title}&quot; if its metadata looks wrong. An
+            admin reviews every report.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <div className="flex flex-col gap-3">
+          <div className="grid gap-1.5">
+            <Label htmlFor="reportMessage">What&apos;s wrong</Label>
+            <Input
+              id="reportMessage"
+              value={reportMessage}
+              onChange={(event) => setReportMessage(event.target.value)}
+              placeholder="The release year looks off"
+            />
+          </div>
+          <div className="grid gap-1.5">
+            <Label htmlFor="reportYear">Suggested correct year (optional)</Label>
+            <Input
+              id="reportYear"
+              type="number"
+              min={1000}
+              value={reportYear}
+              onChange={(event) => setReportYear(event.target.value)}
+            />
+          </div>
+          <div className="grid gap-1.5">
+            <Label htmlFor="reportSources">Sources (optional)</Label>
+            <Input
+              id="reportSources"
+              value={reportSources}
+              onChange={(event) => setReportSources(event.target.value)}
+              placeholder="A link backing up the correction"
+            />
+          </div>
+          {reportError && (
+            <p className="text-sm text-destructive">{reportError}</p>
+          )}
+        </div>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogAction
+            onClick={(event) => {
+              event.preventDefault();
+              handleSubmitReport();
+            }}
+            disabled={isReporting}
+          >
+            {isReporting ? "Submitting..." : "Submit report"}
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  );
+
+  const removeDialog = (
+    <AlertDialog>
+      <AlertDialogTrigger asChild>
+        <Button
+          variant="outline"
+          disabled={isRemoving}
+          className={`gap-2 text-destructive hover:text-destructive ${
+            isNeedsReview ? "w-full" : "min-w-0 flex-1"
+          }`}
+        >
+          <Trash2 className="size-3.5" />
+          Remove from playlist
+        </Button>
+      </AlertDialogTrigger>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Delete song?</AlertDialogTitle>
+          <AlertDialogDescription>
+            This will permanently remove &quot;{song.title}&quot; from the
+            playlist.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogAction
+            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            onClick={handleRemove}
+          >
+            Delete
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  );
 
   return (
-    <div className="mx-auto w-full max-w-xl flex flex-col gap-6">
-      <div className="grid gap-4">
-        <div className="flex justify-center">
-          <div className="aspect-video w-full max-w-xs overflow-hidden rounded-lg border bg-muted shadow-sm">
-            <iframe
-              width="100%"
-              height="100%"
-              src={`https://www.youtube.com/embed/${song.youtubeId}`}
-              title="YouTube video player"
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-              allowFullScreen
-            ></iframe>
-          </div>
-        </div>
-        <div className="flex justify-center">
-          <Button variant="outline" size="icon" asChild>
-            <a
-              href={`https://www.youtube.com/watch?v=${song.youtubeId}`}
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              <IconExternalLink className="size-4" />
-            </a>
-          </Button>
-        </div>
+    <div className="flex w-full max-w-[560px] flex-col items-center">
+      {isNeedsReview && (
+        <Badge variant="warning" className="mb-5 gap-1.5 py-2 text-[11px]">
+          <AlertTriangle className="size-3" />
+          Needs review
+        </Badge>
+      )}
+
+      <div className="mb-6">
+        <GameCard
+          artist={artistNames}
+          year={song.releaseYear}
+          title={song.title}
+          gradientColor1={song.gradientColor1}
+          gradientColor2={song.gradientColor2}
+        />
       </div>
 
-      <div className="flex flex-col items-center py-4">
-        <div
-          className="relative aspect-square w-50 rounded-lg shadow-xl flex flex-col items-center justify-between p-4 text-white overflow-hidden"
-          style={{
-            background: `linear-gradient(to bottom, ${song.gradientColor1 ? `#${song.gradientColor1}` : "#8B5CF6"}, ${song.gradientColor2 ? `#${song.gradientColor2}` : "#EC4899"})`,
-            fontFamily: "'Kanit', sans-serif",
-          }}
+      <Button asChild className="mb-4 w-full gap-2">
+        <a
+          href={`https://www.youtube.com/watch?v=${song.youtubeId}`}
+          target="_blank"
+          rel="noopener noreferrer"
         >
-          <div
-            className="mt-2 text-center font-normal leading-tight"
-            style={{ fontSize: "15px" }}
-          >
-            {artistNames}
+          <ExternalLink className="size-4" />
+          Open on YouTube
+        </a>
+      </Button>
+
+      {isNeedsReview && (
+        <p className="mb-4 max-w-[460px] text-center text-xs leading-relaxed text-muted-foreground">
+          The sources on this one didn&apos;t fully agree, so it&apos;s not
+          locked yet. If it looks right, confirm it. If something&apos;s
+          actually wrong, report it instead of editing it directly.
+        </p>
+      )}
+
+      {isNeedsReview ? (
+        <>
+          <div className="mb-3.5 flex w-full flex-col gap-2.5 sm:flex-row sm:gap-3.5">
+            <Button
+              variant="outline"
+              onClick={handleConfirm}
+              disabled={isConfirming}
+              className="min-w-0 flex-1 gap-2 border-primary text-primary"
+            >
+              <ShieldCheck className="size-3.5 shrink-0" />
+              {isConfirming ? "Confirming..." : "Is this correct?"}
+            </Button>
+            {reportDialog}
           </div>
-          <div
-            className="font-medium tracking-tighter"
-            style={{ fontSize: "62px" }}
-          >
-            {song.releaseYear}
-          </div>
-          <div
-            className="mb-2 text-center italic font-light leading-tight"
-            style={{ fontSize: "15px" }}
-          >
-            {song.title}
-          </div>
+          <div className="mb-6 w-full">{removeDialog}</div>
+        </>
+      ) : (
+        <div className="mb-6 flex w-full flex-col gap-2.5 sm:flex-row sm:gap-3.5">
+          {reportDialog}
+          {removeDialog}
         </div>
+      )}
+
+      <div className="mb-4.5 h-0.5 w-full bg-border" />
+
+      <div className="text-xs text-muted-foreground">
+        {song.addedBy
+          ? `Added by ${song.addedBy.username}`
+          : "Added by a deleted account"}
       </div>
 
-      <p className="text-sm text-muted-foreground text-center">
-        This song&apos;s release year has been verified and can no longer be
-        edited directly.
-      </p>
-
-      <div className="flex gap-3 justify-center">
-        <Button variant="outline" className="px-10" asChild>
-          <Link href={backPath}>Back</Link>
-        </Button>
-      </div>
+      <Link
+        href={backPath}
+        className="mt-4 text-xs text-muted-foreground hover:text-foreground"
+      >
+        ‹ Back to playlist
+      </Link>
     </div>
   );
 }
