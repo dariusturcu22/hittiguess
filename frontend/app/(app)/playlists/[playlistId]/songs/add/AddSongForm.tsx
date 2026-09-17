@@ -38,6 +38,7 @@ export function AddSongForm({ playlistId, backPath }: AddSongFormProps) {
   const [pendingDetails, setPendingDetails] =
     useState<PendingSongDetails | null>(null);
   const [isFetchingMetadata, setIsFetchingMetadata] = useState(false);
+  const [metadataFetchError, setMetadataFetchError] = useState("");
 
   const { mutate: addSong, isPending: isAddingSong } = useCreateSong();
   const [reviewSubmitError, setReviewSubmitError] = useState("");
@@ -98,51 +99,58 @@ export function AddSongForm({ playlistId, backPath }: AddSongFormProps) {
     setMode("search");
     setPendingDetails(null);
     setPendingYoutubeId("");
+    setMetadataFetchError("");
   };
 
   const handleFetchDetails = async (youtubeId: string) => {
     setPendingYoutubeId(youtubeId);
     setIsFetchingMetadata(true);
+    setMetadataFetchError("");
 
     try {
       const response = await getSongMetadata({
         youtubeUrl: `youtube.com/watch?v=${youtubeId}`,
       });
 
-      if (response.status === "ERROR") {
-        throw new Error("Metadata pipeline returned an error status");
+      if (response.status === "REJECTED") {
+        setMetadataFetchError(
+          response.rejectionDetail ??
+            "That video was rejected by content-safety checks.",
+        );
+        return;
+      }
+
+      if (response.status !== "SUCCESS" || !response.content) {
+        setMetadataFetchError(
+          "Couldn't fetch metadata for that link. Try again.",
+        );
+        return;
       }
 
       const metadata = response.content;
       const isHighConfidence =
-        !!metadata?.title && !!metadata?.artist && !!metadata?.releaseYear;
+        !!metadata.title && !!metadata.artist && !!metadata.releaseYear;
 
       setPendingDetails({
-        title: metadata?.title ?? "",
-        artist: metadata?.artist ?? "",
-        releaseYear: metadata?.releaseYear ?? "",
-        gradientColor1: metadata?.gradientColor1
+        title: metadata.title ?? "",
+        artist: metadata.artist ?? "",
+        releaseYear: metadata.releaseYear ?? "",
+        gradientColor1: metadata.gradientColor1
           ? `#${metadata.gradientColor1}`
           : DEFAULT_GRADIENT_1,
-        gradientColor2: metadata?.gradientColor2
+        gradientColor2: metadata.gradientColor2
           ? `#${metadata.gradientColor2}`
           : DEFAULT_GRADIENT_2,
         country: CreateSongRequestCountry.NONE,
         isHighConfidence,
       });
+      setMode("new-review");
     } catch {
-      setPendingDetails({
-        title: "",
-        artist: "",
-        releaseYear: "",
-        gradientColor1: DEFAULT_GRADIENT_1,
-        gradientColor2: DEFAULT_GRADIENT_2,
-        country: CreateSongRequestCountry.NONE,
-        isHighConfidence: false,
-      });
+      setMetadataFetchError(
+        "Couldn't fetch metadata for that link. Try again.",
+      );
     } finally {
       setIsFetchingMetadata(false);
-      setMode("new-review");
     }
   };
 
@@ -170,6 +178,7 @@ export function AddSongForm({ playlistId, backPath }: AddSongFormProps) {
             onFetch={handleFetchDetails}
             isFetching={isFetchingMetadata}
             onBackToSearch={handleBackToSearch}
+            fetchError={metadataFetchError}
           />
         </div>
       </div>
@@ -194,6 +203,7 @@ export function AddSongForm({ playlistId, backPath }: AddSongFormProps) {
 
   return (
     <SongSearchStep
+      backPath={backPath}
       queue={queue}
       onToggleQueued={handleToggleQueued}
       onSubmitQueue={handleSubmitQueue}
