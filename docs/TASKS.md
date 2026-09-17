@@ -556,6 +556,7 @@ No story required for these. Fix on a `fix` branch.
 
 Flutter is kept, not dropped, deprioritized behind the web app per the existing 2026-06 `DECISIONS.md` entry. In the meantime it must follow the same non-negotiable rule as the rest of the product: the DJ is never shown an embedded YouTube player, playback happens on the real YouTube app.
 
+- [x] `GroupLobbyLight.dc.html` still reflected an older lobby layout: a sticker-card player list with stat rows and pill badges, where `GroupLobbyDark.dc.html` uses an orbiting-avatar layout with drift-animated positions and lobby-btn controls. Rebuilt to match; its `GroupLobbyChat`/`GroupLobbyEightPlayers`/`GroupLobbySettings`/`GroupLobbyTwoPlayers` variants were already in sync. Every `*Light.dc.html`/`*Dark.dc.html` pair in `docs/design/source/` is now structurally in sync, colors translated to this project's light palette rather than copied from dark.
 - [ ] Check the current Flutter code for any embedded or hidden YouTube playback (an in-app WebView or player widget); not yet confirmed against the real Flutter codebase
 - [ ] If one exists, replace it with a real link-out to the YouTube app, matching the 2026-07 `DECISIONS.md` entry's mechanism for the web DJ view
 
