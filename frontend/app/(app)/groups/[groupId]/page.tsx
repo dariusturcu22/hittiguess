@@ -19,7 +19,7 @@ import {
   useStartGameSession,
   useUpdateGroupSettings,
 } from "@/hooks/generated/group-management/group-management";
-import { useGetCurrentUser } from "@/hooks/generated/user-management/user-management";
+import { useGetCurrentUser, useGetUserPlaylists } from "@/hooks/generated/user-management/user-management";
 import { useGetActiveSessionForGroup } from "@/hooks/generated/game-session/game-session";
 import type { MemberDTO } from "@/hooks/models/memberDTO";
 import { useQueryClient } from "@tanstack/react-query";
@@ -117,10 +117,12 @@ export default function GroupLobbyPage({ params }: PageProps) {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [selectedDjMode, setSelectedDjMode] = useState<"FIXED" | "ROTATING">("ROTATING");
+  const [selectedPlaylistId, setSelectedPlaylistId] = useState<number | undefined>(undefined);
   const [winCondition, setWinCondition] = useState(MINIMUM_WIN_CONDITION);
   const groupQuery = useGetGroup(groupId, { query: { retry: false } });
   const groupRealtime = useGroupRealtime(groupId);
   const { data: currentUser } = useGetCurrentUser();
+  const playlistsQuery = useGetUserPlaylists({ query: { retry: false } });
   const startSession = useStartGameSession();
   const leaveGroup = useLeaveGroup();
   const updateSettings = useUpdateGroupSettings();
@@ -166,14 +168,13 @@ export default function GroupLobbyPage({ params }: PageProps) {
 
   function openSettings() {
     setSelectedDjMode(groupQuery.data?.djMode ?? "ROTATING");
+    setSelectedPlaylistId(groupQuery.data?.playlists?.[0]?.id);
     setWinCondition(groupQuery.data?.winConditionCardCount ?? MINIMUM_WIN_CONDITION);
     setIsSettingsOpen(true);
   }
 
   function saveSettings() {
-    const playlistIds = groupQuery.data?.playlists
-      ?.map((playlist) => playlist.id)
-      .filter((playlistId): playlistId is number => playlistId !== undefined);
+    const playlistIds = selectedPlaylistId === undefined ? [] : [selectedPlaylistId];
 
     updateSettings.mutate(
       {
@@ -276,7 +277,18 @@ export default function GroupLobbyPage({ params }: PageProps) {
             <div className="space-y-4">
               <label className="flex items-center justify-between gap-3 text-[13px] text-muted-foreground">
                 Playlist
-                <span className="font-semibold text-card-foreground">{featuredPlaylist?.name ?? "No playlist"}</span>
+                <select
+                  value={selectedPlaylistId ?? ""}
+                  onChange={(event) => setSelectedPlaylistId(event.target.value ? Number(event.target.value) : undefined)}
+                  className="max-w-[190px] rounded-full border-2 border-border bg-background px-3 py-1.5 text-sm font-semibold text-foreground outline-none"
+                >
+                  <option value="">No playlist</option>
+                  {playlistsQuery.data?.map((playlist) => (
+                    <option key={playlist.id} value={playlist.id}>
+                      {playlist.name} ({playlist.songCount} songs)
+                    </option>
+                  ))}
+                </select>
               </label>
               <label className="flex items-center justify-between gap-3 text-[13px] text-muted-foreground">
                 DJ mode
@@ -293,7 +305,14 @@ export default function GroupLobbyPage({ params }: PageProps) {
             <div className="mt-6 flex gap-2.5"><button type="button" onClick={saveSettings} disabled={updateSettings.isPending} className="rounded-full bg-primary px-4 py-2.5 font-display text-xs text-primary-foreground disabled:opacity-60">{updateSettings.isPending ? "Saving" : "Save changes"}</button><button type="button" onClick={() => setIsSettingsOpen(false)} className="rounded-full border-2 border-border px-4 py-2.5 text-xs font-semibold text-card-foreground">Close</button></div>
           </section>
         ) : null}
-        {isChatOpen ? <GroupChatOverlay groupId={groupId} onClose={() => setIsChatOpen(false)} /> : null}
+        {isChatOpen ? (
+          <GroupChatOverlay
+            groupId={groupId}
+            connectionState={groupRealtime.connectionState}
+            sendChat={groupRealtime.sendChat}
+            onClose={() => setIsChatOpen(false)}
+          />
+        ) : null}
       </section>
 
       <footer className="flex flex-wrap items-center gap-3">

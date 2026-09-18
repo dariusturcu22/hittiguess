@@ -4,15 +4,23 @@ import { useState } from "react";
 import { Send, X } from "lucide-react";
 
 import { useGetHistory } from "@/hooks/generated/group-chat/group-chat";
-import { useGroupRealtime } from "@/hooks/use-group-realtime";
 
 const CHAT_COLORS = ["bg-peach", "bg-blue", "bg-warning", "bg-pink", "bg-green", "bg-accent"];
 
 function initial(name?: string): string { return name?.trim().charAt(0).toUpperCase() || "?"; }
 
-export function GroupChatOverlay({ groupId, onClose }: { groupId: number; onClose: () => void }) {
+export function GroupChatOverlay({
+  groupId,
+  connectionState,
+  onClose,
+  sendChat,
+}: {
+  groupId: number;
+  connectionState: "connecting" | "connected" | "disconnected" | "error";
+  onClose: () => void;
+  sendChat: (content: string) => boolean;
+}) {
   const historyQuery = useGetHistory(groupId, { query: { retry: false } });
-  const { connectionState, sendChat } = useGroupRealtime(groupId);
   const [message, setMessage] = useState("");
 
   function submitMessage() {

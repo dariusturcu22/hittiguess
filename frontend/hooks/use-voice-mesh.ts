@@ -29,7 +29,10 @@ export function useVoiceMesh(groupId: number, currentUserId: number | undefined,
   const clientReference = useRef<Client | null>(null);
   const streamReference = useRef<MediaStream | null>(null);
   const peersReference = useRef(new Map<number, RTCPeerConnection>());
+  const remoteAudioReference = useRef(new Map<number, HTMLAudioElement>());
+  const isDeafenedReference = useRef(false);
   const [isMuted, setIsMuted] = useState(false);
+  const [isDeafened, setIsDeafened] = useState(false);
   const [microphoneError, setMicrophoneError] = useState(false);
   const [isSignalConnected, setIsSignalConnected] = useState(false);
 
@@ -44,8 +47,21 @@ export function useVoiceMesh(groupId: number, currentUserId: number | undefined,
     const peer = new RTCPeerConnection({ iceServers });
     streamReference.current?.getTracks().forEach((track) => peer.addTrack(track, streamReference.current!));
     peer.onicecandidate = (event) => { if (event.candidate) sendSignal(CANDIDATE_SIGNAL, targetMemberUserId, event.candidate.toJSON()); };
-    peer.ontrack = (event) => { const audio = new Audio(); audio.srcObject = event.streams[0]; void audio.play(); };
-    peer.onconnectionstatechange = () => { if (peer.connectionState === "failed" || peer.connectionState === "closed") peersReference.current.delete(targetMemberUserId); };
+    peer.ontrack = (event) => {
+      const [remoteStream] = event.streams;
+      if (!remoteStream) return;
+      const audio = new Audio();
+      audio.srcObject = remoteStream;
+      audio.muted = isDeafenedReference.current;
+      remoteAudioReference.current.set(targetMemberUserId, audio);
+      void audio.play();
+    };
+    peer.onconnectionstatechange = () => {
+      if (peer.connectionState === "failed" || peer.connectionState === "closed") {
+        peersReference.current.delete(targetMemberUserId);
+        remoteAudioReference.current.delete(targetMemberUserId);
+      }
+    };
     peersReference.current.set(targetMemberUserId, peer);
     return peer;
   }, [sendSignal, turnCredentialsQuery.data?.iceServers]);
@@ -78,8 +94,23 @@ export function useVoiceMesh(groupId: number, currentUserId: number | undefined,
   }, [createPeer, currentUserId, isInVoice, isSignalConnected, sendSignal, voiceMembers]);
 
   const startMicrophone = useCallback(async () => { try { streamReference.current = await navigator.mediaDevices.getUserMedia({ audio: true }); setMicrophoneError(false); return true; } catch { setMicrophoneError(true); return false; } }, []);
-  const stopMicrophone = useCallback(() => { streamReference.current?.getTracks().forEach((track) => track.stop()); streamReference.current = null; peersReference.current.forEach((peer) => peer.close()); peersReference.current.clear(); setIsMuted(false); }, []);
+  const stopMicrophone = useCallback(() => {
+    streamReference.current?.getTracks().forEach((track) => track.stop());
+    streamReference.current = null;
+    peersReference.current.forEach((peer) => peer.close());
+    peersReference.current.clear();
+    remoteAudioReference.current.clear();
+    setIsMuted(false);
+    isDeafenedReference.current = false;
+    setIsDeafened(false);
+  }, []);
   const toggleMute = useCallback(() => { const nextMuted = !isMuted; streamReference.current?.getAudioTracks().forEach((track) => { track.enabled = !nextMuted; }); setIsMuted(nextMuted); }, [isMuted]);
+  const toggleDeafen = useCallback(() => {
+    const nextDeafened = !isDeafened;
+    remoteAudioReference.current.forEach((audio) => { audio.muted = nextDeafened; });
+    isDeafenedReference.current = nextDeafened;
+    setIsDeafened(nextDeafened);
+  }, [isDeafened]);
 
-  return { isMuted, microphoneError, startMicrophone, stopMicrophone, toggleMute };
+  return { isMuted, isDeafened, microphoneError, startMicrophone, stopMicrophone, toggleMute, toggleDeafen };
 }
