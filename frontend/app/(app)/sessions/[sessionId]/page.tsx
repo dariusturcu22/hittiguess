@@ -1,6 +1,6 @@
 "use client";
 
-import { use, useEffect, useRef, useState } from "react";
+import { use, useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Bell, ChevronLeft, ChevronRight, ExternalLink, Loader2, Music2, Send, UserRound, UsersRound, Volume2 } from "lucide-react";
 
@@ -50,7 +50,12 @@ export default function GameSessionPage({ params }: PageProps) {
   const router = useRouter();
   const sessionQuery = useGetSession(sessionId, { query: { retry: false } });
   const currentUserQuery = useGetCurrentUser();
-  const realtime = useGameSessionRealtime(sessionId);
+  const handleRoundEvent = useCallback((event: { type: string; payload?: { activePlayerId?: number } }) => {
+    if (event.type === "GUESS_LOCKED") {
+      window.dispatchEvent(new CustomEvent("session-guess-locked", { detail: event.payload }));
+    }
+  }, []);
+  const realtime = useGameSessionRealtime(sessionId, handleRoundEvent);
   const session = sessionQuery.data;
   const currentRound = session?.currentRound;
   const currentPlayer = session?.players?.find((player) => player.id === currentUserQuery.data?.id);

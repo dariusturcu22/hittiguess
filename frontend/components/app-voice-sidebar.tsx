@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Headphones, Loader2, Mic, MicOff, Phone, PhoneOff } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 
@@ -23,6 +23,18 @@ export function AppVoiceSidebar() {
   const isInVoice = Boolean(currentMember?.isInVoice);
   const voiceMembers = (activeGroup?.members ?? []).filter((member) => member.isInVoice);
   const voiceMesh = useVoiceMesh(groupId ?? 0, currentUserQuery.data?.id, voiceMembers, isInVoice);
+  const { stopMicrophone } = voiceMesh;
+
+  useEffect(() => {
+    function stopLockedPlayersAudio(event: Event) {
+      const activePlayerId = (event as CustomEvent<{ activePlayerId?: number }>).detail?.activePlayerId;
+      if (activePlayerId === currentUserQuery.data?.id) {
+        stopMicrophone();
+      }
+    }
+    window.addEventListener("session-guess-locked", stopLockedPlayersAudio);
+    return () => window.removeEventListener("session-guess-locked", stopLockedPlayersAudio);
+  }, [currentUserQuery.data?.id, stopMicrophone]);
 
   function refreshVoicePresence() {
     if (groupId) void queryClient.invalidateQueries({ queryKey: getGetGroupQueryKey(groupId) });
