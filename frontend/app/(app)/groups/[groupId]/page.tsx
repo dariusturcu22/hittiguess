@@ -17,6 +17,7 @@ import {
   useGetGroup,
   useLeaveGroup,
   useStartGameSession,
+  useUpdateGroupSettings,
 } from "@/hooks/generated/group-management/group-management";
 import { useGetCurrentUser } from "@/hooks/generated/user-management/user-management";
 import { useGetActiveSessionForGroup } from "@/hooks/generated/game-session/game-session";
@@ -44,6 +45,7 @@ const ORBIT_POSITIONS = [
 ];
 
 const LOADING_MEMBER_COUNT = 4;
+const MINIMUM_WIN_CONDITION = 1;
 
 interface PageProps {
   params: Promise<{ groupId: string }>;
@@ -110,10 +112,14 @@ export default function GroupLobbyPage({ params }: PageProps) {
   const router = useRouter();
   const queryClient = useQueryClient();
   const [copyFeedback, setCopyFeedback] = useState("");
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [selectedDjMode, setSelectedDjMode] = useState<"FIXED" | "ROTATING">("ROTATING");
+  const [winCondition, setWinCondition] = useState(MINIMUM_WIN_CONDITION);
   const groupQuery = useGetGroup(groupId, { query: { retry: false } });
   const { data: currentUser } = useGetCurrentUser();
   const startSession = useStartGameSession();
   const leaveGroup = useLeaveGroup();
+  const updateSettings = useUpdateGroupSettings();
   const activeSessionQuery = useGetActiveSessionForGroup(groupId, {
     query: { enabled: groupQuery.data?.status === "LOCKED", retry: false },
   });
@@ -151,6 +157,30 @@ export default function GroupLobbyPage({ params }: PageProps) {
     leaveGroup.mutate(
       { groupId },
       { onSuccess: () => router.push("/playlists") },
+    );
+  }
+
+  function openSettings() {
+    setSelectedDjMode(groupQuery.data?.djMode ?? "ROTATING");
+    setWinCondition(groupQuery.data?.winConditionCardCount ?? MINIMUM_WIN_CONDITION);
+    setIsSettingsOpen(true);
+  }
+
+  function saveSettings() {
+    const playlistIds = groupQuery.data?.playlists
+      ?.map((playlist) => playlist.id)
+      .filter((playlistId): playlistId is number => playlistId !== undefined);
+
+    updateSettings.mutate(
+      {
+        groupId,
+        data: {
+          playlistIds,
+          djMode: selectedDjMode,
+          winConditionCardCount: winCondition,
+        },
+      },
+      { onSuccess: () => { refreshGroup(); setIsSettingsOpen(false); } },
     );
   }
 
@@ -233,6 +263,32 @@ export default function GroupLobbyPage({ params }: PageProps) {
             isCurrentUser={member.id === currentUser?.id}
           />
         ))}
+        {isSettingsOpen ? (
+          <section className="absolute bottom-7 left-0 z-20 w-full max-w-[400px] rounded-[18px] border-[3px] border-border bg-card/95 p-6 shadow-[6px_6px_0_rgba(0,0,0,0.35)] backdrop-blur sm:left-[228px] sm:p-7">
+            <div className="mb-5 flex items-center justify-between">
+              <h2 className="font-display text-lg text-card-foreground">Settings</h2>
+              <button type="button" onClick={() => setIsSettingsOpen(false)} className="text-muted-foreground hover:text-card-foreground">Close</button>
+            </div>
+            <div className="space-y-4">
+              <label className="flex items-center justify-between gap-3 text-[13px] text-muted-foreground">
+                Playlist
+                <span className="font-semibold text-card-foreground">{featuredPlaylist?.name ?? "No playlist"}</span>
+              </label>
+              <label className="flex items-center justify-between gap-3 text-[13px] text-muted-foreground">
+                DJ mode
+                <select value={selectedDjMode} onChange={(event) => setSelectedDjMode(event.target.value as "FIXED" | "ROTATING")} className="rounded-full border-2 border-border bg-background px-3 py-1.5 text-sm font-semibold text-foreground outline-none">
+                  <option value="ROTATING">Rotating</option>
+                  <option value="FIXED">Fixed</option>
+                </select>
+              </label>
+              <label className="flex items-center justify-between gap-3 text-[13px] text-muted-foreground">
+                Cards to win
+                <input type="number" min={MINIMUM_WIN_CONDITION} value={winCondition} onChange={(event) => setWinCondition(Math.max(MINIMUM_WIN_CONDITION, Number(event.target.value)))} className="w-20 rounded-full border-2 border-border bg-background px-3 py-1.5 text-right text-sm font-semibold text-foreground outline-none" />
+              </label>
+            </div>
+            <div className="mt-6 flex gap-2.5"><button type="button" onClick={saveSettings} disabled={updateSettings.isPending} className="rounded-full bg-primary px-4 py-2.5 font-display text-xs text-primary-foreground disabled:opacity-60">{updateSettings.isPending ? "Saving" : "Save changes"}</button><button type="button" onClick={() => setIsSettingsOpen(false)} className="rounded-full border-2 border-border px-4 py-2.5 text-xs font-semibold text-card-foreground">Close</button></div>
+          </section>
+        ) : null}
       </section>
 
       <footer className="flex flex-wrap items-center gap-3">
@@ -259,9 +315,8 @@ export default function GroupLobbyPage({ params }: PageProps) {
         {isCurrentUserAdmin ? (
           <button
             type="button"
-            disabled
-            title="Group settings are added in the next Batch E step"
-            className="inline-flex items-center gap-2 rounded-full border-2 border-border bg-card px-5 py-3 text-[13px] font-semibold text-card-foreground disabled:opacity-60"
+            onClick={openSettings}
+            className="inline-flex items-center gap-2 rounded-full border-2 border-border bg-card px-5 py-3 text-[13px] font-semibold text-card-foreground"
           >
             <Settings className="size-4" />
             Settings
