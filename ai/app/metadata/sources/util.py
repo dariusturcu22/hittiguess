@@ -8,6 +8,10 @@ from urllib.parse import quote
 METADATA_SOURCE_USER_AGENT = "hittiguess/0.1 (+https://hittiguess.com; contact@hittiguess.com)"
 
 YOUTUBE_ID_PATTERN = re.compile(r"^[a-zA-Z0-9_-]{11}$")
+FEATURED_ARTIST_SUFFIX_PATTERN = re.compile(
+    r"\s*(?:\((?:feat\.?|ft\.?)\s+[^)]*\)|(?:feat\.?|ft\.?)\s+.*)$",
+    re.IGNORECASE,
+)
 
 YOUTUBE_PLAYLIST_ID_MIN_LENGTH = 2
 YOUTUBE_PLAYLIST_ID_MAX_LENGTH = 64
@@ -84,6 +88,11 @@ def clean_youtube_text(text: str | None) -> str:
     cleaned = cleaned.strip()
     cleaned = re.sub(r"\s{2,}", " ", cleaned)
     return cleaned
+
+
+def strip_featured_artist_suffix(title: str) -> str:
+    """Removes a trailing featured-artist annotation from a source query."""
+    return FEATURED_ARTIST_SUFFIX_PATTERN.sub("", title).strip()
 
 
 def escape_lucene(value: str | None) -> str:

@@ -2,6 +2,40 @@ from unittest.mock import MagicMock
 
 import httpx
 import pytest
+
+from app.metadata.schemas import LlmExtractionResult, SongMetadataResult, SubmissionPreCheckResult
+
+
+@pytest.mark.parametrize("confidence", ["HIGH", "Medium", "low", "unexpected"])
+def test_metadata_schema_normalizes_confidence(confidence):
+    extraction_result = LlmExtractionResult(
+        title="Test Song", artist="Test Artist", release_year=1999, confidence=confidence, reasoning="Test reasoning."
+    )
+    metadata_result = SongMetadataResult(
+        title="Test Song",
+        artist="Test Artist",
+        release_year=1999,
+        color="8B5CF6",
+        confidence=confidence,
+        source="test",
+        reasoning="Test reasoning.",
+    )
+    precheck_result = SubmissionPreCheckResult(
+        title="Test Song",
+        artist="Test Artist",
+        color="8B5CF6",
+        contains_injection_attempt=False,
+        injection_reasoning="No injection.",
+        is_song=True,
+        is_compilation=False,
+        classification_confidence=confidence,
+        classification_reasoning="Song.",
+    )
+
+    expected_confidence = confidence.lower() if confidence.lower() in {"low", "medium", "high"} else "low"
+    assert extraction_result.confidence == expected_confidence
+    assert metadata_result.confidence == expected_confidence
+    assert precheck_result.classification_confidence == expected_confidence
 from openai import APIStatusError
 from pydantic import BaseModel
 
