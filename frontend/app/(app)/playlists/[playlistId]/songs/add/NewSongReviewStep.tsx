@@ -21,8 +21,7 @@ export interface PendingSongDetails {
   title: string;
   artist: string;
   releaseYear: string | number;
-  gradientColor1: string;
-  gradientColor2: string;
+  color: string;
   country: CreateSongRequestCountry;
   /** True when the metadata pipeline resolved every field with high confidence. */
   isHighConfidence: boolean;
@@ -50,8 +49,7 @@ export function NewSongReviewStep({
     title: details.title,
     artist: details.artist,
     releaseYear: details.releaseYear,
-    gradientColor1: details.gradientColor1,
-    gradientColor2: details.gradientColor2,
+    color: details.color,
     country: details.country,
   });
 
@@ -87,8 +85,7 @@ export function NewSongReviewStep({
       title: formData.title.trim(),
       artist: formData.artist.trim(),
       releaseYear,
-      gradientColor1: formData.gradientColor1.replace("#", ""),
-      gradientColor2: formData.gradientColor2.replace("#", ""),
+      color: formData.color.replace("#", ""),
       country: formData.country,
     });
   };
@@ -124,8 +121,7 @@ export function NewSongReviewStep({
           artist={formData.artist}
           year={formData.releaseYear}
           title={formData.title}
-          gradientColor1={formData.gradientColor1}
-          gradientColor2={formData.gradientColor2}
+          color={formData.color}
           placeholder={!formData.artist && !formData.releaseYear}
         />
       </div>
@@ -257,53 +253,22 @@ export function NewSongReviewStep({
                 ))}
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="flex items-center gap-3">
-                <Input
-                  type="color"
-                  value={formData.gradientColor1}
-                  onChange={(event) =>
-                    setFormData((prev) => ({
-                      ...prev,
-                      gradientColor1: event.target.value,
-                    }))
-                  }
-                  className="size-8 shrink-0 cursor-pointer overflow-hidden rounded-md border-none p-0 shadow-sm"
-                />
-                <Input
-                  value={formData.gradientColor1}
-                  onChange={(event) =>
-                    setFormData((prev) => ({
-                      ...prev,
-                      gradientColor1: event.target.value,
-                    }))
-                  }
-                  className="h-8 font-mono text-xs"
-                />
-              </div>
-              <div className="flex items-center gap-3">
-                <Input
-                  type="color"
-                  value={formData.gradientColor2}
-                  onChange={(event) =>
-                    setFormData((prev) => ({
-                      ...prev,
-                      gradientColor2: event.target.value,
-                    }))
-                  }
-                  className="size-8 shrink-0 cursor-pointer overflow-hidden rounded-md border-none p-0 shadow-sm"
-                />
-                <Input
-                  value={formData.gradientColor2}
-                  onChange={(event) =>
-                    setFormData((prev) => ({
-                      ...prev,
-                      gradientColor2: event.target.value,
-                    }))
-                  }
-                  className="h-8 font-mono text-xs"
-                />
-              </div>
+            <div className="flex items-center gap-3">
+              <Input
+                type="color"
+                value={formData.color}
+                onChange={(event) =>
+                  setFormData((prev) => ({ ...prev, color: event.target.value }))
+                }
+                className="size-8 shrink-0 cursor-pointer overflow-hidden rounded-md border-none p-0 shadow-sm"
+              />
+              <Input
+                value={formData.color}
+                onChange={(event) =>
+                  setFormData((prev) => ({ ...prev, color: event.target.value }))
+                }
+                className="h-8 font-mono text-xs"
+              />
             </div>
           </CollapsibleContent>
         </Collapsible>

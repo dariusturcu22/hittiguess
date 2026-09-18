@@ -27,7 +27,7 @@ type SecondParameter<T extends (...args: never) => unknown> = Parameters<T>[1];
 
 
 /**
- * @summary Import a list of YouTube video IDs or links immediately; already-known songs are skipped
+ * @summary Import a list of YouTube video IDs or links immediately, optionally linking every resolved or already-known song into a target playlist
  */
 export const importImmediately = (
     bulkImportRequest: BulkImportRequest,
@@ -75,7 +75,7 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
     export type ImportImmediatelyMutationError = unknown
 
     /**
- * @summary Import a list of YouTube video IDs or links immediately; already-known songs are skipped
+ * @summary Import a list of YouTube video IDs or links immediately, optionally linking every resolved or already-known song into a target playlist
  */
 export const useImportImmediately = <TError = unknown,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof importImmediately>>, TError,{data: BulkImportRequest}, TContext>, request?: SecondParameter<typeof customInstance>}

@@ -9,26 +9,28 @@ import Link from "next/link";
 
 import { LogoIcon } from "@/components/logo";
 import { AuthPageBackground } from "@/components/auth-page-background";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 export default function ForgotPasswordPage() {
   const [submitted, setSubmitted] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = (event: React.FormEvent) => {
+    event.preventDefault();
     setSubmitted(true);
   };
 
   return (
-    <section className="flex-1 flex items-center justify-center px-4 py-12 relative overflow-hidden bg-dotted">
+    <section className="auth-surface flex-1 flex items-center justify-center px-4 py-12 relative overflow-hidden bg-dotted">
       <AuthPageBackground
         primaryClassName="bg-[#d49032]/[0.12] dark:bg-[#f9e2af]/[0.14]"
         secondaryClassName="bg-[#8f4fe3]/10 dark:bg-[#cba6f7]/[0.14]"
       />
+      <ThemeToggle className="auth-theme-toggle top-6 right-6 z-20" />
 
-      <div className="w-full max-w-[460px] rounded-[18px] border-[3px] border-border-strong bg-card px-12 pt-11 pb-12 flex flex-col items-center relative z-10 shadow-lg">
-        <div className="mb-[30px]">
+      <div className="w-full max-w-[460px] rounded-[18px] border-[3px] border-border-strong bg-card px-6 sm:px-12 pt-11 pb-12 flex flex-col items-center relative z-10 shadow-lg">
+        <Link href="/" aria-label="hittiguess home" className="mb-[30px]">
           <LogoIcon size="lg" />
-        </div>
+        </Link>
 
         <div className="size-[42px] rounded-full bg-primary/[0.12] dark:bg-primary/[0.16] flex items-center justify-center mb-5">
           <IconLock className="size-5 text-primary" />
@@ -72,7 +74,7 @@ export default function ForgotPasswordPage() {
                 who set up your account for help signing in.
               </p>
             ) : (
-              <Button type="submit" className="w-full">
+              <Button type="submit" className="auth-submit w-full">
                 Send reset link
               </Button>
             )}

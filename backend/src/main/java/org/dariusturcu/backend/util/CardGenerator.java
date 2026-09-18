@@ -54,7 +54,7 @@ public class CardGenerator {
     }
 
     private static void drawFrontCard(Graphics2D graphics2D, int x, int y, int size, Song song) {
-        Color fillColor = decodeColorSafe(song.getGradientColor1());
+        Color fillColor = decodeColorSafe(song.getColor());
         Color textColor = readableTextColorFor(fillColor);
 
         RoundRectangle2D shadowShape = new RoundRectangle2D.Double(

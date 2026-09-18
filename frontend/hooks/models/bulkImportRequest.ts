@@ -8,4 +8,5 @@
 export interface BulkImportRequest {
   playlistLink?: string;
   videoIdsOrLinks?: string[];
+  targetPlaylistId?: number;
 }

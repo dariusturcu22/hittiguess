@@ -5,6 +5,7 @@ import axios from "axios";
 import { useState } from "react";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/shadcn/sonner";
+import { GlobalScrollbar } from "@/components/global-scrollbar";
 
 export default function Providers({ children }: { children: React.ReactNode }) {
   const [queryClient] = useState(
@@ -31,9 +32,9 @@ export default function Providers({ children }: { children: React.ReactNode }) {
         attribute="class"
         defaultTheme="system"
         enableSystem
-        disableTransitionOnChange
       >
         {children}
+        <GlobalScrollbar />
         <Toaster />
       </ThemeProvider>
     </QueryClientProvider>

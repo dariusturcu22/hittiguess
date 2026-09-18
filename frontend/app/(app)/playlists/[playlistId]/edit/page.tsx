@@ -2,7 +2,7 @@
 
 import React, { use } from "react";
 import Link from "next/link";
-import { Crown, Eye, Plus, Trash2, UserX, Ban, ListMusic, Copy, Pencil } from "lucide-react";
+import { Crown, Eye, Plus, Trash2, UserX, Ban, Copy, Pencil } from "lucide-react";
 
 import {
   useGetPlaylist,
@@ -17,6 +17,7 @@ import {
   getGetPlaylistQueryKey,
 } from "@/hooks/generated/playlist-management/playlist-management";
 import type { PlaylistMemberDTO } from "@/hooks/models/playlistMemberDTO";
+import { PlaylistCoverMosaic } from "@/components/playlist-cover-mosaic";
 import { getGetUserPlaylistsQueryKey } from "@/hooks/generated/user-management/user-management";
 import { useQueryClient } from "@tanstack/react-query";
 
@@ -261,11 +262,11 @@ export default function EditPlaylistPage({ params }: PageProps) {
       <div className="flex gap-6 flex-1 min-h-0">
         <div className="flex-[1.5] min-w-0 bg-card border-[3px] border-border-strong rounded-2xl shadow-lg box-border p-[26px] overflow-y-auto">
           <div className="flex gap-[22px] mb-6">
-            <div
-              className="group relative w-[158px] h-[158px] rounded-[20px] shrink-0 border-[3px] border-border-strong shadow-md flex items-center justify-center"
-              style={{ background: `#${currentColor}` }}
-            >
-              <ListMusic className="size-14 text-foreground/40" />
+            <div className="group relative w-[158px] h-[158px] shrink-0">
+              <PlaylistCoverMosaic
+                previewYoutubeIds={(playlist?.songs ?? []).map((song) => song.youtubeId)}
+                className="w-full h-full"
+              />
               <button
                 type="button"
                 className="absolute inset-0 rounded-[17px] bg-background/55 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-card-foreground"
@@ -292,7 +293,8 @@ export default function EditPlaylistPage({ params }: PageProps) {
                       saveName();
                     }
                   }}
-                  className="w-full box-border font-display text-[22px] text-accent bg-background border-2 border-accent rounded-md px-4 py-2.5"
+                  className="w-full box-border font-display text-[22px] bg-background border-2 border-accent rounded-md px-4 py-2.5"
+                  style={{ color: `#${currentColor}` }}
                 />
               </div>
               <div>

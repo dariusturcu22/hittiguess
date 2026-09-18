@@ -14,6 +14,7 @@ import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
 
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
 /**
@@ -64,5 +65,30 @@ public class PlaylistImportService {
         playlistRepository.save(target);
 
         return new ImportFromPlaylistResultDTO(importedCount, skippedCount);
+    }
+
+    /**
+     * Links already-resolved catalog songs into a playlist, skipping any already
+     * present, for a caller (such as an on-the-spot bulk import) that resolved the
+     * songs itself and only needs them attached to a specific playlist afterward.
+     */
+    public void addResolvedSongs(Long targetPlaylistId, List<Song> resolvedSongs) {
+        User currentUser = SecurityUtils.getCurrentUser();
+
+        Playlist target = findPlaylist(targetPlaylistId);
+        playlistAccessService.requireWrite(target, currentUser);
+
+        Set<Long> existingTargetSongIds = new HashSet<>();
+        for (Song targetSong : target.getSongs()) {
+            existingTargetSongIds.add(targetSong.getId());
+        }
+
+        for (Song resolvedSong : resolvedSongs) {
+            if (existingTargetSongIds.add(resolvedSong.getId())) {
+                target.addSong(resolvedSong);
+            }
+        }
+
+        playlistRepository.save(target);
     }
 }

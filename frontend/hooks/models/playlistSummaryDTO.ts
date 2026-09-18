@@ -10,4 +10,5 @@ export interface PlaylistSummaryDTO {
   name: string;
   color: string;
   songCount: number;
+  previewYoutubeIds: string[];
 }

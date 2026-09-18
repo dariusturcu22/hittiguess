@@ -17,8 +17,8 @@ def existing_verified_song(postgres_connection_url):
     try:
         inserted_rows = connection.run(
             """
-            INSERT INTO songs (title, release_year, gradient_color1, gradient_color2, verification_status, confidence, embedding)
-            VALUES ('One More Time', 2000, '8B5CF6', 'EC4899', 'VERIFIED', 'high', :embedding)
+            INSERT INTO songs (title, release_year, color, verification_status, confidence, embedding)
+            VALUES ('One More Time', 2000, '8B5CF6', 'VERIFIED', 'high', :embedding)
             RETURNING id
             """,
             embedding=Vector(SHARED_EMBEDDING),
@@ -49,12 +49,14 @@ def test_submitting_a_near_duplicate_song_reuses_verified_data_instead_of_runnin
     )
     # The real embedding call is mocked, but the rest of the duplicate-detection path
     # (normalization already ran, the SQL similarity query, and reconstructing the result
-    # from the matched row) all run for real against the Postgres test container.
+    # from the matched row) all run for real against the Postgres test container. The
+    # duplicate check runs on the free regex-cleaned title/artist, no LLM call needed
+    # to reach it.
     mocker.patch.object(service, "generate_embedding", return_value=SHARED_EMBEDDING)
+    precheck_mock = mocker.patch.object(service, "_run_precheck")
     musicbrainz_search = mocker.patch.object(service.musicbrainz, "search", return_value=[])
     wikidata_search = mocker.patch.object(service.wikidata, "search", return_value=[])
     wikipedia_search = mocker.patch.object(service.wikipedia, "search", return_value=[])
-    synthesize_mock = mocker.patch.object(service, "synthesize")
 
     result = service.resolve_metadata("https://youtube.com/watch?v=abc12345678")
 
@@ -63,7 +65,7 @@ def test_submitting_a_near_duplicate_song_reuses_verified_data_instead_of_runnin
     assert result.content.artist == "Daft Punk"
     assert result.content.release_year == 2000
     assert result.content.source == service.DUPLICATE_MATCH_SOURCE_LABEL
-    synthesize_mock.assert_not_called()
+    precheck_mock.assert_not_called()
     musicbrainz_search.assert_not_called()
     wikidata_search.assert_not_called()
     wikipedia_search.assert_not_called()

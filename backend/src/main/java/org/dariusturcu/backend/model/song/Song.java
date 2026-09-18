@@ -35,9 +35,7 @@ public class Song {
 
     private String youtubeId;
 
-    private String gradientColor1;
-
-    private String gradientColor2;
+    private String color;
 
     // Nullable, not settable through CreateSongRequest/UpdateSongRequest: populated by the
     // metadata pipeline once it runs, same as confidence and metadataRaw below.

@@ -25,8 +25,7 @@ CREATE_SCHEMA_STATEMENTS = (
         id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
         title VARCHAR(255) NOT NULL,
         release_year INTEGER NOT NULL,
-        gradient_color1 VARCHAR(255),
-        gradient_color2 VARCHAR(255),
+        color VARCHAR(255),
         verification_status VARCHAR(255) NOT NULL DEFAULT 'UNVERIFIED',
         confidence VARCHAR(255),
         embedding vector(1536)

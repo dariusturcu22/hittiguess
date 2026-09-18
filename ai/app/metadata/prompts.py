@@ -160,3 +160,5 @@ def build_four_sources_prompt(
         "contradictory to be confident\n\n"
         f"{_SHARED_TASK_INSTRUCTIONS}"
     )
+
+

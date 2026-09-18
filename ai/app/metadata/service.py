@@ -6,9 +6,10 @@ from app.dedup.embedding_client import generate_embedding
 from app.dedup.normalize import normalize_artist_and_title
 from app.dedup.repository import find_best_verified_match
 from app.dedup.schemas import VerifiedSongMatch
-from app.metadata import content_safety, prompt
-from app.metadata.llm import synthesize
-from app.metadata.schemas import MetadataResolveResponse, SongMetadataResult
+from app.metadata import content_safety
+from app.metadata.content_safety_prompts import build_precheck_prompt
+from app.metadata.llm import extract_structured
+from app.metadata.schemas import MetadataResolveResponse, SongMetadataResult, SubmissionPreCheckResult
 from app.metadata.sources import discogs, musicbrainz, wikidata, wikipedia, youtube
 from app.metadata.sources.util import clean_youtube_text, extract_youtube_playlist_id
 from app.metadata.verification import (
@@ -54,6 +55,24 @@ def _clean_title_and_artist(youtube_data: dict[str, str]) -> tuple[str, str]:
     return title, artist
 
 
+def _run_precheck(youtube_data: dict[str, object]) -> SubmissionPreCheckResult:
+    """One combined DeepSeek call covering title/artist extraction, a
+    display color, the prompt-injection check, and song/compilation
+    classification, run once per submission ahead of any structured source
+    query. These were three separate LLM calls (title/artist extraction,
+    injection check, classification) plus a fourth gpt-5.1 call purely for
+    display title/artist/color; merging them into one is a direct cost cut,
+    and this one call is shared by every route, including the locked one."""
+    prompt = build_precheck_prompt(
+        str(youtube_data.get("video_title", "")),
+        str(youtube_data.get("channel_title", "")),
+        str(youtube_data.get("description", "")),
+        str(youtube_data.get("category_id", "unknown")),
+        youtube_data.get("duration_seconds"),
+    )
+    return extract_structured(prompt, SubmissionPreCheckResult)
+
+
 def _fetch_source(source_search, title: str, artist: str) -> object:
     try:
         return source_search(title, artist)
@@ -87,8 +106,7 @@ def _build_duplicate_match_result(match: VerifiedSongMatch) -> SongMetadataResul
         title=match.title,
         artist=match.artist,
         release_year=match.release_year,
-        gradient_color1=match.gradient_color1 or "",
-        gradient_color2=match.gradient_color2 or "",
+        color=match.color or "",
         confidence=match.confidence or DEFAULT_DUPLICATE_MATCH_CONFIDENCE,
         source=DUPLICATE_MATCH_SOURCE_LABEL,
         reasoning=(
@@ -103,10 +121,12 @@ def _build_duplicate_match_result(match: VerifiedSongMatch) -> SongMetadataResul
 
 def _check_for_duplicate(title: str, artist: str) -> SongMetadataResult | None:
     """Looks up whether this submission is a near-duplicate of an already
-    verified song. Any failure here (an unreachable database, an embedding
-    API error) is swallowed and treated as no match, so the full pipeline
-    below still runs rather than failing the whole submission over a
-    best-effort optimization."""
+    verified song, using the free regex-cleaned title/artist: embedding
+    similarity is fuzzy enough to still cluster correctly without spending
+    an LLM call first just to get a more polished name. Any failure here
+    (an unreachable database, an embedding API error) is swallowed and
+    treated as no match, so the full pipeline below still runs rather than
+    failing the whole submission over a best-effort optimization."""
     try:
         normalized_text = normalize_artist_and_title(artist, title)
         embedding = generate_embedding(normalized_text)
@@ -121,21 +141,13 @@ def _check_for_duplicate(title: str, artist: str) -> SongMetadataResult | None:
     return _build_duplicate_match_result(best_match)
 
 
-def _run_verification_pipeline(
-    youtube_data: dict[str, str],
-    title: str,
-    artist: str,
-) -> SongMetadataResult:
-    """Runs story 18's lock-or-LLM verification pipeline alongside the
-    existing synthesize call (which handles title, artist, and gradient
-    colors). The verification pipeline determines release_year, confidence,
-    source, reasoning, and verification_status; synthesize's release_year
-    is discarded in favor of the verified one.
-
-    The three structured sources are gathered concurrently first. Wikipedia
-    is fetched only when those three don't lock, matching the conditional
-    design that keeps 53% of songs LLM-free. The synthesize call remains for
-    gradient colors until story 40 restructures the full submission pipeline."""
+def _run_verification_pipeline(title: str, artist: str, color: str) -> SongMetadataResult:
+    """Runs story 18's lock-or-LLM verification pipeline: query MusicBrainz,
+    Discogs, and Wikidata always (free, deterministic, zero LLM cost); if
+    all three agree exactly, lock with no further LLM call; otherwise fetch
+    Wikipedia and run four-source reconciliation. title, artist, and color
+    already came from the shared precheck call that ran once before
+    content-safety evaluation, not from a separate display-synthesis call."""
     structured_candidates = _gather_structured_sources(title, artist)
     musicbrainz_candidates = structured_candidates["musicbrainz"]
     discogs_candidates = structured_candidates["discogs"]
@@ -180,22 +192,11 @@ def _run_verification_pipeline(
         ),
     }
 
-    all_metadata = {
-        "youtube": youtube_data,
-        "musicbrainz": musicbrainz_candidates,
-        "discogs": discogs_candidates,
-        "wikidata": wikidata_candidates,
-        "wikipedia": wikipedia_entries,
-    }
-    built_prompt = prompt.build(all_metadata)
-    display_result = synthesize(built_prompt)
-
     return SongMetadataResult(
-        title=display_result.title,
-        artist=display_result.artist,
+        title=title,
+        artist=artist,
         release_year=release_year,
-        gradient_color1=display_result.gradient_color1,
-        gradient_color2=display_result.gradient_color2,
+        color=color,
         confidence=confidence,
         source=source_label,
         reasoning=reasoning_by_route[route],
@@ -220,24 +221,45 @@ def expand_playlist(playlist_url_or_id: str) -> list[str]:
 def resolve_metadata(youtube_url: str) -> MetadataResolveResponse:
     try:
         youtube_data = youtube.fetch_youtube_metadata(youtube_url)
-        title, artist = _clean_title_and_artist(youtube_data)
+        category_id = str(youtube_data.get("category_id", "unknown"))
+        duration_seconds = youtube_data.get("duration_seconds")
 
-        duplicate_match_result = _check_for_duplicate(title, artist)
+        if content_safety.fails_hard_filter(category_id, duration_seconds):
+            return MetadataResolveResponse(
+                status=REJECTED_STATUS,
+                model=settings.deepinfra_model,
+                content=None,
+                rejection_reason=content_safety.RejectionReason.NOT_MUSIC,
+                rejection_detail=content_safety.NOT_MUSIC_REJECTION_DETAIL,
+            )
+
+        regex_title, regex_artist = _clean_title_and_artist(youtube_data)
+
+        duplicate_match_result = _check_for_duplicate(regex_title, regex_artist)
         if duplicate_match_result is not None:
-            return MetadataResolveResponse(status="SUCCESS", model=settings.openai_model, content=duplicate_match_result)
+            return MetadataResolveResponse(
+                status="SUCCESS", model=settings.deepinfra_model, content=duplicate_match_result
+            )
 
-        content_safety_outcome = content_safety.evaluate(youtube_data)
+        precheck = _run_precheck(youtube_data)
+
+        content_safety_outcome = content_safety.evaluate_precheck(
+            precheck, str(youtube_data.get("video_title", "")), str(youtube_data.get("channel_title", ""))
+        )
         if content_safety_outcome.rejected:
             return MetadataResolveResponse(
                 status=REJECTED_STATUS,
-                model=settings.openai_model,
+                model=settings.deepinfra_model,
                 content=None,
                 rejection_reason=content_safety_outcome.rejection_reason,
                 rejection_detail=content_safety_outcome.rejection_detail,
             )
 
-        result = _run_verification_pipeline(youtube_data, title, artist)
-        return MetadataResolveResponse(status="SUCCESS", model=settings.openai_model, content=result)
+        title = precheck.title or regex_title
+        artist = precheck.artist or regex_artist
+
+        result = _run_verification_pipeline(title, artist, precheck.color)
+        return MetadataResolveResponse(status="SUCCESS", model=settings.deepinfra_model, content=result)
     except Exception as pipeline_error:
         logger.warning("Metadata pipeline failed: %s", pipeline_error)
-        return MetadataResolveResponse(status="ERROR", model=settings.openai_model, content=None)
+        return MetadataResolveResponse(status="ERROR", model=settings.deepinfra_model, content=None)

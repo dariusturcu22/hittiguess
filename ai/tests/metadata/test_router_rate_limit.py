@@ -17,13 +17,12 @@ TOO_MANY_REQUESTS_STATUS_CODE = 429
 def _fake_resolve_response():
     return MetadataResolveResponse(
         status="SUCCESS",
-        model=settings.openai_model,
+        model=settings.deepinfra_model,
         content=SongMetadataResult(
             title="Test Song",
             artist="Test Artist",
             release_year=1999,
-            gradient_color1="8B5CF6",
-            gradient_color2="EC4899",
+            color="8B5CF6",
             confidence="high",
             source="MusicBrainz",
             reasoning="Matched exactly.",

@@ -15,8 +15,7 @@ export interface SongDTO {
   title: string;
   releaseYear: number;
   youtubeId: string;
-  gradientColor1?: string;
-  gradientColor2?: string;
+  color?: string;
   genre?: string;
   country?: SongDTOCountry;
   verificationStatus: SongDTOVerificationStatus;

@@ -135,14 +135,14 @@ export default function ImportFromPlaylistSelectPage({ params }: PageProps) {
                         <span className="w-2.5 h-2.5 rounded-full bg-destructive" />
                       ) : null}
                     </span>
-                    <span
-                      className="w-11 h-11 rounded-[10px] shrink-0 flex items-center justify-center"
-                      style={{ background: candidate.color }}
-                    >
+                    <span className="w-11 h-11 rounded-[10px] shrink-0 flex items-center justify-center bg-secondary">
                       <ListMusic className="size-[18px] text-foreground/40" />
                     </span>
                     <span className="flex-1 min-w-0">
-                      <span className="block text-sm text-card-foreground truncate">
+                      <span
+                        className="block text-sm truncate"
+                        style={{ color: candidate.color }}
+                      >
                         {candidate.name}
                       </span>
                       <span className="mt-0.5 block text-[12px] text-muted-foreground">

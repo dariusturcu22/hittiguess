@@ -9,8 +9,8 @@ from app.dedup.database import _parse_database_url
 EMBEDDING_DIMENSIONS = 1536
 
 _INSERT_SONG_QUERY = """
-    INSERT INTO songs (title, release_year, gradient_color1, gradient_color2, verification_status, confidence, embedding)
-    VALUES (:title, :release_year, '8B5CF6', 'EC4899', :verification_status, 'high', :embedding)
+    INSERT INTO songs (title, release_year, color, verification_status, confidence, embedding)
+    VALUES (:title, :release_year, '8B5CF6', :verification_status, 'high', :embedding)
     RETURNING id
 """
 _INSERT_SONG_ARTIST_QUERY = """

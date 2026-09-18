@@ -6,7 +6,6 @@ from pydantic import BaseModel
 from app.clients.deepinfra_client import client as deepinfra_client
 from app.clients.openai_client import client
 from app.config import settings
-from app.metadata.schemas import SongMetadataResult
 from app.observability.error_reporting import report_openai_failure
 
 # Non-zero temperature produces real run-to-run answer variance on close
@@ -18,33 +17,16 @@ EXTRACTION_TOOL_NAME = "extract_structured_result"
 ResponseModel = TypeVar("ResponseModel", bound=BaseModel)
 
 
-def synthesize(prompt: str) -> SongMetadataResult:
-    try:
-        completion = client.chat.completions.parse(
-            model=settings.openai_model,
-            temperature=0.1,
-            messages=[{"role": "user", "content": prompt}],
-            response_format=SongMetadataResult,
-        )
-    except Exception as openai_error:
-        report_openai_failure(openai_error)
-        raise
-
-    parsed = completion.choices[0].message.parsed
-    if parsed is None:
-        raise ValueError("LLM response did not match the expected schema")
-
-    return parsed
-
-
 def synthesize_with_model(prompt: str, model: str, response_model: type[ResponseModel]) -> ResponseModel:
     """Runs a structured-output call against OpenAI with an explicit model
     and response schema. Used by the four-source reconciliation step, which
-    runs on gpt-5-nano rather than the main synthesis model."""
+    runs on gpt-5-nano rather than the main synthesis model. No explicit
+    temperature: gpt-5-nano rejects any value other than its default (1),
+    confirmed live against a real 400 from the API, unlike the main
+    synthesis and extraction models this module also calls."""
     try:
         completion = client.chat.completions.parse(
             model=model,
-            temperature=STRUCTURED_OUTPUT_TEMPERATURE,
             messages=[{"role": "user", "content": prompt}],
             response_format=response_model,
         )

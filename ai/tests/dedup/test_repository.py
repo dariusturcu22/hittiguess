@@ -27,8 +27,7 @@ def test_find_best_verified_match_builds_a_match_from_the_returned_row(mocker):
         artist="Daft Punk",
         title="One More Time",
         release_year=2000,
-        gradient_color1="8B5CF6",
-        gradient_color2="EC4899",
+        color="8B5CF6",
         confidence="high",
         cosine_distance=0.02,
     )
