@@ -14,6 +14,7 @@ import {
   useGetCurrentUser,
   useJoinPlaylist,
 } from "@/hooks/generated/user-management/user-management";
+import { useGetInvitePreview } from "@/hooks/generated/playlist-management/playlist-management";
 
 interface PageProps {
   params: Promise<{ inviteCode: string }>;
@@ -25,6 +26,7 @@ export default function JoinPlaylistPage({ params }: PageProps) {
   const queryClient = useQueryClient();
 
   const { data: currentUser } = useGetCurrentUser();
+  const { data: invitePreview } = useGetInvitePreview(inviteCode);
   const { mutate: joinPlaylist, isPending } = useJoinPlaylist();
 
   const [displayName, setDisplayName] = useState("");
@@ -94,12 +96,29 @@ export default function JoinPlaylistPage({ params }: PageProps) {
         </h1>
 
         <div className="mb-5.5 flex w-full flex-col items-center gap-3 rounded-2xl border-2 border-border bg-background p-4.5 text-center sm:flex-row sm:gap-4 sm:text-left">
-          <div className="flex size-[76px] shrink-0 items-center justify-center rounded-2xl border-[3px] border-border-strong bg-accent">
+          <div
+            className="flex size-[76px] shrink-0 items-center justify-center rounded-2xl border-[3px] border-border-strong"
+            style={{ backgroundColor: invitePreview?.color ? `#${invitePreview.color}` : undefined }}
+          >
             <ListMusic className="size-8 text-accent-foreground/40" />
           </div>
-          <div className="min-w-0 flex-1 text-sm text-muted-foreground">
-            You&apos;ve been invited to join a playlist. Its name and songs
-            will show up once you&apos;re in.
+          <div className="min-w-0 flex-1">
+            <div className="font-display text-base text-accent">
+              {invitePreview?.name ?? "Playlist"}
+            </div>
+            <div className="mt-1 text-xs text-muted-foreground">
+              {invitePreview?.songCount ?? 0} songs
+            </div>
+            <div className="mt-2 flex -space-x-1.5">
+              {(invitePreview?.members ?? []).slice(0, 4).map((member) => (
+                <span
+                  key={member.userId}
+                  className="flex size-6 items-center justify-center rounded-full border-2 border-background bg-primary font-display text-[8px] text-primary-foreground"
+                >
+                  {(member.displayName || member.username || "?").charAt(0).toUpperCase()}
+                </span>
+              ))}
+            </div>
           </div>
         </div>
 

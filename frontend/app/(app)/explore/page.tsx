@@ -8,6 +8,7 @@ import {
 } from "@/hooks/generated/playlist-management/playlist-management";
 import type { PublicPlaylistSummaryDTO } from "@/hooks/models/publicPlaylistSummaryDTO";
 import { PhantomEmptyState } from "@/components/phantom-empty-state";
+import { getPlaylistMosaicColors } from "@/lib/playlist-mosaic-colors";
 
 function PlayIcon() {
   return (
@@ -26,17 +27,20 @@ function PlayIcon() {
 function PlaylistCard({ playlist }: { playlist: PublicPlaylistSummaryDTO }) {
   const saveMutation = useSavePlaylist();
   const saved = saveMutation.isSuccess;
+  const tileColors = getPlaylistMosaicColors(playlist.color);
 
   return (
     <div className="bg-card border-[3px] border-border-strong rounded-xl shadow-lg overflow-hidden flex flex-col">
-      {/* The public-playlist DTO carries a single cover colour, not per-song
-          artwork, so the cover is one tinted panel rather than the mockup's
-          decorative four-tile mosaic. */}
-      <div
-        className="aspect-square flex items-center justify-center"
-        style={{ background: `#${playlist.color}` }}
-      >
-        <PlayIcon />
+      <div className="grid aspect-square grid-cols-2 grid-rows-2 gap-0.5 bg-border-strong">
+        {tileColors.map((color) => (
+          <div
+            key={color}
+            className="flex items-center justify-center"
+            style={{ backgroundColor: color }}
+          >
+            <PlayIcon />
+          </div>
+        ))}
       </div>
       <div className="px-[18px] pt-4 pb-[18px] flex flex-col gap-1">
         <div className="font-display text-base text-card-foreground truncate">

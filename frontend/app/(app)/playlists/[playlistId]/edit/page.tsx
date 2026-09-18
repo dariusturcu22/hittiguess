@@ -2,7 +2,7 @@
 
 import React, { use } from "react";
 import Link from "next/link";
-import { Crown, Eye, Plus, Trash2, UserX, Ban, ListMusic } from "lucide-react";
+import { Crown, Eye, Plus, Trash2, UserX, Ban, ListMusic, Copy, Pencil } from "lucide-react";
 
 import {
   useGetPlaylist,
@@ -44,6 +44,13 @@ const GRANT_DEFINITIONS: { key: GrantKey; label: string; icon: React.ReactNode }
 function memberInitial(member: PlaylistMemberDTO): string {
   const source = member.displayName || member.username || "?";
   return source.charAt(0).toUpperCase();
+}
+
+function joinedLabel(joinedAt?: string): string {
+  if (!joinedAt) {
+    return "Member";
+  }
+  return `Joined ${new Intl.DateTimeFormat("en", { month: "short", year: "numeric" }).format(new Date(joinedAt))}`;
 }
 
 function MemberRow({
@@ -114,7 +121,7 @@ function MemberRow({
           {member.displayName || member.username}
         </span>
         <span className="block text-[10.5px] text-muted-foreground mt-0.5">
-          {member.username}
+            {joinedLabel(member.joinedAt)}
         </span>
       </span>
 
@@ -182,6 +189,7 @@ export default function EditPlaylistPage({ params }: PageProps) {
   const unpublishMutation = useUnpublishPlaylist();
 
   const [nameDraft, setNameDraft] = React.useState("");
+  const [descriptionDraft, setDescriptionDraft] = React.useState("");
   React.useEffect(() => {
     if (playlist?.name != null) {
       setNameDraft(playlist.name);
@@ -208,6 +216,10 @@ export default function EditPlaylistPage({ params }: PageProps) {
       { playlistId, data: { name: trimmed } },
       { onSuccess: invalidatePlaylist },
     );
+  }
+
+  function resetName() {
+    setNameDraft(playlist?.name ?? "");
   }
 
   function selectColor(color: string) {
@@ -250,10 +262,17 @@ export default function EditPlaylistPage({ params }: PageProps) {
         <div className="flex-[1.5] min-w-0 bg-card border-[3px] border-border-strong rounded-2xl shadow-lg box-border p-[26px] overflow-y-auto">
           <div className="flex gap-[22px] mb-6">
             <div
-              className="w-[158px] h-[158px] rounded-[20px] shrink-0 border-[3px] border-border-strong shadow-md flex items-center justify-center"
+              className="group relative w-[158px] h-[158px] rounded-[20px] shrink-0 border-[3px] border-border-strong shadow-md flex items-center justify-center"
               style={{ background: `#${currentColor}` }}
             >
               <ListMusic className="size-14 text-foreground/40" />
+              <button
+                type="button"
+                className="absolute inset-0 rounded-[17px] bg-background/55 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-card-foreground"
+                aria-label="Edit playlist cover"
+              >
+                <Pencil className="size-6" />
+              </button>
             </div>
             <div className="flex-1 min-w-0 flex flex-col justify-center gap-4">
               <div>
@@ -268,10 +287,9 @@ export default function EditPlaylistPage({ params }: PageProps) {
                   type="text"
                   value={nameDraft}
                   onChange={(event) => setNameDraft(event.target.value)}
-                  onBlur={saveName}
                   onKeyDown={(event) => {
                     if (event.key === "Enter") {
-                      event.currentTarget.blur();
+                      saveName();
                     }
                   }}
                   className="w-full box-border font-display text-[22px] text-accent bg-background border-2 border-accent rounded-md px-4 py-2.5"
@@ -310,10 +328,19 @@ export default function EditPlaylistPage({ params }: PageProps) {
             <label className="block mb-[7px] text-[11px] font-bold uppercase tracking-[0.5px] text-muted-foreground">
               Invite link
             </label>
-            <div className="flex items-center gap-2 bg-background border-2 border-secondary rounded-md py-3 px-4">
+            <div className="flex items-center gap-2 bg-background border-2 border-secondary rounded-md py-2 pl-4 pr-2">
               <span className="flex-1 min-w-0 text-[12.5px] text-muted-foreground truncate">
                 {inviteLink || "..."}
               </span>
+              <button
+                type="button"
+                onClick={() => inviteLink && navigator.clipboard.writeText(inviteLink)}
+                disabled={!inviteLink}
+                className="size-8 rounded-lg bg-secondary text-card-foreground flex items-center justify-center disabled:opacity-50"
+                aria-label="Copy invite link"
+              >
+                <Copy className="size-3.5" />
+              </button>
             </div>
             <p className="text-[11px] text-muted-foreground/70 mt-2">
               Fixed for this playlist&apos;s lifetime, it doesn&apos;t change.
@@ -347,6 +374,38 @@ export default function EditPlaylistPage({ params }: PageProps) {
             </button>
           </div>
 
+          <div className="mb-4">
+            <label htmlFor="playlist-description" className="block mb-[7px] text-[11px] font-bold uppercase tracking-[0.5px] text-muted-foreground">
+              Description
+            </label>
+            <textarea
+              id="playlist-description"
+              rows={3}
+              value={descriptionDraft}
+              onChange={(event) => setDescriptionDraft(event.target.value)}
+              placeholder="Tell people what this playlist sounds like."
+              className="w-full resize-none box-border bg-background border-2 border-secondary rounded-md px-4 py-3 text-[13px] leading-relaxed text-card-foreground"
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-3 mb-5">
+            <button
+              type="button"
+              onClick={resetName}
+              className="px-5 py-3 rounded-full border-2 border-secondary text-[12px] font-semibold text-muted-foreground order-2"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={saveName}
+              disabled={updatePlaylist.isPending || nameDraft.trim().length === 0}
+              className="px-6 py-3 rounded-full bg-primary text-primary-foreground font-display text-[12px] disabled:opacity-60 order-1"
+            >
+              {updatePlaylist.isPending ? "Saving..." : "Save changes"}
+            </button>
+          </div>
+
           <div className="h-0.5 bg-secondary mb-5" />
 
           <div className="bg-destructive/[0.08] border-2 border-destructive rounded-2xl box-border px-[18px] py-[15px] flex items-center justify-between gap-2.5">
@@ -355,8 +414,7 @@ export default function EditPlaylistPage({ params }: PageProps) {
                 Delete this playlist
               </div>
               <div className="text-[11px] text-muted-foreground mt-[3px]">
-                Can&apos;t be undone. All songs and history are lost. The backend
-                delete endpoint does not exist yet.
+                Can&apos;t be undone. All songs and history are lost.
               </div>
             </div>
             <button

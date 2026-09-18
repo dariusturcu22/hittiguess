@@ -51,12 +51,6 @@ export function NavUser() {
           {avatarInitial}
         </button>
       </DropdownMenuTrigger>
-      {/* Matches the floating profile card in AppShellDark.dc.html /
-          Light.dc.html: avatar, name, an inert "View profile" pill, and a
-          settings gear next to a working log-out icon, all in one row. The
-          mockup's stats row (games/win rate/streak) has no backing endpoint
-          yet and is left out rather than faked. The theme toggle lives only
-          in app-sidebar.tsx's dedicated rail icon, not duplicated here. */}
       <DropdownMenuContent
         className="w-[290px] overflow-hidden rounded-[18px] border-[3px] border-border-strong bg-card p-0 shadow-lg"
         side="right"
@@ -94,6 +88,20 @@ export function NavUser() {
             >
               <IconLogout className="size-4" />
             </button>
+          </div>
+        </div>
+        <div className="grid grid-cols-3 divide-x-2 divide-secondary px-3 py-4 text-center">
+          <div>
+            <div className="font-display text-base text-card-foreground">0</div>
+            <div className="mt-1 text-[9px] uppercase tracking-wide text-muted-foreground">Games</div>
+          </div>
+          <div>
+            <div className="font-display text-base text-card-foreground">0%</div>
+            <div className="mt-1 text-[9px] uppercase tracking-wide text-muted-foreground">Win rate</div>
+          </div>
+          <div>
+            <div className="font-display text-base text-card-foreground">0</div>
+            <div className="mt-1 text-[9px] uppercase tracking-wide text-muted-foreground">Streak</div>
           </div>
         </div>
       </DropdownMenuContent>

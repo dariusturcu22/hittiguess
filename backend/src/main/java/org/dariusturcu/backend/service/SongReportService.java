@@ -165,6 +165,11 @@ public class SongReportService {
     private AdminReviewItemDTO buildReportedItem(Song song, List<SongReport> reports, long confirmationCount) {
         Integer convergingYear = findConvergingYear(reports);
         boolean reportsConverge = convergingYear != null;
+        long convergingReportCount = convergingYear == null
+                ? 0
+                : reports.stream()
+                        .filter(report -> convergingYear.equals(report.getSuggestedCorrectYear()))
+                        .count();
         ReviewPriorityTier tier = reportsConverge
                 ? ReviewPriorityTier.CONVERGING_REPORTS
                 : ReviewPriorityTier.REPORTED_NO_CONVERGENCE;
@@ -176,12 +181,16 @@ public class SongReportService {
         return new AdminReviewItemDTO(
                 song.getId(),
                 song.getTitle(),
+                song.getArtists().stream()
+                        .map(songArtist -> songArtist.getName())
+                        .collect(Collectors.joining(", ")),
                 song.getReleaseYear(),
                 song.getVerificationStatus(),
                 tier,
                 reports.size(),
                 reportsConverge,
                 convergingYear,
+                convergingReportCount,
                 confirmationCount,
                 reportSummaries);
     }
@@ -208,12 +217,16 @@ public class SongReportService {
             itemsBySongId.put(song.getId(), new AdminReviewItemDTO(
                     song.getId(),
                     song.getTitle(),
+                    song.getArtists().stream()
+                            .map(songArtist -> songArtist.getName())
+                            .collect(Collectors.joining(", ")),
                     song.getReleaseYear(),
                     song.getVerificationStatus(),
                     tier,
                     0,
                     false,
                     null,
+                    0,
                     confirmationCount,
                     List.of()));
         }

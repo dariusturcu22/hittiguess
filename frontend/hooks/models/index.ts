@@ -30,6 +30,8 @@ export * from './adminCatalogSeedingRequest';
 export * from './adminReviewItemDTO';
 export * from './adminReviewItemDTOPriorityTier';
 export * from './adminReviewItemDTOVerificationStatus';
+export * from './backlogQueueItemDTO';
+export * from './backlogQueueItemDTOStatus';
 export * from './backlogStatusDTO';
 export * from './betDTO';
 export * from './bulkImportRequest';

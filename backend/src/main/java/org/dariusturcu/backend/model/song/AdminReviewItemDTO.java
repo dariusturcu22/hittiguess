@@ -11,12 +11,14 @@ import java.util.List;
 public record AdminReviewItemDTO(
         Long songId,
         String songTitle,
+        String artistName,
         int releaseYear,
         VerificationStatus verificationStatus,
         ReviewPriorityTier priorityTier,
         long openReportCount,
         boolean reportsConverge,
         Integer convergingYear,
+        long convergingReportCount,
         long confirmationCount,
         List<ReportSummaryDTO> openReports) {
 }

@@ -1,17 +1,14 @@
 "use client";
 
 import * as React from "react";
-import axios from "axios";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 
 import { Button } from "@/components/shadcn/button";
-import { Input } from "@/components/shadcn/input";
 import { PlaylistSummaryDTO } from "@/hooks/models";
 import {
   useCreatePlaylist,
-  useJoinPlaylist,
   getGetUserPlaylistsQueryKey,
   useGetUserPlaylists,
 } from "@/hooks/generated/user-management/user-management";
@@ -124,12 +121,7 @@ export default function PlaylistsPage() {
 
   const { mutate: createPlaylist, isPending: isCreating } =
     useCreatePlaylist();
-  const { mutate: joinPlaylist, isPending: isJoining } = useJoinPlaylist();
-
   const [searchQuery, setSearchQuery] = React.useState("");
-  const [joinExpanded, setJoinExpanded] = React.useState(false);
-  const [joinCode, setJoinCode] = React.useState("");
-  const [joinError, setJoinError] = React.useState("");
 
   const handleCreatePlaylist = () => {
     createPlaylist(undefined, {
@@ -140,32 +132,6 @@ export default function PlaylistsPage() {
         router.push(`/playlists/${newPlaylist.id}`);
       },
     });
-  };
-
-  const handleJoinPlaylist = () => {
-    if (!joinCode.trim()) {
-      setJoinError("Enter a valid invite code");
-      return;
-    }
-
-    joinPlaylist(
-      { playlistInviteCode: joinCode, data: {} },
-      {
-        onSuccess: (playlist) => {
-          queryClient.invalidateQueries({
-            queryKey: getGetUserPlaylistsQueryKey(),
-          });
-          setJoinExpanded(false);
-          router.push(`/playlists/${playlist.id}`);
-        },
-        onError: (error: unknown) => {
-          const message = axios.isAxiosError<{ message?: string }>(error)
-            ? error.response?.data?.message
-            : undefined;
-          setJoinError(message || "Playlist not found");
-        },
-      },
-    );
   };
 
   const visiblePlaylists = (playlists ?? []).filter((playlist) =>
@@ -183,18 +149,6 @@ export default function PlaylistsPage() {
         </h1>
 
         <div className="flex flex-wrap items-center gap-3">
-          {/* The mockup has no equivalent for "Join playlist"; it lives here
-              as a secondary text action next to Create playlist, expanding
-              an inline invite-code field, since there's nothing else on this
-              screen to anchor it to. */}
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            onClick={() => setJoinExpanded((prev) => !prev)}
-          >
-            Join playlist
-          </Button>
           <Button
             type="button"
             onClick={handleCreatePlaylist}
@@ -205,36 +159,6 @@ export default function PlaylistsPage() {
           </Button>
         </div>
       </div>
-
-      {joinExpanded && (
-        <div className="mb-7 -mt-3 flex flex-col gap-1.5 sm:flex-row sm:items-center">
-          <Input
-            autoFocus
-            placeholder="Invite code"
-            value={joinCode}
-            onChange={(event) => {
-              setJoinCode(event.target.value);
-              setJoinError("");
-            }}
-            onKeyDown={(event) => {
-              if (event.key === "Enter") handleJoinPlaylist();
-              if (event.key === "Escape") setJoinExpanded(false);
-            }}
-            className="h-10 max-w-[280px] rounded-full"
-          />
-          <Button
-            type="button"
-            size="sm"
-            onClick={handleJoinPlaylist}
-            disabled={isJoining}
-          >
-            {isJoining ? "Joining..." : "Join"}
-          </Button>
-          {joinError && (
-            <p className="text-xs text-destructive">{joinError}</p>
-          )}
-        </div>
-      )}
 
       <div className="mb-7 flex flex-wrap items-center gap-4">
         <div className="relative w-full max-w-[360px]">

@@ -19,6 +19,8 @@ public interface PendingImportRepository extends JpaRepository<PendingImport, Lo
 
     long countByStatusAndProcessedAtAfter(PendingImportStatus status, Instant threshold);
 
+    List<PendingImport> findTop7ByOrderByEnqueuedAtDesc();
+
     @Query("""
             select pendingImport.youtubeId
             from PendingImport pendingImport

@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -232,7 +231,7 @@ export function SongReadOnlyView({
   );
 
   return (
-    <div className="flex w-full max-w-[560px] flex-col items-center">
+    <div className="flex w-full max-w-[640px] flex-col items-center">
       {isNeedsReview && (
         <Badge variant="warning" className="mb-5 gap-1.5 py-2 text-[11px]">
           <AlertTriangle className="size-3" />
@@ -300,12 +299,6 @@ export function SongReadOnlyView({
           : "Added by a deleted account"}
       </div>
 
-      <Link
-        href={backPath}
-        className="mt-4 text-xs text-muted-foreground hover:text-foreground"
-      >
-        ‹ Back to playlist
-      </Link>
     </div>
   );
 }

@@ -8,6 +8,7 @@ import { Moon, Sun } from "lucide-react";
 
 import { LogoBars } from "@/components/logo";
 import { NavUser } from "@/components/nav-user";
+import { useGetActiveMembership } from "@/hooks/generated/group-management/group-management";
 
 const RAIL_DIVIDER_CLASSES = "w-8 h-0.5 my-3.5 shrink-0 rounded-full bg-sidebar-border";
 
@@ -99,9 +100,18 @@ export function AppSidebar() {
   const pathname = usePathname();
   const { resolvedTheme, setTheme } = useTheme();
   const [mounted, setMounted] = React.useState(false);
+  const [isImporting, setIsImporting] = React.useState(false);
+  const { data: activeGroup } = useGetActiveMembership({
+    query: { retry: false },
+  });
 
   React.useEffect(() => {
     setMounted(true);
+    const updateImportState = (event: Event) => {
+      setIsImporting(Boolean((event as CustomEvent<boolean>).detail));
+    };
+    window.addEventListener("playlist-import-progress", updateImportState);
+    return () => window.removeEventListener("playlist-import-progress", updateImportState);
   }, []);
 
   const isPlaylistsActive = pathname?.startsWith("/playlists") ?? false;
@@ -109,9 +119,6 @@ export function AppSidebar() {
 
   return (
     <aside className="flex w-[76px] shrink-0 flex-col items-center border-r-[3px] border-sidebar-border bg-sidebar py-5">
-      {/* A right-side voice-participant rail and a "lobby active" state on
-          the group lobby icon below attach here once group sessions
-          (stories 9-13, 39) ship; neither exists yet. */}
       <div className="flex h-[22px] items-center justify-center">
         <LogoBars />
       </div>
@@ -156,12 +163,20 @@ export function AppSidebar() {
       <div className={RAIL_DIVIDER_CLASSES} />
 
       <div
-        className={`${RAIL_ICON_BASE_CLASSES} ${RAIL_ICON_INTERACTIVE_CLASSES}`}
-        title="Group lobby"
-        aria-disabled="true"
+        className={`${RAIL_ICON_BASE_CLASSES} ${
+          activeGroup ? "border-2 border-primary text-primary" : RAIL_ICON_INTERACTIVE_CLASSES
+        }`}
+        title={activeGroup ? "Group lobby (active session)" : "Group lobby"}
+        aria-disabled={!activeGroup}
       >
         <GroupLobbyIcon />
       </div>
+
+      {isImporting ? (
+        <div className="mt-3 flex size-[30px] items-center justify-center rounded-full bg-primary text-primary-foreground" title="Import in progress">
+          <span className="size-3 rounded-full border-2 border-current border-t-transparent animate-spin" />
+        </div>
+      ) : null}
 
       <div className="flex-1" />
 

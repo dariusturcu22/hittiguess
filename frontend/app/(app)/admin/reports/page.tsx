@@ -50,7 +50,7 @@ function QueueRow({
           {item.songTitle}
         </span>
         <span className="mt-0.5 block text-xs text-muted-foreground truncate">
-          currently {item.releaseYear ?? "unknown"}, {item.verificationStatus}
+          {item.artistName || "Unknown artist"} · {item.openReportCount ?? 0} reports
         </span>
       </span>
       <svg
@@ -151,7 +151,7 @@ function ReportDetail({
         <TierChip tier={item.priorityTier} />
       </div>
       <div className="text-[13px] text-muted-foreground mb-[22px]">
-        currently locked at {item.releaseYear ?? "unknown"},{" "}
+        {item.artistName || "Unknown artist"} · currently locked at {item.releaseYear ?? "unknown"},{" "}
         {item.verificationStatus} &middot; {tierLabel}
       </div>
 
@@ -161,7 +161,7 @@ function ReportDetail({
           label="Convergence"
           value={
             item.reportsConverge && item.convergingYear != null
-              ? `Agree on ${item.convergingYear}`
+              ? `${item.convergingReportCount ?? 0} of ${item.openReportCount ?? 0} agree on ${item.convergingYear}`
               : "No convergence"
           }
           emphasisClassName={

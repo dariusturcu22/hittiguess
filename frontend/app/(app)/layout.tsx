@@ -1,4 +1,5 @@
 import { AppSidebar } from "@/components/app-sidebar";
+import { AppVoiceSidebar } from "@/components/app-voice-sidebar";
 
 export default function AppLayout({
   children,
@@ -11,6 +12,7 @@ export default function AppLayout({
       <div className="bg-dotted h-full min-w-0 flex-1 overflow-y-auto">
         {children}
       </div>
+      <AppVoiceSidebar />
     </div>
   );
 }
