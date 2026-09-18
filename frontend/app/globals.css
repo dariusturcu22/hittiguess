@@ -40,6 +40,10 @@ html.theme-transition * {
   transition: transform 260ms cubic-bezier(.2,.8,.2,1), background-color 260ms ease;
 }
 
+html.theme-transition .theme-toggle-thumb {
+  transition: transform 260ms cubic-bezier(.2,.8,.2,1), background-color 260ms ease !important;
+}
+
 .theme-toggle.is-dark .theme-toggle-thumb,
 .dark .theme-toggle .theme-toggle-thumb { transform: translateX(32px); background: #45475a; }
 
