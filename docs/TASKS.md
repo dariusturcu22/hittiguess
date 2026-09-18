@@ -540,7 +540,7 @@ Checked against real code: the backend has exactly one test file, an empty `cont
 - [ ] Add a Spring Security test covering JWT auth, refresh-token rotation, and CSRF
 - [ ] Add tests for `ai/app/metadata/router.py`, `service.py`'s orchestration, and `auth.py`'s internal-key check, using FastAPI's `TestClient`
 - [ ] Add a frontend unit test runner (Vitest or Jest, neither installed today) plus React Testing Library, and a `test` script in `package.json`
-- [ ] Add frontend unit tests for the song forms' hand-written validation (`AddSongForm.tsx`, `SongForm.tsx`) and the auth forms
+- [x] Add frontend unit tests for the song forms' hand-written validation (`AddSongForm.tsx`, `SongForm.tsx`) and the auth forms
 - [x] Add Playwright for frontend integration/end-to-end tests, none exist today; separate from the unit test runner above, drives the real browser against the real backend rather than mocking it (see this file's Chore: Playwright end-to-end tooling section)
 - [ ] Add Playwright coverage for the core flows that exist today: login/register, playlist CRUD, song add/edit, export
 - [x] Add the new test steps to `.github/workflows/pr-checks.yml` for all three services
