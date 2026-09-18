@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Moon, Sun } from "lucide-react";
 import { useTheme } from "next-themes";
 
 import { Button } from "@/components/shadcn/button";
@@ -50,6 +51,12 @@ export function ThemeToggle({ className = "" }: ThemeToggleProps) {
         aria-hidden="true"
         className="theme-toggle-thumb"
       />
+      <span aria-hidden="true" className="theme-toggle-icon theme-toggle-light-icon">
+        <Sun />
+      </span>
+      <span aria-hidden="true" className="theme-toggle-icon theme-toggle-dark-icon">
+        <Moon />
+      </span>
     </Button>
   );
 }
