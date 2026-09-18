@@ -11,18 +11,20 @@
   <style>
     body { margin: 0; }
     .navicon { width: 46px; height: 46px; border-radius: 14px; display: flex; align-items: center; justify-content: center; cursor: pointer; color: #9ca0b0; }
-    .navicon.active { background: #8f4fe3; box-shadow: 3px 3px 0 rgba(76,79,105,0.3); color: #ffffff; }
-    .divider { width: 32px; height: 2px; background: #ccd0da; border-radius: 2px; margin: 14px auto; flex-shrink: 0; }
-    .stat-chip { font-family: 'Space Grotesk', sans-serif; font-weight: 600; font-size: 12px; color: #5c5f77; background: #eff1f5; border: 2px solid #ccd0da; padding: 6px 14px; border-radius: 100px; }
-    .btn-yt { width: 100%; text-align: center; background: #ed6f27; color: #ffffff; font-family: 'Bungee', sans-serif; font-size: 14px; padding: 14px 0; border-radius: 100px; box-shadow: 4px 4px 0 rgba(76,79,105,0.3); box-sizing: border-box; cursor: pointer; border: none; display: flex; align-items: center; justify-content: center; gap: 9px; }
-    .btn-secondary-half { flex: 1; text-align: center; background: #eff1f5; color: #4c4f69; font-family: 'Space Grotesk', sans-serif; font-weight: 600; font-size: 13px; padding: 12px 0; border-radius: 100px; border: 2px solid #ccd0da; box-sizing: border-box; cursor: pointer; }
-    .btn-ghost-red-half { flex: 1; text-align: center; background: transparent; color: #d20f39; font-family: 'Space Grotesk', sans-serif; font-weight: 600; font-size: 13px; padding: 12px 0; border-radius: 100px; border: 2px solid #ccd0da; box-sizing: border-box; cursor: pointer; }
-    .playlist-chip { font-family: 'Space Grotesk', sans-serif; font-weight: 600; font-size: 12px; color: #8f4fe3; background: rgba(143,79,227,0.1); padding: 7px 16px; border-radius: 100px; }
+    .navicon.active { background: #8f4fe3; box-shadow: 3px 3px 0 rgba(0,0,0,0.4); color: #4c4f69; }
+    .divider { width: 32px; height: 2px; background: #ffffff; border-radius: 2px; margin: 14px auto; flex-shrink: 0; }
+    .btn-yt { width: 100%; text-align: center; background: #ed6f27; color: #eff1f5; font-family: 'Bungee', sans-serif; font-size: 14px; padding: 14px 0; border-radius: 100px; box-shadow: 4px 4px 0 rgba(0,0,0,0.35); box-sizing: border-box; cursor: pointer; border: none; display: flex; align-items: center; justify-content: center; gap: 9px; }
+    .btn-secondary-half { flex: 1; text-align: center; background: #eff1f5; color: #4c4f69; font-family: 'Space Grotesk', sans-serif; font-weight: 600; font-size: 13px; padding: 12px 0; border-radius: 100px; border: 2px solid #ccd0da; box-sizing: border-box; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; }
+    .btn-ghost-red-half { flex: 1; text-align: center; background: transparent; color: #d20f39; font-family: 'Space Grotesk', sans-serif; font-weight: 600; font-size: 13px; padding: 12px 0; border-radius: 100px; border: 2px solid #ccd0da; box-sizing: border-box; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; }
+    .game-card { width: 320px; height: 320px; box-sizing: border-box; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; font-family: 'Space Grotesk', sans-serif; padding: 24px; text-align: center; border-radius: 40px; border: 8px solid #4c4f69; box-shadow: 9px 9px 0 rgba(0,0,0,0.4); }
+    .game-card .artist { font-size: 20px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
+    .game-card .year { font-family: 'Bungee', sans-serif; font-size: 76px; line-height: 1; }
+    .game-card .title { font-size: 18px; font-weight: 500; opacity: 0.8; }
   </style>
 </helmet>
-<div style="width: 1440px; height: 750px; background: #eff1f5; font-family: 'Space Grotesk', sans-serif; box-sizing: border-box; color: #4c4f69; display: flex; overflow: hidden; position: relative;">
+<div style="width: 1440px; height: 900px; background: #eff1f5; font-family: 'Space Grotesk', sans-serif; box-sizing: border-box; color: #4c4f69; display: flex; overflow: hidden; position: relative;">
 
-  <div style="width: 76px; flex-shrink: 0; background: #e6e9ef; display: flex; flex-direction: column; align-items: center; padding: 20px 0; box-sizing: border-box; border-right: 3px solid #ccd0da;">
+  <div style="width: 76px; flex-shrink: 0; background: #4c4f69; display: flex; flex-direction: column; align-items: center; padding: 20px 0; box-sizing: border-box; border-right: 3px solid #ffffff;">
     <div style="display: flex; align-items: center; gap: 2px; height: 22px;">
       <div style="background: #499f36; width: 5px; height: 10px; border-radius: 100px;"></div>
       <div style="background: #499f36; width: 5px; height: 20px; border-radius: 100px;"></div>
@@ -48,49 +50,41 @@
     </div>
     <div style="flex: 1;"></div>
     <div class="navicon" title="Theme">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.2" y1="4.2" x2="5.6" y2="5.6"></line><line x1="18.4" y1="18.4" x2="19.8" y2="19.8"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.2" y1="19.8" x2="5.6" y2="18.4"></line><line x1="18.4" y1="5.6" x2="19.8" y2="4.2"></line></svg>
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
     </div>
     <div style="height: 16px;"></div>
-    <div style="width: 44px; height: 44px; border-radius: 50%; background: #ed6f27; border: 2px solid #ccd0da; display: flex; align-items: center; justify-content: center; font-family: 'Bungee', sans-serif; font-size: 16px; color: #ffffff; cursor: pointer;">D</div>
+    <div style="width: 44px; height: 44px; border-radius: 50%; background: #ed6f27; border: 2px solid #ffffff; display: flex; align-items: center; justify-content: center; font-family: 'Bungee', sans-serif; font-size: 16px; color: #4c4f69; cursor: pointer;">D</div>
   </div>
 
-  <div style="flex: 1; box-sizing: border-box; background-image: radial-gradient(circle, rgba(76,79,105,0.2) 1.5px, transparent 1.5px); background-size: 22px 22px; padding: 70px 0; display: flex; align-items: center; justify-content: center;">
+  <div style="flex: 1; box-sizing: border-box; background-image: radial-gradient(circle, rgba(108,112,134,0.25) 1.5px, transparent 1.5px); background-size: 22px 22px; padding: 70px 0; display: flex; align-items: center; justify-content: center;">
 
-    <div style="width: 640px; background: #ffffff; border: 3px solid #4c4f69; border-radius: 18px; box-shadow: 6px 6px 0 rgba(76,79,105,0.25); box-sizing: border-box; padding: 44px 48px 48px; display: flex; flex-direction: column; align-items: center;">
+    <div style="width: 640px; background: #ffffff; border: 3px solid #4c4f69; border-radius: 18px; box-shadow: 6px 6px 0 rgba(0,0,0,0.4); box-sizing: border-box; padding: 44px 48px 48px; display: flex; flex-direction: column; align-items: center;">
 
-      <div style="width: 140px; height: 140px; border-radius: 16px; background: #d49032; border: 3px solid #4c4f69; box-shadow: 5px 5px 0 rgba(76,79,105,0.25); box-sizing: border-box; display: flex; align-items: center; justify-content: center; margin-bottom: 20px;">
-        <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.5)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"></path><circle cx="6" cy="18" r="3"></circle><circle cx="18" cy="16" r="3"></circle></svg>
+      <div class="game-card" style="background: #ea76cb; color: #eff1f5; margin-bottom: 28px;">
+        <div class="artist">SNOW PATROL</div>
+        <div class="year">2006</div>
+        <div class="title">Chasing Cars</div>
       </div>
 
-      <div style="font-family: 'Bungee', sans-serif; font-size: 26px; color: #e387cb; text-shadow: 3px 3px 0 #eff1f5; text-align: center; margin-bottom: 6px;">Chasing Cars</div>
-      <div style="font-size: 15px; color: #5c5f77; margin-bottom: 16px;">Snow Patrol</div>
-
-      <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 18px;">
-        <span class="stat-chip">2006</span>
-        <span class="stat-chip" style="color: #8f4fe3; border-color: #8f4fe3; background: rgba(143,79,227,0.08);">Alternative Rock</span>
-        <span class="stat-chip">4:28</span>
-      </div>
-
-      <div style="font-size: 13px; color: #9ca0b0; margin-bottom: 24px;">Added by Darius on Jan 20, 2025</div>
-
-      <button class="btn-yt" style="margin-bottom: 12px;">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
+      <button class="btn-yt" style="margin-bottom: 20px;">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#eff1f5" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
         Open on YouTube
       </button>
 
-      <div style="display: flex; gap: 12px; width: 100%; margin-bottom: 28px;">
-        <button class="btn-ghost-red-half">Remove from playlist</button>
-        <button class="btn-secondary-half">Edit details</button>
+      <div style="display: flex; gap: 14px; width: 100%; margin-bottom: 28px;">
+        <button class="btn-secondary-half">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"></path><line x1="4" y1="22" x2="4" y2="15"></line></svg>
+          Report
+        </button>
+        <button class="btn-ghost-red-half">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+          Remove from playlist
+        </button>
       </div>
 
-      <div style="width: 100%; height: 2px; background: #ccd0da; margin-bottom: 20px;"></div>
+      <div style="width: 100%; height: 2px; background: #ccd0da; margin-bottom: 18px;"></div>
 
-      <div style="width: 100%; font-size: 11px; font-weight: 600; letter-spacing: 0.5px; text-transform: uppercase; color: #9ca0b0; margin-bottom: 10px;">Also in these playlists</div>
-      <div style="display: flex; gap: 10px; width: 100%;">
-        <span class="playlist-chip">Road Trip Anthems</span>
-        <span class="playlist-chip">Y2K Pop</span>
-        <span class="playlist-chip">Study Beats</span>
-      </div>
+      <div style="font-size: 12px; color: #9ca0b0;">Added by Darius on Jan 20, 2025</div>
 
     </div>
 

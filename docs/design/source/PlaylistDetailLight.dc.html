@@ -11,29 +11,30 @@
   <style>
     body { margin: 0; }
     .navicon { width: 46px; height: 46px; border-radius: 14px; display: flex; align-items: center; justify-content: center; cursor: pointer; color: #9ca0b0; }
-    .navicon.active { background: #8f4fe3; box-shadow: 3px 3px 0 rgba(76,79,105,0.3); color: #ffffff; }
-    .divider { width: 32px; height: 2px; background: #ccd0da; border-radius: 2px; margin: 14px auto; flex-shrink: 0; }
-    .btn-primary { font-family: 'Bungee', sans-serif; font-size: 13px; color: #ffffff; background: #ed6f27; padding: 12px 24px; border-radius: 100px; box-shadow: 4px 4px 0 rgba(76,79,105,0.3); box-sizing: border-box; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; border: none; }
-    .btn-secondary { font-family: 'Space Grotesk', sans-serif; font-weight: 600; font-size: 13px; color: #4c4f69; background: #ffffff; padding: 11px 20px; border-radius: 100px; border: 2px solid #ccd0da; box-sizing: border-box; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; }
+    .navicon.active { background: #8f4fe3; box-shadow: 3px 3px 0 rgba(0,0,0,0.4); color: #4c4f69; }
+    .divider { width: 32px; height: 2px; background: #ffffff; border-radius: 2px; margin: 14px auto; flex-shrink: 0; }
+    .btn-primary { font-family: 'Bungee', sans-serif; font-size: 13px; color: #eff1f5; background: #ed6f27; padding: 12px 24px; border-radius: 100px; box-shadow: 4px 4px 0 rgba(0,0,0,0.4); box-sizing: border-box; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; border: none; }
+    .btn-secondary { font-family: 'Space Grotesk', sans-serif; font-weight: 600; font-size: 13px; color: #4c4f69; background: #eff1f5; padding: 11px 20px; border-radius: 100px; border: 2px solid #ccd0da; box-sizing: border-box; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; }
     .btn-ghost-red { font-family: 'Space Grotesk', sans-serif; font-weight: 600; font-size: 13px; color: #d20f39; background: transparent; padding: 11px 20px; border-radius: 100px; border: 2px solid #ccd0da; box-sizing: border-box; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; }
     .song-row { display: flex; align-items: center; padding: 14px 22px; gap: 18px; border-bottom: 2px solid #eff1f5; }
     .song-row:last-child { border-bottom: none; }
-    .overflow-btn { width: 30px; height: 30px; border-radius: 9px; display: flex; align-items: center; justify-content: center; cursor: pointer; color: #9ca0b0; flex-shrink: 0; }
     .icon-btn { width: 46px; height: 46px; border-radius: 13px; border: 2px solid #ccd0da; display: flex; align-items: center; justify-content: center; cursor: pointer; color: #4c4f69; background: #eff1f5; flex-shrink: 0; }
     .icon-btn-red { color: #d20f39; }
-    .mini-avatar-lg { width: 34px; height: 34px; border-radius: 50%; border: 3px solid #eff1f5; display: flex; align-items: center; justify-content: center; font-family: 'Bungee', sans-serif; font-size: 12px; color: #ffffff; flex-shrink: 0; }
-    .mini-avatar-lg.overflow { background: #ccd0da; color: #5c5f77; }
     .row-icon-btn { width: 32px; height: 32px; border-radius: 9px; display: flex; align-items: center; justify-content: center; cursor: pointer; color: #9ca0b0; flex-shrink: 0; }
     .row-icon-btn-red { color: #d20f39; }
     .custom-scroll::-webkit-scrollbar { width: 8px; }
     .custom-scroll::-webkit-scrollbar-track { background: transparent; }
     .custom-scroll::-webkit-scrollbar-thumb { background: #ccd0da; border-radius: 100px; }
     .custom-scroll::-webkit-scrollbar-thumb:hover { background: #9ca0b0; }
+    .cover-mosaic-lg { width: 180px; height: 180px; flex-shrink: 0; display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; gap: 3px; background: #4c4f69; border: 3px solid #4c4f69; border-radius: 18px; box-shadow: 6px 6px 0 rgba(0,0,0,0.4); box-sizing: border-box; overflow: hidden; }
+    .cover-tile-lg { display: flex; align-items: center; justify-content: center; }
+    .mini-avatar-lg { width: 34px; height: 34px; border-radius: 50%; border: 3px solid #eff1f5; display: flex; align-items: center; justify-content: center; font-family: 'Bungee', sans-serif; font-size: 12px; color: #4c4f69; flex-shrink: 0; }
+    .mini-avatar-lg.overflow { background: #ccd0da; color: #5c5f77; }
   </style>
 </helmet>
 <div style="width: 1440px; height: 900px; background: #eff1f5; font-family: 'Space Grotesk', sans-serif; box-sizing: border-box; color: #4c4f69; display: flex; overflow: hidden; position: relative;">
 
-  <div style="width: 76px; flex-shrink: 0; background: #e6e9ef; display: flex; flex-direction: column; align-items: center; padding: 20px 0; box-sizing: border-box; border-right: 3px solid #ccd0da;">
+  <div style="width: 76px; flex-shrink: 0; background: #4c4f69; display: flex; flex-direction: column; align-items: center; padding: 20px 0; box-sizing: border-box; border-right: 3px solid #ffffff;">
     <div style="display: flex; align-items: center; gap: 2px; height: 22px;">
       <div style="background: #499f36; width: 5px; height: 10px; border-radius: 100px;"></div>
       <div style="background: #499f36; width: 5px; height: 20px; border-radius: 100px;"></div>
@@ -59,27 +60,29 @@
     </div>
     <div style="flex: 1;"></div>
     <div class="navicon" title="Theme">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.2" y1="4.2" x2="5.6" y2="5.6"></line><line x1="18.4" y1="18.4" x2="19.8" y2="19.8"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.2" y1="19.8" x2="5.6" y2="18.4"></line><line x1="18.4" y1="5.6" x2="19.8" y2="4.2"></line></svg>
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
     </div>
     <div style="height: 16px;"></div>
-    <div style="width: 44px; height: 44px; border-radius: 50%; background: #ed6f27; border: 2px solid #ccd0da; display: flex; align-items: center; justify-content: center; font-family: 'Bungee', sans-serif; font-size: 16px; color: #ffffff; cursor: pointer;">D</div>
+    <div style="width: 44px; height: 44px; border-radius: 50%; background: #ed6f27; border: 2px solid #ffffff; display: flex; align-items: center; justify-content: center; font-family: 'Bungee', sans-serif; font-size: 16px; color: #4c4f69; cursor: pointer;">D</div>
   </div>
 
-  <div style="flex: 1; box-sizing: border-box; background-image: radial-gradient(circle, rgba(76,79,105,0.2) 1.5px, transparent 1.5px); background-size: 22px 22px; padding: 44px 56px 50px; display: flex; flex-direction: column;">
+  <div style="flex: 1; box-sizing: border-box; background-image: radial-gradient(circle, rgba(108,112,134,0.25) 1.5px, transparent 1.5px); background-size: 22px 22px; padding: 44px 56px 50px; display: flex; flex-direction: column;">
 
     <div style="display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 36px;">
       <div style="display: flex; gap: 28px;">
-        <div style="width: 180px; height: 180px; flex-shrink: 0; background: #8f4fe3; border: 3px solid #4c4f69; border-radius: 18px; box-shadow: 6px 6px 0 rgba(76,79,105,0.25); box-sizing: border-box; display: flex; align-items: center; justify-content: center;">
-          <svg width="70" height="70" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.5)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"></path><circle cx="6" cy="18" r="3"></circle><circle cx="18" cy="16" r="3"></circle></svg>
+        <div class="cover-mosaic-lg">
+          <div class="cover-tile-lg" style="background: #8f4fe3;"><svg width="20" height="20" viewBox="0 0 24 24" fill="rgba(255,255,255,0.55)"><path d="M8 5v14l11-7z"></path></svg></div>
+          <div class="cover-tile-lg" style="background: #1e66f5;"><svg width="20" height="20" viewBox="0 0 24 24" fill="rgba(255,255,255,0.55)"><path d="M8 5v14l11-7z"></path></svg></div>
+          <div class="cover-tile-lg" style="background: #ed6f27;"><svg width="20" height="20" viewBox="0 0 24 24" fill="rgba(255,255,255,0.55)"><path d="M8 5v14l11-7z"></path></svg></div>
+          <div class="cover-tile-lg" style="background: #499f36;"><svg width="20" height="20" viewBox="0 0 24 24" fill="rgba(255,255,255,0.55)"><path d="M8 5v14l11-7z"></path></svg></div>
         </div>
         <div style="display: flex; flex-direction: column; justify-content: center;">
-          <div style="font-family: 'Bungee', sans-serif; font-size: 32px; color: #8f4fe3; text-shadow: 3px 3px 0 #ccd0da; margin-bottom: 8px;">Midnight Radio</div>
-          <div style="font-size: 15px; color: #4c4f69; margin-bottom: 6px;">by Darius</div>
+          <div style="font-family: 'Bungee', sans-serif; font-size: 32px; color: #8f4fe3; text-shadow: 3px 3px 0 #ffffff; margin-bottom: 10px;">Midnight Radio</div>
           <div style="font-size: 13px; color: #5c5f77; margin-bottom: 12px;">32 songs &nbsp;•&nbsp; created Jan 14, 2025</div>
           <div style="font-size: 14px; color: #5c5f77; line-height: 1.6; max-width: 560px; margin-bottom: 18px;">Late-night drives, city lights, and songs that sound better after midnight.</div>
           <div style="display: flex; align-items: center; gap: 12px;">
             <button class="btn-primary">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="#ffffff"><path d="M8 5v14l11-7z"></path></svg>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="#eff1f5"><path d="M8 5v14l11-7z"></path></svg>
               Start session
             </button>
             <div class="icon-btn" title="Edit playlist">
@@ -101,12 +104,12 @@
       <div style="position: relative; padding-top: 4px;">
         <div style="display: flex; align-items: center; cursor: pointer;">
           <div class="mini-avatar-lg" style="background: #ed6f27; z-index: 4;">D</div>
-          <div class="mini-avatar-lg" style="background: #3772e6; z-index: 3; margin-left: -12px;">M</div>
-          <div class="mini-avatar-lg" style="background: #d49032; z-index: 2; margin-left: -12px;">T</div>
+          <div class="mini-avatar-lg" style="background: #1e66f5; z-index: 3; margin-left: -12px;">M</div>
+          <div class="mini-avatar-lg" style="background: #df8e1d; z-index: 2; margin-left: -12px;">T</div>
           <div class="mini-avatar-lg overflow" style="z-index: 1; margin-left: -12px;">+3</div>
         </div>
 
-        <div style="position: absolute; top: 46px; right: 0; width: 260px; background: #ffffff; border: 3px solid #4c4f69; border-radius: 16px; box-shadow: 6px 6px 0 rgba(76,79,105,0.25); box-sizing: border-box; overflow: hidden; z-index: 20;">
+        <div style="position: absolute; top: 46px; right: 0; width: 260px; background: #ffffff; border: 3px solid #4c4f69; border-radius: 16px; box-shadow: 6px 6px 0 rgba(0,0,0,0.4); box-sizing: border-box; overflow: hidden; z-index: 20;">
           <div style="padding: 12px 18px; font-family: 'Bungee', sans-serif; font-size: 11px; letter-spacing: 0.5px; color: #9ca0b0; border-bottom: 2px solid #eff1f5;">MEMBERS (6)</div>
           <div style="display: flex; align-items: center; gap: 10px; padding: 9px 18px;">
             <div class="mini-avatar-lg" style="background: #ed6f27; width: 26px; height: 26px; font-size: 10px;">D</div>
@@ -114,15 +117,15 @@
             <svg width="14" height="14" viewBox="0 0 24 24" fill="#ed6f27"><path d="M3 19h18l-1.8-9-5.2 4-3-7.5-3 7.5-5.2-4z"></path></svg>
           </div>
           <div style="display: flex; align-items: center; gap: 10px; padding: 9px 18px;">
-            <div class="mini-avatar-lg" style="background: #3772e6; width: 26px; height: 26px; font-size: 10px;">M</div>
+            <div class="mini-avatar-lg" style="background: #1e66f5; width: 26px; height: 26px; font-size: 10px;">M</div>
             <div style="flex: 1; font-size: 13px; color: #4c4f69;">Mara</div>
           </div>
           <div style="display: flex; align-items: center; gap: 10px; padding: 9px 18px;">
-            <div class="mini-avatar-lg" style="background: #d49032; width: 26px; height: 26px; font-size: 10px;">T</div>
+            <div class="mini-avatar-lg" style="background: #df8e1d; width: 26px; height: 26px; font-size: 10px;">T</div>
             <div style="flex: 1; font-size: 13px; color: #4c4f69;">Theo</div>
           </div>
           <div style="display: flex; align-items: center; gap: 10px; padding: 9px 18px;">
-            <div class="mini-avatar-lg" style="background: #e387cb; width: 26px; height: 26px; font-size: 10px;">L</div>
+            <div class="mini-avatar-lg" style="background: #ea76cb; width: 26px; height: 26px; font-size: 10px;">L</div>
             <div style="flex: 1; font-size: 13px; color: #4c4f69;">Lena</div>
           </div>
           <div style="display: flex; align-items: center; gap: 10px; padding: 9px 18px;">
@@ -145,13 +148,13 @@
           Import playlist
         </button>
         <button class="btn-primary" style="padding: 10px 20px; font-size: 12px;">
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="3" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#eff1f5" stroke-width="3" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
           Add song
         </button>
       </div>
     </div>
 
-    <div style="display: flex; align-items: center; justify-content: space-between; background: rgba(223,142,29,0.08); border: 2px solid #df8e1d; border-radius: 13px; box-sizing: border-box; padding: 12px 18px; margin-bottom: 14px;">
+    <div style="display: flex; align-items: center; justify-content: space-between; background: rgba(249,226,175,0.08); border: 2px solid #df8e1d; border-radius: 13px; box-sizing: border-box; padding: 12px 18px; margin-bottom: 14px;">
       <div style="display: flex; align-items: center; gap: 10px;">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#df8e1d" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
         <div style="font-size: 13px; color: #4c4f69;"><strong>2 songs need review.</strong> Their details weren't fully confirmed when they were added.</div>
@@ -162,7 +165,7 @@
       </div>
     </div>
 
-    <div style="background: #ffffff; border: 3px solid #4c4f69; border-radius: 16px; box-shadow: 6px 6px 0 rgba(76,79,105,0.25); box-sizing: border-box; overflow: hidden; flex: 1; min-height: 0; display: flex; flex-direction: column;">
+    <div style="background: #ffffff; border: 3px solid #4c4f69; border-radius: 16px; box-shadow: 6px 6px 0 rgba(0,0,0,0.4); box-sizing: border-box; overflow: hidden; flex: 1; min-height: 0; display: flex; flex-direction: column;">
       <div class="custom-scroll" style="flex: 1; min-height: 0; overflow-y: auto;">
 
       <div class="song-row">
@@ -225,12 +228,12 @@
         <div class="row-icon-btn row-icon-btn-red" title="Remove from playlist"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg></div>
       </div>
 
-      <div class="song-row" style="background: rgba(223,142,29,0.06);">
+      <div class="song-row" style="background: rgba(249,226,175,0.06);">
         <div style="width: 22px; font-size: 13px; color: #9ca0b0; text-align: center; flex-shrink: 0;">6</div>
         <div style="flex: 1; min-width: 0;">
           <div style="display: flex; align-items: center; gap: 8px;">
             <div style="font-size: 14px; color: #4c4f69;">Two Weeks</div>
-            <div style="display: inline-flex; align-items: center; gap: 4px; background: rgba(223,142,29,0.16); color: #df8e1d; font-family: 'Bungee', sans-serif; font-size: 9px; padding: 3px 8px; border-radius: 100px;">
+            <div style="display: inline-flex; align-items: center; gap: 4px; background: rgba(249,226,175,0.16); color: #df8e1d; font-family: 'Bungee', sans-serif; font-size: 9px; padding: 3px 8px; border-radius: 100px;">
               <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
               NEEDS REVIEW
             </div>
@@ -243,12 +246,12 @@
         <div class="row-icon-btn row-icon-btn-red" title="Remove from playlist"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg></div>
       </div>
 
-      <div class="song-row" style="background: rgba(223,142,29,0.06);">
+      <div class="song-row" style="background: rgba(249,226,175,0.06);">
         <div style="width: 22px; font-size: 13px; color: #9ca0b0; text-align: center; flex-shrink: 0;">7</div>
         <div style="flex: 1; min-width: 0;">
           <div style="display: flex; align-items: center; gap: 8px;">
             <div style="font-size: 14px; color: #4c4f69;">Roygbiv</div>
-            <div style="display: inline-flex; align-items: center; gap: 4px; background: rgba(223,142,29,0.16); color: #df8e1d; font-family: 'Bungee', sans-serif; font-size: 9px; padding: 3px 8px; border-radius: 100px;">
+            <div style="display: inline-flex; align-items: center; gap: 4px; background: rgba(249,226,175,0.16); color: #df8e1d; font-family: 'Bungee', sans-serif; font-size: 9px; padding: 3px 8px; border-radius: 100px;">
               <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
               NEEDS REVIEW
             </div>
@@ -273,12 +276,12 @@
         <div class="row-icon-btn row-icon-btn-red" title="Remove from playlist"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg></div>
       </div>
 
-      <div class="song-row" style="background: rgba(210,15,57,0.06);">
+      <div class="song-row" style="background: rgba(231,130,132,0.06);">
         <div style="width: 22px; font-size: 13px; color: #9ca0b0; text-align: center; flex-shrink: 0;">9</div>
         <div style="flex: 1; min-width: 0;">
           <div style="display: flex; align-items: center; gap: 8px;">
             <div style="font-size: 14px; color: #4c4f69;">Mor De Ochii Tai</div>
-            <div style="display: inline-flex; align-items: center; gap: 4px; background: rgba(210,15,57,0.16); color: #d20f39; font-family: 'Bungee', sans-serif; font-size: 9px; padding: 3px 8px; border-radius: 100px;">
+            <div style="display: inline-flex; align-items: center; gap: 4px; background: rgba(231,130,132,0.16); color: #d20f39; font-family: 'Bungee', sans-serif; font-size: 9px; padding: 3px 8px; border-radius: 100px;">
               <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 2-3 4"></path><circle cx="12" cy="17" r="0.6" fill="currentColor" stroke="none"></circle></svg>
               MANUAL ENTRY
             </div>

@@ -645,6 +645,17 @@ Tests:
 - [ ] Render every affected page at 1440x900 in Dark and Light and compare it directly with its mockup
 - [ ] Render the landing page at 390x844 in Dark and Light and compare it directly with its mobile mockups
 
+### Marketing recovery and design-source synchronization
+
+- [x] Recover the landing and auth mockup-fidelity implementation from the preserved 2026-09-17 checkpoint, without importing unrelated Batch A changes
+- [x] Render the recovered landing and login pages against their Dark desktop and mobile mockups and correct any remaining layout differences
+- [x] Reconcile the structurally divergent Light mockups with their authoritative Dark counterparts: `GameSessionDJ`, `JoinInvite`, `PlaylistDetail`, and `SongDetail`
+- [x] Synchronize `docs/design/hittiguess-design.html`'s embedded source files with `docs/design/source`
+
+Tests:
+- [x] Verify every embedded mockup entry matches its source file after synchronization
+- [x] Capture the recovered landing and login at their mockup viewport sizes in both themes
+
 ## Story 48: Comment cleanup
 
 `AGENTS.md`'s code conventions already state the rule this story enforces: write as few comments as possible, only when the reasoning genuinely can't be inferred from the code, none that restate what the line already says, none that narrate a specific example instead of the general rule. AI-assisted batches built across this project have drifted from that rule in places, leaving comments that re-explain what adjacent code already makes obvious, or that narrate a past version's reasoning instead of documenting the code as it stands.
