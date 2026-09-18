@@ -4,6 +4,54 @@
 
 @custom-variant dark (&:is(.dark *));
 
+html.theme-transition,
+html.theme-transition * {
+  transition: background-color 260ms ease, border-color 260ms ease, color 260ms ease, box-shadow 260ms ease !important;
+}
+
+.theme-toggle {
+  position: relative;
+  display: flex;
+  gap: 4px;
+  border-radius: 999px;
+  background: #ccd0da;
+  padding: 4px;
+}
+
+.dark .theme-toggle { background: #313244; }
+
+.theme-toggle-thumb {
+  position: absolute;
+  inset: 4px auto 4px 4px;
+  width: 28px;
+  border-radius: 999px;
+  background: #eff1f5;
+  transition: transform 260ms cubic-bezier(.2,.8,.2,1), background-color 260ms ease;
+}
+
+.dark .theme-toggle-thumb { background: #45475a; }
+
+.theme-toggle-option {
+  position: relative;
+  z-index: 1;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border-radius: 999px;
+  color: #9ca0b0;
+}
+
+.theme-toggle-option:first-of-type { color: #d49032; }
+.dark .theme-toggle-option:first-of-type { color: #6c7086; }
+.dark .theme-toggle-option:last-of-type { color: #f9e2af; }
+
+@media (max-width: 767px) {
+  .theme-toggle-thumb,
+  .theme-toggle-option { width: 26px; height: 26px; }
+
+  .theme-toggle-option svg { width: 14px; height: 14px; }
+}
+
 /*
  * Palette is Catppuccin-derived: Mocha for dark, Latte for light, with a
  * handful of hand-tinted accents (primary orange/peach, mauve) that diverge

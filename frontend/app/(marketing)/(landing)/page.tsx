@@ -45,15 +45,15 @@ export default function LandingPage() {
       </section>
       <section className="landing-highlight highlight-music landing-dots">
         <div className="highlight-circle" aria-hidden="true" /><div className="highlight-square" aria-hidden="true" />
-        <div className="highlight-copy"><h2>YOUR MUSIC.<br />YOUR RULES.</h2><p>Build your <u>own playlist</u>. Import one. Play someone else&apos;s, or let us generate one for you.</p></div>
+        <div className="highlight-copy"><h2>YOUR MUSIC.<br />YOUR RULES.</h2><p>Build your <span>own playlist</span>. Import one. Play someone else&apos;s, or let us generate one for you.</p></div>
       </section>
       <section className="landing-highlight highlight-betting landing-dots">
         <div className="highlight-circle" aria-hidden="true" /><div className="highlight-square" aria-hidden="true" />
-        <div className="highlight-copy"><h2>GUESS IT.<br />BET IT.</h2><p>Name the artist and title for a token. Save it to bet someone<span className="desktop-only"> else</span> got their placement wrong, and <u>steal the card</u> if you&apos;re right.</p></div>
+        <div className="highlight-copy"><h2>GUESS IT.<br />BET IT.</h2><p>Name the artist and title for a token. Save it to bet someone<span className="desktop-only"> else</span> got their placement wrong, and <span>steal the card</span> if you&apos;re right.</p></div>
       </section>
       <section className="landing-highlight highlight-together landing-dots">
         <div className="highlight-circle" aria-hidden="true" /><div className="highlight-square" aria-hidden="true" />
-        <div className="highlight-copy"><h2>PLAY TOGETHER.<br />TRUST BUILT IN.</h2><p>Voice and text chat built in, no separate app needed. Official APIs only, GDPR-minded, <u>no ads, no tracking</u>, ever.</p></div>
+        <div className="highlight-copy"><h2>PLAY TOGETHER.<br />TRUST BUILT IN.</h2><p>Voice and text chat built in, no separate app needed. Official APIs only, GDPR-minded, <span>no ads, no tracking</span>, ever.</p></div>
       </section>
       <section className="landing-ready landing-dots">
         <div className="ready-circle" aria-hidden="true" /><div className="ready-square" aria-hidden="true" />

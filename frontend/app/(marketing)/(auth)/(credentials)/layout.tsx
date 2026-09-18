@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 
 import { LogoIcon } from "@/components/logo";
 import { AuthPageBackground } from "@/components/auth-page-background";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 // Login and register share one card shell (logo, tab switcher, then
 // whichever page's own form) so the tab switcher survives client-side
@@ -26,11 +27,12 @@ export default function CredentialsAuthLayout({
         primaryClassName="bg-[#8f4fe3]/[0.12] dark:bg-[#cba6f7]/[0.16]"
         secondaryClassName="bg-[#3772e6]/10 dark:bg-[#89b4fa]/[0.14]"
       />
+      <ThemeToggle className="auth-theme-toggle top-6 right-6 z-20" />
 
       <div className="w-full max-w-[460px] rounded-[18px] border-[3px] border-border-strong bg-card px-6 sm:px-12 pt-11 pb-12 flex flex-col items-center relative z-10 shadow-lg">
-        <div className="mb-[30px]">
+        <Link href="/" aria-label="hittiguess home" className="mb-[30px]">
           <LogoIcon size="lg" />
-        </div>
+        </Link>
 
         <div className="relative flex w-full rounded-full border-2 border-border bg-background p-[5px] mb-[30px]">
           <div

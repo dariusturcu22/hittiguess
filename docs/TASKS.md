@@ -656,6 +656,18 @@ Tests:
 - [x] Verify every embedded mockup entry matches its source file after synchronization
 - [x] Capture the recovered landing and login at their mockup viewport sizes in both themes
 
+### Marketing interaction polish
+
+- [x] Remove the colored underlines from the three landing feature paragraphs
+- [x] Make the landing and auth theme slider animate its thumb and page colors, with direct Light and Dark selection
+- [x] Add the shared theme slider and a landing-page link to every authentication screen
+- [x] Match the auth primary and Google button dimensions to the mockup controls
+- [x] Make the wordmark waveform smoother, slower, and less repetitive
+
+Tests:
+- [x] Verify both theme choices on landing and authentication pages and capture the animated slider states
+- [x] Render login and register in both themes and compare their control proportions with the mockups
+
 ## Story 48: Comment cleanup
 
 `AGENTS.md`'s code conventions already state the rule this story enforces: write as few comments as possible, only when the reasoning genuinely can't be inferred from the code, none that restate what the line already says, none that narrate a specific example instead of the general rule. AI-assisted batches built across this project have drifted from that rule in places, leaving comments that re-explain what adjacent code already makes obvious, or that narrate a past version's reasoning instead of documenting the code as it stands.

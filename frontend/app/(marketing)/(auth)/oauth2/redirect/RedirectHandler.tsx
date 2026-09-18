@@ -5,6 +5,8 @@ import { useRouter, useSearchParams } from "next/navigation";
 
 import { LogoIcon } from "@/components/logo";
 import { AuthPageBackground } from "@/components/auth-page-background";
+import { ThemeToggle } from "@/components/theme-toggle";
+import Link from "next/link";
 
 export default function OAuth2RedirectHandler() {
   const router = useRouter();
@@ -26,11 +28,12 @@ export default function OAuth2RedirectHandler() {
         primaryClassName="bg-[#e387cb]/[0.12] dark:bg-[#f5c2e7]/[0.14]"
         secondaryClassName="bg-[#8f4fe3]/10 dark:bg-[#cba6f7]/[0.14]"
       />
+      <ThemeToggle className="auth-theme-toggle top-6 right-6 z-20" />
 
       <div className="relative z-10 flex flex-col items-center">
-        <div className="mb-11">
+        <Link href="/" aria-label="hittiguess home" className="mb-11">
           <LogoIcon size="lg" />
-        </div>
+        </Link>
 
         <svg
           className="animate-spin text-[#e387cb] dark:text-[#f5c2e7]"

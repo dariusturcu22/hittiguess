@@ -9,6 +9,7 @@ import Link from "next/link";
 
 import { LogoIcon } from "@/components/logo";
 import { AuthPageBackground } from "@/components/auth-page-background";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 export default function ForgotPasswordPage() {
   const [submitted, setSubmitted] = useState(false);
@@ -24,11 +25,12 @@ export default function ForgotPasswordPage() {
         primaryClassName="bg-[#d49032]/[0.12] dark:bg-[#f9e2af]/[0.14]"
         secondaryClassName="bg-[#8f4fe3]/10 dark:bg-[#cba6f7]/[0.14]"
       />
+      <ThemeToggle className="auth-theme-toggle top-6 right-6 z-20" />
 
       <div className="w-full max-w-[460px] rounded-[18px] border-[3px] border-border-strong bg-card px-6 sm:px-12 pt-11 pb-12 flex flex-col items-center relative z-10 shadow-lg">
-        <div className="mb-[30px]">
+        <Link href="/" aria-label="hittiguess home" className="mb-[30px]">
           <LogoIcon size="lg" />
-        </div>
+        </Link>
 
         <div className="size-[42px] rounded-full bg-primary/[0.12] dark:bg-primary/[0.16] flex items-center justify-center mb-5">
           <IconLock className="size-5 text-primary" />
