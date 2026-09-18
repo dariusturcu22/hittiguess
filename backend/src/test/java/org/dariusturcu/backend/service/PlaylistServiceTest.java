@@ -12,6 +12,7 @@ import org.dariusturcu.backend.model.playlist.PublicPlaylistSummaryDTO;
 import org.dariusturcu.backend.model.playlist.SavedPlaylist;
 import org.dariusturcu.backend.model.playlist.UpdateMembershipGrantsRequest;
 import org.dariusturcu.backend.model.playlist.UpdatePlaylistRequest;
+import org.dariusturcu.backend.model.song.CreateSongRequest;
 import org.dariusturcu.backend.model.song.Song;
 import org.dariusturcu.backend.model.song.UpdateSongRequest;
 import org.dariusturcu.backend.model.song.VerificationStatus;
@@ -70,6 +71,8 @@ class PlaylistServiceTest {
     private PlaylistBanRepository playlistBanRepository;
     @Mock
     private SavedPlaylistRepository savedPlaylistRepository;
+    @Mock
+    private CatalogSeedingService catalogSeedingService;
 
     @InjectMocks
     private PlaylistService playlistService;
@@ -124,6 +127,10 @@ class PlaylistServiceTest {
 
     private UpdateSongRequest anyUpdateRequest() {
         return new UpdateSongRequest("Artist", "Title", 2000, "dQw4w9WgXcQ", "abcdef", "abcdef", null);
+    }
+
+    private CreateSongRequest anyCreateRequest() {
+        return new CreateSongRequest("Artist", "Title", 2000, "dQw4w9WgXcQ", "abcdef", "abcdef", null);
     }
 
     private PlaylistMembership memberMembership() {
@@ -181,6 +188,55 @@ class PlaylistServiceTest {
                 .isInstanceOf(AccessDeniedException.class);
 
         verify(songMapper, never()).updateEntity(any(), any());
+    }
+
+    @Test
+    void createSongLinksAnAlreadyKnownSongInsteadOfCreatingADuplicate() {
+        CreateSongRequest request = anyCreateRequest();
+        Song existingSong = songWithStatus(VerificationStatus.VERIFIED);
+        existingSong.getPlaylists().clear();
+        when(songRepository.findByYoutubeId(request.youtubeId())).thenReturn(List.of(existingSong));
+        when(songRepository.existsByIdAndPlaylistsId(SONG_ID, PLAYLIST_ID)).thenReturn(false);
+        when(songMapper.toDTO(existingSong)).thenReturn(null);
+
+        playlistService.createSong(PLAYLIST_ID, request);
+
+        verify(songRepository, never()).save(any());
+        verify(catalogSeedingService, never()).reEnqueueForPatientReprocessing(any());
+        verify(playlistRepository).save(playlist);
+        assertThat(playlist.getSongs()).contains(existingSong);
+    }
+
+    @Test
+    void createSongDoesNotRelinkASongAlreadyInThePlaylist() {
+        CreateSongRequest request = anyCreateRequest();
+        Song existingSong = songWithStatus(VerificationStatus.VERIFIED);
+        when(songRepository.findByYoutubeId(request.youtubeId())).thenReturn(List.of(existingSong));
+        when(songRepository.existsByIdAndPlaylistsId(SONG_ID, PLAYLIST_ID)).thenReturn(true);
+        when(songMapper.toDTO(existingSong)).thenReturn(null);
+
+        playlistService.createSong(PLAYLIST_ID, request);
+
+        verify(songRepository, never()).save(any());
+        verify(playlistRepository, never()).save(any());
+        verify(catalogSeedingService, never()).reEnqueueForPatientReprocessing(any());
+    }
+
+    @Test
+    void createSongResolvesAGenuinelyNewYoutubeIdAndSchedulesItForPatientReprocessing() {
+        CreateSongRequest request = anyCreateRequest();
+        Song newSong = new Song();
+        newSong.setId(SONG_ID);
+        when(songRepository.findByYoutubeId(request.youtubeId())).thenReturn(List.of());
+        when(songMapper.toEntity(request)).thenReturn(newSong);
+        when(songRepository.save(newSong)).thenReturn(newSong);
+        when(songMapper.toDTO(newSong)).thenReturn(null);
+
+        playlistService.createSong(PLAYLIST_ID, request);
+
+        verify(catalogSeedingService).reEnqueueForPatientReprocessing(request.youtubeId());
+        verify(playlistRepository).save(playlist);
+        assertThat(playlist.getSongs()).contains(newSong);
     }
 
     @Test

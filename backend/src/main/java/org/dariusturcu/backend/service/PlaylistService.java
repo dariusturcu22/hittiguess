@@ -51,6 +51,7 @@ public class PlaylistService {
     private final PlaylistMembershipRepository playlistMembershipRepository;
     private final PlaylistBanRepository playlistBanRepository;
     private final SavedPlaylistRepository savedPlaylistRepository;
+    private final CatalogSeedingService catalogSeedingService;
 
     // VERIFIED is a pipeline-established lock and NEEDS_REVIEW is an LLM-reconciled year;
     // hand-editing either undermines the trust tier the pipeline already assigned it.
@@ -142,6 +143,9 @@ public class PlaylistService {
         return songMapper.toDTO(song);
     }
 
+    // A manually-submitted YouTube id may already belong to a song the catalog resolved
+    // through another path (bulk import, another user's own manual add), so this checks
+    // for that before inserting rather than creating a duplicate row for the same video.
     public SongDTO createSong(
             Long playlistId,
             CreateSongRequest request) {
@@ -150,12 +154,23 @@ public class PlaylistService {
         User user = SecurityUtils.getCurrentUser();
         playlistAccessService.requireWrite(playlist, user);
 
+        List<Song> existingSongs = songRepository.findByYoutubeId(request.youtubeId());
+        if (!existingSongs.isEmpty()) {
+            Song existingSong = existingSongs.get(0);
+            if (!songRepository.existsByIdAndPlaylistsId(existingSong.getId(), playlistId)) {
+                playlist.addSong(existingSong);
+                playlistRepository.save(playlist);
+            }
+            return songMapper.toDTO(existingSong);
+        }
+
         Song newSong = songMapper.toEntity(request);
         newSong.setAddedBy(user);
 
         Song savedSong = songRepository.save(newSong);
         playlist.addSong(savedSong);
         playlistRepository.save(playlist);
+        catalogSeedingService.reEnqueueForPatientReprocessing(request.youtubeId());
 
         return songMapper.toDTO(savedSong);
     }
