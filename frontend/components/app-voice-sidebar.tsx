@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Headphones, Loader2, Mic, MicOff, Phone, PhoneOff } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 
@@ -23,6 +23,17 @@ export function AppVoiceSidebar() {
   const isInVoice = Boolean(currentMember?.isInVoice);
   const voiceMembers = (activeGroup?.members ?? []).filter((member) => member.isInVoice);
   const voiceMesh = useVoiceMesh(groupId ?? 0, currentUserQuery.data?.id, voiceMembers, isInVoice);
+  const { startTabAudio } = voiceMesh;
+
+  useEffect(() => {
+    function shareDjTabAudio() {
+      if (isInVoice) {
+        void startTabAudio();
+      }
+    }
+    window.addEventListener("session-start-audio-share", shareDjTabAudio);
+    return () => window.removeEventListener("session-start-audio-share", shareDjTabAudio);
+  }, [isInVoice, startTabAudio]);
 
   function refreshVoicePresence() {
     if (groupId) void queryClient.invalidateQueries({ queryKey: getGetGroupQueryKey(groupId) });

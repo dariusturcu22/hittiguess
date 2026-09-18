@@ -101,6 +101,7 @@ export default function GameSessionPage({ params }: PageProps) {
     if (!watchUrl) return;
     setIsLinkOutOpen(true);
     window.open(watchUrl, "_blank", "noopener,noreferrer");
+    window.dispatchEvent(new CustomEvent("session-start-audio-share"));
   }
 
   function submitGuess() {

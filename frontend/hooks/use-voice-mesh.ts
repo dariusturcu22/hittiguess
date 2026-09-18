@@ -94,6 +94,29 @@ export function useVoiceMesh(groupId: number, currentUserId: number | undefined,
   }, [createPeer, currentUserId, isInVoice, isSignalConnected, sendSignal, voiceMembers]);
 
   const startMicrophone = useCallback(async () => { try { streamReference.current = await navigator.mediaDevices.getUserMedia({ audio: true }); setMicrophoneError(false); return true; } catch { setMicrophoneError(true); return false; } }, []);
+  const startTabAudio = useCallback(async () => {
+    try {
+      const displayStream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true });
+      const audioTrack = displayStream.getAudioTracks().at(0);
+      displayStream.getVideoTracks().forEach((track) => track.stop());
+      if (!audioTrack) {
+        displayStream.getTracks().forEach((track) => track.stop());
+        return false;
+      }
+      const sharedAudioStream = new MediaStream([audioTrack]);
+      streamReference.current?.getTracks().forEach((track) => track.stop());
+      streamReference.current = sharedAudioStream;
+      peersReference.current.forEach((peer) => {
+        peer.getSenders().filter((sender) => sender.track?.kind === "audio")
+          .forEach((sender) => { void sender.replaceTrack(audioTrack); });
+      });
+      setMicrophoneError(false);
+      return true;
+    } catch {
+      setMicrophoneError(true);
+      return false;
+    }
+  }, []);
   const stopMicrophone = useCallback(() => {
     streamReference.current?.getTracks().forEach((track) => track.stop());
     streamReference.current = null;
@@ -112,5 +135,5 @@ export function useVoiceMesh(groupId: number, currentUserId: number | undefined,
     setIsDeafened(nextDeafened);
   }, [isDeafened]);
 
-  return { isMuted, isDeafened, microphoneError, startMicrophone, stopMicrophone, toggleMute, toggleDeafen };
+  return { isMuted, isDeafened, microphoneError, startMicrophone, startTabAudio, stopMicrophone, toggleMute, toggleDeafen };
 }
