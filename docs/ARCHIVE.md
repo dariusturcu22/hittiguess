@@ -441,3 +441,13 @@ No story required for these. Fix on a `fix` branch.
 Tests:
 - [x] Frontend test: the confirm affordance shows only for a `NEEDS_REVIEW` song and submits a confirmation on click (`SongReadOnlyView.test.tsx`)
 - [x] Frontend test: the song list's empty-state catalog search calls the search endpoint and adds a matching result with its data (`SongCatalogQuickAdd.test.tsx`)
+
+## App-wide polish fix pass
+
+- [x] Center empty playlist states in the available page area
+- [x] Replace the JavaScript logo height loop with composited CSS animation and make the sidebar logo a dashboard link
+- [x] Redirect authenticated visitors from the marketing root to the playlist dashboard
+
+Tests:
+
+- [x] Run frontend lint and production build

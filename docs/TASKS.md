@@ -726,16 +726,6 @@ Tests:
 Tests:
 - [x] Verify the overlay appears only on scrollable pages and remains over content in both themes
 
-## App-wide polish fix pass
-
-- [ ] Center empty playlist states in the available page area
-- [ ] Replace the JavaScript logo height loop with composited CSS animation and make the sidebar logo a dashboard link
-- [ ] Redirect authenticated visitors from the marketing root to the playlist dashboard
-
-Tests:
-
-- [ ] Run frontend lint and production build
-
 ## Story 48: Comment cleanup
 
 `AGENTS.md`'s code conventions already state the rule this story enforces: write as few comments as possible, only when the reasoning genuinely can't be inferred from the code, none that restate what the line already says, none that narrate a specific example instead of the general rule. AI-assisted batches built across this project have drifted from that rule in places, leaving comments that re-explain what adjacent code already makes obvious, or that narrate a past version's reasoning instead of documenting the code as it stands.
