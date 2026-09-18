@@ -1,0 +1,145 @@
+import { expect, test, type Browser, type Page } from "@playwright/test";
+
+const ADMIN_ACCOUNT = {
+  email: "test-agent-1@hittiguess.local",
+  password: "HittiguessTestAgent1!2026",
+};
+const MEMBER_ACCOUNT = {
+  email: "test-agent-2@hittiguess.local",
+  password: "HittiguessTestAgent2!2026",
+};
+const GROUP_DISPLAY_NAME = "Batch E lobby admin";
+const MEMBER_DISPLAY_NAME = "Batch E lobby member";
+const CHAT_MESSAGE = "Batch E realtime chat check";
+const LIVE_CONNECTION_TEXT = "Live";
+const LOGIN_PATH = "/login";
+const PLAYLISTS_PATH = "/playlists";
+const GROUPS_PATH = "/api/groups";
+const GROUP_CLEANUP_TIMEOUT_MILLISECONDS = 10_000;
+const RESULTS_SESSION_ID = 777;
+const RESULTS_GROUP_ID = 888;
+const SESSION_API_PATH = `/api/sessions/${RESULTS_SESSION_ID}`;
+const RESULTS_API_PATH = `/api/sessions/groups/${RESULTS_GROUP_ID}/results`;
+const RESULTS_FILE_NAME = `hittiguess-results-${RESULTS_SESSION_ID}.csv`;
+
+interface TestAccount {
+  email: string;
+  password: string;
+}
+
+interface GroupResponse {
+  id: number;
+  inviteCode: string;
+}
+
+async function login(browser: Browser, account: TestAccount): Promise<Page> {
+  const context = await browser.newContext();
+  const page = await context.newPage();
+
+  await page.goto(LOGIN_PATH);
+  await page.getByLabel("Email").fill(account.email);
+  await page.getByLabel("Password").fill(account.password);
+  await page.getByRole("button", { name: "Sign In" }).click();
+  await page.waitForURL(PLAYLISTS_PATH);
+
+  return page;
+}
+
+async function createGroup(page: Page): Promise<GroupResponse> {
+  const response = await page.request.post(GROUPS_PATH, {
+    data: { displayName: GROUP_DISPLAY_NAME },
+  });
+  expect(response.ok()).toBeTruthy();
+  return response.json() as Promise<GroupResponse>;
+}
+
+async function joinGroup(page: Page, inviteCode: string): Promise<void> {
+  const response = await page.request.post(`${GROUPS_PATH}/join`, {
+    data: { inviteCode, displayName: MEMBER_DISPLAY_NAME },
+  });
+  expect(response.ok()).toBeTruthy();
+}
+
+async function leaveGroup(page: Page, groupId: number): Promise<void> {
+  await page.request.post(`${GROUPS_PATH}/${groupId}/leave`, {
+    timeout: GROUP_CLEANUP_TIMEOUT_MILLISECONDS,
+  });
+}
+
+test("group lobby joins members, persists settings, and relays chat", async ({ browser }) => {
+  const [adminPage, memberPage] = await Promise.all([
+    login(browser, ADMIN_ACCOUNT),
+    login(browser, MEMBER_ACCOUNT),
+  ]);
+  let groupId: number | undefined;
+
+  try {
+    const group = await createGroup(adminPage);
+    groupId = group.id;
+    await joinGroup(memberPage, group.inviteCode);
+
+    await Promise.all([
+      adminPage.goto(`/groups/${group.id}`),
+      memberPage.goto(`/groups/${group.id}`),
+    ]);
+    await expect(adminPage.getByRole("heading", { name: "Group Lobby" })).toBeVisible();
+    await expect(memberPage.getByText(MEMBER_DISPLAY_NAME)).toBeVisible();
+
+    await adminPage.getByRole("button", { name: "Settings" }).click();
+    await adminPage.getByLabel("DJ mode").selectOption("ROTATING");
+    await adminPage.getByRole("button", { name: "Save changes" }).click();
+    await expect(adminPage.getByRole("button", { name: "Settings" })).toBeVisible();
+
+    await adminPage.getByRole("button", { name: "Chat" }).click();
+    await expect(adminPage.getByText(LIVE_CONNECTION_TEXT)).toBeVisible();
+    await adminPage.getByPlaceholder("Type a message...").fill(CHAT_MESSAGE);
+    await adminPage.getByRole("button", { name: "Send message" }).click();
+
+    await memberPage.getByRole("button", { name: "Chat" }).click();
+    await expect(memberPage.getByText(CHAT_MESSAGE)).toBeVisible();
+  } finally {
+    if (groupId !== undefined) {
+      await Promise.allSettled([
+        leaveGroup(memberPage, groupId),
+        leaveGroup(adminPage, groupId),
+      ]);
+    }
+    await Promise.all([adminPage.context().close(), memberPage.context().close()]);
+  }
+});
+
+test("results screen exports the final ranking", async ({ browser }) => {
+  const page = await login(browser, ADMIN_ACCOUNT);
+  const session = {
+    id: RESULTS_SESSION_ID,
+    groupId: RESULTS_GROUP_ID,
+    status: "COMPLETED",
+    djMode: "ROTATING",
+    winConditionCardCount: 5,
+    currentRoundNumber: 4,
+    players: [],
+  };
+  const results = {
+    groupId: RESULTS_GROUP_ID,
+    cardCountRanking: [
+      { playerId: 1, displayName: "Winner", cardCount: 5, rank: 1 },
+      { playerId: 2, displayName: "Runner up", cardCount: 3, rank: 2 },
+    ],
+    mostArtistsGuessed: [{ playerId: 1, displayName: "Winner", value: 4 }],
+    mostTitlesGuessed: [{ playerId: 2, displayName: "Runner up", value: 3 }],
+  };
+
+  try {
+    await page.route(`**${SESSION_API_PATH}`, (route) => route.fulfill({ json: session }));
+    await page.route(`**${RESULTS_API_PATH}`, (route) => route.fulfill({ json: results }));
+    await page.goto(`/sessions/${RESULTS_SESSION_ID}/results`);
+
+    await expect(page.getByRole("heading", { name: "Game Over" })).toBeVisible();
+    const downloadPromise = page.waitForEvent("download");
+    await page.getByRole("button", { name: "Download results" }).click();
+    const download = await downloadPromise;
+    expect(download.suggestedFilename()).toBe(RESULTS_FILE_NAME);
+  } finally {
+    await page.context().close();
+  }
+});
