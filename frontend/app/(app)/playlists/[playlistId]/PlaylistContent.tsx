@@ -56,6 +56,7 @@ import { getGetUserPlaylistsQueryKey } from "@/hooks/generated/user-management/u
 import { useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { PlaylistCoverMosaic } from "@/components/playlist-cover-mosaic";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/shadcn/popover";
 import { SongCatalogQuickAdd } from "./SongCatalogQuickAdd";
 
 const MEMBER_AVATAR_COLORS = [
@@ -329,11 +330,24 @@ export default function PlaylistContent({
           </div>
         </div>
 
-        <aside className="w-[260px] shrink-0 overflow-hidden rounded-2xl border-[3px] border-border-strong bg-card shadow-lg">
-          <div className="border-b-2 border-background px-4 py-3 font-display text-[11px] text-muted-foreground">
-            Members ({playlist.members.length})
-          </div>
-          <div className="max-h-[170px] overflow-y-auto">
+        <aside className="w-[260px] shrink-0 rounded-2xl border-[3px] border-border-strong bg-card p-4 shadow-lg">
+          <Popover>
+            <PopoverTrigger className="flex w-full items-center justify-between gap-3 rounded-lg text-left outline-none transition-colors hover:bg-secondary/50 focus-visible:ring-2 focus-visible:ring-ring">
+              <span className="font-display text-[11px] text-muted-foreground">Members ({playlist.members.length})</span>
+              <span className="flex -space-x-2">
+                {playlist.members.slice(0, 4).map((member, index) => (
+                  <MemberAvatar
+                    key={member.userId ?? index}
+                    initial={(member.displayName ?? member.username ?? "?").charAt(0).toUpperCase()}
+                    color={MEMBER_AVATAR_COLORS[index % MEMBER_AVATAR_COLORS.length]}
+                    size={26}
+                  />
+                ))}
+              </span>
+            </PopoverTrigger>
+            <PopoverContent align="end" className="max-h-[360px] overflow-y-auto p-0">
+              <div className="border-b-2 border-background px-4 py-3 font-display text-[11px] text-muted-foreground">Members ({playlist.members.length})</div>
+              <div>
             {playlist.members.map((member, index) => (
               <div
                 key={member.userId ?? index}
@@ -354,7 +368,9 @@ export default function PlaylistContent({
                 )}
               </div>
             ))}
-          </div>
+              </div>
+            </PopoverContent>
+          </Popover>
         </aside>
       </div>
 

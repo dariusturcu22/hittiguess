@@ -2,6 +2,7 @@
 
 import React, { use } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Crown, Eye, Plus, Trash2, UserX, Ban, Copy, Pencil } from "lucide-react";
 
 import {
@@ -181,6 +182,7 @@ function MemberRow({
 export default function EditPlaylistPage({ params }: PageProps) {
   const { playlistId: rawId } = use(params);
   const playlistId = parseInt(rawId);
+  const router = useRouter();
   const queryClient = useQueryClient();
 
   const { data: playlist } = useGetPlaylist(playlistId);
@@ -215,7 +217,12 @@ export default function EditPlaylistPage({ params }: PageProps) {
     }
     updatePlaylist.mutate(
       { playlistId, data: { name: trimmed } },
-      { onSuccess: invalidatePlaylist },
+      {
+        onSuccess: () => {
+          invalidatePlaylist();
+          router.push(`/playlists/${playlistId}`);
+        },
+      },
     );
   }
 

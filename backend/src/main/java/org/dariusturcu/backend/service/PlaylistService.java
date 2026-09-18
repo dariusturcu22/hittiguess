@@ -128,6 +128,12 @@ public class PlaylistService {
         return playlistMapper.toDetailDTO(playlist);
     }
 
+    public void deletePlaylist(Long playlistId) {
+        Playlist playlist = findPlaylist(playlistId);
+        playlistAccessService.requireOwner(playlist, SecurityUtils.getCurrentUser());
+        playlistRepository.delete(playlist);
+    }
+
     @Transactional(readOnly = true)
     public SongDTO getSong(
             Long playlistId,
