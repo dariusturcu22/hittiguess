@@ -5,13 +5,13 @@
 @custom-variant dark (&:is(.dark *));
 
 html {
-  scrollbar-gutter: stable;
-  scrollbar-color: #9ca0b0 #e6e9ef;
+  scrollbar-gutter: auto;
+  scrollbar-color: #9ca0b0 transparent;
   scrollbar-width: thin;
 }
 
 .dark {
-  scrollbar-color: #6c7086 #181825;
+  scrollbar-color: #6c7086 transparent;
 }
 
 ::-webkit-scrollbar {
@@ -20,23 +20,20 @@ html {
 }
 
 ::-webkit-scrollbar-track {
-  background: #e6e9ef;
+  background: transparent;
 }
 
 ::-webkit-scrollbar-thumb {
-  border: 3px solid #e6e9ef;
+  border: 3px solid transparent;
   border-radius: 999px;
   background: #9ca0b0;
 }
 
 ::-webkit-scrollbar-thumb:hover { background: #6c6f85; }
 
-.dark::-webkit-scrollbar-track,
-.dark ::-webkit-scrollbar-track { background: #181825; }
-
 .dark::-webkit-scrollbar-thumb,
 .dark ::-webkit-scrollbar-thumb {
-  border-color: #181825;
+  border-color: transparent;
   background: #6c7086;
 }
 
