@@ -6,6 +6,7 @@ import { Check, LoaderCircle, Search, Video } from "lucide-react";
 
 import { useImportImmediately } from "@/hooks/generated/bulk-import/bulk-import";
 import { toast } from "sonner";
+import { useBulkImportRealtime } from "@/hooks/use-bulk-import-realtime";
 
 interface PageProps {
   params: Promise<{ playlistId: string }>;
@@ -17,6 +18,7 @@ export default function ImportYoutubePage({ params }: PageProps) {
   const { playlistId: rawId } = use(params);
   const playlistId = parseInt(rawId);
   const importMutation = useImportImmediately();
+  const { events, reset } = useBulkImportRealtime();
 
   const [playlistLink, setPlaylistLink] = React.useState("");
 
@@ -26,6 +28,7 @@ export default function ImportYoutubePage({ params }: PageProps) {
       return;
     }
     const toastId = toast.loading("Importing playlist...");
+    reset();
     window.dispatchEvent(new CustomEvent("playlist-import-progress", { detail: true }));
     importMutation.mutate(
       { data: { playlistLink: trimmedLink, targetPlaylistId: playlistId } },
@@ -38,6 +41,7 @@ export default function ImportYoutubePage({ params }: PageProps) {
   }
 
   const result = importMutation.data;
+  const processedSongCount = events.length;
 
   return (
     <div className="flex-1 flex items-center justify-center px-6 py-12">
@@ -83,11 +87,18 @@ export default function ImportYoutubePage({ params }: PageProps) {
               <LoaderCircle className="size-4 animate-spin text-primary" />
               Reading playlist and matching songs
             </div>
-            <div className="mt-4 h-2 overflow-hidden rounded-full bg-secondary">
-              <div className="h-full w-2/3 animate-pulse rounded-full bg-primary" />
+            <div className="mt-4 flex flex-wrap gap-1" aria-live="polite">
+              {events.map((event) => (
+                <span
+                  key={`${event.youtubeId}-${event.outcome}`}
+                  className={`size-2 rounded-full ${event.outcome === "UNRESOLVED" ? "bg-destructive" : event.outcome === "ALREADY_KNOWN" ? "bg-muted-foreground" : "bg-primary"}`}
+                  title={`${event.youtubeId}: ${event.outcome.toLowerCase().replaceAll("_", " ")}`}
+                />
+              ))}
+              {processedSongCount === 0 ? <span className="h-2 w-16 animate-pulse rounded-full bg-secondary" /> : null}
             </div>
             <p className="mt-3 text-[11px] text-muted-foreground">
-              Keep this page open while the playlist is processed.
+              {processedSongCount > 0 ? `${processedSongCount} song${processedSongCount === 1 ? "" : "s"} processed so far.` : "Keep this page open while the playlist is processed."}
             </p>
           </div>
         ) : importMutation.isError ? (
