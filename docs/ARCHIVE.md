@@ -441,3 +441,9 @@ No story required for these. Fix on a `fix` branch.
 Tests:
 - [x] Frontend test: the confirm affordance shows only for a `NEEDS_REVIEW` song and submits a confirmation on click (`SongReadOnlyView.test.tsx`)
 - [x] Frontend test: the song list's empty-state catalog search calls the search endpoint and adds a matching result with its data (`SongCatalogQuickAdd.test.tsx`)
+
+## Batch F accessibility and component boundary
+
+- [x] Keep shadcn primitives as the accessible interaction boundary and apply the project visual system through composition and tokens
+- [x] Improve focus-visible states and readable translucent surfaces in the chat overlay and voice sidebar
+- [x] Verify the affected interactive controls with frontend lint and a production build
