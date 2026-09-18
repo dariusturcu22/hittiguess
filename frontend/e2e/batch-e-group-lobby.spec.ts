@@ -15,6 +15,9 @@ const LOGIN_PATH = "/login";
 const PLAYLISTS_PATH = "/playlists";
 const GROUPS_PATH = "/api/groups";
 const GROUP_CLEANUP_TIMEOUT_MILLISECONDS = 10_000;
+const PLAYLISTS_API_PATH = "/api/users/me/playlists";
+const SONG_COLOR = "a6e3a1";
+const MINIMUM_GAMEPLAY_SONG_COUNT = 3;
 const RESULTS_SESSION_ID = 777;
 const RESULTS_GROUP_ID = 888;
 const SESSION_API_PATH = `/api/sessions/${RESULTS_SESSION_ID}`;
@@ -35,6 +38,10 @@ interface TestAccount {
 interface GroupResponse {
   id: number;
   inviteCode: string;
+}
+
+interface PlaylistResponse {
+  id: number;
 }
 
 async function login(browser: Browser, account: TestAccount): Promise<Page> {
@@ -65,13 +72,37 @@ async function joinGroup(page: Page, inviteCode: string): Promise<void> {
   expect(response.ok()).toBeTruthy();
 }
 
+async function configurePlayablePlaylist(page: Page, groupId: number): Promise<void> {
+  const playlistResponse = await page.request.post(PLAYLISTS_API_PATH);
+  expect(playlistResponse.ok()).toBeTruthy();
+  const playlist = await playlistResponse.json() as PlaylistResponse;
+  const songs = [
+    { artist: "Batch E artist one", title: "Batch E song one", releaseYear: 1998, youtubeId: "dQw4w9WgXcQ" },
+    { artist: "Batch E artist two", title: "Batch E song two", releaseYear: 2003, youtubeId: "3JZ_D3ELwOQ" },
+    { artist: "Batch E artist three", title: "Batch E song three", releaseYear: 2009, youtubeId: "L_jWHffIx5E" },
+  ];
+  expect(songs).toHaveLength(MINIMUM_GAMEPLAY_SONG_COUNT);
+  for (const song of songs) {
+    const songResponse = await page.request.post(`/api/playlists/${playlist.id}/songs`, {
+      data: { ...song, color: SONG_COLOR },
+    });
+    expect(songResponse.ok()).toBeTruthy();
+  }
+  const settingsResponse = await page.request.patch(`${GROUPS_PATH}/${groupId}/settings`, {
+    data: { playlistIds: [playlist.id], djMode: "ROTATING", winConditionCardCount: 5 },
+  });
+  expect(settingsResponse.ok()).toBeTruthy();
+}
+
 async function leaveGroup(page: Page, groupId: number): Promise<void> {
   await page.request.post(`${GROUPS_PATH}/${groupId}/leave`, {
     timeout: GROUP_CLEANUP_TIMEOUT_MILLISECONDS,
   });
 }
 
-test("group lobby joins members, persists settings, and relays chat", async ({ browser }) => {
+test.describe.configure({ mode: "serial" });
+
+test("group lobby joins members, persists settings, relays chat, and starts a session", async ({ browser }) => {
   const [adminPage, memberPage] = await Promise.all([
     login(browser, ADMIN_ACCOUNT),
     login(browser, MEMBER_ACCOUNT),
@@ -102,6 +133,11 @@ test("group lobby joins members, persists settings, and relays chat", async ({ b
 
     await memberPage.getByRole("button", { name: "Chat" }).click();
     await expect(memberPage.getByText(CHAT_MESSAGE)).toBeVisible();
+
+    await configurePlayablePlaylist(adminPage, group.id);
+    await adminPage.reload();
+    await adminPage.getByRole("button", { name: "Start game" }).click();
+    await expect(adminPage).toHaveURL(/\/sessions\/\d+/);
   } finally {
     if (groupId !== undefined) {
       await Promise.allSettled([
@@ -206,8 +242,12 @@ test("gameplay shell renders placement, betting, and DJ link-out states", async 
     await page.route(`**${LINK_OUT_API_PATH}`, (route) => route.fulfill({
       json: { watchUrl: "https://www.youtube.com/watch?v=dQw4w9WgXcQ" },
     }));
+    await page.addInitScript(() => {
+      window.open = () => null;
+    });
     await page.goto(`/sessions/${GAMEPLAY_SESSION_ID}`);
-    await expect(page.getByRole("button", { name: "Open on YouTube to play" })).toBeVisible();
+    await page.getByRole("button", { name: "Open on YouTube to play" }).click();
+    await expect(page.getByText("Shares your tab or system audio with the group.")).toBeVisible();
   } finally {
     await page.context().close();
   }
