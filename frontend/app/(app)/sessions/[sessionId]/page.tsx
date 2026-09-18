@@ -1,6 +1,7 @@
 "use client";
 
-import { use, useState } from "react";
+import { use, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { ChevronLeft, ChevronRight, ExternalLink, Loader2, Music2, Send, UserRound, UsersRound, Volume2 } from "lucide-react";
 
 import { useGetCurrentRoundLinkOut, useGetSession } from "@/hooks/generated/game-session/game-session";
@@ -14,6 +15,7 @@ const TIMELINE_MASK = "linear-gradient(90deg,transparent,#000 7%,#000 93%,transp
 const SOUNDSWAVE_BAR_CLASSES = ["h-5", "h-9", "h-12", "h-7", "h-10"];
 const AWAITING_PLACEMENT_STATUS = "AWAITING_PLACEMENT";
 const BETTING_STATUS = "BETTING";
+const COMPLETED_SESSION_STATUS = "COMPLETED";
 
 interface PageProps { params: Promise<{ sessionId: string }>; }
 
@@ -42,6 +44,7 @@ function GuessField({ placeholder, value, onChange, onSubmit }: { placeholder: s
 export default function GameSessionPage({ params }: PageProps) {
   const { sessionId: sessionIdParam } = use(params);
   const sessionId = Number(sessionIdParam);
+  const router = useRouter();
   const sessionQuery = useGetSession(sessionId, { query: { retry: false } });
   const currentUserQuery = useGetCurrentUser();
   const realtime = useGameSessionRealtime(sessionId);
@@ -55,6 +58,10 @@ export default function GameSessionPage({ params }: PageProps) {
   const [titleGuess, setTitleGuess] = useState("");
   const [isDraggingCard, setIsDraggingCard] = useState(false);
   const [isSelectingBet, setIsSelectingBet] = useState(false);
+
+  useEffect(() => {
+    if (session?.status === COMPLETED_SESSION_STATUS) router.replace(`/sessions/${sessionId}/results`);
+  }, [router, session?.status, sessionId]);
 
   if (!Number.isInteger(sessionId) || sessionId <= 0) return <main className="p-10 text-destructive">This game session link is invalid.</main>;
   if (sessionQuery.isLoading) return <main className="flex h-full min-h-[720px] items-center justify-center"><Loader2 className="size-8 animate-spin text-primary" aria-label="Loading game session" /></main>;
