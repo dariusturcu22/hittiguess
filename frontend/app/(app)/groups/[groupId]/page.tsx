@@ -23,6 +23,8 @@ import { useGetCurrentUser } from "@/hooks/generated/user-management/user-manage
 import { useGetActiveSessionForGroup } from "@/hooks/generated/game-session/game-session";
 import type { MemberDTO } from "@/hooks/models/memberDTO";
 import { useQueryClient } from "@tanstack/react-query";
+import { GroupChatOverlay } from "@/components/group-chat-overlay";
+import { useGroupRealtime } from "@/hooks/use-group-realtime";
 
 const MEMBER_COLORS = [
   "bg-primary text-primary-foreground",
@@ -113,9 +115,11 @@ export default function GroupLobbyPage({ params }: PageProps) {
   const queryClient = useQueryClient();
   const [copyFeedback, setCopyFeedback] = useState("");
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isChatOpen, setIsChatOpen] = useState(false);
   const [selectedDjMode, setSelectedDjMode] = useState<"FIXED" | "ROTATING">("ROTATING");
   const [winCondition, setWinCondition] = useState(MINIMUM_WIN_CONDITION);
   const groupQuery = useGetGroup(groupId, { query: { retry: false } });
+  const groupRealtime = useGroupRealtime(groupId);
   const { data: currentUser } = useGetCurrentUser();
   const startSession = useStartGameSession();
   const leaveGroup = useLeaveGroup();
@@ -289,6 +293,7 @@ export default function GroupLobbyPage({ params }: PageProps) {
             <div className="mt-6 flex gap-2.5"><button type="button" onClick={saveSettings} disabled={updateSettings.isPending} className="rounded-full bg-primary px-4 py-2.5 font-display text-xs text-primary-foreground disabled:opacity-60">{updateSettings.isPending ? "Saving" : "Save changes"}</button><button type="button" onClick={() => setIsSettingsOpen(false)} className="rounded-full border-2 border-border px-4 py-2.5 text-xs font-semibold text-card-foreground">Close</button></div>
           </section>
         ) : null}
+        {isChatOpen ? <GroupChatOverlay groupId={groupId} onClose={() => setIsChatOpen(false)} /> : null}
       </section>
 
       <footer className="flex flex-wrap items-center gap-3">
@@ -303,12 +308,11 @@ export default function GroupLobbyPage({ params }: PageProps) {
             Start game
           </button>
         ) : null}
-        <button
-          type="button"
-          disabled
-          title="Chat is added in the next Batch E step"
-          className="inline-flex items-center gap-2 rounded-full border-2 border-border bg-card px-5 py-3 text-[13px] font-semibold text-card-foreground disabled:opacity-60"
-        >
+          <button
+            type="button"
+            onClick={() => setIsChatOpen((currentValue) => !currentValue)}
+            className={`inline-flex items-center gap-2 rounded-full border-2 bg-card px-5 py-3 text-[13px] font-semibold text-card-foreground ${isChatOpen ? "border-primary text-primary" : "border-border"}`}
+          >
           <MessageCircle className="size-4" />
           Chat
         </button>
@@ -332,6 +336,7 @@ export default function GroupLobbyPage({ params }: PageProps) {
           {leaveGroup.isPending ? <Loader2 className="size-4 animate-spin" /> : <LogOut className="size-4" />}
           Leave lobby
         </button>
+        <span className="text-[10px] text-muted-foreground">{groupRealtime.connectionState === "connected" ? "Live" : "Reconnecting"}</span>
       </footer>
     </main>
   );
