@@ -1,83 +1,72 @@
 "use client";
 
-import { use } from "react";
-import { ChevronLeft, ChevronRight, Loader2, Music2, UserRound } from "lucide-react";
+import { use, useState } from "react";
+import { ChevronLeft, ChevronRight, ExternalLink, Loader2, Music2, Send, UserRound, UsersRound, Volume2 } from "lucide-react";
 
-import { useGetSession } from "@/hooks/generated/game-session/game-session";
+import { useGetCurrentRoundLinkOut, useGetSession } from "@/hooks/generated/game-session/game-session";
+import { useGetCurrentUser } from "@/hooks/generated/user-management/user-management";
+import type { PlayerCardDTO } from "@/hooks/models/playerCardDTO";
 
 const TIMELINE_CARD_COLORS = ["bg-teal", "bg-accent", "bg-blue", "bg-green", "bg-warning", "bg-pink", "bg-primary"];
+const ROUND_NUMBER_FALLBACK = 1;
+const TIMELINE_MASK = "linear-gradient(90deg,transparent,#000 7%,#000 93%,transparent)";
+const SOUNDSWAVE_BAR_CLASSES = ["h-5", "h-9", "h-12", "h-7", "h-10"];
 
-interface PageProps {
-  params: Promise<{ sessionId: string }>;
+interface PageProps { params: Promise<{ sessionId: string }>; }
+
+function TimelineCard({ card, index }: { card: PlayerCardDTO; index: number }) {
+  const colorClass = TIMELINE_CARD_COLORS[index % TIMELINE_CARD_COLORS.length];
+  return <article className={`flex h-[132px] w-[132px] shrink-0 flex-col items-center justify-center rounded-[20px] border-[5px] border-background px-3 text-center text-primary-foreground shadow-[5px_5px_0_rgba(0,0,0,0.28)] sm:h-[168px] sm:w-[168px] ${colorClass}`}>
+    <span className="line-clamp-2 text-xs font-bold uppercase">{card.title ?? "Unknown song"}</span>
+    <strong className="my-1 font-display text-3xl sm:text-[40px]">{card.releaseYear ?? "?"}</strong>
+    <span className="line-clamp-2 text-[10px] font-semibold opacity-80">{card.title ?? "Keep listening"}</span>
+  </article>;
 }
 
-function TimelineCard({ title, releaseYear, index }: { title?: string; releaseYear?: number; index: number }) {
-  const colorClass = TIMELINE_CARD_COLORS[index % TIMELINE_CARD_COLORS.length];
-  return (
-    <article className={`flex h-[132px] w-[132px] shrink-0 flex-col items-center justify-center rounded-[20px] border-[5px] border-background px-3 text-center text-primary-foreground sm:h-[168px] sm:w-[168px] ${colorClass}`}>
-      <span className="line-clamp-2 text-xs font-bold uppercase">{title ?? "Unknown song"}</span>
-      <strong className="mt-1 font-display text-3xl sm:text-[40px]">{releaseYear ?? "?"}</strong>
-    </article>
-  );
+function SoundwaveCard() {
+  return <div className="flex size-32 items-center justify-center rounded-[20px] border-[5px] border-border bg-card shadow-[5px_5px_0_rgba(0,0,0,0.3)]"><div className="flex h-12 items-center gap-1.5">{SOUNDSWAVE_BAR_CLASSES.map((heightClass) => <span key={heightClass} className={`w-[7px] rounded-full bg-green ${heightClass}`} />)}</div></div>;
+}
+
+function GuessField({ placeholder }: { placeholder: string }) {
+  const [value, setValue] = useState("");
+  return <label className="flex h-12 w-full min-w-0 items-center gap-2 rounded-full border-2 border-border bg-card px-4 text-muted-foreground sm:w-[242px]"><Music2 className="size-4 shrink-0" /><input value={value} onChange={(event) => setValue(event.target.value)} placeholder={placeholder} className="min-w-0 flex-1 bg-transparent text-sm text-card-foreground outline-none placeholder:text-muted-foreground" /><button type="button" disabled={!value.trim()} aria-label={`Submit ${placeholder.toLowerCase()}`} className="flex size-7 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground transition-transform enabled:hover:scale-105 disabled:opacity-45"><Send className="size-3.5" /></button></label>;
 }
 
 export default function GameSessionPage({ params }: PageProps) {
   const { sessionId: sessionIdParam } = use(params);
   const sessionId = Number(sessionIdParam);
   const sessionQuery = useGetSession(sessionId, { query: { retry: false } });
-
-  if (!Number.isInteger(sessionId) || sessionId <= 0) {
-    return <main className="p-10 text-destructive">This game session link is invalid.</main>;
-  }
-
-  if (sessionQuery.isLoading) {
-    return <main className="flex h-full items-center justify-center"><Loader2 className="size-8 animate-spin text-primary" /></main>;
-  }
-
-  if (sessionQuery.isError || !sessionQuery.data) {
-    return <main className="p-10 text-destructive">This game session is unavailable.</main>;
-  }
-
+  const currentUserQuery = useGetCurrentUser();
   const session = sessionQuery.data;
-  const currentRound = session.currentRound;
+  const currentRound = session?.currentRound;
+  const currentPlayer = session?.players?.find((player) => player.id === currentUserQuery.data?.id);
+  const isDj = currentPlayer?.id === currentRound?.djPlayerId;
+  const linkOutQuery = useGetCurrentRoundLinkOut(sessionId, { query: { enabled: Boolean(isDj), retry: false } });
+  const [isLinkOutOpen, setIsLinkOutOpen] = useState(false);
+
+  if (!Number.isInteger(sessionId) || sessionId <= 0) return <main className="p-10 text-destructive">This game session link is invalid.</main>;
+  if (sessionQuery.isLoading) return <main className="flex h-full min-h-[720px] items-center justify-center"><Loader2 className="size-8 animate-spin text-primary" aria-label="Loading game session" /></main>;
+  if (sessionQuery.isError || !session) return <main className="p-10 text-destructive">This game session is unavailable.</main>;
+
   const activePlayer = session.players?.find((player) => player.id === currentRound?.activePlayerId);
   const djPlayer = session.players?.find((player) => player.id === currentRound?.djPlayerId);
   const timeline = activePlayer?.timeline ?? [];
+  const roundNumber = currentRound?.roundNumber ?? session.currentRoundNumber ?? ROUND_NUMBER_FALLBACK;
+  const isActivePlayer = currentPlayer?.id === activePlayer?.id;
 
-  return (
-    <main className="relative flex h-full min-h-[720px] flex-col overflow-hidden px-6 py-8 sm:px-14 sm:py-9">
-      <header className="flex items-start justify-between gap-4">
-        <div>
-          <h1 className="font-display text-[26px] text-foreground drop-shadow-sm sm:text-[32px]">Round {currentRound?.roundNumber ?? session.currentRoundNumber ?? 1}</h1>
-          <div className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
-            <span>First to {session.winConditionCardCount ?? 0} cards wins</span><span className="size-1 rounded-full bg-muted-foreground" />
-            <strong className="font-display text-accent">{currentRound?.status?.replaceAll("_", " ") ?? "Waiting"}</strong>
-          </div>
-        </div>
-        <div className="rounded-full border-2 border-border bg-card px-4 py-2 text-sm font-semibold text-card-foreground">{session.djMode === "FIXED" ? "Fixed DJ" : "Rotating DJ"}</div>
-      </header>
+  function openLinkOut() {
+    const watchUrl = linkOutQuery.data?.watchUrl;
+    if (!watchUrl) return;
+    setIsLinkOutOpen(true);
+    window.open(watchUrl, "_blank", "noopener,noreferrer");
+  }
 
-      <section className="relative flex flex-1 items-center justify-center">
-        <p className="absolute bottom-[calc(50%+108px)] font-bold text-xs uppercase tracking-[0.24em] text-muted-foreground">Timeline</p>
-        <div className="w-full max-w-[1100px] overflow-x-auto px-10 py-4 [mask-image:linear-gradient(90deg,transparent,#000_7%,#000_93%,transparent)]">
-          <div className="flex w-max gap-[18px]">
-            {timeline.map((card, index) => <TimelineCard key={`${card.songId}-${card.position}`} title={card.title} releaseYear={card.releaseYear} index={index} />)}
-            {timeline.length === 0 ? <p className="py-12 text-sm text-muted-foreground">Your timeline will appear when the round starts.</p> : null}
-          </div>
-        </div>
-        <button type="button" className="absolute left-0 top-1/2 flex size-10 -translate-y-1/2 items-center justify-center rounded-full border-2 border-border bg-card"><ChevronLeft className="size-5" /></button>
-        <button type="button" className="absolute right-0 top-1/2 flex size-10 -translate-y-1/2 items-center justify-center rounded-full border-2 border-border bg-card"><ChevronRight className="size-5" /></button>
-      </section>
-
-      <footer className="flex flex-wrap items-center justify-between gap-4">
-        <div className="inline-flex items-center gap-3 rounded-full border-2 border-border bg-card px-4 py-2">
-          <UserRound className="size-4 text-primary" />
-          <span className="text-xs text-muted-foreground">DJ</span><strong className="text-sm text-card-foreground">{djPlayer?.displayName ?? "Waiting"}</strong>
-          <span className="h-7 w-px bg-border" />
-          <span className="text-xs text-muted-foreground">Turn</span><strong className="text-sm text-card-foreground">{activePlayer?.displayName ?? "Waiting"}</strong>
-        </div>
-        <div className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-[0.18em] text-muted-foreground"><Music2 className="size-4 text-warning" /> Your tokens {activePlayer?.tokenCount ?? 0}</div>
-      </footer>
-    </main>
-  );
+  return <main className="relative flex min-h-[720px] flex-col overflow-hidden px-6 py-8 sm:px-14 sm:py-9">
+    <header className="flex items-start justify-between gap-4"><div><h1 className="font-display text-[26px] text-foreground drop-shadow-sm sm:text-[32px]">Round {roundNumber}</h1><div className="mt-2 flex items-center gap-2 text-xs text-muted-foreground"><span>First to {session.winConditionCardCount ?? 0} cards wins</span><span className="size-1 rounded-full bg-muted-foreground" /><strong className="font-display text-accent">{currentRound?.status?.replaceAll("_", " ") ?? "Waiting for players"}</strong></div></div><div className="inline-flex items-center gap-2 rounded-full border-2 border-border bg-card px-4 py-2 text-sm font-semibold text-card-foreground"><UsersRound className="size-4 text-accent" />{session.djMode === "FIXED" ? "Fixed DJ" : "Rotating DJ"}</div></header>
+    <section className="relative flex min-h-[530px] flex-1 items-center justify-center"><p className="absolute bottom-[calc(50%+108px)] font-bold text-xs uppercase tracking-[0.24em] text-muted-foreground">Timeline</p><div className="w-full max-w-[1100px] overflow-x-auto px-10 py-4" style={{ maskImage: TIMELINE_MASK }}><div className="flex w-max gap-[18px]">{timeline.map((card, index) => <TimelineCard key={`${card.songId}-${card.position}`} card={card} index={index} />)}{timeline.length === 0 ? <p className="py-12 text-sm text-muted-foreground">Your timeline will appear when the round starts.</p> : null}</div></div><button type="button" aria-label="View earlier timeline cards" className="absolute left-0 top-1/2 flex size-10 -translate-y-1/2 items-center justify-center rounded-full border-2 border-border bg-card shadow-[3px_3px_0_rgba(0,0,0,0.25)]"><ChevronLeft className="size-5" /></button><button type="button" aria-label="View later timeline cards" className="absolute right-0 top-1/2 flex size-10 -translate-y-1/2 items-center justify-center rounded-full border-2 border-border bg-card shadow-[3px_3px_0_rgba(0,0,0,0.25)]"><ChevronRight className="size-5" /></button>
+      {currentRound && isDj ? <div className="absolute bottom-[calc(50%+178px)] left-1/2 flex w-max max-w-[calc(100%-24px)] -translate-x-1/2 flex-col items-center gap-5 sm:flex-row sm:items-center sm:gap-7"><SoundwaveCard /><div className="max-w-[340px] text-center sm:text-left"><button type="button" onClick={openLinkOut} disabled={linkOutQuery.isLoading || !linkOutQuery.data?.watchUrl} className="inline-flex items-center gap-2 rounded-full bg-primary px-5 py-3 font-display text-[13px] text-primary-foreground shadow-[3px_3px_0_rgba(0,0,0,0.28)] disabled:opacity-55">Open on YouTube to play<ExternalLink className="size-4" /></button><p className="mt-2 text-xs leading-relaxed text-muted-foreground">Play it out loud. Everyone else finds out what it is when the card gets revealed.</p>{isLinkOutOpen ? <div className="mt-2 inline-flex items-center gap-2 rounded-full border-2 border-warning bg-warning/10 px-3 py-1.5 text-[11px] font-semibold text-warning"><Volume2 className="size-3.5" />Shares your tab or system audio with the group.</div> : null}</div></div> : null}
+      {currentRound && isActivePlayer && !isDj ? <div className="absolute bottom-[calc(50%+148px)] left-1/2 flex -translate-x-1/2 flex-col items-center gap-2"><span className="font-bold text-[11px] uppercase tracking-[0.2em] text-primary">Your card</span><SoundwaveCard /><span className="text-[11px] text-muted-foreground">Drag onto the timeline</span></div> : null}
+      {currentRound && !isDj ? <div className="absolute top-[calc(50%+148px)] left-1/2 flex w-full max-w-[520px] -translate-x-1/2 flex-col items-center gap-3 px-3"><div className="flex w-full flex-col gap-3 sm:flex-row sm:gap-5"><GuessField placeholder="Guess the artist" /><GuessField placeholder="Guess the title" /></div><p className="text-center text-[11.5px] text-muted-foreground">Anyone can guess, anytime. Try artists one at a time.</p></div> : null}</section>
+    <footer className="flex flex-wrap items-center justify-between gap-4"><div className="inline-flex items-center gap-3 rounded-full border-2 border-border bg-card px-4 py-2"><UserRound className="size-4 text-primary" /><span className="text-xs text-muted-foreground">DJ</span><strong className="text-sm text-card-foreground">{djPlayer?.displayName ?? "Waiting"}</strong><span className="h-7 w-px bg-border" /><span className="text-xs text-muted-foreground">Turn</span><strong className="text-sm text-card-foreground">{activePlayer?.displayName ?? "Waiting"}</strong></div><div className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-[0.18em] text-muted-foreground"><Music2 className="size-4 text-warning" />Your tokens {currentPlayer?.tokenCount ?? 0}</div></footer>
+  </main>;
 }
