@@ -683,6 +683,13 @@ Tests:
 Tests:
 - [x] Verify the thumb visibly slides in both directions
 
+### Global scrollbar styling
+
+- [x] Add a theme-aware custom scrollbar used by every page and reserve its layout gutter to prevent content shifts
+
+Tests:
+- [x] Verify the scrollbar track and thumb in both themes on a scrollable page
+
 ## Story 48: Comment cleanup
 
 `AGENTS.md`'s code conventions already state the rule this story enforces: write as few comments as possible, only when the reasoning genuinely can't be inferred from the code, none that restate what the line already says, none that narrate a specific example instead of the general rule. AI-assisted batches built across this project have drifted from that rule in places, leaving comments that re-explain what adjacent code already makes obvious, or that narrate a past version's reasoning instead of documenting the code as it stands.

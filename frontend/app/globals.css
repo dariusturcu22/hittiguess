@@ -4,6 +4,45 @@
 
 @custom-variant dark (&:is(.dark *));
 
+html {
+  scrollbar-gutter: stable;
+  scrollbar-color: #9ca0b0 #e6e9ef;
+  scrollbar-width: thin;
+}
+
+.dark {
+  scrollbar-color: #6c7086 #181825;
+}
+
+::-webkit-scrollbar {
+  width: 12px;
+  height: 12px;
+}
+
+::-webkit-scrollbar-track {
+  background: #e6e9ef;
+}
+
+::-webkit-scrollbar-thumb {
+  border: 3px solid #e6e9ef;
+  border-radius: 999px;
+  background: #9ca0b0;
+}
+
+::-webkit-scrollbar-thumb:hover { background: #6c6f85; }
+
+.dark::-webkit-scrollbar-track,
+.dark ::-webkit-scrollbar-track { background: #181825; }
+
+.dark::-webkit-scrollbar-thumb,
+.dark ::-webkit-scrollbar-thumb {
+  border-color: #181825;
+  background: #6c7086;
+}
+
+.dark::-webkit-scrollbar-thumb:hover,
+.dark ::-webkit-scrollbar-thumb:hover { background: #a6adc8; }
+
 html.theme-transition,
 html.theme-transition * {
   transition: background-color 260ms ease, border-color 260ms ease, color 260ms ease, box-shadow 260ms ease !important;
