@@ -617,6 +617,7 @@ Design phase complete: `docs/design/hittiguess-design.html` covers all 53 screen
 
 - [ ] Build the group lobby route and shell from the `GroupLobby*` mockups, including member presence, admin indicators, join link, group settings, and the empty, two-player, and eight-player layouts
 - [ ] Wire the group lobby to the generated group-management hooks and persistent group WebSocket events, with loading, forbidden, missing, and connection-error states
+- [ ] Bridge the browser's HTTP-only access-token cookie into the STOMP authentication flow, so the gameplay client can connect without exposing the token to JavaScript
 - [ ] Build the game-session route and shared round shell from the `GameSession*` mockups, including player, DJ, and spectator layouts, current-song card, timeline, token count, and persistent session connection
 - [ ] Implement timeline card placement and guess submission against the game-session API, including dragging, dropped, locked, and animated reveal states
 - [ ] Implement betting-window preparation and active states, including token-holder variants and round progression from session broadcasts
