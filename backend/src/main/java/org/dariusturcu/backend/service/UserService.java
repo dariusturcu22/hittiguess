@@ -121,7 +121,7 @@ public class UserService {
 
         Playlist playlist = new Playlist();
         playlist.setName("New playlist");
-        playlist.setColor("000000");
+        playlist.setColor("cba6f7");
         playlist.setInviteCode(UUID.randomUUID().toString());
         playlist.setOwner(user);
 

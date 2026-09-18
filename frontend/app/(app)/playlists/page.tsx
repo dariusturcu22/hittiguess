@@ -13,6 +13,7 @@ import {
   useGetUserPlaylists,
 } from "@/hooks/generated/user-management/user-management";
 import { PlaylistCoverMosaic } from "@/components/playlist-cover-mosaic";
+import { playlistTitleColor } from "@/lib/playlist-colors";
 
 function PlusIcon({ className }: { className?: string }) {
   return (
@@ -64,7 +65,7 @@ function PlaylistCard({ playlist }: { playlist: PlaylistSummaryDTO }) {
       <div className="flex flex-col gap-1.5 p-4 pb-[18px]">
         <div
           className="font-display text-base"
-          style={{ color: `#${playlist.color}` }}
+          style={{ color: playlistTitleColor(playlist.color) }}
         >
           {playlist.name}
         </div>
