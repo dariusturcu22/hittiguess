@@ -22,11 +22,6 @@ export interface CreateSongRequest {
    * @minLength 1
    * @pattern ^[0-9a-fA-F]{6}$
    */
-  gradientColor1: string;
-  /**
-   * @minLength 1
-   * @pattern ^[0-9a-fA-F]{6}$
-   */
-  gradientColor2: string;
+  color: string;
   country?: CreateSongRequestCountry;
 }

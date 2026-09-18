@@ -59,7 +59,7 @@ class SongMetadataServiceTest {
         expectResolveCallReturning("""
                 {"status":"SUCCESS","model":"gpt-5.1","content":{
                   "title":"Title","artist":"Artist","release_year":1999,
-                  "gradient_color1":"8B5CF6","gradient_color2":"EC4899",
+                  "color":"8B5CF6",
                   "confidence":"high","source":"MusicBrainz","reasoning":"Matched."}}
                 """);
 

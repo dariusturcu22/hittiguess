@@ -170,7 +170,6 @@ class PlaylistMembershipLifecycleIntegrationTest {
                 2000,
                 "dQw4w9WgXcQ",
                 "abcdef",
-                "abcdef",
                 null);
     }
 

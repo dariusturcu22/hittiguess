@@ -162,39 +162,3 @@ def build_four_sources_prompt(
     )
 
 
-def build_title_artist_extraction_prompt(video_title: str, channel_title: str) -> str:
-    """Splits a raw YouTube video title and channel name into a clean song
-    title and artist, run before any structured source is queried so those
-    lookups search on a name a source can actually match rather than a raw
-    upload title. Validated against spikes/extraction_test_set.py's ten
-    adversarial cases: typos, reversed artist/title order, no separator at
-    all, decorative unicode, a YouTube auto-generated "- Topic" channel
-    suffix, and a genuinely unidentifiable submission."""
-    return (
-        "You are a music metadata analyst. Extract the song's real TITLE and ARTIST from this raw "
-        "YouTube video title and channel name.\n\n"
-        f"Video title: {video_title!r}\nChannel name: {channel_title!r}\n\n"
-        "RULES:\n"
-        "- the video title is very often formatted \"Artist - Title\", split it into the two fields, "
-        "don't leave the artist name sitting inside the title text\n"
-        "- artist and title can appear in EITHER order with no separator at all, use your own "
-        "knowledge of real songs to tell which part is the artist and which is the title\n"
-        "- the channel name is a hint, not the answer: an official artist channel usually matches, but "
-        "a channel name ending in \"- Topic\" (YouTube's auto-generated music channels) or \"VEVO\" is "
-        "still that artist's name with the suffix removed, and an unrelated channel (a compilation "
-        "upload, a lyrics channel) may not name the artist at all\n"
-        "- REMOVE: 'Remastered', 'Remaster', 'HD', 'HQ', '4K', 'Official Video', 'Official Audio', "
-        "'Lyrics', 'Lyric Video', 'Live', 'Live Version', 'Radio Edit', 'Single Version', year "
-        "qualifiers like '2019 Remaster', and decorative symbols or emoji around the name\n"
-        "- KEEP: 'Remix', 'Mashup', 'Original Mix', 'Extended Mix', they identify a specific version\n"
-        "- a featured-artist credit ('feat. X', 'ft. X', 'featuring X') stays part of the title text "
-        "exactly as it would in the cleaned song title, do not merge it into the artist field or drop it\n"
-        "- fix an obvious typo in the title or artist when you're confident of the real name (e.g. a "
-        "misspelled song or artist name), but don't fix a stylized or intentionally unusual real name\n"
-        "- if the raw text genuinely does not identify a real song (a mixtape label, a generic track "
-        "number, gibberish), title and artist should both be null, do not invent a plausible-sounding "
-        "answer just because one is expected\n"
-        "- confidence: high if the split is unambiguous, medium if you had to infer artist/title order "
-        "or resolve a typo, low if you're genuinely unsure of the split or the identification itself\n\n"
-        f"{_SHARED_TASK_INSTRUCTIONS}"
-    )

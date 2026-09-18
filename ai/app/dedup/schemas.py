@@ -6,7 +6,6 @@ class VerifiedSongMatch(BaseModel):
     artist: str
     title: str
     release_year: int
-    gradient_color1: str | None
-    gradient_color2: str | None
+    color: str | None
     confidence: str | None
     cosine_distance: float

@@ -1,36 +1,34 @@
-const DEFAULT_GRADIENT_START = "#8B5CF6";
-const DEFAULT_GRADIENT_END = "#EC4899";
+const DEFAULT_COLOR = "#8B5CF6";
+
+// Mirrors CardGenerator.java's readableTextColorFor: a single flat fill color
+// can be light enough that fixed white text stops being legible, unlike the
+// old two-stop gradient.
+const LUMINANCE_THRESHOLD_FOR_DARK_TEXT = 150;
+const DARK_TEXT_COLOR = "#1e1e2e";
+const LIGHT_TEXT_COLOR = "#ffffff";
+
+function readableTextColorFor(hexColor: string): string {
+  const hex = hexColor.replace("#", "");
+  const red = parseInt(hex.slice(0, 2), 16);
+  const green = parseInt(hex.slice(2, 4), 16);
+  const blue = parseInt(hex.slice(4, 6), 16);
+  const luminance = 0.299 * red + 0.587 * green + 0.114 * blue;
+  return luminance > LUMINANCE_THRESHOLD_FOR_DARK_TEXT ? DARK_TEXT_COLOR : LIGHT_TEXT_COLOR;
+}
 
 interface GameCardProps {
   artist: string;
   year: number | string;
   title: string;
-  gradientColor1?: string;
-  gradientColor2?: string;
+  color?: string;
   size?: "lg" | "sm";
   /** No metadata resolved yet: renders a dashed, muted placeholder card. */
   placeholder?: boolean;
 }
 
-export function GameCard({
-  artist,
-  year,
-  title,
-  gradientColor1,
-  gradientColor2,
-  size = "lg",
-  placeholder = false,
-}: GameCardProps) {
-  const start = gradientColor1
-    ? gradientColor1.startsWith("#")
-      ? gradientColor1
-      : `#${gradientColor1}`
-    : DEFAULT_GRADIENT_START;
-  const end = gradientColor2
-    ? gradientColor2.startsWith("#")
-      ? gradientColor2
-      : `#${gradientColor2}`
-    : DEFAULT_GRADIENT_END;
+export function GameCard({ artist, year, title, color, size = "lg", placeholder = false }: GameCardProps) {
+  const fillColor = color ? (color.startsWith("#") ? color : `#${color}`) : DEFAULT_COLOR;
+  const textColor = readableTextColorFor(fillColor);
 
   const isLarge = size === "lg";
 
@@ -41,13 +39,9 @@ export function GameCard({
       } ${
         placeholder
           ? "border-4 border-dashed border-border text-muted-foreground sm:border-[5px]"
-          : "border-[5px] border-border-strong text-white sm:border-8"
+          : "border-[5px] border-border-strong sm:border-8"
       }`}
-      style={
-        placeholder
-          ? undefined
-          : { background: `linear-gradient(to bottom, ${start}, ${end})` }
-      }
+      style={placeholder ? undefined : { background: fillColor, color: textColor }}
     >
       <div
         className={`font-semibold tracking-wide uppercase ${isLarge ? "text-lg sm:text-xl" : "text-[11px]"}`}

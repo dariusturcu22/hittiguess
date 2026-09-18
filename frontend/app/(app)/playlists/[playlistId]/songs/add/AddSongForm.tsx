@@ -19,14 +19,12 @@ import { buildCreateSongRequestFromCatalog } from "./songCatalogRequest";
 
 type Mode = "search" | "new-link" | "new-review";
 
-const DEFAULT_GRADIENT_1 = "#8B5CF6";
-const DEFAULT_GRADIENT_2 = "#EC4899";
+const DEFAULT_COLOR = "#8B5CF6";
 const REVIEW_PREVIEW_DETAILS: PendingSongDetails = {
   title: "Dreams",
   artist: "Fleetwood Mac",
   releaseYear: "1977",
-  gradientColor1: "#89b4fa",
-  gradientColor2: "#cba6f7",
+  color: "#89b4fa",
   country: CreateSongRequestCountry.NONE,
   isHighConfidence: false,
 };
@@ -143,12 +141,7 @@ export function AddSongForm({ playlistId, backPath }: AddSongFormProps) {
         title: metadata.title ?? "",
         artist: metadata.artist ?? "",
         releaseYear: metadata.releaseYear ?? "",
-        gradientColor1: metadata.gradientColor1
-          ? `#${metadata.gradientColor1}`
-          : DEFAULT_GRADIENT_1,
-        gradientColor2: metadata.gradientColor2
-          ? `#${metadata.gradientColor2}`
-          : DEFAULT_GRADIENT_2,
+        color: metadata.color ? `#${metadata.color}` : DEFAULT_COLOR,
         country: CreateSongRequestCountry.NONE,
         isHighConfidence,
       });

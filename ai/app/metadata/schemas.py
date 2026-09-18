@@ -6,8 +6,9 @@ from pydantic import BaseModel
 class LlmExtractionResult(BaseModel):
     """Structured-output shape for both the Wikipedia extraction step and
     the four-source reconciliation step in story 18's lock-or-LLM pipeline.
-    Mirrors SongMetadataResult minus the gradient-color and source fields,
-    which are display and provenance concerns resolved after verification."""
+    Mirrors SongMetadataResult minus the color and source fields, which are
+    display and provenance concerns resolved outside the reconciliation
+    call."""
 
     title: str
     artist: str
@@ -16,16 +17,24 @@ class LlmExtractionResult(BaseModel):
     reasoning: str
 
 
-class TitleArtistExtractionResult(BaseModel):
-    """Structured-output shape for splitting a raw YouTube video title and
-    channel name into a clean song title and artist, before any structured
-    source is queried. title/artist are null for a genuinely unidentifiable
-    submission, resisting an invented answer rather than guessing."""
+class SubmissionPreCheckResult(BaseModel):
+    """One structured-output call covering everything a submission needs
+    before any structured source is queried: splitting the raw YouTube
+    video title and channel name into a clean song title, artist, and a
+    single flat display color, plus the prompt-injection and song/
+    compilation classification checks content_safety.evaluate gates on.
+    title/artist are null for a genuinely unidentifiable submission,
+    resisting an invented answer rather than guessing."""
 
     title: str | None
     artist: str | None
-    confidence: str
-    reasoning: str
+    color: str
+    contains_injection_attempt: bool
+    injection_reasoning: str
+    is_song: bool
+    is_compilation: bool
+    classification_confidence: str
+    classification_reasoning: str
 
 
 class MetadataResolveRequest(BaseModel):
@@ -54,8 +63,7 @@ class SongMetadataResult(BaseModel):
     title: str
     artist: str
     release_year: int | None
-    gradient_color1: str
-    gradient_color2: str
+    color: str
     confidence: str
     source: str
     reasoning: str

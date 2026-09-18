@@ -52,8 +52,7 @@ public class SongResolutionService {
         if (metadata.releaseYear() != null) {
             song.setReleaseYear(metadata.releaseYear());
         }
-        song.setGradientColor1(metadata.gradientColor1());
-        song.setGradientColor2(metadata.gradientColor2());
+        song.setColor(metadata.color());
         song.setConfidence(metadata.confidence());
         if (metadata.verificationStatus() != null) {
             song.setVerificationStatus(VerificationStatus.valueOf(metadata.verificationStatus()));

@@ -27,11 +27,11 @@ class SongMapperTest {
     }
 
     private CreateSongRequest anyCreateRequest() {
-        return new CreateSongRequest("Artist", "Title", 2000, "dQw4w9WgXcQ", "abcdef", "abcdef", null);
+        return new CreateSongRequest("Artist", "Title", 2000, "dQw4w9WgXcQ", "abcdef", null);
     }
 
     private UpdateSongRequest anyUpdateRequest() {
-        return new UpdateSongRequest("Artist", "Title", 2000, "dQw4w9WgXcQ", "abcdef", "abcdef", null);
+        return new UpdateSongRequest("Artist", "Title", 2000, "dQw4w9WgXcQ", "abcdef", null);
     }
 
     @Test

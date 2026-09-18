@@ -6,7 +6,6 @@ from pydantic import BaseModel
 from app.clients.deepinfra_client import client as deepinfra_client
 from app.clients.openai_client import client
 from app.config import settings
-from app.metadata.schemas import SongMetadataResult
 from app.observability.error_reporting import report_openai_failure
 
 # Non-zero temperature produces real run-to-run answer variance on close
@@ -16,25 +15,6 @@ RESPONSE_FORMAT_NOT_SUPPORTED_MESSAGE = "response format is not supported"
 EXTRACTION_TOOL_NAME = "extract_structured_result"
 
 ResponseModel = TypeVar("ResponseModel", bound=BaseModel)
-
-
-def synthesize(prompt: str) -> SongMetadataResult:
-    try:
-        completion = client.chat.completions.parse(
-            model=settings.openai_model,
-            temperature=0.1,
-            messages=[{"role": "user", "content": prompt}],
-            response_format=SongMetadataResult,
-        )
-    except Exception as openai_error:
-        report_openai_failure(openai_error)
-        raise
-
-    parsed = completion.choices[0].message.parsed
-    if parsed is None:
-        raise ValueError("LLM response did not match the expected schema")
-
-    return parsed
 
 
 def synthesize_with_model(prompt: str, model: str, response_model: type[ResponseModel]) -> ResponseModel:

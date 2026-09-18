@@ -16,8 +16,7 @@ public record SongDTO(
         int releaseYear,
         @NotNull
         String youtubeId,
-        String gradientColor1,
-        String gradientColor2,
+        String color,
         String genre,
         Country country,
         @NotNull
