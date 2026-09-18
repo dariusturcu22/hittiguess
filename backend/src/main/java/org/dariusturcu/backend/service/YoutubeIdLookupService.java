@@ -9,6 +9,7 @@ import org.dariusturcu.backend.repository.SongRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -60,5 +61,19 @@ public class YoutubeIdLookupService {
     public boolean isKnown(String youtubeId) {
         List<Song> songsByPrimaryId = songRepository.findByYoutubeId(youtubeId);
         return !songsByPrimaryId.isEmpty() || alternateYoutubeIdRepository.existsByYoutubeId(youtubeId);
+    }
+
+    /**
+     * Resolves a batch of already-known YouTube IDs to their canonical Song rows,
+     * following the alternate-ID mapping for IDs that are known only as a re-upload
+     * of an existing track rather than a Song's own primary youtubeId.
+     */
+    @Transactional(readOnly = true)
+    public List<Song> resolveCanonicalSongs(Collection<String> knownYoutubeIds) {
+        List<Song> canonicalSongs = new ArrayList<>(songRepository.findByYoutubeIdIn(knownYoutubeIds));
+        alternateYoutubeIdRepository.findByYoutubeIdIn(knownYoutubeIds).stream()
+                .map(AlternateYoutubeId::getSong)
+                .forEach(canonicalSongs::add);
+        return canonicalSongs;
     }
 }

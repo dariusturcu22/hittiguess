@@ -32,6 +32,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -56,6 +57,8 @@ class BulkImportServiceTest {
     @Mock
     private PlaylistExpansionService playlistExpansionService;
     @Mock
+    private PlaylistImportService playlistImportService;
+    @Mock
     private ApplicationEventPublisher applicationEventPublisher;
 
     private BulkImportService bulkImportService;
@@ -64,7 +67,8 @@ class BulkImportServiceTest {
     void setUp() {
         MetadataPriorityCoordinator metadataPriorityCoordinator = new MetadataPriorityCoordinator();
         bulkImportService = new BulkImportService(youtubeIdLookupService, songResolutionService,
-                catalogSeedingService, metadataPriorityCoordinator, playlistExpansionService, applicationEventPublisher);
+                catalogSeedingService, metadataPriorityCoordinator, playlistExpansionService, playlistImportService,
+                applicationEventPublisher);
 
         User submittingUser = new User();
         submittingUser.setUsername(SUBMITTING_USERNAME);
@@ -88,7 +92,7 @@ class BulkImportServiceTest {
         when(songResolutionService.resolveAndPersist(EXTRA_VIDEO_ID)).thenReturn(Optional.of(mock(Song.class)));
 
         BulkImportResultDTO result = bulkImportService.importImmediately(
-                new BulkImportRequest("playlist-link", List.of(EXTRA_VIDEO_ID)));
+                new BulkImportRequest("playlist-link", List.of(EXTRA_VIDEO_ID), null));
 
         assertThat(result.resolvedYoutubeIds()).containsExactlyInAnyOrder(EXPANDED_VIDEO_ID, EXTRA_VIDEO_ID);
     }
@@ -101,7 +105,7 @@ class BulkImportServiceTest {
                 .thenReturn(new YoutubeIdLookupResult(Set.of(), Set.of(PLAIN_VIDEO_ID)));
         when(songResolutionService.resolveAndPersist(PLAIN_VIDEO_ID)).thenReturn(Optional.of(mock(Song.class)));
 
-        bulkImportService.importImmediately(new BulkImportRequest(null, List.of(PLAIN_VIDEO_ID)));
+        bulkImportService.importImmediately(new BulkImportRequest(null, List.of(PLAIN_VIDEO_ID), null));
 
         verify(catalogSeedingService).reEnqueueForPatientReprocessing(PLAIN_VIDEO_ID);
     }
@@ -115,7 +119,7 @@ class BulkImportServiceTest {
         when(songResolutionService.resolveAndPersist(RESOLVES_VIDEO_ID)).thenReturn(Optional.of(mock(Song.class)));
         when(songResolutionService.resolveAndPersist(UNRESOLVED_VIDEO_ID)).thenReturn(Optional.empty());
 
-        bulkImportService.importImmediately(new BulkImportRequest(null, submittedIds));
+        bulkImportService.importImmediately(new BulkImportRequest(null, submittedIds, null));
 
         ArgumentCaptor<BulkImportProgressEvent> eventCaptor = ArgumentCaptor.forClass(BulkImportProgressEvent.class);
         verify(applicationEventPublisher, times(3)).publishEvent(eventCaptor.capture());
@@ -134,7 +138,40 @@ class BulkImportServiceTest {
         when(playlistExpansionService.expandAndMerge(eq("bad-link"), eq(List.of())))
                 .thenThrow(new PlaylistImportException("Not a valid playlist link"));
 
-        assertThatThrownBy(() -> bulkImportService.importImmediately(new BulkImportRequest("bad-link", List.of())))
+        assertThatThrownBy(() -> bulkImportService.importImmediately(new BulkImportRequest("bad-link", List.of(), null)))
                 .isInstanceOf(PlaylistImportException.class);
+    }
+
+    @Test
+    void withNoTargetPlaylistIdNothingIsLinkedIntoAnyPlaylist() {
+        when(playlistExpansionService.expandAndMerge(null, List.of(PLAIN_VIDEO_ID))).thenReturn(List.of(PLAIN_VIDEO_ID));
+        when(youtubeIdLookupService.partitionKnownAndUnknown(List.of(PLAIN_VIDEO_ID)))
+                .thenReturn(new YoutubeIdLookupResult(Set.of(), Set.of(PLAIN_VIDEO_ID)));
+        when(songResolutionService.resolveAndPersist(PLAIN_VIDEO_ID)).thenReturn(Optional.of(mock(Song.class)));
+
+        bulkImportService.importImmediately(new BulkImportRequest(null, List.of(PLAIN_VIDEO_ID), null));
+
+        verifyNoInteractions(playlistImportService);
+    }
+
+    @Test
+    void withATargetPlaylistIdBothKnownAndNewlyResolvedSongsAreLinkedIntoIt() {
+        Long targetPlaylistId = 42L;
+        List<String> submittedIds = List.of(ALREADY_KNOWN_VIDEO_ID, RESOLVES_VIDEO_ID);
+        Song alreadyKnownSong = mock(Song.class);
+        Song resolvedSong = mock(Song.class);
+
+        when(playlistExpansionService.expandAndMerge(null, submittedIds)).thenReturn(submittedIds);
+        when(youtubeIdLookupService.partitionKnownAndUnknown(submittedIds)).thenReturn(
+                new YoutubeIdLookupResult(Set.of(ALREADY_KNOWN_VIDEO_ID), Set.of(RESOLVES_VIDEO_ID)));
+        when(youtubeIdLookupService.resolveCanonicalSongs(Set.of(ALREADY_KNOWN_VIDEO_ID)))
+                .thenReturn(List.of(alreadyKnownSong));
+        when(songResolutionService.resolveAndPersist(RESOLVES_VIDEO_ID)).thenReturn(Optional.of(resolvedSong));
+
+        bulkImportService.importImmediately(new BulkImportRequest(null, submittedIds, targetPlaylistId));
+
+        ArgumentCaptor<List<Song>> linkedSongsCaptor = ArgumentCaptor.forClass(List.class);
+        verify(playlistImportService).addResolvedSongs(eq(targetPlaylistId), linkedSongsCaptor.capture());
+        assertThat(linkedSongsCaptor.getValue()).containsExactlyInAnyOrder(alreadyKnownSong, resolvedSong);
     }
 }

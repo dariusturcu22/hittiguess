@@ -20,7 +20,8 @@ public class BulkImportController {
 
     private final BulkImportService bulkImportService;
 
-    @Operation(summary = "Import a list of YouTube video IDs or links immediately; already-known songs are skipped")
+    @Operation(summary = "Import a list of YouTube video IDs or links immediately, optionally linking every "
+            + "resolved or already-known song into a target playlist")
     @PostMapping
     public ResponseEntity<BulkImportResultDTO> importImmediately(@RequestBody BulkImportRequest request) {
         return ResponseEntity.ok(bulkImportService.importImmediately(request));

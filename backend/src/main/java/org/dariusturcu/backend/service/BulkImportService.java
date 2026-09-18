@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.dariusturcu.backend.model.song.BulkImportRequest;
 import org.dariusturcu.backend.model.song.BulkImportResultDTO;
+import org.dariusturcu.backend.model.song.Song;
 import org.dariusturcu.backend.model.song.YoutubeIdLookupResult;
 import org.dariusturcu.backend.security.util.SecurityUtils;
 import org.dariusturcu.backend.util.YoutubeLinkParser;
@@ -12,8 +13,10 @@ import org.dariusturcu.backend.websocket.BulkImportProgressOutcome;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 
 /**
@@ -28,6 +31,10 @@ import java.util.Set;
  * Publishes a BulkImportProgressEvent for every submitted video id, already-known ones
  * included, so the submitting user's client can render live per-song progress against
  * the full set it asked to import rather than only the ones this loop actively resolves.
+ *
+ * When the request carries a targetPlaylistId, every song this call resolves or finds
+ * already known is also linked into that playlist, so an import started from a specific
+ * playlist's page actually lands its songs there rather than only growing the catalog.
  */
 @Slf4j
 @Service
@@ -39,6 +46,7 @@ public class BulkImportService {
     private final CatalogSeedingService catalogSeedingService;
     private final MetadataPriorityCoordinator metadataPriorityCoordinator;
     private final PlaylistExpansionService playlistExpansionService;
+    private final PlaylistImportService playlistImportService;
     private final ApplicationEventPublisher applicationEventPublisher;
 
     public BulkImportResultDTO importImmediately(BulkImportRequest request) {
@@ -54,13 +62,15 @@ public class BulkImportService {
 
         Set<String> resolvedIds = new LinkedHashSet<>();
         Set<String> unresolvedIds = new LinkedHashSet<>();
+        List<Song> resolvedSongs = new ArrayList<>();
 
         metadataPriorityCoordinator.beginOnTheSpotWork();
         try {
             for (String youtubeId : lookupResult.unknownYoutubeIds()) {
-                boolean resolved = songResolutionService.resolveAndPersist(youtubeId).isPresent();
-                if (resolved) {
+                Optional<Song> resolvedSong = songResolutionService.resolveAndPersist(youtubeId);
+                if (resolvedSong.isPresent()) {
                     resolvedIds.add(youtubeId);
+                    resolvedSongs.add(resolvedSong.get());
                     catalogSeedingService.reEnqueueForPatientReprocessing(youtubeId);
                     publishProgress(submittingUsername, youtubeId, BulkImportProgressOutcome.RESOLVED);
                 } else {
@@ -70,6 +80,13 @@ public class BulkImportService {
             }
         } finally {
             metadataPriorityCoordinator.endOnTheSpotWork();
+        }
+
+        if (request.targetPlaylistId() != null) {
+            List<Song> knownSongs = youtubeIdLookupService.resolveCanonicalSongs(lookupResult.knownYoutubeIds());
+            List<Song> songsToLink = new ArrayList<>(knownSongs);
+            songsToLink.addAll(resolvedSongs);
+            playlistImportService.addResolvedSongs(request.targetPlaylistId(), songsToLink);
         }
 
         return new BulkImportResultDTO(lookupResult.knownYoutubeIds(), resolvedIds, unresolvedIds);

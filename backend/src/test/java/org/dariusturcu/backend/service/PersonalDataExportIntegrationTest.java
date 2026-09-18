@@ -10,6 +10,7 @@ import org.dariusturcu.backend.model.user.AuthProvider;
 import org.dariusturcu.backend.model.user.PersonalDataExportDTO;
 import org.dariusturcu.backend.model.user.Role;
 import org.dariusturcu.backend.model.user.User;
+import org.dariusturcu.backend.repository.PendingImportRepository;
 import org.dariusturcu.backend.repository.PlaylistBanRepository;
 import org.dariusturcu.backend.repository.PlaylistMembershipRepository;
 import org.dariusturcu.backend.repository.PlaylistRepository;
@@ -79,6 +80,13 @@ class PersonalDataExportIntegrationTest {
         }
 
         @Bean
+        CatalogSeedingService catalogSeedingService(PendingImportRepository pendingImportRepository) {
+            // No test here submits a song whose reprocessing needs to actually drain, so
+            // the backlog-drain dependencies below are never invoked.
+            return new CatalogSeedingService(pendingImportRepository, null, null, null, null, 0L);
+        }
+
+        @Bean
         PlaylistService playlistService(
                 PlaylistRepository playlistRepository,
                 SongRepository songRepository,
@@ -87,9 +95,11 @@ class PersonalDataExportIntegrationTest {
                 PlaylistAccessService playlistAccessService,
                 PlaylistMembershipRepository playlistMembershipRepository,
                 PlaylistBanRepository playlistBanRepository,
-                SavedPlaylistRepository savedPlaylistRepository) {
+                SavedPlaylistRepository savedPlaylistRepository,
+                CatalogSeedingService catalogSeedingService) {
             return new PlaylistService(playlistRepository, songRepository, playlistMapper, songMapper,
-                    playlistAccessService, playlistMembershipRepository, playlistBanRepository, savedPlaylistRepository);
+                    playlistAccessService, playlistMembershipRepository, playlistBanRepository, savedPlaylistRepository,
+                    catalogSeedingService);
         }
 
         @Bean
