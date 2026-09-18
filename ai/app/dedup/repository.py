@@ -10,8 +10,7 @@ _FIND_BEST_VERIFIED_MATCH_QUERY = """
            string_agg(song_artists.name, ', ' ORDER BY song_artists.display_order) AS artist,
            s.title AS title,
            s.release_year AS release_year,
-           s.gradient_color1 AS gradient_color1,
-           s.gradient_color2 AS gradient_color2,
+           s.color AS color,
            s.confidence AS confidence,
            s.embedding <=> :query_embedding AS cosine_distance
     FROM songs s

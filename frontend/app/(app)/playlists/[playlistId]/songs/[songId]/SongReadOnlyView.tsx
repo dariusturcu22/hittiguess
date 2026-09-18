@@ -244,8 +244,7 @@ export function SongReadOnlyView({
           artist={artistNames}
           year={song.releaseYear}
           title={song.title}
-          gradientColor1={song.gradientColor1}
-          gradientColor2={song.gradientColor2}
+          color={song.color}
         />
       </div>
 

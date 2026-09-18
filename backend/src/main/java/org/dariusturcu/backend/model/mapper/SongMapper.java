@@ -16,8 +16,7 @@ public class SongMapper {
                 song.getTitle(),
                 song.getReleaseYear(),
                 song.getYoutubeId(),
-                song.getGradientColor1(),
-                song.getGradientColor2(),
+                song.getColor(),
                 song.getGenre(),
                 song.getCountry() != null ? song.getCountry() : Country.NONE,
                 song.getVerificationStatus(),
@@ -34,8 +33,7 @@ public class SongMapper {
         newSong.setTitle(request.title());
         newSong.setReleaseYear(request.releaseYear());
         newSong.setYoutubeId(request.youtubeId());
-        newSong.setGradientColor1(request.gradientColor1());
-        newSong.setGradientColor2(request.gradientColor2());
+        newSong.setColor(request.color());
         newSong.setCountry(request.country() != null ? request.country() : Country.NONE);
 
         return newSong;
@@ -55,11 +53,8 @@ public class SongMapper {
         if (request.youtubeId() != null) {
             song.setYoutubeId(request.youtubeId());
         }
-        if (request.gradientColor1() != null) {
-            song.setGradientColor1(request.gradientColor1());
-        }
-        if (request.gradientColor2() != null) {
-            song.setGradientColor2(request.gradientColor2());
+        if (request.color() != null) {
+            song.setColor(request.color());
         }
         if (request.country() != null) {
             song.setCountry(request.country());

@@ -39,7 +39,7 @@ class SongResolutionServiceTest {
 
     private AiResponse successResponse(String verificationStatus) {
         SongMetadataResponse content = new SongMetadataResponse(
-                "Never Gonna Give You Up", "Rick Astley", 1987, "abcdef", "abcdef",
+                "Never Gonna Give You Up", "Rick Astley", 1987, "abcdef",
                 "high", "musicbrainz+discogs+wikidata-lock", "All three sources agree", verificationStatus);
         return new AiResponse(content, "gpt-5.1", 100L, LocalDateTime.now(), "SUCCESS", null, null);
     }

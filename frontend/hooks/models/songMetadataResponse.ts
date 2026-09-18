@@ -9,8 +9,7 @@ export interface SongMetadataResponse {
   title?: string;
   artist?: string;
   releaseYear?: number;
-  gradientColor1?: string;
-  gradientColor2?: string;
+  color?: string;
   confidence?: string;
   source?: string;
   reasoning?: string;

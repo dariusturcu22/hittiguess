@@ -27,7 +27,7 @@ function ConfirmRow({ song }: { song: SongDTO }) {
     <div className="flex items-center gap-[14px] px-5 py-3 border-b-2 border-background last:border-b-0">
       <span
         className="w-9 h-9 rounded-[9px] shrink-0 flex items-center justify-center"
-        style={{ background: song.gradientColor1 ?? undefined }}
+        style={{ background: song.color ?? undefined }}
       >
         <ListMusic className="size-4 text-foreground/40" />
       </span>

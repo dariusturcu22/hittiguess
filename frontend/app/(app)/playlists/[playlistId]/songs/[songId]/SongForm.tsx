@@ -42,8 +42,7 @@ interface SongFormData {
   title: string;
   artist: string;
   releaseYear: number | string;
-  gradientColor1: string;
-  gradientColor2: string;
+  color: string;
   country: CreateSongRequestCountry;
 }
 
@@ -64,8 +63,7 @@ export function SongForm({
     title: song.title,
     artist: song.artists[0]?.name ?? "",
     releaseYear: song.releaseYear,
-    gradientColor1: song.gradientColor1 ? `#${song.gradientColor1}` : "#8B5CF6",
-    gradientColor2: song.gradientColor2 ? `#${song.gradientColor2}` : "#EC4899",
+    color: song.color ? `#${song.color}` : "#8B5CF6",
     country: song.country ?? CreateSongRequestCountry.NONE,
   });
 
@@ -105,11 +103,8 @@ export function SongForm({
       );
       return;
     }
-    if (
-      !HEX_COLOR_PATTERN.test(formData.gradientColor1) ||
-      !HEX_COLOR_PATTERN.test(formData.gradientColor2)
-    ) {
-      setSubmitError("Both gradient colors must be a 6-character hex value.");
+    if (!HEX_COLOR_PATTERN.test(formData.color)) {
+      setSubmitError("The color must be a 6-character hex value.");
       return;
     }
 
@@ -122,8 +117,7 @@ export function SongForm({
           title: formData.title,
           artist: formData.artist,
           releaseYear,
-          gradientColor1: formData.gradientColor1.replace("#", ""),
-          gradientColor2: formData.gradientColor2.replace("#", ""),
+          color: formData.color.replace("#", ""),
           country: formData.country,
         },
       },
@@ -174,8 +168,7 @@ export function SongForm({
           artist={formData.artist}
           year={formData.releaseYear}
           title={formData.title}
-          gradientColor1={formData.gradientColor1}
-          gradientColor2={formData.gradientColor2}
+          color={formData.color}
         />
       </div>
 
@@ -300,46 +293,20 @@ export function SongForm({
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3">
+            <Input
+              type="color"
+              value={formData.color}
+              onChange={(event) => handleColorChange("color", event.target.value)}
+              className="size-8 shrink-0 cursor-pointer overflow-hidden rounded-md border-none p-0 shadow-sm"
+            />
+            <div className="grid w-full gap-1">
+              <Label className="text-[10px] uppercase">Color</Label>
               <Input
-                type="color"
-                value={formData.gradientColor1}
-                onChange={(event) =>
-                  handleColorChange("gradientColor1", event.target.value)
-                }
-                className="size-8 shrink-0 cursor-pointer overflow-hidden rounded-md border-none p-0 shadow-sm"
+                value={formData.color}
+                onChange={(event) => handleColorChange("color", event.target.value)}
+                className="h-8 font-mono text-xs"
               />
-              <div className="grid w-full gap-1">
-                <Label className="text-[10px] uppercase">Color 1</Label>
-                <Input
-                  value={formData.gradientColor1}
-                  onChange={(event) =>
-                    handleColorChange("gradientColor1", event.target.value)
-                  }
-                  className="h-8 font-mono text-xs"
-                />
-              </div>
-            </div>
-            <div className="flex items-center gap-3">
-              <Input
-                type="color"
-                value={formData.gradientColor2}
-                onChange={(event) =>
-                  handleColorChange("gradientColor2", event.target.value)
-                }
-                className="size-8 shrink-0 cursor-pointer overflow-hidden rounded-md border-none p-0 shadow-sm"
-              />
-              <div className="grid w-full gap-1">
-                <Label className="text-[10px] uppercase">Color 2</Label>
-                <Input
-                  value={formData.gradientColor2}
-                  onChange={(event) =>
-                    handleColorChange("gradientColor2", event.target.value)
-                  }
-                  className="h-8 font-mono text-xs"
-                />
-              </div>
             </div>
           </div>
         </CollapsibleContent>
