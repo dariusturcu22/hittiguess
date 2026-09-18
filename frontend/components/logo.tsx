@@ -1,60 +1,4 @@
-"use client";
-
-import * as React from "react";
-
-const BAR_COUNT = 4;
-const BAR_MINIMUM_PHASE_STEP = 1.2;
-const BAR_RANDOM_PHASE_RANGE = 1.4;
-const BAR_BASE_SPEED = 0.0016;
-const BAR_RANDOM_SPEED_RANGE = 0.0007;
-const BAR_HEIGHT_BASE_PX = 12;
-const BAR_HEIGHT_AMPLITUDE_PX = 6;
-const BAR_SECONDARY_WAVE_RATIO = 0.37;
-const BAR_SECONDARY_WAVE_AMPLITUDE_RATIO = 0.35;
-
-type WaveformBarConfig = {
-  phase: number;
-  speed: number;
-};
-
-function useWaveformBarHeights() {
-  const [heights, setHeights] = React.useState(() =>
-    Array.from({ length: BAR_COUNT }, () => BAR_HEIGHT_BASE_PX),
-  );
-  const waveformConfig = React.useRef<WaveformBarConfig[] | null>(null);
-
-  React.useEffect(() => {
-    let animationFrameId = 0;
-    waveformConfig.current = Array.from({ length: BAR_COUNT }, (_, barIndex) => ({
-      phase: barIndex * BAR_MINIMUM_PHASE_STEP + Math.random() * BAR_RANDOM_PHASE_RANGE,
-      speed: BAR_BASE_SPEED + Math.random() * BAR_RANDOM_SPEED_RANGE,
-    }));
-
-    function animate(timestamp: number) {
-      setHeights(
-        waveformConfig.current!.map(
-          ({ phase, speed }) =>
-            BAR_HEIGHT_BASE_PX +
-            Math.round(
-              BAR_HEIGHT_AMPLITUDE_PX *
-                (Math.sin(timestamp * speed + phase) +
-                  BAR_SECONDARY_WAVE_AMPLITUDE_RATIO *
-                    Math.sin(
-                      timestamp * speed * BAR_SECONDARY_WAVE_RATIO + phase * BAR_SECONDARY_WAVE_RATIO,
-                    )),
-            ),
-        ),
-      );
-      animationFrameId = requestAnimationFrame(animate);
-    }
-
-    animationFrameId = requestAnimationFrame(animate);
-
-    return () => cancelAnimationFrame(animationFrameId);
-  }, []);
-
-  return heights;
-}
+const WAVEFORM_ANIMATION_DELAYS = ["0ms", "-180ms", "-360ms", "-540ms"];
 
 type LogoBarsProps = {
   barWidthPx?: number;
@@ -67,15 +11,13 @@ export const LogoBars = ({
   colorClassName = "bg-[#499f36] dark:bg-[#a6e3a1]",
   containerClassName = "h-6",
 }: LogoBarsProps = {}) => {
-  const heights = useWaveformBarHeights();
-
   return (
     <div className={`flex items-center gap-[3px] shrink-0 ${containerClassName}`}>
-      {heights.map((height, index) => (
+      {WAVEFORM_ANIMATION_DELAYS.map((animationDelay) => (
         <span
-          key={index}
-          className={`rounded-full transition-[height] duration-150 ease-out ${colorClassName}`}
-          style={{ width: `${barWidthPx}px`, height: `${height}px` }}
+          key={animationDelay}
+          className={`h-6 origin-center rounded-full animate-waveform-bar ${colorClassName}`}
+          style={{ width: `${barWidthPx}px`, animationDelay }}
         />
       ))}
     </div>

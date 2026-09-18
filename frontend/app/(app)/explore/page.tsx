@@ -60,7 +60,7 @@ export default function ExplorePlaylistsPage() {
   });
 
   return (
-    <div className="flex-1 min-h-0 box-border flex flex-col px-14 pt-11 pb-[50px]">
+    <div className="h-full min-h-0 box-border flex flex-col px-14 pt-11 pb-[50px]">
       <h1 className="font-display text-[34px] text-accent mb-6 [text-shadow:3px_3px_0_var(--text-shadow-on-page)]">
         Explore public playlists
       </h1>
