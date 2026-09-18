@@ -14,7 +14,6 @@ const ROUND_STEPS = [
 function StartAction() {
   return <Button asChild className="landing-action"><Link href="/register">Start a session</Link></Button>;
 }
-
 export default function LandingPage() {
   return (
     <div className="landing-page">
