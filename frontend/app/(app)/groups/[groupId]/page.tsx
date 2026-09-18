@@ -3,6 +3,7 @@
 import { use, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
+  Check,
   Clipboard,
   Crown,
   Loader2,
@@ -134,6 +135,7 @@ export default function GroupLobbyPage({ params }: PageProps) {
   const members = useMemo(() => groupQuery.data?.members ?? [], [groupQuery.data?.members]);
   const currentMember = members.find((member) => member.id === currentUser?.id);
   const isCurrentUserAdmin = Boolean(currentMember?.isAdmin);
+  const isCurrentUserLoading = currentUser === undefined;
   const featuredPlaylist = groupQuery.data?.playlists?.[0];
 
   useEffect(() => {
@@ -280,21 +282,36 @@ export default function GroupLobbyPage({ params }: PageProps) {
               <button type="button" onClick={() => setIsSettingsOpen(false)} className="text-muted-foreground hover:text-card-foreground">Close</button>
             </div>
             <div className="space-y-4">
-              <label className="flex items-center justify-between gap-3 text-[13px] text-muted-foreground">
-                Playlist
-                <select
-                  value={selectedPlaylistId ?? ""}
-                  onChange={(event) => setSelectedPlaylistId(event.target.value ? Number(event.target.value) : undefined)}
-                  className="max-w-[190px] rounded-full border-2 border-border bg-background px-3 py-1.5 text-sm font-semibold text-foreground outline-none"
-                >
-                  <option value="">No playlist</option>
-                  {playlistsQuery.data?.map((playlist) => (
-                    <option key={playlist.id} value={playlist.id}>
-                      {playlist.name} ({playlist.songCount} songs)
-                    </option>
-                  ))}
-                </select>
-              </label>
+              <div>
+                <p className="mb-2 text-[13px] text-muted-foreground">Playlist</p>
+                <div className="grid gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setSelectedPlaylistId(undefined)}
+                    className={`flex items-center justify-between rounded-xl border-2 px-3 py-2 text-left text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${selectedPlaylistId === undefined ? "border-primary bg-primary/10 text-foreground" : "border-border bg-background text-muted-foreground hover:border-primary/60 hover:text-foreground"}`}
+                  >
+                    No playlist
+                    {selectedPlaylistId === undefined ? <Check className="size-4 text-primary" /> : null}
+                  </button>
+                  {playlistsQuery.data?.map((playlist) => {
+                    const isSelected = selectedPlaylistId === playlist.id;
+                    return (
+                      <button
+                        key={playlist.id}
+                        type="button"
+                        onClick={() => setSelectedPlaylistId(playlist.id)}
+                        className={`flex items-center justify-between rounded-xl border-2 px-3 py-2 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${isSelected ? "border-primary bg-primary/10" : "border-border bg-background hover:border-primary/60"}`}
+                      >
+                        <span>
+                          <span className="block text-sm font-semibold text-foreground">{playlist.name}</span>
+                          <span className="text-xs text-muted-foreground">{playlist.songCount} songs</span>
+                        </span>
+                        {isSelected ? <Check className="size-4 shrink-0 text-primary" /> : null}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
               <label className="flex items-center justify-between gap-3 text-[13px] text-muted-foreground">
                 DJ mode
                 <select value={selectedDjMode} onChange={(event) => setSelectedDjMode(event.target.value as "FIXED" | "ROTATING")} className="rounded-full border-2 border-border bg-background px-3 py-1.5 text-sm font-semibold text-foreground outline-none">
@@ -321,7 +338,7 @@ export default function GroupLobbyPage({ params }: PageProps) {
       </section>
 
       <footer className="flex flex-wrap items-center gap-3">
-        {isCurrentUserAdmin ? (
+        {!isCurrentUserLoading && isCurrentUserAdmin ? (
           <button
             type="button"
             onClick={handleStartGame}
@@ -340,7 +357,7 @@ export default function GroupLobbyPage({ params }: PageProps) {
           <MessageCircle className="size-4" />
           Chat
         </button>
-        {isCurrentUserAdmin ? (
+        {!isCurrentUserLoading && isCurrentUserAdmin ? (
           <button
             type="button"
             onClick={openSettings}
@@ -360,7 +377,10 @@ export default function GroupLobbyPage({ params }: PageProps) {
           {leaveGroup.isPending ? <Loader2 className="size-4 animate-spin" /> : <LogOut className="size-4" />}
           Leave lobby
         </button>
-        <span className="text-[10px] text-muted-foreground">{groupRealtime.connectionState === "connected" ? "Live" : "Reconnecting"}</span>
+        <span className="inline-flex items-center gap-1 text-[10px] text-muted-foreground" aria-live="polite">
+          <span className={`size-1.5 rounded-full ${groupRealtime.connectionState === "connected" ? "bg-green" : "bg-warning"}`} />
+          {groupRealtime.connectionState === "connected" ? "Live" : "Reconnecting"}
+        </span>
       </footer>
     </main>
   );
