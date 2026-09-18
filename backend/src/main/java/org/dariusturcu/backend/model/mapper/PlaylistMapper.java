@@ -32,12 +32,17 @@ public class PlaylistMapper {
     }
 
     public PlaylistSummaryDTO toSummaryDTO(Playlist playlist) {
+        return toSummaryDTO(playlist, playlist.getOwner().getId());
+    }
+
+    public PlaylistSummaryDTO toSummaryDTO(Playlist playlist, Long userId) {
         return new PlaylistSummaryDTO(
                 playlist.getId(),
                 playlist.getName(),
                 playlist.getColor(),
                 playlist.getSongCount(),
-                previewYoutubeIds(playlist)
+                previewYoutubeIds(playlist),
+                playlist.getOwner().getId().equals(userId)
         );
     }
 

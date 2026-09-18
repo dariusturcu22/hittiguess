@@ -52,7 +52,7 @@ public class UserService {
         return playlistMembershipRepository.findByUserId(userId).stream()
                 .map(PlaylistMembership::getPlaylist)
                 .peek(playlist -> playlist.getSongs().size())
-                .map(playlistMapper::toSummaryDTO)
+                .map(playlist -> playlistMapper.toSummaryDTO(playlist, userId))
                 .toList();
     }
 

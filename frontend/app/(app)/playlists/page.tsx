@@ -108,6 +108,7 @@ export default function PlaylistsPage() {
   const { mutate: createPlaylist, isPending: isCreating } =
     useCreatePlaylist();
   const [searchQuery, setSearchQuery] = React.useState("");
+  const [libraryTab, setLibraryTab] = React.useState<"owned" | "joined">("owned");
 
   const handleCreatePlaylist = () => {
     createPlaylist(undefined, {
@@ -120,9 +121,11 @@ export default function PlaylistsPage() {
     });
   };
 
-  const visiblePlaylists = (playlists ?? []).filter((playlist) =>
-    playlist.name.toLowerCase().includes(searchQuery.trim().toLowerCase()),
-  );
+  const visiblePlaylists = (playlists ?? []).filter((playlist) => {
+    const ownedByCurrentUser = (playlist as PlaylistSummaryDTO & { ownedByCurrentUser?: boolean }).ownedByCurrentUser;
+    return playlist.name.toLowerCase().includes(searchQuery.trim().toLowerCase())
+      && (libraryTab === "owned" ? ownedByCurrentUser : !ownedByCurrentUser);
+  });
 
   return (
     <div className="flex h-full flex-col p-6 md:p-11">
@@ -157,20 +160,12 @@ export default function PlaylistsPage() {
             className="bg-surface-sunken border-border w-full rounded-full border-2 py-3 pr-[18px] pl-[42px] font-sans text-sm text-foreground placeholder:text-muted-foreground outline-none"
           />
         </div>
-        {/* The list endpoint doesn't distinguish owned vs. joined playlists,
-            so these pills reflect the mockup visually but don't filter. */}
-        <span
-          className="cursor-pointer rounded-full bg-accent px-6 py-2.5 font-display text-xs text-accent-foreground shadow-xs"
-          title="Filtering by ownership isn't available yet"
-        >
+        <button type="button" onClick={() => setLibraryTab("owned")} className={`cursor-pointer rounded-full px-6 py-2.5 font-display text-xs ${libraryTab === "owned" ? "bg-accent text-accent-foreground shadow-xs" : "text-muted-foreground border-border border-2"}`}>
           Owned
-        </span>
-        <span
-          className="text-muted-foreground border-border cursor-pointer rounded-full border-2 px-6 py-2.5 font-display text-xs"
-          title="Filtering by ownership isn't available yet"
-        >
+        </button>
+        <button type="button" onClick={() => setLibraryTab("joined")} className={`cursor-pointer rounded-full px-6 py-2.5 font-display text-xs ${libraryTab === "joined" ? "bg-accent text-accent-foreground shadow-xs" : "text-muted-foreground border-border border-2"}`}>
           Joined
-        </span>
+        </button>
       </div>
 
       <div className="min-h-0 flex-1 overflow-y-auto pr-1">
