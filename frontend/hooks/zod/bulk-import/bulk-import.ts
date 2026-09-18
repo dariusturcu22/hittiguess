@@ -8,10 +8,11 @@ import * as zod from 'zod';
 
 
 /**
- * @summary Import a list of YouTube video IDs or links immediately; already-known songs are skipped
+ * @summary Import a list of YouTube video IDs or links immediately, optionally linking every resolved or already-known song into a target playlist
  */
 export const importImmediatelyBody = zod.object({
   "playlistLink": zod.string().optional(),
-  "videoIdsOrLinks": zod.array(zod.string()).optional()
+  "videoIdsOrLinks": zod.array(zod.string()).optional(),
+  "targetPlaylistId": zod.number().optional()
 })
 

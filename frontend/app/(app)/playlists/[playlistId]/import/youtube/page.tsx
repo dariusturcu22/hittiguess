@@ -28,7 +28,7 @@ export default function ImportYoutubePage({ params }: PageProps) {
     const toastId = toast.loading("Importing playlist...");
     window.dispatchEvent(new CustomEvent("playlist-import-progress", { detail: true }));
     importMutation.mutate(
-      { data: { playlistLink: trimmedLink } },
+      { data: { playlistLink: trimmedLink, targetPlaylistId: playlistId } },
       {
         onSuccess: () => toast.success("Playlist import complete.", { id: toastId }),
         onError: () => toast.error("Playlist import failed.", { id: toastId }),

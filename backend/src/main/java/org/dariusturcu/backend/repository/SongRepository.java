@@ -13,6 +13,8 @@ public interface SongRepository extends JpaRepository<Song, Long> {
 
     List<Song> findByYoutubeId(String youtubeId);
 
+    List<Song> findByYoutubeIdIn(Collection<String> youtubeIds);
+
     List<Song> findByVerificationStatus(VerificationStatus verificationStatus);
 
     @Query("select song.youtubeId from Song song where song.youtubeId in :youtubeIds")

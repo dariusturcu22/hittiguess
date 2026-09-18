@@ -22,6 +22,7 @@ import org.dariusturcu.backend.service.CatalogSeedingService;
 import org.dariusturcu.backend.service.MetadataPriorityCoordinator;
 import org.dariusturcu.backend.service.PendingImportProcessor;
 import org.dariusturcu.backend.service.PlaylistExpansionService;
+import org.dariusturcu.backend.service.PlaylistImportService;
 import org.dariusturcu.backend.service.SongMetadataService;
 import org.dariusturcu.backend.service.SongResolutionService;
 import org.dariusturcu.backend.service.YoutubeIdLookupService;
@@ -111,6 +112,13 @@ class CatalogSeedingIntegrationTest {
         }
 
         @Bean
+        PlaylistImportService playlistImportService() {
+            // No test here submits a targetPlaylistId, so this service's dependencies
+            // are never actually invoked.
+            return new PlaylistImportService(null, null);
+        }
+
+        @Bean
         CatalogSeedingService catalogSeedingService(PendingImportRepository pendingImportRepository,
                                                     YoutubeIdLookupService youtubeIdLookupService,
                                                     PendingImportProcessor pendingImportProcessor,
@@ -127,10 +135,11 @@ class CatalogSeedingIntegrationTest {
                                             CatalogSeedingService catalogSeedingService,
                                             MetadataPriorityCoordinator metadataPriorityCoordinator,
                                             PlaylistExpansionService playlistExpansionService,
+                                            PlaylistImportService playlistImportService,
                                             ApplicationEventPublisher applicationEventPublisher) {
             return new BulkImportService(youtubeIdLookupService, songResolutionService,
                     catalogSeedingService, metadataPriorityCoordinator, playlistExpansionService,
-                    applicationEventPublisher);
+                    playlistImportService, applicationEventPublisher);
         }
     }
 
@@ -290,7 +299,7 @@ class CatalogSeedingIntegrationTest {
         assertThat(pendingImportRepository.countByStatus(PendingImportStatus.PENDING)).isEqualTo(1);
 
         BulkImportResultDTO result = bulkImportService.importImmediately(
-                new BulkImportRequest(null, List.of("contendedID")));
+                new BulkImportRequest(null, List.of("contendedID"), null));
 
         assertThat(result.resolvedYoutubeIds()).contains("contendedID");
         assertThat(songRepository.findByYoutubeId("contendedID")).isNotEmpty();
@@ -298,7 +307,7 @@ class CatalogSeedingIntegrationTest {
 
     @Test
     void anOnTheSpotResolvedSongIsReEnqueuedAndLaterResolvesThroughThePatientPipeline() {
-        bulkImportService.importImmediately(new BulkImportRequest(null, List.of("fastTierID1")));
+        bulkImportService.importImmediately(new BulkImportRequest(null, List.of("fastTierID1"), null));
 
         List<PendingImport> reEnqueued = pendingImportRepository.findByStatusOrderByEnqueuedAtAsc(
                 PendingImportStatus.PENDING, org.springframework.data.domain.Limit.of(10));
