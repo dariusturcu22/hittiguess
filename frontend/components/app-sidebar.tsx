@@ -162,15 +162,17 @@ export function AppSidebar() {
 
       <div className={RAIL_DIVIDER_CLASSES} />
 
-      <div
+      <Link
+        href={activeGroup?.id ? `/groups/${activeGroup.id}` : "/playlists"}
         className={`${RAIL_ICON_BASE_CLASSES} ${
-          activeGroup ? "border-2 border-primary text-primary" : RAIL_ICON_INTERACTIVE_CLASSES
+          pathname?.startsWith("/groups/") || activeGroup
+            ? "border-2 border-primary text-primary"
+            : RAIL_ICON_INTERACTIVE_CLASSES
         }`}
         title={activeGroup ? "Group lobby (active session)" : "Group lobby"}
-        aria-disabled={!activeGroup}
       >
         <GroupLobbyIcon />
-      </div>
+      </Link>
 
       {isImporting ? (
         <div className="mt-3 flex size-[30px] items-center justify-center rounded-full bg-primary text-primary-foreground" title="Import in progress">

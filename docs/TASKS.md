@@ -613,6 +613,19 @@ Design phase complete: `docs/design/hittiguess-design.html` covers all 53 screen
 - [ ] Implementation: build the new gameplay screens as real Next.js components/routes; wire to stories 10/11/39's actual backend once those land, using representative mock state in the meantime so this doesn't block on their implementation timing
 - [ ] Component/token boundary: no longer retheme-only where a mockup's layout differs from the existing page's layout; `docs/FRONTEND_IMPLEMENTATION_GUIDE.md` supersedes the retheme-only rule for those pages. shadcn primitives (`components/shadcn/*`) are still used wherever they're the natural fit for a control (button, input, dialog, table), never replaced with hand-built markup for a form control or anything interactive; but a page's overall layout is rebuilt to match its mockup rather than kept as-is
 
+### Batch E: Gameplay screens
+
+- [ ] Build the group lobby route and shell from the `GroupLobby*` mockups, including member presence, admin indicators, join link, group settings, and the empty, two-player, and eight-player layouts
+- [ ] Wire the group lobby to the generated group-management hooks and persistent group WebSocket events, with loading, forbidden, missing, and connection-error states
+- [ ] Build the game-session route and shared round shell from the `GameSession*` mockups, including player, DJ, and spectator layouts, current-song card, timeline, token count, and persistent session connection
+- [ ] Implement timeline card placement and guess submission against the game-session API, including dragging, dropped, locked, and animated reveal states
+- [ ] Implement betting-window preparation and active states, including token-holder variants and round progression from session broadcasts
+- [ ] Build the DJ link-out action and audio-sharing warning, always opening the real YouTube page or app rather than embedding playback
+- [ ] Add the group text-chat overlay, turn notification, away widget, and voice sidebar to the gameplay shell, wired to the group-chat, WebSocket signaling, and TURN-credentials APIs
+- [ ] Build the results and leaderboard route from the `Results*` mockups for two-player and eight-player sessions, including the session export action
+- [ ] Render every Batch E route and state at each mockup's desktop and mobile breakpoint in both themes, comparing directly against its matching source mockup
+- [ ] Add unit coverage for each new interactive component and Playwright coverage for lobby join, session start, placement, betting, link-out warning, chat, and results export
+
 Tests:
 - [ ] Frontend test: each redesigned existing page renders without regression (a smoke test per route)
 - [ ] Frontend test: the new gameplay screens render correctly against representative mock state (empty, mid-game, varying player counts)
