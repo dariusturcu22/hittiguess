@@ -8,42 +8,23 @@ import {
 } from "@/hooks/generated/playlist-management/playlist-management";
 import type { PublicPlaylistSummaryDTO } from "@/hooks/models/publicPlaylistSummaryDTO";
 import { PhantomEmptyState } from "@/components/phantom-empty-state";
-import { getPlaylistMosaicColors } from "@/lib/playlist-mosaic-colors";
-
-function PlayIcon() {
-  return (
-    <svg
-      width="16"
-      height="16"
-      viewBox="0 0 24 24"
-      fill="rgba(255,255,255,0.55)"
-      aria-hidden="true"
-    >
-      <path d="M8 5v14l11-7z" />
-    </svg>
-  );
-}
+import { PlaylistCoverMosaic } from "@/components/playlist-cover-mosaic";
 
 function PlaylistCard({ playlist }: { playlist: PublicPlaylistSummaryDTO }) {
   const saveMutation = useSavePlaylist();
   const saved = saveMutation.isSuccess;
-  const tileColors = getPlaylistMosaicColors(playlist.color);
 
   return (
     <div className="bg-card border-[3px] border-border-strong rounded-xl shadow-lg overflow-hidden flex flex-col">
-      <div className="grid aspect-square grid-cols-2 grid-rows-2 gap-0.5 bg-border-strong">
-        {tileColors.map((color) => (
-          <div
-            key={color}
-            className="flex items-center justify-center"
-            style={{ backgroundColor: color }}
-          >
-            <PlayIcon />
-          </div>
-        ))}
-      </div>
+      <PlaylistCoverMosaic
+        previewYoutubeIds={playlist.previewYoutubeIds}
+        className="w-full rounded-none border-none"
+      />
       <div className="px-[18px] pt-4 pb-[18px] flex flex-col gap-1">
-        <div className="font-display text-base text-card-foreground truncate">
+        <div
+          className="font-display text-base truncate"
+          style={{ color: `#${playlist.color}` }}
+        >
           {playlist.name}
         </div>
         <div className="text-[12px] text-muted-foreground">

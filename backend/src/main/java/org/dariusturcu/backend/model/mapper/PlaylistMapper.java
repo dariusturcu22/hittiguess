@@ -10,22 +10,34 @@ import org.dariusturcu.backend.model.playlist.PublicPlaylistSummaryDTO;
 import org.dariusturcu.backend.model.playlist.UpdatePlaylistRequest;
 import org.dariusturcu.backend.model.user.UserSummaryDTO;
 
+import org.dariusturcu.backend.model.song.Song;
 import org.springframework.stereotype.Component;
 import lombok.RequiredArgsConstructor;
 
+import java.util.List;
 import java.util.stream.Collectors;
 
 @Component
 @RequiredArgsConstructor
 public class PlaylistMapper {
+    private static final int COVER_PREVIEW_SONG_COUNT = 4;
+
     private final SongMapper songMapper;
+
+    private List<String> previewYoutubeIds(Playlist playlist) {
+        return playlist.getSongs().stream()
+                .limit(COVER_PREVIEW_SONG_COUNT)
+                .map(Song::getYoutubeId)
+                .toList();
+    }
 
     public PlaylistSummaryDTO toSummaryDTO(Playlist playlist) {
         return new PlaylistSummaryDTO(
                 playlist.getId(),
                 playlist.getName(),
                 playlist.getColor(),
-                playlist.getSongCount()
+                playlist.getSongCount(),
+                previewYoutubeIds(playlist)
         );
     }
 
@@ -54,7 +66,8 @@ public class PlaylistMapper {
                 playlist.getName(),
                 playlist.getColor(),
                 playlist.getSongCount(),
-                new UserSummaryDTO(playlist.getOwner().getId(), playlist.getOwner().getUsername())
+                new UserSummaryDTO(playlist.getOwner().getId(), playlist.getOwner().getUsername()),
+                previewYoutubeIds(playlist)
         );
     }
 
