@@ -22,6 +22,7 @@ public record SongDTO(
         @NotNull
         VerificationStatus verificationStatus,
         String confidence,
+        boolean needsUserAttention,
         UserSummaryDTO addedBy
 ) {
 }

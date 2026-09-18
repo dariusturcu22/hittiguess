@@ -36,6 +36,7 @@ vi.mock(
 
 function buildSong(
   verificationStatus: SongDTOVerificationStatus = SongDTOVerificationStatus.NEEDS_REVIEW,
+  confidence = "low",
 ): SongDTO {
   return {
     id: 1,
@@ -44,6 +45,7 @@ function buildSong(
     releaseYear: 1999,
     youtubeId: "abc123",
     verificationStatus,
+    confidence,
   };
 }
 
@@ -67,6 +69,16 @@ describe("SongReadOnlyView community actions", () => {
 
   it("hides the confirm affordance once a song is verified", () => {
     renderWithProviders(buildSong(SongDTOVerificationStatus.VERIFIED));
+
+    expect(
+      screen.queryByRole("button", { name: /is this correct/i }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("hides the confirm affordance for a medium-confidence pipeline result", () => {
+    renderWithProviders(
+      buildSong(SongDTOVerificationStatus.NEEDS_REVIEW, "medium"),
+    );
 
     expect(
       screen.queryByRole("button", { name: /is this correct/i }),

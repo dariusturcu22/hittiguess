@@ -4,6 +4,7 @@ import org.dariusturcu.backend.model.song.CreateSongRequest;
 import org.dariusturcu.backend.model.song.Song;
 import org.dariusturcu.backend.model.song.SongDTO;
 import org.dariusturcu.backend.model.song.UpdateSongRequest;
+import org.dariusturcu.backend.model.song.VerificationStatus;
 import org.dariusturcu.backend.model.user.User;
 import org.junit.jupiter.api.Test;
 
@@ -50,6 +51,28 @@ class SongMapperTest {
         SongDTO dto = songMapper.toDTO(song);
 
         assertThat(dto.genre()).isNull();
+    }
+
+    @Test
+    void toDTODoesNotRequireUserAttentionForAMediumConfidencePipelineResult() {
+        Song song = songWithGenre(null);
+        song.setVerificationStatus(VerificationStatus.NEEDS_REVIEW);
+        song.setConfidence("medium");
+
+        SongDTO dto = songMapper.toDTO(song);
+
+        assertThat(dto.needsUserAttention()).isFalse();
+    }
+
+    @Test
+    void toDTORequiresUserAttentionForALowConfidencePipelineResult() {
+        Song song = songWithGenre(null);
+        song.setVerificationStatus(VerificationStatus.NEEDS_REVIEW);
+        song.setConfidence("low");
+
+        SongDTO dto = songMapper.toDTO(song);
+
+        assertThat(dto.needsUserAttention()).isTrue();
     }
 
     @Test

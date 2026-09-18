@@ -134,8 +134,10 @@ export function AddSongForm({ playlistId, backPath }: AddSongFormProps) {
       }
 
       const metadata = response.content;
-      const isHighConfidence =
-        !!metadata.title && !!metadata.artist && !!metadata.releaseYear;
+      const needsUserAttention =
+        metadata.verificationStatus === "MANUAL_ENTRY" ||
+        (metadata.verificationStatus === "NEEDS_REVIEW" &&
+          metadata.confidence?.toLowerCase() === "low");
 
       setPendingDetails({
         title: metadata.title ?? "",
@@ -143,7 +145,7 @@ export function AddSongForm({ playlistId, backPath }: AddSongFormProps) {
         releaseYear: metadata.releaseYear ?? "",
         color: metadata.color ? `#${metadata.color}` : DEFAULT_COLOR,
         country: CreateSongRequestCountry.NONE,
-        isHighConfidence,
+        isHighConfidence: !needsUserAttention,
       });
       setMode("new-review");
     } catch {

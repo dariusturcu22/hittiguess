@@ -20,6 +20,8 @@ import org.dariusturcu.backend.model.song.Song;
 import org.dariusturcu.backend.model.song.SongDTO;
 import org.dariusturcu.backend.model.song.UpdateSongRequest;
 import org.dariusturcu.backend.model.song.VerificationStatus;
+import org.dariusturcu.backend.model.ai.AiResponse;
+import org.dariusturcu.backend.model.ai.SongMetadataResponse;
 import org.dariusturcu.backend.model.user.User;
 import org.dariusturcu.backend.repository.PlaylistBanRepository;
 import org.dariusturcu.backend.repository.PlaylistMembershipRepository;
@@ -52,6 +54,22 @@ public class PlaylistService {
     private final PlaylistBanRepository playlistBanRepository;
     private final SavedPlaylistRepository savedPlaylistRepository;
     private final CatalogSeedingService catalogSeedingService;
+    private final SongMetadataService songMetadataService;
+
+    public PlaylistService(
+            PlaylistRepository playlistRepository,
+            SongRepository songRepository,
+            PlaylistMapper playlistMapper,
+            SongMapper songMapper,
+            PlaylistAccessService playlistAccessService,
+            PlaylistMembershipRepository playlistMembershipRepository,
+            PlaylistBanRepository playlistBanRepository,
+            SavedPlaylistRepository savedPlaylistRepository,
+            CatalogSeedingService catalogSeedingService) {
+        this(playlistRepository, songRepository, playlistMapper, songMapper, playlistAccessService,
+                playlistMembershipRepository, playlistBanRepository, savedPlaylistRepository,
+                catalogSeedingService, null);
+    }
 
     // VERIFIED is a pipeline-established lock and NEEDS_REVIEW is an LLM-reconciled year;
     // hand-editing either undermines the trust tier the pipeline already assigned it.
@@ -166,6 +184,7 @@ public class PlaylistService {
 
         Song newSong = songMapper.toEntity(request);
         newSong.setAddedBy(user);
+        applyConfirmedMetadata(newSong, request);
 
         Song savedSong = songRepository.save(newSong);
         playlist.addSong(savedSong);
@@ -173,6 +192,36 @@ public class PlaylistService {
         catalogSeedingService.reEnqueueForPatientReprocessing(request.youtubeId());
 
         return songMapper.toDTO(savedSong);
+    }
+
+    private void applyConfirmedMetadata(Song song, CreateSongRequest request) {
+        if (!Boolean.TRUE.equals(request.metadataConfirmed()) || songMetadataService == null) {
+            return;
+        }
+
+        AiResponse response = songMetadataService.resolveByYoutubeId(request.youtubeId());
+        if (!"SUCCESS".equals(response.status()) || response.content() == null) {
+            return;
+        }
+
+        SongMetadataResponse metadata = response.content();
+        if (!matchesSubmittedSong(metadata, request) || metadata.verificationStatus() == null) {
+            return;
+        }
+
+        song.setConfidence(metadata.confidence());
+        song.setVerificationStatus(VerificationStatus.valueOf(metadata.verificationStatus()));
+    }
+
+    private boolean matchesSubmittedSong(SongMetadataResponse metadata, CreateSongRequest request) {
+        return normalized(metadata.title()).equals(normalized(request.title()))
+                && normalized(metadata.artist()).equals(normalized(request.artist()))
+                && metadata.releaseYear() != null
+                && metadata.releaseYear() == request.releaseYear();
+    }
+
+    private String normalized(String value) {
+        return value == null ? "" : value.trim().toLowerCase();
     }
 
     public SongDTO updateSong(

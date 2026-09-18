@@ -441,3 +441,12 @@ No story required for these. Fix on a `fix` branch.
 Tests:
 - [x] Frontend test: the confirm affordance shows only for a `NEEDS_REVIEW` song and submits a confirmation on click (`SongReadOnlyView.test.tsx`)
 - [x] Frontend test: the song list's empty-state catalog search calls the search endpoint and adds a matching result with its data (`SongCatalogQuickAdd.test.tsx`)
+
+## Metadata user-attention and persistence fix pass
+
+- [x] Derive non-admin user attention from verification status and normalized confidence
+- [x] Preserve trusted metadata preview verification data only when a submitted song still matches that preview
+
+Tests:
+
+- [x] Add backend and frontend coverage for attention and metadata persistence
