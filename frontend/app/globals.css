@@ -11,45 +11,45 @@ html.theme-transition * {
 
 .theme-toggle {
   position: relative;
-  display: flex;
-  gap: 4px;
+  display: block;
+  width: 64px;
+  height: 34px;
+  min-height: 34px;
   border-radius: 999px;
+  border: 2px solid #9ca0b0;
   background: #ccd0da;
-  padding: 4px;
+  padding: 0;
+  box-shadow: 3px 3px 0 rgba(76,79,105,.2);
 }
 
-.dark .theme-toggle { background: #313244; }
+.theme-toggle:hover { background: #ccd0da; }
+.theme-toggle:focus-visible { outline: 3px solid var(--marketing-accent); outline-offset: 3px; }
+.theme-toggle.is-dark,
+.dark .theme-toggle { border-color: #a6e3a1; background: #499f36; box-shadow: 3px 3px 0 rgba(0,0,0,.25); }
+.theme-toggle.is-dark:hover,
+.dark .theme-toggle:hover { background: #499f36; }
 
 .theme-toggle-thumb {
   position: absolute;
-  inset: 4px auto 4px 4px;
-  width: 28px;
+  top: 2px;
+  left: 2px;
+  width: 26px;
+  height: 26px;
   border-radius: 999px;
-  background: #eff1f5;
-  transition: transform 260ms cubic-bezier(.2,.8,.2,1), background-color 260ms ease;
+  border: 2px solid #6c6f85;
+  background: #ffffff;
+  box-shadow: 2px 3px 5px rgba(76,79,105,.3);
+  transition: transform 260ms cubic-bezier(.2,.8,.2,1), background-color 260ms ease, border-color 260ms ease;
 }
 
-.dark .theme-toggle-thumb { background: #45475a; }
-
-.theme-toggle-option {
-  position: relative;
-  z-index: 1;
-  width: 28px;
-  height: 28px;
-  padding: 0;
-  border-radius: 999px;
-  color: #9ca0b0;
-}
-
-.theme-toggle-option:first-of-type { color: #d49032; }
-.dark .theme-toggle-option:first-of-type { color: #6c7086; }
-.dark .theme-toggle-option:last-of-type { color: #f9e2af; }
+.theme-toggle.is-dark .theme-toggle-thumb,
+.dark .theme-toggle .theme-toggle-thumb { transform: translateX(30px); border-color: #a6e3a1; }
 
 @media (max-width: 767px) {
-  .theme-toggle-thumb,
-  .theme-toggle-option { width: 26px; height: 26px; }
-
-  .theme-toggle-option svg { width: 14px; height: 14px; }
+  .theme-toggle { width: 58px; height: 32px; min-height: 32px; }
+  .theme-toggle-thumb { width: 24px; height: 24px; }
+  .theme-toggle.is-dark .theme-toggle-thumb,
+  .dark .theme-toggle .theme-toggle-thumb { transform: translateX(26px); }
 }
 
 /*
