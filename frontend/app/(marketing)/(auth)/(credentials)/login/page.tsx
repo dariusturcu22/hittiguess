@@ -9,6 +9,7 @@ import { toast } from "sonner";
 
 import { Button } from "@/components/shadcn/button";
 import { Input } from "@/components/shadcn/input";
+import { Checkbox } from "@/components/shadcn/checkbox";
 import {
   Form,
   FormControl,
@@ -47,7 +48,7 @@ export default function LoginPage() {
   const { mutate, isPending } = useLogin({
     mutation: {
       onSuccess: () => {
-        setTimeout(() => router.push("/playlists"), 1000);
+        router.push("/playlists");
       },
       onError: () => {
         toast.error("Invalid email or password.");
@@ -114,17 +115,14 @@ export default function LoginPage() {
               )}
             />
 
-            <div>
-              <div className="mb-[7px]">
-                <FormLabel className="text-[13px] font-semibold text-muted-foreground">
-                  Password
-                </FormLabel>
-              </div>
               <FormField
                 control={form.control}
                 name="password"
                 render={({ field }) => (
                   <FormItem className="gap-[7px]">
+                    <FormLabel className="text-[13px] font-semibold text-muted-foreground">
+                      Password
+                    </FormLabel>
                     <FormControl>
                       <Input
                         type="password"
@@ -137,26 +135,21 @@ export default function LoginPage() {
                   </FormItem>
                 )}
               />
-            </div>
 
-            <div className="flex items-center justify-between">
-              <label className="flex items-center gap-[9px] text-[13px] text-muted-foreground cursor-pointer">
-                <input
-                  type="checkbox"
-                  name="rememberMe"
-                  className="size-[18px] rounded-[5px] border-2 border-border bg-background accent-primary"
-                />
-                Remember me
-              </label>
-              <Link
-                href="/forgot-password"
-                className="text-[13px] text-primary underline underline-offset-[3px]"
-              >
+            <div className="flex items-center justify-between gap-2 !mt-4 !mb-7">
+            <label className="flex items-center gap-[9px] text-[13px] text-muted-foreground cursor-pointer">
+              <Checkbox
+                name="rememberMe"
+                className="size-[18px] rounded-[5px] border-2 border-border bg-background accent-primary"
+              />
+              Remember me
+            </label>
+              <Link href="/forgot-password" className="text-[13px] text-primary underline underline-offset-[3px]">
                 Forgot password?
               </Link>
             </div>
 
-            <Button type="submit" className="w-full" disabled={isPending}>
+            <Button type="submit" className="auth-submit w-full" disabled={isPending}>
               {isPending ? "Signing in..." : "Log in"}
             </Button>
           </div>
@@ -169,11 +162,8 @@ export default function LoginPage() {
         <div className="flex-1 h-0.5 bg-border" />
       </div>
 
-      <a
-        href={`${process.env.NEXT_PUBLIC_API_URL}/oauth2/authorization/google`}
-        className="w-full mt-5 block"
-      >
-        <Button type="button" variant="outline" className="w-full bg-white text-[#1e1e2e] hover:bg-white/90">
+        <Button asChild variant="outline" className="auth-google w-full mt-5">
+        <a href={`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080"}/oauth2/authorization/google`}>
           <svg
             xmlns="http://www.w3.org/2000/svg"
             width="18"
@@ -198,8 +188,8 @@ export default function LoginPage() {
             />
           </svg>
           <span>Continue with Google</span>
+        </a>
         </Button>
-      </a>
     </>
   );
 }

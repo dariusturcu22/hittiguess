@@ -4,6 +4,97 @@
 
 @custom-variant dark (&:is(.dark *));
 
+html {
+  scrollbar-gutter: auto;
+  scrollbar-width: none;
+}
+
+::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+}
+
+.global-scrollbar-thumb {
+  position: fixed;
+  top: 0;
+  z-index: 40;
+  width: 5px;
+  border-radius: 999px;
+  background: rgba(76,79,105,.55);
+  pointer-events: none;
+  transition: height 120ms ease, transform 120ms ease, background-color 200ms ease;
+}
+
+.dark .global-scrollbar-thumb { background: rgba(166,173,200,.55); }
+
+html.theme-transition,
+html.theme-transition * {
+  transition: background-color 260ms ease, border-color 260ms ease, color 260ms ease, box-shadow 260ms ease !important;
+}
+
+.theme-toggle {
+  position: relative;
+  display: flex;
+  width: 68px;
+  height: 36px;
+  min-height: 36px;
+  align-items: center;
+  justify-content: space-between;
+  border-radius: 999px;
+  background: #ccd0da;
+  padding: 4px;
+}
+
+.theme-toggle:hover { background: #ccd0da; }
+.theme-toggle:focus-visible { outline: 3px solid var(--marketing-accent); outline-offset: 3px; }
+.theme-toggle.is-dark,
+.dark .theme-toggle { background: #313244; }
+.theme-toggle.is-dark:hover,
+.dark .theme-toggle:hover { background: #313244; }
+
+.theme-toggle-thumb {
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  background: #eff1f5;
+  transition: transform 260ms cubic-bezier(.2,.8,.2,1), background-color 260ms ease;
+}
+
+html.theme-transition .theme-toggle-thumb {
+  transition: transform 260ms cubic-bezier(.2,.8,.2,1), background-color 260ms ease !important;
+}
+
+.theme-toggle.is-dark .theme-toggle-thumb,
+.dark .theme-toggle .theme-toggle-thumb { transform: translateX(32px); background: #45475a; }
+
+.theme-toggle-icon {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  width: 28px;
+  height: 28px;
+  align-items: center;
+  justify-content: center;
+  color: #9ca0b0;
+}
+
+.theme-toggle-icon svg { width: 16px; height: 16px; }
+.theme-toggle-light-icon { color: #d49032; }
+.dark .theme-toggle-light-icon { color: #6c7086; }
+.dark .theme-toggle-dark-icon { color: #f9e2af; }
+
+@media (max-width: 767px) {
+  .theme-toggle { width: 64px; height: 34px; min-height: 34px; }
+  .theme-toggle-thumb { width: 26px; height: 26px; }
+  .theme-toggle.is-dark .theme-toggle-thumb,
+  .dark .theme-toggle .theme-toggle-thumb { transform: translateX(30px); }
+  .theme-toggle-icon { width: 26px; height: 26px; }
+  .theme-toggle-icon svg { width: 14px; height: 14px; }
+}
+
 /*
  * Palette is Catppuccin-derived: Mocha for dark, Latte for light, with a
  * handful of hand-tinted accents (primary orange/peach, mauve) that diverge

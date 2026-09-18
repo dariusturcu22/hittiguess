@@ -6,6 +6,8 @@
 // the top of its own content instead. See
 // frontend/app/(marketing)/(landing)/layout.tsx for the landing page's
 // separate, header-owning layout.
+import "./auth.css";
+
 export default function AuthLayout({
   children,
 }: {

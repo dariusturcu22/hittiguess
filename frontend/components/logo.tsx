@@ -2,41 +2,55 @@
 
 import * as React from "react";
 
-// Mirrors docs/design/source/*.dc.html's own embedded animation exactly:
-// each bar oscillates independently on a sine wave, phase-shifted from the
-// others, rather than a uniform pulse stepped through in sequence. The
-// mockups tick this every 120ms and compute height as
-// 12 + 6 * sin(frame * 0.35 + phase); frame here is derived from elapsed
-// time instead of a fixed-interval counter so the motion holds its speed
-// regardless of the browser's actual repaint rate.
-const BAR_PHASES = [0, 1.6, 3.1, 4.7];
-const MS_PER_FRAME = 120;
-const FRAME_ANGULAR_STEP = 0.35;
+const BAR_COUNT = 4;
+const BAR_MINIMUM_PHASE_STEP = 1.2;
+const BAR_RANDOM_PHASE_RANGE = 1.4;
+const BAR_BASE_SPEED = 0.0016;
+const BAR_RANDOM_SPEED_RANGE = 0.0007;
 const BAR_HEIGHT_BASE_PX = 12;
 const BAR_HEIGHT_AMPLITUDE_PX = 6;
+const BAR_SECONDARY_WAVE_RATIO = 0.37;
+const BAR_SECONDARY_WAVE_AMPLITUDE_RATIO = 0.35;
+
+type WaveformBarConfig = {
+  phase: number;
+  speed: number;
+};
 
 function useWaveformBarHeights() {
   const [heights, setHeights] = React.useState(() =>
-    BAR_PHASES.map(() => BAR_HEIGHT_BASE_PX),
+    Array.from({ length: BAR_COUNT }, () => BAR_HEIGHT_BASE_PX),
   );
+  const waveformConfig = React.useRef<WaveformBarConfig[] | null>(null);
 
   React.useEffect(() => {
-    let frame = 0;
-    const intervalId = setInterval(() => {
-      frame += 1;
+    let animationFrameId = 0;
+    waveformConfig.current = Array.from({ length: BAR_COUNT }, (_, barIndex) => ({
+      phase: barIndex * BAR_MINIMUM_PHASE_STEP + Math.random() * BAR_RANDOM_PHASE_RANGE,
+      speed: BAR_BASE_SPEED + Math.random() * BAR_RANDOM_SPEED_RANGE,
+    }));
+
+    function animate(timestamp: number) {
       setHeights(
-        BAR_PHASES.map(
-          (phase) =>
+        waveformConfig.current!.map(
+          ({ phase, speed }) =>
             BAR_HEIGHT_BASE_PX +
             Math.round(
               BAR_HEIGHT_AMPLITUDE_PX *
-                Math.sin(frame * FRAME_ANGULAR_STEP + phase),
+                (Math.sin(timestamp * speed + phase) +
+                  BAR_SECONDARY_WAVE_AMPLITUDE_RATIO *
+                    Math.sin(
+                      timestamp * speed * BAR_SECONDARY_WAVE_RATIO + phase * BAR_SECONDARY_WAVE_RATIO,
+                    )),
             ),
         ),
       );
-    }, MS_PER_FRAME);
+      animationFrameId = requestAnimationFrame(animate);
+    }
 
-    return () => clearInterval(intervalId);
+    animationFrameId = requestAnimationFrame(animate);
+
+    return () => cancelAnimationFrame(animationFrameId);
   }, []);
 
   return heights;
@@ -60,7 +74,7 @@ export const LogoBars = ({
       {heights.map((height, index) => (
         <span
           key={index}
-          className={`rounded-full ${colorClassName}`}
+          className={`rounded-full transition-[height] duration-150 ease-out ${colorClassName}`}
           style={{ width: `${barWidthPx}px`, height: `${height}px` }}
         />
       ))}

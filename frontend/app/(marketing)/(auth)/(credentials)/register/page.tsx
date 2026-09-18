@@ -38,7 +38,7 @@ export default function RegisterPage() {
   const { mutate, isPending } = useRegister({
     mutation: {
       onSuccess: () => {
-        setTimeout(() => router.push("/playlists"), 1000);
+        router.push("/playlists");
       },
       onError: () => {
         toast.error("Couldn't create account. Username or email may already be in use.");
@@ -162,7 +162,7 @@ export default function RegisterPage() {
               )}
             />
 
-            <Button className="w-full" type="submit" disabled={isPending}>
+            <Button className="auth-submit w-full !mt-[30px]" type="submit" disabled={isPending}>
               {isPending ? "Creating account..." : "Create account"}
             </Button>
           </div>
@@ -175,11 +175,8 @@ export default function RegisterPage() {
         <div className="flex-1 h-0.5 bg-border" />
       </div>
 
-      <a
-        href={`${process.env.NEXT_PUBLIC_API_URL}/oauth2/authorization/google`}
-        className="w-full mt-5 block"
-      >
-        <Button type="button" variant="outline" className="w-full bg-white text-[#1e1e2e] hover:bg-white/90">
+        <Button asChild variant="outline" className="auth-google w-full mt-5">
+        <a href={`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080"}/oauth2/authorization/google`}>
           <svg
             xmlns="http://www.w3.org/2000/svg"
             width="18"
@@ -204,8 +201,8 @@ export default function RegisterPage() {
             />
           </svg>
           <span>Continue with Google</span>
+        </a>
         </Button>
-      </a>
     </>
   );
 }

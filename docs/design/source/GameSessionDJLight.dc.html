@@ -11,19 +11,19 @@
   <style>
     body { margin: 0; }
     .navicon { width: 46px; height: 46px; border-radius: 14px; display: flex; align-items: center; justify-content: center; cursor: pointer; color: #9ca0b0; }
-    .navicon.active { background: #8f4fe3; box-shadow: 3px 3px 0 rgba(76,79,105,0.3); color: #ffffff; }
-    .divider { width: 32px; height: 2px; background: #ccd0da; border-radius: 2px; margin: 14px auto; flex-shrink: 0; }
+    .navicon.active { background: #8f4fe3; box-shadow: 3px 3px 0 rgba(0,0,0,0.4); color: #4c4f69; }
+    .divider { width: 32px; height: 2px; background: #ffffff; border-radius: 2px; margin: 14px auto; flex-shrink: 0; }
     .vavatar-wrap { display: flex; flex-direction: column; align-items: center; gap: 6px; }
-    .vavatar { width: 52px; height: 52px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-family: 'Bungee', sans-serif; font-size: 17px; color: #11111b; }
+    .vavatar { width: 52px; height: 52px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-family: 'Bungee', sans-serif; font-size: 17px; color: #4c4f69; }
     .vname { font-size: 10px; color: #5c5f77; max-width: 70px; text-align: center; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .vctrl { width: 42px; height: 42px; border-radius: 12px; display: flex; align-items: center; justify-content: center; cursor: pointer; }
 
-    .tcard { width: 168px; height: 168px; border-radius: 22px; border: 5px solid #4c4f69; box-sizing: border-box; padding: 14px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; font-family: 'Space Grotesk', sans-serif; text-align: center; flex-shrink: 0; }
+    .tcard { width: 168px; height: 168px; border-radius: 22px; border: 5px solid #eff1f5; box-sizing: border-box; padding: 14px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; font-family: 'Space Grotesk', sans-serif; text-align: center; flex-shrink: 0; }
     .tcard .artist { font-size: 12px; font-weight: 700; text-transform: uppercase; }
     .tcard .year { font-family: 'Bungee', sans-serif; font-size: 40px; line-height: 1; }
     .tcard .title { font-size: 11px; font-weight: 500; opacity: 0.8; }
 
-    .btn-primary { font-family: 'Bungee', sans-serif; font-size: 13px; color: #ffffff; background: #ed6f27; padding: 12px 24px; border-radius: 100px; box-shadow: 4px 4px 0 rgba(76,79,105,0.3); box-sizing: border-box; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; border: none; }
+    .btn-primary { font-family: 'Bungee', sans-serif; font-size: 13px; color: #eff1f5; background: #ed6f27; padding: 13px 24px; border-radius: 100px; box-shadow: 4px 4px 0 rgba(0,0,0,0.4); box-sizing: border-box; cursor: pointer; display: inline-flex; align-items: center; gap: 9px; border: none; }
 
     /* Never the DJ's turn to place a card: dimmed, never grayscale */
     .not-my-turn { opacity: 0.72; filter: saturate(0.7); }
@@ -32,7 +32,7 @@
 <div style="width: 1440px; height: 900px; box-sizing: border-box; background: #eff1f5; display: flex; font-family: 'Space Grotesk', sans-serif;">
 
   <!-- LEFT SIDEBAR -->
-  <div style="width: 76px; flex-shrink: 0; background: #e6e9ef; display: flex; flex-direction: column; align-items: center; padding: 20px 0; box-sizing: border-box; border-right: 3px solid #ccd0da;">
+  <div style="width: 76px; flex-shrink: 0; background: #4c4f69; display: flex; flex-direction: column; align-items: center; padding: 20px 0; box-sizing: border-box; border-right: 3px solid #ffffff;">
     <div style="display: flex; align-items: center; gap: 2px; height: 22px;">
       <div style="background: #499f36; width: 5px; height: 10px; border-radius: 100px;"></div>
       <div style="background: #499f36; width: 5px; height: 20px; border-radius: 100px;"></div>
@@ -41,7 +41,7 @@
     </div>
     <div class="divider"></div>
     <div class="navicon active" title="Play / start a session">
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="#ffffff"><path d="M8 5v14l11-7z"></path></svg>
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="#4c4f69"><path d="M8 5v14l11-7z"></path></svg>
     </div>
     <div class="divider"></div>
     <div style="display: flex; flex-direction: column; gap: 14px;">
@@ -61,16 +61,16 @@
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
     </div>
     <div style="height: 16px;"></div>
-    <div style="width: 44px; height: 44px; border-radius: 50%; background: #ed6f27; border: 2px solid #ccd0da; display: flex; align-items: center; justify-content: center; font-family: 'Bungee', sans-serif; font-size: 16px; color: #ffffff; cursor: pointer;">D</div>
+    <div style="width: 44px; height: 44px; border-radius: 50%; background: #8f4fe3; border: 2px solid #ffffff; display: flex; align-items: center; justify-content: center; font-family: 'Bungee', sans-serif; font-size: 16px; color: #4c4f69; cursor: pointer;">M</div>
   </div>
 
   <!-- MAIN CONTENT -->
-  <div style="flex: 1; min-width: 0; padding: 36px 56px 40px; box-sizing: border-box; background-image: radial-gradient(circle, rgba(76,79,105,0.2) 1.5px, transparent 1.5px); background-size: 22px 22px; display: flex; flex-direction: column; position: relative; overflow: hidden;">
+  <div style="flex: 1; min-width: 0; padding: 36px 56px 40px; box-sizing: border-box; background-image: radial-gradient(circle, rgba(108,112,134,0.25) 1.5px, transparent 1.5px); background-size: 22px 22px; display: flex; flex-direction: column; position: relative; overflow: hidden;">
 
     <!-- HEADER ROW -->
     <div style="display: flex; align-items: flex-start; justify-content: space-between; flex-shrink: 0;">
       <div>
-        <div style="font-family: 'Bungee', sans-serif; font-size: 32px; color: #4c4f69; text-shadow: 3px 3px 0 rgba(76,79,105,0.2);">Round 4</div>
+        <div style="font-family: 'Bungee', sans-serif; font-size: 32px; color: #4c4f69; text-shadow: 3px 3px 0 rgba(0,0,0,0.4);">Round 4</div>
         <div style="display: flex; align-items: center; gap: 10px; margin-top: 8px;">
           <div style="font-size: 12px; color: #9ca0b0;">Darius is placing their card once the song starts</div>
           <div style="width: 4px; height: 4px; border-radius: 50%; background: #9ca0b0;"></div>
@@ -92,57 +92,57 @@
       <div class="not-my-turn" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 1100px;">
         <div style="width: 100%; overflow: hidden; -webkit-mask-image: linear-gradient(90deg, transparent, #000 64px, #000 calc(100% - 64px), transparent); mask-image: linear-gradient(90deg, transparent, #000 64px, #000 calc(100% - 64px), transparent); display: flex; justify-content: center;">
           <div style="display: flex; gap: 18px;">
-            <div class="tcard" style="background: #179299; color: #ffffff;">
+            <div class="tcard" style="background: #179299; color: #eff1f5;">
               <div class="artist">Rolling Stones</div>
               <div class="year">1965</div>
               <div class="title">Satisfaction</div>
             </div>
-            <div class="tcard" style="background: #ed6f27; color: #ffffff;">
+            <div class="tcard" style="background: #ed6f27; color: #eff1f5;">
               <div class="artist">ABBA</div>
               <div class="year">1976</div>
               <div class="title">Dancing Queen</div>
             </div>
-            <div class="tcard" style="background: #3772e6; color: #ffffff;">
+            <div class="tcard" style="background: #1e66f5; color: #eff1f5;">
               <div class="artist">Natalie Imbruglia</div>
               <div class="year">1998</div>
               <div class="title">Torn</div>
             </div>
-            <div class="tcard" style="background: #499f36; color: #ffffff;">
+            <div class="tcard" style="background: #499f36; color: #eff1f5;">
               <div class="artist">OutKast</div>
               <div class="year">2003</div>
               <div class="title">Hey Ya!</div>
             </div>
-            <div class="tcard" style="background: #d49032; color: #ffffff;">
+            <div class="tcard" style="background: #df8e1d; color: #eff1f5;">
               <div class="artist">Adele</div>
               <div class="year">2011</div>
               <div class="title">Rolling in the Deep</div>
             </div>
-            <div class="tcard" style="background: #e387cb; color: #ffffff;">
+            <div class="tcard" style="background: #ea76cb; color: #eff1f5;">
               <div class="artist">Bruno Mars</div>
               <div class="year">2015</div>
               <div class="title">Uptown Funk</div>
             </div>
-            <div class="tcard" style="background: #8f4fe3; color: #ffffff;">
+            <div class="tcard" style="background: #8f4fe3; color: #eff1f5;">
               <div class="artist">The Weeknd</div>
               <div class="year">2019</div>
               <div class="title">Blinding Lights</div>
             </div>
-            <div class="tcard" style="background: #d20f39; color: #ffffff;">
+            <div class="tcard" style="background: #d20f39; color: #eff1f5;">
               <div class="artist">Harry Styles</div>
               <div class="year">2022</div>
               <div class="title">As It Was</div>
             </div>
-            <div class="tcard" style="background: #e64553; color: #ffffff;">
+            <div class="tcard" style="background: #eba0ac; color: #eff1f5;">
               <div class="artist">Miley Cyrus</div>
               <div class="year">2023</div>
               <div class="title">Flowers</div>
             </div>
           </div>
         </div>
-        <div style="position: absolute; left: -6px; top: 50%; transform: translateY(-50%); width: 42px; height: 42px; border-radius: 50%; background: #ffffff; border: 2px solid #ccd0da; display: flex; align-items: center; justify-content: center; color: #4c4f69; cursor: pointer; box-shadow: 3px 3px 0 rgba(76,79,105,0.2);">
+        <div style="position: absolute; left: -6px; top: 50%; transform: translateY(-50%); width: 42px; height: 42px; border-radius: 50%; background: #ffffff; border: 2px solid #ccd0da; display: flex; align-items: center; justify-content: center; color: #4c4f69; cursor: pointer; box-shadow: 3px 3px 0 rgba(0,0,0,0.35);">
           <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
         </div>
-        <div style="position: absolute; right: -6px; top: 50%; transform: translateY(-50%); width: 42px; height: 42px; border-radius: 50%; background: #ffffff; border: 2px solid #ccd0da; display: flex; align-items: center; justify-content: center; color: #4c4f69; cursor: pointer; box-shadow: 3px 3px 0 rgba(76,79,105,0.2);">
+        <div style="position: absolute; right: -6px; top: 50%; transform: translateY(-50%); width: 42px; height: 42px; border-radius: 50%; background: #ffffff; border: 2px solid #ccd0da; display: flex; align-items: center; justify-content: center; color: #4c4f69; cursor: pointer; box-shadow: 3px 3px 0 rgba(0,0,0,0.35);">
           <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
         </div>
       </div>
@@ -152,7 +152,7 @@
 
       <!-- THE CURRENT SONG: only the DJ knows it yet. Card on the left, the one thing the DJ can do beside it, sitting above the timeline like every other hero element. -->
       <div style="position: absolute; left: 50%; bottom: calc(50% + 178px); transform: translateX(-50%); display: flex; align-items: center; gap: 28px;">
-        <div class="tcard" style="background: #04a5e5; color: #ffffff; box-shadow: 6px 6px 0 rgba(76,79,105,0.2);">
+        <div class="tcard" style="background: #74c7ec; color: #eff1f5; box-shadow: 6px 6px 0 rgba(0,0,0,0.4);">
           <div class="artist">Dua Lipa</div>
           <div class="year">2020</div>
           <div class="title">Levitating</div>
@@ -160,10 +160,10 @@
         <div style="display: flex; flex-direction: column; align-items: flex-start; gap: 10px; max-width: 340px;">
           <div class="btn-primary">
             Open on YouTube to play
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#eff1f5" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
           </div>
           <div style="font-size: 12px; color: #5c5f77; line-height: 1.4;">Play it out loud. Everyone else finds out what it is when the card gets revealed.</div>
-          <div style="display: inline-flex; align-items: center; gap: 8px; background: rgba(223,142,29,0.1); border: 2px solid #df8e1d; border-radius: 100px; padding: 7px 14px;">
+          <div style="display: inline-flex; align-items: center; gap: 8px; background: rgba(249,226,175,0.1); border: 2px solid #df8e1d; border-radius: 100px; padding: 7px 14px;">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#df8e1d" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
             <span style="font-size: 11px; color: #df8e1d; font-weight: 600;">Shares your tab or system audio with the group.</span>
           </div>
@@ -175,7 +175,7 @@
     <!-- ROUND STATUS, bottom-left -->
     <div style="position: absolute; left: 56px; bottom: 40px; display: inline-flex; align-items: center; gap: 16px; background: #ffffff; border: 2px solid #ccd0da; border-radius: 100px; padding: 10px 20px 10px 10px;">
       <div style="display: flex; align-items: center; gap: 8px;">
-        <div class="vavatar" style="background: #8f4fe3; width: 32px; height: 32px; font-size: 12px; color: #ffffff;">M</div>
+        <div class="vavatar" style="background: #8f4fe3; width: 32px; height: 32px; font-size: 12px;">M</div>
         <div>
           <div style="font-size: 8px; letter-spacing: 1.5px; color: #9ca0b0; text-transform: uppercase;">DJ</div>
           <div style="font-size: 13px; font-weight: 700; color: #4c4f69;">Mara</div>
@@ -183,7 +183,7 @@
       </div>
       <div style="width: 1px; height: 28px; background: #ccd0da;"></div>
       <div style="display: flex; align-items: center; gap: 8px;">
-        <div class="vavatar" style="background: #499f36; width: 32px; height: 32px; font-size: 12px; color: #ffffff;">D</div>
+        <div class="vavatar" style="background: #499f36; width: 32px; height: 32px; font-size: 12px;">D</div>
         <div>
           <div style="font-size: 8px; letter-spacing: 1.5px; color: #9ca0b0; text-transform: uppercase;">Turn</div>
           <div style="font-size: 13px; font-weight: 700; color: #4c4f69;">Darius</div>
@@ -194,32 +194,29 @@
   </div>
 
   <!-- RIGHT VOICE SIDEBAR -->
-  <div style="width: 100px; flex-shrink: 0; background: #e6e9ef; border-left: 3px solid #ccd0da; display: flex; flex-direction: column; align-items: center; padding: 22px 0 20px; box-sizing: border-box;">
+  <div style="width: 100px; flex-shrink: 0; background: #e6e9ef; border-left: 3px solid #ffffff; display: flex; flex-direction: column; align-items: center; padding: 22px 0 20px; box-sizing: border-box;">
     <div style="display: flex; flex-direction: column; align-items: center; gap: 24px;">
       <div class="vavatar-wrap">
-        <div style="width: 52px; height: 52px; border-radius: 50%; box-shadow: 0 0 0 3px #e6e9ef, 0 0 0 6px #499f36;">
-          <div class="vavatar" style="background: #499f36; width: 100%; height: 100%; color: #ffffff;">D</div>
-        </div>
-        <div class="vname" style="color: #499f36;">Darius</div>
+        <div class="vavatar" style="background: #499f36;">D</div>
+        <div class="vname">Darius</div>
       </div>
       <div class="vavatar-wrap">
-        <div class="vavatar" style="background: #3772e6; color: #ffffff;">M</div>
-        <div class="vname">Mara</div>
+        <div style="width: 52px; height: 52px; border-radius: 50%; box-shadow: 0 0 0 3px #e6e9ef, 0 0 0 6px #499f36;">
+          <div class="vavatar" style="background: #1e66f5; width: 100%; height: 100%;">M</div>
+        </div>
+        <div class="vname" style="color: #499f36;">Mara</div>
       </div>
       <div class="vavatar-wrap">
         <div style="position: relative; width: 52px; height: 52px;">
-          <div class="vavatar" style="background: #d49032; width: 100%; height: 100%; color: #ffffff;">T</div>
-          <div style="position: absolute; inset: 0; border-radius: 50%; background: rgba(210,15,57,0.6); display: flex; align-items: center; justify-content: center;">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke-linecap="round">
-              <g stroke="#ffffff" stroke-width="4.6"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 5.12 2.12M15 9.34V4a3 3 0 0 0-5.94-.6"></path><path d="M19 10v2a7 7 0 0 1-.11 1.23"></path><path d="M5 10v2a7 7 0 0 0 7 7 6.94 6.94 0 0 0 3.11-.72"></path><line x1="1" y1="1" x2="23" y2="23"></line></g>
-              <g stroke="#d20f39" stroke-width="2.6"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 5.12 2.12M15 9.34V4a3 3 0 0 0-5.94-.6"></path><path d="M19 10v2a7 7 0 0 1-.11 1.23"></path><path d="M5 10v2a7 7 0 0 0 7 7 6.94 6.94 0 0 0 3.11-.72"></path><line x1="1" y1="1" x2="23" y2="23"></line></g>
-            </svg>
+          <div class="vavatar" style="background: #df8e1d; width: 100%; height: 100%;">T</div>
+          <div style="position: absolute; inset: 0; border-radius: 50%; background: radial-gradient(circle, rgba(231,130,132,0.88) 0%, rgba(231,130,132,0.55) 65%, rgba(231,130,132,0.4) 100%); display: flex; align-items: center; justify-content: center;">
+            <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 5.12 2.12M15 9.34V4a3 3 0 0 0-5.94-.6"></path><path d="M19 10v2a7 7 0 0 1-.11 1.23"></path><path d="M5 10v2a7 7 0 0 0 7 7 6.94 6.94 0 0 0 3.11-.72"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>
           </div>
         </div>
         <div class="vname" style="color: #d20f39;">Theo</div>
       </div>
       <div class="vavatar-wrap">
-        <div class="vavatar" style="background: #e387cb; color: #ffffff;">L</div>
+        <div class="vavatar" style="background: #ea76cb;">L</div>
         <div class="vname">Lena</div>
       </div>
     </div>

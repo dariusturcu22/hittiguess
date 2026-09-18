@@ -645,6 +645,73 @@ Tests:
 - [ ] Render every affected page at 1440x900 in Dark and Light and compare it directly with its mockup
 - [ ] Render the landing page at 390x844 in Dark and Light and compare it directly with its mobile mockups
 
+### Marketing recovery and design-source synchronization
+
+- [x] Recover the landing and auth mockup-fidelity implementation from the preserved 2026-09-17 checkpoint, without importing unrelated Batch A changes
+- [x] Render the recovered landing and login pages against their Dark desktop and mobile mockups and correct any remaining layout differences
+- [x] Reconcile the structurally divergent Light mockups with their authoritative Dark counterparts: `GameSessionDJ`, `JoinInvite`, `PlaylistDetail`, and `SongDetail`
+- [x] Synchronize `docs/design/hittiguess-design.html`'s embedded source files with `docs/design/source`
+
+Tests:
+- [x] Verify every embedded mockup entry matches its source file after synchronization
+- [x] Capture the recovered landing and login at their mockup viewport sizes in both themes
+
+### Marketing interaction polish
+
+- [x] Remove the colored underlines from the three landing feature paragraphs
+- [x] Make the landing and auth theme slider animate its thumb and page colors, with direct Light and Dark selection
+- [x] Add the shared theme slider and a landing-page link to every authentication screen
+- [x] Match the auth primary and Google button dimensions to the mockup controls
+- [x] Make the wordmark waveform smoother, slower, and less repetitive
+
+Tests:
+- [x] Verify both theme choices on landing and authentication pages and capture the animated slider states
+- [x] Render login and register in both themes and compare their control proportions with the mockups
+
+### Marketing theme-switch correction
+
+- [x] Replace the two-choice theme control with a single full-track toggle that switches theme from any click target
+- [x] Match the switch track and moving thumb proportions without clipping on landing or auth surfaces
+
+Tests:
+- [x] Verify a click on both ends and the center of the switch toggles the theme once
+
+### Marketing theme-switch animation
+
+- [x] Animate the compact toggle thumb between its Light and Dark positions independently of the page color transition
+
+Tests:
+- [x] Verify the thumb visibly slides in both directions
+
+### Global scrollbar styling
+
+- [x] Add a theme-aware custom scrollbar used by every page and reserve its layout gutter to prevent content shifts
+
+Tests:
+- [x] Verify the scrollbar track and thumb in both themes on a scrollable page
+
+### Global scrollbar refinement
+
+- [x] Remove the scrollbar gutter from non-scrollable pages and make the scrollbar track transparent
+
+Tests:
+- [x] Verify scrollable and non-scrollable pages retain their intended layout in both themes
+
+### Marketing hydration and CI correction
+
+- [x] Render the saved theme only after hydration so the server and client switch markup match
+- [x] Initialize waveform variation after mounting to keep component render pure
+
+Tests:
+- [x] Run frontend lint and production build, then confirm the browser has no hydration errors
+
+### Global overlay scrollbar
+
+- [x] Replace browser-owned scrollbars with a compact global overlay thumb that does not consume content width
+
+Tests:
+- [x] Verify the overlay appears only on scrollable pages and remains over content in both themes
+
 ## Story 48: Comment cleanup
 
 `AGENTS.md`'s code conventions already state the rule this story enforces: write as few comments as possible, only when the reasoning genuinely can't be inferred from the code, none that restate what the line already says, none that narrate a specific example instead of the general rule. AI-assisted batches built across this project have drifted from that rule in places, leaving comments that re-explain what adjacent code already makes obvious, or that narrate a past version's reasoning instead of documenting the code as it stands.
