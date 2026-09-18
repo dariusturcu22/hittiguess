@@ -2,13 +2,13 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useTheme } from "next-themes";
 import { Moon, Sun } from "lucide-react";
 
 import { LogoBars } from "@/components/logo";
 import { NavUser } from "@/components/nav-user";
-import { useGetActiveMembership } from "@/hooks/generated/group-management/group-management";
+import { useCreateGroup, useGetActiveMembership } from "@/hooks/generated/group-management/group-management";
 
 const RAIL_DIVIDER_CLASSES = "w-8 h-0.5 my-3.5 shrink-0 rounded-full bg-sidebar-border";
 
@@ -98,12 +98,26 @@ function GroupLobbyIcon() {
 
 export function AppSidebar() {
   const pathname = usePathname();
+  const router = useRouter();
   const { resolvedTheme, setTheme } = useTheme();
   const [mounted, setMounted] = React.useState(false);
   const [isImporting, setIsImporting] = React.useState(false);
   const { data: activeGroup } = useGetActiveMembership({
     query: { retry: false },
   });
+  const createGroup = useCreateGroup();
+
+  function openGameLobby() {
+    if (activeGroup?.id) {
+      router.push(`/groups/${activeGroup.id}`);
+      return;
+    }
+
+    createGroup.mutate(
+      { data: {} },
+      { onSuccess: (group) => router.push(`/groups/${group.id}`) },
+    );
+  }
 
   React.useEffect(() => {
     setMounted(true);
@@ -125,13 +139,15 @@ export function AppSidebar() {
 
       <div className={RAIL_DIVIDER_CLASSES} />
 
-      <div
+      <button
+        type="button"
+        onClick={openGameLobby}
+        disabled={createGroup.isPending}
         className={`${RAIL_ICON_BASE_CLASSES} ${RAIL_ICON_INTERACTIVE_CLASSES}`}
-        title="Play / start a session"
-        aria-disabled="true"
+        title={activeGroup ? "Open group lobby" : "Create group lobby"}
       >
         <PlayIcon />
-      </div>
+      </button>
 
       <div className={RAIL_DIVIDER_CLASSES} />
 

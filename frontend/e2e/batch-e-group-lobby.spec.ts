@@ -8,7 +8,6 @@ const MEMBER_ACCOUNT = {
   email: "test-agent-2@hittiguess.local",
   password: "HittiguessTestAgent2!2026",
 };
-const GROUP_DISPLAY_NAME = "Batch E lobby admin";
 const MEMBER_DISPLAY_NAME = "Batch E lobby member";
 const CHAT_MESSAGE = "Batch E realtime chat check";
 const LIVE_CONNECTION_TEXT = "Live";
@@ -21,6 +20,12 @@ const RESULTS_GROUP_ID = 888;
 const SESSION_API_PATH = `/api/sessions/${RESULTS_SESSION_ID}`;
 const RESULTS_API_PATH = `/api/sessions/groups/${RESULTS_GROUP_ID}/results`;
 const RESULTS_FILE_NAME = `hittiguess-results-${RESULTS_SESSION_ID}.csv`;
+const GAMEPLAY_SESSION_ID = 779;
+const GAMEPLAY_SESSION_API_PATH = `/api/sessions/${GAMEPLAY_SESSION_ID}`;
+const CURRENT_USER_API_PATH = "/api/users/me";
+const LINK_OUT_API_PATH = `/api/sessions/${GAMEPLAY_SESSION_ID}/round/link-out`;
+const PLAYER_ID = 10;
+const DJ_ID = 20;
 
 interface TestAccount {
   email: string;
@@ -45,10 +50,10 @@ async function login(browser: Browser, account: TestAccount): Promise<Page> {
   return page;
 }
 
-async function createGroup(page: Page): Promise<GroupResponse> {
-  const response = await page.request.post(GROUPS_PATH, {
-    data: { displayName: GROUP_DISPLAY_NAME },
-  });
+async function createGroupFromSidebar(page: Page): Promise<GroupResponse> {
+  await page.getByTitle("Create group lobby").click();
+  await page.waitForURL(/\/groups\/\d+/);
+  const response = await page.request.get(`${GROUPS_PATH}/active`);
   expect(response.ok()).toBeTruthy();
   return response.json() as Promise<GroupResponse>;
 }
@@ -74,7 +79,7 @@ test("group lobby joins members, persists settings, and relays chat", async ({ b
   let groupId: number | undefined;
 
   try {
-    const group = await createGroup(adminPage);
+    const group = await createGroupFromSidebar(adminPage);
     groupId = group.id;
     await joinGroup(memberPage, group.inviteCode);
 
@@ -139,6 +144,70 @@ test("results screen exports the final ranking", async ({ browser }) => {
     await page.getByRole("button", { name: "Download results" }).click();
     const download = await downloadPromise;
     expect(download.suggestedFilename()).toBe(RESULTS_FILE_NAME);
+  } finally {
+    await page.context().close();
+  }
+});
+
+test("gameplay shell renders placement, betting, and DJ link-out states", async ({ browser }) => {
+  const page = await login(browser, ADMIN_ACCOUNT);
+  const player = {
+    id: PLAYER_ID,
+    displayName: "Player one",
+    tokenCount: 2,
+    timeline: [{ songId: 100, title: "Anchor", releaseYear: 1999, position: 0 }],
+  };
+  const dj = {
+    id: DJ_ID,
+    displayName: "DJ two",
+    tokenCount: 1,
+    timeline: [{ songId: 200, title: "Second anchor", releaseYear: 2004, position: 0 }],
+  };
+  const baseSession = {
+    id: GAMEPLAY_SESSION_ID,
+    groupId: RESULTS_GROUP_ID,
+    status: "IN_PROGRESS",
+    djMode: "ROTATING",
+    winConditionCardCount: 5,
+    currentRoundNumber: 4,
+  };
+
+  try {
+    await page.route(`**${CURRENT_USER_API_PATH}`, (route) => route.fulfill({ json: { id: PLAYER_ID } }));
+    await page.route(`**${GAMEPLAY_SESSION_API_PATH}`, (route) => route.fulfill({ json: {
+      ...baseSession,
+      players: [player, dj],
+      currentRound: { roundNumber: 4, activePlayerId: PLAYER_ID, djPlayerId: DJ_ID, status: "AWAITING_PLACEMENT" },
+    } }));
+    await page.goto(`/sessions/${GAMEPLAY_SESSION_ID}`);
+    const card = page.locator('[draggable="true"]');
+    await expect(card).toBeVisible();
+    await card.dispatchEvent("dragstart");
+    await expect(page.getByRole("button", { name: "Place card at timeline position 1" })).toBeVisible();
+
+    await page.unroute(`**${GAMEPLAY_SESSION_API_PATH}`);
+    await page.route(`**${GAMEPLAY_SESSION_API_PATH}`, (route) => route.fulfill({ json: {
+      ...baseSession,
+      players: [player, dj],
+      currentRound: { roundNumber: 4, activePlayerId: DJ_ID, djPlayerId: DJ_ID, status: "BETTING" },
+    } }));
+    await page.reload();
+    await page.getByRole("button", { name: "Use 1 token to bet" }).click();
+    await expect(page.getByRole("button", { name: "Choose a timeline gap" })).toBeVisible();
+
+    await page.unroute(`**${CURRENT_USER_API_PATH}`);
+    await page.route(`**${CURRENT_USER_API_PATH}`, (route) => route.fulfill({ json: { id: DJ_ID } }));
+    await page.unroute(`**${GAMEPLAY_SESSION_API_PATH}`);
+    await page.route(`**${GAMEPLAY_SESSION_API_PATH}`, (route) => route.fulfill({ json: {
+      ...baseSession,
+      players: [player, dj],
+      currentRound: { roundNumber: 4, activePlayerId: PLAYER_ID, djPlayerId: DJ_ID, status: "AWAITING_PLACEMENT" },
+    } }));
+    await page.route(`**${LINK_OUT_API_PATH}`, (route) => route.fulfill({
+      json: { watchUrl: "https://www.youtube.com/watch?v=dQw4w9WgXcQ" },
+    }));
+    await page.goto(`/sessions/${GAMEPLAY_SESSION_ID}`);
+    await expect(page.getByRole("button", { name: "Open on YouTube to play" })).toBeVisible();
   } finally {
     await page.context().close();
   }
