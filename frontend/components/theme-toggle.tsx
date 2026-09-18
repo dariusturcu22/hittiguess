@@ -1,12 +1,15 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useSyncExternalStore } from "react";
 import { Moon, Sun } from "lucide-react";
 import { useTheme } from "next-themes";
 
 import { Button } from "@/components/shadcn/button";
 
 const THEME_TRANSITION_DURATION_MS = 260;
+const subscribeToHydration = () => () => {};
+const getHydratedSnapshot = () => true;
+const getServerSnapshot = () => false;
 
 type ThemeToggleProps = {
   className?: string;
@@ -14,12 +17,12 @@ type ThemeToggleProps = {
 
 export function ThemeToggle({ className = "" }: ThemeToggleProps) {
   const { resolvedTheme, setTheme } = useTheme();
-  const [isMounted, setIsMounted] = useState(false);
-  const isDarkTheme = resolvedTheme === "dark";
-
-  useEffect(() => {
-    setIsMounted(true);
-  }, []);
+  const isHydrated = useSyncExternalStore(
+    subscribeToHydration,
+    getHydratedSnapshot,
+    getServerSnapshot,
+  );
+  const isDarkTheme = isHydrated && resolvedTheme === "dark";
 
   function changeTheme(theme: "dark" | "light") {
     if (theme === resolvedTheme) {
@@ -39,9 +42,9 @@ export function ThemeToggle({ className = "" }: ThemeToggleProps) {
 
   return (
     <Button
-      aria-checked={isMounted && isDarkTheme}
+      aria-checked={isDarkTheme}
       aria-label={isDarkTheme ? "Switch to light theme" : "Switch to dark theme"}
-      className={`theme-toggle ${isMounted && isDarkTheme ? "is-dark" : ""} ${className}`}
+      className={`theme-toggle ${isDarkTheme ? "is-dark" : ""} ${className}`}
       onClick={toggleTheme}
       role="switch"
       type="button"

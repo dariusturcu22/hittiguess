@@ -12,23 +12,27 @@ const BAR_HEIGHT_AMPLITUDE_PX = 6;
 const BAR_SECONDARY_WAVE_RATIO = 0.37;
 const BAR_SECONDARY_WAVE_AMPLITUDE_RATIO = 0.35;
 
+type WaveformBarConfig = {
+  phase: number;
+  speed: number;
+};
+
 function useWaveformBarHeights() {
   const [heights, setHeights] = React.useState(() =>
     Array.from({ length: BAR_COUNT }, () => BAR_HEIGHT_BASE_PX),
   );
-  const waveformConfig = React.useRef(
-    Array.from({ length: BAR_COUNT }, (_, barIndex) => ({
-      phase: barIndex * BAR_MINIMUM_PHASE_STEP + Math.random() * BAR_RANDOM_PHASE_RANGE,
-      speed: BAR_BASE_SPEED + Math.random() * BAR_RANDOM_SPEED_RANGE,
-    })),
-  );
+  const waveformConfig = React.useRef<WaveformBarConfig[] | null>(null);
 
   React.useEffect(() => {
     let animationFrameId = 0;
+    waveformConfig.current = Array.from({ length: BAR_COUNT }, (_, barIndex) => ({
+      phase: barIndex * BAR_MINIMUM_PHASE_STEP + Math.random() * BAR_RANDOM_PHASE_RANGE,
+      speed: BAR_BASE_SPEED + Math.random() * BAR_RANDOM_SPEED_RANGE,
+    }));
 
     function animate(timestamp: number) {
       setHeights(
-        waveformConfig.current.map(
+        waveformConfig.current!.map(
           ({ phase, speed }) =>
             BAR_HEIGHT_BASE_PX +
             Math.round(
