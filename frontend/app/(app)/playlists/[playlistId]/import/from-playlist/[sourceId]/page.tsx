@@ -3,7 +3,7 @@
 import React, { use } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ListMusic } from "lucide-react";
+import { AlertCircle, ListMusic, LoaderCircle } from "lucide-react";
 
 import {
   useGetPlaylist,
@@ -90,15 +90,18 @@ export default function ImportFromPlaylistConfirmPage({ params }: PageProps) {
         <div className="bg-card border-[3px] border-border-strong rounded-2xl shadow-lg box-border overflow-hidden flex-1 min-h-0 flex flex-col">
           <div className="flex-1 min-h-0 overflow-y-auto">
             {isLoading ? (
-              <div className="p-6 text-center text-muted-foreground">
+              <div className="flex min-h-[260px] flex-col items-center justify-center gap-3 p-6 text-center text-muted-foreground">
+                <LoaderCircle className="size-6 animate-spin text-primary" />
                 Loading songs...
               </div>
             ) : isError ? (
-              <div className="p-6 text-center text-destructive">
-                Failed to load the source playlist.
+              <div className="flex min-h-[260px] flex-col items-center justify-center gap-3 p-6 text-center">
+                <AlertCircle className="size-6 text-destructive" />
+                <p className="text-[13px] text-muted-foreground">Failed to load the source playlist.</p>
               </div>
             ) : songs.length === 0 ? (
-              <div className="p-6 text-center text-muted-foreground">
+              <div className="flex min-h-[260px] flex-col items-center justify-center gap-3 p-6 text-center text-muted-foreground">
+                <ListMusic className="size-7 text-icon-muted" />
                 This playlist has no songs to copy.
               </div>
             ) : (

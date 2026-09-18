@@ -3,7 +3,7 @@
 import React, { use } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ListMusic, Search } from "lucide-react";
+import { AlertCircle, ListMusic, LoaderCircle, Search } from "lucide-react";
 
 import { useGetUserPlaylists } from "@/hooks/generated/user-management/user-management";
 import { useGetPublicPlaylists } from "@/hooks/generated/playlist-management/playlist-management";
@@ -25,8 +25,8 @@ export default function ImportFromPlaylistSelectPage({ params }: PageProps) {
   const destinationPlaylistId = parseInt(rawId);
   const router = useRouter();
 
-  const { data: ownPlaylists } = useGetUserPlaylists();
-  const { data: publicPlaylists } = useGetPublicPlaylists();
+  const { data: ownPlaylists, isLoading: isLoadingOwn, isError: hasOwnError, refetch: refetchOwn } = useGetUserPlaylists();
+  const { data: publicPlaylists, isLoading: isLoadingPublic, isError: hasPublicError, refetch: refetchPublic } = useGetPublicPlaylists();
 
   const [searchTerm, setSearchTerm] = React.useState("");
   const [selectedId, setSelectedId] = React.useState<number | null>(null);
@@ -54,6 +54,8 @@ export default function ImportFromPlaylistSelectPage({ params }: PageProps) {
   ];
 
   const normalizedSearch = searchTerm.trim().toLowerCase();
+  const isLoading = isLoadingOwn || isLoadingPublic;
+  const hasError = hasOwnError || hasPublicError;
   const visibleCandidates = candidates.filter((candidate) => {
     if (normalizedSearch.length === 0) {
       return true;
@@ -96,9 +98,21 @@ export default function ImportFromPlaylistSelectPage({ params }: PageProps) {
 
         <div className="bg-card border-[3px] border-border-strong rounded-2xl shadow-lg box-border overflow-hidden flex-1 min-h-0 flex flex-col">
           <div className="flex-1 min-h-0 overflow-y-auto">
-            {visibleCandidates.length === 0 ? (
-              <div className="p-6 text-center text-[13px] text-muted-foreground">
-                No playlists to import from.
+            {isLoading ? (
+              <div className="flex min-h-[260px] flex-col items-center justify-center gap-3 p-6 text-center text-[13px] text-muted-foreground">
+                <LoaderCircle className="size-6 animate-spin text-primary" />
+                Finding playlists you can copy from...
+              </div>
+            ) : hasError ? (
+              <div className="flex min-h-[260px] flex-col items-center justify-center gap-3 p-6 text-center">
+                <AlertCircle className="size-6 text-destructive" />
+                <p className="text-[13px] text-muted-foreground">Couldn&apos;t load playlists right now.</p>
+                <button type="button" onClick={() => { void refetchOwn(); void refetchPublic(); }} className="font-display text-[11px] text-primary">Try again</button>
+              </div>
+            ) : visibleCandidates.length === 0 ? (
+              <div className="flex min-h-[260px] flex-col items-center justify-center gap-2 p-6 text-center text-[13px] text-muted-foreground">
+                <ListMusic className="size-7 text-icon-muted" />
+                <p>{normalizedSearch ? "No playlists match that search." : "No playlists to import from yet."}</p>
               </div>
             ) : (
               visibleCandidates.map((candidate) => {
