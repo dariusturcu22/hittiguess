@@ -28,3 +28,10 @@ export const getResultsParams = zod.object({
   "groupId": zod.number()
 })
 
+/**
+ * @summary Get a group's active game session, must be a player in it
+ */
+export const getActiveSessionForGroupParams = zod.object({
+  "groupId": zod.number()
+})
+

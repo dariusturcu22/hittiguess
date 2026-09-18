@@ -686,6 +686,12 @@ public class GameSessionService {
     }
 
     @Transactional(readOnly = true)
+    public GameSession getActiveSessionForGroup(Long groupId) {
+        return gameSessionRepository.findByGroupId(groupId)
+                .orElseThrow(() -> new ResourceNotFoundException("No active game session found for group {id=" + groupId + "}"));
+    }
+
+    @Transactional(readOnly = true)
     public Round getCurrentRoundOrNull(GameSession session) {
         return getCurrentRound(session);
     }

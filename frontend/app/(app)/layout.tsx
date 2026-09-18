@@ -1,5 +1,6 @@
 import { AppSidebar } from "@/components/app-sidebar";
 import { AppVoiceSidebar } from "@/components/app-voice-sidebar";
+import { ActiveSessionWidget } from "@/components/active-session-widget";
 
 export default function AppLayout({
   children,
@@ -13,6 +14,7 @@ export default function AppLayout({
         {children}
       </div>
       <AppVoiceSidebar />
+      <ActiveSessionWidget />
     </div>
   );
 }

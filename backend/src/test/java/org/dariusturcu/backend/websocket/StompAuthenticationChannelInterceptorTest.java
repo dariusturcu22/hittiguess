@@ -15,6 +15,8 @@ import org.springframework.messaging.MessagingException;
 import org.springframework.messaging.simp.stomp.StompCommand;
 import org.springframework.messaging.simp.stomp.StompHeaderAccessor;
 import org.springframework.messaging.support.MessageBuilder;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.test.util.ReflectionTestUtils;
@@ -82,6 +84,24 @@ class StompAuthenticationChannelInterceptorTest {
     void aMissingAuthorizationHeaderIsRejected() {
         assertThatThrownBy(() -> interceptor.preSend(connectMessageWithAuthorization(null), channel))
                 .isInstanceOf(MessagingException.class);
+    }
+
+    @Test
+    void aHandshakeAuthenticatedUserIsPreservedWithoutAStompToken() {
+        UserPrincipal principal = new UserPrincipal(userWithEmail(USER_EMAIL));
+        Authentication handshakeAuthentication = new UsernamePasswordAuthenticationToken(
+                principal,
+                null,
+                principal.getAuthorities()
+        );
+        StompHeaderAccessor accessor = StompHeaderAccessor.create(StompCommand.CONNECT);
+        accessor.setUser(handshakeAuthentication);
+        accessor.setLeaveMutable(true);
+        Message<byte[]> message = MessageBuilder.createMessage(new byte[0], accessor.getMessageHeaders());
+
+        Message<?> result = interceptor.preSend(message, channel);
+
+        assertThat(StompHeaderAccessor.wrap(result).getUser()).isSameAs(handshakeAuthentication);
     }
 
     @Test

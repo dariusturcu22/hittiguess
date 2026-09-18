@@ -38,6 +38,14 @@ public class GameSessionController {
         return ResponseEntity.ok(sessionMapper.toSessionDTO(session, gameSessionService.getCurrentRoundOrNull(session)));
     }
 
+    @Operation(summary = "Get a group's active game session, must be a player in it")
+    @GetMapping("/groups/{groupId}/active")
+    public ResponseEntity<GameSessionDTO> getActiveSessionForGroup(@PathVariable Long groupId) {
+        GameSession session = gameSessionService.getActiveSessionForGroup(groupId);
+        requirePlayerMembership(session);
+        return ResponseEntity.ok(sessionMapper.toSessionDTO(session, gameSessionService.getCurrentRoundOrNull(session)));
+    }
+
     @Operation(summary = "Get the most recently completed session's results export for a group")
     @GetMapping("/groups/{groupId}/results")
     public ResponseEntity<SessionResultsDTO> getResults(@PathVariable Long groupId) {
