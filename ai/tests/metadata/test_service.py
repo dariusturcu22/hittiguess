@@ -3,7 +3,7 @@ import time
 from app.dedup.schemas import VerifiedSongMatch
 from app.metadata import service
 from app.metadata.content_safety import ContentSafetyOutcome, PASSED_OUTCOME
-from app.metadata.schemas import RejectionReason, SongMetadataResult
+from app.metadata.schemas import RejectionReason, SongMetadataResult, TitleArtistExtractionResult
 from app.metadata.verification import VerificationRoute
 
 
@@ -52,6 +52,7 @@ def _locked_verification_result():
 
 def _patch_pipeline_dependencies(mocker, duplicate_match, embedding=None):
     mocker.patch.object(service.youtube, "fetch_youtube_metadata", return_value=_youtube_data())
+    mocker.patch.object(service, "_extract_title_and_artist", return_value=("Test Song", "Test Artist"))
     mocker.patch.object(service, "generate_embedding", return_value=embedding or [0.1, 0.2, 0.3])
     mocker.patch.object(service, "find_best_verified_match", return_value=duplicate_match)
     mocker.patch.object(service.content_safety, "evaluate", return_value=PASSED_OUTCOME)
@@ -101,6 +102,7 @@ def test_low_confidence_match_proceeds_to_the_full_pipeline(mocker):
 
 def test_duplicate_check_failure_falls_back_to_the_full_pipeline(mocker):
     mocker.patch.object(service.youtube, "fetch_youtube_metadata", return_value=_youtube_data())
+    mocker.patch.object(service, "_extract_title_and_artist", return_value=("Test Song", "Test Artist"))
     mocker.patch.object(service, "generate_embedding", side_effect=RuntimeError("embedding API down"))
     mocker.patch.object(service.content_safety, "evaluate", return_value=PASSED_OUTCOME)
     mocker.patch.object(service.musicbrainz, "search", return_value=[])
@@ -149,6 +151,7 @@ def _candidate_for_year(release_year):
 
 def test_structured_sources_are_fetched_concurrently_not_sequentially(mocker):
     mocker.patch.object(service.youtube, "fetch_youtube_metadata", return_value=_youtube_data())
+    mocker.patch.object(service, "_extract_title_and_artist", return_value=("Test Song", "Test Artist"))
     mocker.patch.object(service, "generate_embedding", return_value=[0.1, 0.2, 0.3])
     mocker.patch.object(service, "find_best_verified_match", return_value=None)
     mocker.patch.object(service.content_safety, "evaluate", return_value=PASSED_OUTCOME)
@@ -168,6 +171,7 @@ def test_structured_sources_are_fetched_concurrently_not_sequentially(mocker):
 
 def test_one_structured_source_raising_does_not_prevent_the_others_from_being_used(mocker):
     mocker.patch.object(service.youtube, "fetch_youtube_metadata", return_value=_youtube_data())
+    mocker.patch.object(service, "_extract_title_and_artist", return_value=("Test Song", "Test Artist"))
     mocker.patch.object(service, "generate_embedding", return_value=[0.1, 0.2, 0.3])
     mocker.patch.object(service, "find_best_verified_match", return_value=None)
     mocker.patch.object(service.content_safety, "evaluate", return_value=PASSED_OUTCOME)
@@ -198,6 +202,7 @@ def test_one_structured_source_raising_does_not_prevent_the_others_from_being_us
 
 def test_three_structured_sources_are_gathered_and_passed_to_synthesis(mocker):
     mocker.patch.object(service.youtube, "fetch_youtube_metadata", return_value=_youtube_data())
+    mocker.patch.object(service, "_extract_title_and_artist", return_value=("Test Song", "Test Artist"))
     mocker.patch.object(service, "generate_embedding", return_value=[0.1, 0.2, 0.3])
     mocker.patch.object(service, "find_best_verified_match", return_value=None)
     mocker.patch.object(service.content_safety, "evaluate", return_value=PASSED_OUTCOME)
@@ -277,6 +282,7 @@ def _reject(reason):
 
 def _patch_gated_pipeline(mocker, outcome):
     mocker.patch.object(service.youtube, "fetch_youtube_metadata", return_value=_youtube_data())
+    mocker.patch.object(service, "_extract_title_and_artist", return_value=("Test Song", "Test Artist"))
     mocker.patch.object(service, "generate_embedding", return_value=[0.1, 0.2, 0.3])
     mocker.patch.object(service, "find_best_verified_match", return_value=None)
     mocker.patch.object(service.content_safety, "evaluate", return_value=outcome)
@@ -321,3 +327,49 @@ def test_clean_music_passes_the_gate_and_reaches_the_pipeline(mocker):
 
     assert result.status == "SUCCESS"
     pipeline_mock.assert_called_once()
+
+
+def test_extract_title_and_artist_prefers_the_llm_split_over_the_raw_regex_clean(mocker):
+    """The regression case: a raw "Artist - Title (tags)" YouTube title breaks an
+    exact-match structured-source query when the artist prefix isn't split off.
+    The LLM extraction step must be the one used, not the regex-only fallback."""
+    mocker.patch.object(
+        service,
+        "extract_structured",
+        return_value=TitleArtistExtractionResult(
+            title="Never Gonna Give You Up", artist="Rick Astley", confidence="high", reasoning="Well-known song."
+        ),
+    )
+
+    title, artist = service._extract_title_and_artist(
+        {"video_title": "Rick Astley - Never Gonna Give You Up (Official Video) (4K Remaster)", "channel_title": "Rick Astley"}
+    )
+
+    assert title == "Never Gonna Give You Up"
+    assert artist == "Rick Astley"
+
+
+def test_extract_title_and_artist_falls_back_to_regex_cleaning_on_extraction_failure(mocker):
+    mocker.patch.object(service, "extract_structured", side_effect=RuntimeError("DeepInfra API down"))
+
+    title, artist = service._extract_title_and_artist(
+        {"video_title": "Test Song (Official Video)", "channel_title": "Test Artist"}
+    )
+
+    assert title == "Test Song"
+    assert artist == "Test Artist"
+
+
+def test_extract_title_and_artist_falls_back_to_regex_cleaning_for_an_unidentifiable_submission(mocker):
+    mocker.patch.object(
+        service,
+        "extract_structured",
+        return_value=TitleArtistExtractionResult(title=None, artist=None, confidence="low", reasoning="Not identifiable."),
+    )
+
+    title, artist = service._extract_title_and_artist(
+        {"video_title": "DJ Mixtape Vol 3 track 7", "channel_title": "randomuploader99"}
+    )
+
+    assert title == "DJ Mixtape Vol 3 track 7"
+    assert artist == "randomuploader99"

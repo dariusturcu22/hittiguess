@@ -7,8 +7,9 @@ from app.dedup.normalize import normalize_artist_and_title
 from app.dedup.repository import find_best_verified_match
 from app.dedup.schemas import VerifiedSongMatch
 from app.metadata import content_safety, prompt
-from app.metadata.llm import synthesize
-from app.metadata.schemas import MetadataResolveResponse, SongMetadataResult
+from app.metadata.llm import extract_structured, synthesize
+from app.metadata.prompts import build_title_artist_extraction_prompt
+from app.metadata.schemas import MetadataResolveResponse, SongMetadataResult, TitleArtistExtractionResult
 from app.metadata.sources import discogs, musicbrainz, wikidata, wikipedia, youtube
 from app.metadata.sources.util import clean_youtube_text, extract_youtube_playlist_id
 from app.metadata.verification import (
@@ -52,6 +53,28 @@ def _clean_title_and_artist(youtube_data: dict[str, str]) -> tuple[str, str]:
     title = clean_youtube_text(youtube_data.get("video_title"))
     artist = clean_youtube_text(youtube_data.get("channel_title"))
     return title, artist
+
+
+def _extract_title_and_artist(youtube_data: dict[str, str]) -> tuple[str, str]:
+    """Splits the raw YouTube video title and channel name into a clean song
+    title and artist before any structured source is queried, so those
+    exact-match-sensitive lookups search on a name they can actually find
+    rather than a still-messy "Artist - Title (tags)" upload title. Falls
+    back to the plain regex clean on an extraction failure or a genuinely
+    unidentifiable submission, rather than failing the whole resolution."""
+    regex_title, regex_artist = _clean_title_and_artist(youtube_data)
+    try:
+        extraction_prompt = build_title_artist_extraction_prompt(
+            youtube_data.get("video_title", ""), youtube_data.get("channel_title", "")
+        )
+        extracted = extract_structured(extraction_prompt, TitleArtistExtractionResult)
+    except Exception as extraction_error:
+        logger.warning("Title/artist extraction failed, falling back to regex cleaning: %s", extraction_error)
+        return regex_title, regex_artist
+
+    if not extracted.title or not extracted.artist:
+        return regex_title, regex_artist
+    return extracted.title, extracted.artist
 
 
 def _fetch_source(source_search, title: str, artist: str) -> object:
@@ -220,7 +243,7 @@ def expand_playlist(playlist_url_or_id: str) -> list[str]:
 def resolve_metadata(youtube_url: str) -> MetadataResolveResponse:
     try:
         youtube_data = youtube.fetch_youtube_metadata(youtube_url)
-        title, artist = _clean_title_and_artist(youtube_data)
+        title, artist = _extract_title_and_artist(youtube_data)
 
         duplicate_match_result = _check_for_duplicate(title, artist)
         if duplicate_match_result is not None:

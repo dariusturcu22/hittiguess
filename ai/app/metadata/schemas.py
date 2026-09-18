@@ -16,6 +16,18 @@ class LlmExtractionResult(BaseModel):
     reasoning: str
 
 
+class TitleArtistExtractionResult(BaseModel):
+    """Structured-output shape for splitting a raw YouTube video title and
+    channel name into a clean song title and artist, before any structured
+    source is queried. title/artist are null for a genuinely unidentifiable
+    submission, resisting an invented answer rather than guessing."""
+
+    title: str | None
+    artist: str | None
+    confidence: str
+    reasoning: str
+
+
 class MetadataResolveRequest(BaseModel):
     youtube_url: str
 

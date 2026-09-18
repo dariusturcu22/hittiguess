@@ -47,6 +47,7 @@ def test_submitting_a_near_duplicate_song_reuses_verified_data_instead_of_runnin
             "description": "",
         },
     )
+    mocker.patch.object(service, "_extract_title_and_artist", return_value=("One More Time", "Daft Punk"))
     # The real embedding call is mocked, but the rest of the duplicate-detection path
     # (normalization already ran, the SQL similarity query, and reconstructing the result
     # from the matched row) all run for real against the Postgres test container.
