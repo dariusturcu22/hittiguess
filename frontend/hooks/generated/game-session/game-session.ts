@@ -308,3 +308,95 @@ export function useGetResults<TData = Awaited<ReturnType<typeof getResults>>, TE
 
 
 
+/**
+ * @summary Get a group's active game session, must be a player in it
+ */
+export const getActiveSessionForGroup = (
+    groupId: number,
+ options?: SecondParameter<typeof customInstance>,signal?: AbortSignal
+) => {
+      
+      
+      return customInstance<GameSessionDTO>(
+      {url: `/api/sessions/groups/${groupId}/active`, method: 'GET', signal
+    },
+      options);
+    }
+  
+
+
+
+export const getGetActiveSessionForGroupQueryKey = (groupId?: number,) => {
+    return [
+    `/api/sessions/groups/${groupId}/active`
+    ] as const;
+    }
+
+    
+export const getGetActiveSessionForGroupQueryOptions = <TData = Awaited<ReturnType<typeof getActiveSessionForGroup>>, TError = unknown>(groupId: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getActiveSessionForGroup>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetActiveSessionForGroupQueryKey(groupId);
+
+  
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getActiveSessionForGroup>>> = ({ signal }) => getActiveSessionForGroup(groupId, requestOptions, signal);
+
+      
+
+      
+
+   return  { queryKey, queryFn, enabled: !!(groupId), ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getActiveSessionForGroup>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetActiveSessionForGroupQueryResult = NonNullable<Awaited<ReturnType<typeof getActiveSessionForGroup>>>
+export type GetActiveSessionForGroupQueryError = unknown
+
+
+export function useGetActiveSessionForGroup<TData = Awaited<ReturnType<typeof getActiveSessionForGroup>>, TError = unknown>(
+ groupId: number, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getActiveSessionForGroup>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getActiveSessionForGroup>>,
+          TError,
+          Awaited<ReturnType<typeof getActiveSessionForGroup>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetActiveSessionForGroup<TData = Awaited<ReturnType<typeof getActiveSessionForGroup>>, TError = unknown>(
+ groupId: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getActiveSessionForGroup>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getActiveSessionForGroup>>,
+          TError,
+          Awaited<ReturnType<typeof getActiveSessionForGroup>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetActiveSessionForGroup<TData = Awaited<ReturnType<typeof getActiveSessionForGroup>>, TError = unknown>(
+ groupId: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getActiveSessionForGroup>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary Get a group's active game session, must be a player in it
+ */
+
+export function useGetActiveSessionForGroup<TData = Awaited<ReturnType<typeof getActiveSessionForGroup>>, TError = unknown>(
+ groupId: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getActiveSessionForGroup>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient 
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetActiveSessionForGroupQueryOptions(groupId,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  query.queryKey = queryOptions.queryKey ;
+
+  return query;
+}
+
+
+
+

@@ -1,6 +1,6 @@
 "use client";
 
-import { use, useMemo, useState } from "react";
+import { use, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   Clipboard,
@@ -19,6 +19,7 @@ import {
   useStartGameSession,
 } from "@/hooks/generated/group-management/group-management";
 import { useGetCurrentUser } from "@/hooks/generated/user-management/user-management";
+import { useGetActiveSessionForGroup } from "@/hooks/generated/game-session/game-session";
 import type { MemberDTO } from "@/hooks/models/memberDTO";
 import { useQueryClient } from "@tanstack/react-query";
 
@@ -113,11 +114,20 @@ export default function GroupLobbyPage({ params }: PageProps) {
   const { data: currentUser } = useGetCurrentUser();
   const startSession = useStartGameSession();
   const leaveGroup = useLeaveGroup();
+  const activeSessionQuery = useGetActiveSessionForGroup(groupId, {
+    query: { enabled: groupQuery.data?.status === "LOCKED", retry: false },
+  });
 
   const members = useMemo(() => groupQuery.data?.members ?? [], [groupQuery.data?.members]);
   const currentMember = members.find((member) => member.id === currentUser?.id);
   const isCurrentUserAdmin = Boolean(currentMember?.isAdmin);
   const featuredPlaylist = groupQuery.data?.playlists?.[0];
+
+  useEffect(() => {
+    if (activeSessionQuery.data?.id) {
+      router.replace(`/sessions/${activeSessionQuery.data.id}`);
+    }
+  }, [activeSessionQuery.data?.id, router]);
 
   function refreshGroup() {
     queryClient.invalidateQueries({ queryKey: getGetGroupQueryKey(groupId) });
