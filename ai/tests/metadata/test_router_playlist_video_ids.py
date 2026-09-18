@@ -11,6 +11,8 @@ from app.metadata.sources.youtube import PlaylistFetchError
 from app.rate_limit import metadata_resolve_rate_limiter
 
 PLAYLIST_VIDEO_IDS_ENDPOINT = "/metadata/playlist-video-ids"
+INVALID_INTERNAL_API_KEY = "invalid-internal-key"
+UNAUTHORIZED_STATUS_CODE = 401
 
 
 @pytest.fixture(autouse=True)
@@ -60,3 +62,14 @@ def test_requires_the_internal_api_key():
         )
 
     assert response.status_code in (401, 422)
+
+
+def test_rejects_an_invalid_internal_api_key():
+    with TestClient(app) as client:
+        response = client.post(
+            PLAYLIST_VIDEO_IDS_ENDPOINT,
+            json={"playlist_url_or_id": "https://youtube.com/playlist?list=PL123"},
+            headers={INTERNAL_API_KEY_HEADER: INVALID_INTERNAL_API_KEY},
+        )
+
+    assert response.status_code == UNAUTHORIZED_STATUS_CODE
