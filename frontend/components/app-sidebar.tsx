@@ -4,11 +4,12 @@ import * as React from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useTheme } from "next-themes";
+import { useQueryClient } from "@tanstack/react-query";
 import { Moon, Sun } from "lucide-react";
 
 import { LogoBars } from "@/components/logo";
 import { NavUser } from "@/components/nav-user";
-import { useCreateGroup, useGetActiveMembership } from "@/hooks/generated/group-management/group-management";
+import { getGetActiveMembershipQueryKey, useCreateGroup, useGetActiveMembership } from "@/hooks/generated/group-management/group-management";
 
 const RAIL_DIVIDER_CLASSES = "w-8 h-0.5 my-3.5 shrink-0 rounded-full bg-sidebar-border";
 
@@ -99,6 +100,7 @@ function GroupLobbyIcon() {
 export function AppSidebar() {
   const pathname = usePathname();
   const router = useRouter();
+  const queryClient = useQueryClient();
   const { resolvedTheme, setTheme } = useTheme();
   const [mounted, setMounted] = React.useState(false);
   const [isImporting, setIsImporting] = React.useState(false);
@@ -115,7 +117,12 @@ export function AppSidebar() {
 
     createGroup.mutate(
       { data: {} },
-      { onSuccess: (group) => router.push(`/groups/${group.id}`) },
+      {
+        onSuccess: (group) => {
+          void queryClient.invalidateQueries({ queryKey: getGetActiveMembershipQueryKey() });
+          router.push(`/groups/${group.id}`);
+        },
+      },
     );
   }
 

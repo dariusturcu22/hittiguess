@@ -14,6 +14,7 @@ import {
 
 import {
   getGetGroupQueryKey,
+  getGetActiveMembershipQueryKey,
   useGetGroup,
   useLeaveGroup,
   useStartGameSession,
@@ -145,6 +146,10 @@ export default function GroupLobbyPage({ params }: PageProps) {
     queryClient.invalidateQueries({ queryKey: getGetGroupQueryKey(groupId) });
   }
 
+  function refreshActiveMembership() {
+    queryClient.invalidateQueries({ queryKey: getGetActiveMembershipQueryKey() });
+  }
+
   async function copyInviteLink() {
     const inviteCode = groupQuery.data?.inviteCode;
     if (!inviteCode) {
@@ -156,13 +161,13 @@ export default function GroupLobbyPage({ params }: PageProps) {
   }
 
   function handleStartGame() {
-    startSession.mutate({ groupId }, { onSuccess: refreshGroup });
+    startSession.mutate({ groupId }, { onSuccess: () => { refreshGroup(); refreshActiveMembership(); } });
   }
 
   function handleLeaveLobby() {
     leaveGroup.mutate(
       { groupId },
-      { onSuccess: () => router.push("/playlists") },
+      { onSuccess: () => { refreshActiveMembership(); router.push("/playlists"); } },
     );
   }
 
