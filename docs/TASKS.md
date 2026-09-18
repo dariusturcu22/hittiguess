@@ -633,6 +633,16 @@ Tests:
 - [ ] Frontend test: the drag-and-drop timeline placement and the guess box's animated feedback behave per `GAME_DESIGN.md`'s Interaction and animation section
 - [ ] Accessibility check: color contrast and keyboard navigation for the new visual direction, specifically the semi-transparent chat overlay and the voice sidebar
 
+### Batch F: component boundary and accessibility
+
+- [ ] Keep shadcn primitives for interactive controls and add focused primitives only where the current set has a gap
+- [ ] Improve keyboard-visible focus, controls, and readable opaque surfaces for the chat overlay and voice sidebar
+- [ ] Audit the affected light and dark theme colors against WCAG AA text contrast
+
+Tests:
+
+- [ ] Run frontend lint and production build
+
 ### Visual fidelity remediation for Batches A through D
 
 The rendered Story 28 audit compares every existing page with its authoritative Dark mockup in `docs/design/source`, with Light and mobile variants where supplied. These tasks close the concrete layout and state gaps found by that audit.
