@@ -55,7 +55,7 @@ import { useLeavePlaylist } from "@/hooks/generated/user-management/user-managem
 import { getGetUserPlaylistsQueryKey } from "@/hooks/generated/user-management/user-management";
 import { useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
-import { getPlaylistMosaicColors } from "@/lib/playlist-mosaic-colors";
+import { PlaylistCoverMosaic } from "@/components/playlist-cover-mosaic";
 import { SongCatalogQuickAdd } from "./SongCatalogQuickAdd";
 
 const MEMBER_AVATAR_COLORS = [
@@ -69,23 +69,6 @@ const MEMBER_AVATAR_COLORS = [
 
 interface PlaylistContentProps {
   playlistId: number;
-}
-
-function CoverMosaic({ color }: { color: string }) {
-  const tileColors = getPlaylistMosaicColors(color);
-  return (
-    <div className="grid aspect-square w-[140px] shrink-0 grid-cols-2 grid-rows-2 gap-0.5 overflow-hidden rounded-2xl border-[3px] border-border-strong bg-border-strong shadow-lg sm:w-[180px]">
-      {tileColors.map((tile, index) => (
-        <div
-          key={index}
-          className="flex items-center justify-center"
-          style={{ backgroundColor: tile }}
-        >
-          <Play className="size-5 fill-white/55 text-white/55" />
-        </div>
-      ))}
-    </div>
-  );
 }
 
 function MemberAvatar({
@@ -222,12 +205,17 @@ export default function PlaylistContent({
     <div className="flex h-full flex-col p-6 md:p-11">
       <div className="mb-9 flex flex-col gap-7 sm:flex-row sm:items-start sm:justify-between">
         <div className="flex flex-col gap-7 sm:flex-row">
-          <CoverMosaic color={playlist.color} />
+          <PlaylistCoverMosaic
+            previewYoutubeIds={(playlist.songs ?? []).map((song) => song.youtubeId)}
+          />
 
           <div className="flex flex-col justify-center gap-2.5">
             <h1
-              className="font-display text-[26px] text-accent sm:text-[32px]"
-              style={{ textShadow: "3px 3px 0 var(--text-shadow-on-page)" }}
+              className="font-display text-[26px] sm:text-[32px]"
+              style={{
+                color: `#${playlist.color}`,
+                textShadow: "3px 3px 0 var(--text-shadow-on-page)",
+              }}
             >
               {playlist.name}
             </h1>

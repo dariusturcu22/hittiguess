@@ -12,4 +12,5 @@ export interface PublicPlaylistSummaryDTO {
   color: string;
   songCount: number;
   owner: UserSummaryDTO;
+  previewYoutubeIds: string[];
 }

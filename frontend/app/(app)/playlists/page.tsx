@@ -12,7 +12,7 @@ import {
   getGetUserPlaylistsQueryKey,
   useGetUserPlaylists,
 } from "@/hooks/generated/user-management/user-management";
-import { getPlaylistMosaicColors } from "@/lib/playlist-mosaic-colors";
+import { PlaylistCoverMosaic } from "@/components/playlist-cover-mosaic";
 
 function PlusIcon({ className }: { className?: string }) {
   return (
@@ -51,35 +51,21 @@ function SearchIcon() {
   );
 }
 
-function PlayTileIcon() {
-  return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="rgba(255,255,255,0.6)">
-      <path d="M8 5v14l11-7z" />
-    </svg>
-  );
-}
-
 function PlaylistCard({ playlist }: { playlist: PlaylistSummaryDTO }) {
-  const tileColors = getPlaylistMosaicColors(playlist.color);
-
   return (
     <Link
       href={`/playlists/${playlist.id}`}
       className="flex flex-col overflow-hidden rounded-2xl border-[3px] border-border-strong bg-card shadow-lg"
     >
-      <div className="grid aspect-square grid-cols-2 grid-rows-2 gap-0.5 bg-border-strong">
-        {tileColors.map((color, index) => (
-          <div
-            key={index}
-            className="flex items-center justify-center"
-            style={{ backgroundColor: color }}
-          >
-            <PlayTileIcon />
-          </div>
-        ))}
-      </div>
+      <PlaylistCoverMosaic
+        previewYoutubeIds={playlist.previewYoutubeIds}
+        className="w-full rounded-none border-none"
+      />
       <div className="flex flex-col gap-1.5 p-4 pb-[18px]">
-        <div className="font-display text-base text-card-foreground">
+        <div
+          className="font-display text-base"
+          style={{ color: `#${playlist.color}` }}
+        >
           {playlist.name}
         </div>
         <div className="text-xs text-muted-foreground">

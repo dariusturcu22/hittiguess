@@ -96,14 +96,14 @@ export default function JoinPlaylistPage({ params }: PageProps) {
         </h1>
 
         <div className="mb-5.5 flex w-full flex-col items-center gap-3 rounded-2xl border-2 border-border bg-background p-4.5 text-center sm:flex-row sm:gap-4 sm:text-left">
-          <div
-            className="flex size-[76px] shrink-0 items-center justify-center rounded-2xl border-[3px] border-border-strong"
-            style={{ backgroundColor: invitePreview?.color ? `#${invitePreview.color}` : undefined }}
-          >
+          <div className="flex size-[76px] shrink-0 items-center justify-center rounded-2xl border-[3px] border-border-strong bg-secondary">
             <ListMusic className="size-8 text-accent-foreground/40" />
           </div>
           <div className="min-w-0 flex-1">
-            <div className="font-display text-base text-accent">
+            <div
+              className="font-display text-base"
+              style={{ color: invitePreview?.color ? `#${invitePreview.color}` : undefined }}
+            >
               {invitePreview?.name ?? "Playlist"}
             </div>
             <div className="mt-1 text-xs text-muted-foreground">

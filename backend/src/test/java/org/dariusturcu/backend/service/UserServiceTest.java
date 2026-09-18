@@ -100,7 +100,7 @@ class UserServiceTest {
     void getSavedPlaylistsReturnsTheCurrentUsersSavedPlaylists() {
         SavedPlaylist savedPlaylist = new SavedPlaylist();
         savedPlaylist.setPlaylist(playlist);
-        PublicPlaylistSummaryDTO summary = new PublicPlaylistSummaryDTO(PLAYLIST_ID, "Playlist", "abcdef", 0, null);
+        PublicPlaylistSummaryDTO summary = new PublicPlaylistSummaryDTO(PLAYLIST_ID, "Playlist", "abcdef", 0, null, List.of());
         when(savedPlaylistRepository.findByUserId(USER_ID)).thenReturn(List.of(savedPlaylist));
         when(playlistMapper.toPublicSummaryDTO(playlist)).thenReturn(summary);
 

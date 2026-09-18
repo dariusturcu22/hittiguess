@@ -126,11 +126,11 @@ class PlaylistServiceTest {
     }
 
     private UpdateSongRequest anyUpdateRequest() {
-        return new UpdateSongRequest("Artist", "Title", 2000, "dQw4w9WgXcQ", "abcdef", "abcdef", null);
+        return new UpdateSongRequest("Artist", "Title", 2000, "dQw4w9WgXcQ", "abcdef", null);
     }
 
     private CreateSongRequest anyCreateRequest() {
-        return new CreateSongRequest("Artist", "Title", 2000, "dQw4w9WgXcQ", "abcdef", "abcdef", null);
+        return new CreateSongRequest("Artist", "Title", 2000, "dQw4w9WgXcQ", "abcdef", null);
     }
 
     private PlaylistMembership memberMembership() {
@@ -496,7 +496,7 @@ class PlaylistServiceTest {
         Playlist publicPlaylist = new Playlist();
         publicPlaylist.setId(99L);
         publicPlaylist.setPublic(true);
-        PublicPlaylistSummaryDTO summary = new PublicPlaylistSummaryDTO(99L, "Public", "abcdef", 0, null);
+        PublicPlaylistSummaryDTO summary = new PublicPlaylistSummaryDTO(99L, "Public", "abcdef", 0, null, List.of());
         when(playlistRepository.findByIsPublicTrue()).thenReturn(List.of(publicPlaylist));
         when(playlistMapper.toPublicSummaryDTO(publicPlaylist)).thenReturn(summary);
 
@@ -570,7 +570,7 @@ class PlaylistServiceTest {
         anotherOwner.setId(OTHER_USER_ID);
         playlist.setOwner(anotherOwner);
         playlist.setPublic(true);
-        PublicPlaylistSummaryDTO summary = new PublicPlaylistSummaryDTO(PLAYLIST_ID, "Playlist", "abcdef", 0, null);
+        PublicPlaylistSummaryDTO summary = new PublicPlaylistSummaryDTO(PLAYLIST_ID, "Playlist", "abcdef", 0, null, List.of());
         when(savedPlaylistRepository.existsByUserIdAndPlaylistId(OWNER_ID, PLAYLIST_ID)).thenReturn(false);
         when(playlistMapper.toPublicSummaryDTO(playlist)).thenReturn(summary);
 
