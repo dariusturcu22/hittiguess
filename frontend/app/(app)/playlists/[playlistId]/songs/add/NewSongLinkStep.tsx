@@ -75,10 +75,14 @@ export function NewSongLinkStep({
       </p>
 
       <div className="mb-7 grid w-full gap-1.5">
-        <label className="text-[13px] font-semibold text-muted-foreground">
+        <label
+          htmlFor="youtube-link"
+          className="text-[13px] font-semibold text-muted-foreground"
+        >
           YouTube link
         </label>
         <Input
+          id="youtube-link"
           autoFocus
           value={input}
           onChange={(event) => {
