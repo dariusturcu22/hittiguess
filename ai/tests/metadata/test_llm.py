@@ -125,3 +125,54 @@ def test_extract_structured_raises_when_tool_call_fallback_gets_no_tool_calls(mo
 
     with pytest.raises(ValueError):
         llm.extract_structured("some prompt", _WikipediaExtractionResult)
+
+
+class _ReconciliationSchema(BaseModel):
+    release_year: int | None
+    confidence: str
+    reasoning: str
+
+
+def test_synthesize_with_model_returns_parsed_result(mocker):
+    expected = _ReconciliationSchema(release_year=1991, confidence="high", reasoning="Two sources agree.")
+    parse_mock = mocker.patch.object(client.chat.completions, "parse", return_value=_mock_completion(expected))
+
+    result = llm.synthesize_with_model("some prompt", "gpt-5-nano", _ReconciliationSchema)
+
+    assert result == expected
+
+
+def test_synthesize_with_model_does_not_pass_an_explicit_temperature(mocker):
+    """gpt-5-nano rejects any temperature other than its default (1) with a 400."""
+    parse_mock = mocker.patch.object(
+        client.chat.completions, "parse", return_value=_mock_completion(_ReconciliationSchema(
+            release_year=1991, confidence="high", reasoning="Two sources agree."
+        ))
+    )
+
+    llm.synthesize_with_model("some prompt", "gpt-5-nano", _ReconciliationSchema)
+
+    _call_arguments, call_keyword_arguments = parse_mock.call_args
+    assert "temperature" not in call_keyword_arguments
+
+
+def test_synthesize_with_model_raises_when_response_does_not_match_schema(mocker):
+    mocker.patch.object(client.chat.completions, "parse", return_value=_mock_completion(None))
+
+    with pytest.raises(ValueError):
+        llm.synthesize_with_model("some prompt", "gpt-5-nano", _ReconciliationSchema)
+
+
+def test_synthesize_with_model_reraises_and_reports_an_api_failure(mocker):
+    request = httpx.Request("POST", "https://api.openai.com/v1/chat/completions")
+    response = httpx.Response(400, request=request)
+    api_error = APIStatusError(
+        "temperature not supported", response=response, body={"message": "temperature not supported"}
+    )
+    mocker.patch.object(client.chat.completions, "parse", side_effect=api_error)
+    report_mock = mocker.patch("app.metadata.llm.report_openai_failure")
+
+    with pytest.raises(APIStatusError):
+        llm.synthesize_with_model("some prompt", "gpt-5-nano", _ReconciliationSchema)
+
+    report_mock.assert_called_once_with(api_error)

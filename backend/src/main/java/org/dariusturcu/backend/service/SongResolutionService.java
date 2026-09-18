@@ -7,18 +7,21 @@ import org.dariusturcu.backend.model.ai.SongMetadataResponse;
 import org.dariusturcu.backend.model.song.ArtistRole;
 import org.dariusturcu.backend.model.song.Song;
 import org.dariusturcu.backend.model.song.SongArtist;
+import org.dariusturcu.backend.model.song.VerificationStatus;
 import org.dariusturcu.backend.repository.SongRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
 import java.util.Optional;
 
 /**
  * Resolves one YouTube ID through the metadata pipeline and persists the resulting
  * Song. Shared by the admin backlog drain and the user on-the-spot path so both
- * turn a resolved metadata response into a catalog row the same way. The release
- * year's verification status is left at the pipeline default here; story 18's
- * lock-evaluation is what promotes it, wired in that story.
+ * turn a resolved metadata response into a catalog row the same way. A YouTube ID
+ * already backing a Song row (the patient backlog re-resolving what an earlier
+ * on-the-spot call already saved) updates that row in place rather than inserting
+ * a second one for the same video.
  */
 @Slf4j
 @Service
@@ -41,7 +44,9 @@ public class SongResolutionService {
     }
 
     private Song persistResolvedSong(String youtubeId, SongMetadataResponse metadata) {
-        Song song = new Song();
+        List<Song> existingSongs = songRepository.findByYoutubeId(youtubeId);
+        Song song = existingSongs.isEmpty() ? new Song() : existingSongs.get(0);
+
         song.setYoutubeId(youtubeId);
         song.setTitle(metadata.title());
         if (metadata.releaseYear() != null) {
@@ -50,7 +55,11 @@ public class SongResolutionService {
         song.setGradientColor1(metadata.gradientColor1());
         song.setGradientColor2(metadata.gradientColor2());
         song.setConfidence(metadata.confidence());
+        if (metadata.verificationStatus() != null) {
+            song.setVerificationStatus(VerificationStatus.valueOf(metadata.verificationStatus()));
+        }
 
+        song.getArtists().clear();
         if (metadata.artist() != null && !metadata.artist().isBlank()) {
             SongArtist mainArtist = new SongArtist();
             mainArtist.setSong(song);

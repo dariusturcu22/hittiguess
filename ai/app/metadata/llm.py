@@ -40,11 +40,13 @@ def synthesize(prompt: str) -> SongMetadataResult:
 def synthesize_with_model(prompt: str, model: str, response_model: type[ResponseModel]) -> ResponseModel:
     """Runs a structured-output call against OpenAI with an explicit model
     and response schema. Used by the four-source reconciliation step, which
-    runs on gpt-5-nano rather than the main synthesis model."""
+    runs on gpt-5-nano rather than the main synthesis model. No explicit
+    temperature: gpt-5-nano rejects any value other than its default (1),
+    confirmed live against a real 400 from the API, unlike the main
+    synthesis and extraction models this module also calls."""
     try:
         completion = client.chat.completions.parse(
             model=model,
-            temperature=STRUCTURED_OUTPUT_TEMPERATURE,
             messages=[{"role": "user", "content": prompt}],
             response_format=response_model,
         )
