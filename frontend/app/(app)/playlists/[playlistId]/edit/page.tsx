@@ -21,6 +21,18 @@ import type { PlaylistMemberDTO } from "@/hooks/models/playlistMemberDTO";
 import { PlaylistCoverMosaic } from "@/components/playlist-cover-mosaic";
 import { getGetUserPlaylistsQueryKey } from "@/hooks/generated/user-management/user-management";
 import { useQueryClient } from "@tanstack/react-query";
+import { AXIOS_INSTANCE } from "@/lib/axios-instance";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/shadcn/alert-dialog";
 
 interface PageProps {
   params: Promise<{ playlistId: string }>;
@@ -190,6 +202,8 @@ export default function EditPlaylistPage({ params }: PageProps) {
   const updatePlaylist = useUpdatePlaylist();
   const publishMutation = usePublishPlaylist();
   const unpublishMutation = useUnpublishPlaylist();
+  const [isDeleting, setIsDeleting] = React.useState(false);
+  const [deleteError, setDeleteError] = React.useState("");
 
   const [nameDraft, setNameDraft] = React.useState("");
   const [descriptionDraft, setDescriptionDraft] = React.useState("");
@@ -228,6 +242,20 @@ export default function EditPlaylistPage({ params }: PageProps) {
 
   function resetName() {
     setNameDraft(playlist?.name ?? "");
+  }
+
+  async function deletePlaylist() {
+    setDeleteError("");
+    setIsDeleting(true);
+    try {
+      await AXIOS_INSTANCE.delete(`/api/playlists/${playlistId}`);
+      queryClient.invalidateQueries({ queryKey: getGetUserPlaylistsQueryKey() });
+      router.push("/playlists");
+    } catch {
+      setDeleteError("Could not delete this playlist. Try again.");
+    } finally {
+      setIsDeleting(false);
+    }
   }
 
   function selectColor(color: string) {
@@ -426,14 +454,38 @@ export default function EditPlaylistPage({ params }: PageProps) {
                 Can&apos;t be undone. All songs and history are lost.
               </div>
             </div>
-            <button
-              type="button"
-              disabled
-              title="Delete is not available yet"
-              className="font-sans font-semibold text-[12px] text-destructive bg-transparent px-4 py-[9px] rounded-full border-2 border-destructive box-border cursor-not-allowed whitespace-nowrap shrink-0 opacity-60"
-            >
-              Delete
-            </button>
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <button
+                  type="button"
+                  className="font-sans font-semibold text-[12px] text-destructive bg-transparent px-4 py-[9px] rounded-full border-2 border-destructive box-border cursor-pointer whitespace-nowrap shrink-0 transition-colors hover:bg-destructive hover:text-destructive-foreground"
+                >
+                  Delete
+                </button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Delete this playlist?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This permanently deletes the playlist. This action cannot be undone.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                {deleteError ? <p className="text-sm text-destructive">{deleteError}</p> : null}
+                <AlertDialogFooter>
+                  <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+                  <AlertDialogAction
+                    variant="destructive"
+                    disabled={isDeleting}
+                    onClick={(event) => {
+                      event.preventDefault();
+                      deletePlaylist();
+                    }}
+                  >
+                    {isDeleting ? "Deleting..." : "Delete playlist"}
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
           </div>
         </div>
 
