@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Send, X } from "lucide-react";
 
 import { useGetHistory } from "@/hooks/generated/group-chat/group-chat";
@@ -22,6 +22,14 @@ export function GroupChatOverlay({
 }) {
   const historyQuery = useGetHistory(groupId, { query: { retry: false } });
   const [message, setMessage] = useState("");
+
+  useEffect(() => {
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", closeOnEscape);
+    return () => window.removeEventListener("keydown", closeOnEscape);
+  }, [onClose]);
 
   function submitMessage() {
     if (sendChat(message)) setMessage("");
