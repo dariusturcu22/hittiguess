@@ -617,4 +617,29 @@ class GroupServiceTest {
         assertThatThrownBy(() -> groupService.disconnectMember(10L, otherUser.getId()))
                 .isInstanceOf(AccessDeniedException.class);
     }
+
+    @Test
+    void reconnectMemberFlipsTheConnectionFlagByUserIdBackToTrue() {
+        Group group = groupWithAdmin();
+        Member adminMember = group.getMembers().getFirst();
+        adminMember.setConnected(false);
+        when(groupRepository.findById(10L)).thenReturn(Optional.of(group));
+
+        groupService.reconnectMember(10L, adminUser.getId());
+
+        assertThat(adminMember.isConnected()).isTrue();
+
+        ArgumentCaptor<GroupBroadcastEvent> captor = ArgumentCaptor.forClass(GroupBroadcastEvent.class);
+        verify(eventPublisher).publishEvent(captor.capture());
+        assertThat(captor.getValue().type()).isEqualTo(GroupEventType.MEMBER_CONNECTION_CHANGED);
+    }
+
+    @Test
+    void reconnectMemberRejectsAUserWhoIsNotAMember() {
+        Group group = groupWithAdmin();
+        when(groupRepository.findById(10L)).thenReturn(Optional.of(group));
+
+        assertThatThrownBy(() -> groupService.reconnectMember(10L, otherUser.getId()))
+                .isInstanceOf(AccessDeniedException.class);
+    }
 }

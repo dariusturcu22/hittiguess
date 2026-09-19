@@ -30,14 +30,17 @@ public class GroupSessionEventListener {
     public void handleSubscribe(SessionSubscribeEvent event) {
         StompHeaderAccessor accessor = StompHeaderAccessor.wrap(event.getMessage());
         GroupDestinations.groupIdFromMembershipTopic(accessor.getDestination())
-                .ifPresent(groupId -> presenceRegistry.register(accessor.getSessionId(), groupId));
+                .ifPresent(groupId -> {
+                    presenceRegistry.register(accessor.getSessionId(), groupId);
+                    extractUserId(event.getUser()).ifPresent(userId -> reconnectQuietly(groupId, userId));
+                });
     }
 
     @EventListener
     public void handleDisconnect(SessionDisconnectEvent event) {
         String sessionId = event.getSessionId();
         presenceRegistry.groupIdFor(sessionId).ifPresent(groupId ->
-                extractUserId(event).ifPresent(userId -> disconnectQuietly(groupId, userId)));
+                extractUserId(event.getUser()).ifPresent(userId -> disconnectQuietly(groupId, userId)));
         presenceRegistry.remove(sessionId);
     }
 
@@ -51,8 +54,17 @@ public class GroupSessionEventListener {
         }
     }
 
-    private Optional<Long> extractUserId(SessionDisconnectEvent event) {
-        Principal principal = event.getUser();
+    private void reconnectQuietly(Long groupId, Long userId) {
+        try {
+            groupService.reconnectMember(groupId, userId);
+        } catch (RuntimeException exception) {
+            // The member may have left before their subscribe event was processed; there
+            // is nothing left to flip in that case.
+            log.debug("Reconnect skipped for group {} user {}: {}", groupId, userId, exception.getMessage());
+        }
+    }
+
+    private Optional<Long> extractUserId(Principal principal) {
         if (principal instanceof Authentication authentication
                 && authentication.getPrincipal() instanceof UserPrincipal userPrincipal) {
             return Optional.of(userPrincipal.getUser().getId());
