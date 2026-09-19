@@ -131,6 +131,21 @@ html.theme-transition .theme-toggle-thumb {
   --input: #ccd0da;
   --ring: #ed6f27;
 
+  /* Player/message color-coding used by member avatars, timeline cards, and
+     chat avatars, cycled through by index rather than tied to any one
+     surface. Hand-tinted the same way as primary/accent, from
+     GroupLobbyEightPlayersLight.dc.html. */
+  --blue: #3772e6;
+  --blue-foreground: #ffffff;
+  --teal: #179299;
+  --teal-foreground: #ffffff;
+  --pink: #e387cb;
+  --pink-foreground: #ffffff;
+  --green: #499f36;
+  --green-foreground: #ffffff;
+  --peach: #d49032;
+  --peach-foreground: #ffffff;
+
   --sidebar-foreground: #4c4f69;
   --sidebar-primary: #8f4fe3;
   --sidebar-primary-foreground: #ffffff;
@@ -205,6 +220,19 @@ html.theme-transition .theme-toggle-thumb {
   --input: #45475a;
   --ring: #fab387;
 
+  /* Stock Catppuccin Mocha, matching GroupLobbyEightPlayersDark.dc.html
+     exactly (no hand-tinting needed in dark mode). */
+  --blue: #89b4fa;
+  --blue-foreground: #11111b;
+  --teal: #94e2d5;
+  --teal-foreground: #11111b;
+  --pink: #f5c2e7;
+  --pink-foreground: #11111b;
+  --green: #a6e3a1;
+  --green-foreground: #11111b;
+  --peach: #fab387;
+  --peach-foreground: #1e1e2e;
+
   --sidebar-foreground: #cdd6f4;
   --sidebar-primary: #cba6f7;
   --sidebar-primary-foreground: #11111b;
@@ -245,6 +273,16 @@ html.theme-transition .theme-toggle-thumb {
   --color-warning-foreground: var(--warning-foreground);
   --color-destructive: var(--destructive);
   --color-destructive-foreground: var(--destructive-foreground);
+  --color-blue: var(--blue);
+  --color-blue-foreground: var(--blue-foreground);
+  --color-teal: var(--teal);
+  --color-teal-foreground: var(--teal-foreground);
+  --color-pink: var(--pink);
+  --color-pink-foreground: var(--pink-foreground);
+  --color-green: var(--green);
+  --color-green-foreground: var(--green-foreground);
+  --color-peach: var(--peach);
+  --color-peach-foreground: var(--peach-foreground);
   --color-border: var(--border);
   --color-border-strong: var(--border-strong);
   --color-input: var(--input);
