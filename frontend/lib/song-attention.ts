@@ -1,6 +1,11 @@
-import { SongDTO, SongDTOVerificationStatus } from "@/hooks/models";
+import { SongDTOVerificationStatus } from "@/hooks/models";
 
-export function needsUserAttention(song: Pick<SongDTO, "verificationStatus" | "confidence">) {
+interface SongAttentionMetadata {
+  verificationStatus?: SongDTOVerificationStatus | string;
+  confidence?: string;
+}
+
+export function needsUserAttention(song: SongAttentionMetadata) {
   return (
     song.verificationStatus === SongDTOVerificationStatus.MANUAL_ENTRY ||
     (song.verificationStatus === SongDTOVerificationStatus.NEEDS_REVIEW &&
