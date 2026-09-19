@@ -29,13 +29,13 @@ export default function ImportYoutubePage({ params }: PageProps) {
     }
     const toastId = toast.loading("Importing playlist...");
     reset();
-    window.dispatchEvent(new CustomEvent("playlist-import-progress", { detail: true }));
+    window.dispatchEvent(new CustomEvent("playlist-import-progress", { detail: { active: true, playlistId } }));
     importMutation.mutate(
       { data: { playlistLink: trimmedLink, targetPlaylistId: playlistId } },
       {
         onSuccess: () => toast.success("Playlist import complete.", { id: toastId }),
         onError: () => toast.error("Playlist import failed.", { id: toastId }),
-        onSettled: () => window.dispatchEvent(new CustomEvent("playlist-import-progress", { detail: false })),
+        onSettled: () => window.dispatchEvent(new CustomEvent("playlist-import-progress", { detail: { active: false } })),
       },
     );
   }
