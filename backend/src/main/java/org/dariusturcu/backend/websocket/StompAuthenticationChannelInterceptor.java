@@ -16,6 +16,8 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.stereotype.Component;
 
+import java.util.Map;
+
 // Authenticates every STOMP CONNECT frame against the same JWT the REST side validates,
 // following Spring's documented pattern for token-based STOMP authentication: a
 // ChannelInterceptor on the client inbound channel reads the token from the CONNECT
@@ -73,6 +75,10 @@ public class StompAuthenticationChannelInterceptor implements ChannelInterceptor
         if (header != null && header.startsWith(BEARER_PREFIX)) {
             return header.substring(BEARER_PREFIX.length());
         }
-        return null;
+        Map<String, Object> sessionAttributes = accessor.getSessionAttributes();
+        if (sessionAttributes == null) {
+            return null;
+        }
+        return (String) sessionAttributes.get(JwtCookieHandshakeInterceptor.ACCESS_TOKEN_ATTRIBUTE);
     }
 }

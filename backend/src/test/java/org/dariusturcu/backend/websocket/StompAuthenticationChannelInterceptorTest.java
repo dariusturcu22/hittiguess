@@ -21,6 +21,8 @@ import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.test.util.ReflectionTestUtils;
 
+import java.util.Map;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.eq;
@@ -67,6 +69,13 @@ class StompAuthenticationChannelInterceptorTest {
         return MessageBuilder.createMessage(new byte[0], accessor.getMessageHeaders());
     }
 
+    private Message<byte[]> connectMessageWithCookieToken(String token) {
+        StompHeaderAccessor accessor = StompHeaderAccessor.create(StompCommand.CONNECT);
+        accessor.setSessionAttributes(Map.of(JwtCookieHandshakeInterceptor.ACCESS_TOKEN_ATTRIBUTE, token));
+        accessor.setLeaveMutable(true);
+        return MessageBuilder.createMessage(new byte[0], accessor.getMessageHeaders());
+    }
+
     @Test
     void aValidTokenAuthenticatesAndSetsTheConnectedUser() {
         User user = userWithEmail(USER_EMAIL);
@@ -78,6 +87,18 @@ class StompAuthenticationChannelInterceptorTest {
 
         StompHeaderAccessor resultAccessor = StompHeaderAccessor.wrap(result);
         assertThat(resultAccessor.getUser()).isNotNull();
+    }
+
+    @Test
+    void anAccessTokenCapturedFromTheHandshakeCookieAuthenticatesTheConnectedUser() {
+        User user = userWithEmail(USER_EMAIL);
+        UserPrincipal principal = new UserPrincipal(user);
+        when(userDetailsService.loadUserByUsername(USER_EMAIL)).thenReturn(principal);
+        String token = jwtUtil.generateToken(user);
+
+        Message<?> result = interceptor.preSend(connectMessageWithCookieToken(token), channel);
+
+        assertThat(StompHeaderAccessor.wrap(result).getUser()).isNotNull();
     }
 
     @Test

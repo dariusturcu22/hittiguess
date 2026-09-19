@@ -51,7 +51,7 @@ async function login(browser: Browser, account: TestAccount): Promise<Page> {
   await page.goto(LOGIN_PATH);
   await page.getByLabel("Email").fill(account.email);
   await page.getByLabel("Password").fill(account.password);
-  await page.getByRole("button", { name: "Sign In" }).click();
+  await page.getByRole("button", { name: "Log in" }).click();
   await page.waitForURL(PLAYLISTS_PATH);
 
   return page;
@@ -218,6 +218,9 @@ test("gameplay shell renders placement, betting, and DJ link-out states", async 
     await page.goto(`/sessions/${GAMEPLAY_SESSION_ID}`);
     const card = page.locator('[draggable="true"]');
     await expect(card).toBeVisible();
+    await page.getByRole("button", { name: "Open chat" }).click();
+    await expect(page.getByRole("heading", { name: "Chat" })).toBeVisible();
+    await page.getByRole("button", { name: "Close chat" }).click();
     await card.dispatchEvent("dragstart");
     await expect(page.getByRole("button", { name: "Place card at timeline position 1" })).toBeVisible();
 
@@ -230,6 +233,8 @@ test("gameplay shell renders placement, betting, and DJ link-out states", async 
     await page.reload();
     await page.getByRole("button", { name: "Use 1 token to bet" }).click();
     await expect(page.getByRole("button", { name: "Choose a timeline gap" })).toBeVisible();
+    await page.getByRole("button", { name: "Skip betting" }).click();
+    await expect(page.getByText("Betting skipped. Waiting for the reveal.")).toBeVisible();
 
     await page.unroute(`**${CURRENT_USER_API_PATH}`);
     await page.route(`**${CURRENT_USER_API_PATH}`, (route) => route.fulfill({ json: { id: DJ_ID } }));

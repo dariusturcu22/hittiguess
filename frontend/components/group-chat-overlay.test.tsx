@@ -46,4 +46,24 @@ describe("GroupChatOverlay", () => {
     expect(sendChat).toHaveBeenCalledWith(MESSAGE_TEXT);
     expect(messageInput).toHaveValue("");
   });
+
+  it("limits chat messages to the backend character limit", () => {
+    render(
+      <GroupChatOverlay
+        groupId={GROUP_IDENTIFIER}
+        connectionState="connected"
+        onClose={vi.fn()}
+        sendChat={vi.fn(() => true)}
+      />,
+    );
+
+    const messageInput = screen.getByRole("textbox", { name: "Chat message" });
+
+    expect(messageInput).toHaveAttribute("maxLength", "500");
+    expect(screen.getByText("0/500")).toBeVisible();
+
+    fireEvent.change(messageInput, { target: { value: "hello" } });
+
+    expect(screen.getByText("5/500")).toBeVisible();
+  });
 });
