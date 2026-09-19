@@ -22,7 +22,7 @@ For each page in the mapping table below:
 
 ## Mapping: mockup files to routes
 
-Grouped by where each maps in the app. "Route" is the real or planned path under `frontend/app`. A route marked "not built" has no code yet; the page needs to be created, not edited.
+Grouped by where each maps in the app. "Route" is the real or planned path under `frontend/app`. A route marked "planned" has no code yet; the page needs to be created, not edited.
 
 ### Auth and landing (routes exist)
 
@@ -45,7 +45,7 @@ Grouped by where each maps in the app. "Route" is the real or planned path under
 | `/playlists/[playlistId]/songs/add` | `AddSongDark.dc.html`, `AddSongLight.dc.html`, `AddNewSongLinkDark.dc.html`, `AddNewSongLinkLight.dc.html` (paste-a-link step), `AddNewSongReviewEditableDark.dc.html`, `AddNewSongReviewEditableLight.dc.html` (confirm step, editable), `AddNewSongReviewLockedDark.dc.html`, `AddNewSongReviewLockedLight.dc.html` (confirm step, a verified song's locked fields) |
 | `/playlists/join/[inviteCode]` | `JoinInviteDark.dc.html`, `JoinInviteLight.dc.html` |
 
-### Planned playlist screens (routes not built, story 30/40/45/46)
+### Playlist screens (routes implemented, with some states still open)
 
 | Route (proposed) | Mockup files |
 | --- | --- |
@@ -53,14 +53,14 @@ Grouped by where each maps in the app. "Route" is the real or planned path under
 | `/playlists/[playlistId]/edit` | `EditPlaylistDark.dc.html`, `EditPlaylistLight.dc.html` |
 | Import flow, exact route structure TBD when story 40/45 frontend tasks are scoped | `ImportChooseSourceDark.dc.html`, `ImportChooseSourceLight.dc.html`, `ImportPlaylistLinkDark.dc.html`, `ImportPlaylistLinkLight.dc.html`, `ImportFromPlaylistSelectDark.dc.html`, `ImportFromPlaylistSelectLight.dc.html`, `ImportFromPlaylistConfirmDark.dc.html`, `ImportFromPlaylistConfirmLight.dc.html`, `ImportPlaylistProcessingDark.dc.html`, `ImportPlaylistProcessingLight.dc.html`, `ImportProgressDark.dc.html`, `ImportProgressLight.dc.html` |
 
-### Admin (routes not built, story 17/40, gated on the `ADMIN` role)
+### Admin (routes implemented, story 17/40, gated on the `ADMIN` role)
 
 | Route (proposed) | Mockup files |
 | --- | --- |
 | `/admin/catalog` | `AdminCatalogBacklogDark.dc.html`, `AdminCatalogBacklogLight.dc.html` |
 | `/admin/reports` | `AdminReportQueueDark.dc.html`, `AdminReportQueueLight.dc.html` |
 
-### Gameplay (routes not built, stories 9/10/11/12/13/39)
+### Gameplay (routes implemented, stories 9/10/11/12/13/39)
 
 | Route (proposed) | Mockup files |
 | --- | --- |
@@ -68,6 +68,8 @@ Grouped by where each maps in the app. "Route" is the real or planned path under
 | Game session/timeline | `GameSessionRoundIntroDark.dc.html`, `GameSessionRoundIntroLight.dc.html`, `GameSessionDJDark.dc.html`, `GameSessionDJLight.dc.html`, `GameSessionPlayerDark.dc.html`, `GameSessionPlayerLight.dc.html`, `GameSessionCardDraggingDark.dc.html`, `GameSessionCardDraggingLight.dc.html`, `GameSessionCardDraggingSpectatorDark.dc.html`, `GameSessionCardDraggingSpectatorLight.dc.html`, `GameSessionCardDroppedDark.dc.html`, `GameSessionCardDroppedLight.dc.html`, `GameSessionCardLockedDark.dc.html`, `GameSessionCardLockedLight.dc.html`, `GameSessionBettingPrepDark.dc.html`, `GameSessionBettingPrepLight.dc.html`, `GameSessionBettingPrepTokenHolderDark.dc.html`, `GameSessionBettingPrepTokenHolderLight.dc.html`, `GameSessionBettingActiveDark.dc.html`, `GameSessionBettingActiveLight.dc.html`, `GameSessionBettingActiveTokenHolderDark.dc.html`, `GameSessionBettingActiveTokenHolderLight.dc.html`, `GameSessionRevealDark.dc.html`, `GameSessionRevealLight.dc.html` |
 | In-session overlays (not separate routes, components within the game session screen) | `TurnNotificationDark.dc.html`, `TurnNotificationLight.dc.html`, `AwayWidgetDark.dc.html`, `AwayWidgetLight.dc.html`, `TextChatOverlayDark.dc.html`, `TextChatOverlayLight.dc.html` |
 | Results/leaderboard | `ResultsDark.dc.html`, `ResultsLight.dc.html`, `ResultsTwoPlayersDark.dc.html`, `ResultsTwoPlayersLight.dc.html`, `ResultsEightPlayersDark.dc.html`, `ResultsEightPlayersLight.dc.html` |
+
+The current `dev` frontend implements the routes and gameplay wiring for Batches A through E. The choose-source and existing-playlist import states, broader route and representative-state tests, rendered comparison across the mockup matrix, and the accessibility pass remain open. Live Playwright validation of the group and gameplay flows requires the backend services to run from this same checkout.
 
 ### Reference sheets, not pages
 

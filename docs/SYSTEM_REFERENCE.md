@@ -105,13 +105,13 @@ Story 39's group endpoints, story 10's game-session endpoints, story 40's admin 
 | `/app/sessions/{sessionId}/bet` | `GameActionController` | Place a bet after the active player's guess locks, story 10 |
 | `/app/sessions/{sessionId}/skip-betting` | `GameActionController` | Skip the betting window, story 10 |
 
-Story 30's Difficulty-Based-generation and Custom-mode session-start endpoints do not exist on `dev` yet. See that story in `TASKS.md` for the planned shape. Story 9's link-out endpoint is live and listed above. Story 13's group text chat has also shipped (`V14__add_chat_messages`, member-only STOMP send and REST history), though its routes aren't itemized in the tables above. Story 12's voice signaling relay is live as a STOMP mapping on `/app/groups/{groupId}/voice/signal`, which forwards one WebRTC offer, answer, or ICE candidate onto the group's `/topic/groups/{groupId}/voice` topic for member-to-member routing; the WebRTC mesh it drives is frontend, deferred to story 28. This table lists the REST surface live on `dev` today.
+Story 30's Difficulty-Based-generation and Custom-mode session-start endpoints do not exist on `dev` yet. See that story in `TASKS.md` for the planned shape. Story 9's link-out endpoint is live and listed above. Story 13's group text chat has also shipped (`V14__add_chat_messages`, member-only STOMP send and REST history), though its routes aren't itemized in the tables above. Story 12's voice signaling relay is live as a STOMP mapping on `/app/groups/{groupId}/voice/signal`, which forwards one WebRTC offer, answer, or ICE candidate onto the group's `/topic/groups/{groupId}/voice` topic for member-to-member routing; story 28 now implements the WebRTC mesh and gameplay clients that use it. Visual, representative-state, route smoke, and accessibility verification remain open. This table lists the REST surface live on `dev` today.
 
 ## Entity model
 
 ### Current (JPA entities, core service)
 
-Current JPA entities: `User`, `Playlist`, `PlaylistMembership`, `PlaylistBan`, `SavedPlaylist`, `Song`, `SongArtist`, `RefreshToken`, `EmailVerificationToken`, `PasswordResetToken`, `TwoFactorBackupCode` (story 50), plus `Group` and `Member` (story 39), `GameSession`, `Player`, `Round`, `Guess`, and `Bet` (story 10), `AlternateYoutubeId` and `PendingImport` (story 40), and `SongReport` and `SongConfirmation` (story 17). `Bet` (round, player, position, placedAt) is one accepted bet against a round's active-player timeline; a round can carry several, one per distinct gap, enforced by unique constraints on the `bets` table rather than a single bettor column on `Round`. The core seven are detailed below; the game and group entities follow the shapes in `ARCHITECTURE.md` and their own story sections in `TASKS.md`.
+Current JPA entities: `User`, `Playlist`, `PlaylistMembership`, `PlaylistBan`, `SavedPlaylist`, `Song`, `SongArtist`, `RefreshToken`, `EmailVerificationToken`, `PasswordResetToken`, `TwoFactorBackupCode` (story 50), plus `Group` and `Member` (story 39), `GameSession`, `Player`, `Round`, `Guess`, and `Bet` (story 10), `ChatMessage` (story 13), `AlternateYoutubeId` and `PendingImport` (story 40), and `SongReport` and `SongConfirmation` (story 17). `Bet` (round, player, position, placedAt) is one accepted bet against a round's active-player timeline; a round can carry several, one per distinct gap, enforced by unique constraints on the `bets` table rather than a single bettor column on `Round`. The core seven are detailed below; the game, group, and chat entities follow the shapes in `ARCHITECTURE.md` and their own story sections in `TASKS.md`.
 
 ```
 User
@@ -200,7 +200,6 @@ Schema changes now go through Flyway migrations (`backend/src/main/resources/db/
 
 Listed here so the entity picture is in one place; each is still greenfield work under its own story.
 
-- `ChatMessage` (story 13)
 - `SongDifficulty` aggregate view or table (story 30): not built as an entity. Story 30's backend computes the per-song play-derived difficulty signal on the fly through `RoundRepository.aggregatePlacementStatsBySong`, a grouped aggregate query over scored rounds, so no stored table or view exists
 
 ### Analytics store (story 33)
