@@ -14,6 +14,7 @@ const PLACE_ACTION = "place";
 const GUESS_ACTION = "guess";
 const BET_ACTION = "bet";
 const SKIP_BETTING_ACTION = "skip-betting";
+const ROUND_EVENT_PARSE_FAILURE_MESSAGE = "Unable to parse session round event";
 
 type ConnectionState = "connecting" | "connected" | "disconnected" | "error";
 
@@ -55,7 +56,11 @@ export function useGameSessionRealtime(
       onConnect: () => {
         setConnectionState("connected");
         client.subscribe(`${SESSION_ROUND_TOPIC}/${sessionId}/round`, (message) => {
-          onRoundEvent?.(JSON.parse(message.body) as SessionRoundEvent);
+          try {
+            onRoundEvent?.(JSON.parse(message.body) as SessionRoundEvent);
+          } catch (parseError) {
+            console.warn(ROUND_EVENT_PARSE_FAILURE_MESSAGE, parseError);
+          }
           void queryClient.invalidateQueries({ queryKey: getGetSessionQueryKey(sessionId) });
         });
         client.subscribe(`${SESSION_ROUND_TOPIC}/${sessionId}/ended`, () => {
