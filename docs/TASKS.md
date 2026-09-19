@@ -741,11 +741,23 @@ Tests:
 - [x] Make playlist cover mosaics responsive squares and merge caller classes with `cn`
 - [x] Use the six approved playlist title colors for client defaults and server-side updates
 - [x] Replace the black newly-created playlist color with the approved default
-- [ ] Add focused frontend and backend validation coverage
+- [x] Add focused frontend and backend validation coverage
 
 Tests:
 
 - [x] Run frontend checks and relevant backend tests
+
+## Playlist detail and edit fix pass
+
+- [x] Add owner-only playlist deletion and wire the edit-page confirmation flow
+- [x] Redirect to the playlist detail page after save succeeds
+- [x] Expose playlist ownership in the user library and make Owned and Joined filtering work
+- [x] Replace the expanded member list with an accessible collapsed member control
+- [ ] Replace bulk-import placeholder progress with the existing real-time progress stream (in progress, not yet merged)
+
+Tests:
+
+- [x] Add backend deletion coverage and run backend and frontend checks
 
 ## Story 48: Comment cleanup
 
