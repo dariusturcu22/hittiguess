@@ -349,5 +349,5 @@ html.theme-transition .theme-toggle-thumb {
 }
 
 .animate-waveform-bar {
-  animation: waveform-bar 900ms ease-in-out infinite;
+  animation: waveform-bar 1500ms ease-in-out infinite;
 }
