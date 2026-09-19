@@ -9,6 +9,7 @@ import { Moon, Sun } from "lucide-react";
 import { LogoBars } from "@/components/logo";
 import { NavUser } from "@/components/nav-user";
 import { useCreateGroup, useGetActiveMembership } from "@/hooks/generated/group-management/group-management";
+import { useBulkImportRealtime } from "@/hooks/use-bulk-import-realtime";
 
 const RAIL_DIVIDER_CLASSES = "w-8 h-0.5 my-3.5 shrink-0 rounded-full bg-sidebar-border";
 
@@ -103,6 +104,7 @@ export function AppSidebar() {
   const [mounted, setMounted] = React.useState(false);
   const [isImporting, setIsImporting] = React.useState(false);
   const [importPlaylistId, setImportPlaylistId] = React.useState<number | null>(null);
+  useBulkImportRealtime();
   const { data: activeGroup } = useGetActiveMembership({
     query: { retry: false },
   });

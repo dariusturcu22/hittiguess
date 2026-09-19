@@ -7,6 +7,8 @@ const WEBSOCKET_PATH = "/ws";
 const BULK_IMPORT_PROGRESS_DESTINATION = "/user/queue/bulk-import-progress";
 const RECONNECT_DELAY_MILLISECONDS = 3_000;
 const BULK_IMPORT_EVENTS_STORAGE_KEY = "bulk-import-progress-events";
+const BULK_IMPORT_EVENT_NAME = "bulk-import-event";
+const BULK_IMPORT_RESET_EVENT_NAME = "bulk-import-progress-reset";
 
 export interface BulkImportProgressEvent {
   youtubeId: string;
@@ -21,7 +23,13 @@ function websocketUrl(): string {
   return apiUrl.toString();
 }
 
-export function useBulkImportRealtime() {
+interface BulkImportRealtimeOptions {
+  subscribeToProgress?: boolean;
+}
+
+export function useBulkImportRealtime({
+  subscribeToProgress = true,
+}: BulkImportRealtimeOptions = {}) {
   const [events, setEvents] = useState<BulkImportProgressEvent[]>(() => {
     if (typeof window === "undefined") {
       return [];
@@ -43,22 +51,42 @@ export function useBulkImportRealtime() {
   }, [events]);
 
   useEffect(() => {
+    const clearProgressEvents = () => setEvents([]);
+    window.addEventListener(BULK_IMPORT_RESET_EVENT_NAME, clearProgressEvents);
+    return () => window.removeEventListener(BULK_IMPORT_RESET_EVENT_NAME, clearProgressEvents);
+  }, []);
+
+  useEffect(() => {
+    if (!subscribeToProgress) {
+      const addProgressEvent = (event: Event) => {
+        const progressEvent = event as CustomEvent<BulkImportProgressEvent>;
+        setEvents((previousEvents) => [...previousEvents, progressEvent.detail]);
+      };
+      window.addEventListener(BULK_IMPORT_EVENT_NAME, addProgressEvent);
+      return () => {
+        window.removeEventListener(BULK_IMPORT_EVENT_NAME, addProgressEvent);
+      };
+    }
+
     const client = new Client({
       brokerURL: websocketUrl(),
       reconnectDelay: RECONNECT_DELAY_MILLISECONDS,
       onConnect: () => {
         client.subscribe(BULK_IMPORT_PROGRESS_DESTINATION, (message) => {
-          setEvents((previousEvents) => [...previousEvents, JSON.parse(message.body) as BulkImportProgressEvent]);
+          const progressEvent = JSON.parse(message.body) as BulkImportProgressEvent;
+          setEvents((previousEvents) => [...previousEvents, progressEvent]);
+          window.dispatchEvent(new CustomEvent(BULK_IMPORT_EVENT_NAME, { detail: progressEvent }));
         });
       },
     });
     client.activate();
     return () => { void client.deactivate(); };
-  }, []);
+  }, [subscribeToProgress]);
 
   function reset() {
     setEvents([]);
     sessionStorage.removeItem(BULK_IMPORT_EVENTS_STORAGE_KEY);
+    window.dispatchEvent(new Event(BULK_IMPORT_RESET_EVENT_NAME));
   }
 
   return { events, reset };

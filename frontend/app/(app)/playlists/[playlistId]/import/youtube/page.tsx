@@ -18,7 +18,7 @@ export default function ImportYoutubePage({ params }: PageProps) {
   const { playlistId: rawId } = use(params);
   const playlistId = parseInt(rawId);
   const importMutation = useImportImmediately();
-  const { events, reset } = useBulkImportRealtime();
+  const { events, reset } = useBulkImportRealtime({ subscribeToProgress: false });
 
   const [playlistLink, setPlaylistLink] = React.useState("");
 

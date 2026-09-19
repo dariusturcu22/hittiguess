@@ -1,4 +1,4 @@
-import { renderHook } from "@testing-library/react";
+import { act, renderHook } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { useBulkImportRealtime } from "./use-bulk-import-realtime";
@@ -27,6 +27,20 @@ describe("useBulkImportRealtime", () => {
 
     expect(result.current.events).toEqual([
       { youtubeId: "dQw4w9WgXcQ", outcome: "RESOLVED" },
+    ]);
+  });
+
+  it("updates a page consumer from progress received by the global subscription", () => {
+    const { result } = renderHook(() => useBulkImportRealtime({ subscribeToProgress: false }));
+
+    act(() => {
+      window.dispatchEvent(new CustomEvent("bulk-import-event", {
+        detail: { youtubeId: "oHg5SJYRHA0", outcome: "ALREADY_KNOWN" },
+      }));
+    });
+
+    expect(result.current.events).toEqual([
+      { youtubeId: "oHg5SJYRHA0", outcome: "ALREADY_KNOWN" },
     ]);
   });
 });
