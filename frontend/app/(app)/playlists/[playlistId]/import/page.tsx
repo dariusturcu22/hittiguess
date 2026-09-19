@@ -40,9 +40,7 @@ function SourceOption({
   );
 }
 
-export default function ImportChooseSourcePage({ params }: PageProps) {
-  const { playlistId: rawId } = use(params);
-  const playlistId = parseInt(rawId);
+export function ImportChooseSourceContent({ playlistId }: { playlistId: number }) {
   const backPath = `/playlists/${playlistId}`;
 
   return (
@@ -79,4 +77,9 @@ export default function ImportChooseSourcePage({ params }: PageProps) {
       </div>
     </div>
   );
+}
+
+export default function ImportChooseSourcePage({ params }: PageProps) {
+  const { playlistId: rawId } = use(params);
+  return <ImportChooseSourceContent playlistId={parseInt(rawId)} />;
 }

@@ -66,4 +66,21 @@ describe("GroupChatOverlay", () => {
 
     expect(screen.getByText("5/500")).toBeVisible();
   });
+
+  it("closes from the labeled control and Escape key", () => {
+    const onClose = vi.fn();
+    render(
+      <GroupChatOverlay
+        groupId={GROUP_IDENTIFIER}
+        connectionState="connected"
+        onClose={onClose}
+        sendChat={vi.fn(() => true)}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Close chat" }));
+    fireEvent.keyDown(window, { key: "Escape" });
+
+    expect(onClose).toHaveBeenCalledTimes(2);
+  });
 });

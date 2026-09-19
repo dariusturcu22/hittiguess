@@ -20,9 +20,11 @@ interface SourceCandidate {
   provenance: string;
 }
 
-export default function ImportFromPlaylistSelectPage({ params }: PageProps) {
-  const { playlistId: rawId } = use(params);
-  const destinationPlaylistId = parseInt(rawId);
+export function ImportFromPlaylistSelectContent({
+  destinationPlaylistId,
+}: {
+  destinationPlaylistId: number;
+}) {
   const router = useRouter();
 
   const { data: ownPlaylists, isLoading: isLoadingOwn, isError: hasOwnError, refetch: refetchOwn } = useGetUserPlaylists();
@@ -99,18 +101,37 @@ export default function ImportFromPlaylistSelectPage({ params }: PageProps) {
         <div className="bg-card border-[3px] border-border-strong rounded-2xl shadow-lg box-border overflow-hidden flex-1 min-h-0 flex flex-col">
           <div className="flex-1 min-h-0 overflow-y-auto">
             {isLoading ? (
-              <div className="flex min-h-[260px] flex-col items-center justify-center gap-3 p-6 text-center text-[13px] text-muted-foreground">
+              <div
+                className="flex min-h-[260px] flex-col items-center justify-center gap-3 p-6 text-center text-[13px] text-muted-foreground"
+                role="status"
+                aria-live="polite"
+              >
                 <LoaderCircle className="size-6 animate-spin text-primary" />
                 Finding playlists you can copy from...
               </div>
             ) : hasError ? (
-              <div className="flex min-h-[260px] flex-col items-center justify-center gap-3 p-6 text-center">
+              <div
+                className="flex min-h-[260px] flex-col items-center justify-center gap-3 p-6 text-center"
+                role="alert"
+              >
                 <AlertCircle className="size-6 text-destructive" />
                 <p className="text-[13px] text-muted-foreground">Couldn&apos;t load playlists right now.</p>
-                <button type="button" onClick={() => { void refetchOwn(); void refetchPublic(); }} className="font-display text-[11px] text-primary">Try again</button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    void refetchOwn();
+                    void refetchPublic();
+                  }}
+                  className="font-display text-[11px] text-primary"
+                >
+                  Try again
+                </button>
               </div>
             ) : visibleCandidates.length === 0 ? (
-              <div className="flex min-h-[260px] flex-col items-center justify-center gap-2 p-6 text-center text-[13px] text-muted-foreground">
+              <div
+                className="flex min-h-[260px] flex-col items-center justify-center gap-2 p-6 text-center text-[13px] text-muted-foreground"
+                role="status"
+              >
                 <ListMusic className="size-7 text-icon-muted" />
                 <p>{normalizedSearch ? "No playlists match that search." : "No playlists to import from yet."}</p>
               </div>
@@ -174,5 +195,14 @@ export default function ImportFromPlaylistSelectPage({ params }: PageProps) {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function ImportFromPlaylistSelectPage({ params }: PageProps) {
+  const { playlistId: rawId } = use(params);
+  return (
+    <ImportFromPlaylistSelectContent
+      destinationPlaylistId={parseInt(rawId)}
+    />
   );
 }

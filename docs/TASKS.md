@@ -4,13 +4,13 @@ This is the source of truth for day-to-day work. Consult PROJECT_STATE.md only w
 
 Before starting any task, check it against the current code: some tasks may already be done, some may not apply the way they're written, and some may be missing. Once a story's tasks are confirmed accurate, update its status to Ready (or Implemented, once its own backend batch is actually done) in PROJECT_STATE.md.
 
-Stories 9, 10, 11, 12, 13, 39, and most of the rest of Phase 1 and Phase 2 are now implemented (backend); see PROJECT_STATE.md for the current status of every story. Their frontend tasks stay open, deferred to story 28 per the standing policy below.
+Stories 9, 10, 11, 12, 13, 39, and most of the rest of Phase 1 and Phase 2 are now implemented (backend); see PROJECT_STATE.md for the current status of every story. Story 28 now implements the frontend surface for Batches A through E against those backends. Remaining visual, route, representative-state, and accessibility checks stay listed under story 28.
 
 "Next available task" means the earliest unchecked box under a Ready or In Progress story.
 
 ## Standing policy: all frontend work lives in story 28
 
-Every story other than story 28 is backend-only. Any frontend task a story would otherwise carry (a page, a component, a WebRTC/browser-side piece, a frontend test) is tracked under story 28's implementation phase instead, not built in that story's own batch. Story 28 is the single place all frontend lands, wired against the real backends every prior batch shipped. Frontend tasks already written inline under other stories stay listed there marked "story 28" for traceability, but they are NOT part of that story's own batch completion; a backend story is done when its backend code and backend tests pass.
+Every story other than story 28 is backend-only. Any frontend task a story would otherwise carry (a page, a component, a WebRTC/browser-side piece, a frontend test) is tracked under story 28's implementation phase instead, not built in that story's own batch. Story 28 is the single place all frontend lands, wired against the real backends every prior batch shipped. Frontend tasks already written inline under other stories stay listed there marked "story 28" for traceability, but they are not part of that story's own batch completion; a backend story is done when its backend code and backend tests pass.
 
 ## Standing policy: story 34 abuse-visibility event writes are stubbed until story 34 ships
 
@@ -44,7 +44,7 @@ Tests:
 
 Checked against real code: no session model exists, this is greenfield work. Based on the `GameSession` shape and round flow in `ARCHITECTURE.md`, and the round/token/reconnect rules in `GAME_DESIGN.md`.
 
-Built on `feature/game-session`, stacked off `feature/websocket-sync`. Backend only, both frontend tasks stay unchecked and are deferred to story 28, per standing project-wide instruction for this phase of batches. See `DECISIONS.md` for the round-rotation, timer-scheduling, and betting-concurrency design choices this batch resolved.
+Built on `feature/game-session`, stacked off `feature/websocket-sync`. The gameplay frontend is implemented in story 28; its visual matrix, representative-state tests, and accessibility checks remain open. See `DECISIONS.md` for the round-rotation, timer-scheduling, and betting-concurrency design choices this batch resolved.
 
 - [x] Implement `GameSession`, `Player`, `Round`, and `Guess` as ephemeral Postgres rows, purged when the session ends
 - [x] Initialize a session from the group's current settings when the admin starts it (playlist(s), DJ mode, win-condition card count), snapshotting the group's connected members as the roster
@@ -242,7 +242,7 @@ Tests:
 
 ## Story 46: Playlist membership: owner/admin, granular permissions, kick and ban, per-playlist identity
 
-Surfaced during story 28's design pass on the Edit playlist and Join by invite screens, not part of the original backlog mapping. Backend built on `feature/playlist-membership`; two frontend tasks remain deferred to story 28. See `DECISIONS.md`'s 2026-09 "Playlist membership" entry for the decided shape.
+Surfaced during story 28's design pass on the Edit playlist and Join by invite screens, not part of the original backlog mapping. Backend built on `feature/playlist-membership`; the Edit playlist member list is implemented in story 28, while the Join by invite identity step remains open. See `DECISIONS.md`'s 2026-09 "Playlist membership" entry for the decided shape.
 
 - [x] Add an owner/admin concept to `Playlist`: an `ownerId` (or equivalent), set to the creator on creation; only the owner can rename, change cover/color/description, toggle `isPublic` (story 30), delete the playlist, or manage other members
 - [x] Replace the plain `Playlist.users` many-to-many with a `PlaylistMembership` entity (playlist, user, `canRead`/`canWrite`/`canDelete` booleans, joined-at, per-playlist display name and avatar), coordinate with story 15 since both touch `Playlist`'s relations
@@ -270,13 +270,13 @@ Tests:
 
 Checked against real code: `SongRepository` has zero custom query methods, no backend search capability exists. The only "search" today is `DataTable`'s client-side substring filter over an already-loaded playlist's songs, not a real query.
 
-Backend-only for this batch, matching how the song-genre-and-print-redesign batch split its own backend/frontend work: the frontend is getting a full visual redesign under story 28 (mockups exist under `docs/design/source/` but aren't implemented yet), so building UI against the current, soon-to-be-replaced design would be redone almost immediately. The three frontend-facing items below are deferred to story 28's implementation phase, not dropped. See DECISIONS.md for the search-scope decision.
+Backend-only for this batch, matching how the song-genre-and-print-redesign batch split its own backend/frontend work: the frontend is implemented under story 28 against the mockups in `docs/design/source/`. The remaining search wiring and broader state coverage stay tracked here for traceability and are completed or verified through story 28. See DECISIONS.md for the search-scope decision.
 
 - [x] Add a backend search endpoint, `SongRepository` has no query methods to build on today (`GET /api/songs/search`, the first top-level `/api/songs/...` route)
 - [x] Support search by artist/title keyword and by YouTube link/ID (the link-parsing logic already exists client-side as `extractYoutubeId` in `AddSongForm.tsx`; replicated server-side as `YoutubeLinkParser`)
 - [x] Decide search scope: within one playlist, across the user's playlists, or catalog-wide, affects both the query and which of `PlaylistService`'s access checks apply (catalog-wide search would need one, since it isn't a per-playlist access check). Decided catalog-wide, see DECISIONS.md
-- [ ] Deferred to story 28: Wire `AddSongForm.tsx`'s submission flow to check search results first, so a song already in the catalog isn't resubmitted as a near-duplicate (distinct from story 16's pgvector-based similarity check; this is a plain keyword/link pre-check)
-- [ ] Deferred to story 28: Add the frontend search UI, replacing or extending the current client-side-only title filter in `DataTable`
+- [x] Story 28: Wire `AddSongForm.tsx`'s submission flow to check search results first, so a song already in the catalog isn't resubmitted as a near-duplicate (distinct from story 16's pgvector-based similarity check; this is a plain keyword/link pre-check)
+- [x] Story 28: Add the frontend search UI, replacing or extending the current client-side-only title filter in `DataTable`
 
 Tests:
 - [x] Unit tests for the search query: keyword matching and YouTube link/ID matching
@@ -600,17 +600,17 @@ Tests:
 
 ## Story 28: UI redesign
 
-Checked against real code: the frontend covers auth, landing, playlist/song CRUD, group lobby, game session, chat/voice shell, away widget, DJ link-out, and results export. The Batch E gameplay surfaces are wired to the generated hooks and realtime clients; the remaining unchecked items below are visual/state coverage and broader route smoke coverage.
+Checked against real code: the frontend covers auth, landing, playlist/song CRUD, imports, admin views, group lobby, game session, chat/voice shell, away widget, DJ link-out, and results export. Batches A through E are implemented and wired to generated hooks and realtime clients. The remaining unchecked items below are open import states, visual/state coverage, accessibility, and broader route smoke coverage.
 
-Scope decided: one unified redesign pass covering both the existing pages and the not-yet-built gameplay screens, not two separate efforts. A fresh visual direction, not constrained to the current shadcn/Tailwind theme tokens, though the underlying component library stays unless a specific component doesn't hold up under the new direction. Mockups are built as a multi-artboard canvas via the `design` skill, reviewed before any implementation code is written.
+Scope decided: one unified redesign pass covering both the existing pages and the gameplay screens, not two separate efforts. A fresh visual direction, not constrained to the current shadcn/Tailwind theme tokens, though the underlying component library stays unless a specific component doesn't hold up under the new direction. Mockups were built as a multi-artboard canvas via the `design` skill and reviewed before implementation.
 
-Design phase complete: `docs/design/hittiguess-design.html` covers all 53 screens across auth, playlist management, song review, import, and gameplay, plus the landing page, in both light and dark themes, iterated and reviewed directly by the project owner. Only the implementation tasks below remain.
+Design phase complete: `docs/design/hittiguess-design.html` covers all 53 screens across auth, playlist management, song review, import, and gameplay, plus the landing page, in both light and dark themes, iterated and reviewed directly by the project owner. Implementation through Batch E is present; the remaining tasks below are explicit verification gates and open states.
 
 - [x] Design phase: establish the fresh visual direction (color, type, spacing, component style) and apply it across every existing page: landing, login, register, forgot-password, dashboard/playlist list, playlist detail, song detail, add song, join-by-invite. See `docs/design/hittiguess-design.html`
 - [x] Design phase: extend the same visual system to the gameplay screens `GAME_DESIGN.md` specs but that don't exist as code yet: group lobby (member list, admin crown, join code/link, settings), game session/timeline (drag-and-drop cards, guess box, token count, betting window), DJ view (open-in-YouTube link-out), voice sidebar, text chat overlay, turn notification banner, the minimized "playing while away" widget state, and the results/leaderboard screen. See `docs/design/hittiguess-design.html`
 - [x] Review pass against every mockup with the project owner before implementation starts, checking each gameplay screen against `GAME_DESIGN.md`'s spec for anything the design missed
-- [ ] Implementation: rebuild every existing page's actual layout to match its mockup, not just its color/font tokens. Two passes at a token-only restyle (replacing classes on the existing page structure) both shipped pages that read as the old layout with a new skin, because several pages' mockups use a different structure than the current code (the playlist list's icon-rail-plus-card-grid layout versus the current sidebar-plus-list, for one). See `docs/FRONTEND_IMPLEMENTATION_GUIDE.md` for the required per-page workflow, the mockup-to-route mapping, and the render-and-compare verification step a page must pass before this box is checked again
-- [ ] Implementation: build the new gameplay screens as real Next.js components/routes; wire to stories 10/11/39's actual backend once those land, using representative mock state in the meantime so this doesn't block on their implementation timing
+- [x] Implementation: rebuild the existing pages' actual layouts to match their mockups across Batches A through D, not just their color/font tokens. The remaining route smoke and rendered comparison checks are listed below. See `docs/FRONTEND_IMPLEMENTATION_GUIDE.md` for the required per-page workflow and verification step
+- [x] Implementation: build the new gameplay screens as real Next.js components/routes and wire them to stories 9/10/11/12/13/39's actual backends. Representative-state and rendered verification remain open
 - [ ] Component/token boundary: no longer retheme-only where a mockup's layout differs from the existing page's layout; `docs/FRONTEND_IMPLEMENTATION_GUIDE.md` supersedes the retheme-only rule for those pages. shadcn primitives (`components/shadcn/*`) are still used wherever they're the natural fit for a control (button, input, dialog, table), never replaced with hand-built markup for a form control or anything interactive; but a page's overall layout is rebuilt to match its mockup rather than kept as-is
 
 ### Batch E: Gameplay screens
@@ -626,6 +626,8 @@ Design phase complete: `docs/design/hittiguess-design.html` covers all 53 screen
 - [x] Build the results and leaderboard route from the `Results*` mockups for two-player and eight-player sessions, including the session export action
 - [ ] Render every Batch E route and state at each mockup's desktop and mobile breakpoint in both themes, comparing directly against its matching source mockup
 - [x] Add unit coverage for each new interactive component and Playwright coverage for lobby join, session start, placement, betting, link-out warning, chat, and results export
+
+Live Playwright validation of the group and gameplay flows requires the backend services to be started from this same checkout.
 
 Tests:
 - [ ] Frontend test: each redesigned existing page renders without regression (a smoke test per route)
@@ -802,14 +804,14 @@ Two-factor authentication: TOTP (an authenticator app, e.g. Google Authenticator
 - [x] Decide and enforce what an unverified account can and can't do: block login entirely until verified (the simpler rule, avoids gating every downstream endpoint individually) versus allowing login but restricting real actions; document whichever is chosen in `DECISIONS.md`
 - [x] Add a resend-verification-email endpoint, rate-limited the same way other auth endpoints are (see story 27, `RateLimitingFilter`'s existing `/auth/*` bucket)
 - [x] Add a `PasswordResetToken` entity (user, token, expiresAt, used), `POST /auth/password-reset/request` (accepts an email, always returns success regardless of whether the email exists, to avoid leaking which emails are registered, and emails a reset link/token only if it does), and `POST /auth/password-reset/confirm` (token plus new password, single-use, expires after a short window)
-- [ ] Wire the frontend's existing forgot-password form (currently an honest "not implemented" stub, see `ARCHIVE.md`) to the new request/confirm endpoints, deferred to story 28 for the actual UI per the standing frontend policy, tracked here only for the backend completion
+- [ ] Wire the frontend's existing forgot-password form (currently an honest "not implemented" stub, see `ARCHIVE.md`) to the new request/confirm endpoints; the route is present, but this auth flow is not part of the implemented Batch A surface yet
 - [x] Add `totpSecret` (nullable, encrypted at rest or at minimum never returned by any DTO once set) and `twoFactorEnabled` (boolean, default false) to `User`
 - [x] Add `POST /auth/2fa/setup` (admin/self, authenticated): generates a TOTP secret and a provisioning URI/QR code, not yet enabled until confirmed
 - [x] Add `POST /auth/2fa/confirm`: the user submits one valid code generated from the new secret to prove they've actually added it to an authenticator app before `twoFactorEnabled` flips true
 - [x] Add backup/recovery codes: a set of one-time-use codes generated alongside 2FA setup, shown once, each usable exactly once in place of a TOTP code if the authenticator app is unavailable
 - [x] Add `POST /auth/2fa/disable` (requires the current password or a valid code, not just being logged in, to prevent a hijacked session from silently turning it off)
 - [x] Change the login flow for a `twoFactorEnabled` account: `POST /auth/login` with a correct password but 2FA enabled returns a short-lived, narrowly-scoped intermediate token (not a real access/refresh pair) instead of completing login; a new `POST /auth/2fa/verify` endpoint accepts that intermediate token plus a TOTP or backup code and only then issues the real access/refresh cookies
-- [ ] Frontend: the 2FA setup screen (QR code, confirmation step, backup codes display), the login flow's second step when 2FA is required, deferred to story 28 per the standing frontend policy, tracked here only for the backend completion
+- [ ] Frontend: the 2FA setup screen (QR code, confirmation step, backup codes display), and the login flow's second step when 2FA is required; these auth states remain open
 
 Tests:
 - [x] Unit tests for `EmailService` (mocked HTTP call to Resend, not a real send in any test)

@@ -40,7 +40,7 @@ function SoundwaveCard({ draggable = false, onDragEnd, onDragStart, onKeyDown }:
 
 function DropTarget({ isVisible, position, onPlace }: { isVisible: boolean; position: number; onPlace: (position: number) => void }) {
   if (!isVisible) return null;
-  return <button type="button" onDragOver={(event) => event.preventDefault()} onDrop={() => onPlace(position)} className="flex h-[132px] w-9 shrink-0 items-center justify-center rounded-full border-2 border-dashed border-primary/70 bg-primary/10 text-[9px] font-bold uppercase tracking-[0.08em] text-primary transition-colors hover:bg-primary/20 sm:h-[168px]" aria-label={`Place card at timeline position ${position + 1}`}>Drop</button>;
+  return <button type="button" onClick={() => onPlace(position)} onDragOver={(event) => event.preventDefault()} onDrop={() => onPlace(position)} className="flex h-[132px] w-9 shrink-0 items-center justify-center rounded-full border-2 border-dashed border-primary/70 bg-primary/10 text-[9px] font-bold uppercase tracking-[0.08em] text-primary transition-colors hover:bg-primary/20 sm:h-[168px]" aria-label={`Place card at timeline position ${position + 1}`}>Drop</button>;
 }
 
 function GuessField({ placeholder, value, onChange, onSubmit }: { placeholder: string; value: string; onChange: (value: string) => void; onSubmit: () => void }) {
