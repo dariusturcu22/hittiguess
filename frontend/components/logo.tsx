@@ -16,7 +16,7 @@ export const LogoBars = ({
       {WAVEFORM_ANIMATION_DELAYS.map((animationDelay) => (
         <span
           key={animationDelay}
-          className={`h-6 origin-center rounded-full animate-waveform-bar ${colorClassName}`}
+          className={`h-full origin-center rounded-full animate-waveform-bar ${colorClassName}`}
           style={{ width: `${barWidthPx}px`, animationDelay }}
         />
       ))}
