@@ -31,16 +31,15 @@ import org.dariusturcu.backend.repository.SavedPlaylistRepository;
 import org.dariusturcu.backend.repository.SongRepository;
 import org.dariusturcu.backend.security.util.SecurityUtils;
 import org.springframework.security.access.AccessDeniedException;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import lombok.RequiredArgsConstructor;
 
 import java.time.Instant;
 import java.util.List;
 import java.util.Set;
 
 @Service
-@RequiredArgsConstructor
 @Transactional
 
 public class PlaylistService {
@@ -55,6 +54,30 @@ public class PlaylistService {
     private final SavedPlaylistRepository savedPlaylistRepository;
     private final CatalogSeedingService catalogSeedingService;
     private final SongMetadataService songMetadataService;
+
+    @Autowired
+    public PlaylistService(
+            PlaylistRepository playlistRepository,
+            SongRepository songRepository,
+            PlaylistMapper playlistMapper,
+            SongMapper songMapper,
+            PlaylistAccessService playlistAccessService,
+            PlaylistMembershipRepository playlistMembershipRepository,
+            PlaylistBanRepository playlistBanRepository,
+            SavedPlaylistRepository savedPlaylistRepository,
+            CatalogSeedingService catalogSeedingService,
+            SongMetadataService songMetadataService) {
+        this.playlistRepository = playlistRepository;
+        this.songRepository = songRepository;
+        this.playlistMapper = playlistMapper;
+        this.songMapper = songMapper;
+        this.playlistAccessService = playlistAccessService;
+        this.playlistMembershipRepository = playlistMembershipRepository;
+        this.playlistBanRepository = playlistBanRepository;
+        this.savedPlaylistRepository = savedPlaylistRepository;
+        this.catalogSeedingService = catalogSeedingService;
+        this.songMetadataService = songMetadataService;
+    }
 
     public PlaylistService(
             PlaylistRepository playlistRepository,
