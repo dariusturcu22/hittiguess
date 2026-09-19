@@ -56,6 +56,7 @@ import { getGetUserPlaylistsQueryKey } from "@/hooks/generated/user-management/u
 import { useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { PlaylistCoverMosaic } from "@/components/playlist-cover-mosaic";
+import { playlistTitleColor } from "@/lib/playlist-colors";
 import { SongCatalogQuickAdd } from "./SongCatalogQuickAdd";
 
 const MEMBER_AVATAR_COLORS = [
@@ -207,13 +208,14 @@ export default function PlaylistContent({
         <div className="flex flex-col gap-7 sm:flex-row">
           <PlaylistCoverMosaic
             previewYoutubeIds={(playlist.songs ?? []).map((song) => song.youtubeId)}
+            className="w-[180px] shrink-0"
           />
 
           <div className="flex flex-col justify-center gap-2.5">
             <h1
               className="font-display text-[26px] sm:text-[32px]"
               style={{
-                color: `#${playlist.color}`,
+                color: playlistTitleColor(playlist.color),
                 textShadow: "3px 3px 0 var(--text-shadow-on-page)",
               }}
             >

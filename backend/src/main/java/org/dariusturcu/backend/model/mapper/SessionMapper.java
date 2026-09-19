@@ -28,6 +28,7 @@ public class SessionMapper {
     public PlayerDTO toPlayerDTO(Player player) {
         return new PlayerDTO(
                 player.getId(),
+                player.getUser().getId(),
                 player.getDisplayName(),
                 player.getAvatarUrl(),
                 player.getTurnOrder(),

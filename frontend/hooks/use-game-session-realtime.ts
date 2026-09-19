@@ -14,8 +14,15 @@ const PLACE_ACTION = "place";
 const GUESS_ACTION = "guess";
 const BET_ACTION = "bet";
 const SKIP_BETTING_ACTION = "skip-betting";
+const ROUND_EVENT_PARSE_FAILURE_MESSAGE = "Unable to parse session round event";
 
 type ConnectionState = "connecting" | "connected" | "disconnected" | "error";
+
+export interface SessionRoundEvent {
+  type: string;
+  sessionId: number;
+  payload?: { activePlayerId?: number };
+}
 
 function websocketUrl(): string {
   const apiUrl = new URL(process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080");
@@ -29,7 +36,10 @@ function sessionDestination(sessionId: number, action: string): string {
   return `${SESSION_APP_DESTINATION}/${sessionId}/${action}`;
 }
 
-export function useGameSessionRealtime(sessionId: number) {
+export function useGameSessionRealtime(
+  sessionId: number,
+  onRoundEvent?: (event: SessionRoundEvent) => void,
+) {
   const queryClient = useQueryClient();
   const clientReference = useRef<Client | null>(null);
   const [connectionState, setConnectionState] = useState<ConnectionState>("connecting");
@@ -45,7 +55,12 @@ export function useGameSessionRealtime(sessionId: number) {
       reconnectDelay: RECONNECT_DELAY_MILLISECONDS,
       onConnect: () => {
         setConnectionState("connected");
-        client.subscribe(`${SESSION_ROUND_TOPIC}/${sessionId}/round`, () => {
+        client.subscribe(`${SESSION_ROUND_TOPIC}/${sessionId}/round`, (message) => {
+          try {
+            onRoundEvent?.(JSON.parse(message.body) as SessionRoundEvent);
+          } catch (parseError) {
+            console.warn(ROUND_EVENT_PARSE_FAILURE_MESSAGE, parseError);
+          }
           void queryClient.invalidateQueries({ queryKey: getGetSessionQueryKey(sessionId) });
         });
         client.subscribe(`${SESSION_ROUND_TOPIC}/${sessionId}/ended`, () => {
@@ -64,7 +79,7 @@ export function useGameSessionRealtime(sessionId: number) {
       clientReference.current = null;
       void client.deactivate();
     };
-  }, [hasValidSessionId, queryClient, sessionId]);
+  }, [hasValidSessionId, onRoundEvent, queryClient, sessionId]);
 
   const publish = useCallback((action: string, body?: Record<string, unknown>) => {
     const client = clientReference.current;

@@ -937,3 +937,11 @@ Why: each of these is a real fork in the code that the task list left to judgmen
 Decision: two implementation passes at story 28's existing pages both applied the new colors, fonts, and spacing tokens on top of the current pages' unchanged layouts. Several pages' mockups use a different structure than what already exists, most visibly the playlist list, where the mockup is a narrow icon-only nav rail next to a grid of cover-art cards and the app is a full sidebar with a text list and an empty content area. No token or class change turns one layout into the other. `docs/FRONTEND_IMPLEMENTATION_GUIDE.md` now governs implementation: a page's mockup is the literal spec for its structure, not only its styling, and a page gets rebuilt to match that structure rather than kept as-is and restyled, whenever the two differ. shadcn primitives are still required for every form control, button, dialog, and table; only the retheme-only constraint on overall page layout is lifted.
 
 Why: the project owner's standing rule is that the design mockups are authoritative over existing backend or frontend code whenever the two disagree, and retheme-only silently overrode that rule for page structure specifically. A page that keeps the old layout and only changes its surface styling does not satisfy "the design is authoritative," no matter how closely the color and font tokens match, and two rounds of exactly that approach were rejected on review for looking like "the old version with a skin on top of it."
+
+---
+
+## 2026-09 | Metadata locks include corroborated Wikipedia and one-year source clusters
+
+Decision: after the three structured sources fail their initial exact lock, Wikipedia is extracted as before. The pipeline promotes a result to `VERIFIED` without four-source reconciliation when at least three of the four source years agree exactly. It also promotes when at least three non-null source years all fall within a one-year range, using the earliest year. The existing earliest-candidate extraction rule remains unchanged.
+
+Why: corroborated source evidence resolves these cases without paying for reconciliation, while a one-year range stays within gameplay tolerance. Requiring every available candidate to stay in that range prevents a distant outlier from being silently accepted.

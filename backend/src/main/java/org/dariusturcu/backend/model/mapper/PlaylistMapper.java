@@ -31,13 +31,14 @@ public class PlaylistMapper {
                 .toList();
     }
 
-    public PlaylistSummaryDTO toSummaryDTO(Playlist playlist) {
+    public PlaylistSummaryDTO toSummaryDTO(Playlist playlist, Long userId) {
         return new PlaylistSummaryDTO(
                 playlist.getId(),
                 playlist.getName(),
                 playlist.getColor(),
                 playlist.getSongCount(),
-                previewYoutubeIds(playlist)
+                previewYoutubeIds(playlist),
+                playlist.getOwner().getId().equals(userId)
         );
     }
 
