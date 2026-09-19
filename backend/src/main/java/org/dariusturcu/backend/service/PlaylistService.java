@@ -222,7 +222,8 @@ public class PlaylistService {
             return;
         }
 
-        AiResponse response = songMetadataService.resolveByYoutubeId(request.youtubeId());
+        AiResponse response = songMetadataService.findCachedPreview(request.youtubeId())
+                .orElseGet(() -> songMetadataService.resolveByYoutubeId(request.youtubeId()));
         if (!"SUCCESS".equals(response.status()) || response.content() == null) {
             return;
         }

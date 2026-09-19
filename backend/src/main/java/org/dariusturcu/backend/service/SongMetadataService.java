@@ -11,6 +11,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
 
 import java.time.LocalDateTime;
+import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -19,6 +20,7 @@ import java.util.concurrent.ConcurrentHashMap;
 @RequiredArgsConstructor
 public class SongMetadataService {
     private static final String YOUTUBE_WATCH_URL_PREFIX = "https://www.youtube.com/watch?v=";
+    private static final String YOUTUBE_VIDEO_ID_PARAMETER = "v=";
 
     private final RestClient aiServiceRestClient;
 
@@ -26,6 +28,7 @@ public class SongMetadataService {
     // so one user queuing many concurrent requests can tie up threads and run up cost. Capping
     // it at one in-flight request per user, rather than a time window, matches the actual risk.
     private final Set<Long> usersWithRequestInFlight = ConcurrentHashMap.newKeySet();
+    private final ConcurrentHashMap<String, AiResponse> previewMetadataByYoutubeId = new ConcurrentHashMap<>();
 
     private static final String SUCCESS_STATUS = "SUCCESS";
     private static final String REJECTED_STATUS = "REJECTED";
@@ -38,7 +41,13 @@ public class SongMetadataService {
         }
 
         try {
-            return resolve(youtubeUrl);
+            AiResponse response = resolve(youtubeUrl);
+            int youtubeIdStart = youtubeUrl.lastIndexOf(YOUTUBE_VIDEO_ID_PARAMETER) + YOUTUBE_VIDEO_ID_PARAMETER.length();
+            String youtubeId = youtubeUrl.substring(youtubeIdStart);
+            if (SUCCESS_STATUS.equals(response.status()) && response.content() != null) {
+                previewMetadataByYoutubeId.put(youtubeId, response);
+            }
+            return response;
         } finally {
             usersWithRequestInFlight.remove(userId);
         }
@@ -50,6 +59,10 @@ public class SongMetadataService {
     // traffic for the shared external rate-limit budget.
     public AiResponse resolveByYoutubeId(String youtubeId) {
         return resolve(YOUTUBE_WATCH_URL_PREFIX + youtubeId);
+    }
+
+    public Optional<AiResponse> findCachedPreview(String youtubeId) {
+        return Optional.ofNullable(previewMetadataByYoutubeId.get(youtubeId));
     }
 
     private AiResponse resolve(String youtubeUrl) {
