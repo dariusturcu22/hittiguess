@@ -51,7 +51,7 @@ async function login(browser: Browser, account: TestAccount): Promise<Page> {
   await page.goto(LOGIN_PATH);
   await page.getByLabel("Email").fill(account.email);
   await page.getByLabel("Password").fill(account.password);
-  await page.getByRole("button", { name: "Sign In" }).click();
+  await page.getByRole("button", { name: "Log in" }).click();
   await page.waitForURL(PLAYLISTS_PATH);
 
   return page;

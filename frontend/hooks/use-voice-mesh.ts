@@ -16,6 +16,13 @@ const CANDIDATE_SIGNAL = "CANDIDATE";
 
 interface VoiceSignal { type: string; senderUserId: number; targetMemberUserId: number; payload: string; }
 
+export function shouldCutoffAudioStream(
+  event: { type: string; payload?: { activePlayerId?: number } },
+  currentPlayerId: number | undefined,
+): boolean {
+  return event.type === "GUESS_LOCKED" && event.payload?.activePlayerId === currentPlayerId;
+}
+
 function websocketUrl(): string {
   const apiUrl = new URL(process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080");
   apiUrl.protocol = apiUrl.protocol === "https:" ? "wss:" : "ws:";

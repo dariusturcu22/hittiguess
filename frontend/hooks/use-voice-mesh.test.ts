@@ -1,7 +1,7 @@
 import { act, renderHook } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { useVoiceMesh } from "./use-voice-mesh";
+import { shouldCutoffAudioStream, useVoiceMesh } from "./use-voice-mesh";
 
 vi.mock("@/hooks/generated/group-management/group-management", () => ({
   useGetVoiceTurnCredentials: () => ({ data: undefined }),
@@ -11,6 +11,7 @@ vi.mock("@stomp/stompjs", () => ({
   Client: class {
     activate() {}
     deactivate() { return Promise.resolve(); }
+    subscribe() {}
   },
 }));
 
@@ -27,6 +28,14 @@ afterEach(() => {
 });
 
 describe("useVoiceMesh", () => {
+  it("cuts off only the active player's stream on guess lock-in", () => {
+    const lockedEvent = { type: "GUESS_LOCKED", payload: { activePlayerId: 7 } };
+
+    expect(shouldCutoffAudioStream(lockedEvent, 7)).toBe(true);
+    expect(shouldCutoffAudioStream(lockedEvent, 8)).toBe(false);
+    expect(shouldCutoffAudioStream({ type: "ROUND_SCORED", payload: { activePlayerId: 7 } }, 7)).toBe(false);
+  });
+
   it("keeps the selected tab audio and stops its display video track", async () => {
     let endedListener: (() => void) | undefined;
     const audioTrack = {

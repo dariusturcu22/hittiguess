@@ -8,7 +8,7 @@ import { getGetActiveMembershipQueryKey, getGetGroupQueryKey, useGetActiveMember
 import { useGetActiveSessionForGroup, useGetSession } from "@/hooks/generated/game-session/game-session";
 import { useGetCurrentUser } from "@/hooks/generated/user-management/user-management";
 import { useGameSessionRealtime } from "@/hooks/use-game-session-realtime";
-import { useVoiceMesh } from "@/hooks/use-voice-mesh";
+import { shouldCutoffAudioStream, useVoiceMesh } from "@/hooks/use-voice-mesh";
 import { Button } from "@/components/shadcn/button";
 
 const MEMBER_COLORS = ["bg-primary", "bg-accent", "bg-warning", "bg-secondary", "bg-primary", "bg-accent"];
@@ -46,7 +46,7 @@ export function AppVoiceSidebar() {
   )?.id;
 
   const handleRoundEvent = useCallback((event: { type: string; payload?: { activePlayerId?: number } }) => {
-    if (event.type === "GUESS_LOCKED" && event.payload?.activePlayerId === currentPlayerId) {
+    if (shouldCutoffAudioStream(event, currentPlayerId)) {
       stopMicrophone();
     }
   }, [currentPlayerId, stopMicrophone]);
