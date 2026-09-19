@@ -6,6 +6,7 @@ import { Check, LoaderCircle, Search, Video } from "lucide-react";
 
 import { useImportImmediately } from "@/hooks/generated/bulk-import/bulk-import";
 import { toast } from "sonner";
+import { useBulkImportRealtime } from "@/hooks/use-bulk-import-realtime";
 
 interface PageProps {
   params: Promise<{ playlistId: string }>;
@@ -17,8 +18,10 @@ export default function ImportYoutubePage({ params }: PageProps) {
   const { playlistId: rawId } = use(params);
   const playlistId = parseInt(rawId);
   const importMutation = useImportImmediately();
+  const { events, isConnected, reset } = useBulkImportRealtime({ subscribeToProgress: false });
 
   const [playlistLink, setPlaylistLink] = React.useState("");
+  const [activeImportJobId, setActiveImportJobId] = React.useState<string>();
 
   function handleImport() {
     const trimmedLink = playlistLink.trim();
@@ -26,18 +29,23 @@ export default function ImportYoutubePage({ params }: PageProps) {
       return;
     }
     const toastId = toast.loading("Importing playlist...");
-    window.dispatchEvent(new CustomEvent("playlist-import-progress", { detail: true }));
+    const importJobId = crypto.randomUUID();
+    setActiveImportJobId(importJobId);
+    reset();
+    window.dispatchEvent(new CustomEvent("playlist-import-progress", { detail: { active: true, playlistId } }));
     importMutation.mutate(
-      { data: { playlistLink: trimmedLink, targetPlaylistId: playlistId } },
+      { data: { playlistLink: trimmedLink, targetPlaylistId: playlistId, importJobId } },
       {
         onSuccess: () => toast.success("Playlist import complete.", { id: toastId }),
         onError: () => toast.error("Playlist import failed.", { id: toastId }),
-        onSettled: () => window.dispatchEvent(new CustomEvent("playlist-import-progress", { detail: false })),
+        onSettled: () => window.dispatchEvent(new CustomEvent("playlist-import-progress", { detail: { active: false } })),
       },
     );
   }
 
   const result = importMutation.data;
+  const importEvents = events.filter((event) => event.importJobId === activeImportJobId);
+  const processedSongCount = importEvents.length;
 
   return (
     <div className="flex-1 flex items-center justify-center px-6 py-12">
@@ -70,11 +78,11 @@ export default function ImportYoutubePage({ params }: PageProps) {
         <button
           type="button"
           onClick={handleImport}
-          disabled={importMutation.isPending || playlistLink.trim().length === 0}
+          disabled={importMutation.isPending || !isConnected || playlistLink.trim().length === 0}
           className="w-full font-display text-sm text-primary-foreground bg-primary py-[15px] rounded-full shadow-sm box-border cursor-pointer text-center disabled:opacity-60 disabled:cursor-not-allowed"
         >
           <Search className="mr-2 inline size-4" />
-          {importMutation.isPending ? "Fetching..." : "Fetch playlist"}
+          {importMutation.isPending ? "Fetching..." : isConnected ? "Fetch playlist" : "Connecting..."}
         </button>
 
         {importMutation.isPending ? (
@@ -83,11 +91,18 @@ export default function ImportYoutubePage({ params }: PageProps) {
               <LoaderCircle className="size-4 animate-spin text-primary" />
               Reading playlist and matching songs
             </div>
-            <div className="mt-4 h-2 overflow-hidden rounded-full bg-secondary">
-              <div className="h-full w-2/3 animate-pulse rounded-full bg-primary" />
+            <div className="mt-4 flex flex-wrap gap-1" aria-live="polite">
+              {importEvents.map((event) => (
+                <span
+                  key={`${event.youtubeId}-${event.outcome}`}
+                  className={`size-2 rounded-full ${event.outcome === "UNRESOLVED" ? "bg-destructive" : event.outcome === "ALREADY_KNOWN" ? "bg-muted-foreground" : "bg-primary"}`}
+                  title={`${event.youtubeId}: ${event.outcome.toLowerCase().replaceAll("_", " ")}`}
+                />
+              ))}
+              {processedSongCount === 0 ? <span className="h-2 w-16 animate-pulse rounded-full bg-secondary" /> : null}
             </div>
             <p className="mt-3 text-[11px] text-muted-foreground">
-              Keep this page open while the playlist is processed.
+              {processedSongCount > 0 ? `${processedSongCount} song${processedSongCount === 1 ? "" : "s"} processed so far.` : "Keep this page open while the playlist is processed."}
             </p>
           </div>
         ) : importMutation.isError ? (

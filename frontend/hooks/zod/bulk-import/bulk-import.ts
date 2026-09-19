@@ -13,6 +13,7 @@ import * as zod from 'zod';
 export const importImmediatelyBody = zod.object({
   "playlistLink": zod.string().optional(),
   "videoIdsOrLinks": zod.array(zod.string()).optional(),
-  "targetPlaylistId": zod.number().optional()
+  "targetPlaylistId": zod.number().optional(),
+  "importJobId": zod.string().optional()
 })
 

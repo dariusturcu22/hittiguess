@@ -217,12 +217,12 @@ class BulkImportProgressWebSocketIntegrationTest {
         // full pipeline (event publish, JSON serialization, user-destination resolution,
         // broker routing) without error.
         applicationEventPublisher.publishEvent(
-                new BulkImportProgressEvent(user.getUsername(), "video-id-1", BulkImportProgressOutcome.RESOLVED));
+                new BulkImportProgressEvent(user.getUsername(), "job-1", "video-id-1", BulkImportProgressOutcome.RESOLVED));
     }
 
     @Test
     void publishingAProgressEventForAnUnsubscribedUsernameDoesNotError() {
         applicationEventPublisher.publishEvent(
-                new BulkImportProgressEvent("nobody-is-subscribed", "video-id-1", BulkImportProgressOutcome.RESOLVED));
+                new BulkImportProgressEvent("nobody-is-subscribed", "job-2", "video-id-1", BulkImportProgressOutcome.RESOLVED));
     }
 }

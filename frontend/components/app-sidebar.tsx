@@ -9,6 +9,7 @@ import { Moon, Sun } from "lucide-react";
 import { LogoBars } from "@/components/logo";
 import { NavUser } from "@/components/nav-user";
 import { useCreateGroup, useGetActiveMembership } from "@/hooks/generated/group-management/group-management";
+import { useBulkImportRealtime } from "@/hooks/use-bulk-import-realtime";
 
 const RAIL_DIVIDER_CLASSES = "w-8 h-0.5 my-3.5 shrink-0 rounded-full bg-sidebar-border";
 
@@ -102,6 +103,8 @@ export function AppSidebar() {
   const { resolvedTheme, setTheme } = useTheme();
   const [mounted, setMounted] = React.useState(false);
   const [isImporting, setIsImporting] = React.useState(false);
+  const [importPlaylistId, setImportPlaylistId] = React.useState<number | null>(null);
+  useBulkImportRealtime();
   const { data: activeGroup } = useGetActiveMembership({
     query: { retry: false },
   });
@@ -122,7 +125,9 @@ export function AppSidebar() {
   React.useEffect(() => {
     setMounted(true);
     const updateImportState = (event: Event) => {
-      setIsImporting(Boolean((event as CustomEvent<boolean>).detail));
+      const importState = (event as CustomEvent<{ active: boolean; playlistId?: number }>).detail;
+      setIsImporting(importState.active);
+      setImportPlaylistId(importState.playlistId ?? null);
     };
     window.addEventListener("playlist-import-progress", updateImportState);
     return () => window.removeEventListener("playlist-import-progress", updateImportState);
@@ -191,9 +196,9 @@ export function AppSidebar() {
       </Link>
 
       {isImporting ? (
-        <div className="mt-3 flex size-[30px] items-center justify-center rounded-full bg-primary text-primary-foreground" title="Import in progress">
+        <button type="button" onClick={() => importPlaylistId && router.push(`/playlists/${importPlaylistId}/import/youtube`)} className="mt-3 flex size-[30px] cursor-pointer items-center justify-center rounded-full bg-primary text-primary-foreground" title="Import in progress">
           <span className="size-3 rounded-full border-2 border-current border-t-transparent animate-spin" />
-        </div>
+        </button>
       ) : null}
 
       <div className="flex-1" />

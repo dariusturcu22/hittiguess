@@ -8,5 +8,6 @@ package org.dariusturcu.backend.websocket;
 // GroupBroadcastEvent and SessionBroadcastEvent use. username is the STOMP
 // Principal name (UserPrincipal#getUsername) BulkImportProgressListener targets
 // with SimpMessagingTemplate#convertAndSendToUser.
-public record BulkImportProgressEvent(String username, String youtubeId, BulkImportProgressOutcome outcome) {
+public record BulkImportProgressEvent(String username, String importJobId, String youtubeId,
+                                      BulkImportProgressOutcome outcome) {
 }
