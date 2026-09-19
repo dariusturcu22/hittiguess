@@ -28,7 +28,7 @@ class BulkImportProgressListenerTest {
         listener = new BulkImportProgressListener(messagingTemplate, objectMapper);
 
         listener.onBulkImportProgressEvent(
-                new BulkImportProgressEvent("some-user", "video-id-1", BulkImportProgressOutcome.RESOLVED));
+                new BulkImportProgressEvent("some-user", "job-1", "video-id-1", BulkImportProgressOutcome.RESOLVED));
 
         ArgumentCaptor<String> payloadCaptor = ArgumentCaptor.forClass(String.class);
         verify(messagingTemplate).convertAndSendToUser(
@@ -41,9 +41,9 @@ class BulkImportProgressListenerTest {
         listener = new BulkImportProgressListener(messagingTemplate, objectMapper);
 
         listener.onBulkImportProgressEvent(
-                new BulkImportProgressEvent("first-user", "video-id-a", BulkImportProgressOutcome.ALREADY_KNOWN));
+                new BulkImportProgressEvent("first-user", "job-a", "video-id-a", BulkImportProgressOutcome.ALREADY_KNOWN));
         listener.onBulkImportProgressEvent(
-                new BulkImportProgressEvent("second-user", "video-id-b", BulkImportProgressOutcome.UNRESOLVED));
+                new BulkImportProgressEvent("second-user", "job-b", "video-id-b", BulkImportProgressOutcome.UNRESOLVED));
 
         verify(messagingTemplate).convertAndSendToUser(
                 eq("first-user"), eq(BulkImportDestinations.progressQueue()), org.mockito.ArgumentMatchers.contains("video-id-a"));

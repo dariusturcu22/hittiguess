@@ -18,9 +18,10 @@ export default function ImportYoutubePage({ params }: PageProps) {
   const { playlistId: rawId } = use(params);
   const playlistId = parseInt(rawId);
   const importMutation = useImportImmediately();
-  const { events, reset } = useBulkImportRealtime({ subscribeToProgress: false });
+  const { events, isConnected, reset } = useBulkImportRealtime({ subscribeToProgress: false });
 
   const [playlistLink, setPlaylistLink] = React.useState("");
+  const [activeImportJobId, setActiveImportJobId] = React.useState<string>();
 
   function handleImport() {
     const trimmedLink = playlistLink.trim();
@@ -28,10 +29,12 @@ export default function ImportYoutubePage({ params }: PageProps) {
       return;
     }
     const toastId = toast.loading("Importing playlist...");
+    const importJobId = crypto.randomUUID();
+    setActiveImportJobId(importJobId);
     reset();
     window.dispatchEvent(new CustomEvent("playlist-import-progress", { detail: { active: true, playlistId } }));
     importMutation.mutate(
-      { data: { playlistLink: trimmedLink, targetPlaylistId: playlistId } },
+      { data: { playlistLink: trimmedLink, targetPlaylistId: playlistId, importJobId } },
       {
         onSuccess: () => toast.success("Playlist import complete.", { id: toastId }),
         onError: () => toast.error("Playlist import failed.", { id: toastId }),
@@ -41,7 +44,8 @@ export default function ImportYoutubePage({ params }: PageProps) {
   }
 
   const result = importMutation.data;
-  const processedSongCount = events.length;
+  const importEvents = events.filter((event) => event.importJobId === activeImportJobId);
+  const processedSongCount = importEvents.length;
 
   return (
     <div className="flex-1 flex items-center justify-center px-6 py-12">
@@ -74,11 +78,11 @@ export default function ImportYoutubePage({ params }: PageProps) {
         <button
           type="button"
           onClick={handleImport}
-          disabled={importMutation.isPending || playlistLink.trim().length === 0}
+          disabled={importMutation.isPending || !isConnected || playlistLink.trim().length === 0}
           className="w-full font-display text-sm text-primary-foreground bg-primary py-[15px] rounded-full shadow-sm box-border cursor-pointer text-center disabled:opacity-60 disabled:cursor-not-allowed"
         >
           <Search className="mr-2 inline size-4" />
-          {importMutation.isPending ? "Fetching..." : "Fetch playlist"}
+          {importMutation.isPending ? "Fetching..." : isConnected ? "Fetch playlist" : "Connecting..."}
         </button>
 
         {importMutation.isPending ? (
@@ -88,7 +92,7 @@ export default function ImportYoutubePage({ params }: PageProps) {
               Reading playlist and matching songs
             </div>
             <div className="mt-4 flex flex-wrap gap-1" aria-live="polite">
-              {events.map((event) => (
+              {importEvents.map((event) => (
                 <span
                   key={`${event.youtubeId}-${event.outcome}`}
                   className={`size-2 rounded-full ${event.outcome === "UNRESOLVED" ? "bg-destructive" : event.outcome === "ALREADY_KNOWN" ? "bg-muted-foreground" : "bg-primary"}`}

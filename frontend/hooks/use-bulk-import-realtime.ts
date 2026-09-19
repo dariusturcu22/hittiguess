@@ -9,8 +9,11 @@ const RECONNECT_DELAY_MILLISECONDS = 3_000;
 const BULK_IMPORT_EVENTS_STORAGE_KEY = "bulk-import-progress-events";
 const BULK_IMPORT_EVENT_NAME = "bulk-import-event";
 const BULK_IMPORT_RESET_EVENT_NAME = "bulk-import-progress-reset";
+const BULK_IMPORT_CONNECTION_EVENT_NAME = "bulk-import-connection";
+const BULK_IMPORT_CONNECTION_STORAGE_KEY = "bulk-import-connection-state";
 
 export interface BulkImportProgressEvent {
+  importJobId?: string;
   youtubeId: string;
   outcome: "ALREADY_KNOWN" | "RESOLVED" | "UNRESOLVED";
 }
@@ -45,6 +48,9 @@ export function useBulkImportRealtime({
       return [];
     }
   });
+  const [isConnected, setIsConnected] = useState(
+    () => typeof window !== "undefined" && sessionStorage.getItem(BULK_IMPORT_CONNECTION_STORAGE_KEY) === "true",
+  );
 
   useEffect(() => {
     sessionStorage.setItem(BULK_IMPORT_EVENTS_STORAGE_KEY, JSON.stringify(events));
@@ -54,6 +60,14 @@ export function useBulkImportRealtime({
     const clearProgressEvents = () => setEvents([]);
     window.addEventListener(BULK_IMPORT_RESET_EVENT_NAME, clearProgressEvents);
     return () => window.removeEventListener(BULK_IMPORT_RESET_EVENT_NAME, clearProgressEvents);
+  }, []);
+
+  useEffect(() => {
+    const updateConnectionState = (event: Event) => {
+      setIsConnected((event as CustomEvent<boolean>).detail);
+    };
+    window.addEventListener(BULK_IMPORT_CONNECTION_EVENT_NAME, updateConnectionState);
+    return () => window.removeEventListener(BULK_IMPORT_CONNECTION_EVENT_NAME, updateConnectionState);
   }, []);
 
   useEffect(() => {
@@ -72,6 +86,9 @@ export function useBulkImportRealtime({
       brokerURL: websocketUrl(),
       reconnectDelay: RECONNECT_DELAY_MILLISECONDS,
       onConnect: () => {
+        setIsConnected(true);
+        sessionStorage.setItem(BULK_IMPORT_CONNECTION_STORAGE_KEY, "true");
+        window.dispatchEvent(new CustomEvent(BULK_IMPORT_CONNECTION_EVENT_NAME, { detail: true }));
         client.subscribe(BULK_IMPORT_PROGRESS_DESTINATION, (message) => {
           const progressEvent = JSON.parse(message.body) as BulkImportProgressEvent;
           setEvents((previousEvents) => [...previousEvents, progressEvent]);
@@ -80,7 +97,12 @@ export function useBulkImportRealtime({
       },
     });
     client.activate();
-    return () => { void client.deactivate(); };
+    return () => {
+      setIsConnected(false);
+      sessionStorage.setItem(BULK_IMPORT_CONNECTION_STORAGE_KEY, "false");
+      window.dispatchEvent(new CustomEvent(BULK_IMPORT_CONNECTION_EVENT_NAME, { detail: false }));
+      void client.deactivate();
+    };
   }, [subscribeToProgress]);
 
   function reset() {
@@ -89,5 +111,5 @@ export function useBulkImportRealtime({
     window.dispatchEvent(new Event(BULK_IMPORT_RESET_EVENT_NAME));
   }
 
-  return { events, reset };
+  return { events, isConnected, reset };
 }
