@@ -3,8 +3,15 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { useBulkImportRealtime } from "./use-bulk-import-realtime";
 
+const websocketCallbacks = vi.hoisted(() => ({
+  close: undefined as (() => void) | undefined,
+}));
+
 vi.mock("@stomp/stompjs", () => ({
   Client: class {
+    constructor(configuration: { onWebSocketClose?: () => void }) {
+      websocketCallbacks.close = configuration.onWebSocketClose;
+    }
     activate() {}
     deactivate() { return Promise.resolve(); }
     subscribe() {}
@@ -42,5 +49,14 @@ describe("useBulkImportRealtime", () => {
     expect(result.current.events).toEqual([
       { youtubeId: "oHg5SJYRHA0", outcome: "ALREADY_KNOWN" },
     ]);
+  });
+
+  it("marks progress as disconnected when the websocket closes", () => {
+    sessionStorage.setItem("bulk-import-connection-state", "true");
+    const { result } = renderHook(() => useBulkImportRealtime());
+
+    act(() => websocketCallbacks.close?.());
+
+    expect(result.current.isConnected).toBe(false);
   });
 });

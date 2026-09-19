@@ -95,6 +95,16 @@ export function useBulkImportRealtime({
           window.dispatchEvent(new CustomEvent(BULK_IMPORT_EVENT_NAME, { detail: progressEvent }));
         });
       },
+      onWebSocketClose: () => {
+        setIsConnected(false);
+        sessionStorage.setItem(BULK_IMPORT_CONNECTION_STORAGE_KEY, "false");
+        window.dispatchEvent(new CustomEvent(BULK_IMPORT_CONNECTION_EVENT_NAME, { detail: false }));
+      },
+      onStompError: () => {
+        setIsConnected(false);
+        sessionStorage.setItem(BULK_IMPORT_CONNECTION_STORAGE_KEY, "false");
+        window.dispatchEvent(new CustomEvent(BULK_IMPORT_CONNECTION_EVENT_NAME, { detail: false }));
+      },
     });
     client.activate();
     return () => {
