@@ -131,3 +131,16 @@ def test_build_youtube_playlist_items_api_url_without_page_token():
 def test_build_youtube_playlist_items_api_url_with_page_token():
     url = build_youtube_playlist_items_api_url("PL123", "my-key", "next-page-token")
     assert url.endswith("&pageToken=next-page-token")
+from app.metadata.sources.util import strip_featured_artist_suffix
+
+
+def test_strip_featured_artist_suffix_removes_standalone_featured_artist_marker():
+    assert strip_featured_artist_suffix("Titanium (feat. Sia)") == "Titanium"
+
+
+def test_strip_featured_artist_suffix_preserves_place_name_with_ft_abbreviation():
+    assert strip_featured_artist_suffix("I Left My Heart in Ft. Lauderdale") == "I Left My Heart in Ft. Lauderdale"
+
+
+def test_strip_featured_artist_suffix_preserves_word_containing_ft():
+    assert strip_featured_artist_suffix("Gift. Reprise") == "Gift. Reprise"

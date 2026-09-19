@@ -1,5 +1,7 @@
 import time
 
+import pytest
+
 from app.dedup.schemas import VerifiedSongMatch
 from app.metadata import service
 from app.metadata.content_safety import ContentSafetyOutcome
@@ -332,3 +334,24 @@ def test_precheck_falls_back_to_regex_cleaned_names_for_an_unidentifiable_submis
     service.resolve_metadata("https://youtube.com/watch?v=abc12345678")
 
     musicbrainz_mock.assert_called_once_with("DJ Mixtape Vol 3 track 7", "randomuploader99")
+
+
+@pytest.mark.parametrize(
+    ("display_title", "source_query_title"),
+    [
+        ("Titanium (feat. Sia)", "Titanium"),
+        ("Song Title ft. Featured Artist", "Song Title"),
+        ("Song Without Guest", "Song Without Guest"),
+    ],
+)
+def test_structured_queries_strip_only_featured_artist_suffixes(mocker, display_title, source_query_title):
+    musicbrainz_mock = mocker.patch.object(service.musicbrainz, "search", return_value=[])
+    mocker.patch.object(service.discogs, "search", return_value=[])
+    mocker.patch.object(service.wikidata, "search", return_value=[])
+    mocker.patch.object(service.wikipedia, "search", return_value=[])
+    mocker.patch("app.metadata.service.evaluate_lock", return_value=_locked_verification_result())
+
+    result = service._run_verification_pipeline(display_title, "Test Artist", "8B5CF6")
+
+    musicbrainz_mock.assert_called_once_with(source_query_title, "Test Artist")
+    assert result.title == display_title

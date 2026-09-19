@@ -11,7 +11,7 @@ from app.metadata.content_safety_prompts import build_precheck_prompt
 from app.metadata.llm import extract_structured
 from app.metadata.schemas import MetadataResolveResponse, SongMetadataResult, SubmissionPreCheckResult
 from app.metadata.sources import discogs, musicbrainz, wikidata, wikipedia, youtube
-from app.metadata.sources.util import clean_youtube_text, extract_youtube_playlist_id
+from app.metadata.sources.util import clean_youtube_text, extract_youtube_playlist_id, strip_featured_artist_suffix
 from app.metadata.verification import (
     VerificationRoute,
     _all_three_agree,
@@ -45,6 +45,7 @@ HIGH_CONFIDENCE_COSINE_DISTANCE_THRESHOLD = 0.08
 DUPLICATE_MATCH_SOURCE_LABEL = "pgvector-duplicate-match"
 DEFAULT_DUPLICATE_MATCH_CONFIDENCE = "high"
 LOCKED_SOURCE_LABEL = "musicbrainz+discogs+wikidata-lock"
+WIKIPEDIA_ASSISTED_LOCK_SOURCE_LABEL = "wikipedia-assisted-lock"
 RECONCILED_SOURCE_LABEL = "four-source-reconciliation"
 MANUAL_REVIEW_SOURCE_LABEL = "no-source-data"
 
@@ -148,7 +149,8 @@ def _run_verification_pipeline(title: str, artist: str, color: str) -> SongMetad
     Wikipedia and run four-source reconciliation. title, artist, and color
     already came from the shared precheck call that ran once before
     content-safety evaluation, not from a separate display-synthesis call."""
-    structured_candidates = _gather_structured_sources(title, artist)
+    source_query_title = strip_featured_artist_suffix(title)
+    structured_candidates = _gather_structured_sources(source_query_title, artist)
     musicbrainz_candidates = structured_candidates["musicbrainz"]
     discogs_candidates = structured_candidates["discogs"]
     wikidata_candidates = structured_candidates["wikidata"]
@@ -159,10 +161,10 @@ def _run_verification_pipeline(title: str, artist: str, color: str) -> SongMetad
 
     wikipedia_entries: list[dict] = []
     if not _all_three_agree(musicbrainz_year, discogs_year, wikidata_year):
-        wikipedia_entries = wikipedia.search(title, artist)
+        wikipedia_entries = wikipedia.search(source_query_title, artist)
 
     release_year, confidence, route = evaluate_lock(
-        title,
+        source_query_title,
         artist,
         musicbrainz_candidates,
         discogs_candidates,
@@ -173,6 +175,7 @@ def _run_verification_pipeline(title: str, artist: str, color: str) -> SongMetad
 
     source_label = {
         VerificationRoute.LOCKED: LOCKED_SOURCE_LABEL,
+        VerificationRoute.LOCKED_WITH_WIKIPEDIA: WIKIPEDIA_ASSISTED_LOCK_SOURCE_LABEL,
         VerificationRoute.LLM_RECONCILED: RECONCILED_SOURCE_LABEL,
         VerificationRoute.MANUAL_REVIEW: MANUAL_REVIEW_SOURCE_LABEL,
     }[route]
@@ -181,6 +184,10 @@ def _run_verification_pipeline(title: str, artist: str, color: str) -> SongMetad
         VerificationRoute.LOCKED: (
             f"All three structured sources (MusicBrainz, Discogs, Wikidata) agree on {release_year}. "
             "Locked with no LLM call."
+        ),
+        VerificationRoute.LOCKED_WITH_WIKIPEDIA: (
+            f"At least three source years agree on {release_year} after Wikipedia extraction. "
+            "Locked with no four-source reconciliation call."
         ),
         VerificationRoute.LLM_RECONCILED: (
             "Structured sources disagreed or one or more returned no data. "
