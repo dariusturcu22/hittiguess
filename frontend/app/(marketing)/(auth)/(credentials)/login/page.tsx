@@ -105,6 +105,7 @@ export default function LoginPage() {
                   <FormControl>
                     <Input
                       type="email"
+                      autoComplete="email"
                       placeholder="you@example.com"
                       className={AUTH_INPUT_CLASSES}
                       {...field}
@@ -126,6 +127,7 @@ export default function LoginPage() {
                     <FormControl>
                       <Input
                         type="password"
+                        autoComplete="current-password"
                         placeholder="••••••••••"
                         className={AUTH_INPUT_CLASSES}
                         {...field}
