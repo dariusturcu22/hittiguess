@@ -1,5 +1,7 @@
 import { Play } from "lucide-react";
 
+import { cn } from "@/lib/utils";
+
 const MOSAIC_TILE_COUNT = 4;
 
 interface PlaylistCoverMosaicProps {
@@ -19,7 +21,10 @@ export function PlaylistCoverMosaic({ previewYoutubeIds, className }: PlaylistCo
 
   return (
     <div
-      className={`grid aspect-square w-[140px] shrink-0 grid-cols-2 grid-rows-2 gap-0.5 overflow-hidden rounded-2xl border-[3px] border-border-strong bg-border-strong shadow-lg sm:w-[180px] ${className ?? ""}`}
+      className={cn(
+        "grid aspect-square w-full shrink-0 grid-cols-2 grid-rows-2 gap-0.5 overflow-hidden rounded-2xl border-[3px] border-border-strong bg-border-strong shadow-lg",
+        className,
+      )}
     >
       {tiles.map((youtubeId, index) =>
         youtubeId ? (

@@ -309,6 +309,28 @@ class PlaylistServiceTest {
     }
 
     @Test
+    void deletePlaylistDeletesForItsOwner() {
+        playlistService.deletePlaylist(PLAYLIST_ID);
+
+        verify(playlistAccessService).requireOwner(playlist, currentUser);
+        verify(playlistRepository).deleteGroupPlaylistLinks(PLAYLIST_ID);
+        verify(savedPlaylistRepository).deleteByPlaylistId(PLAYLIST_ID);
+        verify(playlistBanRepository).deleteByPlaylistId(PLAYLIST_ID);
+        verify(playlistRepository).delete(playlist);
+    }
+
+    @Test
+    void deletePlaylistRejectsANonOwnerMember() {
+        doThrow(new AccessDeniedException("Only the playlist owner can perform this action"))
+                .when(playlistAccessService).requireOwner(playlist, currentUser);
+
+        assertThatThrownBy(() -> playlistService.deletePlaylist(PLAYLIST_ID))
+                .isInstanceOf(AccessDeniedException.class);
+
+        verify(playlistRepository, never()).delete(any());
+    }
+
+    @Test
     void updateMemberGrantsRejectsANonOwnerMember() {
         UpdateMembershipGrantsRequest request = new UpdateMembershipGrantsRequest(false, null, null);
         doThrow(new AccessDeniedException("Only the playlist owner can perform this action"))

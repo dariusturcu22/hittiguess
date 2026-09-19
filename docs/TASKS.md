@@ -633,6 +633,16 @@ Tests:
 - [ ] Frontend test: the drag-and-drop timeline placement and the guess box's animated feedback behave per `GAME_DESIGN.md`'s Interaction and animation section
 - [ ] Accessibility check: color contrast and keyboard navigation for the new visual direction, specifically the semi-transparent chat overlay and the voice sidebar
 
+### Batch F: component boundary and accessibility
+
+- [ ] Keep shadcn primitives for interactive controls and add focused primitives only where the current set has a gap
+- [ ] Improve keyboard-visible focus, controls, and readable opaque surfaces for the chat overlay and voice sidebar
+- [ ] Audit the affected light and dark theme colors against WCAG AA text contrast
+
+Tests:
+
+- [ ] Run frontend lint and production build
+
 ### Visual fidelity remediation for Batches A through D
 
 The rendered Story 28 audit compares every existing page with its authoritative Dark mockup in `docs/design/source`, with Light and mobile variants where supplied. These tasks close the concrete layout and state gaps found by that audit.
@@ -725,6 +735,29 @@ Tests:
 
 Tests:
 - [x] Verify the overlay appears only on scrollable pages and remains over content in both themes
+
+## Playlist cover and color regression fix pass
+
+- [x] Make playlist cover mosaics responsive squares and merge caller classes with `cn`
+- [x] Use the six approved playlist title colors for client defaults and server-side updates
+- [x] Replace the black newly-created playlist color with the approved default
+- [x] Add focused frontend and backend validation coverage
+
+Tests:
+
+- [x] Run frontend checks and relevant backend tests
+
+## Playlist detail and edit fix pass
+
+- [x] Add owner-only playlist deletion and wire the edit-page confirmation flow
+- [x] Redirect to the playlist detail page after save succeeds
+- [x] Expose playlist ownership in the user library and make Owned and Joined filtering work
+- [x] Replace the expanded member list with an accessible collapsed member control
+- [ ] Replace bulk-import placeholder progress with the existing real-time progress stream (in progress, not yet merged)
+
+Tests:
+
+- [x] Add backend deletion coverage and run backend and frontend checks
 
 ## Story 48: Comment cleanup
 

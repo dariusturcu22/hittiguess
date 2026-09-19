@@ -2,6 +2,7 @@
 
 import React, { use } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Crown, Eye, Plus, Trash2, UserX, Ban, Copy, Pencil } from "lucide-react";
 
 import {
@@ -18,8 +19,21 @@ import {
 } from "@/hooks/generated/playlist-management/playlist-management";
 import type { PlaylistMemberDTO } from "@/hooks/models/playlistMemberDTO";
 import { PlaylistCoverMosaic } from "@/components/playlist-cover-mosaic";
+import { DEFAULT_PLAYLIST_COLOR, PLAYLIST_COLOR_PRESETS } from "@/lib/playlist-colors";
 import { getGetUserPlaylistsQueryKey } from "@/hooks/generated/user-management/user-management";
 import { useQueryClient } from "@tanstack/react-query";
+import { AXIOS_INSTANCE } from "@/lib/axios-instance";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/shadcn/alert-dialog";
 
 interface PageProps {
   params: Promise<{ playlistId: string }>;
@@ -29,7 +43,6 @@ type GrantKey = "canRead" | "canWrite" | "canDelete";
 
 // Six preset cover colours from the mockup, stored as the 6-hex form the
 // UpdatePlaylistRequest pattern requires (no leading #).
-const COLOR_PRESETS = ["cba6f7", "fab387", "a6e3a1", "89b4fa", "f5c2e7", "f9e2af"];
 
 const GRANT_DEFINITIONS: { key: GrantKey; label: string; icon: React.ReactNode }[] =
   [
@@ -181,6 +194,7 @@ function MemberRow({
 export default function EditPlaylistPage({ params }: PageProps) {
   const { playlistId: rawId } = use(params);
   const playlistId = parseInt(rawId);
+  const router = useRouter();
   const queryClient = useQueryClient();
 
   const { data: playlist } = useGetPlaylist(playlistId);
@@ -188,6 +202,8 @@ export default function EditPlaylistPage({ params }: PageProps) {
   const updatePlaylist = useUpdatePlaylist();
   const publishMutation = usePublishPlaylist();
   const unpublishMutation = useUnpublishPlaylist();
+  const [isDeleting, setIsDeleting] = React.useState(false);
+  const [deleteError, setDeleteError] = React.useState("");
 
   const [nameDraft, setNameDraft] = React.useState("");
   const [descriptionDraft, setDescriptionDraft] = React.useState("");
@@ -197,7 +213,7 @@ export default function EditPlaylistPage({ params }: PageProps) {
     }
   }, [playlist?.name]);
 
-  const currentColor = playlist?.color ?? COLOR_PRESETS[0];
+  const currentColor = playlist?.color ?? DEFAULT_PLAYLIST_COLOR;
 
   function invalidatePlaylist() {
     queryClient.invalidateQueries({
@@ -215,12 +231,31 @@ export default function EditPlaylistPage({ params }: PageProps) {
     }
     updatePlaylist.mutate(
       { playlistId, data: { name: trimmed } },
-      { onSuccess: invalidatePlaylist },
+      {
+        onSuccess: () => {
+          invalidatePlaylist();
+          router.push(`/playlists/${playlistId}`);
+        },
+      },
     );
   }
 
   function resetName() {
     setNameDraft(playlist?.name ?? "");
+  }
+
+  async function deletePlaylist() {
+    setDeleteError("");
+    setIsDeleting(true);
+    try {
+      await AXIOS_INSTANCE.delete(`/api/playlists/${playlistId}`);
+      queryClient.invalidateQueries({ queryKey: getGetUserPlaylistsQueryKey() });
+      router.push("/playlists");
+    } catch {
+      setDeleteError("Could not delete this playlist. Check your connection and try again later.");
+    } finally {
+      setIsDeleting(false);
+    }
   }
 
   function selectColor(color: string) {
@@ -302,7 +337,7 @@ export default function EditPlaylistPage({ params }: PageProps) {
                   Title color
                 </label>
                 <div className="flex items-center gap-[11px] ml-1.5">
-                  {COLOR_PRESETS.map((color) => {
+                  {PLAYLIST_COLOR_PRESETS.map((color) => {
                     const selected = color === currentColor;
                     return (
                       <button
@@ -419,14 +454,38 @@ export default function EditPlaylistPage({ params }: PageProps) {
                 Can&apos;t be undone. All songs and history are lost.
               </div>
             </div>
-            <button
-              type="button"
-              disabled
-              title="Delete is not available yet"
-              className="font-sans font-semibold text-[12px] text-destructive bg-transparent px-4 py-[9px] rounded-full border-2 border-destructive box-border cursor-not-allowed whitespace-nowrap shrink-0 opacity-60"
-            >
-              Delete
-            </button>
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <button
+                  type="button"
+                  className="font-sans font-semibold text-[12px] text-destructive bg-transparent px-4 py-[9px] rounded-full border-2 border-destructive box-border cursor-pointer whitespace-nowrap shrink-0 transition-colors hover:bg-destructive hover:text-destructive-foreground"
+                >
+                  Delete
+                </button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Delete this playlist?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This permanently deletes the playlist. This action cannot be undone.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                {deleteError ? <p className="text-sm text-destructive">{deleteError}</p> : null}
+                <AlertDialogFooter>
+                  <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+                  <AlertDialogAction
+                    variant="destructive"
+                    disabled={isDeleting}
+                    onClick={(event) => {
+                      event.preventDefault();
+                      deletePlaylist();
+                    }}
+                  >
+                    {isDeleting ? "Deleting..." : "Delete playlist"}
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
           </div>
         </div>
 

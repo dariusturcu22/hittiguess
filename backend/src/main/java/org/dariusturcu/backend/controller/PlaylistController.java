@@ -64,6 +64,13 @@ public class PlaylistController {
         return ResponseEntity.ok(updatedPlaylist);
     }
 
+    @Operation(summary = "Delete a playlist, owner only")
+    @DeleteMapping("/{playlistId}")
+    public ResponseEntity<Void> deletePlaylist(@PathVariable Long playlistId) {
+        playlistService.deletePlaylist(playlistId);
+        return ResponseEntity.noContent().build();
+    }
+
     @Operation(summary = "Get information about a particular song in the playlist")
     @GetMapping("/{playlistId}/songs/{songId}")
     public ResponseEntity<SongDTO> getSong(
