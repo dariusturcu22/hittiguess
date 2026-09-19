@@ -726,17 +726,28 @@ Tests:
 Tests:
 - [x] Verify the overlay appears only on scrollable pages and remains over content in both themes
 
-## Playlist detail and edit fix pass
+## Playlist cover and color regression fix pass
 
-- [ ] Add owner-only playlist deletion and wire the edit-page confirmation flow
-- [ ] Redirect to the playlist detail page after save succeeds
-- [ ] Expose playlist ownership in the user library and make Owned and Joined filtering work
-- [ ] Replace the expanded member list with an accessible collapsed member control
-- [ ] Replace bulk-import placeholder progress with the existing real-time progress stream
+- [x] Make playlist cover mosaics responsive squares and merge caller classes with `cn`
+- [x] Use the six approved playlist title colors for client defaults and server-side updates
+- [x] Replace the black newly-created playlist color with the approved default
+- [x] Add focused frontend and backend validation coverage
 
 Tests:
 
-- [ ] Add backend deletion coverage and run backend and frontend checks
+- [x] Run frontend checks and relevant backend tests
+
+## Playlist detail and edit fix pass
+
+- [x] Add owner-only playlist deletion and wire the edit-page confirmation flow
+- [x] Redirect to the playlist detail page after save succeeds
+- [x] Expose playlist ownership in the user library and make Owned and Joined filtering work
+- [x] Replace the expanded member list with an accessible collapsed member control
+- [ ] Replace bulk-import placeholder progress with the existing real-time progress stream (in progress, not yet merged)
+
+Tests:
+
+- [x] Add backend deletion coverage and run backend and frontend checks
 
 ## Story 48: Comment cleanup
 

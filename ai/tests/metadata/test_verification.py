@@ -91,7 +91,7 @@ class TestEvaluateLock:
         wikipedia_mock.assert_not_called()
         reconciliation_mock.assert_not_called()
 
-    def test_partial_agreement_routes_to_wikipedia_and_reconciliation(self, mocker):
+    def test_partial_agreement_locks_when_wikipedia_makes_three_sources_agree(self, mocker):
         extraction_result = mocker.MagicMock()
         extraction_result.release_year = 1998
         extraction_result.confidence = "medium"
@@ -113,11 +113,12 @@ class TestEvaluateLock:
             [{"query": "track", "page_title": "Test Song", "extract": "Released in 1998."}],
         )
 
-        assert route == VerificationRoute.LLM_RECONCILED
+        assert route == VerificationRoute.LOCKED_WITH_WIKIPEDIA
         assert release_year == 1998
+        assert confidence == "high"
         wikipedia_mock.assert_called_once()
 
-    def test_missing_source_routes_to_wikipedia_and_reconciliation(self, mocker):
+    def test_missing_source_locks_when_wikipedia_makes_three_sources_agree(self, mocker):
         extraction_result = mocker.MagicMock()
         extraction_result.release_year = 2001
         extraction_result.confidence = "high"
@@ -139,7 +140,7 @@ class TestEvaluateLock:
             [],
         )
 
-        assert route == VerificationRoute.LLM_RECONCILED
+        assert route == VerificationRoute.LOCKED_WITH_WIKIPEDIA
 
     def test_all_sources_empty_routes_to_manual_review(self, mocker):
         mocker.patch(
@@ -200,10 +201,96 @@ class TestEvaluateLock:
         assert route == VerificationRoute.LLM_RECONCILED
         assert release_year == 1997
 
+    def test_three_of_four_agreement_locks_without_reconciliation(self, mocker):
+        wikipedia_result = mocker.MagicMock(release_year=2011, confidence="high")
+        mocker.patch("app.metadata.verification._run_wikipedia_extraction", return_value=wikipedia_result)
+        reconciliation_mock = mocker.patch("app.metadata.verification._run_four_source_reconciliation")
+
+        release_year, confidence, route = evaluate_lock(
+            "Test Song", "Test Artist",
+            [_mb_candidate(2011)],
+            [_discogs_candidate(2011)],
+            [_wikidata_candidate(2010)],
+            [{"extract": "Test Song was released in 2011."}],
+        )
+
+        assert route == VerificationRoute.LOCKED_WITH_WIKIPEDIA
+        assert release_year == 2011
+        assert confidence == "high"
+        reconciliation_mock.assert_not_called()
+
+    def test_two_of_four_agreement_still_reconciles(self, mocker):
+        wikipedia_result = mocker.MagicMock(release_year=2012, confidence="medium")
+        mocker.patch("app.metadata.verification._run_wikipedia_extraction", return_value=wikipedia_result)
+        reconciliation_result = mocker.MagicMock(release_year=2011, confidence="medium")
+        reconciliation_mock = mocker.patch(
+            "app.metadata.verification._run_four_source_reconciliation", return_value=reconciliation_result
+        )
+
+        _release_year, _confidence, route = evaluate_lock(
+            "Test Song", "Test Artist",
+            [_mb_candidate(2011)],
+            [_discogs_candidate(2011)],
+            [_wikidata_candidate(2009)],
+            [{"extract": "Test Song was released in 2012."}],
+        )
+
+        assert route == VerificationRoute.LLM_RECONCILED
+        reconciliation_mock.assert_called_once()
+
+    @pytest.mark.parametrize(
+        ("candidate_years", "expected_year"),
+        [
+            ([2009, 2010, 2010], 2009),
+            ([2002, 2002, 2003, 2003], 2002),
+        ],
+    )
+    def test_tight_year_clusters_lock_at_the_earliest_year(self, mocker, candidate_years, expected_year):
+        musicbrainz_year, discogs_year, wikidata_year, *wikipedia_years = candidate_years
+        wikipedia_year = wikipedia_years[0] if wikipedia_years else None
+        wikipedia_result = mocker.MagicMock(release_year=wikipedia_year, confidence="high")
+        mocker.patch("app.metadata.verification._run_wikipedia_extraction", return_value=wikipedia_result)
+        reconciliation_mock = mocker.patch("app.metadata.verification._run_four_source_reconciliation")
+
+        release_year, confidence, route = evaluate_lock(
+            "Test Song", "Test Artist",
+            [_mb_candidate(musicbrainz_year)],
+            [_discogs_candidate(discogs_year)],
+            [_wikidata_candidate(wikidata_year)],
+            [{"extract": "Test Song release information."}],
+        )
+
+        assert route == VerificationRoute.LOCKED_WITH_WIKIPEDIA
+        assert release_year == expected_year
+        assert confidence == "high"
+        reconciliation_mock.assert_not_called()
+
+    def test_outlier_prevents_tight_year_cluster_lock(self, mocker):
+        wikipedia_result = mocker.MagicMock(release_year=None, confidence="low")
+        mocker.patch("app.metadata.verification._run_wikipedia_extraction", return_value=wikipedia_result)
+        reconciliation_result = mocker.MagicMock(release_year=2010, confidence="medium")
+        reconciliation_mock = mocker.patch(
+            "app.metadata.verification._run_four_source_reconciliation", return_value=reconciliation_result
+        )
+
+        _release_year, _confidence, route = evaluate_lock(
+            "Test Song", "Test Artist",
+            [_mb_candidate(2009)],
+            [_discogs_candidate(2010)],
+            [_wikidata_candidate(2020)],
+            [{"extract": "Test Song release information."}],
+        )
+
+        assert route == VerificationRoute.LLM_RECONCILED
+        reconciliation_mock.assert_called_once()
+
 
 class TestRouteToVerificationStatus:
     def test_locked_maps_to_verified(self):
         assert route_to_verification_status(VerificationRoute.LOCKED) == VerificationStatus.VERIFIED
+
+    def test_wikipedia_assisted_lock_maps_to_verified(self):
+        assert route_to_verification_status(VerificationRoute.LOCKED_WITH_WIKIPEDIA) == VerificationStatus.VERIFIED
 
     def test_llm_reconciled_maps_to_needs_review(self):
         assert route_to_verification_status(VerificationRoute.LLM_RECONCILED) == VerificationStatus.NEEDS_REVIEW

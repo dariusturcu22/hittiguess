@@ -18,6 +18,7 @@ public record PlaylistSummaryDTO(
         // derived from the accent color above. Fewer than four songs means fewer entries,
         // not padding; the cover falls back to a placeholder tile for the remaining slots.
         @NotNull
-        List<String> previewYoutubeIds
+        List<String> previewYoutubeIds,
+        boolean ownedByCurrentUser
 ) {
 }

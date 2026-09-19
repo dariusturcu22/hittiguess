@@ -19,6 +19,7 @@ import {
 } from "@/hooks/generated/playlist-management/playlist-management";
 import type { PlaylistMemberDTO } from "@/hooks/models/playlistMemberDTO";
 import { PlaylistCoverMosaic } from "@/components/playlist-cover-mosaic";
+import { DEFAULT_PLAYLIST_COLOR, PLAYLIST_COLOR_PRESETS } from "@/lib/playlist-colors";
 import { getGetUserPlaylistsQueryKey } from "@/hooks/generated/user-management/user-management";
 import { useQueryClient } from "@tanstack/react-query";
 import { AXIOS_INSTANCE } from "@/lib/axios-instance";
@@ -42,7 +43,6 @@ type GrantKey = "canRead" | "canWrite" | "canDelete";
 
 // Six preset cover colours from the mockup, stored as the 6-hex form the
 // UpdatePlaylistRequest pattern requires (no leading #).
-const COLOR_PRESETS = ["cba6f7", "fab387", "a6e3a1", "89b4fa", "f5c2e7", "f9e2af"];
 
 const GRANT_DEFINITIONS: { key: GrantKey; label: string; icon: React.ReactNode }[] =
   [
@@ -213,7 +213,7 @@ export default function EditPlaylistPage({ params }: PageProps) {
     }
   }, [playlist?.name]);
 
-  const currentColor = playlist?.color ?? COLOR_PRESETS[0];
+  const currentColor = playlist?.color ?? DEFAULT_PLAYLIST_COLOR;
 
   function invalidatePlaylist() {
     queryClient.invalidateQueries({
@@ -337,7 +337,7 @@ export default function EditPlaylistPage({ params }: PageProps) {
                   Title color
                 </label>
                 <div className="flex items-center gap-[11px] ml-1.5">
-                  {COLOR_PRESETS.map((color) => {
+                  {PLAYLIST_COLOR_PRESETS.map((color) => {
                     const selected = color === currentColor;
                     return (
                       <button

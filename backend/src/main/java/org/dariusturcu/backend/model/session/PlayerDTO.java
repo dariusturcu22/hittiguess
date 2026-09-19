@@ -4,6 +4,7 @@ import java.util.List;
 
 public record PlayerDTO(
         Long id,
+        Long userId,
         String displayName,
         String avatarUrl,
         int turnOrder,
