@@ -945,3 +945,9 @@ Why: the project owner's standing rule is that the design mockups are authoritat
 Decision: after the three structured sources fail their initial exact lock, Wikipedia is extracted as before. The pipeline promotes a result to `VERIFIED` without four-source reconciliation when at least three of the four source years agree exactly. It also promotes when at least three non-null source years all fall within a one-year range, using the earliest year. The existing earliest-candidate extraction rule remains unchanged.
 
 Why: corroborated source evidence resolves these cases without paying for reconciliation, while a one-year range stays within gameplay tolerance. Requiring every available candidate to stay in that range prevents a distant outlier from being silently accepted.
+
+## 2026-09 | Batch F keeps shadcn primitives as the interaction boundary
+
+Decision: Batch F keeps shadcn and Radix primitives for accessible controls, dialogs, popovers, and form fields. Page-specific composition and design tokens provide the visual system. Components are replaced only when the required interaction cannot be expressed through the existing primitive.
+
+Why: the primitives already provide keyboard behavior, focus management, and semantic defaults. Replacing them would duplicate tested accessibility behavior while making the visual design harder to keep consistent.

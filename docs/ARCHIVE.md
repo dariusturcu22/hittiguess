@@ -453,3 +453,9 @@ Tests:
 Tests:
 
 - [x] Run the AI metadata test suite
+
+## Batch F accessibility and component boundary
+
+- [x] Keep shadcn primitives as the accessible interaction boundary and apply the project visual system through composition and tokens
+- [x] Improve focus-visible states and readable translucent surfaces in the chat overlay and voice sidebar
+- [x] Verify the affected interactive controls with frontend lint and a production build
