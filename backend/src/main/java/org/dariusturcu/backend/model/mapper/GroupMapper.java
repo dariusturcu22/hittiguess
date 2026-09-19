@@ -17,6 +17,7 @@ public class GroupMapper {
     public MemberDTO toMemberDTO(Member member) {
         return new MemberDTO(
                 member.getId(),
+                member.getUser().getId(),
                 member.getDisplayName(),
                 member.getAvatarUrl(),
                 member.isAdmin(),

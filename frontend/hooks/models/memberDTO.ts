@@ -7,6 +7,7 @@
 
 export interface MemberDTO {
   id?: number;
+  userId?: number;
   displayName?: string;
   avatarUrl?: string;
   isAdmin?: boolean;

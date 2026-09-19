@@ -14,6 +14,7 @@ const LIVE_CONNECTION_TEXT = "Live";
 const LOGIN_PATH = "/login";
 const PLAYLISTS_PATH = "/playlists";
 const GROUPS_PATH = "/api/groups";
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
 const GROUP_CLEANUP_TIMEOUT_MILLISECONDS = 10_000;
 const PLAYLISTS_API_PATH = "/api/users/me/playlists";
 const SONG_COLOR = "a6e3a1";
@@ -44,6 +45,17 @@ interface PlaylistResponse {
   id: number;
 }
 
+function apiUrl(path: string): string {
+  return `${API_BASE_URL}${path}`;
+}
+
+async function csrfHeaders(page: Page): Promise<Record<string, string>> {
+  const csrfCookie = (await page.context().cookies(API_BASE_URL)).find(
+    (cookie) => cookie.name === "XSRF-TOKEN",
+  );
+  return csrfCookie ? { "X-XSRF-TOKEN": csrfCookie.value } : {};
+}
+
 async function login(browser: Browser, account: TestAccount): Promise<Page> {
   const context = await browser.newContext();
   const page = await context.newPage();
@@ -57,23 +69,40 @@ async function login(browser: Browser, account: TestAccount): Promise<Page> {
   return page;
 }
 
+async function leaveActiveGroup(page: Page): Promise<void> {
+  const activeGroupResponse = await page.request.get(apiUrl(`${GROUPS_PATH}/active`));
+  const activeGroupBody = await activeGroupResponse.text();
+  if (activeGroupResponse.ok() && activeGroupBody.trim()) {
+    const activeGroup = JSON.parse(activeGroupBody) as GroupResponse;
+    await page.request.post(apiUrl(`${GROUPS_PATH}/${activeGroup.id}/leave`), {
+      headers: await csrfHeaders(page),
+      timeout: GROUP_CLEANUP_TIMEOUT_MILLISECONDS,
+    });
+    await page.reload();
+  }
+}
+
 async function createGroupFromSidebar(page: Page): Promise<GroupResponse> {
+  await leaveActiveGroup(page);
   await page.getByTitle("Create group lobby").click();
   await page.waitForURL(/\/groups\/\d+/);
-  const response = await page.request.get(`${GROUPS_PATH}/active`);
-  expect(response.ok()).toBeTruthy();
+  const response = await page.request.get(apiUrl(`${GROUPS_PATH}/active`));
+  expect(response.ok(), `${response.status()} ${await response.text()}`).toBeTruthy();
   return response.json() as Promise<GroupResponse>;
 }
 
 async function joinGroup(page: Page, inviteCode: string): Promise<void> {
-  const response = await page.request.post(`${GROUPS_PATH}/join`, {
+  const response = await page.request.post(apiUrl(`${GROUPS_PATH}/join`), {
     data: { inviteCode, displayName: MEMBER_DISPLAY_NAME },
+    headers: await csrfHeaders(page),
   });
-  expect(response.ok()).toBeTruthy();
+  expect(response.ok(), `${response.status()} ${await response.text()}`).toBeTruthy();
 }
 
 async function configurePlayablePlaylist(page: Page, groupId: number): Promise<void> {
-  const playlistResponse = await page.request.post(PLAYLISTS_API_PATH);
+  const playlistResponse = await page.request.post(apiUrl(PLAYLISTS_API_PATH), {
+    headers: await csrfHeaders(page),
+  });
   expect(playlistResponse.ok()).toBeTruthy();
   const playlist = await playlistResponse.json() as PlaylistResponse;
   const songs = [
@@ -83,20 +112,23 @@ async function configurePlayablePlaylist(page: Page, groupId: number): Promise<v
   ];
   expect(songs).toHaveLength(MINIMUM_GAMEPLAY_SONG_COUNT);
   for (const song of songs) {
-    const songResponse = await page.request.post(`/api/playlists/${playlist.id}/songs`, {
+    const songResponse = await page.request.post(apiUrl(`/api/playlists/${playlist.id}/songs`), {
       data: { ...song, color: SONG_COLOR },
+      headers: await csrfHeaders(page),
     });
     expect(songResponse.ok()).toBeTruthy();
   }
-  const settingsResponse = await page.request.patch(`${GROUPS_PATH}/${groupId}/settings`, {
+  const settingsResponse = await page.request.patch(apiUrl(`${GROUPS_PATH}/${groupId}/settings`), {
     data: { playlistIds: [playlist.id], djMode: "ROTATING", winConditionCardCount: 5 },
+    headers: await csrfHeaders(page),
   });
   expect(settingsResponse.ok()).toBeTruthy();
 }
 
 async function leaveGroup(page: Page, groupId: number): Promise<void> {
-  await page.request.post(`${GROUPS_PATH}/${groupId}/leave`, {
+  await page.request.post(apiUrl(`${GROUPS_PATH}/${groupId}/leave`), {
     timeout: GROUP_CLEANUP_TIMEOUT_MILLISECONDS,
+    headers: await csrfHeaders(page),
   });
 }
 
@@ -110,6 +142,7 @@ test("group lobby joins members, persists settings, relays chat, and starts a se
   let groupId: number | undefined;
 
   try {
+    await leaveActiveGroup(memberPage);
     const group = await createGroupFromSidebar(adminPage);
     groupId = group.id;
     await joinGroup(memberPage, group.inviteCode);
@@ -189,12 +222,14 @@ test("gameplay shell renders placement, betting, and DJ link-out states", async 
   const page = await login(browser, ADMIN_ACCOUNT);
   const player = {
     id: PLAYER_ID,
+    userId: PLAYER_ID,
     displayName: "Player one",
     tokenCount: 2,
     timeline: [{ songId: 100, title: "Anchor", releaseYear: 1999, position: 0 }],
   };
   const dj = {
     id: DJ_ID,
+    userId: DJ_ID,
     displayName: "DJ two",
     tokenCount: 1,
     timeline: [{ songId: 200, title: "Second anchor", releaseYear: 2004, position: 0 }],
