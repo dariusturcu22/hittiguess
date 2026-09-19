@@ -37,10 +37,12 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
             List.of("http://localhost:3000", "https://my-hitster.dariusturcu22.com");
 
     private final StompAuthenticationChannelInterceptor stompAuthenticationChannelInterceptor;
+    private final JwtCookieHandshakeInterceptor jwtCookieHandshakeInterceptor;
 
     @Override
     public void registerStompEndpoints(StompEndpointRegistry registry) {
         registry.addEndpoint(STOMP_ENDPOINT)
+                .addInterceptors(jwtCookieHandshakeInterceptor)
                 .setAllowedOriginPatterns(ALLOWED_ORIGIN_PATTERNS.toArray(new String[0]));
     }
 

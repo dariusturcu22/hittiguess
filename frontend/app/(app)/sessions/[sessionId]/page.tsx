@@ -1,6 +1,6 @@
 "use client";
 
-import { use, useEffect, useRef, useState } from "react";
+import { use, useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Bell, ChevronLeft, ChevronRight, ExternalLink, Loader2, MessageCircle, Music2, Send, UserRound, UsersRound, Volume2 } from "lucide-react";
 
@@ -53,7 +53,6 @@ export default function GameSessionPage({ params }: PageProps) {
   const router = useRouter();
   const sessionQuery = useGetSession(sessionId, { query: { retry: false } });
   const currentUserQuery = useGetCurrentUser();
-  const realtime = useGameSessionRealtime(sessionId);
   const session = sessionQuery.data;
   const groupRealtime = useGroupRealtime(session?.groupId ?? 0);
   const currentRound = session?.currentRound;
@@ -68,6 +67,14 @@ export default function GameSessionPage({ params }: PageProps) {
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [showTurnNotice, setShowTurnNotice] = useState(false);
   const previousActivePlayerId = useRef<number | undefined>(undefined);
+  const handleRoundEvent = useCallback((event: { type: string }) => {
+    if (event.type !== "ROUND_STARTED" && event.type !== "NEXT_ROUND") {
+      return;
+    }
+    setShowTurnNotice(true);
+    window.setTimeout(() => setShowTurnNotice(false), TURN_NOTICE_DURATION_MILLISECONDS);
+  }, []);
+  const realtime = useGameSessionRealtime(sessionId, handleRoundEvent);
 
   useEffect(() => {
     if (session?.status === COMPLETED_SESSION_STATUS) router.replace(`/sessions/${sessionId}/results`);
