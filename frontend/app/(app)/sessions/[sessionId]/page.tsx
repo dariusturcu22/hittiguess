@@ -53,7 +53,7 @@ export default function GameSessionPage({ params }: PageProps) {
   const realtime = useGameSessionRealtime(sessionId);
   const session = sessionQuery.data;
   const currentRound = session?.currentRound;
-  const currentPlayer = session?.players?.find((player) => player.id === currentUserQuery.data?.id);
+  const currentPlayer = session?.players?.find((player) => player.userId === currentUserQuery.data?.id);
   const isDj = currentPlayer?.id === currentRound?.djPlayerId;
   const linkOutQuery = useGetCurrentRoundLinkOut(sessionId, { query: { enabled: Boolean(isDj), retry: false } });
   const [isLinkOutOpen, setIsLinkOutOpen] = useState(false);
