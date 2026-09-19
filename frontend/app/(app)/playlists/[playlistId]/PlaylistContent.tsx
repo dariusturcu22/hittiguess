@@ -208,6 +208,7 @@ export default function PlaylistContent({
         <div className="flex flex-col gap-7 sm:flex-row">
           <PlaylistCoverMosaic
             previewYoutubeIds={(playlist.songs ?? []).map((song) => song.youtubeId)}
+            className="w-[180px] shrink-0"
           />
 
           <div className="flex flex-col justify-center gap-2.5">
