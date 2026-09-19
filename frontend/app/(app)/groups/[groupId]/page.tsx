@@ -133,7 +133,7 @@ export default function GroupLobbyPage({ params }: PageProps) {
   });
 
   const members = useMemo(() => groupQuery.data?.members ?? [], [groupQuery.data?.members]);
-  const currentMember = members.find((member) => member.id === currentUser?.id);
+  const currentMember = members.find((member) => member.userId === currentUser?.id);
   const isCurrentUserAdmin = Boolean(currentMember?.isAdmin);
   const isCurrentUserLoading = currentUser === undefined;
   const featuredPlaylist = groupQuery.data?.playlists?.[0];
@@ -272,7 +272,7 @@ export default function GroupLobbyPage({ params }: PageProps) {
             key={member.id ?? `${member.displayName}-${index}`}
             member={member}
             index={index}
-            isCurrentUser={member.id === currentUser?.id}
+            isCurrentUser={member.userId === currentUser?.id}
           />
         ))}
         {isSettingsOpen ? (

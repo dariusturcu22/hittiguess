@@ -7,6 +7,7 @@ import java.time.Instant;
 // anything derived from it.
 public record MemberDTO(
         Long id,
+        Long userId,
         String displayName,
         String avatarUrl,
         boolean isAdmin,

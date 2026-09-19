@@ -92,12 +92,12 @@ export function useVoiceMesh(groupId: number, currentUserId: number | undefined,
 
   useEffect(() => {
     if (!isInVoice || !currentUserId || !streamReference.current || !isSignalConnected) return;
-    voiceMembers.filter((member) => member.id && member.id > currentUserId).forEach(async (member) => {
-      if (peersReference.current.has(member.id!)) return;
-      const peer = createPeer(member.id!);
+    voiceMembers.filter((member) => member.userId && member.userId > currentUserId).forEach(async (member) => {
+        if (peersReference.current.has(member.userId!)) return;
+        const peer = createPeer(member.userId!);
       const offer = await peer.createOffer();
       await peer.setLocalDescription(offer);
-      sendSignal(OFFER_SIGNAL, member.id!, offer);
+      sendSignal(OFFER_SIGNAL, member.userId!, offer);
     });
   }, [createPeer, currentUserId, isInVoice, isSignalConnected, sendSignal, voiceMembers]);
 

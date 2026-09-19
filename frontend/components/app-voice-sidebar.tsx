@@ -25,7 +25,7 @@ export function AppVoiceSidebar() {
   const activeSessionQuery = useGetActiveSessionForGroup(groupId ?? 0, { query: { enabled: groupId !== undefined, retry: false } });
   const activeSessionId = activeSessionQuery.data?.id;
   const sessionQuery = useGetSession(activeSessionId ?? 0, { query: { enabled: activeSessionId !== undefined, retry: false } });
-  const currentMember = activeGroup?.members?.find((member) => member.id === currentUserQuery.data?.id);
+  const currentMember = activeGroup?.members?.find((member) => member.userId === currentUserQuery.data?.id);
   const isInVoice = Boolean(currentMember?.isInVoice);
   const voiceMembers = (activeGroup?.members ?? []).filter((member) => member.isInVoice);
   const voiceMesh = useVoiceMesh(groupId ?? 0, currentUserQuery.data?.id, voiceMembers, isInVoice);
