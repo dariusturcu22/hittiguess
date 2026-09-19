@@ -102,6 +102,7 @@ export default function GameSessionPage({ params }: PageProps) {
     if (!watchUrl) return;
     setIsLinkOutOpen(true);
     openYoutubeLink(watchUrl);
+    window.dispatchEvent(new CustomEvent("session-start-audio-share"));
   }
 
   function submitGuess() {
