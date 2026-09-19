@@ -1,11 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import { Headphones, Loader2, Mic, MicOff, Phone, PhoneOff } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 
 import { getGetActiveMembershipQueryKey, getGetGroupQueryKey, useGetActiveMembership, useJoinVoice, useLeaveVoice } from "@/hooks/generated/group-management/group-management";
+import { useGetActiveSessionForGroup, useGetSession } from "@/hooks/generated/game-session/game-session";
 import { useGetCurrentUser } from "@/hooks/generated/user-management/user-management";
+import { useGameSessionRealtime } from "@/hooks/use-game-session-realtime";
 import { useVoiceMesh } from "@/hooks/use-voice-mesh";
 
 const MEMBER_COLORS = ["bg-success", "bg-info", "bg-primary", "bg-accent", "bg-warning", "bg-pink"];
@@ -19,22 +21,24 @@ export function AppVoiceSidebar() {
   const [microphoneError, setMicrophoneError] = useState(false);
   const activeGroup = activeMembershipQuery.data;
   const groupId = activeGroup?.id;
+  const activeSessionQuery = useGetActiveSessionForGroup(groupId ?? 0, { query: { enabled: groupId !== undefined, retry: false } });
+  const activeSessionId = activeSessionQuery.data?.id;
+  const sessionQuery = useGetSession(activeSessionId ?? 0, { query: { enabled: activeSessionId !== undefined, retry: false } });
   const currentMember = activeGroup?.members?.find((member) => member.id === currentUserQuery.data?.id);
   const isInVoice = Boolean(currentMember?.isInVoice);
   const voiceMembers = (activeGroup?.members ?? []).filter((member) => member.isInVoice);
   const voiceMesh = useVoiceMesh(groupId ?? 0, currentUserQuery.data?.id, voiceMembers, isInVoice);
   const { stopMicrophone } = voiceMesh;
+  const currentPlayerId = sessionQuery.data?.players?.find(
+    (player) => player.userId === currentUserQuery.data?.id,
+  )?.id;
 
-  useEffect(() => {
-    function stopLockedPlayersAudio(event: Event) {
-      const activePlayerId = (event as CustomEvent<{ activePlayerId?: number }>).detail?.activePlayerId;
-      if (activePlayerId === currentUserQuery.data?.id) {
-        stopMicrophone();
-      }
+  const handleRoundEvent = useCallback((event: { type: string; payload?: { activePlayerId?: number } }) => {
+    if (event.type === "GUESS_LOCKED" && event.payload?.activePlayerId === currentPlayerId) {
+      stopMicrophone();
     }
-    window.addEventListener("session-guess-locked", stopLockedPlayersAudio);
-    return () => window.removeEventListener("session-guess-locked", stopLockedPlayersAudio);
-  }, [currentUserQuery.data?.id, stopMicrophone]);
+  }, [currentPlayerId, stopMicrophone]);
+  useGameSessionRealtime(activeSessionId ?? 0, handleRoundEvent);
 
   function refreshVoicePresence() {
     if (groupId) void queryClient.invalidateQueries({ queryKey: getGetGroupQueryKey(groupId) });

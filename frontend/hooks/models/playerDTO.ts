@@ -9,6 +9,7 @@ import type { PlayerCardDTO } from './playerCardDTO';
 
 export interface PlayerDTO {
   id?: number;
+  userId?: number;
   displayName?: string;
   avatarUrl?: string;
   turnOrder?: number;
