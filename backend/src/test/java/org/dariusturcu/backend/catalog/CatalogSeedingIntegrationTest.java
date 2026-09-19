@@ -299,7 +299,7 @@ class CatalogSeedingIntegrationTest {
         assertThat(pendingImportRepository.countByStatus(PendingImportStatus.PENDING)).isEqualTo(1);
 
         BulkImportResultDTO result = bulkImportService.importImmediately(
-                new BulkImportRequest(null, List.of("contendedID"), null));
+                new BulkImportRequest(null, List.of("contendedID"), null, null));
 
         assertThat(result.resolvedYoutubeIds()).contains("contendedID");
         assertThat(songRepository.findByYoutubeId("contendedID")).isNotEmpty();
@@ -307,7 +307,7 @@ class CatalogSeedingIntegrationTest {
 
     @Test
     void anOnTheSpotResolvedSongIsReEnqueuedAndLaterResolvesThroughThePatientPipeline() {
-        bulkImportService.importImmediately(new BulkImportRequest(null, List.of("fastTierID1"), null));
+        bulkImportService.importImmediately(new BulkImportRequest(null, List.of("fastTierID1"), null, null));
 
         List<PendingImport> reEnqueued = pendingImportRepository.findByStatusOrderByEnqueuedAtAsc(
                 PendingImportStatus.PENDING, org.springframework.data.domain.Limit.of(10));

@@ -92,7 +92,7 @@ class BulkImportServiceTest {
         when(songResolutionService.resolveAndPersist(EXTRA_VIDEO_ID)).thenReturn(Optional.of(mock(Song.class)));
 
         BulkImportResultDTO result = bulkImportService.importImmediately(
-                new BulkImportRequest("playlist-link", List.of(EXTRA_VIDEO_ID), null));
+                new BulkImportRequest("playlist-link", List.of(EXTRA_VIDEO_ID), null, null));
 
         assertThat(result.resolvedYoutubeIds()).containsExactlyInAnyOrder(EXPANDED_VIDEO_ID, EXTRA_VIDEO_ID);
     }
@@ -105,7 +105,7 @@ class BulkImportServiceTest {
                 .thenReturn(new YoutubeIdLookupResult(Set.of(), Set.of(PLAIN_VIDEO_ID)));
         when(songResolutionService.resolveAndPersist(PLAIN_VIDEO_ID)).thenReturn(Optional.of(mock(Song.class)));
 
-        bulkImportService.importImmediately(new BulkImportRequest(null, List.of(PLAIN_VIDEO_ID), null));
+        bulkImportService.importImmediately(new BulkImportRequest(null, List.of(PLAIN_VIDEO_ID), null, null));
 
         verify(catalogSeedingService).reEnqueueForPatientReprocessing(PLAIN_VIDEO_ID);
     }
@@ -119,13 +119,16 @@ class BulkImportServiceTest {
         when(songResolutionService.resolveAndPersist(RESOLVES_VIDEO_ID)).thenReturn(Optional.of(mock(Song.class)));
         when(songResolutionService.resolveAndPersist(UNRESOLVED_VIDEO_ID)).thenReturn(Optional.empty());
 
-        bulkImportService.importImmediately(new BulkImportRequest(null, submittedIds, null));
+        bulkImportService.importImmediately(new BulkImportRequest(null, submittedIds, null, "job-123"));
 
         ArgumentCaptor<BulkImportProgressEvent> eventCaptor = ArgumentCaptor.forClass(BulkImportProgressEvent.class);
         verify(applicationEventPublisher, times(3)).publishEvent(eventCaptor.capture());
 
         List<BulkImportProgressEvent> publishedEvents = eventCaptor.getAllValues();
-        assertThat(publishedEvents).allSatisfy(event -> assertThat(event.username()).isEqualTo(SUBMITTING_USERNAME));
+        assertThat(publishedEvents).allSatisfy(event -> {
+            assertThat(event.username()).isEqualTo(SUBMITTING_USERNAME);
+            assertThat(event.importJobId()).isEqualTo("job-123");
+        });
         assertThat(publishedEvents).extracting(BulkImportProgressEvent::youtubeId, BulkImportProgressEvent::outcome)
                 .containsExactlyInAnyOrder(
                         tuple(ALREADY_KNOWN_VIDEO_ID, BulkImportProgressOutcome.ALREADY_KNOWN),
@@ -138,7 +141,7 @@ class BulkImportServiceTest {
         when(playlistExpansionService.expandAndMerge(eq("bad-link"), eq(List.of())))
                 .thenThrow(new PlaylistImportException("Not a valid playlist link"));
 
-        assertThatThrownBy(() -> bulkImportService.importImmediately(new BulkImportRequest("bad-link", List.of(), null)))
+        assertThatThrownBy(() -> bulkImportService.importImmediately(new BulkImportRequest("bad-link", List.of(), null, null)))
                 .isInstanceOf(PlaylistImportException.class);
     }
 
@@ -149,7 +152,7 @@ class BulkImportServiceTest {
                 .thenReturn(new YoutubeIdLookupResult(Set.of(), Set.of(PLAIN_VIDEO_ID)));
         when(songResolutionService.resolveAndPersist(PLAIN_VIDEO_ID)).thenReturn(Optional.of(mock(Song.class)));
 
-        bulkImportService.importImmediately(new BulkImportRequest(null, List.of(PLAIN_VIDEO_ID), null));
+        bulkImportService.importImmediately(new BulkImportRequest(null, List.of(PLAIN_VIDEO_ID), null, null));
 
         verifyNoInteractions(playlistImportService);
     }
@@ -168,7 +171,7 @@ class BulkImportServiceTest {
                 .thenReturn(List.of(alreadyKnownSong));
         when(songResolutionService.resolveAndPersist(RESOLVES_VIDEO_ID)).thenReturn(Optional.of(resolvedSong));
 
-        bulkImportService.importImmediately(new BulkImportRequest(null, submittedIds, targetPlaylistId));
+        bulkImportService.importImmediately(new BulkImportRequest(null, submittedIds, targetPlaylistId, null));
 
         ArgumentCaptor<List<Song>> linkedSongsCaptor = ArgumentCaptor.forClass(List.class);
         verify(playlistImportService).addResolvedSongs(eq(targetPlaylistId), linkedSongsCaptor.capture());
