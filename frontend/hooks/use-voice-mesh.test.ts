@@ -28,11 +28,21 @@ afterEach(() => {
 
 describe("useVoiceMesh", () => {
   it("keeps the selected tab audio and stops its display video track", async () => {
-    const audioTrack = { kind: "audio", stop: vi.fn() } as unknown as MediaStreamTrack;
+    let endedListener: (() => void) | undefined;
+    const audioTrack = {
+      kind: "audio",
+      stop: vi.fn(),
+      addEventListener: (eventName: string, listener: () => void) => {
+        if (eventName === "ended") endedListener = listener;
+      },
+    } as unknown as MediaStreamTrack;
     const videoTrack = { kind: "video", stop: vi.fn() } as unknown as MediaStreamTrack;
+    const microphoneTrack = { kind: "audio", stop: vi.fn() } as unknown as MediaStreamTrack;
     const displayStream = new TestMediaStream([audioTrack, videoTrack]) as unknown as MediaStream;
+    const microphoneStream = new TestMediaStream([microphoneTrack]) as unknown as MediaStream;
     const getDisplayMedia = vi.fn().mockResolvedValue(displayStream);
-    Object.defineProperty(navigator, "mediaDevices", { configurable: true, value: { getDisplayMedia } });
+    const getUserMedia = vi.fn().mockResolvedValue(microphoneStream);
+    Object.defineProperty(navigator, "mediaDevices", { configurable: true, value: { getDisplayMedia, getUserMedia } });
     vi.stubGlobal("MediaStream", TestMediaStream);
 
     const { result } = renderHook(() => useVoiceMesh(1, 1, [], false));
@@ -44,5 +54,11 @@ describe("useVoiceMesh", () => {
     expect(getDisplayMedia).toHaveBeenCalledWith({ video: true, audio: true });
     expect(videoTrack.stop).toHaveBeenCalledOnce();
     expect(audioTrack.stop).not.toHaveBeenCalled();
+
+    await act(async () => {
+      endedListener?.();
+    });
+
+    expect(getUserMedia).toHaveBeenCalledWith({ audio: true });
   });
 });
