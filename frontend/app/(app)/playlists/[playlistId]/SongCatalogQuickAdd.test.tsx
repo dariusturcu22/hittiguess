@@ -14,6 +14,7 @@ const searchResult: SongDTO = {
   releaseYear: 2001,
   youtubeId: "xyz789",
   verificationStatus: "VERIFIED",
+  needsUserAttention: false,
 };
 
 vi.mock("@/hooks/generated/song-search/song-search", () => ({

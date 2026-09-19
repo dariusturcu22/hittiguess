@@ -46,6 +46,7 @@ function buildSong(
     youtubeId: "abc123",
     verificationStatus,
     confidence,
+    needsUserAttention: verificationStatus === SongDTOVerificationStatus.NEEDS_REVIEW && confidence === "low",
   };
 }
 

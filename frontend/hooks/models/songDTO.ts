@@ -20,5 +20,6 @@ export interface SongDTO {
   country?: SongDTOCountry;
   verificationStatus: SongDTOVerificationStatus;
   confidence?: string;
+  needsUserAttention: boolean;
   addedBy?: UserSummaryDTO;
 }
