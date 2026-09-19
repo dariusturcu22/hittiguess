@@ -13,5 +13,6 @@ import java.util.List;
 public record BulkImportRequest(
         String playlistLink,
         List<String> videoIdsOrLinks,
-        Long targetPlaylistId) {
+        Long targetPlaylistId,
+        String importJobId) {
 }

@@ -57,7 +57,7 @@ public class BulkImportService {
         YoutubeIdLookupResult lookupResult = youtubeIdLookupService.partitionKnownAndUnknown(mergedYoutubeIds);
 
         for (String alreadyKnownId : lookupResult.knownYoutubeIds()) {
-            publishProgress(submittingUsername, alreadyKnownId, BulkImportProgressOutcome.ALREADY_KNOWN);
+            publishProgress(submittingUsername, request.importJobId(), alreadyKnownId, BulkImportProgressOutcome.ALREADY_KNOWN);
         }
 
         Set<String> resolvedIds = new LinkedHashSet<>();
@@ -72,10 +72,10 @@ public class BulkImportService {
                     resolvedIds.add(youtubeId);
                     resolvedSongs.add(resolvedSong.get());
                     catalogSeedingService.reEnqueueForPatientReprocessing(youtubeId);
-                    publishProgress(submittingUsername, youtubeId, BulkImportProgressOutcome.RESOLVED);
+                    publishProgress(submittingUsername, request.importJobId(), youtubeId, BulkImportProgressOutcome.RESOLVED);
                 } else {
                     unresolvedIds.add(youtubeId);
-                    publishProgress(submittingUsername, youtubeId, BulkImportProgressOutcome.UNRESOLVED);
+                    publishProgress(submittingUsername, request.importJobId(), youtubeId, BulkImportProgressOutcome.UNRESOLVED);
                 }
             }
         } finally {
@@ -92,7 +92,7 @@ public class BulkImportService {
         return new BulkImportResultDTO(lookupResult.knownYoutubeIds(), resolvedIds, unresolvedIds);
     }
 
-    private void publishProgress(String username, String youtubeId, BulkImportProgressOutcome outcome) {
-        applicationEventPublisher.publishEvent(new BulkImportProgressEvent(username, youtubeId, outcome));
+    private void publishProgress(String username, String importJobId, String youtubeId, BulkImportProgressOutcome outcome) {
+        applicationEventPublisher.publishEvent(new BulkImportProgressEvent(username, importJobId, youtubeId, outcome));
     }
 }
