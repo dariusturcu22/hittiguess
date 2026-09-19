@@ -31,10 +31,6 @@ public class PlaylistMapper {
                 .toList();
     }
 
-    public PlaylistSummaryDTO toSummaryDTO(Playlist playlist) {
-        return toSummaryDTO(playlist, playlist.getOwner().getId());
-    }
-
     public PlaylistSummaryDTO toSummaryDTO(Playlist playlist, Long userId) {
         return new PlaylistSummaryDTO(
                 playlist.getId(),

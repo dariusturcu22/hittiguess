@@ -122,7 +122,7 @@ export default function PlaylistsPage() {
   };
 
   const visiblePlaylists = (playlists ?? []).filter((playlist) => {
-    const ownedByCurrentUser = (playlist as PlaylistSummaryDTO & { ownedByCurrentUser?: boolean }).ownedByCurrentUser;
+    const ownedByCurrentUser = playlist.ownedByCurrentUser;
     return playlist.name.toLowerCase().includes(searchQuery.trim().toLowerCase())
       && (libraryTab === "owned" ? ownedByCurrentUser : !ownedByCurrentUser);
   });

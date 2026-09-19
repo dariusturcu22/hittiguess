@@ -184,7 +184,7 @@ public class UserService {
 
         playlistRepository.save(playlist);
 
-        return playlistMapper.toSummaryDTO(playlist);
+        return playlistMapper.toSummaryDTO(playlist, user.getId());
     }
 
     public void leavePlaylist(Long playlistId) {
