@@ -459,3 +459,13 @@ Tests:
 - [x] Keep shadcn primitives as the accessible interaction boundary and apply the project visual system through composition and tokens
 - [x] Improve focus-visible states and readable translucent surfaces in the chat overlay and voice sidebar
 - [x] Verify the affected interactive controls with frontend lint and a production build
+
+## App-wide polish fix pass
+
+- [x] Center empty playlist states in the available page area
+- [x] Replace the JavaScript logo height loop with composited CSS animation and make the sidebar logo a dashboard link
+- [x] Redirect authenticated visitors from the marketing root to the playlist dashboard
+
+Tests:
+
+- [x] Run frontend lint and production build

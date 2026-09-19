@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Button } from "@/components/shadcn/button";
 import { LogoBars } from "@/components/logo";
 import { LandingHeader } from "./landing-header";
+import { LandingAuthRedirect } from "./landing-auth-redirect";
 import "./landing.css";
 
 const ROUND_STEPS = [
@@ -17,6 +18,7 @@ function StartAction() {
 export default function LandingPage() {
   return (
     <div className="landing-page">
+      <LandingAuthRedirect />
       <section className="landing-hero landing-dots">
         <div className="hero-circle" aria-hidden="true" />
         <LandingHeader />
