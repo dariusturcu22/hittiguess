@@ -233,6 +233,8 @@ test("gameplay shell renders placement, betting, and DJ link-out states", async 
     await page.reload();
     await page.getByRole("button", { name: "Use 1 token to bet" }).click();
     await expect(page.getByRole("button", { name: "Choose a timeline gap" })).toBeVisible();
+    await page.getByRole("button", { name: "Skip betting" }).click();
+    await expect(page.getByText("Betting skipped. Waiting for the reveal.")).toBeVisible();
 
     await page.unroute(`**${CURRENT_USER_API_PATH}`);
     await page.route(`**${CURRENT_USER_API_PATH}`, (route) => route.fulfill({ json: { id: DJ_ID } }));
