@@ -46,14 +46,21 @@ function ConfirmRow({ song }: { song: SongDTO }) {
   );
 }
 
-export default function ImportFromPlaylistConfirmPage({ params }: PageProps) {
-  const { playlistId: rawDestId, sourceId: rawSourceId } = use(params);
-  const destinationPlaylistId = parseInt(rawDestId);
-  const sourcePlaylistId = parseInt(rawSourceId);
+export function ImportFromPlaylistConfirmContent({
+  destinationPlaylistId,
+  sourcePlaylistId,
+}: {
+  destinationPlaylistId: number;
+  sourcePlaylistId: number;
+}) {
   const router = useRouter();
 
-  const { data: sourcePlaylist, isLoading, isError } =
-    useGetPlaylist(sourcePlaylistId);
+  const {
+    data: sourcePlaylist,
+    isLoading,
+    isError,
+    refetch: refetchSourcePlaylist,
+  } = useGetPlaylist(sourcePlaylistId);
   const importMutation = useImportFromPlaylist();
 
   const songs = sourcePlaylist?.songs ?? [];
@@ -90,17 +97,36 @@ export default function ImportFromPlaylistConfirmPage({ params }: PageProps) {
         <div className="bg-card border-[3px] border-border-strong rounded-2xl shadow-lg box-border overflow-hidden flex-1 min-h-0 flex flex-col">
           <div className="flex-1 min-h-0 overflow-y-auto">
             {isLoading ? (
-              <div className="flex min-h-[260px] flex-col items-center justify-center gap-3 p-6 text-center text-muted-foreground">
+              <div
+                className="flex min-h-[260px] flex-col items-center justify-center gap-3 p-6 text-center text-muted-foreground"
+                role="status"
+                aria-live="polite"
+              >
                 <LoaderCircle className="size-6 animate-spin text-primary" />
                 Loading songs...
               </div>
             ) : isError ? (
-              <div className="flex min-h-[260px] flex-col items-center justify-center gap-3 p-6 text-center">
+              <div
+                className="flex min-h-[260px] flex-col items-center justify-center gap-3 p-6 text-center"
+                role="alert"
+              >
                 <AlertCircle className="size-6 text-destructive" />
                 <p className="text-[13px] text-muted-foreground">Failed to load the source playlist.</p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    void refetchSourcePlaylist();
+                  }}
+                  className="font-display text-[11px] text-primary"
+                >
+                  Try again
+                </button>
               </div>
             ) : songs.length === 0 ? (
-              <div className="flex min-h-[260px] flex-col items-center justify-center gap-3 p-6 text-center text-muted-foreground">
+              <div
+                className="flex min-h-[260px] flex-col items-center justify-center gap-3 p-6 text-center text-muted-foreground"
+                role="status"
+              >
                 <ListMusic className="size-7 text-icon-muted" />
                 This playlist has no songs to copy.
               </div>
@@ -129,11 +155,21 @@ export default function ImportFromPlaylistConfirmPage({ params }: PageProps) {
           </Link>
         </div>
         {importMutation.isError ? (
-          <p className="mt-3 text-[12px] text-destructive">
+          <p className="mt-3 text-[12px] text-destructive" role="alert">
             Import failed. Try again.
           </p>
         ) : null}
       </div>
     </div>
+  );
+}
+
+export default function ImportFromPlaylistConfirmPage({ params }: PageProps) {
+  const { playlistId: rawDestId, sourceId: rawSourceId } = use(params);
+  return (
+    <ImportFromPlaylistConfirmContent
+      destinationPlaylistId={parseInt(rawDestId)}
+      sourcePlaylistId={parseInt(rawSourceId)}
+    />
   );
 }
