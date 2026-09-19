@@ -131,6 +131,9 @@ public class PlaylistService {
     public void deletePlaylist(Long playlistId) {
         Playlist playlist = findPlaylist(playlistId);
         playlistAccessService.requireOwner(playlist, SecurityUtils.getCurrentUser());
+        playlistRepository.deleteGroupPlaylistLinks(playlistId);
+        savedPlaylistRepository.deleteByPlaylistId(playlistId);
+        playlistBanRepository.deleteByPlaylistId(playlistId);
         playlistRepository.delete(playlist);
     }
 

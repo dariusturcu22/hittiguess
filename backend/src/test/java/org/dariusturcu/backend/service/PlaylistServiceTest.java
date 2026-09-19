@@ -267,6 +267,9 @@ class PlaylistServiceTest {
         playlistService.deletePlaylist(PLAYLIST_ID);
 
         verify(playlistAccessService).requireOwner(playlist, currentUser);
+        verify(playlistRepository).deleteGroupPlaylistLinks(PLAYLIST_ID);
+        verify(savedPlaylistRepository).deleteByPlaylistId(PLAYLIST_ID);
+        verify(playlistBanRepository).deleteByPlaylistId(PLAYLIST_ID);
         verify(playlistRepository).delete(playlist);
     }
 
