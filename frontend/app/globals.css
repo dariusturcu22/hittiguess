@@ -304,6 +304,16 @@ html.theme-transition .theme-toggle-thumb {
   body {
     @apply bg-background text-foreground font-sans transition-colors duration-300;
   }
+
+  button,
+  a,
+  input,
+  select,
+  textarea {
+    transition-property: color, background-color, border-color, box-shadow, opacity, transform;
+    transition-duration: 150ms;
+    transition-timing-function: ease;
+  }
 }
 
 @layer utilities {
