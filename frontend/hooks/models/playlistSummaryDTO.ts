@@ -11,4 +11,5 @@ export interface PlaylistSummaryDTO {
   color: string;
   songCount: number;
   previewYoutubeIds: string[];
+  ownedByCurrentUser: boolean;
 }

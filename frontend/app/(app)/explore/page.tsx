@@ -9,6 +9,7 @@ import {
 import type { PublicPlaylistSummaryDTO } from "@/hooks/models/publicPlaylistSummaryDTO";
 import { PhantomEmptyState } from "@/components/phantom-empty-state";
 import { PlaylistCoverMosaic } from "@/components/playlist-cover-mosaic";
+import { playlistTitleColor } from "@/lib/playlist-colors";
 
 function PlaylistCard({ playlist }: { playlist: PublicPlaylistSummaryDTO }) {
   const saveMutation = useSavePlaylist();
@@ -23,7 +24,7 @@ function PlaylistCard({ playlist }: { playlist: PublicPlaylistSummaryDTO }) {
       <div className="px-[18px] pt-4 pb-[18px] flex flex-col gap-1">
         <div
           className="font-display text-base truncate"
-          style={{ color: `#${playlist.color}` }}
+          style={{ color: playlistTitleColor(playlist.color) }}
         >
           {playlist.name}
         </div>
@@ -60,7 +61,7 @@ export default function ExplorePlaylistsPage() {
   });
 
   return (
-    <div className="flex-1 min-h-0 box-border flex flex-col px-14 pt-11 pb-[50px]">
+    <div className="h-full min-h-0 box-border flex flex-col px-14 pt-11 pb-[50px]">
       <h1 className="font-display text-[34px] text-accent mb-6 [text-shadow:3px_3px_0_var(--text-shadow-on-page)]">
         Explore public playlists
       </h1>

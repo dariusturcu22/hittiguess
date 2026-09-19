@@ -8,6 +8,7 @@ import { useGetCurrentRoundLinkOut, useGetSession } from "@/hooks/generated/game
 import { useGetCurrentUser } from "@/hooks/generated/user-management/user-management";
 import type { PlayerCardDTO } from "@/hooks/models/playerCardDTO";
 import { useGameSessionRealtime } from "@/hooks/use-game-session-realtime";
+import { openYoutubeLink } from "@/lib/youtube-link-out";
 
 const TIMELINE_CARD_COLORS = ["bg-teal", "bg-accent", "bg-blue", "bg-green", "bg-warning", "bg-pink", "bg-primary"];
 const ROUND_NUMBER_FALLBACK = 1;
@@ -53,7 +54,7 @@ export default function GameSessionPage({ params }: PageProps) {
   const realtime = useGameSessionRealtime(sessionId);
   const session = sessionQuery.data;
   const currentRound = session?.currentRound;
-  const currentPlayer = session?.players?.find((player) => player.id === currentUserQuery.data?.id);
+  const currentPlayer = session?.players?.find((player) => player.userId === currentUserQuery.data?.id);
   const isDj = currentPlayer?.id === currentRound?.djPlayerId;
   const linkOutQuery = useGetCurrentRoundLinkOut(sessionId, { query: { enabled: Boolean(isDj), retry: false } });
   const [isLinkOutOpen, setIsLinkOutOpen] = useState(false);
@@ -100,7 +101,8 @@ export default function GameSessionPage({ params }: PageProps) {
     const watchUrl = linkOutQuery.data?.watchUrl;
     if (!watchUrl) return;
     setIsLinkOutOpen(true);
-    window.open(watchUrl, "_blank", "noopener,noreferrer");
+    openYoutubeLink(watchUrl);
+    window.dispatchEvent(new CustomEvent("session-start-audio-share"));
   }
 
   function submitGuess() {

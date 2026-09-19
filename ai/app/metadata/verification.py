@@ -26,6 +26,7 @@ logger = logging.getLogger(__name__)
 
 class VerificationRoute(StrEnum):
     LOCKED = "locked"
+    LOCKED_WITH_WIKIPEDIA = "locked_with_wikipedia"
     LLM_RECONCILED = "llm_reconciled"
     MANUAL_REVIEW = "manual_review"
 
@@ -67,6 +68,24 @@ def _all_three_agree(
     )
 
 
+def _find_wikipedia_assisted_lock_year(candidate_years: list[int | None]) -> int | None:
+    resolved_years = [candidate_year for candidate_year in candidate_years if candidate_year is not None]
+    minimum_source_count = 3
+    maximum_cluster_spread = 1
+
+    if len(resolved_years) < minimum_source_count:
+        return None
+
+    for candidate_year in set(resolved_years):
+        if resolved_years.count(candidate_year) >= minimum_source_count:
+            return candidate_year
+
+    if max(resolved_years) - min(resolved_years) <= maximum_cluster_spread:
+        return min(resolved_years)
+
+    return None
+
+
 def evaluate_lock(
     title: str,
     artist: str,
@@ -79,6 +98,7 @@ def evaluate_lock(
 
     Returns (release_year, confidence, route) where route is one of:
     - LOCKED: all three structured sources agreed, no LLM called
+    - LOCKED_WITH_WIKIPEDIA: Wikipedia corroborated three source years, no reconciliation called
     - LLM_RECONCILED: sources disagreed, Wikipedia+reconciliation ran
     - MANUAL_REVIEW: no source, including Wikipedia, had any data
     """
@@ -92,6 +112,12 @@ def evaluate_lock(
     extraction_result = _run_wikipedia_extraction(title, artist, wikipedia_entries)
     wikipedia_year = extraction_result.release_year if extraction_result else None
     wikipedia_confidence = extraction_result.confidence if extraction_result else None
+
+    wikipedia_assisted_lock_year = _find_wikipedia_assisted_lock_year(
+        [musicbrainz_year, discogs_year, wikidata_year, wikipedia_year]
+    )
+    if wikipedia_assisted_lock_year is not None:
+        return wikipedia_assisted_lock_year, "high", VerificationRoute.LOCKED_WITH_WIKIPEDIA
 
     all_sources_empty = (
         musicbrainz_year is None
@@ -119,11 +145,11 @@ def evaluate_lock(
 
 def route_to_verification_status(route: VerificationRoute) -> VerificationStatus:
     """Maps a pipeline route to the VerificationStatus the core service
-    should persist on the Song row. LOCKED maps to VERIFIED (immutable);
+    should persist on the Song row. Both lock routes map to VERIFIED (immutable);
     LLM_RECONCILED maps to NEEDS_REVIEW (one source or LLM answered but
     sources didn't unanimously agree); MANUAL_REVIEW maps to MANUAL_ENTRY
     (no source had data, a human must supply the year)."""
-    if route == VerificationRoute.LOCKED:
+    if route in {VerificationRoute.LOCKED, VerificationRoute.LOCKED_WITH_WIKIPEDIA}:
         return VerificationStatus.VERIFIED
     if route == VerificationRoute.LLM_RECONCILED:
         return VerificationStatus.NEEDS_REVIEW

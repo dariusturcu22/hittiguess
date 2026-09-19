@@ -13,4 +13,6 @@ public interface SavedPlaylistRepository extends JpaRepository<SavedPlaylist, Lo
     boolean existsByUserIdAndPlaylistId(Long userId, Long playlistId);
 
     List<SavedPlaylist> findByUserId(Long userId);
+
+    void deleteByPlaylistId(Long playlistId);
 }

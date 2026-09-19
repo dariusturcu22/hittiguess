@@ -138,9 +138,9 @@ export function AppSidebar() {
 
   return (
     <aside className="flex w-[76px] shrink-0 flex-col items-center border-r-[3px] border-sidebar-border bg-sidebar py-5">
-      <div className="flex h-[22px] items-center justify-center">
+      <Link href="/playlists" aria-label="Go to playlists" className="flex h-[22px] items-center justify-center rounded focus-visible:ring-2 focus-visible:ring-ring">
         <LogoBars />
-      </div>
+      </Link>
 
       <div className={RAIL_DIVIDER_CLASSES} />
 
