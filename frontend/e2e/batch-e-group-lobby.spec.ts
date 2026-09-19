@@ -160,7 +160,9 @@ test("group lobby joins members, persists settings, relays chat, and starts a se
     await expect(adminPage.getByRole("button", { name: "Settings" })).toBeVisible();
 
     await adminPage.getByRole("button", { name: "Chat" }).click();
-    await expect(adminPage.getByText(LIVE_CONNECTION_TEXT)).toBeVisible();
+    await expect(
+      adminPage.locator("aside", { hasText: "Chat" }).getByText(LIVE_CONNECTION_TEXT),
+    ).toBeVisible();
     await adminPage.getByPlaceholder("Type a message...").fill(CHAT_MESSAGE);
     await adminPage.getByRole("button", { name: "Send message" }).click();
 

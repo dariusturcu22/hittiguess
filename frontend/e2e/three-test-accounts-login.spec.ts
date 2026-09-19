@@ -22,7 +22,7 @@ async function loginAsTestAccount(
   await page.goto("/login");
   await page.getByLabel("Email").fill(account.email);
   await page.getByLabel("Password").fill(account.password);
-  await page.getByRole("button", { name: "Sign In" }).click();
+  await page.getByRole("button", { name: "Log in" }).click();
 
   await page.waitForURL("/playlists");
 
