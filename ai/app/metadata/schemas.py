@@ -1,9 +1,28 @@
 from enum import Enum
+from typing import Literal
 
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
+
+ConfidenceLevel = Literal["low", "medium", "high"]
+LOW_CONFIDENCE = "low"
+VALID_CONFIDENCE_LEVELS = frozenset({"low", "medium", "high"})
 
 
-class LlmExtractionResult(BaseModel):
+def _normalize_confidence(value: object) -> ConfidenceLevel:
+    normalized_value = str(value).strip().lower()
+    if normalized_value in VALID_CONFIDENCE_LEVELS:
+        return normalized_value
+    return LOW_CONFIDENCE
+
+
+class ConfidenceNormalizedModel(BaseModel):
+    @field_validator("confidence", mode="before", check_fields=False)
+    @classmethod
+    def normalize_confidence(cls, value: object) -> ConfidenceLevel:
+        return _normalize_confidence(value)
+
+
+class LlmExtractionResult(ConfidenceNormalizedModel):
     """Structured-output shape for both the Wikipedia extraction step and
     the four-source reconciliation step in story 18's lock-or-LLM pipeline.
     Mirrors SongMetadataResult minus the color and source fields, which are
@@ -13,7 +32,7 @@ class LlmExtractionResult(BaseModel):
     title: str
     artist: str
     release_year: int | None
-    confidence: str
+    confidence: ConfidenceLevel
     reasoning: str
 
 
@@ -33,8 +52,13 @@ class SubmissionPreCheckResult(BaseModel):
     injection_reasoning: str
     is_song: bool
     is_compilation: bool
-    classification_confidence: str
+    classification_confidence: ConfidenceLevel
     classification_reasoning: str
+
+    @field_validator("classification_confidence", mode="before")
+    @classmethod
+    def normalize_classification_confidence(cls, value: object) -> ConfidenceLevel:
+        return _normalize_confidence(value)
 
 
 class MetadataResolveRequest(BaseModel):
@@ -59,12 +83,12 @@ class InjectionCheckResult(BaseModel):
     reasoning: str
 
 
-class SongMetadataResult(BaseModel):
+class SongMetadataResult(ConfidenceNormalizedModel):
     title: str
     artist: str
     release_year: int | None
     color: str
-    confidence: str
+    confidence: ConfidenceLevel
     source: str
     reasoning: str
     verification_status: str | None = None

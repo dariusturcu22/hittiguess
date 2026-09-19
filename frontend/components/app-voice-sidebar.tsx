@@ -1,11 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Headphones, Loader2, Mic, MicOff, Phone, PhoneOff } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 
 import { getGetActiveMembershipQueryKey, getGetGroupQueryKey, useGetActiveMembership, useJoinVoice, useLeaveVoice } from "@/hooks/generated/group-management/group-management";
+import { useGetActiveSessionForGroup, useGetSession } from "@/hooks/generated/game-session/game-session";
 import { useGetCurrentUser } from "@/hooks/generated/user-management/user-management";
+import { useGameSessionRealtime } from "@/hooks/use-game-session-realtime";
 import { useVoiceMesh } from "@/hooks/use-voice-mesh";
 
 const MEMBER_COLORS = ["bg-success", "bg-info", "bg-primary", "bg-accent", "bg-warning", "bg-pink"];
@@ -19,11 +21,14 @@ export function AppVoiceSidebar() {
   const [microphoneError, setMicrophoneError] = useState(false);
   const activeGroup = activeMembershipQuery.data;
   const groupId = activeGroup?.id;
+  const activeSessionQuery = useGetActiveSessionForGroup(groupId ?? 0, { query: { enabled: groupId !== undefined, retry: false } });
+  const activeSessionId = activeSessionQuery.data?.id;
+  const sessionQuery = useGetSession(activeSessionId ?? 0, { query: { enabled: activeSessionId !== undefined, retry: false } });
   const currentMember = activeGroup?.members?.find((member) => member.id === currentUserQuery.data?.id);
   const isInVoice = Boolean(currentMember?.isInVoice);
   const voiceMembers = (activeGroup?.members ?? []).filter((member) => member.isInVoice);
   const voiceMesh = useVoiceMesh(groupId ?? 0, currentUserQuery.data?.id, voiceMembers, isInVoice);
-  const { startTabAudio } = voiceMesh;
+  const { startTabAudio, stopMicrophone } = voiceMesh;
 
   useEffect(() => {
     function shareDjTabAudio() {
@@ -34,6 +39,17 @@ export function AppVoiceSidebar() {
     window.addEventListener("session-start-audio-share", shareDjTabAudio);
     return () => window.removeEventListener("session-start-audio-share", shareDjTabAudio);
   }, [isInVoice, startTabAudio]);
+
+  const currentPlayerId = sessionQuery.data?.players?.find(
+    (player) => player.userId === currentUserQuery.data?.id,
+  )?.id;
+
+  const handleRoundEvent = useCallback((event: { type: string; payload?: { activePlayerId?: number } }) => {
+    if (event.type === "GUESS_LOCKED" && event.payload?.activePlayerId === currentPlayerId) {
+      stopMicrophone();
+    }
+  }, [currentPlayerId, stopMicrophone]);
+  useGameSessionRealtime(activeSessionId ?? 0, handleRoundEvent);
 
   function refreshVoicePresence() {
     if (groupId) void queryClient.invalidateQueries({ queryKey: getGetGroupQueryKey(groupId) });

@@ -52,7 +52,7 @@ public class UserService {
         return playlistMembershipRepository.findByUserId(userId).stream()
                 .map(PlaylistMembership::getPlaylist)
                 .peek(playlist -> playlist.getSongs().size())
-                .map(playlistMapper::toSummaryDTO)
+                .map(playlist -> playlistMapper.toSummaryDTO(playlist, userId))
                 .toList();
     }
 
@@ -121,7 +121,7 @@ public class UserService {
 
         Playlist playlist = new Playlist();
         playlist.setName("New playlist");
-        playlist.setColor("000000");
+        playlist.setColor("cba6f7");
         playlist.setInviteCode(UUID.randomUUID().toString());
         playlist.setOwner(user);
 
@@ -184,7 +184,7 @@ public class UserService {
 
         playlistRepository.save(playlist);
 
-        return playlistMapper.toSummaryDTO(playlist);
+        return playlistMapper.toSummaryDTO(playlist, user.getId());
     }
 
     public void leavePlaylist(Long playlistId) {
