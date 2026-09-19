@@ -252,7 +252,7 @@ export default function EditPlaylistPage({ params }: PageProps) {
       queryClient.invalidateQueries({ queryKey: getGetUserPlaylistsQueryKey() });
       router.push("/playlists");
     } catch {
-      setDeleteError("Could not delete this playlist. Try again.");
+      setDeleteError("Could not delete this playlist. Check your connection and try again later.");
     } finally {
       setIsDeleting(false);
     }
