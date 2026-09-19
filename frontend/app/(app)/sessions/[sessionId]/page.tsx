@@ -2,13 +2,15 @@
 
 import { use, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Bell, ChevronLeft, ChevronRight, ExternalLink, Loader2, Music2, Send, UserRound, UsersRound, Volume2 } from "lucide-react";
+import { Bell, ChevronLeft, ChevronRight, ExternalLink, Loader2, MessageCircle, Music2, Send, UserRound, UsersRound, Volume2 } from "lucide-react";
 
 import { useGetCurrentRoundLinkOut, useGetSession } from "@/hooks/generated/game-session/game-session";
 import { useGetCurrentUser } from "@/hooks/generated/user-management/user-management";
 import type { PlayerCardDTO } from "@/hooks/models/playerCardDTO";
 import { useGameSessionRealtime } from "@/hooks/use-game-session-realtime";
+import { useGroupRealtime } from "@/hooks/use-group-realtime";
 import { openYoutubeLink } from "@/lib/youtube-link-out";
+import { GroupChatOverlay } from "@/components/group-chat-overlay";
 
 const TIMELINE_CARD_COLORS = ["bg-teal", "bg-accent", "bg-blue", "bg-green", "bg-warning", "bg-pink", "bg-primary"];
 const ROUND_NUMBER_FALLBACK = 1;
@@ -53,6 +55,7 @@ export default function GameSessionPage({ params }: PageProps) {
   const currentUserQuery = useGetCurrentUser();
   const realtime = useGameSessionRealtime(sessionId);
   const session = sessionQuery.data;
+  const groupRealtime = useGroupRealtime(session?.groupId ?? 0);
   const currentRound = session?.currentRound;
   const currentPlayer = session?.players?.find((player) => player.userId === currentUserQuery.data?.id);
   const isDj = currentPlayer?.id === currentRound?.djPlayerId;
@@ -62,6 +65,7 @@ export default function GameSessionPage({ params }: PageProps) {
   const [titleGuess, setTitleGuess] = useState("");
   const [isDraggingCard, setIsDraggingCard] = useState(false);
   const [isSelectingBet, setIsSelectingBet] = useState(false);
+  const [isChatOpen, setIsChatOpen] = useState(false);
   const [showTurnNotice, setShowTurnNotice] = useState(false);
   const previousActivePlayerId = useRef<number | undefined>(undefined);
 
@@ -135,6 +139,7 @@ export default function GameSessionPage({ params }: PageProps) {
       {isSpectator && currentRound?.status === AWAITING_PLACEMENT_STATUS ? <p className="absolute top-[calc(50%+104px)] text-center text-xs text-muted-foreground">Watching live. It&apos;s not your turn to place a card.</p> : null}
       {currentRound?.status === "REVEALED" || currentRound?.status === "SCORED" ? <div className="absolute bottom-[calc(50%+148px)] left-1/2 flex -translate-x-1/2 flex-col items-center gap-2 text-center"><span className="font-display text-lg text-green">{currentRound.revealedTitle ?? "Card revealed"}</span><span className="text-sm text-muted-foreground">{currentRound.revealedArtist ?? ""}{currentRound.revealedYear ? ` · ${currentRound.revealedYear}` : ""}</span><span className="text-[11px] text-muted-foreground">Round closed. The next card is dealt in a moment.</span></div> : null}
       {currentRound && !isDj ? <div className="absolute top-[calc(50%+148px)] left-1/2 flex w-full max-w-[520px] -translate-x-1/2 flex-col items-center gap-3 px-3"><div className="flex w-full flex-col gap-3 sm:flex-row sm:gap-5"><GuessField placeholder="Guess the artist" value={artistGuess} onChange={setArtistGuess} onSubmit={submitGuess} /><GuessField placeholder="Guess the title" value={titleGuess} onChange={setTitleGuess} onSubmit={submitGuess} /></div><p className="text-center text-[11.5px] text-muted-foreground">Anyone can guess, anytime. Try artists one at a time.</p></div> : null}</section>
-    <footer className="flex flex-wrap items-center justify-between gap-4"><div className="inline-flex items-center gap-3 rounded-full border-2 border-border bg-card px-4 py-2"><UserRound className="size-4 text-primary" /><span className="text-xs text-muted-foreground">DJ</span><strong className="text-sm text-card-foreground">{djPlayer?.displayName ?? "Waiting"}</strong><span className="h-7 w-px bg-border" /><span className="text-xs text-muted-foreground">Turn</span><strong className="text-sm text-card-foreground">{activePlayer?.displayName ?? "Waiting"}</strong></div><div className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-[0.18em] text-muted-foreground"><Music2 className="size-4 text-warning" />Your tokens {currentPlayer?.tokenCount ?? 0}</div></footer>
+    {isChatOpen ? <GroupChatOverlay groupId={session.groupId ?? 0} connectionState={groupRealtime.connectionState} sendChat={groupRealtime.sendChat} onClose={() => setIsChatOpen(false)} /> : null}
+    <footer className="flex flex-wrap items-center justify-between gap-4"><div className="inline-flex items-center gap-3 rounded-full border-2 border-border bg-card px-4 py-2"><UserRound className="size-4 text-primary" /><span className="text-xs text-muted-foreground">DJ</span><strong className="text-sm text-card-foreground">{djPlayer?.displayName ?? "Waiting"}</strong><span className="h-7 w-px bg-border" /><span className="text-xs text-muted-foreground">Turn</span><strong className="text-sm text-card-foreground">{activePlayer?.displayName ?? "Waiting"}</strong></div><div className="flex items-center gap-3"><button type="button" onClick={() => setIsChatOpen((currentValue) => !currentValue)} className={`inline-flex items-center gap-2 rounded-full border-2 bg-card px-4 py-2 text-xs font-semibold text-card-foreground ${isChatOpen ? "border-primary text-primary" : "border-border"}`} aria-label={isChatOpen ? "Close chat" : "Open chat"}><MessageCircle className="size-4" />Chat</button><div className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-[0.18em] text-muted-foreground"><Music2 className="size-4 text-warning" />Your tokens {currentPlayer?.tokenCount ?? 0}</div></div></footer>
   </main>;
 }

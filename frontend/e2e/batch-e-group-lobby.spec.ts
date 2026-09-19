@@ -218,6 +218,9 @@ test("gameplay shell renders placement, betting, and DJ link-out states", async 
     await page.goto(`/sessions/${GAMEPLAY_SESSION_ID}`);
     const card = page.locator('[draggable="true"]');
     await expect(card).toBeVisible();
+    await page.getByRole("button", { name: "Open chat" }).click();
+    await expect(page.getByRole("heading", { name: "Chat" })).toBeVisible();
+    await page.getByRole("button", { name: "Close chat" }).click();
     await card.dispatchEvent("dragstart");
     await expect(page.getByRole("button", { name: "Place card at timeline position 1" })).toBeVisible();
 
