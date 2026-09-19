@@ -1,8 +1,11 @@
 "use client";
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import axios from "axios";
 import { useState } from "react";
 import { ThemeProvider } from "@/components/theme-provider";
+import { Toaster } from "@/components/shadcn/sonner";
+import { GlobalScrollbar } from "@/components/global-scrollbar";
 
 export default function Providers({ children }: { children: React.ReactNode }) {
   const [queryClient] = useState(
@@ -10,8 +13,10 @@ export default function Providers({ children }: { children: React.ReactNode }) {
       new QueryClient({
         defaultOptions: {
           queries: {
-            retry: (failureCount, error: any) => {
-              if (error?.response?.status === 401) return false;
+            retry: (failureCount, error) => {
+              if (axios.isAxiosError(error) && error.response?.status === 401) {
+                return false;
+              }
               return failureCount < 3;
             },
             staleTime: 60 * 1000,
@@ -27,9 +32,10 @@ export default function Providers({ children }: { children: React.ReactNode }) {
         attribute="class"
         defaultTheme="system"
         enableSystem
-        disableTransitionOnChange
       >
         {children}
+        <GlobalScrollbar />
+        <Toaster />
       </ThemeProvider>
     </QueryClientProvider>
   );

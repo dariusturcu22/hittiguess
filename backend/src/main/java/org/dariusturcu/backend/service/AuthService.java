@@ -1,44 +1,71 @@
 package org.dariusturcu.backend.service;
 
+import io.jsonwebtoken.JwtException;
 import lombok.RequiredArgsConstructor;
+import org.dariusturcu.backend.exception.ConflictException;
+import org.dariusturcu.backend.exception.EmailNotVerifiedException;
+import org.dariusturcu.backend.exception.ResourceNotFoundException;
+import org.dariusturcu.backend.model.EmailVerificationToken;
+import org.dariusturcu.backend.model.PasswordResetToken;
 import org.dariusturcu.backend.model.RefreshToken;
 import org.dariusturcu.backend.model.auth.AuthResult;
+import org.dariusturcu.backend.model.auth.LoginOutcome;
 import org.dariusturcu.backend.model.auth.LoginRequest;
 import org.dariusturcu.backend.model.auth.RegisterRequest;
+import org.dariusturcu.backend.model.auth.RegisterResult;
 import org.dariusturcu.backend.model.user.AuthProvider;
 import org.dariusturcu.backend.model.user.Role;
 import org.dariusturcu.backend.model.user.User;
+import org.dariusturcu.backend.repository.EmailVerificationTokenRepository;
+import org.dariusturcu.backend.repository.PasswordResetTokenRepository;
 import org.dariusturcu.backend.repository.RefreshTokenRepository;
 import org.dariusturcu.backend.repository.UserRepository;
 import org.dariusturcu.backend.security.util.JwtUtil;
+import org.dariusturcu.backend.security.util.TokenHasher;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
 @Transactional
 public class AuthService {
+    private static final String EMAIL_NOT_VERIFIED_MESSAGE =
+            "Email not verified, check your inbox for a verification link";
+
     private final UserRepository userRepository;
     private final RefreshTokenRepository refreshTokenRepository;
+    private final EmailVerificationTokenRepository emailVerificationTokenRepository;
+    private final PasswordResetTokenRepository passwordResetTokenRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtUtil jwtUtil;
     private final AuthenticationManager authenticationManager;
+    private final EmailService emailService;
+    private final TwoFactorService twoFactorService;
 
-    public AuthResult register(RegisterRequest request) {
-        if (userRepository.existsUserByUsername(request.username())) {
-            throw new RuntimeException("Username already exists");
-            // TODO change to custom exception
-        }
+    @Value("${email.verification-token-expiration}")
+    private long emailVerificationTokenExpirationMillis;
 
-        if (userRepository.existsUserByEmail(request.email())) {
-            throw new RuntimeException("Email already exists");
-            // TODO change to custom exception
+    @Value("${email.password-reset-token-expiration}")
+    private long passwordResetTokenExpirationMillis;
+
+    @Value("${frontend.url}")
+    private String frontendUrl;
+
+    public RegisterResult register(RegisterRequest request) {
+        boolean usernameOrEmailTaken = userRepository.existsUserByUsername(request.username())
+                || userRepository.existsUserByEmail(request.email());
+
+        if (usernameOrEmailTaken) {
+            throw new ConflictException("Username or email already in use");
         }
 
         User user = new User();
@@ -47,47 +74,121 @@ public class AuthService {
         user.setPassword(passwordEncoder.encode(request.password()));
         user.setAuthProvider(AuthProvider.LOCAL);
         user.setRole(Role.USER);
+        user.setEmailVerified(false);
 
         User savedUser = userRepository.save(user);
+        sendVerificationEmail(savedUser);
 
-        String accessToken = jwtUtil.generateToken(savedUser);
-        String refreshToken = createAndSaveRefreshToken(savedUser);
-
-        return new AuthResult(
-                accessToken,
-                refreshToken,
-                savedUser.getId(),
-                savedUser.getUsername(),
-                savedUser.getEmail()
-        );
+        return new RegisterResult(savedUser.getId(), savedUser.getUsername(), savedUser.getEmail());
     }
 
-    public AuthResult login(LoginRequest request) {
-        authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(
-                        request.email(),
-                        request.password()
-                )
-        );
+    public LoginOutcome login(LoginRequest request) {
+        try {
+            authenticationManager.authenticate(
+                    new UsernamePasswordAuthenticationToken(
+                            request.email(),
+                            request.password()
+                    )
+            );
+        } catch (IllegalArgumentException e) {
+            // BCrypt throws this for an account with no password set, a Google-only account
+            // trying to log in with a password. Same response as any other wrong credentials,
+            // so this doesn't become a second way to tell accounts apart.
+            throw new BadCredentialsException("Invalid username or password");
+        }
 
         User user = userRepository.findUserByEmail(request.email())
-                .orElseThrow(() -> new RuntimeException("User not found"));
-        // TODO change to custom exception
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
-        String accessToken = jwtUtil.generateToken(user);
-        String refreshToken = createAndSaveRefreshToken(user);
+        if (!user.isEmailVerified()) {
+            throw new EmailNotVerifiedException(EMAIL_NOT_VERIFIED_MESSAGE);
+        }
 
-        return new AuthResult(
-                accessToken,
-                refreshToken,
-                user.getId(),
-                user.getUsername(),
-                user.getEmail()
-        );
+        if (user.isTwoFactorEnabled()) {
+            return new LoginOutcome.TwoFactorRequired(jwtUtil.generateTwoFactorPendingToken(user));
+        }
+
+        return new LoginOutcome.Completed(issueTokens(user));
+    }
+
+    public AuthResult verifyTwoFactor(String pendingToken, String code) {
+        Long userId;
+        try {
+            if (!jwtUtil.isTwoFactorPendingToken(pendingToken)) {
+                throw new BadCredentialsException("Invalid two-factor session");
+            }
+            userId = jwtUtil.extractUserId(pendingToken);
+        } catch (JwtException exception) {
+            throw new BadCredentialsException("Two-factor session expired, please log in again");
+        }
+
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+
+        if (!user.isTwoFactorEnabled()) {
+            throw new BadCredentialsException("Two-factor authentication is not enabled for this account");
+        }
+
+        if (!twoFactorService.verifyLoginCode(user, code)) {
+            throw new BadCredentialsException("Invalid authentication code");
+        }
+
+        return issueTokens(user);
+    }
+
+    public void verifyEmail(String rawToken) {
+        EmailVerificationToken token = emailVerificationTokenRepository.findByToken(TokenHasher.hash(rawToken))
+                .orElseThrow(() -> new ResourceNotFoundException("Invalid verification token"));
+
+        if (token.isExpired()) {
+            emailVerificationTokenRepository.delete(token);
+            throw new ResourceNotFoundException("Verification token expired, request a new one");
+        }
+
+        User user = token.getUser();
+        user.setEmailVerified(true);
+        userRepository.save(user);
+        emailVerificationTokenRepository.delete(token);
+    }
+
+    public void resendVerificationEmail(String email) {
+        userRepository.findUserByEmail(email)
+                .filter(user -> !user.isEmailVerified())
+                .ifPresent(this::sendVerificationEmail);
+        // Same response whether the email doesn't exist or is already verified, so a caller
+        // can't use this endpoint to tell either apart from an actual resend.
+    }
+
+    public void requestPasswordReset(String email) {
+        userRepository.findUserByEmail(email).ifPresent(this::sendPasswordResetEmail);
+        // Always succeeds from the caller's perspective, see requestPasswordReset's caller
+        // in AuthController: a nonexistent email must not be distinguishable from a real one.
+    }
+
+    public void confirmPasswordReset(String rawToken, String newPassword) {
+        PasswordResetToken token = passwordResetTokenRepository.findByToken(TokenHasher.hash(rawToken))
+                .orElseThrow(() -> new ResourceNotFoundException("Invalid password reset token"));
+
+        if (token.isUsed()) {
+            throw new ConflictException("Password reset token already used");
+        }
+        if (token.isExpired()) {
+            throw new ResourceNotFoundException("Password reset token expired, request a new one");
+        }
+
+        User user = token.getUser();
+        user.setPassword(passwordEncoder.encode(newPassword));
+        userRepository.save(user);
+
+        token.setUsed(true);
+        passwordResetTokenRepository.save(token);
+
+        // A password change invalidates any session started under the old password.
+        refreshTokenRepository.deleteRefreshTokenByUser(user);
     }
 
     public AuthResult refreshTokens(String refreshToken) {
-        RefreshToken storedToken = refreshTokenRepository.findByToken(refreshToken)
+        RefreshToken storedToken = refreshTokenRepository.findByToken(TokenHasher.hash(refreshToken))
                 .orElseThrow(() -> new RuntimeException("Invalid refresh accessToken"));
 
         if (storedToken.isExpired()) {
@@ -98,21 +199,48 @@ public class AuthService {
         User user = storedToken.getUser();
         refreshTokenRepository.delete(storedToken);
 
-        String newAccessToken = jwtUtil.generateToken(user);
-        String newRefreshToken = createAndSaveRefreshToken(user);
-
-        return new AuthResult(
-                newAccessToken,
-                newRefreshToken,
-                user.getId(),
-                user.getUsername(),
-                user.getEmail()
-        );
+        return issueTokens(user);
     }
 
     public void revokeRefreshToken(String refreshToken) {
-        refreshTokenRepository.findByToken(refreshToken)
+        refreshTokenRepository.findByToken(TokenHasher.hash(refreshToken))
                 .ifPresent(refreshTokenRepository::delete);
+    }
+
+    private AuthResult issueTokens(User user) {
+        String newAccessToken = jwtUtil.generateToken(user);
+        String newRefreshToken = createAndSaveRefreshToken(user);
+        return new AuthResult(newAccessToken, newRefreshToken, user.getId(), user.getUsername(), user.getEmail());
+    }
+
+    private void sendVerificationEmail(User user) {
+        emailVerificationTokenRepository.deleteEmailVerificationTokenByUser(user);
+        emailVerificationTokenRepository.flush();
+
+        String rawToken = UUID.randomUUID().toString();
+        EmailVerificationToken token = new EmailVerificationToken();
+        token.setToken(TokenHasher.hash(rawToken));
+        token.setUser(user);
+        token.setExpiresAt(Instant.now().plusMillis(emailVerificationTokenExpirationMillis));
+        emailVerificationTokenRepository.save(token);
+
+        String verificationLink = frontendUrl + "/verify-email?token=" + rawToken;
+        emailService.sendVerificationEmail(user.getEmail(), verificationLink);
+    }
+
+    private void sendPasswordResetEmail(User user) {
+        passwordResetTokenRepository.deletePasswordResetTokenByUser(user);
+        passwordResetTokenRepository.flush();
+
+        String rawToken = UUID.randomUUID().toString();
+        PasswordResetToken token = new PasswordResetToken();
+        token.setToken(TokenHasher.hash(rawToken));
+        token.setUser(user);
+        token.setExpiresAt(Instant.now().plusMillis(passwordResetTokenExpirationMillis));
+        passwordResetTokenRepository.save(token);
+
+        String resetLink = frontendUrl + "/reset-password?token=" + rawToken;
+        emailService.sendPasswordResetEmail(user.getEmail(), resetLink);
     }
 
     @Modifying
@@ -121,7 +249,7 @@ public class AuthService {
         refreshTokenRepository.flush();
         String tokenValue = jwtUtil.generateRefreshToken();
         RefreshToken newToken = new RefreshToken();
-        newToken.setToken(tokenValue);
+        newToken.setToken(TokenHasher.hash(tokenValue));
         newToken.setUser(user);
         newToken.setExpiresAt(Instant.now().plusSeconds(jwtUtil.getRefreshExpirationSeconds()));
         refreshTokenRepository.save(newToken);

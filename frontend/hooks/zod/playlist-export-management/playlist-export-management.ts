@@ -8,23 +8,28 @@ import * as zod from 'zod';
 
 
 /**
- * @summary Generate info PDF for playlist songs
- */
-export const exportPlaylistParams = zod.object({
-  "playlistId": zod.number()
-})
-
-/**
- * @summary Generate PDF for playlist songs
+ * @summary Generate QR PDF for playlist songs
  */
 export const exportPlaylistQrParams = zod.object({
   "playlistId": zod.number()
 })
 
+export const exportPlaylistQrQueryPaperSizeDefault = "A4";
+
+export const exportPlaylistQrQueryParams = zod.object({
+  "paperSize": zod.enum(['A4', 'LETTER']).default(exportPlaylistQrQueryPaperSizeDefault)
+})
+
 /**
- * @summary Generate QR PDF for playlist songs
+ * @summary Generate info PDF for playlist songs
  */
 export const exportPlaylistInfoParams = zod.object({
   "playlistId": zod.number()
+})
+
+export const exportPlaylistInfoQueryPaperSizeDefault = "A4";
+
+export const exportPlaylistInfoQueryParams = zod.object({
+  "paperSize": zod.enum(['A4', 'LETTER']).default(exportPlaylistInfoQueryPaperSizeDefault)
 })
 

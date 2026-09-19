@@ -22,8 +22,9 @@ public class SecurityUtils {
             return ((UserPrincipal) principal).getUser();
         }
 
-        throw new RuntimeException("Invalid principal type");
-        // TODO understand and create error
+        // Should never happen, the JWT filter always sets a UserPrincipal-backed
+        // Authentication, this is a defensive check against a misconfiguration.
+        throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Invalid principal type");
     }
 
     public static Long getCurrentUserId() {

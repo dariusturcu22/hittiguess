@@ -1,0 +1,219 @@
+# ARCHITECTURE.md: Technical Blueprint
+
+## Stack
+
+| Layer | Technology | Notes |
+|---|---|---|
+| Backend, core | Spring Boot (Java) | Auth, playlist/song CRUD, game session, WebSocket/STOMP. Owns the DB schema. |
+| Backend, AI microservice | Python + FastAPI | Metadata pipeline, LLM synthesis, embeddings. Calls OpenAI directly. |
+| Frontend | Next.js (TypeScript) | Dashboard, playlist/song management, game UI. Deployed on Vercel. |
+| Mobile | Flutter | Deprioritized. |
+| Database | PostgreSQL + pgvector | Current host: Supabase. Migration target undecided, see [PROJECT_STATE.md](PROJECT_STATE.md). |
+| Auth | OAuth2 + JWT | Refresh tokens, owned by the core service. |
+| Realtime | Spring STOMP/WebSocket | Game session sync, voice signaling, and text chat, core service. |
+| AI/LLM | OpenAI API | Called directly from the AI microservice, structured output through Pydantic. |
+| Embeddings | text-embedding-3-small | Deduplication and RAG, generated in the AI microservice. |
+| Hosting, backend | Currently Fly.io | Migrating away; target platform undecided, see [PROJECT_STATE.md](PROJECT_STATE.md). |
+| Hosting, frontend | Vercel | Unchanged. |
+| Voice | WebRTC, mesh topology | Cloudflare TURN as fallback. See Voice and Text Chat below. |
+
+## Two-service architecture
+
+### Core service (Spring Boot)
+
+Auth, playlist and song CRUD, the Song table (schema owner), game session and round logic, WebSocket/STOMP for real-time sync, voice signaling, and text chat. Calls the AI microservice internally when a song needs metadata processing.
+
+### AI microservice (FastAPI)
+
+Multi-source metadata fetch (YouTube, MusicBrainz, Discogs, Wikidata, Wikipedia), LLM synthesis with structured output, embedding generation and pgvector similarity search. Exposes a small internal API, for example `POST /metadata/resolve`, consumed only by the core service, not exposed publicly.
+
+The two services run in the same hosting environment and reach each other over internal networking, wherever that ends up being, see the Deployment section. The core service owns all database migrations; the AI microservice reads and writes rows but never alters schema.
+
+## System components
+
+### Database domain boundary
+
+One split is explicit: the transactional Postgres+pgvector instance versus a separate append-heavy analytics/event store ([PROJECT_STATE.md](PROJECT_STATE.md) story 33). Every entity either service reads or writes today, users, groups, sessions, rounds, guesses, songs, playlists, and pgvector embeddings, lives in the transactional instance; only usage/event data (games played, session length, rate-limit-exceeded, report-submitted, and similar counters) goes in the analytics store. No entity is planned to live in both, or move between them. This is the only database split in the architecture, there's no separate database per service.
+
+### Song and playlist database
+
+Every song has: `youtubeId`, `title`, `releaseYear`, `verificationStatus`, `confidence` (persisted), `metadataRaw` (full pipeline output, for auditability), multi-value `tags` (story 23, built). Release year is one mutable field plus `verificationStatus`, not a separate `submittedYear`/`verifiedYear` pair; once verified, the year doesn't change except through the report/re-verification process (story 18, built). Artists are an ordered list (`SongArtist`), each tagged `MAIN` or `FEATURED`; more than one `MAIN` artist is allowed, the role tag is display-only, and naming any single artist on the list correctly is enough to guess it. No pipeline extracts featured artists into that list yet, submission still populates a single `MAIN` entry per song. See [PROJECT_STATE.md](PROJECT_STATE.md)'s resolved questions and [DECISIONS.md](DECISIONS.md).
+
+`metadataRaw`, and any other field that persists external API output, holds the curated, actually-used subset of a source's response, never the full raw payload. A single source's raw response can run to tens of KB per song; at that size the database's free-tier size cap holds a small fraction of the catalog a curated version would. Any future field storing external API output follows the same rule.
+
+### Metadata pipeline (AI microservice)
+
+```
+YouTube URL
+    ↓
+YouTube Data API, title, artist, channel info
+    ↓
+pgvector similarity check against existing verified songs
+    ↓ high-confidence match: reuse existing data, skip everything below
+Content-safety gate (story 41): injection check on the raw YouTube text before
+    any LLM call, then a deterministic non-music and duration pre-filter, then an
+    LLM is-song/is-compilation classification
+    ↓ flagged for injection, non-music, or a compilation: verificationStatus REJECTED, stop here
+Query MusicBrainz, Discogs, and Wikidata
+    ↓
+All three agree exactly?
+    yes → lock the year, no LLM call, verificationStatus VERIFIED
+    no  → fetch and extract Wikipedia (LLM reading-comprehension call),
+          reconcile all four sources (LLM call), verificationStatus NEEDS_REVIEW
+    none of the four has any data at all → verificationStatus MANUAL_ENTRY
+    ↓
+Confidence and status surfaced in the UI
+    ↓
+Core service stores the song
+```
+
+Quota note: YouTube's `search.list` costs 100 units per call against a 100-call default daily budget. `videos.list` costs 1 unit and batches up to 50 IDs per call. Resolving `(artist, title) → youtubeId` from a known ID avoids `search.list` entirely.
+
+### YouTube source quality
+
+Search with `videoCategoryId=10` and look for a channel ending in `" - Topic"`, an official auto-generated upload. Suggest an upgrade when a high-confidence match is found.
+
+### Group (core service)
+
+A group is the persistent wrapper a game session lives inside. Anyone can create one, whoever does becomes its admin. Membership is invite-link based, capped at 8 members, and a user can belong to at most one group at a time.
+
+The admin controls the game settings (playlist(s), DJ mode, win-condition card count); every member sees those settings change in real time, non-admins see them read-only. Chat and voice are live from the moment the group is created. Only the admin can start a game session; once started, the group locks, no new members can join.
+
+Lifecycle runs on fixed timers, not activity tracking:
+
+- 30 minutes from group creation to the admin starting a game session, otherwise the group is deleted.
+- 30 minutes from a game session ending to the admin starting another, otherwise the group is deleted and every member removed.
+- A group isn't single-use: it can run any number of game sessions across its lifetime.
+
+A disconnect, closed tab, network drop, never ends membership, only an explicit leave does. If the admin explicitly leaves, the next-earliest-joined member is promoted to admin; if no members remain, the group is deleted. Reconnecting isn't link-based, the invite link is for joining a group for the first time. A logged-in user who's still a member of an active group is prompted on app load to return to it or leave it, checked against their account, not against the link.
+
+```
+Group
+  ├── id, adminUserId, inviteLink, status, settings (playlist(s), djMode, winConditionCards)
+  ├── members[] → Member (userId, isConnected)
+  └── gameSessions[] → GameSession (see below)
+```
+
+### Game session (core service)
+
+A game session is the round-by-round gameplay itself, created only when the group's admin starts one. Ephemeral: purged entirely when it ends, except for a downloadable results export.
+
+```
+GameSession
+  ├── id, groupId, status
+  ├── players[] → Player (userId, timeline[], tokenCount, isConnected)
+  ├── currentRound → Round
+  │     ├── activePlayerId (rotates each round)
+  │     ├── djPlayerId (fixed or rotating, per group setting)
+  │     ├── currentSong
+  │     ├── status
+  │     └── guesses[] → Guess (playerId, guessedYear, placedPosition, isCorrect)
+  └── history[]
+```
+
+If every player disconnects and none reconnect within 10 minutes, the session is torn down as abandoned and produces no results export. A single player's disconnect never ends the session while anyone else is still connected.
+
+Sync through WebSocket/STOMP for both the group and the game session. REST for group and session creation and join; WebSocket for real-time state changes.
+
+### DJ playback
+
+The DJ is never shown an embedded YouTube player.
+
+- Remote sessions: the DJ opens the real YouTube page in a new browser tab, only from an explicit "Open YouTube Link" action paired with a UI warning that doing so starts broadcasting their tab or system audio. That tab is captured through WebRTC tab audio capture and streamed to the other players.
+- In-person sessions: the DJ opens the real YouTube app through a deep link (Android intent, iOS universal link, falling back to a plain browser link if the app isn't installed) and plays through the device speaker.
+- Physical cards: the QR code encodes the YouTube video ID directly. Scanning opens the real YouTube app or site.
+- Playback itself is manual, on the DJ's device, there's no remote play or pause on YouTube's own player. The DJ holds no other in-app controls: pause, play, and closing the tab or app all happen on YouTube itself, not mirrored into the game. "Open YouTube Link" is the DJ's only in-app action.
+- The active player's audio stream cuts off immediately once they lock in their guess, regardless of what's still playing on the DJ's end.
+- Round reveal fires automatically once the betting window closes, off the timer that window already runs on, artist, title, and year broadcast to everyone with no DJ or player trigger; the active player role then advances automatically once scoring resolves.
+- Ads play unmodified in every mode.
+
+### Voice and text chat
+
+Both are scoped to the group's lifetime, not the game session's: available from the moment the group is created until the group is deleted, spanning any number of game sessions played inside it.
+
+Voice: mesh peer-to-peer, no media server, a standing room members can join or leave at any time, not a call anyone starts. Signaling rides the existing WebSocket layer. Capped at 8 participants per group. Cloudflare TURN, pay-as-you-go, used only when a direct connection between two peers fails, most connections never touch it. Video is out of scope; mesh video's bandwidth and CPU cost breaks down at realistic group sizes, and a media server was ruled out on cost and operational grounds.
+
+Text: plain messages over the same WebSocket connection, stored for the life of the group, not persisted after it's deleted.
+
+### Verification
+
+Players can report a song's year as incorrect, with a message, the year they believe is correct, and one or more sources. What promotes a reported or new song to fully verified is decided: exact agreement among MusicBrainz, Discogs, and Wikidata locks the year with no LLM involvement; anything short of that routes through Wikipedia extraction and four-source reconciliation instead, landing at `NEEDS_REVIEW`, never silently promoted to verified regardless of LLM confidence (story 18, `DECISIONS.md`). Admin-submitted songs are trusted immediately.
+
+### RAG and deduplication (AI microservice)
+
+Before running the full pipeline for a new submission: normalize `artist + title`, generate a `text-embedding-3-small` embedding, check pgvector cosine-distance similarity against existing verified songs. On a match at or below the high-confidence threshold, reuse the existing data and skip the LLM call. Goals: keep the database free of duplicate rows, and avoid unnecessary LLM cost. The threshold and the AI microservice's database client choice are decided (story 16, `DECISIONS.md`). How this interacts with story 15's song/playlist relational model is an open coordination point, also logged there, since story 15 hadn't merged when story 16 shipped.
+
+### Admin tools
+
+Bulk import mechanism: built, story 40. Two separate paths, an admin-only patient backlog queue draining daily against an LLM tier's quota, and immediate on-the-spot resolution open to any user, never sharing a queue. Admin-submitted songs skip the pipeline and are trusted immediately. Review queue for reports: built, story 17, ranked by a five-tier priority order (converging reports first, then non-converging reports, then confirmed-but-unreported cards, then unconfirmed cards, `VERIFIED` cards with no report never appear).
+
+## Deployment
+
+Deployment platform is deliberately undecided until the app is close to feature-complete locally, see [PROJECT_STATE.md](PROJECT_STATE.md)'s open questions.
+
+- Core service and AI microservice: containerized, deployed together, same environment. Target platform not yet chosen.
+- Database: currently Supabase-hosted Postgres. Whether to migrate at all, and to what platform, is undecided; pgvector needs to be enabled wherever it ends up.
+- Frontend: Next.js on Vercel, unchanged.
+- Migrating away from Fly.io for backend hosting. See [PROJECT_STATE.md](PROJECT_STATE.md) for current status.
+
+## Data flow: adding a song
+
+```
+User searches by link or by keyword (artist, title, year)
+  Already in the database: return existing data
+  Not in the database: core service forwards the URL to the AI microservice
+AI microservice checks pgvector for a match
+  Match: return existing verified data
+  No match: parallel metadata fetch, then LLM synthesis
+AI microservice returns structured metadata and confidence
+Frontend shows a pre-filled form with a confidence indicator
+User confirms or edits
+Core service saves the song as unverified
+Background: AI microservice checks for a Topic-channel upgrade
+```
+
+## Data flow: playing a game
+
+```
+A player creates a group and becomes its admin, shares the invite link
+Members join live; chat and voice are available immediately
+Admin configures settings (playlist(s), DJ mode, win-condition card count), members see changes live, read-only
+Admin starts a game session within 30 minutes of group creation, or the group is deleted
+DJ and active player assigned for round 1
+DJ opens the real YouTube page (remote) or app (in-person)
+Other players hear the stream (remote) or the room (in-person), see game UI only
+Active player guesses; other players may bet after the guess locks
+DJ triggers reveal manually, once the betting window closes
+Backend scores the round, updates tokens
+Next round: active player rotates, DJ follows the group's fixed or rotating setting
+Game ends when a player completes their timeline, or the session is abandoned after 10 minutes with zero connected players
+A completed session's results become downloadable; an abandoned one produces none
+Group returns to its lobby state: admin starts another session within 30 minutes, or the group is deleted and every member removed
+```
+
+## What's built
+
+- Two-service split: Spring Boot core service (`backend/`) and Python/FastAPI AI microservice (`ai/`).
+- Multi-source metadata pipeline in the AI microservice, LLM synthesis with structured output through Pydantic; YouTube, MusicBrainz, Discogs, Wikidata, and Wikipedia are all live, each returning candidate data for the LLM synthesis step to reconcile (story 25). Genius, Last.fm, and iTunes were reviewed and dropped for good, not paused. The lock-before-LLM verification flow in the Metadata resolution flow section above is built (story 18): exact agreement among MusicBrainz, Discogs, and Wikidata locks the year to `VERIFIED` with no LLM call, disagreement routes through Wikipedia extraction and four-source reconciliation to `NEEDS_REVIEW`, and a total no-answer lands at `MANUAL_ENTRY`. A content-safety gate rejects prompt injection, non-music, and compilation submissions before the pipeline runs, returning `REJECTED` (story 41). The pipeline's source fetches run concurrently in a thread pool (story 24). The `Song` schema it writes to (`verificationStatus`, `confidence`, `metadataRaw`) has landed (story 23), as has pgvector-based duplicate detection before a song re-enters the pipeline at all (story 16).
+- Catalog seeding queue and user-facing bulk import (story 40): a patient admin backlog draining on a scheduled sweep and an immediate on-the-spot import path that never share a queue, a batch YouTube-ID lookup against the database as the cheap first step, the `AlternateYoutubeId` and `PendingImport` tables, the `ADMIN` role and `AdminAccessGuard`.
+- Spring Boot backend: auth, playlist CRUD, song CRUD, song search by link or keyword (story 14); a song's release year is edit-gated by `verificationStatus`, only `UNVERIFIED` and `MANUAL_ENTRY` songs stay editable (story 23). A song belongs to any number of playlists through a join table, not a single owning playlist (story 15). Playlist membership carries a real owner/admin, independently revocable per-member grants, kick versus ban, and a per-playlist join identity (story 46).
+- Group (story 39) and Game session (story 10) backends, synced in real time over WebSocket (story 11): lobby lifecycle, settings, membership, rounds, guesses, betting, scoring, and the two session-long leaderboards are all built server-side; each story's frontend-only tasks (drag-and-drop timeline placement, animated guess feedback, persistent connection across navigation, turn notification, the admin-crown indicator) are deferred to story 28's redesign implementation.
+- DJ real YouTube link-out backend (story 9): `GET /api/sessions/{sessionId}/link-out` returns the current round's video id and canonical watch URL to that round's DJ only, refused once the round is revealed. The DJ view, the "Open YouTube Link" action and its audio-sharing warning, WebRTC tab-audio capture, and the guess-lock-in audio cutoff are frontend, deferred to story 28.
+- Voice chat backend (story 12): STOMP signaling relay on `/app/groups/{groupId}/voice/signal`, voice-presence broadcast on join and leave, and a member-gated TURN-credentials endpoint returning STUN-only ICE servers until a real Cloudflare key is provisioned. The WebRTC mesh and all join/leave/mute UI are frontend, deferred to story 28.
+- Group-scoped text chat backend (story 13): `ChatMessage`/`chat_messages` (`V14`), member-only STOMP send and REST history, 500-character and 5-per-10-second limits, deletion cascade on group deletion. The chat overlay UI is deferred to story 28.
+- Community song reports and confirmations backend (story 17): `SongReport`/`SongConfirmation` entities with per-user-per-song uniqueness, submission endpoints, and an admin review queue ranked by a five-tier priority order reusing story 40's `AdminAccessGuard`. Report resolution stays manual. The report button, thumbs-up, and review-surface UI are deferred to story 28.
+- Playlist-to-playlist song import backend (story 45): a copy endpoint linking every song from a source playlist the requester can read into a target playlist they can write to, reusing story 15's join table; duplicates are skipped. The frontend picker is deferred to story 28.
+- Difficulty-tuned game session generation, backend slice (story 30): per-song aggregate difficulty scoring from real `Round` data, the three group-scoring strategies (easy protects the weakest player, hard averages, medium takes the median), sitelinks-based popularity weighting through a fallback seam pending the sitelinks column itself, and public playlists (`Playlist.isPublic`, owner-only publish/unpublish, a public-browse endpoint, and a `SavedPlaylist` save/unsave capability distinct from membership). The Difficulty-Based and Custom-mode session-start endpoints, persisting the sitelinks count on `Song`, and the personalized collaborative-filtering layer remain unbuilt, see below.
+- Rate limiting across both services' public-facing endpoints, including auth and the internal AI-microservice endpoint (story 27).
+- A separate analytics/event-store database for usage and event data, isolated from the transactional Postgres+pgvector instance (stories 33, 42, 43).
+- Privacy policy, terms of service, and a GDPR personal-data export endpoint (story 37); a cookie-consent notice stays deliberately out of scope until first-party analytics (story 34) ships.
+- Observability: Actuator/health/metrics endpoints on both services, OpenTelemetry tracing and logging and Prometheus metrics all shipping to a real Grafana Cloud account (via a Grafana Alloy container), Sentry error tracking wired to real projects for both services, and a request-id/correlation-id filter tying one user action's logs and trace together across both services (story 38); still open: no live dashboard import, no uptime monitoring (no production deployment exists yet), and no automated free-tier usage-limit check.
+- A dedicated `TEST` role and seeded test-account fixture, gated off in a Production environment (story 44).
+- Open-source collaboration files: `CONTRIBUTING.md`, `LICENSE`, `CODE_OF_CONDUCT.md`, issue/PR templates (story 36).
+- Next.js frontend with AI-assisted song submission, deployed on Vercel.
+- PDF/QR card generation, paper-size-aware (A4/Letter) page layout.
+- OAuth2 + JWT auth.
+
+## Not yet built
+
+Hosting migration (story 7), database migration (story 8), the UI redesign's implementation phase (story 28, design phase itself is done), story 30's Difficulty-Based and Custom-mode session-start endpoints and the sitelinks count itself (the scoring/selection core and public playlists are already built, see above), first-party usage analytics (story 34), public ground-truth data API (story 35), naming consistency (story 49), comment cleanup (story 48), test coverage (story 22). The frontend for every backend-only story above (9, 10, 11, 12, 13, 14, 17, 39, 40, 41, 45, 46, and the rest) is also not yet built; all of it lives in story 28's implementation phase per `TASKS.md`'s standing policy.

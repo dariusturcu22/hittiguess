@@ -1,0 +1,149 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bungee&family=Space+Grotesk:wght@500;600;700&display=swap">
+  <style>
+    body { margin: 0; }
+    a { color: #cdd6f4; }
+    .lbl { font-size: 13px; letter-spacing: 1.5px; text-transform: uppercase; color: #6c7086; margin-bottom: 20px; }
+    .toast { display: flex; align-items: center; gap: 10px; background: #313244; border: 2px solid #45475a; border-radius: 16px; padding: 10px 16px; box-shadow: 4px 4px 0 rgba(0,0,0,0.35); box-sizing: border-box; width: 250px; }
+    .toast-icon { width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; box-sizing: border-box; }
+    .toast-title { font-weight: 700; font-size: 12px; color: #cdd6f4; }
+    .toast-sub { font-size: 10px; color: #a6adc8; margin-top: 1px; }
+    .navicon-demo { width: 46px; height: 46px; border-radius: 14px; background: #1e1e2e; border: 2px solid #313244; display: flex; align-items: center; justify-content: center; position: relative; flex-shrink: 0; }
+    .count-badge { position: absolute; top: -6px; right: -6px; min-width: 20px; height: 20px; border-radius: 100px; background: #e78284; border: 3px solid #313244; box-sizing: border-box; display: flex; align-items: center; justify-content: center; font-family: 'Bungee', sans-serif; font-size: 9px; color: #1e1e2e; padding: 0 3px; }
+    .dot-badge { position: absolute; top: 2px; right: 2px; width: 11px; height: 11px; border-radius: 50%; background: #89b4fa; border: 3px solid #313244; box-sizing: border-box; }
+    .badge-slot { display: flex; flex-direction: column; align-items: center; gap: 12px; }
+    .badge-caption { font-size: 10.5px; color: #a6adc8; text-align: center; }
+    .banner { display: flex; align-items: center; gap: 12px; border-radius: 14px; padding: 13px 20px; box-sizing: border-box; font-size: 12.5px; font-weight: 600; }
+  </style>
+</helmet>
+<div style="width: 1180px; background: #dce0e8; font-family: 'Space Grotesk', sans-serif; box-sizing: border-box; padding: 44px; display: flex; flex-direction: column; gap: 32px;">
+
+  <div style="background: #1e1e2e; border-radius: 24px; padding: 40px; color: #cdd6f4;">
+    <div class="lbl">Toast notifications, by type. Same shape and corner, color and icon carry the meaning.</div>
+    <div style="display: flex; gap: 24px; flex-wrap: wrap;">
+
+      <div class="toast">
+        <div class="toast-icon" style="background: rgba(166,227,161,0.16);">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#a6e3a1" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+        </div>
+        <div>
+          <div class="toast-title">Mara guessed the artist</div>
+          <div class="toast-sub">One artist down, more to find</div>
+        </div>
+      </div>
+
+      <div class="toast">
+        <div class="toast-icon" style="background: rgba(137,180,250,0.16);">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#89b4fa" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="16" x2="12" y2="11"></line><line x1="12" y1="7.5" x2="12" y2="7.5"></line><circle cx="12" cy="12" r="9"></circle></svg>
+        </div>
+        <div>
+          <div class="toast-title">Theo joined the lobby</div>
+          <div class="toast-sub">5 players ready to start</div>
+        </div>
+      </div>
+
+      <div class="toast">
+        <div class="toast-icon" style="background: rgba(250,179,135,0.16);">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fab387" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l10 17H2z"></path><line x1="12" y1="10" x2="12" y2="14"></line><line x1="12" y1="17.3" x2="12" y2="17.3"></line></svg>
+        </div>
+        <div>
+          <div class="toast-title">Betting closes in 5s</div>
+          <div class="toast-sub">Place your token now</div>
+        </div>
+      </div>
+
+      <div class="toast">
+        <div class="toast-icon" style="background: rgba(231,130,132,0.16);">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#e78284" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="6" y1="6" x2="18" y2="18"></line><line x1="18" y1="6" x2="6" y2="18"></line></svg>
+        </div>
+        <div>
+          <div class="toast-title">Connection lost</div>
+          <div class="toast-sub">Reconnecting to the session</div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <div style="background: #1e1e2e; border-radius: 24px; padding: 40px; color: #cdd6f4;">
+    <div class="lbl">Badge counts, on a sidebar icon. Plain dot for unread, number for a count, capped past two digits.</div>
+    <div style="display: flex; gap: 48px;">
+
+      <div class="badge-slot">
+        <div class="navicon-demo">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#6c7086" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+          <div class="dot-badge"></div>
+        </div>
+        <div class="badge-caption">Unread, no count</div>
+      </div>
+
+      <div class="badge-slot">
+        <div class="navicon-demo">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#6c7086" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+          <div class="count-badge">1</div>
+        </div>
+        <div class="badge-caption">Single digit</div>
+      </div>
+
+      <div class="badge-slot">
+        <div class="navicon-demo">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#6c7086" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+          <div class="count-badge">12</div>
+        </div>
+        <div class="badge-caption">Double digit</div>
+      </div>
+
+      <div class="badge-slot">
+        <div class="navicon-demo">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#6c7086" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+          <div class="count-badge">99+</div>
+        </div>
+        <div class="badge-caption">Capped count</div>
+      </div>
+
+      <div class="badge-slot">
+        <div class="navicon-demo">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#6c7086" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="6" x2="13" y2="6"></line><line x1="4" y1="12" x2="13" y2="12"></line><line x1="4" y1="18" x2="9" y2="18"></line><circle cx="18" cy="16" r="2.3"></circle><path d="M20.3 16V6.5l-2.8 1"></path></svg>
+        </div>
+        <div class="badge-caption">No activity, no badge</div>
+      </div>
+
+    </div>
+  </div>
+
+  <div style="background: #1e1e2e; border-radius: 24px; padding: 40px; color: #cdd6f4;">
+    <div class="lbl">Inline banners, full width. For a state the whole screen needs to know about, not just one player.</div>
+    <div style="display: flex; flex-direction: column; gap: 14px;">
+
+      <div class="banner" style="background: rgba(137,180,250,0.12); border: 2px solid rgba(137,180,250,0.4); color: #89b4fa;">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#89b4fa" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0;"><line x1="12" y1="16" x2="12" y2="11"></line><line x1="12" y1="7.5" x2="12" y2="7.5"></line><circle cx="12" cy="12" r="9"></circle></svg>
+        Waiting for 2 more players before the round starts
+      </div>
+
+      <div class="banner" style="background: rgba(250,179,135,0.12); border: 2px solid rgba(250,179,135,0.4); color: #fab387;">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fab387" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0;"><path d="M12 3l10 17H2z"></path><line x1="12" y1="10" x2="12" y2="14"></line><line x1="12" y1="17.3" x2="12" y2="17.3"></line></svg>
+        Darius's connection is unstable, the round may pause
+      </div>
+
+    </div>
+  </div>
+
+  <div style="font-size: 14px; color: #4c4f69; max-width: 940px; line-height: 1.6;">
+    Toasts are per-player and self-dismiss, pinned top right, always a colored circular icon plus a title and one line of context, never just a color with no words. Sidebar badges follow the same red-for-attention rule as a toast's error state, but drop to a plain dot once the exact count stops mattering, and disappear entirely rather than show a zero. Banners are the one notification type that speaks to everyone in the session at once, so they sit full width in the content column rather than floating in a corner.
+  </div>
+
+</div>
+</x-dc>
+<script data-dc-script data-props='{}'>
+class Component extends DCLogic {}
+</script>
+</body>
+</html>

@@ -1,0 +1,39 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bungee&family=Baloo+2:wght@700;800&family=Space+Grotesk:wght@400;500;600;700&display=swap">
+  <style>
+    .btn-primary { font-family: 'Bungee', sans-serif; font-size: 13px; color: #ffffff; background: #ed6f27; padding: 12px 24px; border-radius: 100px; box-shadow: 4px 4px 0 rgba(76,79,105,0.3); box-sizing: border-box; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; border: none; width: 100%; }
+  </style>
+</helmet>
+<div style="width: 600px; height: 400px; box-sizing: border-box; background: #eff1f5; background-image: radial-gradient(circle, rgba(76,79,105,0.2) 1.5px, transparent 1.5px); background-size: 22px 22px; position: relative; font-family: 'Space Grotesk', sans-serif;">
+  <div style="position: absolute; right: 40px; bottom: 40px; width: 310px; box-sizing: border-box; background: #ffffff; border: 3px solid #4c4f69; border-radius: 16px; box-shadow: 6px 6px 0 rgba(76,79,105,0.25); padding: 20px;">
+    <div style="display: flex; align-items: center; gap: 8px;">
+      <div style="width: 10px; height: 10px; border-radius: 50%; background: #499f36; box-shadow: 0 0 0 4px rgba(73,159,54,0.2);"></div>
+      <span style="font-weight: 700; font-size: 13px; color: #4c4f69;">Game in progress</span>
+    </div>
+    <div style="margin-top: 12px; font-size: 13px; color: #5c5f77;">Theo is placing a card</div>
+    <div style="margin-top: 10px; display: flex; align-items: center; gap: 8px;">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#3772e6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"></circle><polyline points="12 7 12 12 15 14"></polyline></svg>
+      <span style="font-family: 'Bungee', sans-serif; font-size: 13px; color: #3772e6;">0:24</span>
+    </div>
+    <div style="margin-top: 16px;">
+      <div class="btn-primary">
+        Return to game
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+      </div>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script data-dc-script data-props='{}'>
+class Component extends DCLogic {}
+</script>
+</body>
+</html>

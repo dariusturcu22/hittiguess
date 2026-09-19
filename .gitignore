@@ -1,8 +1,21 @@
 # --- IDEs ---
 .idea/
 .vscode/
+.obsidian/
 *.swp
 *.iml
+
+# --- Local tooling overrides ---
+Makefile.local
+
+# --- Local LLM binaries and model weights (story 20 spike) ---
+ai/local-llm/
+
+# --- Local runtime state for spike scripts ---
+ai/spikes/.youtube_quota_state.json
+ai/spikes/.source_response_cache_*.json
+ai/spikes/.llm_combo_results_*.json
+ai/spikes/.mainstream_wikipedia_extraction.json
 
 # --- Environment Secrets ---
 .env
@@ -14,11 +27,9 @@
 # --- Backend (Spring Boot / Java) ---
 backend/target/
 backend/build/
-backend/.mvn/
-backend/mvnw
-backend/mvnw.cmd
 *.class
 *.jar
+!backend/.mvn/wrapper/maven-wrapper.jar
 *.war
 
 # --- Mobile (Flutter) ---

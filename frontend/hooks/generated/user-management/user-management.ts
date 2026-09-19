@@ -24,8 +24,11 @@ import type {
 } from '@tanstack/react-query';
 
 import type {
+  JoinPlaylistRequest,
+  PersonalDataExportDTO,
   PlaylistDetailDTO,
   PlaylistSummaryDTO,
+  PublicPlaylistSummaryDTO,
   UpdateUserRequest,
   UserDetailDTO
 } from '../../models';
@@ -192,16 +195,19 @@ export const useCreatePlaylist = <TError = unknown,
       return useMutation(mutationOptions, queryClient);
     }
     /**
- * @summary Join an existing playlist
+ * @summary Join an existing playlist, optionally with a per-playlist display name and avatar
  */
 export const joinPlaylist = (
     playlistInviteCode: string,
+    joinPlaylistRequest: JoinPlaylistRequest,
  options?: SecondParameter<typeof customInstance>,signal?: AbortSignal
 ) => {
       
       
       return customInstance<PlaylistSummaryDTO>(
-      {url: `/api/users/me/playlists/${playlistInviteCode}`, method: 'POST', signal
+      {url: `/api/users/me/playlists/${playlistInviteCode}`, method: 'POST',
+      headers: {'Content-Type': 'application/json', },
+      data: joinPlaylistRequest, signal
     },
       options);
     }
@@ -209,8 +215,8 @@ export const joinPlaylist = (
 
 
 export const getJoinPlaylistMutationOptions = <TError = unknown,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof joinPlaylist>>, TError,{playlistInviteCode: string}, TContext>, request?: SecondParameter<typeof customInstance>}
-): UseMutationOptions<Awaited<ReturnType<typeof joinPlaylist>>, TError,{playlistInviteCode: string}, TContext> => {
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof joinPlaylist>>, TError,{playlistInviteCode: string;data: JoinPlaylistRequest}, TContext>, request?: SecondParameter<typeof customInstance>}
+): UseMutationOptions<Awaited<ReturnType<typeof joinPlaylist>>, TError,{playlistInviteCode: string;data: JoinPlaylistRequest}, TContext> => {
 
 const mutationKey = ['joinPlaylist'];
 const {mutation: mutationOptions, request: requestOptions} = options ?
@@ -222,10 +228,10 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
       
 
 
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof joinPlaylist>>, {playlistInviteCode: string}> = (props) => {
-          const {playlistInviteCode} = props ?? {};
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof joinPlaylist>>, {playlistInviteCode: string;data: JoinPlaylistRequest}> = (props) => {
+          const {playlistInviteCode,data} = props ?? {};
 
-          return  joinPlaylist(playlistInviteCode,requestOptions)
+          return  joinPlaylist(playlistInviteCode,data,requestOptions)
         }
 
         
@@ -234,18 +240,18 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
   return  { mutationFn, ...mutationOptions }}
 
     export type JoinPlaylistMutationResult = NonNullable<Awaited<ReturnType<typeof joinPlaylist>>>
-    
+    export type JoinPlaylistMutationBody = JoinPlaylistRequest
     export type JoinPlaylistMutationError = unknown
 
     /**
- * @summary Join an existing playlist
+ * @summary Join an existing playlist, optionally with a per-playlist display name and avatar
  */
 export const useJoinPlaylist = <TError = unknown,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof joinPlaylist>>, TError,{playlistInviteCode: string}, TContext>, request?: SecondParameter<typeof customInstance>}
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof joinPlaylist>>, TError,{playlistInviteCode: string;data: JoinPlaylistRequest}, TContext>, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof joinPlaylist>>,
         TError,
-        {playlistInviteCode: string},
+        {playlistInviteCode: string;data: JoinPlaylistRequest},
         TContext
       > => {
 
@@ -550,6 +556,190 @@ export function useGetUser<TData = Awaited<ReturnType<typeof getUser>>, TError =
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
   const queryOptions = getGetUserQueryOptions(userId,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  query.queryKey = queryOptions.queryKey ;
+
+  return query;
+}
+
+
+
+
+/**
+ * @summary Get the current user's saved public playlists
+ */
+export const getSavedPlaylists = (
+    
+ options?: SecondParameter<typeof customInstance>,signal?: AbortSignal
+) => {
+      
+      
+      return customInstance<PublicPlaylistSummaryDTO[]>(
+      {url: `/api/users/me/saved-playlists`, method: 'GET', signal
+    },
+      options);
+    }
+  
+
+
+
+export const getGetSavedPlaylistsQueryKey = () => {
+    return [
+    `/api/users/me/saved-playlists`
+    ] as const;
+    }
+
+    
+export const getGetSavedPlaylistsQueryOptions = <TData = Awaited<ReturnType<typeof getSavedPlaylists>>, TError = unknown>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getSavedPlaylists>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetSavedPlaylistsQueryKey();
+
+  
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getSavedPlaylists>>> = ({ signal }) => getSavedPlaylists(requestOptions, signal);
+
+      
+
+      
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getSavedPlaylists>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetSavedPlaylistsQueryResult = NonNullable<Awaited<ReturnType<typeof getSavedPlaylists>>>
+export type GetSavedPlaylistsQueryError = unknown
+
+
+export function useGetSavedPlaylists<TData = Awaited<ReturnType<typeof getSavedPlaylists>>, TError = unknown>(
+  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getSavedPlaylists>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getSavedPlaylists>>,
+          TError,
+          Awaited<ReturnType<typeof getSavedPlaylists>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetSavedPlaylists<TData = Awaited<ReturnType<typeof getSavedPlaylists>>, TError = unknown>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getSavedPlaylists>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getSavedPlaylists>>,
+          TError,
+          Awaited<ReturnType<typeof getSavedPlaylists>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetSavedPlaylists<TData = Awaited<ReturnType<typeof getSavedPlaylists>>, TError = unknown>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getSavedPlaylists>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary Get the current user's saved public playlists
+ */
+
+export function useGetSavedPlaylists<TData = Awaited<ReturnType<typeof getSavedPlaylists>>, TError = unknown>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getSavedPlaylists>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient 
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetSavedPlaylistsQueryOptions(options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  query.queryKey = queryOptions.queryKey ;
+
+  return query;
+}
+
+
+
+
+/**
+ * @summary Export the current user's own account, playlist, and song data for GDPR purposes
+ */
+export const exportPersonalData = (
+    
+ options?: SecondParameter<typeof customInstance>,signal?: AbortSignal
+) => {
+      
+      
+      return customInstance<PersonalDataExportDTO>(
+      {url: `/api/users/me/export`, method: 'GET', signal
+    },
+      options);
+    }
+  
+
+
+
+export const getExportPersonalDataQueryKey = () => {
+    return [
+    `/api/users/me/export`
+    ] as const;
+    }
+
+    
+export const getExportPersonalDataQueryOptions = <TData = Awaited<ReturnType<typeof exportPersonalData>>, TError = unknown>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof exportPersonalData>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getExportPersonalDataQueryKey();
+
+  
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof exportPersonalData>>> = ({ signal }) => exportPersonalData(requestOptions, signal);
+
+      
+
+      
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof exportPersonalData>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type ExportPersonalDataQueryResult = NonNullable<Awaited<ReturnType<typeof exportPersonalData>>>
+export type ExportPersonalDataQueryError = unknown
+
+
+export function useExportPersonalData<TData = Awaited<ReturnType<typeof exportPersonalData>>, TError = unknown>(
+  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof exportPersonalData>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof exportPersonalData>>,
+          TError,
+          Awaited<ReturnType<typeof exportPersonalData>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useExportPersonalData<TData = Awaited<ReturnType<typeof exportPersonalData>>, TError = unknown>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof exportPersonalData>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof exportPersonalData>>,
+          TError,
+          Awaited<ReturnType<typeof exportPersonalData>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useExportPersonalData<TData = Awaited<ReturnType<typeof exportPersonalData>>, TError = unknown>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof exportPersonalData>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary Export the current user's own account, playlist, and song data for GDPR purposes
+ */
+
+export function useExportPersonalData<TData = Awaited<ReturnType<typeof exportPersonalData>>, TError = unknown>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof exportPersonalData>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient 
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getExportPersonalDataQueryOptions(options)
 
   const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 

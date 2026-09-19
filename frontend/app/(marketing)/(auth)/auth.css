@@ -1,0 +1,22 @@
+.auth-surface { line-height: normal; }
+.auth-surface > .theme-toggle { position: absolute; }
+.auth-surface h1 { line-height: 1.1; }
+.auth-surface h1 + p { font-size: 13px; }
+.auth-surface input { line-height: normal; }
+.auth-surface .auth-submit {
+  min-height: 54px;
+  padding: 0;
+  font-size: 15px;
+  line-height: normal;
+  letter-spacing: normal;
+}
+.auth-surface .auth-google {
+  min-height: 54px;
+  padding: 0;
+  gap: 10px;
+  background: #fff;
+  color: var(--foreground);
+  line-height: normal;
+  letter-spacing: normal;
+}
+.dark .auth-surface .auth-google { background: #eff1f5; color: #11111b; }

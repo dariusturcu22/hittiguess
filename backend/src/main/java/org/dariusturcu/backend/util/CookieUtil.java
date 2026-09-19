@@ -11,6 +11,9 @@ import java.util.Optional;
 
 @Component
 public class CookieUtil {
+    public static final String SESSION_HINT_COOKIE_NAME = "session_hint";
+    private static final String SESSION_HINT_COOKIE_VALUE = "1";
+
     @Value("${app.env}")
     private String appEnv;
 
@@ -37,6 +40,16 @@ public class CookieUtil {
 
     public ResponseCookie createRefreshTokenCookie(String token, long maxAgeSeconds) {
         return createCookie(token, maxAgeSeconds, "refresh_token", "/auth/refresh");
+    }
+
+    // refresh_token itself is scoped to /auth/refresh so it's only ever sent
+    // where it's needed, which also keeps it invisible to Next.js's proxy
+    // middleware on ordinary route requests. This cookie mirrors the
+    // refresh token's lifetime at Path=/ purely so the middleware has
+    // something to check for an active session; it carries no credential
+    // value of its own.
+    public ResponseCookie createSessionHintCookie(long maxAgeSeconds) {
+        return createCookie(SESSION_HINT_COOKIE_VALUE, maxAgeSeconds, SESSION_HINT_COOKIE_NAME, "/");
     }
 
     public ResponseCookie deleteCookie(String name, String path) {

@@ -2,11 +2,15 @@ package org.dariusturcu.backend.controller;
 
 
 import jakarta.validation.Valid;
+import org.dariusturcu.backend.model.playlist.JoinPlaylistRequest;
 import org.dariusturcu.backend.model.playlist.PlaylistDetailDTO;
 import org.dariusturcu.backend.model.playlist.PlaylistSummaryDTO;
+import org.dariusturcu.backend.model.playlist.PublicPlaylistSummaryDTO;
+import org.dariusturcu.backend.model.user.PersonalDataExportDTO;
 import org.dariusturcu.backend.model.user.UpdateUserRequest;
 import org.dariusturcu.backend.model.user.UserDetailDTO;
 import org.dariusturcu.backend.model.user.UserSummaryDTO;
+import org.dariusturcu.backend.service.PersonalDataExportService;
 import org.dariusturcu.backend.service.UserService;
 
 import org.springframework.http.HttpStatus;
@@ -25,12 +29,20 @@ import java.util.List;
 
 public class UserController {
     private final UserService userService;
+    private final PersonalDataExportService personalDataExportService;
 
     @Operation(summary = "Get current user information")
     @GetMapping("/me")
     public ResponseEntity<UserDetailDTO> getCurrentUser() {
         UserDetailDTO user = userService.getCurrentUser();
         return ResponseEntity.ok(user);
+    }
+
+    @Operation(summary = "Export the current user's own account, playlist, and song data for GDPR purposes")
+    @GetMapping("/me/export")
+    public ResponseEntity<PersonalDataExportDTO> exportPersonalData() {
+        PersonalDataExportDTO export = personalDataExportService.exportCurrentUser();
+        return ResponseEntity.ok(export);
     }
 
     @Operation(summary = "Get user information by ID")
@@ -70,11 +82,19 @@ public class UserController {
         return ResponseEntity.ok(userPlaylists);
     }
 
-    @Operation(summary = "Join an existing playlist")
+    @Operation(summary = "Get the current user's saved public playlists")
+    @GetMapping("/me/saved-playlists")
+    public ResponseEntity<List<PublicPlaylistSummaryDTO>> getSavedPlaylists() {
+        List<PublicPlaylistSummaryDTO> savedPlaylists = userService.getSavedPlaylists();
+        return ResponseEntity.ok(savedPlaylists);
+    }
+
+    @Operation(summary = "Join an existing playlist, optionally with a per-playlist display name and avatar")
     @PostMapping("/me/playlists/{playlistInviteCode}")
     public ResponseEntity<PlaylistSummaryDTO> joinPlaylist(
-            @PathVariable String playlistInviteCode) {
-        PlaylistSummaryDTO joinedPlaylist = userService.joinPlaylist(playlistInviteCode);
+            @PathVariable String playlistInviteCode,
+            @RequestBody(required = false) JoinPlaylistRequest request) {
+        PlaylistSummaryDTO joinedPlaylist = userService.joinPlaylist(playlistInviteCode, request);
         return ResponseEntity.ok(joinedPlaylist);
     }
 

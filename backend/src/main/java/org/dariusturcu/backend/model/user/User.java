@@ -1,13 +1,8 @@
 package org.dariusturcu.backend.model.user;
 
-import org.dariusturcu.backend.model.playlist.Playlist;
-
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
-
-import java.util.HashSet;
-import java.util.Set;
 
 @Entity
 @Getter
@@ -36,11 +31,14 @@ public class User {
     @Enumerated(EnumType.STRING)
     private Role role;
 
-    @ManyToMany(fetch = FetchType.EAGER)
-    @JoinTable(
-            name = "user_playlists",
-            joinColumns = @JoinColumn(name = "user_id"),
-            inverseJoinColumns = @JoinColumn(name = "playlist_id")
-    )
-    private Set<Playlist> playlists = new HashSet<>();
+    @Column(nullable = false)
+    private boolean emailVerified = false;
+
+    // Holds the pending secret from /auth/2fa/setup before twoFactorEnabled flips true on
+    // /auth/2fa/confirm, and the confirmed secret afterward. Never returned by any DTO. See
+    // DECISIONS.md for why this is a plain column rather than encrypted at rest.
+    private String totpSecret;
+
+    @Column(nullable = false)
+    private boolean twoFactorEnabled = false;
 }

@@ -7,5 +7,6 @@
 
 export interface UpdatePlaylistRequest {
   name?: string;
+  /** @pattern (?i)^(cba6f7|fab387|a6e3a1|89b4fa|f5c2e7|f9e2af)$ */
   color?: string;
 }

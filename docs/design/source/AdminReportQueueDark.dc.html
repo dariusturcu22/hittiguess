@@ -1,0 +1,206 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bungee&family=Baloo+2:wght@700;800&family=Space+Grotesk:wght@400;500;600;700&display=swap">
+  <style>
+    body { margin: 0; }
+    .navicon { width: 46px; height: 46px; border-radius: 14px; display: flex; align-items: center; justify-content: center; cursor: pointer; color: #6c7086; }
+    .navicon.admin-active { background: rgba(231,130,132,0.18); color: #e78284; box-shadow: 0 0 0 2px #e78284; }
+    .divider { width: 32px; height: 2px; background: #313244; border-radius: 2px; margin: 14px auto; flex-shrink: 0; }
+    .tier-chip { font-family: 'Bungee', sans-serif; font-size: 9px; padding: 4px 9px; border-radius: 100px; white-space: nowrap; flex-shrink: 0; }
+    .queue-row { display: flex; align-items: center; gap: 14px; padding: 13px 18px; border-bottom: 2px solid #1e1e2e; cursor: pointer; }
+    .queue-row:last-child { border-bottom: none; }
+    .queue-row.selected { background: rgba(203,166,247,0.1); }
+    .custom-scroll::-webkit-scrollbar { width: 8px; }
+    .custom-scroll::-webkit-scrollbar-track { background: transparent; }
+    .custom-scroll::-webkit-scrollbar-thumb { background: #45475a; border-radius: 100px; }
+    .custom-scroll::-webkit-scrollbar-thumb:hover { background: #6c7086; }
+    .signal-row { display: flex; align-items: center; justify-content: space-between; padding: 9px 0; border-bottom: 1px solid #45475a; font-size: 12.5px; }
+    .signal-row:last-child { border-bottom: none; }
+    .field-label { font-size: 11px; font-weight: 600; color: #a6adc8; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; display: block; }
+    .field-input { width: 100%; box-sizing: border-box; background: #1e1e2e; border: 2px solid #45475a; border-radius: 13px; padding: 12px 14px; font-family: 'Space Grotesk', sans-serif; font-size: 14px; color: #cdd6f4; }
+    .field-select { width: 100%; box-sizing: border-box; background: #1e1e2e; border: 2px solid #45475a; border-radius: 13px; padding: 12px 14px; font-family: 'Space Grotesk', sans-serif; font-weight: 600; font-size: 14px; color: #cdd6f4; }
+    .btn-primary { font-family: 'Bungee', sans-serif; font-size: 13px; color: #1e1e2e; background: #fab387; padding: 13px 0; border-radius: 100px; box-shadow: 4px 4px 0 rgba(0,0,0,0.4); box-sizing: border-box; cursor: pointer; text-align: center; }
+  </style>
+</helmet>
+<div style="width: 1440px; height: 900px; background: #1e1e2e; font-family: 'Space Grotesk', sans-serif; box-sizing: border-box; color: #cdd6f4; display: flex; overflow: hidden; position: relative;">
+
+  <div style="width: 76px; flex-shrink: 0; background: #11111b; display: flex; flex-direction: column; align-items: center; padding: 20px 0; box-sizing: border-box; border-right: 3px solid #313244;">
+    <div style="display: flex; align-items: center; gap: 2px; height: 22px;">
+      <div style="background: #a6e3a1; width: 5px; height: 10px; border-radius: 100px;"></div>
+      <div style="background: #a6e3a1; width: 5px; height: 20px; border-radius: 100px;"></div>
+      <div style="background: #a6e3a1; width: 5px; height: 14px; border-radius: 100px;"></div>
+      <div style="background: #a6e3a1; width: 5px; height: 22px; border-radius: 100px;"></div>
+    </div>
+    <div class="divider"></div>
+    <div class="navicon" title="Play / start a session">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="#cdd6f4"><path d="M8 5v14l11-7z"></path></svg>
+    </div>
+    <div class="divider"></div>
+    <div style="display: flex; flex-direction: column; gap: 14px;">
+      <div class="navicon" title="Your playlists">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="6" x2="13" y2="6"></line><line x1="4" y1="12" x2="13" y2="12"></line><line x1="4" y1="18" x2="9" y2="18"></line><circle cx="18" cy="16" r="2.3"></circle><path d="M20.3 16V6.5l-2.8 1"></path></svg>
+      </div>
+      <div class="navicon" title="Explore public playlists">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"></circle><polygon points="15.5 8.5 13 13 8.5 15.5 11 11" fill="currentColor" stroke-linejoin="round"></polygon></svg>
+      </div>
+    </div>
+    <div class="divider"></div>
+    <div class="navicon" title="Group lobby">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+    </div>
+    <div class="divider"></div>
+    <div class="navicon admin-active" title="Admin: report review queue">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l8 4v6c0 5-3.5 8.5-8 10-4.5-1.5-8-5-8-10V6l8-4z"></path></svg>
+    </div>
+    <div style="flex: 1;"></div>
+    <div class="navicon" title="Theme">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
+    </div>
+    <div style="height: 16px;"></div>
+    <div style="width: 44px; height: 44px; border-radius: 50%; background: #fab387; border: 2px solid #313244; display: flex; align-items: center; justify-content: center; font-family: 'Bungee', sans-serif; font-size: 16px; color: #11111b; cursor: pointer;">D</div>
+  </div>
+
+  <div style="flex: 1; min-width: 0; box-sizing: border-box; background-image: radial-gradient(circle, rgba(108,112,134,0.25) 1.5px, transparent 1.5px); background-size: 22px 22px; padding: 44px 56px 40px; display: flex; flex-direction: column;">
+
+    <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 4px;">
+      <div style="font-family: 'Bungee', sans-serif; font-size: 30px; color: #cba6f7; text-shadow: 3px 3px 0 #313244;">Report review queue</div>
+      <div style="display: inline-flex; align-items: center; gap: 5px; background: rgba(231,130,132,0.16); color: #e78284; font-family: 'Bungee', sans-serif; font-size: 10px; padding: 5px 11px; border-radius: 100px;">ADMIN</div>
+    </div>
+    <div style="font-size: 13px; color: #a6adc8; margin-bottom: 24px;">Ranked by priority, not submission time. Every resolution is a manual call, nothing here auto-applies a suggested year.</div>
+
+    <div style="display: flex; gap: 24px; flex: 1; min-height: 0;">
+
+      <div style="width: 500px; flex-shrink: 0; background: #313244; border: 3px solid #11111b; border-radius: 16px; box-shadow: 6px 6px 0 rgba(0,0,0,0.4); box-sizing: border-box; overflow: hidden; display: flex; flex-direction: column;">
+        <div class="custom-scroll" style="flex: 1; min-height: 0; overflow-y: auto;">
+
+          <div class="queue-row selected">
+            <div class="tier-chip" style="background: rgba(231,130,132,0.2); color: #e78284;">CONVERGING</div>
+            <div style="flex: 1; min-width: 0;">
+              <div style="font-size: 14px; color: #cdd6f4;">Blue Monday</div>
+              <div style="font-size: 12px; color: #a6adc8; margin-top: 2px;">New Order &nbsp;&middot;&nbsp; currently 1983, VERIFIED</div>
+            </div>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6c7086" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+          </div>
+
+          <div class="queue-row">
+            <div class="tier-chip" style="background: rgba(231,130,132,0.2); color: #e78284;">CONVERGING</div>
+            <div style="flex: 1; min-width: 0;">
+              <div style="font-size: 14px; color: #cdd6f4;">Sabotage</div>
+              <div style="font-size: 12px; color: #a6adc8; margin-top: 2px;">Beastie Boys &nbsp;&middot;&nbsp; currently 1994, NEEDS_REVIEW</div>
+            </div>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6c7086" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+          </div>
+
+          <div class="queue-row">
+            <div class="tier-chip" style="background: rgba(250,179,135,0.2); color: #fab387;">REPORTED</div>
+            <div style="flex: 1; min-width: 0;">
+              <div style="font-size: 14px; color: #cdd6f4;">Silver Springs</div>
+              <div style="font-size: 12px; color: #a6adc8; margin-top: 2px;">Fleetwood Mac &nbsp;&middot;&nbsp; currently 1976, MANUAL_ENTRY</div>
+            </div>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6c7086" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+          </div>
+
+          <div class="queue-row">
+            <div class="tier-chip" style="background: rgba(250,179,135,0.2); color: #fab387;">REPORTED</div>
+            <div style="flex: 1; min-width: 0;">
+              <div style="font-size: 14px; color: #cdd6f4;">Windowlicker</div>
+              <div style="font-size: 12px; color: #a6adc8; margin-top: 2px;">Aphex Twin &nbsp;&middot;&nbsp; currently 1999, NEEDS_REVIEW</div>
+            </div>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6c7086" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+          </div>
+
+          <div class="queue-row">
+            <div class="tier-chip" style="background: rgba(137,180,250,0.2); color: #89b4fa;">CONFIRMED</div>
+            <div style="flex: 1; min-width: 0;">
+              <div style="font-size: 14px; color: #cdd6f4;">Roygbiv</div>
+              <div style="font-size: 12px; color: #a6adc8; margin-top: 2px;">Boards of Canada &nbsp;&middot;&nbsp; currently 1998, NEEDS_REVIEW</div>
+            </div>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6c7086" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+          </div>
+
+          <div class="queue-row">
+            <div class="tier-chip" style="background: rgba(69,71,90,0.7); color: #a6adc8;">UNCONFIRMED</div>
+            <div style="flex: 1; min-width: 0;">
+              <div style="font-size: 14px; color: #cdd6f4;">Mor De Ochii Tai</div>
+              <div style="font-size: 12px; color: #a6adc8; margin-top: 2px;">Fly Project &nbsp;&middot;&nbsp; currently 2011, MANUAL_ENTRY</div>
+            </div>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6c7086" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+          </div>
+
+          <div class="queue-row">
+            <div class="tier-chip" style="background: rgba(69,71,90,0.7); color: #a6adc8;">UNCONFIRMED</div>
+            <div style="flex: 1; min-width: 0;">
+              <div style="font-size: 14px; color: #cdd6f4;">Aurore Boreale</div>
+              <div style="font-size: 12px; color: #a6adc8; margin-top: 2px;">Lewis OfMan &nbsp;&middot;&nbsp; currently 2019, NEEDS_REVIEW</div>
+            </div>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6c7086" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+          </div>
+
+        </div>
+      </div>
+
+      <div style="flex: 1; min-width: 0; background: #313244; border: 3px solid #11111b; border-radius: 16px; box-shadow: 6px 6px 0 rgba(0,0,0,0.4); box-sizing: border-box; padding: 26px 30px; overflow-y: auto;">
+
+        <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 4px;">
+          <div style="font-family: 'Bungee', sans-serif; font-size: 22px; color: #cdd6f4;">Blue Monday</div>
+          <div class="tier-chip" style="background: rgba(231,130,132,0.2); color: #e78284;">CONVERGING</div>
+        </div>
+        <div style="font-size: 13px; color: #a6adc8; margin-bottom: 22px;">New Order &nbsp;&middot;&nbsp; currently locked at 1983, VERIFIED</div>
+
+        <div style="background: #1e1e2e; border-radius: 13px; padding: 16px 20px; margin-bottom: 22px;">
+          <div class="signal-row">
+            <span style="color: #a6adc8;">Reports</span>
+            <span style="font-weight: 700; color: #cdd6f4;">3</span>
+          </div>
+          <div class="signal-row">
+            <span style="color: #a6adc8;">Convergence</span>
+            <span style="font-weight: 700; color: #a6e3a1;">2 of 3 agree on 1982</span>
+          </div>
+          <div class="signal-row">
+            <span style="color: #a6adc8;">Community confirmations</span>
+            <span style="font-weight: 700; color: #cdd6f4;">None yet</span>
+          </div>
+        </div>
+
+        <div style="font-size: 13px; color: #cdd6f4; line-height: 1.7; margin-bottom: 22px;">
+          <strong>Latest report:</strong> "The 12&Prime; single released in March 1983, but it was already played on the John Peel show and pressed as a promo in late 1982. Discogs lists the promo pressing as 1982."
+        </div>
+
+        <div style="margin-bottom: 18px;">
+          <label class="field-label">Correct release year</label>
+          <input class="field-input" type="text" value="1982">
+        </div>
+        <div style="margin-bottom: 24px;">
+          <label class="field-label">Verification status</label>
+          <select class="field-select">
+            <option>VERIFIED</option>
+            <option>NEEDS_REVIEW</option>
+            <option>MANUAL_ENTRY</option>
+          </select>
+        </div>
+
+        <div style="display: flex; gap: 12px;">
+          <div class="btn-primary" style="flex: 1;">Resolve</div>
+          <div style="flex: 1; text-align: center; padding: 13px 0; border-radius: 100px; border: 2px solid #45475a; font-family: 'Space Grotesk', sans-serif; font-weight: 600; font-size: 13px; color: #a6adc8; cursor: pointer;">Dismiss report</div>
+        </div>
+
+      </div>
+
+    </div>
+
+  </div>
+
+</div>
+</x-dc>
+<script data-dc-script data-props='{}'>
+class Component extends DCLogic {}
+</script>
+</body>
+</html>

@@ -1,24 +1,37 @@
 package org.dariusturcu.backend.service;
 
 
+import org.dariusturcu.backend.exception.ConflictException;
 import org.dariusturcu.backend.exception.ResourceNotFoundException;
 import org.dariusturcu.backend.exception.ResourceType;
 import org.dariusturcu.backend.model.mapper.PlaylistMapper;
 import org.dariusturcu.backend.model.mapper.UserMapper;
+import org.dariusturcu.backend.model.playlist.JoinPlaylistRequest;
 import org.dariusturcu.backend.model.playlist.Playlist;
 import org.dariusturcu.backend.model.playlist.PlaylistDetailDTO;
+import org.dariusturcu.backend.model.playlist.PlaylistMembership;
 import org.dariusturcu.backend.model.playlist.PlaylistSummaryDTO;
+import org.dariusturcu.backend.model.playlist.PublicPlaylistSummaryDTO;
+import org.dariusturcu.backend.model.playlist.SavedPlaylist;
 import org.dariusturcu.backend.model.user.UpdateUserRequest;
 import org.dariusturcu.backend.model.user.User;
 import org.dariusturcu.backend.model.user.UserDetailDTO;
+import org.dariusturcu.backend.model.song.Song;
+import org.dariusturcu.backend.repository.PlaylistBanRepository;
+import org.dariusturcu.backend.repository.PlaylistMembershipRepository;
 import org.dariusturcu.backend.repository.PlaylistRepository;
+import org.dariusturcu.backend.repository.SavedPlaylistRepository;
+import org.dariusturcu.backend.repository.SongRepository;
 import org.dariusturcu.backend.repository.UserRepository;
 
 import org.dariusturcu.backend.security.util.SecurityUtils;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import lombok.RequiredArgsConstructor;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
+import java.util.Comparator;
 import java.util.List;
 import java.util.UUID;
 
@@ -30,54 +43,76 @@ public class UserService {
     private final PlaylistRepository playlistRepository;
     private final UserMapper userMapper;
     private final PlaylistMapper playlistMapper;
+    private final PlaylistMembershipRepository playlistMembershipRepository;
+    private final PlaylistBanRepository playlistBanRepository;
+    private final SongRepository songRepository;
+    private final SavedPlaylistRepository savedPlaylistRepository;
+
+    private List<PlaylistSummaryDTO> getPlaylistSummaries(Long userId) {
+        return playlistMembershipRepository.findByUserId(userId).stream()
+                .map(PlaylistMembership::getPlaylist)
+                .peek(playlist -> playlist.getSongs().size())
+                .map(playlist -> playlistMapper.toSummaryDTO(playlist, userId))
+                .toList();
+    }
 
     @Transactional(readOnly = true)
     public UserDetailDTO getCurrentUser() {
         User contextUser = SecurityUtils.getCurrentUser();
         User user = userRepository.findById(contextUser.getId())
                 .orElseThrow(() -> new RuntimeException("User not found"));
-        user.getPlaylists().forEach(playlist -> playlist.getSongs().size());
-        return userMapper.toDetailDTO(user);
+        return userMapper.toDetailDTO(user, getPlaylistSummaries(user.getId()));
     }
 
     @Transactional(readOnly = true)
     public UserDetailDTO getUserById(Long userId) {
         if (!SecurityUtils.isCurrentUser(userId)) {
-            throw new RuntimeException("Access denied");
-            // TODO custom exception
+            throw new AccessDeniedException("Access denied");
         }
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException(ResourceType.USER, userId));
-        user.getPlaylists().size();
-        return userMapper.toDetailDTO(user);
+        return userMapper.toDetailDTO(user, getPlaylistSummaries(userId));
     }
 
     public UserDetailDTO updateUser(UpdateUserRequest request) {
         User user = SecurityUtils.getCurrentUser();
 
+        if (request.username() != null
+                && userRepository.existsUserByUsername(request.username())
+                && !user.getUsername().equals(request.username())) {
+            throw new ConflictException("Username or email already in use");
+        }
+
+        if (request.email() != null
+                && userRepository.existsUserByEmail(request.email())
+                && !user.getEmail().equals(request.email())) {
+            throw new ConflictException("Username or email already in use");
+        }
+
         if (request.username() != null) {
-            if (userRepository.existsUserByUsername(request.username()) &&
-                    !user.getUsername().equals(request.username())) {
-                throw new RuntimeException("Username already exists");
-            }
             user.setUsername(request.username());
         }
 
         if (request.email() != null) {
-            if (userRepository.existsUserByEmail(request.email()) &&
-                    !user.getEmail().equals(request.email())) {
-                throw new RuntimeException("Email already exists");
-            }
             user.setEmail(request.email());
         }
 
         User updatedUser = userRepository.save(user);
-        user.getPlaylists().size();
-        return userMapper.toDetailDTO(updatedUser);
+        return userMapper.toDetailDTO(updatedUser, getPlaylistSummaries(updatedUser.getId()));
     }
 
     public void deleteUser() {
         User user = SecurityUtils.getCurrentUser();
+
+        List<Song> submittedSongs = songRepository.findByAddedById(user.getId());
+        submittedSongs.forEach(song -> song.setAddedBy(null));
+        songRepository.saveAll(submittedSongs);
+
+        List<PlaylistMembership> memberships = playlistMembershipRepository.findByUserId(user.getId());
+        for (PlaylistMembership membership : memberships) {
+            departFromPlaylist(membership.getPlaylist(), user, membership);
+        }
+
         userRepository.delete(user);
     }
 
@@ -86,68 +121,111 @@ public class UserService {
 
         Playlist playlist = new Playlist();
         playlist.setName("New playlist");
-        playlist.setColor("000000");
+        playlist.setColor("cba6f7");
         playlist.setInviteCode(UUID.randomUUID().toString());
-        playlist.addUser(user);
+        playlist.setOwner(user);
+
+        PlaylistMembership ownerMembership = new PlaylistMembership();
+        ownerMembership.setUser(user);
+        ownerMembership.setCanRead(true);
+        ownerMembership.setCanWrite(true);
+        ownerMembership.setCanDelete(true);
+        ownerMembership.setDisplayName(user.getUsername());
+        ownerMembership.setAvatarUrl(user.getImageUrl());
+        ownerMembership.setJoinedAt(Instant.now());
+        playlist.addMembership(ownerMembership);
 
         Playlist savedPlaylist = playlistRepository.save(playlist);
 
-        user.getPlaylists().add(savedPlaylist);
-        userRepository.save(user);
-
-        return playlistMapper.toDetailDTO(playlist);
+        return playlistMapper.toDetailDTO(savedPlaylist);
     }
 
     @Transactional(readOnly = true)
     public List<PlaylistSummaryDTO> getUserPlaylists() {
         User user = SecurityUtils.getCurrentUser();
-        List<Playlist> playlists = playlistRepository.findPlaylistsByUsers(user);
-        playlists.forEach(playlist -> playlist.getSongs().size());
-        return playlists.stream()
-                .map(playlistMapper::toSummaryDTO)
+        return getPlaylistSummaries(user.getId());
+    }
+
+    @Transactional(readOnly = true)
+    public List<PublicPlaylistSummaryDTO> getSavedPlaylists() {
+        User user = SecurityUtils.getCurrentUser();
+        return savedPlaylistRepository.findByUserId(user.getId()).stream()
+                .map(SavedPlaylist::getPlaylist)
+                .map(playlistMapper::toPublicSummaryDTO)
                 .toList();
     }
 
-    public PlaylistSummaryDTO joinPlaylist(String playlistInviteCode) {
+    public PlaylistSummaryDTO joinPlaylist(String playlistInviteCode, JoinPlaylistRequest request) {
         User user = SecurityUtils.getCurrentUser();
 
         Playlist playlist = playlistRepository.findPlaylistByInviteCode(playlistInviteCode)
                 .orElseThrow(() -> new ResourceNotFoundException("Invite code {" + playlistInviteCode + "} not found"));
 
-        boolean alreadyMember = user.getPlaylists().stream()
-                .anyMatch(p -> p.getId().equals(playlist.getId()));
-
-        if (alreadyMember) {
-            throw new RuntimeException("User is already a member of this playlist");
+        if (playlistBanRepository.existsByPlaylistIdAndUserId(playlist.getId(), user.getId())) {
+            throw new AccessDeniedException("You have been banned from this playlist");
         }
 
-        user.getPlaylists().add(playlist);
-        playlist.addUser(user);
-        userRepository.save(user);
+        if (playlistMembershipRepository.existsByPlaylistIdAndUserId(playlist.getId(), user.getId())) {
+            throw new ConflictException("User is already a member of this playlist");
+        }
 
-        return playlistMapper.toSummaryDTO(playlist);
+        boolean hasCustomDisplayName = request != null && request.displayName() != null && !request.displayName().isBlank();
+        boolean hasCustomAvatarUrl = request != null && request.avatarUrl() != null && !request.avatarUrl().isBlank();
+
+        PlaylistMembership membership = new PlaylistMembership();
+        membership.setUser(user);
+        membership.setCanRead(true);
+        membership.setCanWrite(true);
+        membership.setCanDelete(true);
+        membership.setDisplayName(hasCustomDisplayName ? request.displayName() : user.getUsername());
+        membership.setAvatarUrl(hasCustomAvatarUrl ? request.avatarUrl() : user.getImageUrl());
+        membership.setJoinedAt(Instant.now());
+        playlist.addMembership(membership);
+
+        playlistRepository.save(playlist);
+
+        return playlistMapper.toSummaryDTO(playlist, user.getId());
     }
 
     public void leavePlaylist(Long playlistId) {
-        User contextUser = SecurityUtils.getCurrentUser();
-        User user = userRepository.findById(contextUser.getId())
-                .orElseThrow(() -> new ResourceNotFoundException(ResourceType.USER, contextUser.getId()));
+        User currentUser = SecurityUtils.getCurrentUser();
 
         Playlist playlist = playlistRepository.findById(playlistId)
                 .orElseThrow(() -> new ResourceNotFoundException(ResourceType.PLAYLIST, playlistId));
 
-        boolean removed = user.getPlaylists().removeIf(p -> p.getId().equals(playlistId));
+        PlaylistMembership membership = playlistMembershipRepository.findByPlaylistIdAndUserId(playlistId, currentUser.getId())
+                .orElseThrow(() -> new ResourceNotFoundException(ResourceType.PLAYLIST_MEMBER, currentUser.getId()));
 
-        if (!removed) {
-            throw new RuntimeException("User is not a member of this playlist");
-        }
+        departFromPlaylist(playlist, currentUser, membership);
+    }
 
-        playlist.removeUser(user);
+    // A user's departure from one playlist, whether from an explicit leave or as part of
+    // deleting their account: delete the playlist outright once they were its last member,
+    // otherwise pass ownership to the earliest-joined remaining member if they were the owner.
+    private void departFromPlaylist(Playlist playlist, User departingUser, PlaylistMembership membership) {
+        List<PlaylistMembership> remainingMembers = playlist.getMemberships().stream()
+                .filter(candidate -> candidate != membership)
+                .toList();
 
-        if (playlist.getUserCount() == 0) {
+        if (remainingMembers.isEmpty()) {
             playlistRepository.delete(playlist);
+            return;
         }
 
-        userRepository.save(user);
+        if (playlist.isOwnedBy(departingUser)) {
+            PlaylistMembership nextOwnerMembership = remainingMembers.stream()
+                    .min(Comparator.comparing(PlaylistMembership::getJoinedAt))
+                    .orElseThrow();
+            playlist.setOwner(nextOwnerMembership.getUser());
+        }
+
+        playlist.removeMembership(membership);
+        playlistRepository.save(playlist);
+        // Explicit, not left to the collection's own orphanRemoval: deleteUser() deletes the
+        // departing user's account row in this same transaction, and the two operations flush
+        // together. Leaving this membership's removal implicit races against that user
+        // deletion; Hibernate can try to null this row's not-null user_id first to break the
+        // apparent dependency cycle, before it works out the membership needs deleting outright.
+        playlistMembershipRepository.delete(membership);
     }
 }

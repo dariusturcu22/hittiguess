@@ -1,200 +1,231 @@
 "use client";
 
 import * as React from "react";
-import { AudioWaveform, Music, Plus, LogIn } from "lucide-react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-
-import { NavUser } from "@/components/nav-user";
-import {
-  Sidebar,
-  SidebarContent,
-  SidebarFooter,
-  SidebarHeader,
-  SidebarRail,
-  SidebarGroup,
-  SidebarGroupLabel,
-  SidebarMenu,
-  SidebarMenuItem,
-  SidebarMenuButton,
-  useSidebar,
-} from "@/components/shadcn/sidebar";
-import { Input } from "@/components/shadcn/input";
-import { Button } from "@/components/shadcn/button";
-
-import { PlaylistSummaryDTO } from "@/hooks/models";
-
-import {
-  useCreatePlaylist,
-  useJoinPlaylist,
-  getGetUserPlaylistsQueryKey,
-} from "@/hooks/generated/user-management/user-management";
+import { usePathname, useRouter } from "next/navigation";
+import { useTheme } from "next-themes";
 import { useQueryClient } from "@tanstack/react-query";
+import { Moon, Sun } from "lucide-react";
 
-interface AppSidebarProps extends React.ComponentProps<typeof Sidebar> {
-  playlists?: PlaylistSummaryDTO[];
-  currentPlaylistId?: number;
+import { LogoBars } from "@/components/logo";
+import { NavUser } from "@/components/nav-user";
+import { getGetActiveMembershipQueryKey, useCreateGroup, useGetActiveMembership } from "@/hooks/generated/group-management/group-management";
+import { useBulkImportRealtime } from "@/hooks/use-bulk-import-realtime";
+
+const RAIL_DIVIDER_CLASSES = "w-8 h-0.5 my-3.5 shrink-0 rounded-full bg-sidebar-border";
+
+const RAIL_ICON_BASE_CLASSES =
+  "flex h-[46px] w-[46px] items-center justify-center rounded-[14px]";
+
+const RAIL_ICON_ACTIVE_CLASSES =
+  "bg-accent text-accent-foreground shadow-xs";
+
+// text-icon-muted lives here, not in the base classes shared with the active
+// state: Tailwind's generated stylesheet order lets it win over
+// text-accent-foreground when both are present on the same element, which
+// left the active rail icon rendering in the inactive muted color.
+const RAIL_ICON_INTERACTIVE_CLASSES =
+  "text-icon-muted cursor-pointer transition-colors hover:text-sidebar-foreground";
+
+function PlayIcon() {
+  return (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
+      <path d="M8 5v14l11-7z" />
+    </svg>
+  );
 }
 
-const application = {
-  name: "My Hitster",
-  logo: AudioWaveform,
-};
+function PlaylistsIcon() {
+  return (
+    <svg
+      width="22"
+      height="22"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <line x1="4" y1="6" x2="13" y2="6" />
+      <line x1="4" y1="12" x2="13" y2="12" />
+      <line x1="4" y1="18" x2="9" y2="18" />
+      <circle cx="18" cy="16" r="2.3" />
+      <path d="M20.3 16V6.5l-2.8 1" />
+    </svg>
+  );
+}
 
-export function AppSidebar({
-  playlists = [],
-  currentPlaylistId,
-  ...props
-}: AppSidebarProps) {
-  playlists = Array.isArray(playlists) ? playlists : [];
+function ExploreIcon() {
+  return (
+    <svg
+      width="22"
+      height="22"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <circle cx="12" cy="12" r="9" />
+      <polygon
+        points="15.5 8.5 13 13 8.5 15.5 11 11"
+        fill="currentColor"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
 
-  const Logo = application.logo;
-  const { state } = useSidebar();
+function GroupLobbyIcon() {
+  return (
+    <svg
+      width="22"
+      height="22"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+      <circle cx="9" cy="7" r="4" />
+      <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+      <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+    </svg>
+  );
+}
+
+export function AppSidebar() {
+  const pathname = usePathname();
   const router = useRouter();
   const queryClient = useQueryClient();
+  const { resolvedTheme, setTheme } = useTheme();
+  const [mounted, setMounted] = React.useState(false);
+  const [isImporting, setIsImporting] = React.useState(false);
+  const [importPlaylistId, setImportPlaylistId] = React.useState<number | null>(null);
+  useBulkImportRealtime();
+  const { data: activeGroup } = useGetActiveMembership({
+    query: { retry: false },
+  });
+  const createGroup = useCreateGroup();
 
-  const { mutate: createPlaylist, isPending: isCreating } = useCreatePlaylist();
-  const { mutate: joinPlaylist, isPending: isJoining } = useJoinPlaylist();
-
-  const [joinExpanded, setJoinExpanded] = React.useState(false);
-  const [joinId, setJoinId] = React.useState("");
-  const [joinError, setJoinError] = React.useState("");
-  const joinInputRef = React.useRef<HTMLInputElement>(null);
-
-  const handleAddPlaylist = () => {
-    createPlaylist(undefined, {
-      onSuccess: (newPlaylist) => {
-        queryClient.invalidateQueries({
-          queryKey: getGetUserPlaylistsQueryKey(),
-        });
-        router.push(`/playlists/${newPlaylist.id}`);
-      },
-      onError: () => {
-        setJoinError("Failed to create playlist");
-      },
-    });
-  };
-
-  const handleJoinPlaylist = () => {
-    if (!joinId.trim()) {
-      setJoinError("Enter a valid invite code");
+  function openGameLobby() {
+    if (activeGroup?.id) {
+      router.push(`/groups/${activeGroup.id}`);
       return;
     }
 
-    joinPlaylist(
-      { playlistInviteCode: joinId },
+    createGroup.mutate(
+      { data: {} },
       {
-        onSuccess: (playlist) => {
-          queryClient.invalidateQueries({
-            queryKey: getGetUserPlaylistsQueryKey(),
-          });
-          setJoinExpanded(false);
-          router.push(`/playlists/${playlist.id}`);
-        },
-        onError: (error: any) => {
-          setJoinError(error?.response?.data?.message || "Playlist not found");
+        onSuccess: (group) => {
+          void queryClient.invalidateQueries({ queryKey: getGetActiveMembershipQueryKey() });
+          router.push(`/groups/${group.id}`);
         },
       },
     );
-  };
+  }
+
+  React.useEffect(() => {
+    setMounted(true);
+    const updateImportState = (event: Event) => {
+      const importState = (event as CustomEvent<{ active: boolean; playlistId?: number }>).detail;
+      setIsImporting(importState.active);
+      setImportPlaylistId(importState.playlistId ?? null);
+    };
+    window.addEventListener("playlist-import-progress", updateImportState);
+    return () => window.removeEventListener("playlist-import-progress", updateImportState);
+  }, []);
+
+  const isPlaylistsActive = pathname?.startsWith("/playlists") ?? false;
+  const isExploreActive = pathname?.startsWith("/explore") ?? false;
 
   return (
-    <Sidebar collapsible="icon" {...props}>
-      <SidebarHeader>
-        <div className="flex items-center gap-2 px-2 py-1.5">
-          <Logo className="h-5 w-5" />
-          {state !== "collapsed" && (
-            <span className="font-semibold">{application.name}</span>
-          )}
-        </div>
-      </SidebarHeader>
-      <SidebarContent>
-        <SidebarGroup>
-          <SidebarGroupLabel>Playlists</SidebarGroupLabel>
-          <SidebarMenu>
-            {playlists.map((playlist) => (
-              <SidebarMenuItem key={playlist.id}>
-                <SidebarMenuButton
-                  asChild
-                  isActive={currentPlaylistId === playlist.id}
-                  tooltip={playlist.name}
-                >
-                  <Link href={`/playlists/${playlist.id}`}>
-                    <Music className="size-4" />
-                    <span>{playlist.name}</span>
-                    {state !== "collapsed" && (
-                      <span className="ml-auto text-xs text-muted-foreground">
-                        {playlist.songCount}
-                      </span>
-                    )}
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-            ))}
+    <aside className="flex w-[76px] shrink-0 flex-col items-center border-r-[3px] border-sidebar-border bg-sidebar py-5">
+      <Link href="/playlists" aria-label="Go to playlists" className="flex h-[22px] items-center justify-center rounded focus-visible:ring-2 focus-visible:ring-ring">
+        <LogoBars />
+      </Link>
 
-            <SidebarMenuItem>
-              <SidebarMenuButton
-                tooltip="Add Playlist"
-                onClick={handleAddPlaylist}
-                disabled={isCreating}
-                className="cursor-pointer text-muted-foreground hover:text-foreground"
-              >
-                <Plus className="size-4" />
-                {state !== "collapsed" && (
-                  <span>{isCreating ? "Creating..." : "Add Playlist"}</span>
-                )}
-              </SidebarMenuButton>
-            </SidebarMenuItem>
+      <div className={RAIL_DIVIDER_CLASSES} />
 
-            <SidebarMenuItem>
-              <SidebarMenuButton
-                tooltip="Join Playlist"
-                onClick={() => setJoinExpanded((prev) => !prev)}
-                className="cursor-pointer text-muted-foreground hover:text-foreground"
-              >
-                <LogIn className="size-4" />
-                {state !== "collapsed" && <span>Join Playlist</span>}
-              </SidebarMenuButton>
+      <button
+        type="button"
+        onClick={openGameLobby}
+        disabled={createGroup.isPending}
+        className={`${RAIL_ICON_BASE_CLASSES} ${RAIL_ICON_INTERACTIVE_CLASSES}`}
+        title={activeGroup ? "Open group lobby" : "Create group lobby"}
+      >
+        <PlayIcon />
+      </button>
 
-              {joinExpanded && state !== "collapsed" && (
-                <div className="mt-1 px-2 flex flex-col gap-1.5 animate-in fade-in slide-in-from-top-1 duration-150">
-                  <div className="flex gap-1.5">
-                    <Input
-                      ref={joinInputRef}
-                      placeholder="Invite code"
-                      value={joinId}
-                      onChange={(e) => {
-                        setJoinId(e.target.value);
-                        setJoinError("");
-                      }}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") handleJoinPlaylist();
-                        if (e.key === "Escape") setJoinExpanded(false);
-                      }}
-                      className="h-7 text-xs"
-                    />
-                    <Button
-                      size="sm"
-                      className="h-7 px-2 text-xs shrink-0"
-                      onClick={handleJoinPlaylist}
-                      disabled={isJoining}
-                    >
-                      {isJoining ? "..." : "Join"}
-                    </Button>
-                  </div>
-                  {joinError && (
-                    <p className="text-xs text-destructive px-1">{joinError}</p>
-                  )}
-                </div>
-              )}
-            </SidebarMenuItem>
-          </SidebarMenu>
-        </SidebarGroup>
-      </SidebarContent>
-      <SidebarFooter>
-        <NavUser />
-      </SidebarFooter>
-      <SidebarRail />
-    </Sidebar>
+      <div className={RAIL_DIVIDER_CLASSES} />
+
+      <div className="flex flex-col gap-3.5">
+        <Link
+          href="/playlists"
+          className={`${RAIL_ICON_BASE_CLASSES} ${
+            isPlaylistsActive
+              ? RAIL_ICON_ACTIVE_CLASSES
+              : RAIL_ICON_INTERACTIVE_CLASSES
+          }`}
+          title="Your playlists"
+        >
+          <PlaylistsIcon />
+        </Link>
+        <Link
+          href="/explore"
+          className={`${RAIL_ICON_BASE_CLASSES} ${
+            isExploreActive
+              ? RAIL_ICON_ACTIVE_CLASSES
+              : RAIL_ICON_INTERACTIVE_CLASSES
+          }`}
+          title="Explore public playlists"
+        >
+          <ExploreIcon />
+        </Link>
+      </div>
+
+      <div className={RAIL_DIVIDER_CLASSES} />
+
+      <Link
+        href={activeGroup?.id ? `/groups/${activeGroup.id}` : "/playlists"}
+        className={`${RAIL_ICON_BASE_CLASSES} ${
+          pathname?.startsWith("/groups/") || activeGroup
+            ? "border-2 border-primary text-primary"
+            : RAIL_ICON_INTERACTIVE_CLASSES
+        }`}
+        title={activeGroup ? "Group lobby (active session)" : "Group lobby"}
+      >
+        <GroupLobbyIcon />
+      </Link>
+
+      {isImporting ? (
+        <button type="button" onClick={() => importPlaylistId && router.push(`/playlists/${importPlaylistId}/import/youtube`)} className="mt-3 flex size-[30px] cursor-pointer items-center justify-center rounded-full bg-primary text-primary-foreground" title="Import in progress">
+          <span className="size-3 rounded-full border-2 border-current border-t-transparent animate-spin" />
+        </button>
+      ) : null}
+
+      <div className="flex-1" />
+
+      <button
+        type="button"
+        onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
+        className={`${RAIL_ICON_BASE_CLASSES} ${RAIL_ICON_INTERACTIVE_CLASSES}`}
+        title="Toggle theme"
+      >
+        {mounted && resolvedTheme === "dark" ? (
+          <Sun className="size-5" />
+        ) : (
+          <Moon className="size-5" />
+        )}
+      </button>
+
+      <div className="h-4" />
+
+      <NavUser />
+    </aside>
   );
 }

@@ -4,74 +4,226 @@
 
 @custom-variant dark (&:is(.dark *));
 
+html {
+  scrollbar-gutter: auto;
+  scrollbar-width: none;
+}
+
+::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+}
+
+.global-scrollbar-thumb {
+  position: fixed;
+  top: 0;
+  z-index: 40;
+  width: 5px;
+  border-radius: 999px;
+  background: rgba(76,79,105,.55);
+  pointer-events: none;
+  transition: height 120ms ease, transform 120ms ease, background-color 200ms ease;
+}
+
+.dark .global-scrollbar-thumb { background: rgba(166,173,200,.55); }
+
+html.theme-transition,
+html.theme-transition * {
+  transition: background-color 260ms ease, border-color 260ms ease, color 260ms ease, box-shadow 260ms ease !important;
+}
+
+.theme-toggle {
+  position: relative;
+  display: flex;
+  width: 68px;
+  height: 36px;
+  min-height: 36px;
+  align-items: center;
+  justify-content: space-between;
+  border-radius: 999px;
+  background: #ccd0da;
+  padding: 4px;
+}
+
+.theme-toggle:hover { background: #ccd0da; }
+.theme-toggle:focus-visible { outline: 3px solid var(--marketing-accent); outline-offset: 3px; }
+.theme-toggle.is-dark,
+.dark .theme-toggle { background: #313244; }
+.theme-toggle.is-dark:hover,
+.dark .theme-toggle:hover { background: #313244; }
+
+.theme-toggle-thumb {
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  background: #eff1f5;
+  transition: transform 260ms cubic-bezier(.2,.8,.2,1), background-color 260ms ease;
+}
+
+html.theme-transition .theme-toggle-thumb {
+  transition: transform 260ms cubic-bezier(.2,.8,.2,1), background-color 260ms ease !important;
+}
+
+.theme-toggle.is-dark .theme-toggle-thumb,
+.dark .theme-toggle .theme-toggle-thumb { transform: translateX(32px); background: #45475a; }
+
+.theme-toggle-icon {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  width: 28px;
+  height: 28px;
+  align-items: center;
+  justify-content: center;
+  color: #9ca0b0;
+}
+
+.theme-toggle-icon svg { width: 16px; height: 16px; }
+.theme-toggle-light-icon { color: #d49032; }
+.dark .theme-toggle-light-icon { color: #6c7086; }
+.dark .theme-toggle-dark-icon { color: #f9e2af; }
+
+@media (max-width: 767px) {
+  .theme-toggle { width: 64px; height: 34px; min-height: 34px; }
+  .theme-toggle-thumb { width: 26px; height: 26px; }
+  .theme-toggle.is-dark .theme-toggle-thumb,
+  .dark .theme-toggle .theme-toggle-thumb { transform: translateX(30px); }
+  .theme-toggle-icon { width: 26px; height: 26px; }
+  .theme-toggle-icon svg { width: 14px; height: 14px; }
+}
+
+/*
+ * Palette is Catppuccin-derived: Mocha for dark, Latte for light, with a
+ * handful of hand-tinted accents (primary orange/peach, mauve) that diverge
+ * from the stock Catppuccin values. Every hex below is copied from the
+ * design mockups in docs/design/source/*.dc.html, not approximated.
+ */
 :root {
-  --background: oklch(0.98 0.005 264.5);
-  --card: oklch(1 0 0);
-  --sidebar: oklch(0.97 0.008 264.5);
-  --foreground: oklch(0.4355 0.043 279.325);
-  --card-foreground: oklch(0.4355 0.043 279.325);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.4355 0.043 279.325);
+  --background: #eff1f5;
+  --foreground: #4c4f69;
+  --card: #ffffff;
+  --card-foreground: #4c4f69;
+  --sidebar: #e6e9ef;
+  --popover: #ffffff;
+  --popover-foreground: #4c4f69;
 
-  --primary: oklch(0.68 0.22 297);
-  --primary-foreground: oklch(1 0 0);
+  --primary: #ed6f27;
+  --primary-foreground: #ffffff;
 
-  --secondary: oklch(0.92 0.025 285);
-  --secondary-foreground: oklch(0.4355 0.043 279.325);
-  --muted: oklch(0.94 0.015 264.5);
-  --muted-foreground: oklch(0.55 0.04 279);
+  --secondary: #ccd0da;
+  --secondary-foreground: #4c4f69;
+  --muted: #e6e9ef;
+  --muted-foreground: #5c5f77;
 
-  --accent: oklch(0.72 0.18 297);
-  --accent-foreground: oklch(1 0 0);
+  --accent: #8f4fe3;
+  --accent-foreground: #ffffff;
 
-  --destructive: oklch(0.6 0.25 25);
-  --destructive-foreground: oklch(1 0 0);
-  --border: oklch(0.88 0.02 271.2);
-  --input: oklch(0.92 0.02 285);
-  --ring: oklch(0.68 0.22 297);
+  --warning: #df8e1d;
+  --warning-foreground: #ffffff;
 
-  --sidebar-foreground: oklch(0.4355 0.043 279.325);
-  --sidebar-primary: oklch(0.68 0.22 297);
-  --sidebar-primary-foreground: oklch(1 0 0);
-  --sidebar-accent: oklch(0.94 0.05 297);
-  --sidebar-accent-foreground: oklch(0.4355 0.043 279.325);
-  --sidebar-border: oklch(0.88 0.02 271.2);
-  --sidebar-ring: oklch(0.68 0.22 297);
+  --destructive: #d20f39;
+  --destructive-foreground: #ffffff;
+  --border: #ccd0da;
+  --border-strong: #4c4f69;
+  --input: #ccd0da;
+  --ring: #ed6f27;
 
-  --font-sans: Montserrat, sans-serif;
-  --font-serif: Georgia, serif;
-  --font-mono: Fira Code, monospace;
-  --radius: 0.35rem;
+  --sidebar-foreground: #4c4f69;
+  --sidebar-primary: #8f4fe3;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #ccd0da;
+  --sidebar-accent-foreground: #4c4f69;
+  --sidebar-border: #ccd0da;
+  --sidebar-ring: #ed6f27;
+
+  --shadow-color: rgba(76, 79, 105, 0.25);
+  --dot-color: rgba(76, 79, 105, 0.2);
+
+  /* Bungee headlines carry a hard, no-blur text shadow. Its color tracks the
+     surface the headline sits on, so it needs two values rather than one:
+     -on-page for headlines over --background, -on-card for headlines over
+     --card. Neither can reuse --card or --background directly, because the
+     shadow would then match the surface it sits on in one of the themes and
+     disappear. */
+  --text-shadow-on-page: #ccd0da;
+  --text-shadow-on-card: #ccd0da;
+
+  /* A sunken input surface, darker than --card in dark mode and used for
+     search fields over the dotted page background. Light mode's mockups
+     reuse plain white for this, which --card already covers, but dark
+     mode's value doesn't match --background, --card, or --sidebar, so it
+     needs its own token rather than approximating one of those. */
+  --surface-sunken: #ffffff;
+
+  /* The app shell's icon-only nav rail uses a dedicated muted color for its
+     inactive icons, distinct from --muted-foreground (tuned for body text
+     on --background, not for icons on --sidebar). */
+  --icon-muted: #9ca0b0;
+
+  /* Landing and auth headlines use a distinct accent from the app shell's
+     --accent: in dark mode the mockups color them pink (#f5c2e7), not the
+     mauve (#cba6f7) used for the sidebar's active icon and the playlist
+     pages' own titles. Light mode happens to use the same purple for both,
+     so this only diverges from --accent in dark mode, but needs its own
+     token rather than reading --accent directly. */
+  --marketing-accent: #8f4fe3;
+
+  --radius: 1.125rem;
   --spacing: 0.25rem;
 }
 
 .dark {
-  --background: oklch(0.25 0.0254 284.0647);
-  --card: oklch(0.28 0.0304 283.911);
-  --sidebar: oklch(0.22 0.02 284.2);
-  --foreground: oklch(0.95 0.015 272);
-  --card-foreground: oklch(0.95 0.015 272);
-  --popover: oklch(0.32 0.03 280);
-  --popover-foreground: oklch(0.95 0.015 272);
-  --primary: oklch(0.82 0.15 304.7);
-  --primary-foreground: oklch(0.15 0.02 284);
-  --secondary: oklch(0.35 0.04 278.6);
-  --secondary-foreground: oklch(0.95 0.015 272);
-  --muted: oklch(0.32 0.03 276.2);
-  --muted-foreground: oklch(0.78 0.03 273.9);
-  --accent: oklch(0.82 0.16 300);
-  --accent-foreground: oklch(0.15 0.02 284);
-  --destructive: oklch(0.65 0.22 20);
-  --destructive-foreground: oklch(1 0 0);
-  --border: oklch(0.38 0.04 282);
-  --input: oklch(0.38 0.04 282);
-  --ring: oklch(0.82 0.15 304.7);
-  --sidebar-foreground: oklch(0.95 0.015 272);
-  --sidebar-primary: oklch(0.82 0.15 304.7);
-  --sidebar-primary-foreground: oklch(0.15 0.02 284);
-  --sidebar-accent: oklch(0.32 0.04 284.2);
-  --sidebar-accent-foreground: oklch(0.95 0.015 272);
-  --sidebar-border: oklch(0.35 0.04 280);
+  --background: #1e1e2e;
+  --foreground: #cdd6f4;
+  --card: #313244;
+  --card-foreground: #cdd6f4;
+  --sidebar: #11111b;
+  --popover: #313244;
+  --popover-foreground: #cdd6f4;
+
+  --primary: #fab387;
+  --primary-foreground: #1e1e2e;
+
+  --secondary: #45475a;
+  --secondary-foreground: #cdd6f4;
+  --muted: #313244;
+  --muted-foreground: #a6adc8;
+
+  --accent: #cba6f7;
+  --accent-foreground: #11111b;
+
+  --warning: #f9e2af;
+  --warning-foreground: #11111b;
+
+  --destructive: #e78284;
+  --destructive-foreground: #1e1e2e;
+  --border: #45475a;
+  --border-strong: #11111b;
+  --input: #45475a;
+  --ring: #fab387;
+
+  --sidebar-foreground: #cdd6f4;
+  --sidebar-primary: #cba6f7;
+  --sidebar-primary-foreground: #11111b;
+  --sidebar-accent: #313244;
+  --sidebar-accent-foreground: #cdd6f4;
+  --sidebar-border: #313244;
+  --sidebar-ring: #fab387;
+
+  --shadow-color: rgba(0, 0, 0, 0.4);
+  --dot-color: rgba(108, 112, 134, 0.25);
+
+  --text-shadow-on-page: #313244;
+  --text-shadow-on-card: #1e1e2e;
+
+  --surface-sunken: #181825;
+
+  --icon-muted: #6c7086;
+
+  --marketing-accent: #f5c2e7;
 }
 
 @theme inline {
@@ -89,9 +241,12 @@
   --color-muted-foreground: var(--muted-foreground);
   --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-foreground);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
   --color-destructive: var(--destructive);
   --color-destructive-foreground: var(--destructive-foreground);
   --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
   --color-input: var(--input);
   --color-ring: var(--ring);
   --color-sidebar: var(--sidebar);
@@ -102,20 +257,107 @@
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
-  --font-sans: var(--font-sans);
-  --font-mono: var(--font-mono);
-  --font-serif: var(--font-serif);
-  --radius-sm: calc(var(--radius) - 4px);
-  --radius-md: calc(var(--radius) - 2px);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) + 4px);
+  --color-surface-sunken: var(--surface-sunken);
+  --color-icon-muted: var(--icon-muted);
+  --color-marketing-accent: var(--marketing-accent);
+
+  /* Bungee/Baloo 2/Space Grotesk don't change between light and dark, so
+     unlike the color tokens above these are declared directly here instead
+     of aliasing a same-named :root variable — a same-named alias is a
+     circular reference (invalid at computed-value time), which silently
+     drops the whole font-family declaration back to the browser default. */
+  --font-sans: var(--font-space-grotesk), "Space Grotesk", sans-serif;
+  --font-mono: var(--font-space-grotesk), "Space Grotesk", monospace;
+  --font-serif: var(--font-space-grotesk), "Space Grotesk", serif;
+  --font-display: var(--font-bungee), "Bungee", sans-serif;
+  --font-wordmark: var(--font-baloo-2), "Baloo 2", sans-serif;
+
+  /* Cards/modals get the 18px radius from the mockups, fields/inputs 13px.
+     These are literal values, not a calc() scale, since the design uses two
+     unrelated radii rather than steps off one base. */
+  --radius-sm: 0.625rem;
+  --radius-md: 0.8125rem;
+  --radius-lg: 1.125rem;
+  --radius-xl: 1.25rem;
+
+  /* The design never uses a soft/blurred shadow: every elevated surface gets
+     a flat, no-blur offset shadow instead. Overriding the shadow scale here
+     means shadcn defaults like Card's `shadow-sm` pick this up for free. */
+  --shadow-2xs: 2px 2px 0 var(--shadow-color);
+  --shadow-xs: 3px 3px 0 var(--shadow-color);
+  --shadow-sm: 4px 4px 0 var(--shadow-color);
+  --shadow-md: 4px 4px 0 var(--shadow-color);
+  --shadow-lg: 6px 6px 0 var(--shadow-color);
+  --shadow-xl: 6px 6px 0 var(--shadow-color);
+  --shadow-2xl: 8px 8px 0 var(--shadow-color);
 }
 
 @layer base {
   * {
     @apply border-border outline-ring/50;
   }
+  /* The next/font variables are declared on <body>, and Tailwind's own
+     preflight sets font-family on <html>, where those variables don't
+     resolve. Applying font-sans here is what actually puts Space Grotesk on
+     body text; without it every unstyled element falls back to the browser
+     default sans. */
   body {
-    @apply bg-background text-foreground transition-colors duration-300;
+    @apply bg-background text-foreground font-sans transition-colors duration-300;
   }
+
+  button,
+  a,
+  input,
+  select,
+  textarea {
+    transition-property: color, background-color, border-color, box-shadow, opacity, transform;
+    transition-duration: 150ms;
+    transition-timing-function: ease;
+  }
+}
+
+@layer utilities {
+  /* Subtle dotted-grid backdrop used on full-page surfaces (auth, landing,
+     the app shell's main content area) in every mockup. */
+  .bg-dotted {
+    background-image: radial-gradient(circle, var(--dot-color) 1.5px, transparent 1.5px);
+    background-size: 22px 22px;
+  }
+
+  @keyframes ghost-float-a {
+    0%   { transform: translate(0px, 0px) rotate(0deg); }
+    25%  { transform: translate(-3px, -4px) rotate(-2deg); }
+    50%  { transform: translate(2px, -7px) rotate(1.5deg); }
+    75%  { transform: translate(-3px, -3px) rotate(-1deg); }
+    100% { transform: translate(0px, 0px) rotate(0deg); }
+  }
+  @keyframes ghost-float-b {
+    0%   { transform: translate(0px, 0px) rotate(0deg); }
+    20%  { transform: translate(2px, -4px) rotate(2deg); }
+    45%  { transform: translate(-2px, -8px) rotate(-1.5deg); }
+    70%  { transform: translate(3px, -3px) rotate(1deg); }
+    100% { transform: translate(0px, 0px) rotate(0deg); }
+  }
+  @keyframes ghost-float-c {
+    0%   { transform: translate(0px, 0px) rotate(0deg); }
+    30%  { transform: translate(3px, -3px) rotate(1.5deg); }
+    55%  { transform: translate(-2px, -6px) rotate(-2deg); }
+    80%  { transform: translate(1px, -2px) rotate(0.5deg); }
+    100% { transform: translate(0px, 0px) rotate(0deg); }
+  }
+  .ghost-float-a { animation: ghost-float-a 19s ease-in-out infinite; }
+  .ghost-float-b { animation: ghost-float-b 24s ease-in-out infinite -9s; }
+  .ghost-float-c { animation: ghost-float-c 21s ease-in-out infinite -15s; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .ghost-float-a, .ghost-float-b, .ghost-float-c { animation: none; }
+  }
+}
+@keyframes waveform-bar {
+  0%, 100% { transform: scaleY(0.45); }
+  50% { transform: scaleY(1); }
+}
+
+.animate-waveform-bar {
+  animation: waveform-bar 1500ms ease-in-out infinite;
 }

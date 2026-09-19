@@ -1,0 +1,279 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bungee&family=Baloo+2:wght@700;800&family=Space+Grotesk:wght@400;500;600;700&display=swap">
+  <style>
+    body { margin: 0; }
+    .navicon { width: 46px; height: 46px; border-radius: 14px; display: flex; align-items: center; justify-content: center; cursor: pointer; color: #6c7086; }
+    .navicon.active { background: #cba6f7; box-shadow: 3px 3px 0 rgba(0,0,0,0.4); color: #11111b; }
+    .divider { width: 32px; height: 2px; background: #313244; border-radius: 2px; margin: 14px auto; flex-shrink: 0; }
+    .sticker-card { border: 3px solid #11111b; border-radius: 16px; background: #313244; box-shadow: 6px 6px 0 rgba(0,0,0,0.4); box-sizing: border-box; }
+    .field-block { width: 100%; margin-bottom: 16px; }
+    .field-label { font-size: 11px; font-weight: 700; color: #a6adc8; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 7px; display: block; }
+    .field-input { width: 100%; box-sizing: border-box; background: #1e1e2e; border: 2px solid #45475a; border-radius: 13px; padding: 12px 16px; font-family: 'Space Grotesk', sans-serif; font-size: 14px; color: #cdd6f4; }
+    .field-textarea { width: 100%; box-sizing: border-box; background: #1e1e2e; border: 2px solid #45475a; border-radius: 13px; padding: 12px 16px; font-family: 'Space Grotesk', sans-serif; font-size: 13.5px; color: #cdd6f4; resize: none; height: 108px; line-height: 1.5; }
+    .color-swatch-opt { width: 24px; height: 24px; border-radius: 50%; cursor: pointer; flex-shrink: 0; }
+    .btn-save { flex: 1; text-align: center; background: #fab387; color: #1e1e2e; font-family: 'Bungee', sans-serif; font-size: 13px; padding: 13px 0; border-radius: 100px; box-shadow: 4px 4px 0 rgba(0,0,0,0.35); box-sizing: border-box; cursor: pointer; border: none; }
+    .btn-cancel { flex: 1; text-align: center; background: transparent; color: #a6adc8; font-family: 'Space Grotesk', sans-serif; font-weight: 600; font-size: 13px; padding: 13px 0; border-radius: 100px; border: 2px solid #45475a; box-sizing: border-box; cursor: pointer; }
+    .toggle-track { width: 40px; height: 22px; border-radius: 100px; background: #a6e3a1; position: relative; flex-shrink: 0; }
+    .toggle-knob { width: 16px; height: 16px; border-radius: 50%; background: #11111b; position: absolute; top: 3px; right: 3px; }
+    .icon-btn-sm { width: 28px; height: 28px; border-radius: 9px; display: flex; align-items: center; justify-content: center; cursor: pointer; color: #a6adc8; background: #1e1e2e; border: 2px solid #45475a; flex-shrink: 0; }
+    .icon-btn-sm.save { color: #a6e3a1; border-color: #a6e3a1; }
+    .icon-btn-sm.cancel { color: #e78284; }
+    .custom-scroll::-webkit-scrollbar { width: 8px; }
+    .custom-scroll::-webkit-scrollbar-track { background: transparent; }
+    .custom-scroll::-webkit-scrollbar-thumb { background: #45475a; border-radius: 100px; }
+    .custom-scroll::-webkit-scrollbar-thumb:hover { background: #6c7086; }
+    .member-row { display: flex; align-items: center; gap: 12px; padding: 11px 20px; border-bottom: 2px solid #1e1e2e; }
+    .member-row:last-child { border-bottom: none; }
+    .mini-avatar { width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-family: 'Bungee', sans-serif; font-size: 13px; color: #11111b; flex-shrink: 0; }
+    .perm-chip { width: 26px; height: 26px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-family: 'Bungee', sans-serif; font-size: 10px; cursor: pointer; flex-shrink: 0; }
+    .perm-chip.on { background: rgba(166,227,161,0.18); color: #a6e3a1; border: 2px solid #a6e3a1; }
+    .perm-chip.off { background: #1e1e2e; color: #6c7086; border: 2px solid #45475a; }
+    .icon-btn-xs { width: 30px; height: 30px; border-radius: 9px; display: flex; align-items: center; justify-content: center; cursor: pointer; color: #a6adc8; background: #1e1e2e; border: 2px solid #45475a; flex-shrink: 0; }
+    .icon-btn-xs.danger { color: #e78284; }
+  </style>
+</helmet>
+<div style="width: 1440px; height: 900px; background: #1e1e2e; font-family: 'Space Grotesk', sans-serif; box-sizing: border-box; color: #cdd6f4; display: flex; overflow: hidden; position: relative;">
+
+  <div style="width: 76px; flex-shrink: 0; background: #11111b; display: flex; flex-direction: column; align-items: center; padding: 20px 0; box-sizing: border-box; border-right: 3px solid #313244;">
+    <div style="display: flex; align-items: center; gap: 2px; height: 22px;">
+      <div style="background: #a6e3a1; width: 5px; height: 10px; border-radius: 100px;"></div>
+      <div style="background: #a6e3a1; width: 5px; height: 20px; border-radius: 100px;"></div>
+      <div style="background: #a6e3a1; width: 5px; height: 14px; border-radius: 100px;"></div>
+      <div style="background: #a6e3a1; width: 5px; height: 22px; border-radius: 100px;"></div>
+    </div>
+    <div class="divider"></div>
+    <div class="navicon" title="Play / start a session">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="#cdd6f4"><path d="M8 5v14l11-7z"></path></svg>
+    </div>
+    <div class="divider"></div>
+    <div style="display: flex; flex-direction: column; gap: 14px;">
+      <div class="navicon active" title="Your playlists">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="6" x2="13" y2="6"></line><line x1="4" y1="12" x2="13" y2="12"></line><line x1="4" y1="18" x2="9" y2="18"></line><circle cx="18" cy="16" r="2.3"></circle><path d="M20.3 16V6.5l-2.8 1"></path></svg>
+      </div>
+      <div class="navicon" title="Explore public playlists">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"></circle><polygon points="15.5 8.5 13 13 8.5 15.5 11 11" fill="currentColor" stroke-linejoin="round"></polygon></svg>
+      </div>
+    </div>
+    <div class="divider"></div>
+    <div class="navicon" title="Group lobby">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+    </div>
+    <div style="flex: 1;"></div>
+    <div class="navicon" title="Theme">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
+    </div>
+    <div style="height: 16px;"></div>
+    <div style="width: 44px; height: 44px; border-radius: 50%; background: #fab387; border: 2px solid #313244; display: flex; align-items: center; justify-content: center; font-family: 'Bungee', sans-serif; font-size: 16px; color: #11111b; cursor: pointer;">D</div>
+  </div>
+
+  <div style="flex: 1; min-width: 0; box-sizing: border-box; background-image: radial-gradient(circle, rgba(108,112,134,0.25) 1.5px, transparent 1.5px); background-size: 22px 22px; padding: 36px 48px 32px; display: flex; flex-direction: column;">
+
+    <div style="font-family: 'Bungee', sans-serif; font-size: 26px; color: #cba6f7; text-shadow: 3px 3px 0 #313244; margin-bottom: 4px; flex-shrink: 0;">Edit playlist</div>
+    <div style="font-size: 12.5px; color: #6c7086; margin-bottom: 22px; flex-shrink: 0;">Only you, as the playlist's admin, can see this screen.</div>
+
+    <div style="display: flex; gap: 24px; flex: 1; min-height: 0;">
+
+      <!-- SETTINGS COLUMN -->
+      <div class="sticker-card" style="flex: 1.5; min-width: 0; padding: 26px; box-sizing: border-box; overflow-y: auto;">
+
+        <div style="display: flex; gap: 22px; margin-bottom: 24px;">
+          <div style="position: relative; width: 158px; height: 158px; border-radius: 20px; overflow: hidden; flex-shrink: 0; border: 3px solid #11111b; box-shadow: 5px 5px 0 rgba(0,0,0,0.4); cursor: pointer;">
+            <div style="width: 100%; height: 100%; background: #cba6f7; display: flex; align-items: center; justify-content: center;">
+              <svg width="54" height="54" viewBox="0 0 24 24" fill="none" stroke="rgba(17,17,27,0.4)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"></path><circle cx="6" cy="18" r="3"></circle><circle cx="18" cy="16" r="3"></circle></svg>
+            </div>
+            <div style="position: absolute; inset: 0; background: rgba(17,17,27,0.55); display: flex; align-items: center; justify-content: center;">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#cdd6f4" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"></path><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"></path></svg>
+            </div>
+          </div>
+
+          <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; justify-content: center; gap: 16px;">
+            <div style="display: flex; align-items: center; gap: 9px;">
+              <input class="field-input" type="text" value="Midnight Radio" style="flex: 1; min-width: 0; font-family: 'Bungee', sans-serif; font-size: 26px; color: #cba6f7; background: #1e1e2e; border: 2px solid #cba6f7; padding: 10px 16px;">
+              <div class="icon-btn-sm save" title="Save name">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+              </div>
+              <div class="icon-btn-sm cancel" title="Cancel">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+              </div>
+            </div>
+            <div>
+              <label class="field-label" style="margin-bottom: 9px;">Title color</label>
+              <div style="display: flex; align-items: center; gap: 11px; margin-left: 6px;">
+                <div class="color-swatch-opt" style="background: #cba6f7; box-shadow: 0 0 0 3px #313244, 0 0 0 5px #cba6f7;"></div>
+                <div class="color-swatch-opt" style="background: #fab387;"></div>
+                <div class="color-swatch-opt" style="background: #a6e3a1;"></div>
+                <div class="color-swatch-opt" style="background: #89b4fa;"></div>
+                <div class="color-swatch-opt" style="background: #f5c2e7;"></div>
+                <div class="color-swatch-opt" style="background: #f9e2af;"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="field-block">
+          <label class="field-label">Description</label>
+          <textarea class="field-textarea" style="height: 84px;">Late-night drives, city lights, and songs that sound better after midnight. Built for the long way home, no particular genre, just the right mood.</textarea>
+        </div>
+
+        <div class="field-block">
+          <label class="field-label">Invite link</label>
+          <div style="display: flex; align-items: center; gap: 8px; background: #1e1e2e; border: 2px solid #45475a; border-radius: 13px; padding: 4px 4px 4px 16px;">
+            <div style="flex: 1; min-width: 0; font-size: 12.5px; color: #a6adc8; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">hittiguess.app/playlists/join/K7QX9J</div>
+            <div class="icon-btn-sm" title="Copy link">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+            </div>
+          </div>
+          <div style="font-size: 11px; color: #6c7086; margin-top: 8px;">Fixed for this playlist's lifetime, it doesn't change.</div>
+        </div>
+
+        <div style="width: 100%; display: flex; align-items: center; justify-content: space-between; margin-bottom: 22px;">
+          <div>
+            <div style="font-size: 13px; color: #cdd6f4; font-weight: 600;">Public playlist</div>
+            <div style="font-size: 11px; color: #6c7086; margin-top: 2px;">Anyone can find and save this playlist.</div>
+          </div>
+          <div class="toggle-track"><div class="toggle-knob"></div></div>
+        </div>
+
+        <div style="display: flex; gap: 10px; width: 100%; margin-bottom: 22px;">
+          <button class="btn-save">Save changes</button>
+          <button class="btn-cancel">Cancel</button>
+        </div>
+
+        <div style="width: 100%; height: 2px; background: #45475a; margin-bottom: 20px;"></div>
+
+        <div style="width: 100%; background: rgba(231,130,132,0.08); border: 2px solid #e78284; border-radius: 14px; box-sizing: border-box; padding: 15px 18px; display: flex; align-items: center; justify-content: space-between; gap: 10px;">
+          <div>
+            <div style="font-size: 13px; color: #e78284; font-weight: 600;">Delete this playlist</div>
+            <div style="font-size: 11px; color: #a6adc8; margin-top: 3px;">Can't be undone. All songs and history are lost.</div>
+          </div>
+          <div style="font-family: 'Space Grotesk', sans-serif; font-weight: 600; font-size: 12px; color: #e78284; background: transparent; padding: 9px 16px; border-radius: 100px; border: 2px solid #e78284; box-sizing: border-box; cursor: pointer; white-space: nowrap; flex-shrink: 0;">Delete</div>
+        </div>
+
+      </div>
+
+      <!-- MEMBERS COLUMN -->
+      <div class="sticker-card" style="width: 460px; flex-shrink: 0; display: flex; flex-direction: column; overflow: hidden;">
+        <div style="padding: 18px 22px 14px; border-bottom: 2px solid #1e1e2e; flex-shrink: 0;">
+          <div style="font-family: 'Bungee', sans-serif; font-size: 15px; color: #cdd6f4;">Members (6)</div>
+          <div style="font-size: 11px; color: #6c7086; margin-top: 5px; line-height: 1.5;">Read, write (add songs), and delete (remove songs) are granted separately. Kicking lets someone rejoin later; banning doesn't.</div>
+        </div>
+        <div class="custom-scroll" style="flex: 1; min-height: 0; overflow-y: auto;">
+
+          <div class="member-row">
+            <div class="mini-avatar" style="background: #fab387;">D</div>
+            <div style="flex: 1; min-width: 0;">
+              <div style="display: flex; align-items: center; gap: 6px; font-weight: 600; font-size: 13px; color: #cdd6f4;">
+                Darius
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="#f9e2af"><path d="M3 19h18l-1.8-9-5.2 4-3-7.5-3 7.5-5.2-4z"></path></svg>
+              </div>
+              <div style="font-size: 10.5px; color: #6c7086; margin-top: 2px;">Playlist admin</div>
+            </div>
+          </div>
+
+          <div class="member-row">
+            <div class="mini-avatar" style="background: #89b4fa;">M</div>
+            <div style="flex: 1; min-width: 0;">
+              <div style="font-weight: 600; font-size: 13px; color: #cdd6f4;">Mara</div>
+              <div style="font-size: 10.5px; color: #6c7086; margin-top: 2px;">Joined Jan 16, 2025</div>
+            </div>
+            <div style="display: flex; gap: 6px;">
+              <div class="perm-chip on" title="Read"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg></div>
+              <div class="perm-chip on" title="Write, add songs"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg></div>
+              <div class="perm-chip on" title="Delete, remove songs"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg></div>
+            </div>
+            <div style="display: flex; gap: 6px; margin-left: 4px;">
+              <div class="icon-btn-xs" title="Kick, can rejoin"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="8.5" cy="7" r="4"></circle><line x1="20" y1="8" x2="14" y2="14"></line><line x1="14" y1="8" x2="20" y2="14"></line></svg></div>
+              <div class="icon-btn-xs danger" title="Ban, can't rejoin"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="4.9" y1="4.9" x2="19.1" y2="19.1"></line></svg></div>
+            </div>
+          </div>
+
+          <div class="member-row">
+            <div class="mini-avatar" style="background: #f9e2af;">T</div>
+            <div style="flex: 1; min-width: 0;">
+              <div style="font-weight: 600; font-size: 13px; color: #cdd6f4;">Theo</div>
+              <div style="font-size: 10.5px; color: #6c7086; margin-top: 2px;">Joined Jan 18, 2025</div>
+            </div>
+            <div style="display: flex; gap: 6px;">
+              <div class="perm-chip on" title="Read"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg></div>
+              <div class="perm-chip off" title="Write, add songs"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg></div>
+              <div class="perm-chip off" title="Delete, remove songs"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg></div>
+            </div>
+            <div style="display: flex; gap: 6px; margin-left: 4px;">
+              <div class="icon-btn-xs" title="Kick, can rejoin"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="8.5" cy="7" r="4"></circle><line x1="20" y1="8" x2="14" y2="14"></line><line x1="14" y1="8" x2="20" y2="14"></line></svg></div>
+              <div class="icon-btn-xs danger" title="Ban, can't rejoin"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="4.9" y1="4.9" x2="19.1" y2="19.1"></line></svg></div>
+            </div>
+          </div>
+
+          <div class="member-row">
+            <div class="mini-avatar" style="background: #f5c2e7;">L</div>
+            <div style="flex: 1; min-width: 0;">
+              <div style="font-weight: 600; font-size: 13px; color: #cdd6f4;">Lena</div>
+              <div style="font-size: 10.5px; color: #6c7086; margin-top: 2px;">Joined Jan 22, 2025</div>
+            </div>
+            <div style="display: flex; gap: 6px;">
+              <div class="perm-chip on" title="Read"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg></div>
+              <div class="perm-chip on" title="Write, add songs"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg></div>
+              <div class="perm-chip off" title="Delete, remove songs"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg></div>
+            </div>
+            <div style="display: flex; gap: 6px; margin-left: 4px;">
+              <div class="icon-btn-xs" title="Kick, can rejoin"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="8.5" cy="7" r="4"></circle><line x1="20" y1="8" x2="14" y2="14"></line><line x1="14" y1="8" x2="20" y2="14"></line></svg></div>
+              <div class="icon-btn-xs danger" title="Ban, can't rejoin"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="4.9" y1="4.9" x2="19.1" y2="19.1"></line></svg></div>
+            </div>
+          </div>
+
+          <div class="member-row">
+            <div class="mini-avatar" style="background: #a6e3a1;">A</div>
+            <div style="flex: 1; min-width: 0;">
+              <div style="font-weight: 600; font-size: 13px; color: #cdd6f4;">Ana</div>
+              <div style="font-size: 10.5px; color: #6c7086; margin-top: 2px;">Joined Feb 2, 2025</div>
+            </div>
+            <div style="display: flex; gap: 6px;">
+              <div class="perm-chip on" title="Read"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg></div>
+              <div class="perm-chip off" title="Write, add songs"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg></div>
+              <div class="perm-chip off" title="Delete, remove songs"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg></div>
+            </div>
+            <div style="display: flex; gap: 6px; margin-left: 4px;">
+              <div class="icon-btn-xs" title="Kick, can rejoin"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="8.5" cy="7" r="4"></circle><line x1="20" y1="8" x2="14" y2="14"></line><line x1="14" y1="8" x2="20" y2="14"></line></svg></div>
+              <div class="icon-btn-xs danger" title="Ban, can't rejoin"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="4.9" y1="4.9" x2="19.1" y2="19.1"></line></svg></div>
+            </div>
+          </div>
+
+          <div class="member-row">
+            <div class="mini-avatar" style="background: #cba6f7;">K</div>
+            <div style="flex: 1; min-width: 0;">
+              <div style="font-weight: 600; font-size: 13px; color: #cdd6f4;">Kian</div>
+              <div style="font-size: 10.5px; color: #6c7086; margin-top: 2px;">Joined Feb 5, 2025</div>
+            </div>
+            <div style="display: flex; gap: 6px;">
+              <div class="perm-chip on" title="Read"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg></div>
+              <div class="perm-chip on" title="Write, add songs"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg></div>
+              <div class="perm-chip on" title="Delete, remove songs"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg></div>
+            </div>
+            <div style="display: flex; gap: 6px; margin-left: 4px;">
+              <div class="icon-btn-xs" title="Kick, can rejoin"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="8.5" cy="7" r="4"></circle><line x1="20" y1="8" x2="14" y2="14"></line><line x1="14" y1="8" x2="20" y2="14"></line></svg></div>
+              <div class="icon-btn-xs danger" title="Ban, can't rejoin"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="4.9" y1="4.9" x2="19.1" y2="19.1"></line></svg></div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+
+</div>
+</x-dc>
+<script data-dc-script data-props='{}'>
+class Component extends DCLogic {}
+</script>
+</body>
+</html>

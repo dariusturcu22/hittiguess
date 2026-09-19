@@ -4,7 +4,11 @@ public enum ResourceType {
     PLAYLIST("Playlist"),
     SONG("Song"),
     USER("User"),
-    SONG_NOT_IN_PLAYLIST("Song");
+    SONG_NOT_IN_PLAYLIST("Song"),
+    PLAYLIST_MEMBER("Playlist member"),
+    SAVED_PLAYLIST("Saved playlist"),
+    GROUP("Group"),
+    MEMBER("Member");
 
     private final String displayName;
 

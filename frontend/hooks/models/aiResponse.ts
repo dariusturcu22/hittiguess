@@ -12,4 +12,6 @@ export interface AiResponse {
   durationMs?: number;
   timestamp?: string;
   status?: string;
+  rejectionReason?: string;
+  rejectionDetail?: string;
 }
