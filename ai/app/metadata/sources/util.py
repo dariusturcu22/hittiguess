@@ -9,7 +9,7 @@ METADATA_SOURCE_USER_AGENT = "hittiguess/0.1 (+https://hittiguess.com; contact@h
 
 YOUTUBE_ID_PATTERN = re.compile(r"^[a-zA-Z0-9_-]{11}$")
 FEATURED_ARTIST_SUFFIX_PATTERN = re.compile(
-    r"\s*(?:\((?:feat\.?|ft\.?)\s+[^)]*\)|(?:feat\.?|ft\.?)\s+.*)$",
+    r"\s*(?:\(\b(?:feat|ft)\b\.?\s+[^)]*\)|\bfeat\b\.?\s+.*|\bft\b(?!\.)\s+.*)$",
     re.IGNORECASE,
 )
 

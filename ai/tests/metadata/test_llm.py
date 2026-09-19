@@ -2,7 +2,12 @@ from unittest.mock import MagicMock
 
 import httpx
 import pytest
+from openai import APIStatusError
+from pydantic import BaseModel
 
+from app.clients.deepinfra_client import client as deepinfra_client
+from app.clients.openai_client import client
+from app.metadata import llm
 from app.metadata.schemas import LlmExtractionResult, SongMetadataResult, SubmissionPreCheckResult
 
 
@@ -36,12 +41,6 @@ def test_metadata_schema_normalizes_confidence(confidence):
     assert extraction_result.confidence == expected_confidence
     assert metadata_result.confidence == expected_confidence
     assert precheck_result.classification_confidence == expected_confidence
-from openai import APIStatusError
-from pydantic import BaseModel
-
-from app.clients.deepinfra_client import client as deepinfra_client
-from app.clients.openai_client import client
-from app.metadata import llm
 
 
 def _mock_completion(parsed):
