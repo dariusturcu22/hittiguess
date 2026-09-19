@@ -452,3 +452,31 @@ Tests:
 Tests:
 
 - [x] Add or update focused realtime and lobby component coverage
+
+## Metadata pipeline accuracy fix pass
+
+- [x] Strip featured-artist annotations from titles used only for structured-source and Wikipedia queries, preserving the displayed and persisted title
+- [x] Normalize LLM confidence values to the lowercase `low`, `medium`, or `high` set at the schema boundary
+- [x] Lock as verified after Wikipedia when at least three candidate source years agree, or when at least three non-null candidates all fall within a one-year range
+- [x] Preserve truthful lock provenance for Wikipedia-assisted and clustered-source locks without invoking four-source reconciliation
+- [x] Add metadata unit tests for query-title cleanup, confidence normalization, Wikipedia-assisted agreement, and year clustering
+
+Tests:
+
+- [x] Run the AI metadata test suite
+
+## Batch F accessibility and component boundary
+
+- [x] Keep shadcn primitives as the accessible interaction boundary and apply the project visual system through composition and tokens
+- [x] Improve focus-visible states and readable translucent surfaces in the chat overlay and voice sidebar
+- [x] Verify the affected interactive controls with frontend lint and a production build
+
+## App-wide polish fix pass
+
+- [x] Center empty playlist states in the available page area
+- [x] Replace the JavaScript logo height loop with composited CSS animation and make the sidebar logo a dashboard link
+- [x] Redirect authenticated visitors from the marketing root to the playlist dashboard
+
+Tests:
+
+- [x] Run frontend lint and production build

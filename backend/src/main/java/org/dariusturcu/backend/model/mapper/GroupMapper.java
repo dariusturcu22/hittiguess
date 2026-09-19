@@ -4,6 +4,7 @@ import org.dariusturcu.backend.model.group.Group;
 import org.dariusturcu.backend.model.group.GroupDetailDTO;
 import org.dariusturcu.backend.model.group.Member;
 import org.dariusturcu.backend.model.group.MemberDTO;
+import org.dariusturcu.backend.security.util.SecurityUtils;
 
 import org.springframework.stereotype.Component;
 import lombok.RequiredArgsConstructor;
@@ -34,7 +35,7 @@ public class GroupMapper {
                 group.getDjMode(),
                 group.getWinConditionCardCount(),
                 group.getPlaylists().stream()
-                        .map(playlistMapper::toSummaryDTO)
+                        .map(playlist -> playlistMapper.toSummaryDTO(playlist, SecurityUtils.getCurrentUserId()))
                         .toList(),
                 group.getMembers().stream()
                         .map(this::toMemberDTO)

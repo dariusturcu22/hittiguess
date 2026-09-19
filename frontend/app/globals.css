@@ -343,3 +343,11 @@ html.theme-transition .theme-toggle-thumb {
     .ghost-float-a, .ghost-float-b, .ghost-float-c { animation: none; }
   }
 }
+@keyframes waveform-bar {
+  0%, 100% { transform: scaleY(0.45); }
+  50% { transform: scaleY(1); }
+}
+
+.animate-waveform-bar {
+  animation: waveform-bar 900ms ease-in-out infinite;
+}
