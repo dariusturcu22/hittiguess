@@ -442,6 +442,17 @@ Tests:
 - [x] Frontend test: the confirm affordance shows only for a `NEEDS_REVIEW` song and submits a confirmation on click (`SongReadOnlyView.test.tsx`)
 - [x] Frontend test: the song list's empty-state catalog search calls the search endpoint and adds a matching result with its data (`SongCatalogQuickAdd.test.tsx`)
 
+## Lobby and voice fix pass
+
+- [x] Refresh active group membership after group creation, departure, and game-session changes
+- [x] Keep administrator controls loading-safe and make realtime status visually distinct from controls
+- [x] Improve chat input spacing and replace the native playlist picker with keyboard-accessible playlist choices
+- [x] Run frontend checks
+
+Tests:
+
+- [x] Add or update focused realtime and lobby component coverage
+
 ## Metadata pipeline accuracy fix pass
 
 - [x] Strip featured-artist annotations from titles used only for structured-source and Wikipedia queries, preserving the displayed and persisted title
