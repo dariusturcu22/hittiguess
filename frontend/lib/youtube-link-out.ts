@@ -7,7 +7,11 @@ function isAndroid(userAgent: string): boolean {
 export function openYoutubeLink(watchUrl: string) {
   if (isAndroid(navigator.userAgent)) {
     const fallbackUrl = encodeURIComponent(watchUrl);
-    window.location.assign(`intent://${watchUrl.replace(/^https?:\/\//, "")}#Intent;package=${YOUTUBE_ANDROID_PACKAGE};scheme=https;S.browser_fallback_url=${fallbackUrl};end`);
+    window.open(
+      `intent://${watchUrl.replace(/^https?:\/\//, "")}#Intent;package=${YOUTUBE_ANDROID_PACKAGE};scheme=https;S.browser_fallback_url=${fallbackUrl};end`,
+      "_blank",
+      "noopener,noreferrer",
+    );
     return;
   }
 
