@@ -7,9 +7,12 @@ import org.dariusturcu.backend.model.ai.AiResponse;
 import org.dariusturcu.backend.model.ai.AiServiceResolveResponse;
 import org.dariusturcu.backend.model.ai.MetadataResolveRequest;
 import org.dariusturcu.backend.security.util.SecurityUtils;
+import org.dariusturcu.backend.util.YoutubeLinkParser;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
 
+import java.time.Duration;
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.Optional;
 import java.util.Set;
@@ -20,7 +23,7 @@ import java.util.concurrent.ConcurrentHashMap;
 @RequiredArgsConstructor
 public class SongMetadataService {
     private static final String YOUTUBE_WATCH_URL_PREFIX = "https://www.youtube.com/watch?v=";
-    private static final String YOUTUBE_VIDEO_ID_PARAMETER = "v=";
+    private static final Duration PREVIEW_CACHE_TTL = Duration.ofMinutes(10);
 
     private final RestClient aiServiceRestClient;
 
@@ -28,7 +31,7 @@ public class SongMetadataService {
     // so one user queuing many concurrent requests can tie up threads and run up cost. Capping
     // it at one in-flight request per user, rather than a time window, matches the actual risk.
     private final Set<Long> usersWithRequestInFlight = ConcurrentHashMap.newKeySet();
-    private final ConcurrentHashMap<String, AiResponse> previewMetadataByYoutubeId = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<PreviewCacheKey, CachedPreview> previewMetadataByKey = new ConcurrentHashMap<>();
 
     private static final String SUCCESS_STATUS = "SUCCESS";
     private static final String REJECTED_STATUS = "REJECTED";
@@ -42,10 +45,9 @@ public class SongMetadataService {
 
         try {
             AiResponse response = resolve(youtubeUrl);
-            int youtubeIdStart = youtubeUrl.lastIndexOf(YOUTUBE_VIDEO_ID_PARAMETER) + YOUTUBE_VIDEO_ID_PARAMETER.length();
-            String youtubeId = youtubeUrl.substring(youtubeIdStart);
-            if (SUCCESS_STATUS.equals(response.status()) && response.content() != null) {
-                previewMetadataByYoutubeId.put(youtubeId, response);
+            Optional<String> youtubeId = YoutubeLinkParser.parseVideoId(youtubeUrl);
+            if (SUCCESS_STATUS.equals(response.status()) && response.content() != null && youtubeId.isPresent()) {
+                previewMetadataByKey.put(new PreviewCacheKey(userId, youtubeId.get()), new CachedPreview(response, Instant.now()));
             }
             return response;
         } finally {
@@ -62,7 +64,16 @@ public class SongMetadataService {
     }
 
     public Optional<AiResponse> findCachedPreview(String youtubeId) {
-        return Optional.ofNullable(previewMetadataByYoutubeId.get(youtubeId));
+        PreviewCacheKey cacheKey = new PreviewCacheKey(SecurityUtils.getCurrentUserId(), youtubeId);
+        CachedPreview cachedPreview = previewMetadataByKey.get(cacheKey);
+        if (cachedPreview == null) {
+            return Optional.empty();
+        }
+        if (cachedPreview.createdAt().plus(PREVIEW_CACHE_TTL).isAfter(Instant.now())) {
+            return Optional.of(cachedPreview.response());
+        }
+        previewMetadataByKey.remove(cacheKey, cachedPreview);
+        return Optional.empty();
     }
 
     private AiResponse resolve(String youtubeUrl) {
@@ -95,5 +106,11 @@ public class SongMetadataService {
             log.warn("AI microservice call failed: {}", aiServiceCallFailure.getMessage());
             return new AiResponse(null, null, System.currentTimeMillis() - startTime, LocalDateTime.now(), ERROR_STATUS, null, null);
         }
+    }
+
+    private record PreviewCacheKey(Long userId, String youtubeId) {
+    }
+
+    private record CachedPreview(AiResponse response, Instant createdAt) {
     }
 }

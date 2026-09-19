@@ -69,6 +69,7 @@ class SongMetadataServiceTest {
         assertThat(result.content()).isNotNull();
         assertThat(result.content().title()).isEqualTo("Title");
         assertThat(result.rejectionReason()).isNull();
+        assertThat(songMetadataService.findCachedPreview("dQw4w9WgXcQ")).contains(result);
         mockServer.verify();
     }
 
