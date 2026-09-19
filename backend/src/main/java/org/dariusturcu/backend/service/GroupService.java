@@ -238,6 +238,18 @@ public class GroupService {
         setConnectedAndBroadcast(group, member, false);
     }
 
+    // The WebSocket subscribe listener's entry point, mirroring disconnectMember above: a
+    // client subscribing to its group's membership topic is the signal that its member is
+    // live again, whether this is the first connection or a reconnect after a dropped
+    // socket. Without this, a member who ever disconnects stays flagged disconnected
+    // forever, since reconnect() above requires a request-scoped SecurityContext the
+    // socket listener doesn't have.
+    public void reconnectMember(Long groupId, Long userId) {
+        Group group = findGroup(groupId);
+        Member member = requireMembershipByUserId(group, userId);
+        setConnectedAndBroadcast(group, member, true);
+    }
+
     // Gate for STOMP-driven voice signaling, which resolves the caller from the socket's
     // authenticated principal (a user id) rather than a request-scoped SecurityContext.
     // A missing group or a non-member is not a member.
