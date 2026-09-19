@@ -24,6 +24,17 @@ public record CreateSongRequest(
         @Pattern(regexp = "^[0-9a-fA-F]{6}$", message = "Must be a 6-character hex color without #")
         String color,
 
-        Country country
+        Country country,
+
+        Boolean metadataConfirmed
 ) {
+    public CreateSongRequest(
+            String artist,
+            String title,
+            int releaseYear,
+            String youtubeId,
+            String color,
+            Country country) {
+        this(artist, title, releaseYear, youtubeId, color, country, false);
+    }
 }

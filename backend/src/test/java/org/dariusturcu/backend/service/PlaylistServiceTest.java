@@ -16,6 +16,8 @@ import org.dariusturcu.backend.model.song.CreateSongRequest;
 import org.dariusturcu.backend.model.song.Song;
 import org.dariusturcu.backend.model.song.UpdateSongRequest;
 import org.dariusturcu.backend.model.song.VerificationStatus;
+import org.dariusturcu.backend.model.ai.AiResponse;
+import org.dariusturcu.backend.model.ai.SongMetadataResponse;
 import org.dariusturcu.backend.model.user.Role;
 import org.dariusturcu.backend.model.user.User;
 import org.dariusturcu.backend.repository.PlaylistBanRepository;
@@ -73,6 +75,8 @@ class PlaylistServiceTest {
     private SavedPlaylistRepository savedPlaylistRepository;
     @Mock
     private CatalogSeedingService catalogSeedingService;
+    @Mock
+    private SongMetadataService songMetadataService;
 
     @InjectMocks
     private PlaylistService playlistService;
@@ -237,6 +241,48 @@ class PlaylistServiceTest {
         verify(catalogSeedingService).reEnqueueForPatientReprocessing(request.youtubeId());
         verify(playlistRepository).save(playlist);
         assertThat(playlist.getSongs()).contains(newSong);
+    }
+
+    @Test
+    void createSongPersistsServerResolvedMetadataForAnUnchangedConfirmedPreview() {
+        CreateSongRequest request = new CreateSongRequest(
+                "Artist", "Title", 2000, "dQw4w9WgXcQ", "abcdef", null, true);
+        Song newSong = new Song();
+        newSong.setId(SONG_ID);
+        SongMetadataResponse metadata = new SongMetadataResponse(
+                "Title", "Artist", 2000, "abcdef", "high", "sources", "matched", "VERIFIED");
+        AiResponse response = new AiResponse(metadata, null, 0L, null, "SUCCESS", null, null);
+        when(songRepository.findByYoutubeId(request.youtubeId())).thenReturn(List.of());
+        when(songMapper.toEntity(request)).thenReturn(newSong);
+        when(songMetadataService.resolveByYoutubeId(request.youtubeId())).thenReturn(response);
+        when(songRepository.save(newSong)).thenReturn(newSong);
+        when(songMapper.toDTO(newSong)).thenReturn(null);
+
+        playlistService.createSong(PLAYLIST_ID, request);
+
+        assertThat(newSong.getVerificationStatus()).isEqualTo(VerificationStatus.VERIFIED);
+        assertThat(newSong.getConfidence()).isEqualTo("high");
+    }
+
+    @Test
+    void createSongDoesNotApplyResolvedMetadataWhenTheSubmittedSongDiffers() {
+        CreateSongRequest request = new CreateSongRequest(
+                "Artist", "Edited title", 2000, "dQw4w9WgXcQ", "abcdef", null, true);
+        Song newSong = new Song();
+        newSong.setId(SONG_ID);
+        SongMetadataResponse metadata = new SongMetadataResponse(
+                "Original title", "Artist", 2000, "abcdef", "high", "sources", "matched", "VERIFIED");
+        AiResponse response = new AiResponse(metadata, null, 0L, null, "SUCCESS", null, null);
+        when(songRepository.findByYoutubeId(request.youtubeId())).thenReturn(List.of());
+        when(songMapper.toEntity(request)).thenReturn(newSong);
+        when(songMetadataService.resolveByYoutubeId(request.youtubeId())).thenReturn(response);
+        when(songRepository.save(newSong)).thenReturn(newSong);
+        when(songMapper.toDTO(newSong)).thenReturn(null);
+
+        playlistService.createSong(PLAYLIST_ID, request);
+
+        assertThat(newSong.getVerificationStatus()).isEqualTo(VerificationStatus.UNVERIFIED);
+        assertThat(newSong.getConfidence()).isNull();
     }
 
     @Test

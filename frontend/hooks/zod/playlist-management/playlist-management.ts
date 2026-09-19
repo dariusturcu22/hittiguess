@@ -30,10 +30,7 @@ export const createSongBodyReleaseYearMin = 1000;
 export const createSongBodyYoutubeIdRegExp = new RegExp('^[a-zA-Z0-9_-]{11}$');
 
 
-export const createSongBodyGradientColor1RegExp = new RegExp('^[0-9a-fA-F]{6}$');
-
-
-export const createSongBodyGradientColor2RegExp = new RegExp('^[0-9a-fA-F]{6}$');
+export const createSongBodyColorRegExp = new RegExp('^[0-9a-fA-F]{6}$');
 
 
 export const createSongBody = zod.object({
@@ -41,9 +38,9 @@ export const createSongBody = zod.object({
   "title": zod.string().min(1),
   "releaseYear": zod.number().min(createSongBodyReleaseYearMin).optional(),
   "youtubeId": zod.string().min(1).regex(createSongBodyYoutubeIdRegExp),
-  "gradientColor1": zod.string().min(1).regex(createSongBodyGradientColor1RegExp),
-  "gradientColor2": zod.string().min(1).regex(createSongBodyGradientColor2RegExp),
-  "country": zod.enum(['NONE', 'RO']).optional()
+  "color": zod.string().min(1).regex(createSongBodyColorRegExp),
+  "country": zod.enum(['NONE', 'RO']).optional(),
+  "metadataConfirmed": zod.boolean().optional()
 })
 
 /**
@@ -102,13 +99,20 @@ export const getPlaylistParams = zod.object({
 })
 
 /**
+ * @summary Delete a playlist, owner only
+ */
+export const deletePlaylistParams = zod.object({
+  "playlistId": zod.number()
+})
+
+/**
  * @summary Update playlist information
  */
 export const updatePlaylistParams = zod.object({
   "playlistId": zod.number()
 })
 
-export const updatePlaylistBodyColorRegExp = new RegExp('^[0-9a-fA-F]{6}$');
+export const updatePlaylistBodyColorRegExp = new RegExp('(?i)^(cba6f7|fab387|a6e3a1|89b4fa|f5c2e7|f9e2af)$');
 
 
 export const updatePlaylistBody = zod.object({
@@ -149,10 +153,7 @@ export const updateSongBodyReleaseYearMin = 1000;
 export const updateSongBodyYoutubeIdRegExp = new RegExp('^[a-zA-Z0-9_-]{11}$');
 
 
-export const updateSongBodyGradientColor1RegExp = new RegExp('^[0-9a-fA-F]{6}$');
-
-
-export const updateSongBodyGradientColor2RegExp = new RegExp('^[0-9a-fA-F]{6}$');
+export const updateSongBodyColorRegExp = new RegExp('^[0-9a-fA-F]{6}$');
 
 
 export const updateSongBody = zod.object({
@@ -160,8 +161,7 @@ export const updateSongBody = zod.object({
   "title": zod.string().min(1),
   "releaseYear": zod.number().min(updateSongBodyReleaseYearMin).optional(),
   "youtubeId": zod.string().min(1).regex(updateSongBodyYoutubeIdRegExp),
-  "gradientColor1": zod.string().min(1).regex(updateSongBodyGradientColor1RegExp),
-  "gradientColor2": zod.string().min(1).regex(updateSongBodyGradientColor2RegExp),
+  "color": zod.string().min(1).regex(updateSongBodyColorRegExp),
   "country": zod.enum(['NONE', 'RO']).optional()
 })
 

@@ -453,6 +453,15 @@ Tests:
 
 - [x] Add or update focused realtime and lobby component coverage
 
+## Metadata user-attention and persistence fix pass
+
+- [x] Derive non-admin user attention from verification status and normalized confidence
+- [x] Preserve trusted metadata preview verification data only when a submitted song still matches that preview
+
+Tests:
+
+- [x] Add backend and frontend coverage for attention and metadata persistence
+
 ## Metadata pipeline accuracy fix pass
 
 - [x] Strip featured-artist annotations from titles used only for structured-source and Wikipedia queries, preserving the displayed and persisted title

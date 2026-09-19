@@ -16,6 +16,7 @@ import { SongSearchStep } from "./SongSearchStep";
 import { NewSongLinkStep } from "./NewSongLinkStep";
 import { NewSongReviewStep, PendingSongDetails } from "./NewSongReviewStep";
 import { buildCreateSongRequestFromCatalog } from "./songCatalogRequest";
+import { needsUserAttention } from "@/lib/song-attention";
 
 type Mode = "search" | "new-link" | "new-review";
 
@@ -134,8 +135,7 @@ export function AddSongForm({ playlistId, backPath }: AddSongFormProps) {
       }
 
       const metadata = response.content;
-      const isHighConfidence =
-        !!metadata.title && !!metadata.artist && !!metadata.releaseYear;
+      const requiresUserAttention = needsUserAttention(metadata);
 
       setPendingDetails({
         title: metadata.title ?? "",
@@ -143,7 +143,7 @@ export function AddSongForm({ playlistId, backPath }: AddSongFormProps) {
         releaseYear: metadata.releaseYear ?? "",
         color: metadata.color ? `#${metadata.color}` : DEFAULT_COLOR,
         country: CreateSongRequestCountry.NONE,
-        isHighConfidence,
+        isHighConfidence: !requiresUserAttention,
       });
       setMode("new-review");
     } catch {

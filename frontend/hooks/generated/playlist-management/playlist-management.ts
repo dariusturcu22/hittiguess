@@ -640,6 +640,67 @@ export function useGetPlaylist<TData = Awaited<ReturnType<typeof getPlaylist>>, 
 
 
 /**
+ * @summary Delete a playlist, owner only
+ */
+export const deletePlaylist = (
+    playlistId: number,
+ options?: SecondParameter<typeof customInstance>,) => {
+      
+      
+      return customInstance<void>(
+      {url: `/api/playlists/${playlistId}`, method: 'DELETE'
+    },
+      options);
+    }
+  
+
+
+export const getDeletePlaylistMutationOptions = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deletePlaylist>>, TError,{playlistId: number}, TContext>, request?: SecondParameter<typeof customInstance>}
+): UseMutationOptions<Awaited<ReturnType<typeof deletePlaylist>>, TError,{playlistId: number}, TContext> => {
+
+const mutationKey = ['deletePlaylist'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+      
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deletePlaylist>>, {playlistId: number}> = (props) => {
+          const {playlistId} = props ?? {};
+
+          return  deletePlaylist(playlistId,requestOptions)
+        }
+
+        
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeletePlaylistMutationResult = NonNullable<Awaited<ReturnType<typeof deletePlaylist>>>
+    
+    export type DeletePlaylistMutationError = unknown
+
+    /**
+ * @summary Delete a playlist, owner only
+ */
+export const useDeletePlaylist = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deletePlaylist>>, TError,{playlistId: number}, TContext>, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof deletePlaylist>>,
+        TError,
+        {playlistId: number},
+        TContext
+      > => {
+
+      const mutationOptions = getDeletePlaylistMutationOptions(options);
+
+      return useMutation(mutationOptions, queryClient);
+    }
+    /**
  * @summary Update playlist information
  */
 export const updatePlaylist = (

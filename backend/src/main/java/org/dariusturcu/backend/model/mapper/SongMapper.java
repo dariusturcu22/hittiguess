@@ -21,10 +21,17 @@ public class SongMapper {
                 song.getCountry() != null ? song.getCountry() : Country.NONE,
                 song.getVerificationStatus(),
                 song.getConfidence(),
+                needsUserAttention(song),
                 song.getAddedBy() != null
                         ? new UserSummaryDTO(song.getAddedBy().getId(), song.getAddedBy().getUsername())
                         : null
         );
+    }
+
+    private boolean needsUserAttention(Song song) {
+        return song.getVerificationStatus() == VerificationStatus.MANUAL_ENTRY
+                || (song.getVerificationStatus() == VerificationStatus.NEEDS_REVIEW
+                && "low".equalsIgnoreCase(song.getConfidence()));
     }
 
     public Song toEntity(CreateSongRequest request) {

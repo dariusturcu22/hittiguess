@@ -46,6 +46,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/shadcn/alert-dialog";
 import { SongDTO, SongDTOVerificationStatus } from "@/hooks/models";
+import { needsUserAttention } from "@/lib/song-attention";
 import {
   getGetPlaylistQueryKey,
   useDeleteSong,
@@ -185,10 +186,7 @@ export default function PlaylistContent({
     );
   }
 
-  const needsReviewCount = songs.filter(
-    (song) =>
-      song.verificationStatus === SongDTOVerificationStatus.NEEDS_REVIEW,
-  ).length;
+  const needsReviewCount = songs.filter(needsUserAttention).length;
 
   const visibleSongs = songs.filter((song) => {
     const query = searchQuery.trim().toLowerCase();
@@ -423,11 +421,7 @@ export default function PlaylistContent({
           </div>
           <Link
             href={`/playlists/${playlistId}/songs/${
-              songs.find(
-                (song) =>
-                  song.verificationStatus ===
-                  SongDTOVerificationStatus.NEEDS_REVIEW,
-              )?.id ?? ""
+              songs.find(needsUserAttention)?.id ?? ""
             }`}
             className="flex shrink-0 items-center gap-1 font-semibold text-[12px] text-warning whitespace-nowrap"
           >
@@ -475,8 +469,7 @@ function SongRow({
 }) {
   const isManualEntry =
     song.verificationStatus === SongDTOVerificationStatus.MANUAL_ENTRY;
-  const isNeedsReview =
-    song.verificationStatus === SongDTOVerificationStatus.NEEDS_REVIEW;
+  const isNeedsReview = needsUserAttention(song);
 
   return (
     <div

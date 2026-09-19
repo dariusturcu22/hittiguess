@@ -21,7 +21,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/shadcn/alert-dialog";
-import { SongDTO, SongDTOVerificationStatus } from "@/hooks/models";
+import { SongDTO } from "@/hooks/models";
 import {
   getGetPlaylistQueryKey,
   getGetSongQueryKey,
@@ -32,6 +32,7 @@ import {
   useSubmitReport,
 } from "@/hooks/generated/community-song-reports/community-song-reports";
 import { GameCard } from "@/components/game-card";
+import { needsUserAttention } from "@/lib/song-attention";
 
 interface SongReadOnlyViewProps {
   song: SongDTO;
@@ -58,8 +59,7 @@ export function SongReadOnlyView({
   const [reportError, setReportError] = useState("");
 
   const artistNames = song.artists.map((artist) => artist.name).join(", ");
-  const isNeedsReview =
-    song.verificationStatus === SongDTOVerificationStatus.NEEDS_REVIEW;
+  const isNeedsReview = needsUserAttention(song);
 
   const invalidateSong = () => {
     queryClient.invalidateQueries({

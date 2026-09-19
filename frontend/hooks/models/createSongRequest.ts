@@ -24,4 +24,5 @@ export interface CreateSongRequest {
    */
   color: string;
   country?: CreateSongRequestCountry;
+  metadataConfirmed?: boolean;
 }

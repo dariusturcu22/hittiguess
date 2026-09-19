@@ -23,7 +23,7 @@ export interface PendingSongDetails {
   releaseYear: string | number;
   color: string;
   country: CreateSongRequestCountry;
-  /** True when the metadata pipeline resolved every field with high confidence. */
+  /** True when the pipeline result does not need normal-user review. */
   isHighConfidence: boolean;
 }
 
@@ -80,14 +80,22 @@ export function NewSongReviewStep({
       return;
     }
 
-    onSubmit({
+    const submittedDetailsMatchPreview =
+      formData.title.trim() === details.title.trim() &&
+      formData.artist.trim() === details.artist.trim() &&
+      releaseYear === Number(details.releaseYear);
+
+    const request: CreateSongRequest & { metadataConfirmed?: boolean } = {
       youtubeId,
       title: formData.title.trim(),
       artist: formData.artist.trim(),
       releaseYear,
       color: formData.color.replace("#", ""),
       country: formData.country,
-    });
+      metadataConfirmed: submittedDetailsMatchPreview,
+    };
+
+    onSubmit(request);
   };
 
   return (
@@ -106,7 +114,7 @@ export function NewSongReviewStep({
       {isLocked ? (
         <div className="mb-5.5 inline-flex items-center gap-1.5 rounded-full bg-[#499f36]/14 px-4 py-2 font-display text-[11px] text-[#499f36] dark:bg-[#a6e3a1]/16 dark:text-[#a6e3a1]">
           <ShieldCheck className="size-3" />
-          High confidence
+          Details confirmed
         </div>
       ) : (
         <div className="mb-5.5 inline-flex items-center gap-1.5 rounded-full bg-warning/16 px-4 py-2 font-display text-[11px] text-warning">
@@ -194,7 +202,7 @@ export function NewSongReviewStep({
 
       <p className="mb-4.5 max-w-[420px] text-center text-xs leading-relaxed text-muted-foreground">
         {isLocked
-          ? "We're confident these are right, so they're locked."
+          ? "These details are settled, so they are locked."
           : details.isHighConfidence
             ? "Fields unlocked for editing."
             : "We got what we could from the video. Fill in or fix anything that's missing."}
