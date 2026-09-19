@@ -600,7 +600,7 @@ Tests:
 
 ## Story 28: UI redesign
 
-Checked against real code: the frontend today covers auth (login, register, forgot-password, OAuth2 redirect), a landing page, and the dashboard's playlist/song CRUD (playlist list, playlist detail, song list, song detail, add song, join-by-invite). Everything `GAME_DESIGN.md` already specs for gameplay (drag-and-drop timeline, guess box, betting, voice sidebar, chat overlay, DJ link-out, turn notifications, results/leaderboards) has no frontend code yet, since stories 10/11/12/13/39 haven't been implemented.
+Checked against real code: the frontend covers auth, landing, playlist/song CRUD, group lobby, game session, chat/voice shell, away widget, DJ link-out, and results export. The Batch E gameplay surfaces are wired to the generated hooks and realtime clients; the remaining unchecked items below are visual/state coverage and broader route smoke coverage.
 
 Scope decided: one unified redesign pass covering both the existing pages and the not-yet-built gameplay screens, not two separate efforts. A fresh visual direction, not constrained to the current shadcn/Tailwind theme tokens, though the underlying component library stays unless a specific component doesn't hold up under the new direction. Mockups are built as a multi-artboard canvas via the `design` skill, reviewed before any implementation code is written.
 
@@ -615,17 +615,17 @@ Design phase complete: `docs/design/hittiguess-design.html` covers all 53 screen
 
 ### Batch E: Gameplay screens
 
-- [ ] Build the group lobby route and shell from the `GroupLobby*` mockups, including member presence, admin indicators, join link, group settings, and the empty, two-player, and eight-player layouts
-- [ ] Wire the group lobby to the generated group-management hooks and persistent group WebSocket events, with loading, forbidden, missing, and connection-error states
-- [ ] Bridge the browser's HTTP-only access-token cookie into the STOMP authentication flow, so the gameplay client can connect without exposing the token to JavaScript
-- [ ] Build the game-session route and shared round shell from the `GameSession*` mockups, including player, DJ, and spectator layouts, current-song card, timeline, token count, and persistent session connection
-- [ ] Implement timeline card placement and guess submission against the game-session API, including dragging, dropped, locked, and animated reveal states
-- [ ] Implement betting-window preparation and active states, including token-holder variants and round progression from session broadcasts
-- [ ] Build the DJ link-out action and audio-sharing warning, always opening the real YouTube page or app rather than embedding playback
-- [ ] Add the group text-chat overlay, turn notification, away widget, and voice sidebar to the gameplay shell, wired to the group-chat, WebSocket signaling, and TURN-credentials APIs
-- [ ] Build the results and leaderboard route from the `Results*` mockups for two-player and eight-player sessions, including the session export action
+- [x] Build the group lobby route and shell from the `GroupLobby*` mockups, including member presence, admin indicators, join link, group settings, and the empty, two-player, and eight-player layouts
+- [x] Wire the group lobby to the generated group-management hooks and persistent group WebSocket events, with loading, forbidden, missing, and connection-error states
+- [x] Bridge the browser's HTTP-only access-token cookie into the STOMP authentication flow, so the gameplay client can connect without exposing the token to JavaScript
+- [x] Build the game-session route and shared round shell from the `GameSession*` mockups, including player, DJ, and spectator layouts, current-song card, timeline, token count, and persistent session connection
+- [x] Implement timeline card placement and guess submission against the game-session API, including dragging, dropped, locked, and animated reveal states
+- [x] Implement betting-window preparation and active states, including token-holder variants and round progression from session broadcasts
+- [x] Build the DJ link-out action and audio-sharing warning, always opening the real YouTube page or app rather than embedding playback
+- [x] Add the group text-chat overlay, turn notification, away widget, and voice sidebar to the gameplay shell, wired to the group-chat, WebSocket signaling, and TURN-credentials APIs
+- [x] Build the results and leaderboard route from the `Results*` mockups for two-player and eight-player sessions, including the session export action
 - [ ] Render every Batch E route and state at each mockup's desktop and mobile breakpoint in both themes, comparing directly against its matching source mockup
-- [ ] Add unit coverage for each new interactive component and Playwright coverage for lobby join, session start, placement, betting, link-out warning, chat, and results export
+- [x] Add unit coverage for each new interactive component and Playwright coverage for lobby join, session start, placement, betting, link-out warning, chat, and results export
 
 Tests:
 - [ ] Frontend test: each redesigned existing page renders without regression (a smoke test per route)
