@@ -1,7 +1,6 @@
 package org.dariusturcu.backend.config;
 
 import tools.jackson.databind.ObjectMapper;
-import lombok.RequiredArgsConstructor;
 import org.dariusturcu.backend.exception.ErrorResponse;
 import org.dariusturcu.backend.ratelimit.RateLimitingFilter;
 import org.dariusturcu.backend.security.JwtAuthenticationFilter;
@@ -11,6 +10,7 @@ import org.dariusturcu.backend.security.oauth2.OAuth2AuthenticationFailureHandle
 import org.dariusturcu.backend.security.oauth2.OAuth2AuthenticationSuccessHandler;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -38,7 +38,6 @@ import java.util.List;
 
 @Configuration
 @EnableWebSecurity
-@RequiredArgsConstructor
 @Order(1)
 
 public class SecurityConfig {
@@ -51,6 +50,29 @@ public class SecurityConfig {
     private final OAuth2AuthenticationFailureHandler oAuth2AuthenticationFailureHandler;
     private final HttpCookieOAuth2AuthorizationRequestRepository authorizationRequestRepository;
     private final ObjectMapper objectMapper;
+    private final List<String> allowedFrontendOrigins;
+
+    public SecurityConfig(
+            JwtAuthenticationFilter jwtAuthenticationFilter,
+            RateLimitingFilter rateLimitingFilter,
+            UserDetailsService userDetailsService,
+            CustomOAuth2UserService customOAuth2UserService,
+            OAuth2AuthenticationSuccessHandler oAuth2AuthenticationSuccessHandler,
+            OAuth2AuthenticationFailureHandler oAuth2AuthenticationFailureHandler,
+            HttpCookieOAuth2AuthorizationRequestRepository authorizationRequestRepository,
+            ObjectMapper objectMapper,
+            @Value("${frontend.allowed-origins}") List<String> allowedFrontendOrigins
+    ) {
+        this.jwtAuthenticationFilter = jwtAuthenticationFilter;
+        this.rateLimitingFilter = rateLimitingFilter;
+        this.userDetailsService = userDetailsService;
+        this.customOAuth2UserService = customOAuth2UserService;
+        this.oAuth2AuthenticationSuccessHandler = oAuth2AuthenticationSuccessHandler;
+        this.oAuth2AuthenticationFailureHandler = oAuth2AuthenticationFailureHandler;
+        this.authorizationRequestRepository = authorizationRequestRepository;
+        this.objectMapper = objectMapper;
+        this.allowedFrontendOrigins = allowedFrontendOrigins;
+    }
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
@@ -114,7 +136,7 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(List.of("http://localhost:3000", "https://my-hitster.dariusturcu22.com"));
+        configuration.setAllowedOrigins(allowedFrontendOrigins);
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(List.of("*"));
         configuration.setAllowCredentials(true);

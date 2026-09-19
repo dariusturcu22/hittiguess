@@ -1,7 +1,7 @@
 package org.dariusturcu.backend.websocket;
 
-import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.messaging.simp.config.ChannelRegistration;
 import org.springframework.messaging.simp.config.MessageBrokerRegistry;
 import org.springframework.web.socket.config.annotation.EnableWebSocketMessageBroker;
@@ -26,24 +26,31 @@ import java.util.List;
 // rejected before STOMP or the auth interceptor ever sees it.
 @Configuration
 @EnableWebSocketMessageBroker
-@RequiredArgsConstructor
 public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
     private static final String STOMP_ENDPOINT = "/ws";
     private static final String APPLICATION_DESTINATION_PREFIX = "/app";
     private static final String BROADCAST_DESTINATION_PREFIX = "/topic";
     private static final String USER_QUEUE_DESTINATION_PREFIX = "/queue";
-    private static final List<String> ALLOWED_ORIGIN_PATTERNS =
-            List.of("http://localhost:3000", "https://my-hitster.dariusturcu22.com");
-
     private final StompAuthenticationChannelInterceptor stompAuthenticationChannelInterceptor;
     private final JwtCookieHandshakeInterceptor jwtCookieHandshakeInterceptor;
+    private final List<String> allowedFrontendOrigins;
+
+    public WebSocketConfig(
+            StompAuthenticationChannelInterceptor stompAuthenticationChannelInterceptor,
+            JwtCookieHandshakeInterceptor jwtCookieHandshakeInterceptor,
+            @Value("${frontend.allowed-origins}") List<String> allowedFrontendOrigins
+    ) {
+        this.stompAuthenticationChannelInterceptor = stompAuthenticationChannelInterceptor;
+        this.jwtCookieHandshakeInterceptor = jwtCookieHandshakeInterceptor;
+        this.allowedFrontendOrigins = allowedFrontendOrigins;
+    }
 
     @Override
     public void registerStompEndpoints(StompEndpointRegistry registry) {
         registry.addEndpoint(STOMP_ENDPOINT)
                 .addInterceptors(jwtCookieHandshakeInterceptor)
-                .setAllowedOriginPatterns(ALLOWED_ORIGIN_PATTERNS.toArray(new String[0]));
+                .setAllowedOriginPatterns(allowedFrontendOrigins.toArray(new String[0]));
     }
 
     @Override
