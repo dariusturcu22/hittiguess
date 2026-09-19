@@ -3,9 +3,11 @@ package org.dariusturcu.backend.service;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.dariusturcu.backend.exception.RateLimitExceededException;
+import org.dariusturcu.backend.model.ai.AiMetadataContent;
 import org.dariusturcu.backend.model.ai.AiResponse;
 import org.dariusturcu.backend.model.ai.AiServiceResolveResponse;
 import org.dariusturcu.backend.model.ai.MetadataResolveRequest;
+import org.dariusturcu.backend.model.ai.SongMetadataResponse;
 import org.dariusturcu.backend.security.util.SecurityUtils;
 import org.dariusturcu.backend.util.YoutubeLinkParser;
 import org.springframework.stereotype.Service;
@@ -101,11 +103,33 @@ public class SongMetadataService {
                 return new AiResponse(null, response.model(), duration, LocalDateTime.now(), ERROR_STATUS, null, null);
             }
 
-            return new AiResponse(response.content(), response.model(), duration, LocalDateTime.now(), SUCCESS_STATUS, null, null);
+            return new AiResponse(toSongMetadataResponse(response.content()), response.model(), duration, LocalDateTime.now(), SUCCESS_STATUS, null, null);
         } catch (Exception aiServiceCallFailure) {
             log.warn("AI microservice call failed: {}", aiServiceCallFailure.getMessage());
             return new AiResponse(null, null, System.currentTimeMillis() - startTime, LocalDateTime.now(), ERROR_STATUS, null, null);
         }
+    }
+
+    // AiMetadataContent mirrors the AI microservice's snake_case wire format on
+    // the way in; SongMetadataResponse is the outbound shape the frontend
+    // actually consumes (camelCase, matching every other DTO in the API). The
+    // two must stay distinct types rather than one dual-purpose record, since
+    // a single Jackson naming strategy can't be snake_case for one direction
+    // and camelCase for the other.
+    private static SongMetadataResponse toSongMetadataResponse(AiMetadataContent content) {
+        if (content == null) {
+            return null;
+        }
+        return new SongMetadataResponse(
+                content.title(),
+                content.artist(),
+                content.releaseYear(),
+                content.color(),
+                content.confidence(),
+                content.source(),
+                content.reasoning(),
+                content.verificationStatus()
+        );
     }
 
     private record PreviewCacheKey(Long userId, String youtubeId) {

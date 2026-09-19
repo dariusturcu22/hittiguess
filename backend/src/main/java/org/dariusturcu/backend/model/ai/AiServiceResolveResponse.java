@@ -7,7 +7,7 @@ import tools.jackson.databind.annotation.JsonNaming;
 public record AiServiceResolveResponse(
         String status,
         String model,
-        SongMetadataResponse content,
+        AiMetadataContent content,
         String rejectionReason,
         String rejectionDetail
 ) {
