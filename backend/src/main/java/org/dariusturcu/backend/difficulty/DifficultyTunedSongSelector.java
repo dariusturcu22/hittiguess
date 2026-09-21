@@ -16,6 +16,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.function.Function;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 // Selects songs for a Difficulty-Based session: given the group's players, a target tier,
@@ -40,10 +41,36 @@ public class DifficultyTunedSongSelector {
     private static final RoundStatus SCORED_STATUS = RoundStatus.SCORED;
     private static final int MINIMUM_TARGET_CARD_COUNT = 1;
 
+    // The sitelinks count at or above which a song counts as internationally known for
+    // Difficulty-Based generation: more language editions than a song with only its home
+    // country's coverage typically carries. Initial heuristic value, to be tuned once real
+    // catalog data exists to check it against. See docs/DECISIONS.md.
+    static final int INTERNATIONAL_SCOPE_MINIMUM_SITELINKS = 5;
+
     public List<ScoredSong> selectForGroup(
             List<Long> playerIds,
             DifficultyTier tier,
             int targetCardCount) {
+        return select(playerIds, tier, targetCardCount, song -> true);
+    }
+
+    public List<ScoredSong> selectInternationalForGroup(
+            List<Long> playerIds,
+            DifficultyTier tier,
+            int targetCardCount) {
+        return select(playerIds, tier, targetCardCount, this::isInternationallyKnown);
+    }
+
+    private boolean isInternationallyKnown(Song song) {
+        return song.getWikidataSitelinksCount() != null
+                && song.getWikidataSitelinksCount() >= INTERNATIONAL_SCOPE_MINIMUM_SITELINKS;
+    }
+
+    private List<ScoredSong> select(
+            List<Long> playerIds,
+            DifficultyTier tier,
+            int targetCardCount,
+            Predicate<Song> scope) {
         if (playerIds == null || playerIds.isEmpty()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
                     "Difficulty selection needs at least one player to score against");
@@ -53,7 +80,9 @@ public class DifficultyTunedSongSelector {
                     "Target card count must be at least " + MINIMUM_TARGET_CARD_COUNT);
         }
 
-        List<Song> verifiedCatalog = songRepository.findByVerificationStatus(SELECTABLE_STATUS);
+        List<Song> verifiedCatalog = songRepository.findByVerificationStatus(SELECTABLE_STATUS).stream()
+                .filter(scope)
+                .toList();
         if (verifiedCatalog.isEmpty()) {
             return List.of();
         }

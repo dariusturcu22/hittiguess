@@ -1,9 +1,13 @@
 package org.dariusturcu.backend.service;
 
 import org.dariusturcu.backend.model.group.DjMode;
+import org.dariusturcu.backend.model.group.Group;
+import org.dariusturcu.backend.model.group.Member;
 import org.dariusturcu.backend.model.mapper.SessionMapper;
 import org.dariusturcu.backend.model.session.Bet;
 import org.dariusturcu.backend.model.session.GameSession;
+import org.dariusturcu.backend.model.session.GenerateDifficultySetRequest;
+import org.dariusturcu.backend.model.session.GeneratedSongPreviewDTO;
 import org.dariusturcu.backend.model.session.PlaceCardRequest;
 import org.dariusturcu.backend.model.session.Player;
 import org.dariusturcu.backend.model.session.PlayerCard;
@@ -11,20 +15,32 @@ import org.dariusturcu.backend.model.session.PlayerStatus;
 import org.dariusturcu.backend.model.session.Round;
 import org.dariusturcu.backend.model.session.RoundStatus;
 import org.dariusturcu.backend.model.session.SessionStatus;
+import org.dariusturcu.backend.model.session.StartCustomSessionRequest;
+import org.dariusturcu.backend.model.session.StartSessionWithSongsRequest;
 import org.dariusturcu.backend.model.session.TitleArtistGuessRequest;
 import org.dariusturcu.backend.model.song.ArtistRole;
 import org.dariusturcu.backend.model.song.Song;
 import org.dariusturcu.backend.model.song.SongArtist;
+import org.dariusturcu.backend.model.playlist.Playlist;
+import org.dariusturcu.backend.model.user.Role;
 import org.dariusturcu.backend.model.user.User;
+import org.dariusturcu.backend.difficulty.DifficultyTier;
+import org.dariusturcu.backend.difficulty.DifficultyTunedSongSelector;
+import org.dariusturcu.backend.difficulty.ScoredSong;
+import org.dariusturcu.backend.exception.ConflictException;
+import org.dariusturcu.backend.exception.ResourceNotFoundException;
 import org.dariusturcu.backend.repository.BetRepository;
 import org.dariusturcu.backend.repository.GameSessionRepository;
 import org.dariusturcu.backend.repository.GroupRepository;
 import org.dariusturcu.backend.repository.GuessRepository;
 import org.dariusturcu.backend.repository.PlayerRepository;
+import org.dariusturcu.backend.repository.PlaylistRepository;
 import org.dariusturcu.backend.repository.RoundRepository;
 import org.dariusturcu.backend.repository.SongRepository;
 import org.dariusturcu.backend.scheduling.GameSessionScheduler;
+import org.dariusturcu.backend.security.UserPrincipal;
 
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -32,8 +48,12 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.util.ReflectionTestUtils;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.time.Instant;
 import java.util.ArrayList;
@@ -44,14 +64,17 @@ import java.util.Optional;
 import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class GameSessionServiceTest {
@@ -73,11 +96,26 @@ class GameSessionServiceTest {
     @Mock
     private GroupService groupService;
     @Mock
+    private DifficultyTunedSongSelector difficultySelector;
+    @Mock
+    private PlaylistRepository playlistRepository;
+    @Mock
+    private PlaylistAccessService playlistAccessService;
+    @Mock
+    private PlaylistExpansionService playlistExpansionService;
+    @Mock
     private GameSessionScheduler gameSessionScheduler;
     @Mock
     private ApplicationEventPublisher eventPublisher;
 
     private final SessionResultsStore resultsStore = new SessionResultsStore();
+    private final PendingSessionSongPool pendingPool = new PendingSessionSongPool();
+
+    private static final Long GROUP_ID = 10L;
+    private static final Long ADMIN_ID = 1L;
+    private static final Long OTHER_ID = 2L;
+    private static final Long CUSTOM_PLAYLIST_ID = 21L;
+    private static final String PASTED_PLAYLIST_LINK = "https://youtube.com/playlist?list=abc123";
 
     // Built in setUp(), not as a field initializer: SessionMapper needs the betRepository
     // mock, which Mockito injects only after this instance's fields are constructed.
@@ -90,7 +128,8 @@ class GameSessionServiceTest {
         sessionMapper = new SessionMapper(betRepository);
         gameSessionService = new GameSessionService(
                 gameSessionRepository, playerRepository, roundRepository, guessRepository, betRepository,
-                groupRepository, songRepository, groupService, sessionMapper, resultsStore,
+                groupRepository, songRepository, playlistRepository, groupService, playlistAccessService,
+                playlistExpansionService, difficultySelector, pendingPool, sessionMapper, resultsStore,
                 gameSessionScheduler, eventPublisher);
         // Self-injection (see GameSessionService's @Lazy self field): the production
         // context resolves this through the Spring proxy, a plain unit test wires it
@@ -689,5 +728,248 @@ class GameSessionServiceTest {
         assertThat(round.getStatus()).isEqualTo(RoundStatus.BETTING);
         assertThat(round.getBettingWindowEndsAt()).isNotNull();
         verify(gameSessionScheduler).scheduleAfter(any(), any());
+    }
+
+    @AfterEach
+    void clearAuthenticationAndStagedPools() {
+        SecurityContextHolder.clearContext();
+        pendingPool.discard(GROUP_ID);
+    }
+
+    private User user(long id, String username) {
+        User user = new User();
+        user.setId(id);
+        user.setUsername(username);
+        user.setRole(Role.USER);
+        return user;
+    }
+
+    private void authenticateAs(User user) {
+        SecurityContextHolder.getContext().setAuthentication(
+                new UsernamePasswordAuthenticationToken(new UserPrincipal(user), null, null));
+    }
+
+    private Member memberOf(Group group, User user, boolean admin, Instant joinedAt) {
+        Member member = new Member();
+        member.setId(user.getId() + 100);
+        member.setUser(user);
+        member.setDisplayName(user.getUsername());
+        member.setAvatarUrl("avatar.png");
+        member.setAdmin(admin);
+        member.setConnected(true);
+        member.setJoinedAt(joinedAt);
+        group.addMember(member);
+        return member;
+    }
+
+    private Group groupWithTwoConnectedMembers() {
+        Group group = new Group();
+        group.setId(GROUP_ID);
+        group.setDjMode(DjMode.ROTATING);
+        group.setWinConditionCardCount(5);
+        Instant joinedAt = Instant.now();
+        memberOf(group, user(ADMIN_ID, "admin-user"), true, joinedAt);
+        memberOf(group, user(OTHER_ID, "other-user"), false, joinedAt.plusSeconds(1));
+        authenticateAs(user(ADMIN_ID, "admin-user"));
+        return group;
+    }
+
+    private Song catalogSong(long id, String youtubeId) {
+        Song song = song(id, "Song " + id, 2000, artist("Artist " + id, ArtistRole.MAIN, 0));
+        song.setYoutubeId(youtubeId);
+        return song;
+    }
+
+    @Test
+    void generateDifficultySetMapsScoredSongsToPreviews() {
+        Group group = groupWithTwoConnectedMembers();
+        when(groupRepository.findById(GROUP_ID)).thenReturn(Optional.of(group));
+        Song song = song(11L, "Song 11", 1999, artist("Artist 11", ArtistRole.MAIN, 0));
+        ScoredSong scored = new ScoredSong(song, 0.2, DifficultyTier.EASY);
+        when(difficultySelector.selectInternationalForGroup(List.of(ADMIN_ID, OTHER_ID), DifficultyTier.EASY, 1))
+                .thenReturn(List.of(scored));
+
+        List<GeneratedSongPreviewDTO> previews =
+                gameSessionService.generateDifficultySet(GROUP_ID, new GenerateDifficultySetRequest(DifficultyTier.EASY, 1));
+
+        assertThat(previews)
+                .containsExactly(new GeneratedSongPreviewDTO(11L, "Song 11", List.of("Artist 11"), 1999));
+    }
+
+    @Test
+    void generateDifficultySetRejectsNonAdmin() {
+        Group group = groupWithTwoConnectedMembers();
+        when(groupRepository.findById(GROUP_ID)).thenReturn(Optional.of(group));
+        authenticateAs(user(OTHER_ID, "other-user"));
+
+        assertThatThrownBy(() -> gameSessionService.generateDifficultySet(
+                        GROUP_ID, new GenerateDifficultySetRequest(DifficultyTier.EASY, 3)))
+                .isInstanceOf(AccessDeniedException.class);
+    }
+
+    @Test
+    void generateDifficultySetConflictsWhenTheCatalogFallsShort() {
+        Group group = groupWithTwoConnectedMembers();
+        when(groupRepository.findById(GROUP_ID)).thenReturn(Optional.of(group));
+        Song song = song(11L, "Song 11", 1999, artist("Artist 11", ArtistRole.MAIN, 0));
+        when(difficultySelector.selectInternationalForGroup(List.of(ADMIN_ID, OTHER_ID), DifficultyTier.EASY, 3))
+                .thenReturn(List.of(new ScoredSong(song, 0.2, DifficultyTier.EASY)));
+
+        assertThatThrownBy(() -> gameSessionService.generateDifficultySet(
+                        GROUP_ID, new GenerateDifficultySetRequest(DifficultyTier.EASY, 3)))
+                .isInstanceOf(ConflictException.class);
+    }
+
+    @Test
+    void startSessionWithSongsStagesThePoolAndDelegatesLocking() {
+        Group group = groupWithTwoConnectedMembers();
+        when(groupRepository.findById(GROUP_ID)).thenReturn(Optional.of(group));
+        catalogSong(11L, "video-11");
+        catalogSong(12L, "video-12");
+        catalogSong(13L, "video-13");
+
+        gameSessionService.startSessionWithSongs(GROUP_ID, new StartSessionWithSongsRequest(List.of(11L, 12L, 13L)));
+
+        verify(groupService).startGameSession(GROUP_ID);
+        assertThat(pendingPool.take(GROUP_ID)).contains(List.of(11L, 12L, 13L));
+    }
+
+    @Test
+    void startSessionWithSongsRejectsUnknownSongIds() {
+        Group group = groupWithTwoConnectedMembers();
+        when(groupRepository.findById(GROUP_ID)).thenReturn(Optional.of(group));
+
+        assertThatThrownBy(() -> gameSessionService.startSessionWithSongs(
+                        GROUP_ID, new StartSessionWithSongsRequest(List.of(99L))))
+                .isInstanceOf(ResourceNotFoundException.class);
+        assertThat(pendingPool.take(GROUP_ID)).isEmpty();
+    }
+
+    @Test
+    void startSessionWithSongsRejectsAShortPool() {
+        Group group = groupWithTwoConnectedMembers();
+        when(groupRepository.findById(GROUP_ID)).thenReturn(Optional.of(group));
+        catalogSong(11L, "video-11");
+        catalogSong(12L, "video-12");
+
+        assertThatThrownBy(() -> gameSessionService.startSessionWithSongs(
+                        GROUP_ID, new StartSessionWithSongsRequest(List.of(11L, 12L))))
+                .isInstanceOf(ConflictException.class);
+        assertThat(pendingPool.take(GROUP_ID)).isEmpty();
+    }
+
+    @Test
+    void startSessionWithSongsRejectsNonAdmin() {
+        Group group = groupWithTwoConnectedMembers();
+        when(groupRepository.findById(GROUP_ID)).thenReturn(Optional.of(group));
+        authenticateAs(user(OTHER_ID, "other-user"));
+
+        assertThatThrownBy(() -> gameSessionService.startSessionWithSongs(
+                        GROUP_ID, new StartSessionWithSongsRequest(List.of(11L, 12L, 13L))))
+                .isInstanceOf(AccessDeniedException.class);
+    }
+
+    @Test
+    void startSessionWithSongsDiscardsThePoolWhenLockingFails() {
+        Group group = groupWithTwoConnectedMembers();
+        when(groupRepository.findById(GROUP_ID)).thenReturn(Optional.of(group));
+        catalogSong(11L, "video-11");
+        catalogSong(12L, "video-12");
+        catalogSong(13L, "video-13");
+        doThrow(new ConflictException("Group already locked")).when(groupService).startGameSession(GROUP_ID);
+
+        assertThatThrownBy(() -> gameSessionService.startSessionWithSongs(
+                        GROUP_ID, new StartSessionWithSongsRequest(List.of(11L, 12L, 13L))))
+                .isInstanceOf(ConflictException.class);
+        assertThat(pendingPool.take(GROUP_ID)).isEmpty();
+    }
+
+    @Test
+    void startSessionUsesAStagedPoolInsteadOfGroupPlaylists() {
+        Group group = groupWithTwoConnectedMembers();
+        when(groupRepository.findById(GROUP_ID)).thenReturn(Optional.of(group));
+        catalogSong(11L, "video-11");
+        catalogSong(12L, "video-12");
+        catalogSong(13L, "video-13");
+        pendingPool.stage(GROUP_ID, List.of(11L, 12L, 13L));
+
+        GameSession session = gameSessionService.startSession(GROUP_ID);
+
+        assertThat(session.getPlayers()).hasSize(2);
+        assertThat(session.getPlayers().get(0).getTimeline()).hasSize(1);
+        assertThat(session.getSongQueue()).isEmpty();
+        assertThat(session.getCurrentRoundNumber()).isEqualTo(1);
+    }
+
+    @Test
+    void startCustomSessionFromPlaylistUsesAccessibleSongs() {
+        Group group = groupWithTwoConnectedMembers();
+        when(groupRepository.findById(GROUP_ID)).thenReturn(Optional.of(group));
+        Playlist playlist = new Playlist();
+        playlist.getSongs().add(catalogSong(11L, "video-11"));
+        playlist.getSongs().add(catalogSong(12L, "video-12"));
+        playlist.getSongs().add(catalogSong(13L, "video-13"));
+        when(playlistRepository.findById(CUSTOM_PLAYLIST_ID)).thenReturn(Optional.of(playlist));
+
+        gameSessionService.startCustomSession(GROUP_ID, new StartCustomSessionRequest(CUSTOM_PLAYLIST_ID, null));
+
+        verify(playlistAccessService).requireRead(eq(playlist), any(User.class));
+        verify(groupService).startGameSession(GROUP_ID);
+        assertThat(pendingPool.take(GROUP_ID)).contains(List.of(11L, 12L, 13L));
+    }
+
+    @Test
+    void startCustomSessionRejectsBothSourcesAtOnce() {
+        Group group = groupWithTwoConnectedMembers();
+        when(groupRepository.findById(GROUP_ID)).thenReturn(Optional.of(group));
+
+        assertThatThrownBy(() -> gameSessionService.startCustomSession(
+                        GROUP_ID, new StartCustomSessionRequest(CUSTOM_PLAYLIST_ID, PASTED_PLAYLIST_LINK)))
+                .isInstanceOfSatisfying(ResponseStatusException.class, exception ->
+                        assertThat(exception.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST));
+    }
+
+    @Test
+    void startCustomSessionRejectsMissingSources() {
+        Group group = groupWithTwoConnectedMembers();
+        when(groupRepository.findById(GROUP_ID)).thenReturn(Optional.of(group));
+
+        assertThatThrownBy(() -> gameSessionService.startCustomSession(
+                        GROUP_ID, new StartCustomSessionRequest(null, "  ")))
+                .isInstanceOfSatisfying(ResponseStatusException.class, exception ->
+                        assertThat(exception.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST));
+    }
+
+    @Test
+    void startCustomSessionFromLinkSkipsVideosWithNoCatalogSong() {
+        Group group = groupWithTwoConnectedMembers();
+        when(groupRepository.findById(GROUP_ID)).thenReturn(Optional.of(group));
+        lenient().when(songRepository.findByYoutubeId(anyString())).thenReturn(List.of());
+        catalogSong(11L, "video-11");
+        catalogSong(12L, "video-12");
+        catalogSong(13L, "video-13");
+        when(songRepository.findByYoutubeId("video-11")).thenReturn(List.of(songsById.get(11L)));
+        when(songRepository.findByYoutubeId("video-12")).thenReturn(List.of(songsById.get(12L)));
+        when(songRepository.findByYoutubeId("video-13")).thenReturn(List.of(songsById.get(13L)));
+        when(playlistExpansionService.expandPlaylist(PASTED_PLAYLIST_LINK))
+                .thenReturn(List.of("video-11", "video-12", "unknown-video", "video-13"));
+
+        gameSessionService.startCustomSession(GROUP_ID, new StartCustomSessionRequest(null, PASTED_PLAYLIST_LINK));
+
+        verify(groupService).startGameSession(GROUP_ID);
+        assertThat(pendingPool.take(GROUP_ID)).contains(List.of(11L, 12L, 13L));
+    }
+
+    @Test
+    void startCustomSessionFromLinkConflictsWhenNothingMatchesTheCatalog() {
+        Group group = groupWithTwoConnectedMembers();
+        when(groupRepository.findById(GROUP_ID)).thenReturn(Optional.of(group));
+        lenient().when(songRepository.findByYoutubeId(anyString())).thenReturn(List.of());
+        when(playlistExpansionService.expandPlaylist(PASTED_PLAYLIST_LINK)).thenReturn(List.of("unknown-video"));
+
+        assertThatThrownBy(() -> gameSessionService.startCustomSession(
+                        GROUP_ID, new StartCustomSessionRequest(null, PASTED_PLAYLIST_LINK)))
+                .isInstanceOf(ConflictException.class);
+        assertThat(pendingPool.take(GROUP_ID)).isEmpty();
     }
 }
