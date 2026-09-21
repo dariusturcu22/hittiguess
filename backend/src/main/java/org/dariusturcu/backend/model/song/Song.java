@@ -48,6 +48,11 @@ public class Song {
     @Column(nullable = false)
     private VerificationStatus verificationStatus = VerificationStatus.UNVERIFIED;
 
+    // Nullable: unknown until the metadata pipeline resolves the song against a
+    // Wikidata entity, and stays null when the lookup fails. Scoring treats null
+    // as neither well-known nor obscure.
+    private Integer wikidataSitelinksCount;
+
     private String confidence;
 
     // Not @Lob: on Postgres that maps a String to the oid large-object type, a reference into

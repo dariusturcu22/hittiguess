@@ -244,6 +244,7 @@ public class PlaylistService {
 
         song.setConfidence(metadata.confidence());
         song.setVerificationStatus(VerificationStatus.valueOf(metadata.verificationStatus()));
+        song.setWikidataSitelinksCount(metadata.sitelinksCount());
     }
 
     private boolean matchesSubmittedSong(SongMetadataResponse metadata, CreateSongRequest request) {

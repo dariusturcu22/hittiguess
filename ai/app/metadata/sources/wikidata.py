@@ -78,6 +78,25 @@ def get_entity(entity_id: str) -> dict:
     )
 
 
+def get_sitelinks_count(entity_id: str) -> int | None:
+    """Number of language-edition Wikipedia articles linked to this entity, the
+    cold-start popularity proxy difficulty scoring falls back on before a song
+    has real play history. A separate fetch from the labels and claims lookup
+    above, since a sitelinks payload is large and only this count is ever used.
+    Unknown when the fetch fails rather than zero, so a broken lookup never
+    passes as an obscure song."""
+    try:
+        entity = _get({"action": "wbgetentities", "ids": entity_id, "props": "sitelinks", "format": "json"})["entities"][
+            entity_id
+        ]
+    except Exception:
+        return None
+    sitelinks = entity.get("sitelinks")
+    if not isinstance(sitelinks, dict):
+        return None
+    return len(sitelinks)
+
+
 def pick_best_match(matches: list[dict], artist: str) -> dict | None:
     """A title-only search (the only kind that reliably returns results, see
     search_entity) can rank an unrelated homonym first. Prefers whichever

@@ -12,7 +12,8 @@ public record SongMetadataResponse(
         String confidence,
         String source,
         String reasoning,
-        String verificationStatus
+        String verificationStatus,
+        Integer sitelinksCount
 ) {
 
 }

@@ -54,6 +54,7 @@ public class SongResolutionService {
         }
         song.setColor(metadata.color());
         song.setConfidence(metadata.confidence());
+        song.setWikidataSitelinksCount(metadata.sitelinksCount());
         if (metadata.verificationStatus() != null) {
             song.setVerificationStatus(VerificationStatus.valueOf(metadata.verificationStatus()));
         }

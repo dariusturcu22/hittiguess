@@ -22,13 +22,8 @@ import java.util.stream.Collectors;
 // and how many cards the session needs, it scores the verified catalog for those players,
 // keeps the songs whose group-level score falls in the target tier's band, and returns them.
 // Selection reuses the existing Song and Round repositories rather than a difficulty-specific
-// store, since the play-derived signal is computed on the fly from scored rounds and no
-// difficulty column exists on Song.
-//
-// The Wikidata sitelinks popularity signal is left empty on every song here: the column that
-// would carry it does not exist yet, and capturing it through the metadata pipeline is
-// deferred to story 23. Once it lands, the international-scope filter and the sitelinks
-// weighting attach at this seam without changing the selection flow. See docs/DECISIONS.md.
+// store, since the play-derived signal is computed on the fly from scored rounds and the
+// sitelinks count reads straight off Song.
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
@@ -43,7 +38,6 @@ public class DifficultyTunedSongSelector {
 
     private static final VerificationStatus SELECTABLE_STATUS = VerificationStatus.VERIFIED;
     private static final RoundStatus SCORED_STATUS = RoundStatus.SCORED;
-    private static final Optional<Integer> SITELINKS_NOT_YET_CAPTURED = Optional.empty();
     private static final int MINIMUM_TARGET_CARD_COUNT = 1;
 
     public List<ScoredSong> selectForGroup(
@@ -90,7 +84,7 @@ public class DifficultyTunedSongSelector {
             Map<Long, SongPlacementStats> placementStatsBySong) {
         SongPlacementStats placementStats = placementStatsBySong.get(song.getId());
         SongDifficultySignals signals = new SongDifficultySignals(
-                song.getId(), placementStats, SITELINKS_NOT_YET_CAPTURED);
+                song.getId(), placementStats, Optional.ofNullable(song.getWikidataSitelinksCount()));
         double baselineDifficultyScore = songDifficultyScorer.score(signals);
 
         List<Double> perPlayerScores = playerIds.stream()

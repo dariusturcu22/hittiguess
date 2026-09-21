@@ -165,7 +165,7 @@ class CatalogSeedingIntegrationTest {
             }
             SongMetadataResponse content = new SongMetadataResponse(
                     "Title for " + youtubeId, "Artist for " + youtubeId, 1999,
-                    "111111", "high", "musicbrainz", "stubbed", "NEEDS_REVIEW");
+                    "111111", "high", "musicbrainz", "stubbed", "NEEDS_REVIEW", null);
             return new AiResponse(content, "stub-model", 0, LocalDateTime.now(), "SUCCESS", null, null);
         }
     }

@@ -336,6 +336,38 @@ def test_precheck_falls_back_to_regex_cleaned_names_for_an_unidentifiable_submis
     musicbrainz_mock.assert_called_once_with("DJ Mixtape Vol 3 track 7", "randomuploader99")
 
 
+def test_verification_pipeline_reports_the_track_entity_sitelinks_count(mocker):
+    mocker.patch.object(service.musicbrainz, "search", return_value=[])
+    mocker.patch.object(service.discogs, "search", return_value=[])
+    mocker.patch.object(
+        service.wikidata,
+        "search",
+        return_value=[{"query": "track", "entity_id": "Q1", "description": "1999 song by Test Artist", "date": 1999}],
+    )
+    mocker.patch.object(service.wikipedia, "search", return_value=[])
+    mocker.patch("app.metadata.service.evaluate_lock", return_value=_locked_verification_result())
+    sitelinks_mock = mocker.patch.object(service.wikidata, "get_sitelinks_count", return_value=12)
+
+    result = service._run_verification_pipeline("Test Song", "Test Artist", "8B5CF6")
+
+    sitelinks_mock.assert_called_once_with("Q1")
+    assert result.sitelinks_count == 12
+
+
+def test_verification_pipeline_leaves_sitelinks_count_unknown_without_a_wikidata_match(mocker):
+    mocker.patch.object(service.musicbrainz, "search", return_value=[])
+    mocker.patch.object(service.discogs, "search", return_value=[])
+    mocker.patch.object(service.wikidata, "search", return_value=[])
+    mocker.patch.object(service.wikipedia, "search", return_value=[])
+    mocker.patch("app.metadata.service.evaluate_lock", return_value=_locked_verification_result())
+    sitelinks_mock = mocker.patch.object(service.wikidata, "get_sitelinks_count", return_value=12)
+
+    result = service._run_verification_pipeline("Test Song", "Test Artist", "8B5CF6")
+
+    sitelinks_mock.assert_not_called()
+    assert result.sitelinks_count is None
+
+
 @pytest.mark.parametrize(
     ("display_title", "source_query_title"),
     [

@@ -128,7 +128,8 @@ public class SongMetadataService {
                 content.confidence(),
                 content.source(),
                 content.reasoning(),
-                content.verificationStatus()
+                content.verificationStatus(),
+                content.sitelinksCount()
         );
     }
 
