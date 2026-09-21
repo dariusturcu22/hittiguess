@@ -82,6 +82,24 @@ describe("GameSessionPage gameplay interactions", () => {
     expect(screen.getByText("Card placed. Waiting for the reveal.")).toBeVisible();
   });
 
+  it("clears the placement feedback when the next round starts", async () => {
+    await act(async () => {
+      render(<GameSessionPage params={SESSION_PARAMS} />);
+    });
+
+    fireEvent.keyDown(await screen.findByRole("button", { name: "Your card. Choose a timeline position." }), {
+      key: "Enter",
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Place card at timeline position 1" }));
+    await screen.findByText("Card placed. Waiting for the reveal.");
+
+    act(() => {
+      roundEventHandler?.({ type: "NEXT_ROUND" });
+    });
+
+    await waitFor(() => expect(screen.queryByText("Card placed. Waiting for the reveal.")).toBeNull());
+  });
+
   it("shows the turn notification for a round-start realtime event", async () => {
     await act(async () => {
       render(<GameSessionPage params={SESSION_PARAMS} />);

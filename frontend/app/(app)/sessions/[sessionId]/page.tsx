@@ -73,6 +73,7 @@ export default function GameSessionPage({ params }: PageProps) {
     if (event.type !== "ROUND_STARTED" && event.type !== "NEXT_ROUND") {
       return;
     }
+    setFeedbackMessage("");
     setShowTurnNotice(true);
     window.setTimeout(() => setShowTurnNotice(false), TURN_NOTICE_DURATION_MILLISECONDS);
   }, []);
