@@ -10,6 +10,7 @@ import { PlaylistSummaryDTO } from "@/hooks/models";
 import {
   useCreatePlaylist,
   getGetUserPlaylistsQueryKey,
+  useGetSavedPlaylists,
   useGetUserPlaylists,
 } from "@/hooks/generated/user-management/user-management";
 import { PlaylistCoverMosaic } from "@/components/playlist-cover-mosaic";
@@ -52,7 +53,12 @@ function SearchIcon() {
   );
 }
 
-function PlaylistCard({ playlist }: { playlist: PlaylistSummaryDTO }) {
+type PlaylistCardItem = Pick<
+  PlaylistSummaryDTO,
+  "id" | "name" | "color" | "songCount" | "previewYoutubeIds"
+>;
+
+function PlaylistCard({ playlist }: { playlist: PlaylistCardItem }) {
   return (
     <Link
       href={`/playlists/${playlist.id}`}
@@ -102,14 +108,15 @@ function NewPlaylistCard({
 }
 
 export default function PlaylistsPage() {
-  const { data: playlists, isLoading, isError } = useGetUserPlaylists();
+  const userPlaylistsQuery = useGetUserPlaylists();
+  const savedPlaylistsQuery = useGetSavedPlaylists();
   const queryClient = useQueryClient();
   const router = useRouter();
 
   const { mutate: createPlaylist, isPending: isCreating } =
     useCreatePlaylist();
   const [searchQuery, setSearchQuery] = React.useState("");
-  const [libraryTab, setLibraryTab] = React.useState<"owned" | "joined">("owned");
+  const [libraryTab, setLibraryTab] = React.useState<"owned" | "joined" | "saved">("owned");
 
   const handleCreatePlaylist = () => {
     createPlaylist(undefined, {
@@ -122,11 +129,20 @@ export default function PlaylistsPage() {
     });
   };
 
-  const visiblePlaylists = (playlists ?? []).filter((playlist) => {
-    const ownedByCurrentUser = playlist.ownedByCurrentUser;
-    return playlist.name.toLowerCase().includes(searchQuery.trim().toLowerCase())
-      && (libraryTab === "owned" ? ownedByCurrentUser : !ownedByCurrentUser);
-  });
+  const playlists = userPlaylistsQuery.data;
+  const isLoading = libraryTab === "saved" ? savedPlaylistsQuery.isLoading : userPlaylistsQuery.isLoading;
+  const isError = libraryTab === "saved" ? savedPlaylistsQuery.isError : userPlaylistsQuery.isError;
+
+  const matchesSearch = (name: string) => name.toLowerCase().includes(searchQuery.trim().toLowerCase());
+  const membershipPlaylists = playlists ?? [];
+  const savedPlaylists: PlaylistCardItem[] = savedPlaylistsQuery.data ?? [];
+  const visiblePlaylists: PlaylistCardItem[] = libraryTab === "saved"
+    ? savedPlaylists.filter((playlist) => matchesSearch(playlist.name))
+    : membershipPlaylists.filter((playlist) => {
+        const ownedByCurrentUser = playlist.ownedByCurrentUser;
+        return matchesSearch(playlist.name)
+          && (libraryTab === "owned" ? ownedByCurrentUser : !ownedByCurrentUser);
+      });
 
   return (
     <div className="flex h-full flex-col p-6 md:p-11">
@@ -167,6 +183,9 @@ export default function PlaylistsPage() {
         <button type="button" onClick={() => setLibraryTab("joined")} className={`cursor-pointer rounded-full px-6 py-2.5 font-display text-xs ${libraryTab === "joined" ? "bg-accent text-accent-foreground shadow-xs" : "text-muted-foreground border-border border-2"}`}>
           Joined
         </button>
+        <button type="button" onClick={() => setLibraryTab("saved")} className={`cursor-pointer rounded-full px-6 py-2.5 font-display text-xs ${libraryTab === "saved" ? "bg-accent text-accent-foreground shadow-xs" : "text-muted-foreground border-border border-2"}`}>
+          Saved
+        </button>
       </div>
 
       <div className="min-h-0 flex-1 overflow-y-auto pr-1">
@@ -185,10 +204,12 @@ export default function PlaylistsPage() {
             {visiblePlaylists.map((playlist) => (
               <PlaylistCard key={playlist.id} playlist={playlist} />
             ))}
-            <NewPlaylistCard
-              onClick={handleCreatePlaylist}
-              isCreating={isCreating}
-            />
+            {libraryTab === "saved" ? null : (
+              <NewPlaylistCard
+                onClick={handleCreatePlaylist}
+                isCreating={isCreating}
+              />
+            )}
           </div>
         )}
       </div>

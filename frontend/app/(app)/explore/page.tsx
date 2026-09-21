@@ -2,17 +2,27 @@
 
 import React from "react";
 
+import { useQueryClient } from "@tanstack/react-query";
+
 import {
   useGetPublicPlaylists,
   useSavePlaylist,
 } from "@/hooks/generated/playlist-management/playlist-management";
+import { getGetSavedPlaylistsQueryKey } from "@/hooks/generated/user-management/user-management";
 import type { PublicPlaylistSummaryDTO } from "@/hooks/models/publicPlaylistSummaryDTO";
 import { PhantomEmptyState } from "@/components/phantom-empty-state";
 import { PlaylistCoverMosaic } from "@/components/playlist-cover-mosaic";
 import { playlistTitleColor } from "@/lib/playlist-colors";
 
 function PlaylistCard({ playlist }: { playlist: PublicPlaylistSummaryDTO }) {
-  const saveMutation = useSavePlaylist();
+  const queryClient = useQueryClient();
+  const saveMutation = useSavePlaylist({
+    mutation: {
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: getGetSavedPlaylistsQueryKey() });
+      },
+    },
+  });
   const saved = saveMutation.isSuccess;
 
   return (
