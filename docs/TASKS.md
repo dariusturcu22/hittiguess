@@ -750,6 +750,93 @@ Tests:
 
 - [x] Add backend deletion coverage and run backend and frontend checks
 
+## Landing and auth fix pass
+
+Bugs from the owner's review, blocking every other test path since they gate entry into the app.
+
+- [ ] Unauthenticated users see the landing page instead of a login redirect
+- [ ] Bound landing and auth page scroll to their content
+- [ ] Fix the theme toggles and the logo animation on landing and auth
+- [ ] Verify the join-link flow for logged-out users: login or account creation, then automatic redirect into the join prompt
+- [ ] Verify remember-me exists and works; wire the forgot-password form if it is still a stub
+- [ ] Verify whether OAuth can be tested without real Google credentials, and test it if so
+
+Tests:
+
+- [ ] Frontend tests for the landing redirect, scroll bounds, toggle, and animation states
+- [ ] Playwright coverage for account creation, login, and the join-link redirect chain
+- [ ] Live email-flow check through the backend's log-line mode (no inbox needed while the Resend key is unset)
+
+## Story 47: Product ground-truth pass
+
+Source: the owner's full feature review, which is the binding spec for everything below. Where this section conflicts with an older task, a mockup, or existing code, this section wins and the mockup gets updated to match (`docs/design` updates are tracked here, not as a separate effort). Status Needs Definition: the boxes below are captured from the review, not yet confirmed against the real code. Confirm each cluster against the code before building it.
+
+Library (`Your playlists`):
+
+- [ ] Add an All filter beside Owned, Joined, and Saved
+- [ ] Give each tab its own end tile: Owned keeps New playlist, Joined gets Join playlist, Saved gets Explore public playlists
+- [ ] Add a Join playlist button beside Create playlist
+
+Explore:
+
+- [ ] Add All, Saved, and Not saved filters
+- [ ] Make each playlist card open its playlist detail; the Save/Saved action stays on the card
+
+Playlist titles and covers:
+
+- [ ] Enforce the six predetermined title colors everywhere a color is set, no other values
+- [ ] Build the four-tile mosaic cover: squared YouTube thumbnails with no black bars, placeholders filling empty tiles, thumbnails filling in progressively as songs are added
+
+Playlist detail:
+
+- [ ] Show member circles only, opening a centered full member list popup on click
+- [ ] Show the ghost empty state with no songs, no in-list search box, and no redundant call to action
+- [ ] Scope the song search to songs inside the playlist
+- [ ] Start session opens gameplay with that playlist already selected
+- [ ] Confirm before leaving a playlist
+- [ ] Add the export options UI (format, print, paper, duplex); the option set needs a design first
+- [ ] Offer invite by code and invite by link, each copying a ready message; invite URLs respect localhost versus production
+
+Edit playlist:
+
+- [ ] Decide the pixel-art cover rule (upload pixelized for direct database storage, same rule for profile pictures), then implement cover change, title, title color, description, public toggle, and invite-link copy
+- [ ] Confirm delete works behind its warning, and the members tab grants, kick, and ban all work
+
+App-wide and imports:
+
+- [ ] Audit every clickable control for the pointer hand cursor
+- [ ] Link songs from an existing playlist instantly
+- [ ] Run YouTube imports in the background with a sidebar progress indicator, hover progress, greyed pending songs in the detail view, and a return path to the live progress screen
+- [ ] Show catalog recommendations by default with fetch-more, and keep the add-tray contents across navigation until committed
+- [ ] Show continuous staged progress on single-song fetch: submitted title and channel plus the sources being consulted
+
+Lobby, voice, and gameplay:
+
+- [ ] Animate lobby members floating per the design; keep Start game, Chat, and Settings
+- [ ] Make the voice sidebar collapsible everywhere, mandatory only while in a call
+- [ ] Order sidebar participants top to bottom with the join control after the last participant
+- [ ] Add the voice settings popup: speaker and microphone selection plus a test control (needs a design first)
+- [ ] Narrow lobby settings to DJ mode (with a player picker for a fixed DJ) and cards to win; move playlist choice to a multi-select popup that merges duplicates into a temporary playlist
+- [ ] Close lobby popups on outside click
+- [ ] Block starting alone with an explanatory message (two players minimum)
+- [ ] Confirm before leaving the lobby; drop the stray Live label
+- [ ] Fix away-status reliability
+- [ ] Show the first-time countdown only, enforce DJ, turn, guessing, token, betting, skip, and leaderboard rules per `GAME_DESIGN.md`
+- [ ] Animate the unrevealed card as an audio-reactive visualizer
+- [ ] Offer results download options (PDF or copy text, needs a design first)
+- [ ] Verify admin pages update live with processing state
+
+Design:
+
+- [ ] Update the `docs/design` mockups to this section wherever they disagree
+
+Tests:
+
+- [ ] Confirm each cluster above against the real code before building it (the gate to Ready)
+- [ ] Frontend tests for every new or changed interactive state, following the story 28 verification pattern
+- [ ] Playwright multi-user coverage for join, lobby, full rounds, results, and the import background flow
+- [ ] Voice delivery check with the synthetic-tone method, plus the contrast and motion spot checks from story 28
+
 ## Story 48: Comment cleanup
 
 `AGENTS.md`'s code conventions already state the rule this story enforces: write as few comments as possible, only when the reasoning genuinely can't be inferred from the code, none that restate what the line already says, none that narrate a specific example instead of the general rule. AI-assisted batches built across this project have drifted from that rule in places, leaving comments that re-explain what adjacent code already makes obvious, or that narrate a past version's reasoning instead of documenting the code as it stands.
