@@ -11,12 +11,13 @@ import {
   useCreateSong,
 } from "@/hooks/generated/playlist-management/playlist-management";
 import { getSongMetadata } from "@/hooks/generated/song-metadata/song-metadata";
-import { CreateSongRequest, CreateSongRequestCountry, SongDTO } from "@/hooks/models";
+import { CreateSongRequest, CreateSongRequestCountry } from "@/hooks/models";
 import { SongSearchStep } from "./SongSearchStep";
 import { NewSongLinkStep } from "./NewSongLinkStep";
 import { NewSongReviewStep, PendingSongDetails } from "./NewSongReviewStep";
 import { buildCreateSongRequestFromCatalog } from "./songCatalogRequest";
 import { needsUserAttention } from "@/lib/song-attention";
+import { useAddSongQueue } from "@/hooks/use-add-song-queue";
 
 type Mode = "search" | "new-link" | "new-review";
 
@@ -44,7 +45,7 @@ export function AddSongForm({ playlistId, backPath }: AddSongFormProps) {
   const [mode, setMode] = useState<Mode>(
     previewState === "link" ? "new-link" : previewState === "review" ? "new-review" : "search",
   );
-  const [queue, setQueue] = useState<SongDTO[]>([]);
+  const { queue, toggleQueued, clearQueue } = useAddSongQueue(playlistId);
   const [isSubmittingQueue, setIsSubmittingQueue] = useState(false);
 
   const [pendingYoutubeId, setPendingYoutubeId] = useState("");
@@ -63,14 +64,6 @@ export function AddSongForm({ playlistId, backPath }: AddSongFormProps) {
       queryKey: getGetPlaylistQueryKey(playlistId),
     });
     router.push(backPath);
-  };
-
-  const handleToggleQueued = (song: SongDTO) => {
-    setQueue((prev) =>
-      prev.some((queued) => queued.id === song.id)
-        ? prev.filter((queued) => queued.id !== song.id)
-        : [...prev, song],
-    );
   };
 
   const handleSubmitQueue = async () => {
@@ -93,6 +86,7 @@ export function AddSongForm({ playlistId, backPath }: AddSongFormProps) {
         `${failureCount} of ${queue.length} songs couldn't be added. Try again for those.`,
       );
     } else {
+      clearQueue();
       toast.success(`Added ${queue.length} songs to the playlist.`);
     }
     goToPlaylist();
@@ -206,7 +200,7 @@ export function AddSongForm({ playlistId, backPath }: AddSongFormProps) {
     <SongSearchStep
       backPath={backPath}
       queue={queue}
-      onToggleQueued={handleToggleQueued}
+      onToggleQueued={toggleQueued}
       onSubmitQueue={handleSubmitQueue}
       isSubmitting={isSubmittingQueue}
       onStartNewSong={handleStartNewSong}
