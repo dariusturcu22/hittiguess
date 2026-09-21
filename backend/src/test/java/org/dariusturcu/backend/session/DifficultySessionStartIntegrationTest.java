@@ -1,6 +1,11 @@
 package org.dariusturcu.backend.session;
 
-import org.dariusturcu.backend.exception.ConflictException;
+import org.dariusturcu.backend.difficulty.AggregateBaselinePredictor;
+import org.dariusturcu.backend.difficulty.DifficultyBand;
+import org.dariusturcu.backend.difficulty.DifficultyTier;
+import org.dariusturcu.backend.difficulty.DifficultyTunedSongSelector;
+import org.dariusturcu.backend.difficulty.GroupDifficultyStrategy;
+import org.dariusturcu.backend.difficulty.SongDifficultyScorer;
 import org.dariusturcu.backend.model.group.CreateGroupRequest;
 import org.dariusturcu.backend.model.group.DjMode;
 import org.dariusturcu.backend.model.group.GroupDetailDTO;
@@ -12,13 +17,15 @@ import org.dariusturcu.backend.model.mapper.SessionMapper;
 import org.dariusturcu.backend.model.mapper.SongMapper;
 import org.dariusturcu.backend.model.playlist.Playlist;
 import org.dariusturcu.backend.model.session.GameSession;
-import org.dariusturcu.backend.model.session.Player;
+import org.dariusturcu.backend.model.session.GenerateDifficultySetRequest;
+import org.dariusturcu.backend.model.session.GeneratedSongPreviewDTO;
 import org.dariusturcu.backend.model.session.Round;
-import org.dariusturcu.backend.model.session.RoundLinkOutDTO;
-import org.dariusturcu.backend.model.session.RoundStatus;
+import org.dariusturcu.backend.model.session.StartCustomSessionRequest;
+import org.dariusturcu.backend.model.session.StartSessionWithSongsRequest;
 import org.dariusturcu.backend.model.song.ArtistRole;
 import org.dariusturcu.backend.model.song.Song;
 import org.dariusturcu.backend.model.song.SongArtist;
+import org.dariusturcu.backend.model.song.VerificationStatus;
 import org.dariusturcu.backend.model.user.AuthProvider;
 import org.dariusturcu.backend.model.user.Role;
 import org.dariusturcu.backend.model.user.User;
@@ -38,16 +45,16 @@ import org.dariusturcu.backend.security.UserPrincipal;
 import org.dariusturcu.backend.service.GameSessionService;
 import org.dariusturcu.backend.service.GameSessionStartListener;
 import org.dariusturcu.backend.service.GroupService;
+import org.dariusturcu.backend.service.PendingSessionSongPool;
 import org.dariusturcu.backend.service.PlaylistAccessService;
 import org.dariusturcu.backend.service.PlaylistExpansionService;
-import org.dariusturcu.backend.service.PendingSessionSongPool;
 import org.dariusturcu.backend.service.SessionResultsStore;
-import org.dariusturcu.backend.difficulty.DifficultyTunedSongSelector;
 
 import org.flywaydb.core.Flyway;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
 import org.springframework.boot.persistence.autoconfigure.EntityScan;
@@ -58,7 +65,6 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 import org.springframework.scheduling.TaskScheduler;
-import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.context.DynamicPropertyRegistry;
@@ -69,63 +75,27 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
 import java.sql.SQLException;
-import java.time.Instant;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
- * Covers the DJ link-out access path against a real Postgres instance: the round's DJ can
- * fetch the current song's YouTube watch URL, a non-DJ player and a non-member are both
- * denied, and the link stops being fetchable once the round is revealed.
+ * Covers the Difficulty-Based and Custom-mode session starts end to end against a real
+ * Postgres instance: generate-for-review then confirm plays exactly the reviewed set, a
+ * custom start from an accessible playlist plays that playlist's songs, and a custom
+ * start from a pasted link skips videos with no catalog song. The link expansion is
+ * stubbed at the service boundary: the real implementation calls the AI microservice
+ * over HTTP, unreachable from a repository test.
  */
 @Testcontainers
-@SpringBootTest(classes = GameSessionLinkOutIntegrationTest.JpaTestConfig.class)
+@SpringBootTest(classes = DifficultySessionStartIntegrationTest.JpaTestConfig.class)
 @Transactional
-class GameSessionLinkOutIntegrationTest {
+class DifficultySessionStartIntegrationTest {
 
-    private static final String DISTINCT_YOUTUBE_ID = "dQw4w9WgXcQ";
-
-    static class ImmediateTaskScheduler implements TaskScheduler {
-        @Override
-        public java.util.concurrent.ScheduledFuture<?> schedule(Runnable task, org.springframework.scheduling.Trigger trigger) {
-            task.run();
-            return null;
-        }
-
-        @Override
-        public java.util.concurrent.ScheduledFuture<?> schedule(Runnable task, Instant startTime) {
-            task.run();
-            return null;
-        }
-
-        @Override
-        public java.util.concurrent.ScheduledFuture<?> scheduleWithFixedDelay(Runnable task, java.time.Duration delay) {
-            task.run();
-            return null;
-        }
-
-        @Override
-        public java.util.concurrent.ScheduledFuture<?> scheduleWithFixedDelay(
-                Runnable task, Instant startTime, java.time.Duration delay) {
-            task.run();
-            return null;
-        }
-
-        @Override
-        public java.util.concurrent.ScheduledFuture<?> scheduleAtFixedRate(Runnable task, java.time.Duration period) {
-            task.run();
-            return null;
-        }
-
-        @Override
-        public java.util.concurrent.ScheduledFuture<?> scheduleAtFixedRate(
-                Runnable task, Instant startTime, java.time.Duration period) {
-            task.run();
-            return null;
-        }
-    }
+    private static final int REVIEWED_CARD_COUNT = 6;
 
     @Configuration
     @EnableAutoConfiguration(exclude = OAuth2ClientAutoConfiguration.class)
@@ -153,6 +123,16 @@ class GameSessionLinkOutIntegrationTest {
         }
 
         @Bean
+        PlaylistExpansionService playlistExpansionService() {
+            return new PlaylistExpansionService(null) {
+                @Override
+                public List<String> expandPlaylist(String playlistUrlOrId) {
+                    return List.of("known-video-1", "known-video-2", "known-video-3", "ghost-video");
+                }
+            };
+        }
+
+        @Bean
         SessionMapper sessionMapper(BetRepository betRepository) {
             return new SessionMapper(betRepository);
         }
@@ -163,8 +143,13 @@ class GameSessionLinkOutIntegrationTest {
         }
 
         @Bean
+        PendingSessionSongPool pendingSessionSongPool() {
+            return new PendingSessionSongPool();
+        }
+
+        @Bean
         TaskScheduler taskScheduler() {
-            return new ImmediateTaskScheduler();
+            return Mockito.mock(TaskScheduler.class);
         }
 
         @Bean
@@ -174,9 +159,16 @@ class GameSessionLinkOutIntegrationTest {
 
         @Bean
         GroupService groupService(GroupRepository groupRepository, MemberRepository memberRepository,
-                                   PlaylistRepository playlistRepository, GroupMapper groupMapper,
-                                   ApplicationEventPublisher eventPublisher, PlaylistAccessService playlistAccessService) {
+                                  PlaylistRepository playlistRepository, GroupMapper groupMapper,
+                                  ApplicationEventPublisher eventPublisher, PlaylistAccessService playlistAccessService) {
             return new GroupService(groupRepository, memberRepository, playlistRepository, groupMapper, eventPublisher, playlistAccessService);
+        }
+
+        @Bean
+        DifficultyTunedSongSelector difficultySelector(SongRepository songRepository, RoundRepository roundRepository) {
+            return new DifficultyTunedSongSelector(
+                    songRepository, roundRepository, new SongDifficultyScorer(), new DifficultyBand(),
+                    new GroupDifficultyStrategy(), new AggregateBaselinePredictor());
         }
 
         @Bean
@@ -233,60 +225,12 @@ class GameSessionLinkOutIntegrationTest {
     private GameSessionRepository gameSessionRepository;
     @Autowired
     private RoundRepository roundRepository;
+    @Autowired
+    private PendingSessionSongPool pendingPool;
 
     @AfterEach
     void tearDown() {
         SecurityContextHolder.clearContext();
-    }
-
-    @Test
-    void theRoundDjCanFetchTheCurrentSongsWatchUrl() {
-        GameSession session = startTwoPlayerRotatingSession("linkout-dj-fetch");
-        Round round = firstRound(session);
-        Player djPlayer = round.getDjPlayer();
-
-        RoundLinkOutDTO linkOut = gameSessionService.getCurrentRoundLinkOut(session.getId(), djPlayer.getUser().getId());
-
-        assertThat(linkOut.roundId()).isEqualTo(round.getId());
-        assertThat(linkOut.roundNumber()).isEqualTo(round.getRoundNumber());
-        assertThat(linkOut.youtubeId()).isEqualTo(round.getSong().getYoutubeId());
-        assertThat(linkOut.watchUrl()).isEqualTo("https://www.youtube.com/watch?v=" + round.getSong().getYoutubeId());
-    }
-
-    @Test
-    void aNonDjPlayerIsDeniedTheLinkOut() {
-        GameSession session = startTwoPlayerRotatingSession("linkout-non-dj");
-        Round round = firstRound(session);
-        Player nonDjPlayer = session.getPlayers().stream()
-                .filter(player -> !player.getId().equals(round.getDjPlayer().getId()))
-                .findFirst()
-                .orElseThrow();
-
-        assertThatThrownBy(() -> gameSessionService.getCurrentRoundLinkOut(session.getId(), nonDjPlayer.getUser().getId()))
-                .isInstanceOf(AccessDeniedException.class);
-    }
-
-    @Test
-    void aNonMemberIsDeniedTheLinkOut() {
-        GameSession session = startTwoPlayerRotatingSession("linkout-non-member");
-        User outsider = persistUser("linkout-outsider-" + System.nanoTime());
-
-        assertThatThrownBy(() -> gameSessionService.getCurrentRoundLinkOut(session.getId(), outsider.getId()))
-                .isInstanceOf(AccessDeniedException.class);
-    }
-
-    @Test
-    void theLinkOutIsNoLongerFetchableOnceTheRoundIsRevealed() {
-        GameSession session = startTwoPlayerRotatingSession("linkout-after-reveal");
-        Round round = firstRound(session);
-        Long djUserId = round.getDjPlayer().getUser().getId();
-
-        round.setStatus(RoundStatus.REVEALED);
-        round.setRevealedAt(Instant.now());
-        roundRepository.save(round);
-
-        assertThatThrownBy(() -> gameSessionService.getCurrentRoundLinkOut(session.getId(), djUserId))
-                .isInstanceOf(ConflictException.class);
     }
 
     private User persistUser(String username) {
@@ -303,12 +247,17 @@ class GameSessionLinkOutIntegrationTest {
                 new UsernamePasswordAuthenticationToken(new UserPrincipal(user), null, null));
     }
 
-    private Song persistSong(Playlist playlist, User addedBy, int releaseYear, String title) {
+    private Song persistCatalogSong(Playlist playlist, User addedBy, int releaseYear, String title,
+                                    VerificationStatus status, Integer sitelinksCount, String youtubeId) {
         Song song = new Song();
         song.setTitle(title);
         song.setReleaseYear(releaseYear);
-        song.setYoutubeId(DISTINCT_YOUTUBE_ID);
-        playlist.addSong(song);
+        song.setYoutubeId(youtubeId);
+        song.setVerificationStatus(status);
+        song.setWikidataSitelinksCount(sitelinksCount);
+        if (playlist != null) {
+            playlist.addSong(song);
+        }
         song.setAddedBy(addedBy);
         Song savedSong = songRepository.save(song);
 
@@ -321,36 +270,94 @@ class GameSessionLinkOutIntegrationTest {
         return songRepository.save(savedSong);
     }
 
-    private Round firstRound(GameSession session) {
-        return roundRepository.findTopBySessionOrderByRoundNumberDesc(session).orElseThrow();
-    }
-
-    private GameSession startTwoPlayerRotatingSession(String label) {
+    private GroupDetailDTO groupWithTwoPlayers(String label, Playlist playlist, int winConditionCardCount) {
         User admin = persistUser(label + "-admin-" + System.nanoTime());
+        User other = persistUser(label + "-player-" + System.nanoTime());
 
         authenticateAs(admin);
         GroupDetailDTO createdGroup = groupService.createGroup(new CreateGroupRequest(null, null));
-
-        User otherPlayer = persistUser(label + "-player-" + System.nanoTime());
-        authenticateAs(otherPlayer);
+        authenticateAs(other);
         groupService.joinGroup(new JoinGroupRequest(createdGroup.inviteCode(), null, null, null));
-
-        Playlist playlist = new Playlist();
-        playlist.setName(label + " Playlist");
-        playlist.setColor("445566");
-        playlist.setInviteCode(label + "-playlist-" + System.nanoTime());
-        playlist.setOwner(admin);
-        Playlist savedPlaylist = playlistRepository.save(playlist);
-        int minimumWinConditionCardCount = 5;
-        for (int songIndex = 0; songIndex < 10; songIndex++) {
-            persistSong(savedPlaylist, admin, 1960 + songIndex, label + " Song " + songIndex);
-        }
 
         authenticateAs(admin);
         groupService.updateGroupSettings(createdGroup.id(), new UpdateGroupSettingsRequest(
-                Set.of(savedPlaylist.getId()), DjMode.ROTATING, minimumWinConditionCardCount));
-        groupService.startGameSession(createdGroup.id());
+                playlist == null ? Set.of() : Set.of(playlist.getId()), DjMode.ROTATING, winConditionCardCount));
+        return createdGroup;
+    }
 
-        return gameSessionRepository.findByGroupId(createdGroup.id()).orElseThrow();
+    private Playlist playlistWithSongs(String label, User owner, int songCount, VerificationStatus status,
+                                       Integer sitelinksCount) {
+        Playlist playlist = new Playlist();
+        playlist.setName(label + " Playlist");
+        playlist.setColor("778899");
+        playlist.setInviteCode(label + "-playlist-" + System.nanoTime());
+        playlist.setOwner(owner);
+        Playlist savedPlaylist = playlistRepository.save(playlist);
+        for (int songIndex = 0; songIndex < songCount; songIndex++) {
+            persistCatalogSong(savedPlaylist, owner, 1950 + songIndex, label + " Song " + songIndex,
+                    status, sitelinksCount, label + "-video-" + songIndex);
+        }
+        return savedPlaylist;
+    }
+
+    private Set<Long> playedSongIds(GameSession session) {
+        Set<Long> playedIds = new HashSet<>();
+        session.getPlayers().forEach(player ->
+                player.getTimeline().forEach(card -> playedIds.add(card.getSong().getId())));
+        playedIds.addAll(session.getSongQueue());
+        roundRepository.findTopBySessionOrderByRoundNumberDesc(session)
+                .ifPresent(round -> playedIds.add(round.getSong().getId()));
+        return playedIds;
+    }
+
+    @Test
+    void difficultyGenerateThenStartPlaysExactlyTheReviewedSet() {
+        User admin = persistUser("difficulty-admin-" + System.nanoTime());
+        Playlist playlist = playlistWithSongs("difficulty", admin, 8, VerificationStatus.VERIFIED, 30);
+        GroupDetailDTO createdGroup = groupWithTwoPlayers("difficulty", playlist, 5);
+
+        authenticateAs(admin);
+        List<GeneratedSongPreviewDTO> previews = gameSessionService.generateDifficultySet(
+                createdGroup.id(), new GenerateDifficultySetRequest(DifficultyTier.EASY, REVIEWED_CARD_COUNT));
+        assertThat(previews).hasSize(REVIEWED_CARD_COUNT);
+
+        List<Long> reviewedIds = previews.stream().map(GeneratedSongPreviewDTO::id).toList();
+        gameSessionService.startSessionWithSongs(createdGroup.id(), new StartSessionWithSongsRequest(reviewedIds));
+
+        GameSession session = gameSessionRepository.findByGroupId(createdGroup.id()).orElseThrow();
+        assertThat(session.getPlayers()).hasSize(2);
+        assertThat(playedSongIds(session)).containsExactlyInAnyOrderElementsOf(reviewedIds);
+        assertThat(pendingPool.take(createdGroup.id())).isEmpty();
+    }
+
+    @Test
+    void customStartFromPlaylistPlaysThatPlaylistsSongs() {
+        User admin = persistUser("custom-admin-" + System.nanoTime());
+        Playlist playlist = playlistWithSongs("custom", admin, 6, VerificationStatus.UNVERIFIED, null);
+        GroupDetailDTO createdGroup = groupWithTwoPlayers("custom", playlist, 5);
+        List<Long> playlistSongIds = new ArrayList<>(playlist.getSongs().stream().map(Song::getId).toList());
+
+        authenticateAs(admin);
+        gameSessionService.startCustomSession(createdGroup.id(), new StartCustomSessionRequest(playlist.getId(), null));
+
+        GameSession session = gameSessionRepository.findByGroupId(createdGroup.id()).orElseThrow();
+        assertThat(playedSongIds(session)).containsExactlyInAnyOrderElementsOf(playlistSongIds);
+    }
+
+    @Test
+    void customStartFromPastedLinkSkipsVideosWithNoCatalogSong() {
+        User admin = persistUser("link-admin-" + System.nanoTime());
+        List<Long> knownIds = List.of(
+                persistCatalogSong(null, admin, 1960, "Known One", VerificationStatus.VERIFIED, 30, "known-video-1").getId(),
+                persistCatalogSong(null, admin, 1961, "Known Two", VerificationStatus.VERIFIED, 30, "known-video-2").getId(),
+                persistCatalogSong(null, admin, 1962, "Known Three", VerificationStatus.VERIFIED, 30, "known-video-3").getId());
+        GroupDetailDTO createdGroup = groupWithTwoPlayers("link", null, 5);
+
+        authenticateAs(admin);
+        gameSessionService.startCustomSession(
+                createdGroup.id(), new StartCustomSessionRequest(null, "https://youtube.com/playlist?list=stubbed"));
+
+        GameSession session = gameSessionRepository.findByGroupId(createdGroup.id()).orElseThrow();
+        assertThat(playedSongIds(session)).containsExactlyInAnyOrderElementsOf(knownIds);
     }
 }

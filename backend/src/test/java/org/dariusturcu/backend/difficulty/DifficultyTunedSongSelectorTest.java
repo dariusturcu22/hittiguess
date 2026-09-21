@@ -58,6 +58,39 @@ class DifficultyTunedSongSelectorTest {
         return song;
     }
 
+    private static final int MID_BAND_SITELINKS_COUNT = 20;
+
+    @Test
+    void internationalSelectionKeepsOnlySongsAboveTheSitelinksThreshold() {
+        Song internationalSong = songWithId(EASY_SONG_ID);
+        internationalSong.setWikidataSitelinksCount(MID_BAND_SITELINKS_COUNT);
+        Song localSong = songWithId(HARD_SONG_ID);
+        localSong.setWikidataSitelinksCount(
+                DifficultyTunedSongSelector.INTERNATIONAL_SCOPE_MINIMUM_SITELINKS - 1);
+        Song unknownSong = songWithId(EASY_SONG_ID + 1);
+        when(songRepository.findByVerificationStatus(VerificationStatus.VERIFIED))
+                .thenReturn(List.of(internationalSong, localSong, unknownSong));
+        when(roundRepository.aggregatePlacementStatsBySong(any(RoundStatus.class), any()))
+                .thenReturn(List.of());
+
+        List<ScoredSong> selected = difficultyTunedSongSelector.selectInternationalForGroup(
+                ONE_PLAYER, DifficultyTier.MEDIUM, GENEROUS_CARD_COUNT);
+
+        assertThat(selected).extracting(scored -> scored.song().getId()).containsExactly(EASY_SONG_ID);
+    }
+
+    @Test
+    void internationalSelectionReturnsEmptyWhenNothingClearsTheThreshold() {
+        Song unknownSong = songWithId(EASY_SONG_ID);
+        when(songRepository.findByVerificationStatus(VerificationStatus.VERIFIED))
+                .thenReturn(List.of(unknownSong));
+
+        List<ScoredSong> selected = difficultyTunedSongSelector.selectInternationalForGroup(
+                ONE_PLAYER, DifficultyTier.EASY, GENEROUS_CARD_COUNT);
+
+        assertThat(selected).isEmpty();
+    }
+
     @Test
     void anEmptyCatalogReturnsNoSongsRatherThanFailing() {
         when(songRepository.findByVerificationStatus(VerificationStatus.VERIFIED)).thenReturn(List.of());

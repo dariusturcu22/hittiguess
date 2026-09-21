@@ -5,10 +5,13 @@ import org.dariusturcu.backend.exception.ResourceNotFoundException;
 import org.dariusturcu.backend.exception.ResourceType;
 import org.dariusturcu.backend.model.group.DjMode;
 import org.dariusturcu.backend.model.group.Group;
+import org.dariusturcu.backend.model.group.GroupDetailDTO;
 import org.dariusturcu.backend.model.group.Member;
 import org.dariusturcu.backend.model.mapper.SessionMapper;
 import org.dariusturcu.backend.model.session.Bet;
 import org.dariusturcu.backend.model.session.GameSession;
+import org.dariusturcu.backend.model.session.GeneratedSongPreviewDTO;
+import org.dariusturcu.backend.model.session.GenerateDifficultySetRequest;
 import org.dariusturcu.backend.model.session.Guess;
 import org.dariusturcu.backend.model.session.LeaderboardEntryDTO;
 import org.dariusturcu.backend.model.session.PlaceCardRequest;
@@ -21,17 +24,25 @@ import org.dariusturcu.backend.model.session.RoundStatus;
 import org.dariusturcu.backend.model.session.RoundLinkOutDTO;
 import org.dariusturcu.backend.model.session.SessionResultsDTO;
 import org.dariusturcu.backend.model.session.SessionStatus;
+import org.dariusturcu.backend.model.session.StartCustomSessionRequest;
+import org.dariusturcu.backend.model.session.StartSessionWithSongsRequest;
 import org.dariusturcu.backend.model.session.TitleArtistGuessRequest;
 import org.dariusturcu.backend.model.song.Song;
 import org.dariusturcu.backend.model.song.SongArtist;
+import org.dariusturcu.backend.model.playlist.Playlist;
+import org.dariusturcu.backend.difficulty.DifficultyTier;
+import org.dariusturcu.backend.difficulty.DifficultyTunedSongSelector;
+import org.dariusturcu.backend.difficulty.ScoredSong;
 import org.dariusturcu.backend.repository.BetRepository;
 import org.dariusturcu.backend.repository.GameSessionRepository;
 import org.dariusturcu.backend.repository.GroupRepository;
 import org.dariusturcu.backend.repository.GuessRepository;
 import org.dariusturcu.backend.repository.PlayerRepository;
+import org.dariusturcu.backend.repository.PlaylistRepository;
 import org.dariusturcu.backend.repository.RoundRepository;
 import org.dariusturcu.backend.repository.SongRepository;
 import org.dariusturcu.backend.scheduling.GameSessionScheduler;
+import org.dariusturcu.backend.security.util.SecurityUtils;
 import org.dariusturcu.backend.util.GuessMatcher;
 import org.dariusturcu.backend.util.YoutubeLinkParser;
 import org.dariusturcu.backend.websocket.SessionBroadcastEvent;
@@ -42,9 +53,11 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -52,6 +65,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -78,7 +92,12 @@ public class GameSessionService {
     private final BetRepository betRepository;
     private final GroupRepository groupRepository;
     private final SongRepository songRepository;
+    private final PlaylistRepository playlistRepository;
     private final GroupService groupService;
+    private final PlaylistAccessService playlistAccessService;
+    private final PlaylistExpansionService playlistExpansionService;
+    private final DifficultyTunedSongSelector difficultySelector;
+    private final PendingSessionSongPool pendingPool;
     private final SessionMapper sessionMapper;
     private final SessionResultsStore resultsStore;
     private final GameSessionScheduler gameSessionScheduler;
@@ -97,21 +116,16 @@ public class GameSessionService {
     // broadcast, in the same transaction GroupService.startGameSession already opened:
     // wiring into that existing state transition rather than duplicating it.
     public GameSession startSession(Long groupId) {
-        Group group = groupRepository.findById(groupId)
-                .orElseThrow(() -> new ResourceNotFoundException(ResourceType.GROUP, groupId));
+        Group group = findGroup(groupId);
 
-        List<Member> connectedMembers = group.getMembers().stream()
-                .filter(Member::isConnected)
-                .sorted(Comparator.comparing(Member::getJoinedAt))
-                .toList();
+        List<Member> connectedMembers = connectedMembers(group);
         if (connectedMembers.size() < MINIMUM_PLAYERS) {
             throw new ConflictException("Not enough connected members to start a session");
         }
 
-        List<Song> songPool = group.getPlaylists().stream()
-                .flatMap(playlist -> playlist.getSongs().stream())
-                .distinct()
-                .collect(Collectors.toCollection(ArrayList::new));
+        List<Song> songPool = pendingPool.take(groupId)
+                .map(this::resolvePoolSongs)
+                .orElseGet(() -> defaultSongPool(group));
         if (songPool.size() < connectedMembers.size() + 1) {
             throw new ConflictException("Not enough songs across the group's playlists to start a session");
         }
@@ -166,6 +180,146 @@ public class GameSessionService {
 
         createRound(savedSession, firstActive, firstDj);
         return savedSession;
+    }
+
+    // Difficulty-Based generation preview for the admin's review step: scores the
+    // internationally known verified catalog for the group's connected members and
+    // returns the requested tier's set without starting anything. The confirmation
+    // call is startSessionWithSongs below, validated again on the way in.
+    public List<GeneratedSongPreviewDTO> generateDifficultySet(Long groupId, GenerateDifficultySetRequest request) {
+        Group group = findGroup(groupId);
+        requireGroupAdmin(group);
+        if (request == null || request.tier() == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Difficulty generation needs a tier and a target card count");
+        }
+
+        List<Long> playerIds = connectedMembers(group).stream()
+                .map(member -> member.getUser().getId())
+                .toList();
+        List<ScoredSong> selected =
+                difficultySelector.selectInternationalForGroup(playerIds, request.tier(), request.targetCardCount());
+        if (selected.size() < request.targetCardCount()) {
+            throw new ConflictException("Not enough internationally known verified songs for a "
+                    + request.targetCardCount() + "-card " + request.tier() + " set");
+        }
+        return selected.stream().map(this::toPreviewDTO).toList();
+    }
+
+    // Confirms a reviewed Difficulty-Based set into a session start.
+    public GroupDetailDTO startSessionWithSongs(Long groupId, StartSessionWithSongsRequest request) {
+        Group group = findGroup(groupId);
+        requireGroupAdmin(group);
+        if (request == null || request.songIds() == null || request.songIds().isEmpty()
+                || request.songIds().stream().anyMatch(songId -> songId == null)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Starting with songs needs a non-empty list of song ids");
+        }
+
+        List<Long> songIds = request.songIds().stream().distinct().toList();
+        return startWithStagedPool(group, songIds);
+    }
+
+    // Custom-mode start from exactly one source: an accessible playlist by id, or a
+    // YouTube playlist link or id pasted directly.
+    public GroupDetailDTO startCustomSession(Long groupId, StartCustomSessionRequest request) {
+        Group group = findGroup(groupId);
+        requireGroupAdmin(group);
+        boolean hasPlaylistId = request != null && request.playlistId() != null;
+        boolean hasPlaylistLink = request != null && request.playlistLink() != null && !request.playlistLink().isBlank();
+        if (hasPlaylistId == hasPlaylistLink) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Custom start needs exactly one of a playlist id or a pasted playlist link");
+        }
+
+        List<Long> songIds = hasPlaylistId
+                ? poolFromPlaylist(request.playlistId())
+                : poolFromPlaylistLink(request.playlistLink());
+        return startWithStagedPool(group, songIds);
+    }
+
+    private GroupDetailDTO startWithStagedPool(Group group, List<Long> songIds) {
+        List<Member> connectedMembers = connectedMembers(group);
+        if (connectedMembers.size() < MINIMUM_PLAYERS) {
+            throw new ConflictException("Not enough connected members to start a session");
+        }
+        List<Song> resolvedPool = resolvePoolSongs(songIds);
+        if (resolvedPool.size() < connectedMembers.size() + 1) {
+            throw new ConflictException("Not enough songs to start a session for this group");
+        }
+
+        pendingPool.stage(group.getId(), songIds);
+        try {
+            return groupService.startGameSession(group.getId());
+        } catch (RuntimeException startFailure) {
+            pendingPool.discard(group.getId());
+            throw startFailure;
+        }
+    }
+
+    private List<Long> poolFromPlaylist(Long playlistId) {
+        Playlist playlist = playlistRepository.findById(playlistId)
+                .orElseThrow(() -> new ResourceNotFoundException(ResourceType.PLAYLIST, playlistId));
+        playlistAccessService.requireRead(playlist, SecurityUtils.getCurrentUser());
+        return playlist.getSongs().stream().map(Song::getId).distinct().toList();
+    }
+
+    private List<Long> poolFromPlaylistLink(String playlistLink) {
+        List<String> videoIds = playlistExpansionService.expandPlaylist(playlistLink);
+        List<Long> songIds = videoIds.stream()
+                .map(videoId -> songRepository.findByYoutubeId(videoId).stream().findFirst())
+                .filter(Optional::isPresent)
+                .map(match -> match.get().getId())
+                .distinct()
+                .toList();
+        if (songIds.isEmpty()) {
+            throw new ConflictException("None of the pasted playlist's videos match a catalog song");
+        }
+        return songIds;
+    }
+
+    private GeneratedSongPreviewDTO toPreviewDTO(ScoredSong scoredSong) {
+        Song song = scoredSong.song();
+        List<String> artistNames = song.getArtists().stream()
+                .sorted(Comparator.comparingInt(SongArtist::getDisplayOrder))
+                .map(SongArtist::getName)
+                .toList();
+        return new GeneratedSongPreviewDTO(song.getId(), song.getTitle(), artistNames, song.getReleaseYear());
+    }
+
+    private Group findGroup(Long groupId) {
+        return groupRepository.findById(groupId)
+                .orElseThrow(() -> new ResourceNotFoundException(ResourceType.GROUP, groupId));
+    }
+
+    private List<Member> connectedMembers(Group group) {
+        return group.getMembers().stream()
+                .filter(Member::isConnected)
+                .sorted(Comparator.comparing(Member::getJoinedAt))
+                .toList();
+    }
+
+    private List<Song> defaultSongPool(Group group) {
+        return group.getPlaylists().stream()
+                .flatMap(playlist -> playlist.getSongs().stream())
+                .distinct()
+                .collect(Collectors.toCollection(ArrayList::new));
+    }
+
+    private List<Song> resolvePoolSongs(List<Long> songIds) {
+        return songIds.stream()
+                .map(songId -> songRepository.findById(songId)
+                        .orElseThrow(() -> new ResourceNotFoundException(ResourceType.SONG, songId)))
+                .collect(Collectors.toCollection(ArrayList::new));
+    }
+
+    private void requireGroupAdmin(Group group) {
+        Long currentUserId = SecurityUtils.getCurrentUserId();
+        boolean isAdmin = group.getMembers().stream()
+                .anyMatch(member -> member.getUser().getId().equals(currentUserId) && member.isAdmin());
+        if (!isAdmin) {
+            throw new AccessDeniedException("Only the group admin can do this");
+        }
     }
 
     public SessionResultsDTO completeSession(Long sessionId) {

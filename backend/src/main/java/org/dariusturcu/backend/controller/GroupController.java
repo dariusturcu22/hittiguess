@@ -5,7 +5,12 @@ import org.dariusturcu.backend.model.group.CreateGroupRequest;
 import org.dariusturcu.backend.model.group.GroupDetailDTO;
 import org.dariusturcu.backend.model.group.JoinGroupRequest;
 import org.dariusturcu.backend.model.group.UpdateGroupSettingsRequest;
+import org.dariusturcu.backend.model.session.GenerateDifficultySetRequest;
+import org.dariusturcu.backend.model.session.GeneratedSongPreviewDTO;
+import org.dariusturcu.backend.model.session.StartCustomSessionRequest;
+import org.dariusturcu.backend.model.session.StartSessionWithSongsRequest;
 import org.dariusturcu.backend.model.voice.TurnCredentialsResponse;
+import org.dariusturcu.backend.service.GameSessionService;
 import org.dariusturcu.backend.service.GroupService;
 import org.dariusturcu.backend.service.TurnCredentialsService;
 
@@ -15,12 +20,15 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 
+import java.util.List;
+
 @RestController
 @RequestMapping("/api/groups")
 @RequiredArgsConstructor
 @Tag(name = "Group management", description = "Handles operations regarding group lobbies")
 public class GroupController {
     private final GroupService groupService;
+    private final GameSessionService gameSessionService;
     private final TurnCredentialsService turnCredentialsService;
 
     @Operation(summary = "Create a group, the creator becomes its admin")
@@ -70,6 +78,30 @@ public class GroupController {
             @PathVariable Long groupId) {
         GroupDetailDTO group = groupService.startGameSession(groupId);
         return ResponseEntity.ok(group);
+    }
+
+    @Operation(summary = "Generate a difficulty-tuned song set for review, admin only, starts nothing")
+    @PostMapping("/{groupId}/session/generate")
+    public ResponseEntity<List<GeneratedSongPreviewDTO>> generateDifficultySet(
+            @PathVariable Long groupId,
+            @Valid @RequestBody GenerateDifficultySetRequest request) {
+        return ResponseEntity.ok(gameSessionService.generateDifficultySet(groupId, request));
+    }
+
+    @Operation(summary = "Start a game session from reviewed song ids, admin only, locks the group to new members")
+    @PostMapping("/{groupId}/session/start-with-songs")
+    public ResponseEntity<GroupDetailDTO> startSessionWithSongs(
+            @PathVariable Long groupId,
+            @Valid @RequestBody StartSessionWithSongsRequest request) {
+        return ResponseEntity.ok(gameSessionService.startSessionWithSongs(groupId, request));
+    }
+
+    @Operation(summary = "Start a game session from a playlist or pasted playlist link, admin only, locks the group to new members")
+    @PostMapping("/{groupId}/session/start-custom")
+    public ResponseEntity<GroupDetailDTO> startCustomSession(
+            @PathVariable Long groupId,
+            @Valid @RequestBody StartCustomSessionRequest request) {
+        return ResponseEntity.ok(gameSessionService.startCustomSession(groupId, request));
     }
 
     @Operation(summary = "Leave a group, removing the membership entirely")

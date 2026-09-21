@@ -38,7 +38,10 @@ import org.dariusturcu.backend.service.GameSessionService;
 import org.dariusturcu.backend.service.GameSessionStartListener;
 import org.dariusturcu.backend.service.GroupService;
 import org.dariusturcu.backend.service.PlaylistAccessService;
+import org.dariusturcu.backend.service.PlaylistExpansionService;
+import org.dariusturcu.backend.service.PendingSessionSongPool;
 import org.dariusturcu.backend.service.SessionResultsStore;
+import org.dariusturcu.backend.difficulty.DifficultyTunedSongSelector;
 
 import org.flywaydb.core.Flyway;
 import org.junit.jupiter.api.AfterEach;
@@ -160,12 +163,15 @@ class GameSessionBettingConcurrencyIntegrationTest {
         GameSessionService gameSessionService(
                 GameSessionRepository gameSessionRepository, PlayerRepository playerRepository,
                 RoundRepository roundRepository, GuessRepository guessRepository, BetRepository betRepository,
-                GroupRepository groupRepository, SongRepository songRepository, GroupService groupService,
-                SessionMapper sessionMapper, SessionResultsStore resultsStore,
+                GroupRepository groupRepository, SongRepository songRepository, PlaylistRepository playlistRepository,
+                GroupService groupService, PlaylistAccessService playlistAccessService,
+                PlaylistExpansionService playlistExpansionService, DifficultyTunedSongSelector difficultySelector,
+                PendingSessionSongPool pendingPool, SessionMapper sessionMapper, SessionResultsStore resultsStore,
                 GameSessionScheduler gameSessionScheduler, ApplicationEventPublisher eventPublisher) {
             return new GameSessionService(gameSessionRepository, playerRepository, roundRepository, guessRepository,
-                    betRepository, groupRepository, songRepository, groupService, sessionMapper, resultsStore,
-                    gameSessionScheduler, eventPublisher);
+                    betRepository, groupRepository, songRepository, playlistRepository, groupService,
+                    playlistAccessService, playlistExpansionService, difficultySelector, pendingPool, sessionMapper,
+                    resultsStore, gameSessionScheduler, eventPublisher);
         }
 
         @Bean
