@@ -2,6 +2,8 @@ package org.dariusturcu.backend.repository;
 
 import org.dariusturcu.backend.model.song.Song;
 import org.dariusturcu.backend.model.song.VerificationStatus;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -16,6 +18,8 @@ public interface SongRepository extends JpaRepository<Song, Long> {
     List<Song> findByYoutubeIdIn(Collection<String> youtubeIds);
 
     List<Song> findByVerificationStatus(VerificationStatus verificationStatus);
+
+    Page<Song> findByVerificationStatus(VerificationStatus verificationStatus, Pageable pageable);
 
     @Query("select song.youtubeId from Song song where song.youtubeId in :youtubeIds")
     List<String> findKnownYoutubeIds(@Param("youtubeIds") Collection<String> youtubeIds);

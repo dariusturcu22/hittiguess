@@ -1,6 +1,7 @@
 package org.dariusturcu.backend.controller;
 
 import org.dariusturcu.backend.model.song.SongDTO;
+import org.dariusturcu.backend.model.song.RecommendedSongsDTO;
 import org.dariusturcu.backend.service.SongService;
 
 import org.springframework.http.ResponseEntity;
@@ -24,5 +25,13 @@ public class SongController {
             @RequestParam String query) {
         List<SongDTO> results = songService.searchCatalog(query);
         return ResponseEntity.ok(results);
+    }
+
+    @Operation(summary = "Recommend newest verified catalog songs, paged")
+    @GetMapping("/recommended")
+    public ResponseEntity<RecommendedSongsDTO> recommendSongs(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        return ResponseEntity.ok(songService.recommendSongs(page, size));
     }
 }

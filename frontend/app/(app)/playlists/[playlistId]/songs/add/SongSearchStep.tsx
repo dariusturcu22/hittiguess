@@ -8,8 +8,49 @@ import { Button } from "@/components/shadcn/button";
 import { Input } from "@/components/shadcn/input";
 import { SongDTO } from "@/hooks/models";
 import { useSearchSongs } from "@/hooks/generated/song-search/song-search";
+import { useRecommendedSongs } from "@/hooks/use-recommended-songs";
 
 const MIN_QUERY_LENGTH = 2;
+const RECOMMENDATION_PAGE_SIZE = 20;
+
+function SongResultRow({
+  song,
+  isQueued,
+  onToggleQueued,
+}: {
+  song: SongDTO;
+  isQueued: boolean;
+  onToggleQueued: (song: SongDTO) => void;
+}) {
+  return (
+    <div className="flex items-center gap-3.5 border-b-2 border-background px-5 py-3.5 last:border-b-0">
+      <div className="min-w-0 flex-1">
+        <div className="truncate text-sm">{song.title}</div>
+        <div className="truncate text-xs text-muted-foreground">
+          {song.artists.map((artist) => artist.name).join(", ")}
+          {" • "}
+          {song.releaseYear}
+        </div>
+      </div>
+      <button
+        type="button"
+        onClick={() => onToggleQueued(song)}
+        title={isQueued ? "Remove from queue" : "Add to queue"}
+        className={`flex size-8 shrink-0 items-center justify-center rounded-[10px] ${
+          isQueued
+            ? "bg-primary/18 text-primary"
+            : "bg-primary text-primary-foreground"
+        }`}
+      >
+        {isQueued ? (
+          <Check className="size-3.5" />
+        ) : (
+          <Plus className="size-3.5" />
+        )}
+      </button>
+    </div>
+  );
+}
 
 interface SongSearchStepProps {
   backPath: string;
@@ -35,6 +76,14 @@ export function SongSearchStep({
     { query: query.trim() },
     { query: { enabled: isQueryLongEnough } },
   );
+  const {
+    data: recommendedPages,
+    isLoading: isLoadingRecommendations,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+  } = useRecommendedSongs(RECOMMENDATION_PAGE_SIZE);
+  const recommendedSongs = (recommendedPages?.pages ?? []).flatMap((page) => page.songs);
 
   const queuedIds = new Set(queue.map((song) => song.id));
 
@@ -87,11 +136,32 @@ export function SongSearchStep({
 
           <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border-[3px] border-border-strong bg-card shadow-lg">
             <div className="min-h-0 flex-1 overflow-y-auto">
-              {!isQueryLongEnough && (
+              {!isQueryLongEnough && recommendedSongs.length === 0 && !isLoadingRecommendations && (
                 <p className="p-8 text-center text-sm text-muted-foreground">
-                  Type at least {MIN_QUERY_LENGTH} characters to search the
-                  catalog.
+                  No recommendations yet. Newly verified songs show up here.
                 </p>
+              )}
+              {!isQueryLongEnough &&
+                recommendedSongs.map((song) => (
+                  <SongResultRow
+                    key={song.id}
+                    song={song}
+                    isQueued={queuedIds.has(song.id)}
+                    onToggleQueued={onToggleQueued}
+                  />
+                ))}
+              {!isQueryLongEnough && hasNextPage && (
+                <div className="flex justify-center p-4">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => fetchNextPage()}
+                    disabled={isFetchingNextPage}
+                  >
+                    {isFetchingNextPage ? "Fetching..." : "Fetch more recommendations"}
+                  </Button>
+                </div>
               )}
               {isQueryLongEnough && !isLoading && results?.length === 0 && (
                 <p className="p-8 text-center text-sm text-muted-foreground">
@@ -99,40 +169,14 @@ export function SongSearchStep({
                 </p>
               )}
               {isQueryLongEnough &&
-                results?.map((song) => {
-                  const isQueued = queuedIds.has(song.id);
-                  return (
-                    <div
-                      key={song.id}
-                      className="flex items-center gap-3.5 border-b-2 border-background px-5 py-3.5 last:border-b-0"
-                    >
-                      <div className="min-w-0 flex-1">
-                        <div className="truncate text-sm">{song.title}</div>
-                        <div className="truncate text-xs text-muted-foreground">
-                          {song.artists.map((artist) => artist.name).join(", ")}
-                          {" • "}
-                          {song.releaseYear}
-                        </div>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => onToggleQueued(song)}
-                        title={isQueued ? "Remove from queue" : "Add to queue"}
-                        className={`flex size-8 shrink-0 items-center justify-center rounded-[10px] ${
-                          isQueued
-                            ? "bg-primary/18 text-primary"
-                            : "bg-primary text-primary-foreground"
-                        }`}
-                      >
-                        {isQueued ? (
-                          <Check className="size-3.5" />
-                        ) : (
-                          <Plus className="size-3.5" />
-                        )}
-                      </button>
-                    </div>
-                  );
-                })}
+                results?.map((song) => (
+                  <SongResultRow
+                    key={song.id}
+                    song={song}
+                    isQueued={queuedIds.has(song.id)}
+                    onToggleQueued={onToggleQueued}
+                  />
+                ))}
             </div>
           </div>
         </div>
