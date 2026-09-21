@@ -270,10 +270,7 @@ class DifficultySessionStartIntegrationTest {
         return songRepository.save(savedSong);
     }
 
-    private GroupDetailDTO groupWithTwoPlayers(String label, Playlist playlist, int winConditionCardCount) {
-        User admin = persistUser(label + "-admin-" + System.nanoTime());
-        User other = persistUser(label + "-player-" + System.nanoTime());
-
+    private GroupDetailDTO twoPlayerGroup(User admin, User other, Playlist playlist, int winConditionCardCount) {
         authenticateAs(admin);
         GroupDetailDTO createdGroup = groupService.createGroup(new CreateGroupRequest(null, null));
         authenticateAs(other);
@@ -313,8 +310,9 @@ class DifficultySessionStartIntegrationTest {
     @Test
     void difficultyGenerateThenStartPlaysExactlyTheReviewedSet() {
         User admin = persistUser("difficulty-admin-" + System.nanoTime());
+        User other = persistUser("difficulty-player-" + System.nanoTime());
         Playlist playlist = playlistWithSongs("difficulty", admin, 8, VerificationStatus.VERIFIED, 30);
-        GroupDetailDTO createdGroup = groupWithTwoPlayers("difficulty", playlist, 5);
+        GroupDetailDTO createdGroup = twoPlayerGroup(admin, other, playlist, 5);
 
         authenticateAs(admin);
         List<GeneratedSongPreviewDTO> previews = gameSessionService.generateDifficultySet(
@@ -333,8 +331,9 @@ class DifficultySessionStartIntegrationTest {
     @Test
     void customStartFromPlaylistPlaysThatPlaylistsSongs() {
         User admin = persistUser("custom-admin-" + System.nanoTime());
+        User other = persistUser("custom-player-" + System.nanoTime());
         Playlist playlist = playlistWithSongs("custom", admin, 6, VerificationStatus.UNVERIFIED, null);
-        GroupDetailDTO createdGroup = groupWithTwoPlayers("custom", playlist, 5);
+        GroupDetailDTO createdGroup = twoPlayerGroup(admin, other, playlist, 5);
         List<Long> playlistSongIds = new ArrayList<>(playlist.getSongs().stream().map(Song::getId).toList());
 
         authenticateAs(admin);
@@ -347,11 +346,12 @@ class DifficultySessionStartIntegrationTest {
     @Test
     void customStartFromPastedLinkSkipsVideosWithNoCatalogSong() {
         User admin = persistUser("link-admin-" + System.nanoTime());
+        User other = persistUser("link-player-" + System.nanoTime());
         List<Long> knownIds = List.of(
                 persistCatalogSong(null, admin, 1960, "Known One", VerificationStatus.VERIFIED, 30, "known-video-1").getId(),
                 persistCatalogSong(null, admin, 1961, "Known Two", VerificationStatus.VERIFIED, 30, "known-video-2").getId(),
                 persistCatalogSong(null, admin, 1962, "Known Three", VerificationStatus.VERIFIED, 30, "known-video-3").getId());
-        GroupDetailDTO createdGroup = groupWithTwoPlayers("link", null, 5);
+        GroupDetailDTO createdGroup = twoPlayerGroup(admin, other, null, 5);
 
         authenticateAs(admin);
         gameSessionService.startCustomSession(
