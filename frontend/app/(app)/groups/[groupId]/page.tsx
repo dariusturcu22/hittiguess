@@ -1,7 +1,7 @@
 "use client";
 
-import { use, useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { use, useCallback, useEffect, useMemo, useState, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   Check,
   Clipboard,
@@ -217,6 +217,33 @@ export default function GroupLobbyPage({ params }: PageProps) {
     setStartError("");
   }
 
+  function PlaylistPreselectCapture({ onCapture }: { onCapture: (playlistId: number | null) => void }) {
+    const searchParams = useSearchParams();
+
+    useEffect(() => {
+      const rawPlaylistId = searchParams.get("playlist");
+      if (rawPlaylistId === null) {
+        onCapture(null);
+        return;
+      }
+      const parsedPlaylistId = Number(rawPlaylistId);
+      onCapture(Number.isInteger(parsedPlaylistId) && parsedPlaylistId > 0 ? parsedPlaylistId : null);
+    }, [searchParams, onCapture]);
+
+    return null;
+  }
+
+  const applyPlaylistPreselect = useCallback((playlistId: number | null) => {
+    if (playlistId === null) {
+      return;
+    }
+    setStartMode("custom");
+    setReviewedSongs(null);
+    setStartError("");
+    setSelectedCustomPlaylistId(playlistId);
+    setIsStartOptionsOpen(true);
+  }, []);
+
   function handleModeStartSuccess() {
     refreshGroup();
     refreshActiveMembership();
@@ -341,6 +368,9 @@ export default function GroupLobbyPage({ params }: PageProps) {
 
   return (
     <main className="flex h-full min-h-[720px] flex-col px-6 py-8 sm:px-14 sm:py-9">
+      <Suspense fallback={null}>
+        <PlaylistPreselectCapture onCapture={applyPlaylistPreselect} />
+      </Suspense>
       <header className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <h1 className="font-display text-[26px] text-foreground drop-shadow-sm sm:text-[32px]">
           Group Lobby

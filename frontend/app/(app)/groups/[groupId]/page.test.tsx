@@ -9,9 +9,11 @@ const GROUP_PARAMS = Promise.resolve({ groupId: "1" });
 const generateMutate = vi.fn();
 const startWithSongsMutate = vi.fn();
 const startCustomMutate = vi.fn();
+let lobbySearchParams = new URLSearchParams();
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ replace: vi.fn(), push: vi.fn() }),
+  useSearchParams: () => lobbySearchParams,
 }));
 
 vi.mock("@/hooks/generated/group-management/group-management", () => ({
@@ -85,6 +87,7 @@ describe("GroupLobbyPage start options", () => {
     generateMutate.mockReset();
     startWithSongsMutate.mockReset();
     startCustomMutate.mockReset();
+    lobbySearchParams = new URLSearchParams();
     generateMutate.mockImplementation((_args, options) => options?.onSuccess?.(previews));
     startWithSongsMutate.mockImplementation((_args, options) => options?.onSuccess?.({}));
     startCustomMutate.mockImplementation((_args, options) => options?.onSuccess?.({}));
@@ -137,6 +140,20 @@ describe("GroupLobbyPage start options", () => {
 
     expect(startCustomMutate).toHaveBeenCalledWith(
       { groupId: 1, data: { playlistLink: "https://youtube.com/playlist?list=abc" } },
+      expect.anything(),
+    );
+  });
+
+  it("opens custom start with the playlist preselected from the link", async () => {
+    lobbySearchParams = new URLSearchParams("playlist=21");
+    await renderPage();
+
+    expect(screen.getByRole("button", { name: "Start from playlist" })).toBeVisible();
+
+    fireEvent.click(screen.getByRole("button", { name: "Start from playlist" }));
+
+    expect(startCustomMutate).toHaveBeenCalledWith(
+      { groupId: 1, data: { playlistId: 21 } },
       expect.anything(),
     );
   });
