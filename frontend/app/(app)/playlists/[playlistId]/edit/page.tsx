@@ -282,7 +282,7 @@ export default function EditPlaylistPage({ params }: PageProps) {
 
   const memberList = members ?? [];
   const inviteLink = playlist?.inviteCode
-    ? `hittiguess.app/playlists/join/${playlist.inviteCode}`
+    ? `${typeof window === "undefined" ? "" : window.location.origin}/playlists/join/${playlist.inviteCode}`
     : "";
 
   return (
