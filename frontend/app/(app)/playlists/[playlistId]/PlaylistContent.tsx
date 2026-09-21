@@ -54,12 +54,13 @@ import {
 } from "@/hooks/generated/playlist-management/playlist-management";
 import { useLeavePlaylist } from "@/hooks/generated/user-management/user-management";
 import { getGetUserPlaylistsQueryKey } from "@/hooks/generated/user-management/user-management";
+import { useGetActiveMembership } from "@/hooks/generated/group-management/group-management";
 import { useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { PlaylistCoverMosaic } from "@/components/playlist-cover-mosaic";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/shadcn/popover";
 import { playlistTitleColor } from "@/lib/playlist-colors";
-import { SongCatalogQuickAdd } from "./SongCatalogQuickAdd";
+import { PhantomEmptyState } from "@/components/phantom-empty-state";
 
 const MEMBER_AVATAR_COLORS = [
   "var(--primary)",
@@ -72,6 +73,10 @@ const MEMBER_AVATAR_COLORS = [
 
 interface PlaylistContentProps {
   playlistId: number;
+}
+
+export function buildInviteMessage(playlistName: string, inviteCode: string, inviteLink: string): string {
+  return `Hey, join my playlist "${playlistName}" on hittiguess! Invite code: ${inviteCode} — or open ${inviteLink}`;
 }
 
 function MemberAvatar({
@@ -107,6 +112,7 @@ export default function PlaylistContent({
   const router = useRouter();
 
   const { data: playlist, isLoading } = useGetPlaylist(playlistId);
+  const activeMembershipQuery = useGetActiveMembership({ query: { retry: false } });
   const songs = React.useMemo(() => playlist?.songs ?? [], [playlist?.songs]);
 
   const { mutate: removeSong } = useDeleteSong();
@@ -173,9 +179,19 @@ export default function PlaylistContent({
 
   const handleCopyCode = async () => {
     if (!playlist) return;
-    await navigator.clipboard.writeText(playlist.inviteCode);
+    const inviteLink = `${window.location.origin}/playlists/join/${playlist.inviteCode}`;
+    await navigator.clipboard.writeText(buildInviteMessage(playlist.name, playlist.inviteCode, inviteLink));
     setCodeCopied(true);
     setTimeout(() => setCodeCopied(false), 2000);
+  };
+
+  const handleStartSession = () => {
+    const groupId = activeMembershipQuery.data?.id;
+    if (!groupId) {
+      toast.error("Join or create a group to start a session.");
+      return;
+    }
+    router.push(`/groups/${groupId}?playlist=${playlistId}`);
   };
 
   if (isLoading || !playlist) {
@@ -234,8 +250,8 @@ export default function PlaylistContent({
 
             <div className="flex flex-wrap items-center gap-3">
               <Button
-                title="Live sessions haven't shipped yet"
                 className="gap-2"
+                onClick={handleStartSession}
               >
                 <Play className="size-3.5 fill-current" />
                 Start session
@@ -377,15 +393,17 @@ export default function PlaylistContent({
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <div className="font-display text-base">Songs</div>
         <div className="flex flex-wrap items-center gap-2.5">
-          <div className="relative">
-            <Search className="pointer-events-none absolute top-1/2 left-3.5 size-3.5 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              placeholder="Search songs..."
-              value={searchQuery}
-              onChange={(event) => setSearchQuery(event.target.value)}
-              className="h-9 w-[180px] rounded-full pl-9 sm:w-[220px]"
-            />
-          </div>
+          {songs.length > 0 ? (
+            <div className="relative">
+              <Search className="pointer-events-none absolute top-1/2 left-3.5 size-3.5 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                placeholder="Search songs..."
+                value={searchQuery}
+                onChange={(event) => setSearchQuery(event.target.value)}
+                className="h-9 w-[180px] rounded-full pl-9 sm:w-[220px]"
+              />
+            </div>
+          ) : null}
           <Button
             variant="outline"
             size="sm"
@@ -434,7 +452,12 @@ export default function PlaylistContent({
       <div className="flex min-h-0 w-full min-w-0 flex-1 flex-col overflow-hidden rounded-2xl border-[3px] border-border-strong bg-card shadow-lg">
         <div className="min-h-0 min-w-0 flex-1 overflow-y-auto">
           {visibleSongs.length === 0 && songs.length === 0 && (
-            <SongCatalogQuickAdd playlistId={playlistId} />
+            <div className="flex flex-1 items-center justify-center p-8">
+              <PhantomEmptyState
+                title="No songs yet"
+                message="Add songs to start building this playlist."
+              />
+            </div>
           )}
           {visibleSongs.length === 0 && songs.length > 0 && (
             <p className="p-8 text-center text-sm text-muted-foreground">
