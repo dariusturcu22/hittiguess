@@ -637,13 +637,13 @@ Tests:
 
 ### Batch F: component boundary and accessibility
 
-- [ ] Keep shadcn primitives for interactive controls and add focused primitives only where the current set has a gap
-- [ ] Improve keyboard-visible focus, controls, and readable opaque surfaces for the chat overlay and voice sidebar
-- [ ] Audit the affected light and dark theme colors against WCAG AA text contrast
+- [x] Keep shadcn primitives for interactive controls and add focused primitives only where the current set has a gap
+- [x] Improve keyboard-visible focus, controls, and readable opaque surfaces for the chat overlay and voice sidebar
+- [x] Audit the affected light and dark theme colors against WCAG AA text contrast
 
 Tests:
 
-- [ ] Run frontend lint and production build
+- [x] Run frontend lint and production build
 
 ### Visual fidelity remediation for Batches A through D
 
