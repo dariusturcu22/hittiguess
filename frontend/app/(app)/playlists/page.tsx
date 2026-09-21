@@ -83,6 +83,61 @@ function PlaylistCard({ playlist }: { playlist: PlaylistCardItem }) {
   );
 }
 
+const LIBRARY_TABS = [
+  { id: "owned", label: "Owned" },
+  { id: "joined", label: "Joined" },
+  { id: "saved", label: "Saved" },
+  { id: "all", label: "All" },
+] as const;
+
+type LibraryTab = (typeof LIBRARY_TABS)[number]["id"];
+
+function extractInviteCode(value: string): string {
+  const trimmed = value.trim();
+  const joinMarker = "/join/";
+  const markerIndex = trimmed.lastIndexOf(joinMarker);
+  const codeOrLink = markerIndex >= 0 ? trimmed.slice(markerIndex + joinMarker.length) : trimmed;
+  return codeOrLink.split(/[?#]/)[0];
+}
+
+function JoinPlaylistCard({ onJoin }: { onJoin: (inviteCode: string) => void }) {
+  const [inviteValue, setInviteValue] = React.useState("");
+  const inviteCode = extractInviteCode(inviteValue);
+
+  return (
+    <div className="flex aspect-square flex-col items-center justify-center gap-3 self-start rounded-2xl border-[3px] border-dashed border-border p-5">
+      <div className="font-display text-sm text-muted-foreground">Join playlist</div>
+      <input
+        type="text"
+        value={inviteValue}
+        onChange={(event) => setInviteValue(event.target.value)}
+        placeholder="Invite code or link"
+        aria-label="Invite code or link"
+        className="w-full rounded-full border-2 border-border bg-background px-4 py-2 text-sm text-foreground outline-none placeholder:text-muted-foreground"
+      />
+      <button
+        type="button"
+        onClick={() => onJoin(inviteCode)}
+        disabled={!inviteCode}
+        className="cursor-pointer rounded-full bg-accent px-6 py-2 font-display text-xs text-accent-foreground disabled:cursor-not-allowed disabled:opacity-50"
+      >
+        Join playlist
+      </button>
+    </div>
+  );
+}
+
+function ExploreLinkCard() {
+  return (
+    <Link
+      href="/explore"
+      className="flex aspect-square flex-col items-center justify-center gap-3 self-start rounded-2xl border-[3px] border-dashed border-border p-5"
+    >
+      <div className="font-display text-sm text-muted-foreground">Explore public playlists</div>
+      <span className="rounded-full bg-accent px-6 py-2 font-display text-xs text-accent-foreground">Explore</span>
+    </Link>
+  );
+}
 function NewPlaylistCard({
   onClick,
   isCreating,
@@ -116,7 +171,7 @@ export default function PlaylistsPage() {
   const { mutate: createPlaylist, isPending: isCreating } =
     useCreatePlaylist();
   const [searchQuery, setSearchQuery] = React.useState("");
-  const [libraryTab, setLibraryTab] = React.useState<"owned" | "joined" | "saved">("owned");
+  const [libraryTab, setLibraryTab] = React.useState<LibraryTab>("owned");
 
   const handleCreatePlaylist = () => {
     createPlaylist(undefined, {
@@ -129,20 +184,33 @@ export default function PlaylistsPage() {
     });
   };
 
+  const handleJoinPlaylist = (inviteCode: string) => {
+    router.push(`/playlists/join/${inviteCode}`);
+  };
+
   const playlists = userPlaylistsQuery.data;
-  const isLoading = libraryTab === "saved" ? savedPlaylistsQuery.isLoading : userPlaylistsQuery.isLoading;
-  const isError = libraryTab === "saved" ? savedPlaylistsQuery.isError : userPlaylistsQuery.isError;
+  const isLoading = userPlaylistsQuery.isLoading || savedPlaylistsQuery.isLoading;
+  const isError = userPlaylistsQuery.isError || savedPlaylistsQuery.isError;
 
   const matchesSearch = (name: string) => name.toLowerCase().includes(searchQuery.trim().toLowerCase());
   const membershipPlaylists = playlists ?? [];
   const savedPlaylists: PlaylistCardItem[] = savedPlaylistsQuery.data ?? [];
-  const visiblePlaylists: PlaylistCardItem[] = libraryTab === "saved"
-    ? savedPlaylists.filter((playlist) => matchesSearch(playlist.name))
-    : membershipPlaylists.filter((playlist) => {
-        const ownedByCurrentUser = playlist.ownedByCurrentUser;
-        return matchesSearch(playlist.name)
-          && (libraryTab === "owned" ? ownedByCurrentUser : !ownedByCurrentUser);
-      });
+  const ownedPlaylists = membershipPlaylists.filter((playlist) => playlist.ownedByCurrentUser);
+  const joinedPlaylists = membershipPlaylists.filter((playlist) => !playlist.ownedByCurrentUser);
+  const allPlaylists: PlaylistCardItem[] = [...membershipPlaylists];
+  for (const savedPlaylist of savedPlaylists) {
+    if (!allPlaylists.some((playlist) => playlist.id === savedPlaylist.id)) {
+      allPlaylists.push(savedPlaylist);
+    }
+  }
+  const visiblePlaylists: PlaylistCardItem[] = (libraryTab === "saved"
+    ? savedPlaylists
+    : libraryTab === "all"
+      ? allPlaylists
+      : libraryTab === "owned"
+        ? ownedPlaylists
+        : joinedPlaylists
+  ).filter((playlist) => matchesSearch(playlist.name));
 
   return (
     <div className="flex h-full flex-col p-6 md:p-11">
@@ -163,6 +231,13 @@ export default function PlaylistsPage() {
             <PlusIcon />
             {isCreating ? "Creating..." : "Create playlist"}
           </Button>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => setLibraryTab("joined")}
+          >
+            Join
+          </Button>
         </div>
       </div>
 
@@ -177,15 +252,11 @@ export default function PlaylistsPage() {
             className="bg-surface-sunken border-border w-full rounded-full border-2 py-3 pr-[18px] pl-[42px] font-sans text-sm text-foreground placeholder:text-muted-foreground outline-none"
           />
         </div>
-        <button type="button" onClick={() => setLibraryTab("owned")} className={`cursor-pointer rounded-full px-6 py-2.5 font-display text-xs ${libraryTab === "owned" ? "bg-accent text-accent-foreground shadow-xs" : "text-muted-foreground border-border border-2"}`}>
-          Owned
-        </button>
-        <button type="button" onClick={() => setLibraryTab("joined")} className={`cursor-pointer rounded-full px-6 py-2.5 font-display text-xs ${libraryTab === "joined" ? "bg-accent text-accent-foreground shadow-xs" : "text-muted-foreground border-border border-2"}`}>
-          Joined
-        </button>
-        <button type="button" onClick={() => setLibraryTab("saved")} className={`cursor-pointer rounded-full px-6 py-2.5 font-display text-xs ${libraryTab === "saved" ? "bg-accent text-accent-foreground shadow-xs" : "text-muted-foreground border-border border-2"}`}>
-          Saved
-        </button>
+        {LIBRARY_TABS.map((tab) => (
+          <button key={tab.id} type="button" onClick={() => setLibraryTab(tab.id)} className={`cursor-pointer rounded-full px-6 py-2.5 font-display text-xs ${libraryTab === tab.id ? "bg-accent text-accent-foreground shadow-xs" : "text-muted-foreground border-border border-2"}`}>
+            {tab.label}
+          </button>
+        ))}
       </div>
 
       <div className="min-h-0 flex-1 overflow-y-auto pr-1">
@@ -204,7 +275,11 @@ export default function PlaylistsPage() {
             {visiblePlaylists.map((playlist) => (
               <PlaylistCard key={playlist.id} playlist={playlist} />
             ))}
-            {libraryTab === "saved" ? null : (
+            {libraryTab === "joined" ? (
+              <JoinPlaylistCard onJoin={handleJoinPlaylist} />
+            ) : libraryTab === "saved" ? (
+              <ExploreLinkCard />
+            ) : (
               <NewPlaylistCard
                 onClick={handleCreatePlaylist}
                 isCreating={isCreating}
