@@ -138,6 +138,10 @@ def test_strip_featured_artist_suffix_removes_standalone_featured_artist_marker(
     assert strip_featured_artist_suffix("Titanium (feat. Sia)") == "Titanium"
 
 
+def test_strip_featured_artist_suffix_removes_lowercase_ft_marker():
+    assert strip_featured_artist_suffix("Song Title ft. Featured Artist") == "Song Title"
+
+
 def test_strip_featured_artist_suffix_preserves_place_name_with_ft_abbreviation():
     assert strip_featured_artist_suffix("I Left My Heart in Ft. Lauderdale") == "I Left My Heart in Ft. Lauderdale"
 

@@ -118,6 +118,7 @@ class GroupWebSocketIntegrationTest {
             CustomUserDetailsService.class,
             GroupPresenceRegistry.class,
             StompAuthenticationChannelInterceptor.class,
+            JwtCookieHandshakeInterceptor.class,
             WebSocketConfig.class,
             GroupSessionEventListener.class,
             GroupBroadcastListener.class

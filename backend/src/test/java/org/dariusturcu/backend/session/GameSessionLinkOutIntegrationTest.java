@@ -42,7 +42,11 @@ import org.dariusturcu.backend.service.PlaylistAccessService;
 import org.dariusturcu.backend.service.PlaylistExpansionService;
 import org.dariusturcu.backend.service.PendingSessionSongPool;
 import org.dariusturcu.backend.service.SessionResultsStore;
+import org.dariusturcu.backend.difficulty.AggregateBaselinePredictor;
+import org.dariusturcu.backend.difficulty.DifficultyBand;
 import org.dariusturcu.backend.difficulty.DifficultyTunedSongSelector;
+import org.dariusturcu.backend.difficulty.GroupDifficultyStrategy;
+import org.dariusturcu.backend.difficulty.SongDifficultyScorer;
 
 import org.flywaydb.core.Flyway;
 import org.junit.jupiter.api.AfterEach;
@@ -58,6 +62,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 import org.springframework.scheduling.TaskScheduler;
+import org.springframework.web.client.RestClient;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -177,6 +182,23 @@ class GameSessionLinkOutIntegrationTest {
                                    PlaylistRepository playlistRepository, GroupMapper groupMapper,
                                    ApplicationEventPublisher eventPublisher, PlaylistAccessService playlistAccessService) {
             return new GroupService(groupRepository, memberRepository, playlistRepository, groupMapper, eventPublisher, playlistAccessService);
+        }
+
+        @Bean
+        PendingSessionSongPool pendingSessionSongPool() {
+            return new PendingSessionSongPool();
+        }
+
+        @Bean
+        DifficultyTunedSongSelector difficultySelector(SongRepository songRepository, RoundRepository roundRepository) {
+            return new DifficultyTunedSongSelector(
+                    songRepository, roundRepository, new SongDifficultyScorer(), new DifficultyBand(),
+                    new GroupDifficultyStrategy(), new AggregateBaselinePredictor());
+        }
+
+        @Bean
+        PlaylistExpansionService playlistExpansionService() {
+            return new PlaylistExpansionService(RestClient.create());
         }
 
         @Bean

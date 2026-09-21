@@ -8,8 +8,11 @@ from urllib.parse import quote
 METADATA_SOURCE_USER_AGENT = "hittiguess/0.1 (+https://hittiguess.com; contact@hittiguess.com)"
 
 YOUTUBE_ID_PATTERN = re.compile(r"^[a-zA-Z0-9_-]{11}$")
+# Bare feat/ft markers match lowercase only: a capitalized "Ft." is a place-name
+# abbreviation (Ft. Lauderdale), while the genuine trailing marker is lowercase.
+# Parenthesized markers match either case.
 FEATURED_ARTIST_SUFFIX_PATTERN = re.compile(
-    r"\s*(?:\(\b(?:feat|ft)\b\.?\s+[^)]*\)|\bfeat\b\.?\s+.*|\bft\b(?!\.)\s+.*)$",
+    r"\s*(?:\(\b(?:feat|ft)\b\.?\s+[^)]*\)|(?-i:\bfeat\b\.?\s+.*|\bft\b\.?\s+.*))$",
     re.IGNORECASE,
 )
 
