@@ -75,6 +75,13 @@ describe("AppVoiceSidebar", () => {
     expect(toggleDeafen).toHaveBeenCalledOnce();
   });
 
+  it("reports the mute and deafen toggle states to assistive technology", async () => {
+    render(<AppVoiceSidebar />);
+
+    expect(screen.getByRole("button", { name: "Mute" })).toHaveAttribute("aria-pressed", "false");
+    expect(screen.getByRole("button", { name: "Deafen" })).toHaveAttribute("aria-pressed", "false");
+  });
+
   it("labels the join action and starts the microphone before joining", async () => {
     inVoice = false;
     render(<AppVoiceSidebar />);

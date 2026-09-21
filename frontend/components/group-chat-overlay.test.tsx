@@ -67,6 +67,19 @@ describe("GroupChatOverlay", () => {
     expect(screen.getByText("5/500")).toBeVisible();
   });
 
+  it("focuses the message input on open", () => {
+    render(
+      <GroupChatOverlay
+        groupId={GROUP_IDENTIFIER}
+        connectionState="connected"
+        onClose={vi.fn()}
+        sendChat={vi.fn(() => true)}
+      />,
+    );
+
+    expect(screen.getByRole("textbox", { name: "Chat message" })).toHaveFocus();
+  });
+
   it("closes from the labeled control and Escape key", () => {
     const onClose = vi.fn();
     render(
