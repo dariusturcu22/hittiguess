@@ -1,6 +1,6 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import PlaylistsPage from "./page";
 
@@ -10,8 +10,10 @@ vi.mock("next/link", () => ({
   ),
 }));
 
+const routerPush = vi.fn();
+
 vi.mock("next/navigation", () => ({
-  useRouter: () => ({ push: vi.fn() }),
+  useRouter: () => ({ push: routerPush }),
 }));
 
 vi.mock("@/components/playlist-cover-mosaic", () => ({
@@ -70,6 +72,10 @@ function renderPage() {
 }
 
 describe("PlaylistsPage library tabs", () => {
+  beforeEach(() => {
+    routerPush.mockReset();
+  });
+
   it("shows owned playlists by default and joined ones on the Joined tab", () => {
     renderPage();
 
@@ -92,5 +98,53 @@ describe("PlaylistsPage library tabs", () => {
     expect(screen.getByText("Saved mix")).toBeVisible();
     expect(screen.queryByText("Owned mix")).toBeNull();
     expect(screen.queryByText("Joined mix")).toBeNull();
+  });
+
+  it("lists everything on the All tab", () => {
+    renderPage();
+
+    fireEvent.click(screen.getByRole("button", { name: "All" }));
+
+    expect(screen.getByText("Owned mix")).toBeVisible();
+    expect(screen.getByText("Joined mix")).toBeVisible();
+    expect(screen.getByText("Saved mix")).toBeVisible();
+  });
+
+  it("shows the join tile instead of new playlist on the Joined tab", () => {
+    renderPage();
+
+    fireEvent.click(screen.getByRole("button", { name: "Joined" }));
+
+    expect(screen.getByLabelText("Invite code or link")).toBeVisible();
+    expect(screen.queryByRole("button", { name: "New playlist" })).toBeNull();
+  });
+
+  it("shows the explore tile instead of new playlist on the Saved tab", () => {
+    renderPage();
+
+    fireEvent.click(screen.getByRole("button", { name: "Saved" }));
+
+    expect(screen.getByRole("link", { name: /Explore public playlists/ })).toHaveAttribute("href", "/explore");
+    expect(screen.queryByRole("button", { name: "New playlist" })).toBeNull();
+  });
+
+  it("joins from a pasted invite link by extracting its code", () => {
+    renderPage();
+
+    fireEvent.click(screen.getByRole("button", { name: "Joined" }));
+    fireEvent.change(screen.getByLabelText("Invite code or link"), {
+      target: { value: "http://localhost:3000/playlists/join/abc123?x=1" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Join playlist" }));
+
+    expect(routerPush).toHaveBeenCalledWith("/playlists/join/abc123");
+  });
+
+  it("header Join button switches to the Joined tab", () => {
+    renderPage();
+
+    fireEvent.click(screen.getByRole("button", { name: "Join" }));
+
+    expect(screen.getByLabelText("Invite code or link")).toBeVisible();
   });
 });
