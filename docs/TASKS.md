@@ -752,20 +752,20 @@ Tests:
 
 ## Landing and auth fix pass
 
-Bugs from the owner's review, blocking every other test path since they gate entry into the app.
+Covered by PR #172 (plus the OAuth offline tests beside it).
 
-- [ ] Unauthenticated users see the landing page instead of a login redirect
-- [ ] Bound landing and auth page scroll to their content
-- [ ] Fix the theme toggles and the logo animation on landing and auth
-- [ ] Verify the join-link flow for logged-out users: login or account creation, then automatic redirect into the join prompt
-- [ ] Verify remember-me exists and works; wire the forgot-password form if it is still a stub
-- [ ] Verify whether OAuth can be tested without real Google credentials, and test it if so
+- [x] Unauthenticated users see the landing page instead of a login redirect
+- [x] Bound landing and auth page scroll to their content
+- [x] Fix the theme toggles and the logo animation on landing and auth
+- [x] Verify the join-link flow for logged-out users: login or account creation, then automatic redirect into the join prompt
+- [x] Verify remember-me exists and works; wire the forgot-password form if it is still a stub
+- [x] Verify whether OAuth can be tested without real Google credentials, and test it if so
 
 Tests:
 
-- [ ] Frontend tests for the landing redirect, scroll bounds, toggle, and animation states
-- [ ] Playwright coverage for account creation, login, and the join-link redirect chain
-- [ ] Live email-flow check through the backend's log-line mode (no inbox needed while the Resend key is unset)
+- [x] Frontend tests for the landing redirect, scroll bounds, toggle, and animation states
+- [x] Playwright coverage for account creation, login, and the join-link redirect chain
+- [x] Live email-flow check through the backend's log-line mode (no inbox needed while the Resend key is unset)
 
 ## Story 47: Product ground-truth pass
 
