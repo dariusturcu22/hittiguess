@@ -334,6 +334,14 @@ html.theme-transition .theme-toggle-thumb {
   * {
     @apply border-border outline-ring/50;
   }
+  /* Every clickable control shows the pointer hand: shadcn buttons carry
+     cursor-pointer in their own base, this covers every hand-written button
+     (and any future one) without touching each call site. Disabled controls
+     keep their own cursor through disabled:cursor-not-allowed, which wins
+     over this base layer. */
+  button:not(:disabled) {
+    cursor: pointer;
+  }
   /* The next/font variables are declared on <body>, and Tailwind's own
      preflight sets font-family on <html>, where those variables don't
      resolve. Applying font-sans here is what actually puts Space Grotesk on
