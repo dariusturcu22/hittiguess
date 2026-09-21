@@ -92,6 +92,7 @@ class SongMetadataResult(ConfidenceNormalizedModel):
     source: str
     reasoning: str
     verification_status: str | None = None
+    sitelinks_count: int | None = None
 
 
 class MetadataResolveResponse(BaseModel):

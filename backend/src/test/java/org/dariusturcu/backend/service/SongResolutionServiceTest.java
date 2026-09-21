@@ -25,6 +25,7 @@ class SongResolutionServiceTest {
 
     private static final String YOUTUBE_ID = "dQw4w9WgXcQ";
     private static final Long EXISTING_SONG_ID = 6L;
+    private static final Integer RESOLVED_SITELINKS_COUNT = 24;
 
     @Mock
     private SongMetadataService songMetadataService;
@@ -40,7 +41,8 @@ class SongResolutionServiceTest {
     private AiResponse successResponse(String verificationStatus) {
         SongMetadataResponse content = new SongMetadataResponse(
                 "Never Gonna Give You Up", "Rick Astley", 1987, "abcdef",
-                "high", "musicbrainz+discogs+wikidata-lock", "All three sources agree", verificationStatus);
+                "high", "musicbrainz+discogs+wikidata-lock", "All three sources agree", verificationStatus,
+                RESOLVED_SITELINKS_COUNT);
         return new AiResponse(content, "gpt-5.1", 100L, LocalDateTime.now(), "SUCCESS", null, null);
     }
 
@@ -56,6 +58,20 @@ class SongResolutionServiceTest {
 
         assertThat(resolvedSong).isPresent();
         assertThat(resolvedSong.get().getVerificationStatus()).isEqualTo(VerificationStatus.VERIFIED);
+    }
+
+    @Test
+    void persistsTheWikidataSitelinksCountOntoTheNewSong() {
+        songResolutionService = service();
+        when(songMetadataService.resolveByYoutubeId(YOUTUBE_ID)).thenReturn(successResponse("VERIFIED"));
+        when(songRepository.findByYoutubeId(YOUTUBE_ID)).thenReturn(List.of());
+        when(songRepository.save(org.mockito.ArgumentMatchers.any(Song.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        Optional<Song> resolvedSong = songResolutionService.resolveAndPersist(YOUTUBE_ID);
+
+        assertThat(resolvedSong).isPresent();
+        assertThat(resolvedSong.get().getWikidataSitelinksCount()).isEqualTo(RESOLVED_SITELINKS_COUNT);
     }
 
     @Test

@@ -123,6 +123,21 @@ class DifficultyTunedSongSelectorTest {
     }
 
     @Test
+    void selectionUsesThePersistedSitelinksCountForSongsWithNoPlayHistory() {
+        Song widelyKnownSong = songWithId(EASY_SONG_ID);
+        widelyKnownSong.setWikidataSitelinksCount(SongDifficultyScorer.SITELINKS_WIDELY_KNOWN_COUNT);
+        when(songRepository.findByVerificationStatus(VerificationStatus.VERIFIED))
+                .thenReturn(List.of(widelyKnownSong));
+        when(roundRepository.aggregatePlacementStatsBySong(any(RoundStatus.class), any()))
+                .thenReturn(List.of());
+
+        List<ScoredSong> easyPick =
+                difficultyTunedSongSelector.selectForGroup(ONE_PLAYER, DifficultyTier.EASY, GENEROUS_CARD_COUNT);
+
+        assertThat(easyPick).extracting(scored -> scored.song().getId()).containsExactly(EASY_SONG_ID);
+    }
+
+    @Test
     void theResultIsCappedAtTheTargetCardCount() {
         Song firstEasySong = songWithId(EASY_SONG_ID);
         Song secondEasySong = songWithId(EASY_SONG_ID + 1);

@@ -12,6 +12,7 @@ public record AiMetadataContent(
         String confidence,
         String source,
         String reasoning,
-        String verificationStatus
+        String verificationStatus,
+        Integer sitelinksCount
 ) {
 }

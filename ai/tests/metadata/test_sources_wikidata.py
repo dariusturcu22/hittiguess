@@ -124,3 +124,29 @@ def test_search_returns_empty_list_on_request_failure(mocker):
     respx.get("https://www.wikidata.org/w/api.php").mock(return_value=httpx.Response(500))
 
     assert wikidata.search("Test Song", "Test Artist") == []
+
+
+@respx.mock
+def test_get_sitelinks_count_counts_linked_language_editions(mocker):
+    mocker.patch("app.metadata.sources.wikidata.time.sleep")
+    respx.get("https://www.wikidata.org/w/api.php").mock(
+        return_value=httpx.Response(200, json={"entities": {"Q1": {"sitelinks": {"enwiki": {}, "rowiki": {}, "dewiki": {}}}}})
+    )
+
+    assert wikidata.get_sitelinks_count("Q1") == 3
+
+
+@respx.mock
+def test_get_sitelinks_count_returns_none_when_the_entity_is_missing(mocker):
+    mocker.patch("app.metadata.sources.wikidata.time.sleep")
+    respx.get("https://www.wikidata.org/w/api.php").mock(return_value=httpx.Response(200, json={"entities": {}}))
+
+    assert wikidata.get_sitelinks_count("Q1") is None
+
+
+@respx.mock
+def test_get_sitelinks_count_returns_none_on_request_failure(mocker):
+    mocker.patch("app.metadata.sources.wikidata.time.sleep")
+    respx.get("https://www.wikidata.org/w/api.php").mock(return_value=httpx.Response(500))
+
+    assert wikidata.get_sitelinks_count("Q1") is None

@@ -173,6 +173,9 @@ def _run_verification_pipeline(title: str, artist: str, color: str) -> SongMetad
     )
     verification_status = route_to_verification_status(route)
 
+    track_entity_id = wikidata_candidates[0].get("entity_id") if wikidata_candidates else None
+    sitelinks_count = wikidata.get_sitelinks_count(track_entity_id) if track_entity_id else None
+
     source_label = {
         VerificationRoute.LOCKED: LOCKED_SOURCE_LABEL,
         VerificationRoute.LOCKED_WITH_WIKIPEDIA: WIKIPEDIA_ASSISTED_LOCK_SOURCE_LABEL,
@@ -208,6 +211,7 @@ def _run_verification_pipeline(title: str, artist: str, color: str) -> SongMetad
         source=source_label,
         reasoning=reasoning_by_route[route],
         verification_status=verification_status.value,
+        sitelinks_count=sitelinks_count,
     )
 
 

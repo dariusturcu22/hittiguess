@@ -83,6 +83,7 @@ class PlaylistServiceTest {
 
     private static final Long PLAYLIST_ID = 1L;
     private static final Long SONG_ID = 2L;
+    private static final Integer RESOLVED_SITELINKS_COUNT = 24;
     private static final Long OWNER_ID = 10L;
     private static final Long MEMBER_ID = 20L;
     private static final Long OTHER_USER_ID = 30L;
@@ -250,7 +251,7 @@ class PlaylistServiceTest {
         Song newSong = new Song();
         newSong.setId(SONG_ID);
         SongMetadataResponse metadata = new SongMetadataResponse(
-                "Title", "Artist", 2000, "abcdef", "high", "sources", "matched", "VERIFIED");
+                "Title", "Artist", 2000, "abcdef", "high", "sources", "matched", "VERIFIED", RESOLVED_SITELINKS_COUNT);
         AiResponse response = new AiResponse(metadata, null, 0L, null, "SUCCESS", null, null);
         when(songRepository.findByYoutubeId(request.youtubeId())).thenReturn(List.of());
         when(songMapper.toEntity(request)).thenReturn(newSong);
@@ -262,6 +263,7 @@ class PlaylistServiceTest {
 
         assertThat(newSong.getVerificationStatus()).isEqualTo(VerificationStatus.VERIFIED);
         assertThat(newSong.getConfidence()).isEqualTo("high");
+        assertThat(newSong.getWikidataSitelinksCount()).isEqualTo(RESOLVED_SITELINKS_COUNT);
     }
 
     @Test
@@ -271,7 +273,7 @@ class PlaylistServiceTest {
         Song newSong = new Song();
         newSong.setId(SONG_ID);
         SongMetadataResponse metadata = new SongMetadataResponse(
-                "Original title", "Artist", 2000, "abcdef", "high", "sources", "matched", "VERIFIED");
+                "Original title", "Artist", 2000, "abcdef", "high", "sources", "matched", "VERIFIED", null);
         AiResponse response = new AiResponse(metadata, null, 0L, null, "SUCCESS", null, null);
         when(songRepository.findByYoutubeId(request.youtubeId())).thenReturn(List.of());
         when(songMapper.toEntity(request)).thenReturn(newSong);
