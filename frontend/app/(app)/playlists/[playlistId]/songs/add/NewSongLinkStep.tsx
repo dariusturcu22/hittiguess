@@ -1,12 +1,24 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Loader2, Search } from "lucide-react";
 
 import { Button } from "@/components/shadcn/button";
 import { Input } from "@/components/shadcn/input";
 
 const YOUTUBE_ID_PATTERN = /^[a-zA-Z0-9_-]{11}$/;
+const FETCH_STAGE_ROTATE_MILLISECONDS = 4000;
+
+// The metadata pipeline stages behind one fetch call, shown in rotation while
+// the request runs. The call itself reports no live progress, so these name
+// the real stages in order rather than the request's current one.
+const FETCH_STAGES = [
+  "Reading the video title and channel",
+  "Consulting MusicBrainz",
+  "Consulting Discogs",
+  "Consulting Wikidata",
+  "Reconciling the release year",
+] as const;
 
 function extractYoutubeId(input: string): string | null {
   const trimmed = input.trim();
@@ -44,6 +56,24 @@ export function NewSongLinkStep({
 }: NewSongLinkStepProps) {
   const [input, setInput] = useState("");
   const [error, setError] = useState("");
+  const [fetchStageIndex, setFetchStageIndex] = useState(0);
+  const [wasFetching, setWasFetching] = useState(isFetching);
+  if (wasFetching !== isFetching) {
+    setWasFetching(isFetching);
+    if (isFetching) {
+      setFetchStageIndex(0);
+    }
+  }
+
+  useEffect(() => {
+    if (!isFetching) {
+      return;
+    }
+    const stageTimer = window.setInterval(() => {
+      setFetchStageIndex((currentIndex) => (currentIndex + 1) % FETCH_STAGES.length);
+    }, FETCH_STAGE_ROTATE_MILLISECONDS);
+    return () => window.clearInterval(stageTimer);
+  }, [isFetching]);
 
   const handleFetch = () => {
     const id = extractYoutubeId(input);
@@ -109,6 +139,23 @@ export function NewSongLinkStep({
         )}
         {isFetching ? "Fetching..." : "Fetch details"}
       </Button>
+
+      {isFetching ? (
+        <div className="mb-4.5 w-full rounded-2xl border-2 border-border bg-card p-5" aria-live="polite">
+          <div className="flex items-center gap-3 text-[13px] font-semibold text-card-foreground">
+            <Loader2 className="size-4 animate-spin text-primary" />
+            {FETCH_STAGES[fetchStageIndex]}...
+          </div>
+          <div className="mt-3 flex gap-1.5" aria-hidden="true">
+            {FETCH_STAGES.map((stage, stageIndex) => (
+              <span
+                key={stage}
+                className={`h-2 flex-1 rounded-full ${stageIndex <= fetchStageIndex ? "bg-primary" : "bg-secondary"}`}
+              />
+            ))}
+          </div>
+        </div>
+      ) : null}
 
       <button
         type="button"
