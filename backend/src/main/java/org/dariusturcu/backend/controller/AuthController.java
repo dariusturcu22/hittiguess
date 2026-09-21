@@ -205,14 +205,17 @@ public class AuthController {
                         result.accessToken(),
                         jwtUtil.getExpirationSeconds()
                 ).toString());
+        long refreshLifetimeSeconds = result.rememberMe()
+                ? jwtUtil.getRememberedRefreshExpirationSeconds()
+                : jwtUtil.getRefreshExpirationSeconds();
         response.addHeader(HttpHeaders.SET_COOKIE,
                 cookieUtil.createRefreshTokenCookie(
                         result.refreshToken(),
-                        jwtUtil.getRefreshExpirationSeconds()
+                        refreshLifetimeSeconds
                 ).toString());
         response.addHeader(HttpHeaders.SET_COOKIE,
                 cookieUtil.createSessionHintCookie(
-                        jwtUtil.getRefreshExpirationSeconds()
+                        refreshLifetimeSeconds
                 ).toString());
     }
 }

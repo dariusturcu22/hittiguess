@@ -10,14 +10,25 @@ import Link from "next/link";
 import { LogoIcon } from "@/components/logo";
 import { AuthPageBackground } from "@/components/auth-page-background";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { useRequestPasswordReset } from "@/hooks/use-password-reset";
 
 export default function ForgotPasswordPage() {
+  const [email, setEmail] = useState("");
   const [submitted, setSubmitted] = useState(false);
+  const [requestError, setRequestError] = useState("");
+  const requestReset = useRequestPasswordReset();
 
-  const handleSubmit = (event: React.FormEvent) => {
+  function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
-    setSubmitted(true);
-  };
+    setRequestError("");
+    requestReset.mutate(
+      { data: { email } },
+      {
+        onSuccess: () => setSubmitted(true),
+        onError: () => setRequestError("Something went wrong. Try again."),
+      },
+    );
+  }
 
   return (
     <section className="auth-surface flex-1 flex items-center justify-center px-4 py-12 relative overflow-hidden bg-dotted">
@@ -63,6 +74,8 @@ export default function ForgotPasswordPage() {
                 required
                 name="email"
                 id="email"
+                value={email}
+                onChange={(event) => setEmail(event.target.value)}
                 placeholder="you@example.com"
                 className="h-auto px-4 py-[13px] text-sm placeholder:text-icon-muted"
               />
@@ -70,13 +83,18 @@ export default function ForgotPasswordPage() {
 
             {submitted ? (
               <p className="text-sm text-muted-foreground text-center">
-                Password reset isn&apos;t available yet. Contact the person
-                who set up your account for help signing in.
+                If an account exists for that email, a reset link is on its
+                way. It expires in an hour.
               </p>
             ) : (
-              <Button type="submit" className="auth-submit w-full">
-                Send reset link
-              </Button>
+              <>
+                <Button type="submit" className="auth-submit w-full" disabled={requestReset.isPending}>
+                  {requestReset.isPending ? "Sending..." : "Send reset link"}
+                </Button>
+                {requestError ? (
+                  <p role="alert" className="text-sm text-destructive text-center">{requestError}</p>
+                ) : null}
+              </>
             )}
           </div>
         </form>

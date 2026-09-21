@@ -7,7 +7,10 @@ import { useGetCurrentUser } from "@/hooks/generated/user-management/user-manage
 
 export function LandingAuthRedirect() {
   const router = useRouter();
-  const currentUserQuery = useGetCurrentUser({ query: { retry: false } });
+  const currentUserQuery = useGetCurrentUser({
+    query: { retry: false },
+    request: { skipAuthRedirect: true },
+  });
 
   useEffect(() => {
     if (currentUserQuery.data) {

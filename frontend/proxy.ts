@@ -7,12 +7,17 @@ const PUBLIC_ROUTES = [
   "/oauth2/redirect",
 ];
 
+// Invite links carry their own context and render a logged-out state with a
+// login prompt, so they stay reachable without a session.
+const PUBLIC_JOIN_PREFIXES = ["/playlists/join/", "/groups/join/"];
+
 export default function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   const isPublic =
     pathname === "/" ||
-    PUBLIC_ROUTES.some((route) => pathname.startsWith(route));
+    PUBLIC_ROUTES.some((route) => pathname.startsWith(route)) ||
+    PUBLIC_JOIN_PREFIXES.some((prefix) => pathname.startsWith(prefix));
 
   if (isPublic) {
     return NextResponse.next();

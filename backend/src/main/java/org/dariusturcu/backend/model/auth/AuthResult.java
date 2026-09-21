@@ -5,6 +5,7 @@ public record AuthResult(
         String refreshToken,
         Long id,
         String username,
-        String email
+        String email,
+        boolean rememberMe
 ) {
 }

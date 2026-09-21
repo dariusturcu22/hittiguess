@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useEffect } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -21,9 +21,13 @@ import {
 
 import { useLogin } from "@/hooks/generated/authentication-management/authentication-management";
 import { loginBody } from "@/hooks/zod/authentication-management/authentication-management";
+import "@/hooks/login-request-augmentation";
+import { safeReturnToPath } from "@/lib/return-to";
 import { useRouter, useSearchParams } from "next/navigation";
 
-const LoginFormSchema = loginBody;
+const LoginFormSchema = loginBody.extend({
+  rememberMe: z.boolean(),
+});
 
 type LoginFormValues = z.infer<typeof LoginFormSchema>;
 
@@ -42,13 +46,24 @@ function OAuthErrorToast() {
   return null;
 }
 
+function ReturnToCapture({ onCapture }: { onCapture: (returnTo: string | null) => void }) {
+  const searchParams = useSearchParams();
+
+  useEffect(() => {
+    onCapture(safeReturnToPath(searchParams.get("returnTo")));
+  }, [searchParams, onCapture]);
+
+  return null;
+}
+
 export default function LoginPage() {
   const router = useRouter();
+  const [returnTo, setReturnTo] = useState<string | null>(null);
 
   const { mutate, isPending } = useLogin({
     mutation: {
       onSuccess: () => {
-        router.push("/playlists");
+        router.push(returnTo ?? "/playlists");
       },
       onError: () => {
         toast.error("Invalid email or password.");
@@ -61,6 +76,7 @@ export default function LoginPage() {
     defaultValues: {
       email: "",
       password: "",
+      rememberMe: false,
     },
   });
 
@@ -69,6 +85,7 @@ export default function LoginPage() {
       data: {
         email: values.email,
         password: values.password,
+        rememberMe: values.rememberMe,
       },
     });
   }
@@ -77,6 +94,7 @@ export default function LoginPage() {
     <>
       <Suspense fallback={null}>
         <OAuthErrorToast />
+        <ReturnToCapture onCapture={setReturnTo} />
       </Suspense>
 
       <div className="w-full mb-[26px] text-center">
@@ -139,13 +157,25 @@ export default function LoginPage() {
               />
 
             <div className="flex items-center justify-between gap-2 !mt-4 !mb-7">
-            <label className="flex items-center gap-[9px] text-[13px] text-muted-foreground cursor-pointer">
-              <Checkbox
-                name="rememberMe"
-                className="size-[18px] rounded-[5px] border-2 border-border bg-background accent-primary"
-              />
-              Remember me
-            </label>
+            <FormField
+              control={form.control}
+              name="rememberMe"
+              render={({ field }) => (
+                <FormItem className="flex items-center gap-[9px]">
+                  <FormControl>
+                    <Checkbox
+                      id="remember-me"
+                      checked={field.value}
+                      onCheckedChange={field.onChange}
+                      className="size-[18px] rounded-[5px] border-2 border-border bg-background accent-primary"
+                    />
+                  </FormControl>
+                  <FormLabel htmlFor="remember-me" className="!mt-0 text-[13px] font-normal text-muted-foreground cursor-pointer">
+                    Remember me
+                  </FormLabel>
+                </FormItem>
+              )}
+            />
               <Link href="/forgot-password" className="text-[13px] text-primary underline underline-offset-[3px]">
                 Forgot password?
               </Link>

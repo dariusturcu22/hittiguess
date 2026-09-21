@@ -33,6 +33,9 @@ public class JwtUtil {
     @Value("${jwt.refresh-expiration}")
     private Long refreshExpiration;
 
+    @Value("${jwt.refresh-expiration-remember-me}")
+    private Long rememberedRefreshExpiration;
+
     @Value("${jwt.two-factor-pending-expiration}")
     private Long twoFactorPendingExpiration;
 
@@ -143,6 +146,10 @@ public class JwtUtil {
 
     public long getRefreshExpirationSeconds() {
         return refreshExpiration / 1000;
+    }
+
+    public long getRememberedRefreshExpirationSeconds() {
+        return rememberedRefreshExpiration / 1000;
     }
 
     public long getRefreshExpiration() {

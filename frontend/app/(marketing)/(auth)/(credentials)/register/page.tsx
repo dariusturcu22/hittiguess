@@ -1,5 +1,6 @@
 "use client";
 
+import { Suspense, useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -18,7 +19,8 @@ import {
 
 import { useRegister } from "@/hooks/generated/authentication-management/authentication-management";
 import { registerBody } from "@/hooks/zod/authentication-management/authentication-management";
-import { useRouter } from "next/navigation";
+import { safeReturnToPath } from "@/lib/return-to";
+import { useRouter, useSearchParams } from "next/navigation";
 
 const RegisterFormSchema = registerBody
   .extend({
@@ -33,12 +35,24 @@ type RegisterFormValues = z.infer<typeof RegisterFormSchema>;
 
 const AUTH_INPUT_CLASSES = "h-auto px-4 py-[13px] text-sm placeholder:text-icon-muted";
 
+function ReturnToCapture({ onCapture }: { onCapture: (returnTo: string | null) => void }) {
+  const searchParams = useSearchParams();
+
+  useEffect(() => {
+    onCapture(safeReturnToPath(searchParams.get("returnTo")));
+  }, [searchParams, onCapture]);
+
+  return null;
+}
+
 export default function RegisterPage() {
   const router = useRouter();
+  const [returnTo, setReturnTo] = useState<string | null>(null);
   const { mutate, isPending } = useRegister({
     mutation: {
       onSuccess: () => {
-        router.push("/playlists");
+        toast.success("Account created. Check your email to verify, then log in.");
+        router.push(returnTo ? `/login?returnTo=${encodeURIComponent(returnTo)}` : "/playlists");
       },
       onError: () => {
         toast.error("Couldn't create account. Username or email may already be in use.");
@@ -68,6 +82,9 @@ export default function RegisterPage() {
 
   return (
     <>
+      <Suspense fallback={null}>
+        <ReturnToCapture onCapture={setReturnTo} />
+      </Suspense>
       <div className="w-full mb-[26px] text-center">
         <h1
           className="font-display text-2xl text-marketing-accent"
