@@ -489,3 +489,26 @@ Tests:
 Tests:
 
 - [x] Run frontend lint and production build
+
+## Playlist cover and color regression fix pass
+
+- [x] Make playlist cover mosaics responsive squares and merge caller classes with `cn`
+- [x] Use the six approved playlist title colors for client defaults and server-side updates
+- [x] Replace the black newly-created playlist color with the approved default
+- [x] Add focused frontend and backend validation coverage
+
+Tests:
+
+- [x] Run frontend checks and relevant backend tests
+
+## Saved playlists missing from the library fix
+
+Explore's Save button writes a `SavedPlaylist` row, but the Your playlists page only reads the membership-based user library, so a saved playlist appears nowhere. Saving is deliberately distinct from membership, so the library needs its own surface for saved items.
+
+- [x] Add a Saved tab to the Your playlists page backed by `GET /api/users/me/saved-playlists`, reusing the existing card grid
+- [x] Refresh the saved-playlists query when a save succeeds from Explore, so the tab is current even if it was loaded before
+
+Tests:
+
+- [x] Frontend test: the Saved tab lists the current user's saved playlists and the Owned/Joined filtering still works
+- [x] Run the frontend checks for the touched pages
