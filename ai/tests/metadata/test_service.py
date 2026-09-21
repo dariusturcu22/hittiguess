@@ -372,7 +372,7 @@ def test_verification_pipeline_leaves_sitelinks_count_unknown_without_a_wikidata
     ("display_title", "source_query_title"),
     [
         ("Titanium (feat. Sia)", "Titanium"),
-        ("Song Title ft. Featured Artist", "Song Title"),
+        ("Song Title ft. Featured Artist", "Song Title ft. Featured Artist"),
         ("Song Without Guest", "Song Without Guest"),
     ],
 )

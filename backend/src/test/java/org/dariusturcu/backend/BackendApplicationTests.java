@@ -52,6 +52,7 @@ class BackendApplicationTests {
         registry.add("spring.security.oauth2.client.registration.google.client-id", () -> PLACEHOLDER_OAUTH_CLIENT_ID);
         registry.add("spring.security.oauth2.client.registration.google.client-secret", () -> PLACEHOLDER_OAUTH_CLIENT_SECRET);
         registry.add("app.oauth2.redirect-uri", () -> PLACEHOLDER_FRONTEND_URL + "/oauth2/redirect");
+        registry.add("frontend.url", () -> PLACEHOLDER_FRONTEND_URL);
     }
 
     // Spring's own Flyway is disabled here because baseline-on-migrate with baseline-version 1
