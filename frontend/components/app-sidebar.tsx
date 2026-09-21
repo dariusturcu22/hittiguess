@@ -106,7 +106,7 @@ export function AppSidebar() {
   const [mounted, setMounted] = React.useState(false);
   const [isImporting, setIsImporting] = React.useState(false);
   const [importPlaylistId, setImportPlaylistId] = React.useState<number | null>(null);
-  useBulkImportRealtime();
+  const { events: importEvents } = useBulkImportRealtime();
   const { data: activeGroup } = useGetActiveMembership({
     query: { retry: false },
   });
@@ -139,6 +139,10 @@ export function AppSidebar() {
     window.addEventListener("playlist-import-progress", updateImportState);
     return () => window.removeEventListener("playlist-import-progress", updateImportState);
   }, []);
+
+  const importProgressCount = importEvents.length;
+  const importResolvedCount = importEvents.filter((event) => event.outcome === "RESOLVED").length;
+  const importKnownCount = importEvents.filter((event) => event.outcome === "ALREADY_KNOWN").length;
 
   const isPlaylistsActive = pathname?.startsWith("/playlists") ?? false;
   const isExploreActive = pathname?.startsWith("/explore") ?? false;
@@ -203,9 +207,21 @@ export function AppSidebar() {
       </Link>
 
       {isImporting ? (
-        <button type="button" onClick={() => importPlaylistId && router.push(`/playlists/${importPlaylistId}/import/youtube`)} className="mt-3 flex size-[30px] cursor-pointer items-center justify-center rounded-full bg-primary text-primary-foreground" title="Import in progress">
-          <span className="size-3 rounded-full border-2 border-current border-t-transparent animate-spin" />
-        </button>
+        <div className="group relative mt-3">
+          <button type="button" onClick={() => importPlaylistId && router.push(`/playlists/${importPlaylistId}/import/youtube`)} className="flex size-[30px] cursor-pointer items-center justify-center rounded-full bg-primary text-primary-foreground" title="Import in progress" aria-describedby="import-progress-popup">
+            <span className="size-3 rounded-full border-2 border-current border-t-transparent animate-spin" />
+          </button>
+          <div id="import-progress-popup" role="status" className="pointer-events-none absolute left-full top-1/2 z-30 ml-3 hidden w-52 -translate-y-1/2 rounded-2xl border-[3px] border-border-strong bg-card p-4 shadow-lg group-hover:block">
+            <p className="font-display text-xs text-card-foreground">Importing playlist</p>
+            <p className="mt-1 text-[11px] text-muted-foreground" aria-live="polite">
+              {importProgressCount > 0 ? `${importProgressCount} song${importProgressCount === 1 ? "" : "s"} processed so far.` : "Starting..."}
+            </p>
+            <div className="mt-2 flex gap-1" aria-hidden="true">
+              <span className="flex-1 rounded-full bg-secondary py-1 text-center text-[10px] font-bold text-muted-foreground">{importResolvedCount} added</span>
+              <span className="flex-1 rounded-full bg-secondary py-1 text-center text-[10px] font-bold text-muted-foreground">{importKnownCount} known</span>
+            </div>
+          </div>
+        </div>
       ) : null}
 
       <div className="flex-1" />
