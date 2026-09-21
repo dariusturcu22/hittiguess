@@ -761,6 +761,18 @@ Tests:
 
 - [x] Add backend deletion coverage and run backend and frontend checks
 
+## Saved playlists missing from the library fix
+
+Explore's Save button writes a `SavedPlaylist` row, but the Your playlists page only reads the membership-based user library, so a saved playlist appears nowhere. Saving is deliberately distinct from membership, so the library needs its own surface for saved items.
+
+- [x] Add a Saved tab to the Your playlists page backed by `GET /api/users/me/saved-playlists`, reusing the existing card grid
+- [x] Refresh the saved-playlists query when a save succeeds from Explore, so the tab is current even if it was loaded before
+
+Tests:
+
+- [x] Frontend test: the Saved tab lists the current user's saved playlists and the Owned/Joined filtering still works
+- [x] Run the frontend checks for the touched pages
+
 ## Story 48: Comment cleanup
 
 `AGENTS.md`'s code conventions already state the rule this story enforces: write as few comments as possible, only when the reasoning genuinely can't be inferred from the code, none that restate what the line already says, none that narrate a specific example instead of the general rule. AI-assisted batches built across this project have drifted from that rule in places, leaving comments that re-explain what adjacent code already makes obvious, or that narrate a past version's reasoning instead of documenting the code as it stands.
