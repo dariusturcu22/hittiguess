@@ -23,6 +23,13 @@ import {
 } from "@/hooks/generated/group-management/group-management";
 import { useGetCurrentUser, useGetUserPlaylists } from "@/hooks/generated/user-management/user-management";
 import { useGetActiveSessionForGroup } from "@/hooks/generated/game-session/game-session";
+import {
+  useGenerateDifficultySet,
+  useStartCustomSession,
+  useStartSessionWithSongs,
+  type DifficultyTier,
+  type GeneratedSongPreviewDTO,
+} from "@/hooks/use-difficulty-session-start";
 import type { MemberDTO } from "@/hooks/models/memberDTO";
 import { useQueryClient } from "@tanstack/react-query";
 import { GroupChatOverlay } from "@/components/group-chat-overlay";
@@ -50,6 +57,18 @@ const ORBIT_POSITIONS = [
 
 const LOADING_MEMBER_COUNT = 4;
 const MINIMUM_WIN_CONDITION = 1;
+const MINIMUM_TARGET_CARD_COUNT = 1;
+const DIFFICULTY_TIERS: DifficultyTier[] = ["EASY", "MEDIUM", "HARD"];
+
+function mutationErrorMessage(error: unknown): string {
+  if (typeof error === "object" && error !== null && "response" in error) {
+    const response = (error as { response?: { data?: { message?: string } } }).response;
+    if (response?.data?.message) {
+      return response.data.message;
+    }
+  }
+  return "Something went wrong. Try again.";
+}
 
 interface PageProps {
   params: Promise<{ groupId: string }>;
@@ -118,6 +137,14 @@ export default function GroupLobbyPage({ params }: PageProps) {
   const [copyFeedback, setCopyFeedback] = useState("");
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isChatOpen, setIsChatOpen] = useState(false);
+  const [isStartOptionsOpen, setIsStartOptionsOpen] = useState(false);
+  const [startMode, setStartMode] = useState<"difficulty" | "custom">("difficulty");
+  const [selectedTier, setSelectedTier] = useState<DifficultyTier>("MEDIUM");
+  const [targetCardCount, setTargetCardCount] = useState(MINIMUM_WIN_CONDITION);
+  const [reviewedSongs, setReviewedSongs] = useState<GeneratedSongPreviewDTO[] | null>(null);
+  const [selectedCustomPlaylistId, setSelectedCustomPlaylistId] = useState<number | undefined>(undefined);
+  const [playlistLink, setPlaylistLink] = useState("");
+  const [startError, setStartError] = useState("");
   const [selectedDjMode, setSelectedDjMode] = useState<"FIXED" | "ROTATING">("ROTATING");
   const [selectedPlaylistId, setSelectedPlaylistId] = useState<number | undefined>(undefined);
   const [winCondition, setWinCondition] = useState(MINIMUM_WIN_CONDITION);
@@ -126,6 +153,9 @@ export default function GroupLobbyPage({ params }: PageProps) {
   const { data: currentUser } = useGetCurrentUser();
   const playlistsQuery = useGetUserPlaylists({ query: { retry: false } });
   const startSession = useStartGameSession();
+  const generateSet = useGenerateDifficultySet();
+  const startWithSongs = useStartSessionWithSongs();
+  const startCustom = useStartCustomSession();
   const leaveGroup = useLeaveGroup();
   const updateSettings = useUpdateGroupSettings();
   const activeSessionQuery = useGetActiveSessionForGroup(groupId, {
@@ -164,6 +194,86 @@ export default function GroupLobbyPage({ params }: PageProps) {
 
   function handleStartGame() {
     startSession.mutate({ groupId }, { onSuccess: () => { refreshGroup(); refreshActiveMembership(); } });
+  }
+
+  function openStartOptions() {
+    setStartMode("difficulty");
+    setReviewedSongs(null);
+    setStartError("");
+    setPlaylistLink("");
+    setSelectedCustomPlaylistId(undefined);
+    setTargetCardCount(
+      Math.max(
+        MINIMUM_TARGET_CARD_COUNT,
+        (groupQuery.data?.winConditionCardCount ?? MINIMUM_WIN_CONDITION) + members.length,
+      ),
+    );
+    setIsStartOptionsOpen(true);
+  }
+
+  function closeStartOptions() {
+    setIsStartOptionsOpen(false);
+    setReviewedSongs(null);
+    setStartError("");
+  }
+
+  function handleModeStartSuccess() {
+    refreshGroup();
+    refreshActiveMembership();
+    closeStartOptions();
+  }
+
+  function handleGenerateSet() {
+    setStartError("");
+    generateSet.mutate(
+      { groupId, data: { tier: selectedTier, targetCardCount } },
+      {
+        onSuccess: (previews) => setReviewedSongs(previews),
+        onError: (error) => setStartError(mutationErrorMessage(error)),
+      },
+    );
+  }
+
+  function handleConfirmGeneratedSet() {
+    if (!reviewedSongs) {
+      return;
+    }
+    setStartError("");
+    startWithSongs.mutate(
+      { groupId, data: { songIds: reviewedSongs.map((preview) => preview.id) } },
+      {
+        onSuccess: handleModeStartSuccess,
+        onError: (error) => setStartError(mutationErrorMessage(error)),
+      },
+    );
+  }
+
+  function handleStartCustomPlaylist() {
+    if (selectedCustomPlaylistId === undefined) {
+      return;
+    }
+    setStartError("");
+    startCustom.mutate(
+      { groupId, data: { playlistId: selectedCustomPlaylistId } },
+      {
+        onSuccess: handleModeStartSuccess,
+        onError: (error) => setStartError(mutationErrorMessage(error)),
+      },
+    );
+  }
+
+  function handleStartPlaylistLink() {
+    if (!playlistLink.trim()) {
+      return;
+    }
+    setStartError("");
+    startCustom.mutate(
+      { groupId, data: { playlistLink: playlistLink.trim() } },
+      {
+        onSuccess: handleModeStartSuccess,
+        onError: (error) => setStartError(mutationErrorMessage(error)),
+      },
+    );
   }
 
   function handleLeaveLobby() {
@@ -327,6 +437,107 @@ export default function GroupLobbyPage({ params }: PageProps) {
             <div className="mt-6 flex gap-2.5"><button type="button" onClick={saveSettings} disabled={updateSettings.isPending} className="rounded-full bg-primary px-4 py-2.5 font-display text-xs text-primary-foreground disabled:opacity-60">{updateSettings.isPending ? "Saving" : "Save changes"}</button><button type="button" onClick={() => setIsSettingsOpen(false)} className="rounded-full border-2 border-border px-4 py-2.5 text-xs font-semibold text-card-foreground">Close</button></div>
           </section>
         ) : null}
+        {isStartOptionsOpen ? (
+          <section aria-label="Custom start options" className="absolute bottom-7 left-0 z-20 w-full max-w-[440px] rounded-[18px] border-[3px] border-border bg-card/95 p-6 shadow-[6px_6px_0_rgba(0,0,0,0.35)] backdrop-blur sm:left-[228px] sm:p-7">
+            <div className="mb-5 flex items-center justify-between">
+              <h2 className="font-display text-lg text-card-foreground">Start options</h2>
+              <button type="button" onClick={closeStartOptions} className="text-muted-foreground hover:text-card-foreground">Close</button>
+            </div>
+            <div className="mb-4 flex gap-2">
+              <button
+                type="button"
+                onClick={() => { setStartMode("difficulty"); setReviewedSongs(null); setStartError(""); }}
+                className={`cursor-pointer rounded-full px-5 py-2 font-display text-xs ${startMode === "difficulty" ? "bg-accent text-accent-foreground" : "border-2 border-border text-muted-foreground"}`}
+              >
+                Difficulty
+              </button>
+              <button
+                type="button"
+                onClick={() => { setStartMode("custom"); setStartError(""); }}
+                className={`cursor-pointer rounded-full px-5 py-2 font-display text-xs ${startMode === "custom" ? "bg-accent text-accent-foreground" : "border-2 border-border text-muted-foreground"}`}
+              >
+                Custom
+              </button>
+            </div>
+            {startMode === "difficulty" ? (
+              <div className="space-y-4">
+                <div className="flex items-center gap-3">
+                  <label className="flex items-center gap-2 text-[13px] text-muted-foreground">
+                    Difficulty
+                    <select value={selectedTier} onChange={(event) => setSelectedTier(event.target.value as DifficultyTier)} className="rounded-full border-2 border-border bg-background px-3 py-1.5 text-sm font-semibold text-foreground outline-none">
+                      {DIFFICULTY_TIERS.map((tier) => (
+                        <option key={tier} value={tier}>{tier.charAt(0) + tier.slice(1).toLowerCase()}</option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="flex items-center gap-2 text-[13px] text-muted-foreground">
+                    Cards
+                    <input type="number" min={MINIMUM_TARGET_CARD_COUNT} value={targetCardCount} onChange={(event) => setTargetCardCount(Math.max(MINIMUM_TARGET_CARD_COUNT, Number(event.target.value)))} className="w-20 rounded-full border-2 border-border bg-background px-3 py-1.5 text-right text-sm font-semibold text-foreground outline-none" />
+                  </label>
+                  <button type="button" onClick={handleGenerateSet} disabled={generateSet.isPending} className="rounded-full bg-primary px-4 py-2 font-display text-xs text-primary-foreground disabled:opacity-60">
+                    {generateSet.isPending ? "Generating" : "Generate"}
+                  </button>
+                </div>
+                {reviewedSongs ? (
+                  <div>
+                    <p className="mb-2 text-[13px] text-muted-foreground">Review the set, then confirm to start.</p>
+                    <ul className="max-h-48 space-y-1.5 overflow-y-auto pr-1">
+                      {reviewedSongs.map((preview) => (
+                        <li key={preview.id} className="flex items-baseline justify-between gap-3 rounded-xl border-2 border-border bg-background px-3 py-2">
+                          <span className="truncate text-sm font-semibold text-foreground">{preview.title} <span className="font-normal text-muted-foreground">{preview.artists.join(", ")}</span></span>
+                          <span className="shrink-0 font-display text-sm text-accent">{preview.releaseYear}</span>
+                        </li>
+                      ))}
+                    </ul>
+                    <button type="button" onClick={handleConfirmGeneratedSet} disabled={startWithSongs.isPending} className="mt-3 inline-flex items-center gap-2 rounded-full bg-accent px-5 py-2.5 font-display text-xs text-accent-foreground disabled:opacity-60">
+                      {startWithSongs.isPending ? <Loader2 className="size-4 animate-spin" /> : <Play className="size-4 fill-current" />}
+                      Confirm and start
+                    </button>
+                  </div>
+                ) : null}
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <div>
+                  <p className="mb-2 text-[13px] text-muted-foreground">Start from one of your playlists</p>
+                  <div className="grid max-h-40 gap-2 overflow-y-auto pr-1">
+                    {playlistsQuery.data?.map((playlist) => {
+                      const isSelected = selectedCustomPlaylistId === playlist.id;
+                      return (
+                        <button
+                          key={playlist.id}
+                          type="button"
+                          onClick={() => setSelectedCustomPlaylistId(playlist.id)}
+                          className={`flex items-center justify-between rounded-xl border-2 px-3 py-2 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${isSelected ? "border-primary bg-primary/10" : "border-border bg-background hover:border-primary/60"}`}
+                        >
+                          <span>
+                            <span className="block text-sm font-semibold text-foreground">{playlist.name}</span>
+                            <span className="text-xs text-muted-foreground">{playlist.songCount} songs</span>
+                          </span>
+                          {isSelected ? <Check className="size-4 shrink-0 text-primary" /> : null}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <button type="button" onClick={handleStartCustomPlaylist} disabled={selectedCustomPlaylistId === undefined || startCustom.isPending} className="mt-3 inline-flex items-center gap-2 rounded-full bg-accent px-5 py-2.5 font-display text-xs text-accent-foreground disabled:cursor-not-allowed disabled:opacity-60">
+                    {startCustom.isPending ? <Loader2 className="size-4 animate-spin" /> : <Play className="size-4 fill-current" />}
+                    Start from playlist
+                  </button>
+                </div>
+                <div>
+                  <p className="mb-2 text-[13px] text-muted-foreground">Or paste a playlist link</p>
+                  <div className="flex gap-2">
+                    <input type="text" value={playlistLink} onChange={(event) => setPlaylistLink(event.target.value)} placeholder="YouTube playlist link or id" className="min-w-0 flex-1 rounded-full border-2 border-border bg-background px-4 py-2 text-sm text-foreground outline-none placeholder:text-muted-foreground" />
+                    <button type="button" onClick={handleStartPlaylistLink} disabled={!playlistLink.trim() || startCustom.isPending} className="shrink-0 rounded-full bg-accent px-4 py-2 font-display text-xs text-accent-foreground disabled:cursor-not-allowed disabled:opacity-60">
+                      Start
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+            {startError ? <p role="alert" className="mt-4 text-sm text-destructive">{startError}</p> : null}
+          </section>
+        ) : null}
         {isChatOpen ? (
           <GroupChatOverlay
             groupId={groupId}
@@ -347,6 +558,16 @@ export default function GroupLobbyPage({ params }: PageProps) {
           >
             {startSession.isPending ? <Loader2 className="size-4 animate-spin" /> : <Play className="size-4 fill-current" />}
             Start game
+          </button>
+        ) : null}
+        {!isCurrentUserLoading && isCurrentUserAdmin ? (
+          <button
+            type="button"
+            onClick={openStartOptions}
+            disabled={groupQuery.data.status !== "OPEN"}
+            className="inline-flex items-center gap-2 rounded-full border-2 border-border bg-card px-5 py-3 text-[13px] font-semibold text-card-foreground disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            Custom start
           </button>
         ) : null}
           <button
