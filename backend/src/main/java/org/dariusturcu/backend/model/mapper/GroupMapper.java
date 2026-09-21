@@ -34,6 +34,7 @@ public class GroupMapper {
                 group.getJoinCode(),
                 group.getStatus(),
                 group.getDjMode(),
+                group.getFixedDjMemberId(),
                 group.getWinConditionCardCount(),
                 group.getPlaylists().stream()
                         .map(playlist -> playlistMapper.toSummaryDTO(playlist, SecurityUtils.getCurrentUserId()))

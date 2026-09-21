@@ -40,6 +40,12 @@ public class Group {
     @Column(name = "dj_mode", nullable = false)
     private DjMode djMode;
 
+    // The fixed DJ's member id when djMode is FIXED, chosen by the admin in
+    // settings. Nullable: unset means the earliest-joined member DJs, the
+    // historical behavior. No foreign key: member rows come and go through
+    // orphan removal, and a stale id simply falls back the same way.
+    private Long fixedDjMemberId;
+
     @Column(nullable = false)
     private int winConditionCardCount;
 

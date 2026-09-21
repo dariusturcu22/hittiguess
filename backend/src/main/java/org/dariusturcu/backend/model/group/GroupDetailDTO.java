@@ -11,6 +11,7 @@ public record GroupDetailDTO(
         String joinCode,
         GroupStatus status,
         DjMode djMode,
+        Long fixedDjMemberId,
         int winConditionCardCount,
         List<PlaylistSummaryDTO> playlists,
         List<MemberDTO> members,

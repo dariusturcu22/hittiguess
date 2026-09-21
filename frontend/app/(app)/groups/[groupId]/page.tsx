@@ -33,6 +33,17 @@ import {
 import type { MemberDTO } from "@/hooks/models/memberDTO";
 import { useQueryClient } from "@tanstack/react-query";
 import { GroupChatOverlay } from "@/components/group-chat-overlay";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/shadcn/alert-dialog";
 import { useGroupRealtime } from "@/hooks/use-group-realtime";
 
 const MEMBER_COLORS = [
@@ -57,6 +68,9 @@ const ORBIT_POSITIONS = [
 
 const LOADING_MEMBER_COUNT = 4;
 const MINIMUM_WIN_CONDITION = 1;
+const MINIMUM_PLAYERS_TO_START = 2;
+const LOBBY_FLOAT_STAGGER_CYCLE = 5;
+const LOBBY_FLOAT_STAGGER_SECONDS = 1.1;
 const MINIMUM_TARGET_CARD_COUNT = 1;
 const DIFFICULTY_TIERS: DifficultyTier[] = ["EASY", "MEDIUM", "HARD"];
 
@@ -89,10 +103,11 @@ function LobbyMember({
 }) {
   const colorClass = MEMBER_COLORS[index % MEMBER_COLORS.length];
   const orbitPosition = ORBIT_POSITIONS[index % ORBIT_POSITIONS.length];
+  const floatDelay = `${(index % LOBBY_FLOAT_STAGGER_CYCLE) * -LOBBY_FLOAT_STAGGER_SECONDS}s`;
 
   return (
     <div className={`absolute ${orbitPosition} flex flex-col items-center`}>
-      <div className="relative">
+      <div className="relative lobby-float" style={{ animationDelay: floatDelay }}>
         <div
           className={`flex size-[76px] items-center justify-center rounded-full font-display text-2xl shadow-[0_0_0_3px_var(--background),0_0_0_8px_var(--green)] sm:size-[108px] sm:text-[34px] ${colorClass} ${
             member.isConnected ? "" : "opacity-50 grayscale"
@@ -136,6 +151,7 @@ export default function GroupLobbyPage({ params }: PageProps) {
   const queryClient = useQueryClient();
   const [copyFeedback, setCopyFeedback] = useState("");
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isPlaylistSelectorOpen, setIsPlaylistSelectorOpen] = useState(false);
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [isStartOptionsOpen, setIsStartOptionsOpen] = useState(false);
   const [startMode, setStartMode] = useState<"difficulty" | "custom">("difficulty");
@@ -146,7 +162,8 @@ export default function GroupLobbyPage({ params }: PageProps) {
   const [playlistLink, setPlaylistLink] = useState("");
   const [startError, setStartError] = useState("");
   const [selectedDjMode, setSelectedDjMode] = useState<"FIXED" | "ROTATING">("ROTATING");
-  const [selectedPlaylistId, setSelectedPlaylistId] = useState<number | undefined>(undefined);
+  const [selectedPlaylistIds, setSelectedPlaylistIds] = useState<number[]>([]);
+  const [selectedFixedDjMemberId, setSelectedFixedDjMemberId] = useState<number | undefined>(undefined);
   const [winCondition, setWinCondition] = useState(MINIMUM_WIN_CONDITION);
   const groupQuery = useGetGroup(groupId, { query: { retry: false } });
   const groupRealtime = useGroupRealtime(groupId);
@@ -166,7 +183,13 @@ export default function GroupLobbyPage({ params }: PageProps) {
   const currentMember = members.find((member) => member.userId === currentUser?.id);
   const isCurrentUserAdmin = Boolean(currentMember?.isAdmin);
   const isCurrentUserLoading = currentUser === undefined;
-  const featuredPlaylist = groupQuery.data?.playlists?.[0];
+  const groupPlaylists = groupQuery.data?.playlists ?? [];
+  const featuredPlaylist = groupPlaylists[0];
+  const playlistChipLabel = groupPlaylists.length === 0
+    ? "No playlist selected"
+    : groupPlaylists.length === 1
+      ? (featuredPlaylist?.name ?? "No playlist selected")
+      : `${groupPlaylists.length} playlists`;
 
   useEffect(() => {
     if (activeSessionQuery.data?.id) {
@@ -312,24 +335,45 @@ export default function GroupLobbyPage({ params }: PageProps) {
 
   function openSettings() {
     setSelectedDjMode(groupQuery.data?.djMode ?? "ROTATING");
-    setSelectedPlaylistId(groupQuery.data?.playlists?.[0]?.id);
+    setSelectedFixedDjMemberId(groupQuery.data?.fixedDjMemberId ?? undefined);
     setWinCondition(groupQuery.data?.winConditionCardCount ?? MINIMUM_WIN_CONDITION);
     setIsSettingsOpen(true);
   }
 
   function saveSettings() {
-    const playlistIds = selectedPlaylistId === undefined ? [] : [selectedPlaylistId];
-
     updateSettings.mutate(
       {
         groupId,
         data: {
-          playlistIds,
           djMode: selectedDjMode,
           winConditionCardCount: winCondition,
+          fixedDjMemberId: selectedFixedDjMemberId,
         },
       },
       { onSuccess: () => { refreshGroup(); setIsSettingsOpen(false); } },
+    );
+  }
+
+  function openPlaylistSelector() {
+    setSelectedPlaylistIds((groupQuery.data?.playlists ?? []).map((playlist) => playlist.id));
+    setIsPlaylistSelectorOpen(true);
+  }
+
+  function togglePlaylistSelected(playlistId: number) {
+    setSelectedPlaylistIds((currentIds) =>
+      currentIds.includes(playlistId)
+        ? currentIds.filter((id) => id !== playlistId)
+        : [...currentIds, playlistId],
+    );
+  }
+
+  function savePlaylistSelection() {
+    updateSettings.mutate(
+      {
+        groupId,
+        data: { playlistIds: selectedPlaylistIds },
+      },
+      { onSuccess: () => { refreshGroup(); setIsPlaylistSelectorOpen(false); } },
     );
   }
 
@@ -375,18 +419,39 @@ export default function GroupLobbyPage({ params }: PageProps) {
         <h1 className="font-display text-[26px] text-foreground drop-shadow-sm sm:text-[32px]">
           Group Lobby
         </h1>
-        <div className="inline-flex w-fit items-center gap-2.5 rounded-full border-2 border-border bg-card py-2 pl-2 pr-4">
-          <span
-            className="size-[26px] rounded-[8px]"
-            style={{ backgroundColor: featuredPlaylist ? `#${featuredPlaylist.color}` : "var(--primary)" }}
-          />
-          <span className="font-semibold text-[13px] text-card-foreground">
-            {featuredPlaylist?.name ?? "No playlist selected"}
-          </span>
-          {featuredPlaylist ? (
-            <span className="text-xs text-muted-foreground">{featuredPlaylist.songCount} songs</span>
-          ) : null}
-        </div>
+        {isCurrentUserAdmin ? (
+          <button
+            type="button"
+            onClick={openPlaylistSelector}
+            title="Choose playlists"
+            aria-label="Choose playlists"
+            className="inline-flex w-fit cursor-pointer items-center gap-2.5 rounded-full border-2 border-border bg-card py-2 pl-2 pr-4 transition-colors hover:border-primary/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+          >
+            <span
+              className="size-[26px] rounded-[8px]"
+              style={{ backgroundColor: featuredPlaylist ? `#${featuredPlaylist.color}` : "var(--primary)" }}
+            />
+            <span className="font-semibold text-[13px] text-card-foreground">
+              {playlistChipLabel}
+            </span>
+            {featuredPlaylist ? (
+              <span className="text-xs text-muted-foreground">{featuredPlaylist.songCount} songs</span>
+            ) : null}
+          </button>
+        ) : (
+          <div className="inline-flex w-fit items-center gap-2.5 rounded-full border-2 border-border bg-card py-2 pl-2 pr-4">
+            <span
+              className="size-[26px] rounded-[8px]"
+              style={{ backgroundColor: featuredPlaylist ? `#${featuredPlaylist.color}` : "var(--primary)" }}
+            />
+            <span className="font-semibold text-[13px] text-card-foreground">
+              {playlistChipLabel}
+            </span>
+            {featuredPlaylist ? (
+              <span className="text-xs text-muted-foreground">{featuredPlaylist.songCount} songs</span>
+            ) : null}
+          </div>
+        )}
       </header>
 
       <section className="relative flex min-h-[480px] flex-1 items-center justify-center overflow-hidden py-10">
@@ -416,59 +481,80 @@ export default function GroupLobbyPage({ params }: PageProps) {
           />
         ))}
         {isSettingsOpen ? (
-          <section className="absolute bottom-7 left-0 z-20 w-full max-w-[400px] rounded-[18px] border-[3px] border-border bg-card/95 p-6 shadow-[6px_6px_0_rgba(0,0,0,0.35)] backdrop-blur sm:left-[228px] sm:p-7">
-            <div className="mb-5 flex items-center justify-between">
-              <h2 className="font-display text-lg text-card-foreground">Settings</h2>
-              <button type="button" onClick={() => setIsSettingsOpen(false)} className="text-muted-foreground hover:text-card-foreground">Close</button>
-            </div>
-            <div className="space-y-4">
-              <div>
-                <p className="mb-2 text-[13px] text-muted-foreground">Playlist</p>
-                <div className="grid gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setSelectedPlaylistId(undefined)}
-                    className={`flex items-center justify-between rounded-xl border-2 px-3 py-2 text-left text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${selectedPlaylistId === undefined ? "border-primary bg-primary/10 text-foreground" : "border-border bg-background text-muted-foreground hover:border-primary/60 hover:text-foreground"}`}
-                  >
-                    No playlist
-                    {selectedPlaylistId === undefined ? <Check className="size-4 text-primary" /> : null}
-                  </button>
-                  {playlistsQuery.data?.map((playlist) => {
-                    const isSelected = selectedPlaylistId === playlist.id;
-                    return (
-                      <button
-                        key={playlist.id}
-                        type="button"
-                        onClick={() => setSelectedPlaylistId(playlist.id)}
-                        className={`flex items-center justify-between rounded-xl border-2 px-3 py-2 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${isSelected ? "border-primary bg-primary/10" : "border-border bg-background hover:border-primary/60"}`}
-                      >
-                        <span>
-                          <span className="block text-sm font-semibold text-foreground">{playlist.name}</span>
-                          <span className="text-xs text-muted-foreground">{playlist.songCount} songs</span>
-                        </span>
-                        {isSelected ? <Check className="size-4 shrink-0 text-primary" /> : null}
-                      </button>
-                    );
-                  })}
-                </div>
+          <>
+            <button type="button" aria-label="Close settings" onClick={() => setIsSettingsOpen(false)} className="fixed inset-0 z-10 cursor-default" />
+            <section aria-label="Group settings" className="absolute bottom-7 left-0 z-20 w-full max-w-[400px] rounded-[18px] border-[3px] border-border bg-card p-6 shadow-[6px_6px_0_rgba(0,0,0,0.35)] sm:left-[228px] sm:p-7">
+              <div className="mb-5 flex items-center justify-between">
+                <h2 className="font-display text-lg text-card-foreground">Settings</h2>
+                <button type="button" onClick={() => setIsSettingsOpen(false)} className="text-muted-foreground hover:text-card-foreground">Close</button>
               </div>
-              <label className="flex items-center justify-between gap-3 text-[13px] text-muted-foreground">
-                DJ mode
-                <select value={selectedDjMode} onChange={(event) => setSelectedDjMode(event.target.value as "FIXED" | "ROTATING")} className="rounded-full border-2 border-border bg-background px-3 py-1.5 text-sm font-semibold text-foreground outline-none">
-                  <option value="ROTATING">Rotating</option>
-                  <option value="FIXED">Fixed</option>
-                </select>
-              </label>
-              <label className="flex items-center justify-between gap-3 text-[13px] text-muted-foreground">
-                Cards to win
-                <input type="number" min={MINIMUM_WIN_CONDITION} value={winCondition} onChange={(event) => setWinCondition(Math.max(MINIMUM_WIN_CONDITION, Number(event.target.value)))} className="w-20 rounded-full border-2 border-border bg-background px-3 py-1.5 text-right text-sm font-semibold text-foreground outline-none" />
-              </label>
-            </div>
-            <div className="mt-6 flex gap-2.5"><button type="button" onClick={saveSettings} disabled={updateSettings.isPending} className="rounded-full bg-primary px-4 py-2.5 font-display text-xs text-primary-foreground disabled:opacity-60">{updateSettings.isPending ? "Saving" : "Save changes"}</button><button type="button" onClick={() => setIsSettingsOpen(false)} className="rounded-full border-2 border-border px-4 py-2.5 text-xs font-semibold text-card-foreground">Close</button></div>
-          </section>
+              <div className="space-y-4">
+                <label className="flex items-center justify-between gap-3 text-[13px] text-muted-foreground">
+                  DJ mode
+                  <select value={selectedDjMode} onChange={(event) => setSelectedDjMode(event.target.value as "FIXED" | "ROTATING")} className="rounded-full border-2 border-border bg-background px-3 py-1.5 text-sm font-semibold text-foreground outline-none">
+                    <option value="ROTATING">Rotating</option>
+                    <option value="FIXED">Fixed</option>
+                  </select>
+                </label>
+                {selectedDjMode === "FIXED" ? (
+                  <label className="flex items-center justify-between gap-3 text-[13px] text-muted-foreground">
+                    Fixed DJ
+                    <select value={selectedFixedDjMemberId ?? ""} onChange={(event) => setSelectedFixedDjMemberId(event.target.value ? Number(event.target.value) : undefined)} className="rounded-full border-2 border-border bg-background px-3 py-1.5 text-sm font-semibold text-foreground outline-none">
+                      <option value="">First to join</option>
+                      {members.map((member) => (
+                        <option key={member.id} value={member.id ?? ""}>{member.displayName || "Player"}</option>
+                      ))}
+                    </select>
+                  </label>
+                ) : null}
+                <label className="flex items-center justify-between gap-3 text-[13px] text-muted-foreground">
+                  Cards to win
+                  <input type="number" min={MINIMUM_WIN_CONDITION} value={winCondition} onChange={(event) => setWinCondition(Math.max(MINIMUM_WIN_CONDITION, Number(event.target.value)))} className="w-20 rounded-full border-2 border-border bg-background px-3 py-1.5 text-right text-sm font-semibold text-foreground outline-none" />
+                </label>
+              </div>
+              <div className="mt-6 flex gap-2.5"><button type="button" onClick={saveSettings} disabled={updateSettings.isPending} className="rounded-full bg-primary px-4 py-2.5 font-display text-xs text-primary-foreground disabled:opacity-60">{updateSettings.isPending ? "Saving" : "Save changes"}</button><button type="button" onClick={() => setIsSettingsOpen(false)} className="rounded-full border-2 border-border px-4 py-2.5 text-xs font-semibold text-card-foreground">Close</button></div>
+            </section>
+          </>
+        ) : null}
+        {isPlaylistSelectorOpen ? (
+          <>
+            <button type="button" aria-label="Close playlist selection" onClick={() => setIsPlaylistSelectorOpen(false)} className="fixed inset-0 z-10 cursor-default" />
+            <section aria-label="Choose playlists" className="absolute bottom-7 left-0 z-20 w-full max-w-[400px] rounded-[18px] border-[3px] border-border bg-card p-6 shadow-[6px_6px_0_rgba(0,0,0,0.35)] sm:left-[228px] sm:p-7">
+              <div className="mb-5 flex items-center justify-between">
+                <h2 className="font-display text-lg text-card-foreground">Playlists</h2>
+                <button type="button" onClick={() => setIsPlaylistSelectorOpen(false)} className="text-muted-foreground hover:text-card-foreground">Close</button>
+              </div>
+              <p className="mb-3 text-[13px] text-muted-foreground">
+                {selectedPlaylistIds.length === 0 ? "No playlists selected" : `${selectedPlaylistIds.length} playlist${selectedPlaylistIds.length === 1 ? "" : "s"} selected`}
+              </p>
+              <div className="grid max-h-64 gap-2 overflow-y-auto pr-1">
+                {playlistsQuery.data?.map((playlist) => {
+                  const isSelected = selectedPlaylistIds.includes(playlist.id);
+                  return (
+                    <button
+                      key={playlist.id}
+                      type="button"
+                      onClick={() => togglePlaylistSelected(playlist.id)}
+                      aria-pressed={isSelected}
+                      className={`flex items-center justify-between rounded-xl border-2 px-3 py-2 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${isSelected ? "border-primary bg-primary/10" : "border-border bg-background hover:border-primary/60"}`}
+                    >
+                      <span>
+                        <span className="block text-sm font-semibold text-foreground">{playlist.name}</span>
+                        <span className="text-xs text-muted-foreground">{playlist.songCount} songs</span>
+                      </span>
+                      {isSelected ? <Check className="size-4 shrink-0 text-primary" /> : null}
+                    </button>
+                  );
+                })}
+              </div>
+              <div className="mt-6 flex gap-2.5"><button type="button" onClick={savePlaylistSelection} disabled={updateSettings.isPending} className="rounded-full bg-primary px-4 py-2.5 font-display text-xs text-primary-foreground disabled:opacity-60">{updateSettings.isPending ? "Saving" : "Confirm"}</button><button type="button" onClick={() => setIsPlaylistSelectorOpen(false)} className="rounded-full border-2 border-border px-4 py-2.5 text-xs font-semibold text-card-foreground">Close</button></div>
+            </section>
+          </>
         ) : null}
         {isStartOptionsOpen ? (
-          <section aria-label="Custom start options" className="absolute bottom-7 left-0 z-20 w-full max-w-[440px] rounded-[18px] border-[3px] border-border bg-card/95 p-6 shadow-[6px_6px_0_rgba(0,0,0,0.35)] backdrop-blur sm:left-[228px] sm:p-7">
+          <>
+            <button type="button" aria-label="Close start options" onClick={closeStartOptions} className="fixed inset-0 z-10 cursor-default" />
+            <section aria-label="Custom start options" className="absolute bottom-7 left-0 z-20 w-full max-w-[440px] rounded-[18px] border-[3px] border-border bg-card p-6 shadow-[6px_6px_0_rgba(0,0,0,0.35)] sm:left-[228px] sm:p-7">
             <div className="mb-5 flex items-center justify-between">
               <h2 className="font-display text-lg text-card-foreground">Start options</h2>
               <button type="button" onClick={closeStartOptions} className="text-muted-foreground hover:text-card-foreground">Close</button>
@@ -567,6 +653,7 @@ export default function GroupLobbyPage({ params }: PageProps) {
             )}
             {startError ? <p role="alert" className="mt-4 text-sm text-destructive">{startError}</p> : null}
           </section>
+          </>
         ) : null}
         {isChatOpen ? (
           <GroupChatOverlay
@@ -589,6 +676,9 @@ export default function GroupLobbyPage({ params }: PageProps) {
             {startSession.isPending ? <Loader2 className="size-4 animate-spin" /> : <Play className="size-4 fill-current" />}
             Start game
           </button>
+        ) : null}
+        {!isCurrentUserLoading && isCurrentUserAdmin && members.length < MINIMUM_PLAYERS_TO_START ? (
+          <span className="text-xs text-muted-foreground">Need at least {MINIMUM_PLAYERS_TO_START} players to start.</span>
         ) : null}
         {!isCurrentUserLoading && isCurrentUserAdmin ? (
           <button
@@ -619,19 +709,32 @@ export default function GroupLobbyPage({ params }: PageProps) {
           </button>
         ) : null}
         <div className="flex-1" />
-        <button
-          type="button"
-          onClick={handleLeaveLobby}
-          disabled={leaveGroup.isPending}
-          className="inline-flex items-center gap-2 rounded-full border-2 border-destructive bg-transparent px-5 py-3 text-[13px] font-semibold text-destructive disabled:opacity-60"
-        >
-          {leaveGroup.isPending ? <Loader2 className="size-4 animate-spin" /> : <LogOut className="size-4" />}
-          Leave lobby
-        </button>
-        <span className="inline-flex items-center gap-1 text-[10px] text-muted-foreground" aria-live="polite">
-          <span className={`size-1.5 rounded-full ${groupRealtime.connectionState === "connected" ? "bg-green" : "bg-warning"}`} />
-          {groupRealtime.connectionState === "connected" ? "Live" : "Reconnecting"}
-        </span>
+        <AlertDialog>
+          <AlertDialogTrigger asChild>
+            <button
+              type="button"
+              disabled={leaveGroup.isPending}
+              className="inline-flex items-center gap-2 rounded-full border-2 border-destructive bg-transparent px-5 py-3 text-[13px] font-semibold text-destructive disabled:opacity-60"
+            >
+              {leaveGroup.isPending ? <Loader2 className="size-4 animate-spin" /> : <LogOut className="size-4" />}
+              Leave lobby
+            </button>
+          </AlertDialogTrigger>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Leave the lobby?</AlertDialogTitle>
+              <AlertDialogDescription>
+                You can rejoin anytime with the invite link or code while the group is still open.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction variant="destructive" onClick={handleLeaveLobby}>
+                Leave
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </footer>
     </main>
   );

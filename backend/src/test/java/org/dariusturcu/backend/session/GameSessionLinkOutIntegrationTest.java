@@ -370,7 +370,7 @@ class GameSessionLinkOutIntegrationTest {
 
         authenticateAs(admin);
         groupService.updateGroupSettings(createdGroup.id(), new UpdateGroupSettingsRequest(
-                Set.of(savedPlaylist.getId()), DjMode.ROTATING, minimumWinConditionCardCount));
+                Set.of(savedPlaylist.getId()), DjMode.ROTATING, minimumWinConditionCardCount, null));
         groupService.startGameSession(createdGroup.id());
 
         return gameSessionRepository.findByGroupId(createdGroup.id()).orElseThrow();

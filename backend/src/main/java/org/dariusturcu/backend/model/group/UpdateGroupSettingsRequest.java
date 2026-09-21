@@ -7,5 +7,6 @@ import java.util.Set;
 public record UpdateGroupSettingsRequest(
         Set<Long> playlistIds,
         DjMode djMode,
-        Integer winConditionCardCount) {
+        Integer winConditionCardCount,
+        Long fixedDjMemberId) {
 }

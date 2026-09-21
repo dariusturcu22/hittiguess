@@ -332,7 +332,7 @@ class GroupServiceTest {
         authenticateAs(otherUser);
 
         assertThatThrownBy(() -> groupService.updateGroupSettings(
-                10L, new UpdateGroupSettingsRequest(null, DjMode.ROTATING, null)))
+                10L, new UpdateGroupSettingsRequest(null, DjMode.ROTATING, null, null)))
                 .isInstanceOf(AccessDeniedException.class);
     }
 
@@ -342,7 +342,7 @@ class GroupServiceTest {
         when(groupRepository.findById(10L)).thenReturn(Optional.of(group));
 
         assertThatThrownBy(() -> groupService.updateGroupSettings(
-                10L, new UpdateGroupSettingsRequest(null, null, 4)))
+                10L, new UpdateGroupSettingsRequest(null, null, 4, null)))
                 .isInstanceOf(IllegalArgumentException.class);
     }
 
@@ -352,7 +352,7 @@ class GroupServiceTest {
         when(groupRepository.findById(10L)).thenReturn(Optional.of(group));
 
         assertThatThrownBy(() -> groupService.updateGroupSettings(
-                10L, new UpdateGroupSettingsRequest(null, null, 21)))
+                10L, new UpdateGroupSettingsRequest(null, null, 21, null)))
                 .isInstanceOf(IllegalArgumentException.class);
     }
 
@@ -362,7 +362,7 @@ class GroupServiceTest {
         when(groupRepository.findById(10L)).thenReturn(Optional.of(group));
 
         GroupDetailDTO result = groupService.updateGroupSettings(
-                10L, new UpdateGroupSettingsRequest(null, null, 5));
+                10L, new UpdateGroupSettingsRequest(null, null, 5, null));
 
         assertThat(result.winConditionCardCount()).isEqualTo(5);
     }
@@ -373,7 +373,7 @@ class GroupServiceTest {
         when(groupRepository.findById(10L)).thenReturn(Optional.of(group));
 
         GroupDetailDTO result = groupService.updateGroupSettings(
-                10L, new UpdateGroupSettingsRequest(null, null, 20));
+                10L, new UpdateGroupSettingsRequest(null, null, 20, null));
 
         assertThat(result.winConditionCardCount()).isEqualTo(20);
     }
@@ -391,7 +391,7 @@ class GroupServiceTest {
         when(groupRepository.findById(10L)).thenReturn(Optional.of(group));
 
         assertThatThrownBy(() -> groupService.updateGroupSettings(
-                10L, new UpdateGroupSettingsRequest(null, null, 16)))
+                10L, new UpdateGroupSettingsRequest(null, null, 16, null)))
                 .isInstanceOf(IllegalArgumentException.class);
     }
 
@@ -408,7 +408,7 @@ class GroupServiceTest {
         when(groupRepository.findById(10L)).thenReturn(Optional.of(group));
 
         GroupDetailDTO result = groupService.updateGroupSettings(
-                10L, new UpdateGroupSettingsRequest(null, null, 15));
+                10L, new UpdateGroupSettingsRequest(null, null, 15, null));
 
         assertThat(result.winConditionCardCount()).isEqualTo(15);
     }
@@ -426,11 +426,11 @@ class GroupServiceTest {
         when(groupRepository.findById(10L)).thenReturn(Optional.of(group));
 
         assertThatThrownBy(() -> groupService.updateGroupSettings(
-                10L, new UpdateGroupSettingsRequest(null, null, 20)))
+                10L, new UpdateGroupSettingsRequest(null, null, 20, null)))
                 .isInstanceOf(IllegalArgumentException.class);
 
         GroupDetailDTO result = groupService.updateGroupSettings(
-                10L, new UpdateGroupSettingsRequest(null, null, 15));
+                10L, new UpdateGroupSettingsRequest(null, null, 15, null));
         assertThat(result.winConditionCardCount()).isEqualTo(15);
     }
 
@@ -547,11 +547,34 @@ class GroupServiceTest {
         Group group = groupWithAdmin();
         when(groupRepository.findById(10L)).thenReturn(Optional.of(group));
 
-        groupService.updateGroupSettings(10L, new UpdateGroupSettingsRequest(null, DjMode.ROTATING, null));
+        groupService.updateGroupSettings(10L, new UpdateGroupSettingsRequest(null, DjMode.ROTATING, null, null));
 
         ArgumentCaptor<GroupBroadcastEvent> captor = ArgumentCaptor.forClass(GroupBroadcastEvent.class);
         verify(eventPublisher).publishEvent(captor.capture());
         assertThat(captor.getValue().type()).isEqualTo(GroupEventType.SETTINGS_CHANGED);
+    }
+
+    @Test
+    void updateGroupSettingsStoresTheChosenFixedDj() {
+        Group group = groupWithAdmin();
+        Member secondMember = memberOf(group, otherUser, false, Instant.now());
+        when(groupRepository.findById(10L)).thenReturn(Optional.of(group));
+
+        groupService.updateGroupSettings(
+                10L, new UpdateGroupSettingsRequest(null, DjMode.FIXED, null, secondMember.getId()));
+
+        assertThat(group.getFixedDjMemberId()).isEqualTo(secondMember.getId());
+    }
+
+    @Test
+    void updateGroupSettingsRejectsAFixedDjWhoIsNotAMember() {
+        Group group = groupWithAdmin();
+        when(groupRepository.findById(10L)).thenReturn(Optional.of(group));
+
+        assertThatThrownBy(() -> groupService.updateGroupSettings(
+                        10L, new UpdateGroupSettingsRequest(null, DjMode.FIXED, null, 999L)))
+                .isInstanceOf(ResourceNotFoundException.class);
+        assertThat(group.getFixedDjMemberId()).isNull();
     }
 
     @Test

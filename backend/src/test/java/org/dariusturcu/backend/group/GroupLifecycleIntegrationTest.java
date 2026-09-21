@@ -178,14 +178,14 @@ class GroupLifecycleIntegrationTest {
         authenticateAs(admin);
         GroupDetailDTO afterSettingsUpdate = groupService.updateGroupSettings(
                 created.id(),
-                new UpdateGroupSettingsRequest(Set.of(savedPlaylist.getId()), DjMode.ROTATING, 10));
+                new UpdateGroupSettingsRequest(Set.of(savedPlaylist.getId()), DjMode.ROTATING, 10, null));
         assertThat(afterSettingsUpdate.djMode()).isEqualTo(DjMode.ROTATING);
         assertThat(afterSettingsUpdate.winConditionCardCount()).isEqualTo(10);
         assertThat(afterSettingsUpdate.playlists()).extracting("id").containsExactly(savedPlaylist.getId());
 
         authenticateAs(inviteLinkJoiner);
         assertThatThrownBy(() -> groupService.updateGroupSettings(
-                created.id(), new UpdateGroupSettingsRequest(null, DjMode.FIXED, null)))
+                created.id(), new UpdateGroupSettingsRequest(null, DjMode.FIXED, null, null)))
                 .isInstanceOf(AccessDeniedException.class);
 
         authenticateAs(admin);
