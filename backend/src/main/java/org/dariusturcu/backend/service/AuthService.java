@@ -108,7 +108,7 @@ public class AuthService {
             return new LoginOutcome.TwoFactorRequired(jwtUtil.generateTwoFactorPendingToken(user));
         }
 
-        return new LoginOutcome.Completed(issueTokens(user));
+        return new LoginOutcome.Completed(issueTokens(user, Boolean.TRUE.equals(request.rememberMe())));
     }
 
     public AuthResult verifyTwoFactor(String pendingToken, String code) {
@@ -133,7 +133,7 @@ public class AuthService {
             throw new BadCredentialsException("Invalid authentication code");
         }
 
-        return issueTokens(user);
+        return issueTokens(user, false);
     }
 
     public void verifyEmail(String rawToken) {
@@ -197,9 +197,10 @@ public class AuthService {
         }
 
         User user = storedToken.getUser();
+        boolean rememberMe = storedToken.isRememberMe();
         refreshTokenRepository.delete(storedToken);
 
-        return issueTokens(user);
+        return issueTokens(user, rememberMe);
     }
 
     public void revokeRefreshToken(String refreshToken) {
@@ -207,10 +208,10 @@ public class AuthService {
                 .ifPresent(refreshTokenRepository::delete);
     }
 
-    private AuthResult issueTokens(User user) {
+    private AuthResult issueTokens(User user, boolean rememberMe) {
         String newAccessToken = jwtUtil.generateToken(user);
-        String newRefreshToken = createAndSaveRefreshToken(user);
-        return new AuthResult(newAccessToken, newRefreshToken, user.getId(), user.getUsername(), user.getEmail());
+        String newRefreshToken = createAndSaveRefreshToken(user, rememberMe);
+        return new AuthResult(newAccessToken, newRefreshToken, user.getId(), user.getUsername(), user.getEmail(), rememberMe);
     }
 
     private void sendVerificationEmail(User user) {
@@ -244,14 +245,18 @@ public class AuthService {
     }
 
     @Modifying
-    public String createAndSaveRefreshToken(User user) {
+    public String createAndSaveRefreshToken(User user, boolean rememberMe) {
         refreshTokenRepository.deleteRefreshTokenByUser(user);
         refreshTokenRepository.flush();
         String tokenValue = jwtUtil.generateRefreshToken();
         RefreshToken newToken = new RefreshToken();
         newToken.setToken(TokenHasher.hash(tokenValue));
         newToken.setUser(user);
-        newToken.setExpiresAt(Instant.now().plusSeconds(jwtUtil.getRefreshExpirationSeconds()));
+        newToken.setRememberMe(rememberMe);
+        long lifetimeSeconds = rememberMe
+                ? jwtUtil.getRememberedRefreshExpirationSeconds()
+                : jwtUtil.getRefreshExpirationSeconds();
+        newToken.setExpiresAt(Instant.now().plusSeconds(lifetimeSeconds));
         refreshTokenRepository.save(newToken);
         return tokenValue;
     }

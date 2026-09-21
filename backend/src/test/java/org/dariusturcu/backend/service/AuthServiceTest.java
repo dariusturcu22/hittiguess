@@ -22,6 +22,7 @@ import org.dariusturcu.backend.security.util.TokenHasher;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -122,7 +123,7 @@ class AuthServiceTest {
         User user = buildUser(false, false);
         when(userRepository.findUserByEmail("player@example.com")).thenReturn(Optional.of(user));
 
-        assertThatThrownBy(() -> authService.login(new LoginRequest("player@example.com", "password123")))
+        assertThatThrownBy(() -> authService.login(new LoginRequest("player@example.com", "password123", false)))
                 .isInstanceOf(EmailNotVerifiedException.class);
 
         verify(jwtUtil, never()).generateToken(any(User.class));
@@ -136,7 +137,7 @@ class AuthServiceTest {
         when(jwtUtil.generateRefreshToken()).thenReturn("refresh-token");
         when(jwtUtil.getRefreshExpirationSeconds()).thenReturn(604800L);
 
-        LoginOutcome outcome = authService.login(new LoginRequest("player@example.com", "password123"));
+        LoginOutcome outcome = authService.login(new LoginRequest("player@example.com", "password123", false));
 
         assertThat(outcome).isInstanceOf(LoginOutcome.Completed.class);
         AuthResult result = ((LoginOutcome.Completed) outcome).authResult();
@@ -145,12 +146,76 @@ class AuthServiceTest {
     }
 
     @Test
+    void loginWithRememberMePersistsALongLivedFlaggedToken() {
+        User user = buildUser(true, false);
+        when(userRepository.findUserByEmail("player@example.com")).thenReturn(Optional.of(user));
+        when(jwtUtil.generateToken(user)).thenReturn("access-token");
+        when(jwtUtil.generateRefreshToken()).thenReturn("refresh-token");
+        when(jwtUtil.getRememberedRefreshExpirationSeconds()).thenReturn(2_592_000L);
+
+        LoginOutcome outcome = authService.login(new LoginRequest("player@example.com", "password123", true));
+
+        assertThat(outcome).isInstanceOf(LoginOutcome.Completed.class);
+        AuthResult result = ((LoginOutcome.Completed) outcome).authResult();
+        assertThat(result.rememberMe()).isTrue();
+        ArgumentCaptor<RefreshToken> savedTokenCaptor = ArgumentCaptor.forClass(RefreshToken.class);
+        verify(refreshTokenRepository).save(savedTokenCaptor.capture());
+        RefreshToken savedToken = savedTokenCaptor.getValue();
+        assertThat(savedToken.isRememberMe()).isTrue();
+        assertThat(savedToken.getExpiresAt())
+                .isAfter(Instant.now().plusSeconds(2_591_000L));
+    }
+
+    @Test
+    void loginWithoutRememberMePersistsAStandardUnflaggedToken() {
+        User user = buildUser(true, false);
+        when(userRepository.findUserByEmail("player@example.com")).thenReturn(Optional.of(user));
+        when(jwtUtil.generateToken(user)).thenReturn("access-token");
+        when(jwtUtil.generateRefreshToken()).thenReturn("refresh-token");
+        when(jwtUtil.getRefreshExpirationSeconds()).thenReturn(604_800L);
+
+        LoginOutcome outcome = authService.login(new LoginRequest("player@example.com", "password123", false));
+
+        assertThat(outcome).isInstanceOf(LoginOutcome.Completed.class);
+        AuthResult result = ((LoginOutcome.Completed) outcome).authResult();
+        assertThat(result.rememberMe()).isFalse();
+        ArgumentCaptor<RefreshToken> savedTokenCaptor = ArgumentCaptor.forClass(RefreshToken.class);
+        verify(refreshTokenRepository).save(savedTokenCaptor.capture());
+        RefreshToken savedToken = savedTokenCaptor.getValue();
+        assertThat(savedToken.isRememberMe()).isFalse();
+        assertThat(savedToken.getExpiresAt())
+                .isBefore(Instant.now().plusSeconds(604_801L));
+    }
+
+    @Test
+    void refreshRotationPreservesTheRememberMeFlag() {
+        User user = buildUser(true, false);
+        RefreshToken storedToken = new RefreshToken();
+        storedToken.setToken(TokenHasher.hash("old-refresh-token"));
+        storedToken.setUser(user);
+        storedToken.setRememberMe(true);
+        storedToken.setExpiresAt(Instant.now().plusSeconds(1_000L));
+        when(refreshTokenRepository.findByToken(TokenHasher.hash("old-refresh-token")))
+                .thenReturn(Optional.of(storedToken));
+        when(jwtUtil.generateToken(user)).thenReturn("access-token");
+        when(jwtUtil.generateRefreshToken()).thenReturn("refresh-token");
+        when(jwtUtil.getRememberedRefreshExpirationSeconds()).thenReturn(2_592_000L);
+
+        AuthResult result = authService.refreshTokens("old-refresh-token");
+
+        assertThat(result.rememberMe()).isTrue();
+        ArgumentCaptor<RefreshToken> savedTokenCaptor = ArgumentCaptor.forClass(RefreshToken.class);
+        verify(refreshTokenRepository).save(savedTokenCaptor.capture());
+        assertThat(savedTokenCaptor.getValue().isRememberMe()).isTrue();
+    }
+
+    @Test
     void loginForATwoFactorEnabledAccountReturnsAPendingTokenInsteadOfCompletingLogin() {
         User user = buildUser(true, true);
         when(userRepository.findUserByEmail("player@example.com")).thenReturn(Optional.of(user));
         when(jwtUtil.generateTwoFactorPendingToken(user)).thenReturn("pending-token");
 
-        LoginOutcome outcome = authService.login(new LoginRequest("player@example.com", "password123"));
+        LoginOutcome outcome = authService.login(new LoginRequest("player@example.com", "password123", false));
 
         assertThat(outcome).isInstanceOf(LoginOutcome.TwoFactorRequired.class);
         assertThat(((LoginOutcome.TwoFactorRequired) outcome).pendingToken()).isEqualTo("pending-token");

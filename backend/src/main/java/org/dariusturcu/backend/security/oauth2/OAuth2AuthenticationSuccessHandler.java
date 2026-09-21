@@ -49,7 +49,7 @@ public class OAuth2AuthenticationSuccessHandler extends SimpleUrlAuthenticationS
         User user = oAuth2User.getUser();
 
         String accessToken = jwtUtil.generateToken(user);
-        String refreshToken = authService.createAndSaveRefreshToken(user);
+        String refreshToken = authService.createAndSaveRefreshToken(user, false);
 
         response.addHeader(
                 HttpHeaders.SET_COOKIE,
