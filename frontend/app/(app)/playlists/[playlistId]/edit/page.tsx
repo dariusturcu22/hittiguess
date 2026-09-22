@@ -104,7 +104,7 @@ function MemberRow({
           [key]: !member[key],
         },
       },
-      { onSuccess: invalidate },
+      { onSuccess: invalidate, onError: () => toast.error("Couldn't update the permission. Try again.") },
     );
   }
 
@@ -169,8 +169,16 @@ function MemberRow({
           title="Kick, can rejoin"
           onClick={() =>
             userId != null &&
-            kickMember.mutate({ playlistId, userId }, { onSuccess: invalidate })
-          }
+            kickMember.mutate(
+              { playlistId, userId },
+              {
+                onSuccess: () => {
+                  invalidate();
+                  toast.success("Member removed");
+                },
+                onError: () => toast.error("Couldn't remove the member. Try again."),
+              },
+            )}
           disabled={kickMember.isPending}
           className="w-[30px] h-[30px] rounded-lg flex items-center justify-center cursor-pointer bg-background text-muted-foreground border-2 border-secondary disabled:opacity-60"
         >
@@ -181,8 +189,16 @@ function MemberRow({
           title="Ban, can't rejoin"
           onClick={() =>
             userId != null &&
-            banMember.mutate({ playlistId, userId }, { onSuccess: invalidate })
-          }
+            banMember.mutate(
+              { playlistId, userId },
+              {
+                onSuccess: () => {
+                  invalidate();
+                  toast.success("Member banned");
+                },
+                onError: () => toast.error("Couldn't ban the member. Try again."),
+              },
+            )}
           disabled={banMember.isPending}
           className="w-[30px] h-[30px] rounded-lg flex items-center justify-center cursor-pointer bg-background text-destructive border-2 border-secondary disabled:opacity-60"
         >

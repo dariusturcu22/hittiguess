@@ -2,6 +2,7 @@
 
 import { use, useCallback, useEffect, useMemo, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { toast } from "sonner";
 import {
   Check,
   Clipboard,
@@ -357,7 +358,14 @@ export default function GroupLobbyPage({ params }: PageProps) {
           fixedDjMemberId: selectedFixedDjMemberId,
         },
       },
-      { onSuccess: () => { refreshGroup(); setIsSettingsOpen(false); } },
+      {
+        onSuccess: () => {
+          refreshGroup();
+          setIsSettingsOpen(false);
+          toast.success("Settings saved");
+        },
+        onError: () => toast.error("Couldn't save the settings. Try again."),
+      },
     );
   }
 
@@ -497,7 +505,7 @@ export default function GroupLobbyPage({ params }: PageProps) {
         {isSettingsOpen ? (
           <>
             <button type="button" aria-label="Close settings" onClick={() => setIsSettingsOpen(false)} className="fixed inset-0 z-10 cursor-default" />
-            <section aria-label="Group settings" className="absolute bottom-7 left-0 z-20 w-full max-w-[400px] rounded-[18px] border-[3px] border-border bg-card p-6 shadow-[6px_6px_0_rgba(0,0,0,0.35)] sm:left-[228px] sm:p-7">
+            <section aria-label="Group settings" className="absolute bottom-7 left-0 z-20 w-full max-w-[400px] animate-rise rounded-[18px] border-[3px] border-border bg-card p-6 shadow-[6px_6px_0_rgba(0,0,0,0.35)] sm:left-[228px] sm:p-7">
               <div className="mb-5 flex items-center justify-between">
                 <h2 className="font-display text-lg text-card-foreground">Settings</h2>
                 <button type="button" onClick={() => setIsSettingsOpen(false)} className="text-muted-foreground hover:text-card-foreground">Close</button>

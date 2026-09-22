@@ -1,0 +1,970 @@
+[
+  {
+    "name": "actual-LandingDesktopDark",
+    "width": 1440,
+    "scrollWidth": 1440,
+    "headings": [
+      {
+        "text": "PLACE IT.GUESS IT.WIN IT.",
+        "rect": {
+          "x": 144,
+          "y": 100,
+          "width": 556,
+          "height": 189,
+          "top": 100,
+          "right": 700,
+          "bottom": 289,
+          "left": 144
+        }
+      },
+      {
+        "text": "How a round works",
+        "rect": {
+          "x": 64,
+          "y": 664.75,
+          "width": 1312,
+          "height": 36,
+          "top": 664.75,
+          "right": 1376,
+          "bottom": 700.75,
+          "left": 64
+        }
+      },
+      {
+        "text": "YOUR MUSIC. YOUR RULES.",
+        "rect": {
+          "x": 960,
+          "y": 1204.75,
+          "width": 384,
+          "height": 75,
+          "top": 1204.75,
+          "right": 1344,
+          "bottom": 1279.75,
+          "left": 960
+        }
+      },
+      {
+        "text": "GUESS IT. BET IT.",
+        "rect": {
+          "x": 96,
+          "y": 1547.75,
+          "width": 384,
+          "height": 37.5,
+          "top": 1547.75,
+          "right": 480,
+          "bottom": 1585.25,
+          "left": 96
+        }
+      },
+      {
+        "text": "PLAY TOGETHER. TRUST BUILT IN.",
+        "rect": {
+          "x": 528,
+          "y": 1879.25,
+          "width": 384,
+          "height": 75,
+          "top": 1879.25,
+          "right": 912,
+          "bottom": 1954.25,
+          "left": 528
+        }
+      },
+      {
+        "text": "Ready?",
+        "rect": {
+          "x": 655.1327514648438,
+          "y": 2278.1533203125,
+          "width": 127.64019775390625,
+          "height": 38.211669921875,
+          "top": 2278.1533203125,
+          "right": 782.77294921875,
+          "bottom": 2316.364990234375,
+          "left": 655.1327514648438
+        }
+      }
+    ]
+  },
+  {
+    "name": "actual-LoginDark",
+    "width": 1440,
+    "scrollWidth": 1440,
+    "headings": [
+      {
+        "text": "Welcome back",
+        "rect": {
+          "x": 541,
+          "y": 304,
+          "width": 358,
+          "height": 32,
+          "top": 304,
+          "right": 899,
+          "bottom": 336,
+          "left": 541
+        }
+      }
+    ]
+  },
+  {
+    "name": "actual-RegisterDark",
+    "width": 1440,
+    "scrollWidth": 1440,
+    "headings": [
+      {
+        "text": "Join the game",
+        "rect": {
+          "x": 541,
+          "y": 251.5,
+          "width": 358,
+          "height": 32,
+          "top": 251.5,
+          "right": 899,
+          "bottom": 283.5,
+          "left": 541
+        }
+      }
+    ]
+  },
+  {
+    "name": "actual-ForgotPasswordDark",
+    "width": 1440,
+    "scrollWidth": 1440,
+    "headings": [
+      {
+        "text": "Forgot password?",
+        "rect": {
+          "x": 550,
+          "y": 364.75,
+          "width": 340,
+          "height": 32,
+          "top": 364.75,
+          "right": 890,
+          "bottom": 396.75,
+          "left": 550
+        }
+      }
+    ]
+  },
+  {
+    "name": "actual-YourPlaylistsDark",
+    "width": 1440,
+    "scrollWidth": 1440,
+    "headings": [
+      {
+        "text": "Your playlists",
+        "rect": {
+          "x": 120,
+          "y": 44,
+          "width": 312.4375,
+          "height": 51,
+          "top": 44,
+          "right": 432.4375,
+          "bottom": 95,
+          "left": 120
+        }
+      }
+    ]
+  },
+  {
+    "name": "actual-PlaylistDetailDark",
+    "width": 1440,
+    "scrollWidth": 1440,
+    "headings": [
+      {
+        "text": "Late night rotation",
+        "rect": {
+          "x": 328,
+          "y": 67.25,
+          "width": 398.25,
+          "height": 48,
+          "top": 67.25,
+          "right": 726.25,
+          "bottom": 115.25,
+          "left": 328
+        }
+      }
+    ]
+  },
+  {
+    "name": "actual-SongDetailDark",
+    "width": 1440,
+    "scrollWidth": 1440,
+    "headings": []
+  },
+  {
+    "name": "actual-SongDetailNeedsReviewDark",
+    "width": 1440,
+    "scrollWidth": 1440,
+    "headings": []
+  },
+  {
+    "name": "actual-EditSongDetailsDark",
+    "width": 1440,
+    "scrollWidth": 1440,
+    "headings": [
+      {
+        "text": "Edit song details",
+        "rect": {
+          "x": 485,
+          "y": 91.25,
+          "width": 546,
+          "height": 32,
+          "top": 91.25,
+          "right": 1031,
+          "bottom": 123.25,
+          "left": 485
+        }
+      }
+    ]
+  },
+  {
+    "name": "actual-JoinInviteDark",
+    "width": 1440,
+    "scrollWidth": 1440,
+    "headings": [
+      {
+        "text": "You're invited",
+        "rect": {
+          "x": 668.84375,
+          "y": 269.125,
+          "width": 178.3125,
+          "height": 28,
+          "top": 269.125,
+          "right": 847.15625,
+          "bottom": 297.125,
+          "left": 668.84375
+        }
+      }
+    ]
+  },
+  {
+    "name": "actual-AddSongDark",
+    "width": 1440,
+    "scrollWidth": 1440,
+    "headings": [
+      {
+        "text": "Add songs",
+        "rect": {
+          "x": 120,
+          "y": 72,
+          "width": 339.953125,
+          "height": 45,
+          "top": 72,
+          "right": 459.953125,
+          "bottom": 117,
+          "left": 120
+        }
+      }
+    ]
+  },
+  {
+    "name": "actual-AddNewSongLinkDark",
+    "width": 1440,
+    "scrollWidth": 1440,
+    "headings": [
+      {
+        "text": "Add a new song",
+        "rect": {
+          "x": 525,
+          "y": 337.625,
+          "width": 460,
+          "height": 32,
+          "top": 337.625,
+          "right": 985,
+          "bottom": 369.625,
+          "left": 525
+        }
+      }
+    ]
+  },
+  {
+    "name": "actual-AddNewSongReviewEditableDark",
+    "width": 1440,
+    "scrollWidth": 1440,
+    "headings": [
+      {
+        "text": "Review details",
+        "rect": {
+          "x": 525,
+          "y": 151.75,
+          "width": 460,
+          "height": 32,
+          "top": 151.75,
+          "right": 985,
+          "bottom": 183.75,
+          "left": 525
+        }
+      }
+    ]
+  },
+  {
+    "name": "actual-LandingMobileDark",
+    "width": 390,
+    "scrollWidth": 390,
+    "headings": [
+      {
+        "text": "PLACE IT.GUESS IT.WIN IT.",
+        "rect": {
+          "x": 24,
+          "y": 100,
+          "width": 342,
+          "height": 113.390625,
+          "top": 100,
+          "right": 366,
+          "bottom": 213.390625,
+          "left": 24
+        }
+      },
+      {
+        "text": "How a round works",
+        "rect": {
+          "x": 24,
+          "y": 547.390625,
+          "width": 342,
+          "height": 32,
+          "top": 547.390625,
+          "right": 366,
+          "bottom": 579.390625,
+          "left": 24
+        }
+      },
+      {
+        "text": "YOUR MUSIC. YOUR RULES.",
+        "rect": {
+          "x": 56,
+          "y": 1333.390625,
+          "width": 278,
+          "height": 60,
+          "top": 1333.390625,
+          "right": 334,
+          "bottom": 1393.390625,
+          "left": 56
+        }
+      },
+      {
+        "text": "GUESS IT. BET IT.",
+        "rect": {
+          "x": 56,
+          "y": 1687.390625,
+          "width": 278,
+          "height": 30,
+          "top": 1687.390625,
+          "right": 334,
+          "bottom": 1717.390625,
+          "left": 56
+        }
+      },
+      {
+        "text": "PLAY TOGETHER. TRUST BUILT IN.",
+        "rect": {
+          "x": 56,
+          "y": 2037.390625,
+          "width": 278,
+          "height": 60,
+          "top": 2037.390625,
+          "right": 334,
+          "bottom": 2097.390625,
+          "left": 56
+        }
+      },
+      {
+        "text": "Ready?",
+        "rect": {
+          "x": 142.6943359375,
+          "y": 2447.516845703125,
+          "width": 102.16799926757812,
+          "height": 33.768798828125,
+          "top": 2447.516845703125,
+          "right": 244.86233520507812,
+          "bottom": 2481.28564453125,
+          "left": 142.6943359375
+        }
+      }
+    ]
+  },
+  {
+    "name": "mockup-LandingDesktopDark",
+    "width": 1440,
+    "scrollWidth": 1440,
+    "headings": []
+  },
+  {
+    "name": "mockup-LandingMobileDark",
+    "width": 390,
+    "scrollWidth": 390,
+    "headings": []
+  },
+  {
+    "name": "mockup-LoginDark",
+    "width": 1440,
+    "scrollWidth": 1440,
+    "headings": []
+  },
+  {
+    "name": "mockup-RegisterDark",
+    "width": 1440,
+    "scrollWidth": 1440,
+    "headings": []
+  },
+  {
+    "name": "mockup-ForgotPasswordDark",
+    "width": 1440,
+    "scrollWidth": 1440,
+    "headings": []
+  },
+  {
+    "name": "mockup-OAuth2RedirectDark",
+    "width": 1440,
+    "scrollWidth": 1440,
+    "headings": []
+  },
+  {
+    "name": "mockup-AppShellDark",
+    "width": 1440,
+    "scrollWidth": 1440,
+    "headings": []
+  },
+  {
+    "name": "mockup-YourPlaylistsDark",
+    "width": 1440,
+    "scrollWidth": 1440,
+    "headings": []
+  },
+  {
+    "name": "mockup-PlaylistDetailDark",
+    "width": 1440,
+    "scrollWidth": 1440,
+    "headings": []
+  },
+  {
+    "name": "mockup-SongDetailDark",
+    "width": 1440,
+    "scrollWidth": 1440,
+    "headings": []
+  },
+  {
+    "name": "mockup-SongDetailNeedsReviewDark",
+    "width": 1440,
+    "scrollWidth": 1440,
+    "headings": []
+  },
+  {
+    "name": "mockup-EditSongDetailsDark",
+    "width": 1440,
+    "scrollWidth": 1440,
+    "headings": []
+  },
+  {
+    "name": "mockup-AddSongDark",
+    "width": 1440,
+    "scrollWidth": 1440,
+    "headings": []
+  },
+  {
+    "name": "mockup-AddNewSongLinkDark",
+    "width": 1440,
+    "scrollWidth": 1440,
+    "headings": []
+  },
+  {
+    "name": "mockup-AddNewSongReviewEditableDark",
+    "width": 1440,
+    "scrollWidth": 1440,
+    "headings": []
+  },
+  {
+    "name": "mockup-AddNewSongReviewLockedDark",
+    "width": 1440,
+    "scrollWidth": 1440,
+    "headings": []
+  },
+  {
+    "name": "mockup-JoinInviteDark",
+    "width": 1440,
+    "scrollWidth": 1440,
+    "headings": []
+  },
+  {
+    "name": "actual-LandingDesktopLight",
+    "width": 1440,
+    "scrollWidth": 1440,
+    "headings": [
+      {
+        "text": "PLACE IT.GUESS IT.WIN IT.",
+        "rect": {
+          "x": 144,
+          "y": 100,
+          "width": 556,
+          "height": 189,
+          "top": 100,
+          "right": 700,
+          "bottom": 289,
+          "left": 144
+        }
+      },
+      {
+        "text": "How a round works",
+        "rect": {
+          "x": 64,
+          "y": 664.75,
+          "width": 1312,
+          "height": 36,
+          "top": 664.75,
+          "right": 1376,
+          "bottom": 700.75,
+          "left": 64
+        }
+      },
+      {
+        "text": "YOUR MUSIC. YOUR RULES.",
+        "rect": {
+          "x": 960,
+          "y": 1204.75,
+          "width": 384,
+          "height": 75,
+          "top": 1204.75,
+          "right": 1344,
+          "bottom": 1279.75,
+          "left": 960
+        }
+      },
+      {
+        "text": "GUESS IT. BET IT.",
+        "rect": {
+          "x": 96,
+          "y": 1547.75,
+          "width": 384,
+          "height": 37.5,
+          "top": 1547.75,
+          "right": 480,
+          "bottom": 1585.25,
+          "left": 96
+        }
+      },
+      {
+        "text": "PLAY TOGETHER. TRUST BUILT IN.",
+        "rect": {
+          "x": 528,
+          "y": 1879.25,
+          "width": 384,
+          "height": 75,
+          "top": 1879.25,
+          "right": 912,
+          "bottom": 1954.25,
+          "left": 528
+        }
+      },
+      {
+        "text": "Ready?",
+        "rect": {
+          "x": 655.1327514648438,
+          "y": 2278.1533203125,
+          "width": 127.64019775390625,
+          "height": 38.211669921875,
+          "top": 2278.1533203125,
+          "right": 782.77294921875,
+          "bottom": 2316.364990234375,
+          "left": 655.1327514648438
+        }
+      }
+    ]
+  },
+  {
+    "name": "actual-LoginLight",
+    "width": 1440,
+    "scrollWidth": 1440,
+    "headings": [
+      {
+        "text": "Welcome back",
+        "rect": {
+          "x": 541,
+          "y": 304,
+          "width": 358,
+          "height": 32,
+          "top": 304,
+          "right": 899,
+          "bottom": 336,
+          "left": 541
+        }
+      }
+    ]
+  },
+  {
+    "name": "actual-RegisterLight",
+    "width": 1440,
+    "scrollWidth": 1440,
+    "headings": [
+      {
+        "text": "Join the game",
+        "rect": {
+          "x": 541,
+          "y": 251.5,
+          "width": 358,
+          "height": 32,
+          "top": 251.5,
+          "right": 899,
+          "bottom": 283.5,
+          "left": 541
+        }
+      }
+    ]
+  },
+  {
+    "name": "actual-ForgotPasswordLight",
+    "width": 1440,
+    "scrollWidth": 1440,
+    "headings": [
+      {
+        "text": "Forgot password?",
+        "rect": {
+          "x": 550,
+          "y": 364.75,
+          "width": 340,
+          "height": 32,
+          "top": 364.75,
+          "right": 890,
+          "bottom": 396.75,
+          "left": 550
+        }
+      }
+    ]
+  },
+  {
+    "name": "actual-YourPlaylistsLight",
+    "width": 1440,
+    "scrollWidth": 1440,
+    "headings": [
+      {
+        "text": "Your playlists",
+        "rect": {
+          "x": 120,
+          "y": 44,
+          "width": 312.4375,
+          "height": 51,
+          "top": 44,
+          "right": 432.4375,
+          "bottom": 95,
+          "left": 120
+        }
+      }
+    ]
+  },
+  {
+    "name": "actual-PlaylistDetailLight",
+    "width": 1440,
+    "scrollWidth": 1440,
+    "headings": [
+      {
+        "text": "Late night rotation",
+        "rect": {
+          "x": 328,
+          "y": 67.25,
+          "width": 398.25,
+          "height": 48,
+          "top": 67.25,
+          "right": 726.25,
+          "bottom": 115.25,
+          "left": 328
+        }
+      }
+    ]
+  },
+  {
+    "name": "actual-SongDetailLight",
+    "width": 1440,
+    "scrollWidth": 1440,
+    "headings": []
+  },
+  {
+    "name": "actual-SongDetailNeedsReviewLight",
+    "width": 1440,
+    "scrollWidth": 1440,
+    "headings": []
+  },
+  {
+    "name": "actual-EditSongDetailsLight",
+    "width": 1440,
+    "scrollWidth": 1440,
+    "headings": [
+      {
+        "text": "Edit song details",
+        "rect": {
+          "x": 485,
+          "y": 91.25,
+          "width": 546,
+          "height": 32,
+          "top": 91.25,
+          "right": 1031,
+          "bottom": 123.25,
+          "left": 485
+        }
+      }
+    ]
+  },
+  {
+    "name": "actual-JoinInviteLight",
+    "width": 1440,
+    "scrollWidth": 1440,
+    "headings": [
+      {
+        "text": "You're invited",
+        "rect": {
+          "x": 668.84375,
+          "y": 269.125,
+          "width": 178.3125,
+          "height": 28,
+          "top": 269.125,
+          "right": 847.15625,
+          "bottom": 297.125,
+          "left": 668.84375
+        }
+      }
+    ]
+  },
+  {
+    "name": "actual-AddSongLight",
+    "width": 1440,
+    "scrollWidth": 1440,
+    "headings": [
+      {
+        "text": "Add songs",
+        "rect": {
+          "x": 120,
+          "y": 72,
+          "width": 339.953125,
+          "height": 45,
+          "top": 72,
+          "right": 459.953125,
+          "bottom": 117,
+          "left": 120
+        }
+      }
+    ]
+  },
+  {
+    "name": "actual-AddNewSongLinkLight",
+    "width": 1440,
+    "scrollWidth": 1440,
+    "headings": [
+      {
+        "text": "Add a new song",
+        "rect": {
+          "x": 525,
+          "y": 337.625,
+          "width": 460,
+          "height": 32,
+          "top": 337.625,
+          "right": 985,
+          "bottom": 369.625,
+          "left": 525
+        }
+      }
+    ]
+  },
+  {
+    "name": "actual-AddNewSongReviewEditableLight",
+    "width": 1440,
+    "scrollWidth": 1440,
+    "headings": [
+      {
+        "text": "Review details",
+        "rect": {
+          "x": 525,
+          "y": 151.75,
+          "width": 460,
+          "height": 32,
+          "top": 151.75,
+          "right": 985,
+          "bottom": 183.75,
+          "left": 525
+        }
+      }
+    ]
+  },
+  {
+    "name": "actual-LandingMobileLight",
+    "width": 390,
+    "scrollWidth": 390,
+    "headings": [
+      {
+        "text": "PLACE IT.GUESS IT.WIN IT.",
+        "rect": {
+          "x": 24,
+          "y": 100,
+          "width": 342,
+          "height": 113.390625,
+          "top": 100,
+          "right": 366,
+          "bottom": 213.390625,
+          "left": 24
+        }
+      },
+      {
+        "text": "How a round works",
+        "rect": {
+          "x": 24,
+          "y": 547.390625,
+          "width": 342,
+          "height": 32,
+          "top": 547.390625,
+          "right": 366,
+          "bottom": 579.390625,
+          "left": 24
+        }
+      },
+      {
+        "text": "YOUR MUSIC. YOUR RULES.",
+        "rect": {
+          "x": 56,
+          "y": 1333.390625,
+          "width": 278,
+          "height": 60,
+          "top": 1333.390625,
+          "right": 334,
+          "bottom": 1393.390625,
+          "left": 56
+        }
+      },
+      {
+        "text": "GUESS IT. BET IT.",
+        "rect": {
+          "x": 56,
+          "y": 1687.390625,
+          "width": 278,
+          "height": 30,
+          "top": 1687.390625,
+          "right": 334,
+          "bottom": 1717.390625,
+          "left": 56
+        }
+      },
+      {
+        "text": "PLAY TOGETHER. TRUST BUILT IN.",
+        "rect": {
+          "x": 56,
+          "y": 2037.390625,
+          "width": 278,
+          "height": 60,
+          "top": 2037.390625,
+          "right": 334,
+          "bottom": 2097.390625,
+          "left": 56
+        }
+      },
+      {
+        "text": "Ready?",
+        "rect": {
+          "x": 142.6943359375,
+          "y": 2447.516845703125,
+          "width": 102.16799926757812,
+          "height": 33.768798828125,
+          "top": 2447.516845703125,
+          "right": 244.86233520507812,
+          "bottom": 2481.28564453125,
+          "left": 142.6943359375
+        }
+      }
+    ]
+  },
+  {
+    "name": "mockup-LandingDesktopLight",
+    "width": 1440,
+    "scrollWidth": 1440,
+    "headings": []
+  },
+  {
+    "name": "mockup-LandingMobileLight",
+    "width": 390,
+    "scrollWidth": 390,
+    "headings": []
+  },
+  {
+    "name": "mockup-LoginLight",
+    "width": 1440,
+    "scrollWidth": 1440,
+    "headings": []
+  },
+  {
+    "name": "mockup-RegisterLight",
+    "width": 1440,
+    "scrollWidth": 1440,
+    "headings": []
+  },
+  {
+    "name": "mockup-ForgotPasswordLight",
+    "width": 1440,
+    "scrollWidth": 1440,
+    "headings": []
+  },
+  {
+    "name": "mockup-OAuth2RedirectLight",
+    "width": 1440,
+    "scrollWidth": 1440,
+    "headings": []
+  },
+  {
+    "name": "mockup-AppShellLight",
+    "width": 1440,
+    "scrollWidth": 1440,
+    "headings": []
+  },
+  {
+    "name": "mockup-YourPlaylistsLight",
+    "width": 1440,
+    "scrollWidth": 1440,
+    "headings": []
+  },
+  {
+    "name": "mockup-PlaylistDetailLight",
+    "width": 1440,
+    "scrollWidth": 1440,
+    "headings": []
+  },
+  {
+    "name": "mockup-SongDetailLight",
+    "width": 1440,
+    "scrollWidth": 1440,
+    "headings": []
+  },
+  {
+    "name": "mockup-SongDetailNeedsReviewLight",
+    "width": 1440,
+    "scrollWidth": 1440,
+    "headings": []
+  },
+  {
+    "name": "mockup-EditSongDetailsLight",
+    "width": 1440,
+    "scrollWidth": 1440,
+    "headings": []
+  },
+  {
+    "name": "mockup-AddSongLight",
+    "width": 1440,
+    "scrollWidth": 1440,
+    "headings": []
+  },
+  {
+    "name": "mockup-AddNewSongLinkLight",
+    "width": 1440,
+    "scrollWidth": 1440,
+    "headings": []
+  },
+  {
+    "name": "mockup-AddNewSongReviewEditableLight",
+    "width": 1440,
+    "scrollWidth": 1440,
+    "headings": []
+  },
+  {
+    "name": "mockup-AddNewSongReviewLockedLight",
+    "width": 1440,
+    "scrollWidth": 1440,
+    "headings": []
+  },
+  {
+    "name": "mockup-JoinInviteLight",
+    "width": 1440,
+    "scrollWidth": 1440,
+    "headings": []
+  }
+]

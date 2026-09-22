@@ -1,0 +1,55 @@
+{
+  "cookies": [
+    {
+      "name": "refresh_token",
+      "value": "a9593567-d7b8-46dd-9943-9a5f10d44df6",
+      "domain": "localhost",
+      "path": "/auth/refresh",
+      "expires": 1790287159,
+      "httpOnly": true,
+      "secure": false,
+      "sameSite": "Strict"
+    },
+    {
+      "name": "access_token",
+      "value": "eyJhbGciOiJIUzUxMiJ9.eyJyb2xlIjoiVEVTVCIsInVzZXJJZCI6MSwiZW1haWwiOiJ0ZXN0LWFnZW50LTFAaGl0dGlndWVzcy5sb2NhbCIsInN1YiI6InRlc3QtYWdlbnQtMUBoaXR0aWd1ZXNzLmxvY2FsIiwiaWF0IjoxNzg5NjgyMzU5LCJleHAiOjE3ODk2ODMyNTl9.CJfzjSD4_hlkce7J1e5IKNgXmcxgtNWLQEZ92DHGDXQ4XgN_QjG-g93961vmKUJDkbV1lIewLxn15f3HgMS0wg",
+      "domain": "localhost",
+      "path": "/",
+      "expires": 1789683259,
+      "httpOnly": true,
+      "secure": false,
+      "sameSite": "Strict"
+    },
+    {
+      "name": "session_hint",
+      "value": "1",
+      "domain": "localhost",
+      "path": "/",
+      "expires": 1790287159,
+      "httpOnly": true,
+      "secure": false,
+      "sameSite": "Strict"
+    },
+    {
+      "name": "XSRF-TOKEN",
+      "value": "7015256d-64f6-41e1-baeb-c82664b0de93",
+      "domain": "localhost",
+      "path": "/",
+      "expires": -1,
+      "httpOnly": false,
+      "secure": false,
+      "sameSite": "Lax"
+    }
+  ],
+  "origins": [
+    {
+      "origin": "http://localhost:3000",
+      "localStorage": [
+        {
+          "name": "theme",
+          "value": "dark"
+        }
+      ]
+    }
+  ]
+}
