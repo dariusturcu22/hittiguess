@@ -175,6 +175,7 @@ public class PlaylistService {
         playlistRepository.deleteGroupPlaylistLinks(playlistId);
         savedPlaylistRepository.deleteByPlaylistId(playlistId);
         playlistBanRepository.deleteByPlaylistId(playlistId);
+        playlist.getSongs().clear();
         playlistRepository.delete(playlist);
     }
 

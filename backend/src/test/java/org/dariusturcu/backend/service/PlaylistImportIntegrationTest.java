@@ -19,6 +19,7 @@ import org.dariusturcu.backend.repository.UserRepository;
 import org.dariusturcu.backend.security.UserPrincipal;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
 import org.springframework.boot.persistence.autoconfigure.EntityScan;
@@ -96,6 +97,22 @@ class PlaylistImportIntegrationTest {
         }
 
         @Bean
+        PlaylistService playlistService(
+                PlaylistRepository playlistRepository,
+                SongRepository songRepository,
+                PlaylistMapper playlistMapper,
+                SongMapper songMapper,
+                PlaylistAccessService playlistAccessService,
+                PlaylistMembershipRepository playlistMembershipRepository,
+                PlaylistBanRepository playlistBanRepository,
+                SavedPlaylistRepository savedPlaylistRepository) {
+            return new PlaylistService(playlistRepository, songRepository, playlistMapper, songMapper,
+                    playlistAccessService, playlistMembershipRepository, playlistBanRepository,
+                    savedPlaylistRepository, Mockito.mock(CatalogSeedingService.class),
+                    Mockito.mock(SongMetadataService.class));
+        }
+
+        @Bean
         UserService userService(
                 UserRepository userRepository,
                 PlaylistRepository playlistRepository,
@@ -132,6 +149,8 @@ class PlaylistImportIntegrationTest {
     private PlaylistMembershipRepository playlistMembershipRepository;
     @Autowired
     private PlaylistImportService playlistImportService;
+    @Autowired
+    private PlaylistService playlistService;
     @PersistenceContext
     private EntityManager entityManager;
 
@@ -240,6 +259,20 @@ class PlaylistImportIntegrationTest {
         assertThat(reload(target.getId()).getSongs())
                 .extracting(Song::getId)
                 .containsExactly(song.getId());
+    }
+
+    @Test
+    void deletePlaylistWithSongsUnlinksThemWithoutDeletingSongs() {
+        User owner = persistUser("owner");
+        actAs(owner);
+        Playlist playlist = persistPlaylist(owner, "TGTDEL01");
+        Song song = persistSong(owner, "Doomed");
+        linkSong(playlist, song);
+
+        playlistService.deletePlaylist(playlist.getId());
+
+        assertThat(playlistRepository.findById(playlist.getId())).isEmpty();
+        assertThat(songRepository.findById(song.getId())).isPresent();
     }
 
     @Test
