@@ -65,6 +65,7 @@ import { PhantomEmptyState } from "@/components/phantom-empty-state";
 
 const ACTIVE_IMPORT_REFRESH_MILLISECONDS = 5_000;
 
+const MEMBER_STACK_VISIBLE_COUNT = 3;
 const MEMBER_AVATAR_COLORS = [
   "var(--primary)",
   "#89b4fa",
@@ -392,7 +393,7 @@ export default function PlaylistContent({
             <PopoverTrigger className="flex w-full items-center justify-between gap-3 rounded-lg text-left outline-none transition-colors hover:bg-secondary/50 focus-visible:ring-2 focus-visible:ring-ring">
               <span className="font-display text-[11px] text-muted-foreground">Members ({playlist.members.length})</span>
               <span className="flex -space-x-2">
-                {playlist.members.slice(0, 4).map((member, index) => (
+                {playlist.members.slice(0, MEMBER_STACK_VISIBLE_COUNT).map((member, index) => (
                   <MemberAvatar
                     key={member.userId ?? index}
                     initial={(member.displayName ?? member.username ?? "?").charAt(0).toUpperCase()}
@@ -400,6 +401,11 @@ export default function PlaylistContent({
                     size={26}
                   />
                 ))}
+                {playlist.members.length > MEMBER_STACK_VISIBLE_COUNT ? (
+                  <span className="flex size-[26px] shrink-0 items-center justify-center rounded-full border-[3px] border-card bg-muted font-display text-[10px] text-muted-foreground">
+                    +{playlist.members.length - MEMBER_STACK_VISIBLE_COUNT}
+                  </span>
+                ) : null}
               </span>
             </PopoverTrigger>
             <PopoverContent align="end" className="max-h-[360px] overflow-y-auto p-0">

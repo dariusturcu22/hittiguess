@@ -844,3 +844,16 @@ sign-in is unavailable over LAN; testers use local accounts.
 
 Tests:
 - [x] Frontend lint and the two password-flow page tests stay green (no behavior code changes in this batch)
+
+## LAN playtest findings, batch 4 (library, shell, settings, chat)
+
+- [x] Playlist member stack shows the overlap plus overflow count per the reference
+- [x] Explore call-to-action carries an icon
+- [x] Sidebar logo bars randomize per mount instead of a fixed loop
+- [x] Group nav button exists only in a group, stronger highlight on the group page
+- [x] Settings dropdowns use the shadcn Select instead of native controls
+- [x] Lobby chat floats above its button
+- [ ] Profile and settings pages need mockups before building (blocked on owner direction)
+
+Tests:
+- [x] Stack overflow, Radix settings selects, group button rules, floating chat variant, plus screenshot verification of settings and chat

@@ -170,8 +170,10 @@ describe("GroupLobbyPage start options", () => {
     await renderPage();
 
     fireEvent.click(screen.getByRole("button", { name: "Settings" }));
-    fireEvent.change(screen.getByLabelText("DJ mode"), { target: { value: "FIXED" } });
-    fireEvent.change(screen.getByLabelText("Fixed DJ"), { target: { value: "2" } });
+    fireEvent.click(screen.getByRole("combobox", { name: "DJ mode" }));
+    fireEvent.click(screen.getByRole("option", { name: "Fixed" }));
+    fireEvent.click(screen.getByRole("combobox", { name: "Fixed DJ" }));
+    fireEvent.click(screen.getByRole("option", { name: "Sam" }));
     fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
 
     expect(updateSettingsMutate).toHaveBeenCalledWith(

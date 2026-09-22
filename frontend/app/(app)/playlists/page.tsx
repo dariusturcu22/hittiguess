@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import Link from "next/link";
+import { Compass } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 
@@ -133,6 +134,9 @@ function ExploreLinkCard() {
       href="/explore"
       className="flex aspect-square flex-col items-center justify-center gap-3 self-start rounded-2xl border-[3px] border-dashed border-border p-5"
     >
+      <span className="flex h-11 w-11 items-center justify-center rounded-full border-2 border-border">
+        <Compass className="size-5 text-muted-foreground" />
+      </span>
       <div className="font-display text-sm text-muted-foreground">Explore public playlists</div>
       <span className="rounded-full bg-accent px-6 py-2 font-display text-xs text-accent-foreground">Explore</span>
     </Link>
