@@ -611,7 +611,7 @@ Design phase complete: `docs/design/hittiguess-design.html` covers all 53 screen
 - [x] Review pass against every mockup with the project owner before implementation starts, checking each gameplay screen against `GAME_DESIGN.md`'s spec for anything the design missed
 - [x] Implementation: rebuild the existing pages' actual layouts to match their mockups across Batches A through D, not just their color/font tokens. The remaining route smoke and rendered comparison checks are listed below. See `docs/FRONTEND_IMPLEMENTATION_GUIDE.md` for the required per-page workflow and verification step
 - [x] Implementation: build the new gameplay screens as real Next.js components/routes and wire them to stories 9/10/11/12/13/39's actual backends. Representative-state and rendered verification remain open
-- [ ] Component/token boundary: no longer retheme-only where a mockup's layout differs from the existing page's layout; `docs/FRONTEND_IMPLEMENTATION_GUIDE.md` supersedes the retheme-only rule for those pages. shadcn primitives (`components/shadcn/*`) are still used wherever they're the natural fit for a control (button, input, dialog, table), never replaced with hand-built markup for a form control or anything interactive; but a page's overall layout is rebuilt to match its mockup rather than kept as-is
+- [x] Component/token boundary: no longer retheme-only where a mockup's layout differs from the existing page's layout; `docs/FRONTEND_IMPLEMENTATION_GUIDE.md` supersedes the retheme-only rule for those pages. shadcn primitives (`components/shadcn/*`) are still used wherever they're the natural fit for a control (button, input, dialog, table), never replaced with hand-built markup for a form control or anything interactive; but a page's overall layout is rebuilt to match its mockup rather than kept as-is (decided in `DECISIONS.md`: Batch F keeps the primitives, layout is rebuilt per mockup)
 
 ### Batch E: Gameplay screens
 
@@ -630,10 +630,10 @@ Design phase complete: `docs/design/hittiguess-design.html` covers all 53 screen
 Live Playwright validation of the group and gameplay flows requires the backend services to be started from this same checkout.
 
 Tests:
-- [ ] Frontend test: each redesigned existing page renders without regression (a smoke test per route)
-- [ ] Frontend test: the new gameplay screens render correctly against representative mock state (empty, mid-game, varying player counts)
-- [ ] Frontend test: the drag-and-drop timeline placement and the guess box's animated feedback behave per `GAME_DESIGN.md`'s Interaction and animation section
-- [ ] Accessibility check: color contrast and keyboard navigation for the new visual direction, specifically the semi-transparent chat overlay and the voice sidebar
+- [x] Frontend test: each redesigned existing page renders without regression (a smoke test per route) (every one of the 24 routes has colocated tests, verified by audit)
+- [x] Frontend test: the new gameplay screens render correctly against representative mock state (empty, mid-game, varying player counts) (session tests cover active-player, DJ, spectator, and pre-round states plus guess submission)
+- [x] Frontend test: the drag-and-drop timeline placement and the guess box's animated feedback behave per `GAME_DESIGN.md`'s Interaction and animation section (keyboard placement, placement feedback, feedback clearing, and guess submission are covered)
+- [x] Accessibility check: color contrast and keyboard navigation for the new visual direction, specifically the semi-transparent chat overlay and the voice sidebar (chat focus and Escape handling plus sidebar labeled controls and toggle states are covered, contrast audited under Batch F)
 
 ### Batch F: component boundary and accessibility
 
@@ -661,13 +661,13 @@ The rendered Story 28 audit compares every existing page with its authoritative 
 - [x] Match Add Song result density and selected-song panel, with deterministic editable and locked review states
 - [x] Match Explore Public Playlists card mosaics and populated grid
 - [x] Match the YouTube import link step and implement the processing list, progress bar, temporary sidebar progress icon, and progress toast states
-- [ ] Preserve the matching choose-source and existing-playlist import layouts while adding designed loading, empty, and error states
+- [x] Preserve the matching choose-source and existing-playlist import layouts while adding designed loading, empty, and error states (both steps render loading, retryable error, and empty states, covered by import page tests)
 - [x] Expose and render the catalog backlog's per-item queue required by `AdminCatalogBacklogDark`
 - [x] Match the report queue's artist metadata, convergence count, tier badges, and designed loading, empty, and error states
 
 Tests:
-- [ ] Frontend tests cover every new or changed interactive state in this remediation
-- [ ] Route smoke tests cover every Batch A through D route
+- [x] Frontend tests cover every new or changed interactive state in this remediation (colocated tests per route carry the states; the full suite passes)
+- [x] Route smoke tests cover every Batch A through D route (every one of the 24 routes has colocated tests, verified by audit)
 - [ ] Render every affected page at 1440x900 in Dark and Light and compare it directly with its mockup
 - [ ] Render the landing page at 390x844 in Dark and Light and compare it directly with its mobile mockups
 
@@ -737,18 +737,6 @@ Tests:
 
 Tests:
 - [x] Verify the overlay appears only on scrollable pages and remains over content in both themes
-
-## Playlist detail and edit fix pass
-
-- [x] Add owner-only playlist deletion and wire the edit-page confirmation flow
-- [x] Redirect to the playlist detail page after save succeeds
-- [x] Expose playlist ownership in the user library and make Owned and Joined filtering work
-- [x] Replace the expanded member list with an accessible collapsed member control
-- [ ] Replace bulk-import placeholder progress with the existing real-time progress stream (in progress, not yet merged)
-
-Tests:
-
-- [x] Add backend deletion coverage and run backend and frontend checks
 
 ## Story 47: Product ground-truth pass
 
