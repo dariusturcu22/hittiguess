@@ -556,6 +556,22 @@ Checked against real code: the backend has exactly one test file, an empty `cont
 
 Tests:
 - [x] None; this story changes comments only, no behavior. Run each service's existing test suite once after the pass to confirm nothing was accidentally deleted along with a comment (a comment removal that took its statement's closing brace or trailing code with it) (backend suite green after the pass; no frontend files touched)
+## Story 49: Naming consistency
+
+The project's real name is `hittiguess`. Earlier working names (`Hitster`, `My Hitster`, `HitGuessr`) still appear in a handful of places that were never updated after the rename. A reference to the actual Hitster board game as the product's inspiration, in `README.md` and the landing page copy, is correct as written and stays.
+
+Checked against real code, every remaining old-name occurrence:
+
+- [x] `backend/docker-compose.yml`: rename the `my-hitster-postgres` container and the `hitster_postgres_data` volume (renamed all four identifiers including the analytics pair; no other file references them)
+- [x] `backend/src/main/java/org/dariusturcu/backend/config/SecurityConfig.java`: update the hardcoded `https://my-hitster.dariusturcu22.com` allowed CORS origin (already env-driven via `FRONTEND_ALLOWED_ORIGINS`, no hardcode left; the production-domain default value stays as live infrastructure)
+- [x] `backend/src/main/java/org/dariusturcu/backend/websocket/WebSocketConfig.java`: update the same hardcoded `https://my-hitster.dariusturcu22.com` allowed origin (already env-driven, same as above)
+- [x] `ai/app/main.py`: rename the FastAPI app's `title` from `"hitguessr AI microservice"` (plus the same leftover in `ai/pyproject.toml`'s description)
+- [x] `frontend/components/app-sidebar.tsx` and `frontend/components/logo.tsx`: rename the displayed `"My Hitster"` brand text (already `hittiguess` wordmark and icon-only sidebar, nothing to change)
+- [x] `frontend/orval.config.ts`: rename the `myHitster` and `myHitsterZod` generator config keys (renamed; regen output verified byte-identical apart from the banner)
+- [x] Re-run the same search across the codebase once the above land, to catch anything this pass missed (generated API client output, environment variable names, deployment config) (re-ran: only the task text itself, the live production-domain default, and the legitimate board-game reference remain)
+
+Tests:
+- [x] Confirm the existing CORS-related backend tests still pass after the `SecurityConfig`/`WebSocketConfig` origin rename (origins are env-driven; the CORS tests pass with neutral example origins)
 ## Playlist detail and edit fix pass
 
 - [x] Add owner-only playlist deletion and wire the edit-page confirmation flow

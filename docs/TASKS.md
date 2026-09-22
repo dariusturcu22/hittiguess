@@ -793,22 +793,6 @@ Tests:
 - [x] Playwright multi-user coverage for join, lobby, full rounds, results, and the import background flow
 - [ ] Voice delivery check with the synthetic-tone method, plus the contrast and motion spot checks from story 28
 
-## Story 49: Naming consistency
-
-The project's real name is `hittiguess`. Earlier working names (`Hitster`, `My Hitster`, `HitGuessr`) still appear in a handful of places that were never updated after the rename. A reference to the actual Hitster board game as the product's inspiration, in `README.md` and the landing page copy, is correct as written and stays.
-
-Checked against real code, every remaining old-name occurrence:
-
-- [ ] `backend/docker-compose.yml`: rename the `my-hitster-postgres` container and the `hitster_postgres_data` volume
-- [ ] `backend/src/main/java/org/dariusturcu/backend/config/SecurityConfig.java`: update the hardcoded `https://my-hitster.dariusturcu22.com` allowed CORS origin
-- [ ] `backend/src/main/java/org/dariusturcu/backend/websocket/WebSocketConfig.java`: update the same hardcoded `https://my-hitster.dariusturcu22.com` allowed origin
-- [ ] `ai/app/main.py`: rename the FastAPI app's `title` from `"hitguessr AI microservice"`
-- [ ] `frontend/components/app-sidebar.tsx` and `frontend/components/logo.tsx`: rename the displayed `"My Hitster"` brand text
-- [ ] `frontend/orval.config.ts`: rename the `myHitster` and `myHitsterZod` generator config keys
-- [ ] Re-run the same search across the codebase once the above land, to catch anything this pass missed (generated API client output, environment variable names, deployment config)
-
-Tests:
-- [ ] Confirm the existing CORS-related backend tests still pass after the `SecurityConfig`/`WebSocketConfig` origin rename
 
 ## Story 50: Auth hardening
 

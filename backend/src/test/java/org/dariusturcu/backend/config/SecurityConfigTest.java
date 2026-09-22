@@ -23,8 +23,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class SecurityConfigTest {
 
     private static final String LOCAL_FRONTEND_ORIGIN = "http://localhost:3000";
-    private static final String PRODUCTION_FRONTEND_ORIGIN = "https://my-hitster.dariusturcu22.com";
-    private static final String ALTERNATE_FRONTEND_ORIGIN = "http://localhost:3001";
+    private static final String SECOND_FRONTEND_ORIGIN = "http://localhost:3001";
 
     @Mock
     private JwtAuthenticationFilter jwtAuthenticationFilter;
@@ -52,26 +51,26 @@ class SecurityConfigTest {
 
     @Test
     void corsConfigurationUsesConfiguredFrontendOrigins() {
-        SecurityConfig securityConfig = securityConfigWithOrigins(List.of(ALTERNATE_FRONTEND_ORIGIN));
+        SecurityConfig securityConfig = securityConfigWithOrigins(List.of(SECOND_FRONTEND_ORIGIN));
 
         CorsConfiguration configuration = securityConfig.corsConfigurationSource()
                 .getCorsConfiguration(new MockHttpServletRequest("GET", "/api/groups"));
 
         assertThat(configuration).isNotNull();
-        assertThat(configuration.getAllowedOrigins()).containsExactly(ALTERNATE_FRONTEND_ORIGIN);
+        assertThat(configuration.getAllowedOrigins()).containsExactly(SECOND_FRONTEND_ORIGIN);
     }
 
     @Test
-    void defaultFrontendOriginsRemainAllowed() {
+    void multipleFrontendOriginsRemainAllowed() {
         SecurityConfig securityConfig = securityConfigWithOrigins(
-                List.of(LOCAL_FRONTEND_ORIGIN, PRODUCTION_FRONTEND_ORIGIN));
+                List.of(LOCAL_FRONTEND_ORIGIN, SECOND_FRONTEND_ORIGIN));
 
         CorsConfiguration configuration = securityConfig.corsConfigurationSource()
                 .getCorsConfiguration(new MockHttpServletRequest("GET", "/api/groups"));
 
         assertThat(configuration).isNotNull();
         assertThat(configuration.getAllowedOrigins())
-                .containsExactly(LOCAL_FRONTEND_ORIGIN, PRODUCTION_FRONTEND_ORIGIN);
+                .containsExactly(LOCAL_FRONTEND_ORIGIN, SECOND_FRONTEND_ORIGIN);
     }
 
     private SecurityConfig securityConfigWithOrigins(List<String> allowedOrigins) {
