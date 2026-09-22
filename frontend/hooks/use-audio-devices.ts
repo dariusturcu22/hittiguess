@@ -60,6 +60,10 @@ function snapshotLists(): DeviceLists {
   return cachedLists;
 }
 
+function snapshotListsServer(): DeviceLists {
+  return EMPTY_LISTS;
+}
+
 function storedDeviceId(key: string): string | undefined {
   if (typeof window === "undefined") {
     return undefined;
@@ -82,7 +86,7 @@ function persistDeviceId(key: string, deviceId: string | undefined) {
 // Device labels stay empty until microphone permission is granted; selection
 // persists in local storage so it survives reloads.
 export function useAudioDevices() {
-  const { microphones, speakers } = useSyncExternalStore(subscribeLists, snapshotLists);
+  const { microphones, speakers } = useSyncExternalStore(subscribeLists, snapshotLists, snapshotListsServer);
   const [microphoneDeviceId, setMicrophoneDeviceId] = useState<string | undefined>(() =>
     storedDeviceId(MICROPHONE_STORAGE_KEY),
   );
