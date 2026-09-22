@@ -837,6 +837,7 @@ sign-in is unavailable over LAN; testers use local accounts.
 
 - [x] Document the three LAN env values in both `.env.example` files
 - [x] Add a local-network playtest section to `docs/DEV_SETUP.md`
+- [x] Allow the dev server's LAN origin: Next.js blocks non-localhost origins on dev-only assets (`/_next/*` chunks return 403 with no client JS at all), so `next.config.ts` derives `allowedDevOrigins` from `NEXT_PUBLIC_API_URL` instead of hardcoding a machine-specific IP
 - [ ] Manual multi-device playtest: full game plus voice, recorded here once played
 
 Tests:
