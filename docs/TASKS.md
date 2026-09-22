@@ -844,3 +844,13 @@ sign-in is unavailable over LAN; testers use local accounts.
 
 Tests:
 - [x] Frontend lint and the two password-flow page tests stay green (no behavior code changes in this batch)
+
+## LAN playtest findings, batch 3 (lobby start flow, voice sidebar)
+
+- [x] Voice sidebar: no collapse control, hidden outside calls except on the lobby page, slim rail matching the left sidebar with the join action on top
+- [x] Playlist chip opens a tier popup (easy/medium/hard/custom) below it; custom opens a fullscreen multi-playlist picker with a chosen list and a back path; the standalone Custom start button goes away
+- [x] Two-player minimum only as a popup on Start, never persistent
+- [x] Lobby content scrolls on zoom with bottom actions pinned; avatar and name float as one unit
+
+Tests:
+- [x] Lobby suite covers the tier popup, custom picker with back path, min-players popup, and the removed custom start (plus a fixed infinite loop in the playlist preselect capture)

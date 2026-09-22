@@ -106,8 +106,8 @@ function LobbyMember({
   const floatDelay = `${(index % LOBBY_FLOAT_STAGGER_CYCLE) * -LOBBY_FLOAT_STAGGER_SECONDS}s`;
 
   return (
-    <div className={`absolute ${orbitPosition} flex flex-col items-center`}>
-      <div className="relative lobby-float" style={{ animationDelay: floatDelay }}>
+    <div className={`absolute ${orbitPosition} lobby-float flex flex-col items-center`} style={{ animationDelay: floatDelay }}>
+      <div className="relative">
         <div
           className={`flex size-[76px] items-center justify-center rounded-full font-display text-2xl shadow-[0_0_0_3px_var(--background),0_0_0_8px_var(--green)] sm:size-[108px] sm:text-[34px] ${colorClass} ${
             member.isConnected ? "" : "opacity-50 grayscale"
@@ -151,14 +151,13 @@ export default function GroupLobbyPage({ params }: PageProps) {
   const queryClient = useQueryClient();
   const [copyFeedback, setCopyFeedback] = useState("");
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-  const [isPlaylistSelectorOpen, setIsPlaylistSelectorOpen] = useState(false);
+  const [isTierPopupOpen, setIsTierPopupOpen] = useState(false);
+  const [isCustomPickerOpen, setIsCustomPickerOpen] = useState(false);
+  const [isMinPlayersOpen, setIsMinPlayersOpen] = useState(false);
   const [isChatOpen, setIsChatOpen] = useState(false);
-  const [isStartOptionsOpen, setIsStartOptionsOpen] = useState(false);
-  const [startMode, setStartMode] = useState<"difficulty" | "custom">("difficulty");
   const [selectedTier, setSelectedTier] = useState<GenerateDifficultySetRequestTier>("MEDIUM");
   const [targetCardCount, setTargetCardCount] = useState(MINIMUM_WIN_CONDITION);
   const [reviewedSongs, setReviewedSongs] = useState<GeneratedSongPreviewDTO[] | null>(null);
-  const [selectedCustomPlaylistId, setSelectedCustomPlaylistId] = useState<number | undefined>(undefined);
   const [playlistLink, setPlaylistLink] = useState("");
   const [startError, setStartError] = useState("");
   const [selectedDjMode, setSelectedDjMode] = useState<"FIXED" | "ROTATING">("ROTATING");
@@ -190,6 +189,10 @@ export default function GroupLobbyPage({ params }: PageProps) {
     : groupPlaylists.length === 1
       ? (featuredPlaylist?.name ?? "No playlist selected")
       : `${groupPlaylists.length} playlists`;
+  const selectedPlaylistNames = (playlistsQuery.data ?? [])
+    .filter((playlist) => selectedPlaylistIds.includes(playlist.id))
+    .map((playlist) => playlist.name)
+    .join(", ");
 
   useEffect(() => {
     if (activeSessionQuery.data?.id) {
@@ -216,28 +219,51 @@ export default function GroupLobbyPage({ params }: PageProps) {
   }
 
   function handleStartGame() {
+    if (members.length < MINIMUM_PLAYERS_TO_START) {
+      setIsMinPlayersOpen(true);
+      return;
+    }
     startSession.mutate({ groupId }, { onSuccess: () => { refreshGroup(); refreshActiveMembership(); } });
   }
 
-  function openStartOptions() {
-    setStartMode("difficulty");
+  function openTierPopup() {
     setReviewedSongs(null);
     setStartError("");
-    setPlaylistLink("");
-    setSelectedCustomPlaylistId(undefined);
     setTargetCardCount(
       Math.max(
         MINIMUM_TARGET_CARD_COUNT,
         (groupQuery.data?.winConditionCardCount ?? MINIMUM_WIN_CONDITION) + members.length,
       ),
     );
-    setIsStartOptionsOpen(true);
+    setIsTierPopupOpen(true);
   }
 
-  function closeStartOptions() {
-    setIsStartOptionsOpen(false);
+  function closeTierPopup() {
+    setIsTierPopupOpen(false);
     setReviewedSongs(null);
     setStartError("");
+  }
+
+  function openCustomPicker() {
+    setSelectedPlaylistIds(
+      (groupQuery.data?.playlists ?? [])
+        .map((playlist) => playlist.id)
+        .filter((id): id is number => id !== undefined),
+    );
+    setStartError("");
+    setPlaylistLink("");
+    setIsTierPopupOpen(false);
+    setIsCustomPickerOpen(true);
+  }
+
+  function closeCustomPicker() {
+    setIsCustomPickerOpen(false);
+    setStartError("");
+  }
+
+  function backToTiers() {
+    setIsCustomPickerOpen(false);
+    setIsTierPopupOpen(true);
   }
 
   function PlaylistPreselectCapture({ onCapture }: { onCapture: (playlistId: number | null) => void }) {
@@ -260,17 +286,23 @@ export default function GroupLobbyPage({ params }: PageProps) {
     if (playlistId === null) {
       return;
     }
-    setStartMode("custom");
-    setReviewedSongs(null);
+    // Functional update returning the same reference when nothing changes:
+    // the capture component above is re-created every render, so its effect
+    // re-fires on each remount and only identical-state bailouts stop it.
+    setSelectedPlaylistIds((currentIds) =>
+      currentIds.length === 1 && currentIds[0] === playlistId ? currentIds : [playlistId],
+    );
     setStartError("");
-    setSelectedCustomPlaylistId(playlistId);
-    setIsStartOptionsOpen(true);
+    setPlaylistLink("");
+    setIsTierPopupOpen(false);
+    setIsCustomPickerOpen(true);
   }, []);
 
   function handleModeStartSuccess() {
     refreshGroup();
     refreshActiveMembership();
-    closeStartOptions();
+    closeTierPopup();
+    closeCustomPicker();
   }
 
   function handleGenerateSet() {
@@ -305,15 +337,19 @@ export default function GroupLobbyPage({ params }: PageProps) {
     );
   }
 
-  function handleStartCustomPlaylist() {
-    if (selectedCustomPlaylistId === undefined) {
+  function handleConfirmCustomSelection() {
+    if (selectedPlaylistIds.length === 0) {
       return;
     }
     setStartError("");
-    startCustom.mutate(
-      { groupId, data: { playlistId: selectedCustomPlaylistId } },
+    updateSettings.mutate(
+      { groupId, data: { playlistIds: selectedPlaylistIds } },
       {
-        onSuccess: handleModeStartSuccess,
+        onSuccess: () => {
+          refreshGroup();
+          setIsCustomPickerOpen(false);
+          handleStartGame();
+        },
         onError: (error) => setStartError(mutationErrorMessage(error)),
       },
     );
@@ -361,15 +397,6 @@ export default function GroupLobbyPage({ params }: PageProps) {
     );
   }
 
-  function openPlaylistSelector() {
-    setSelectedPlaylistIds(
-      (groupQuery.data?.playlists ?? [])
-        .map((playlist) => playlist.id)
-        .filter((id): id is number => id !== undefined),
-    );
-    setIsPlaylistSelectorOpen(true);
-  }
-
   function togglePlaylistSelected(playlistId: number | undefined) {
     if (playlistId === undefined) {
       return;
@@ -378,16 +405,6 @@ export default function GroupLobbyPage({ params }: PageProps) {
       currentIds.includes(playlistId)
         ? currentIds.filter((id) => id !== playlistId)
         : [...currentIds, playlistId],
-    );
-  }
-
-  function savePlaylistSelection() {
-    updateSettings.mutate(
-      {
-        groupId,
-        data: { playlistIds: selectedPlaylistIds },
-      },
-      { onSuccess: () => { refreshGroup(); setIsPlaylistSelectorOpen(false); } },
     );
   }
 
@@ -434,24 +451,80 @@ export default function GroupLobbyPage({ params }: PageProps) {
           Group Lobby
         </h1>
         {isCurrentUserAdmin ? (
-          <button
-            type="button"
-            onClick={openPlaylistSelector}
-            title="Choose playlists"
-            aria-label="Choose playlists"
-            className="inline-flex w-fit cursor-pointer items-center gap-2.5 rounded-full border-2 border-border bg-card py-2 pl-2 pr-4 transition-colors hover:border-primary/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-          >
-            <span
-              className="size-[26px] rounded-[8px]"
-              style={{ backgroundColor: featuredPlaylist ? `#${featuredPlaylist.color}` : "var(--primary)" }}
-            />
-            <span className="font-semibold text-[13px] text-card-foreground">
-              {playlistChipLabel}
-            </span>
-            {featuredPlaylist ? (
-              <span className="text-xs text-muted-foreground">{featuredPlaylist.songCount} songs</span>
+          <div className="relative w-fit">
+            <button
+              type="button"
+              onClick={openTierPopup}
+              title="Choose playlists"
+              aria-label="Choose playlists"
+              className="inline-flex w-fit cursor-pointer items-center gap-2.5 rounded-full border-2 border-border bg-card py-2 pl-2 pr-4 transition-colors hover:border-primary/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+            >
+              <span
+                className="size-[26px] rounded-[8px]"
+                style={{ backgroundColor: featuredPlaylist ? `#${featuredPlaylist.color}` : "var(--primary)" }}
+              />
+              <span className="font-semibold text-[13px] text-card-foreground">
+                {playlistChipLabel}
+              </span>
+              {featuredPlaylist ? (
+                <span className="text-xs text-muted-foreground">{featuredPlaylist.songCount} songs</span>
+              ) : null}
+            </button>
+            {isTierPopupOpen ? (
+              <>
+                <button type="button" aria-label="Close start options" onClick={closeTierPopup} className="fixed inset-0 z-10 cursor-default" />
+                <section aria-label="Start options" className="absolute right-0 top-full z-20 mt-2 w-[320px] rounded-[18px] border-[3px] border-border bg-card p-5 shadow-[6px_6px_0_rgba(0,0,0,0.35)]">
+                  <div className="mb-4 flex flex-wrap gap-2">
+                    {DIFFICULTY_TIERS.map((tier) => (
+                      <button
+                        key={tier}
+                        type="button"
+                        onClick={() => { setSelectedTier(tier); setReviewedSongs(null); setStartError(""); }}
+                        aria-pressed={selectedTier === tier}
+                        className={`cursor-pointer rounded-full px-4 py-2 font-display text-xs ${selectedTier === tier ? "bg-accent text-accent-foreground" : "border-2 border-border text-muted-foreground"}`}
+                      >
+                        {tier.charAt(0) + tier.slice(1).toLowerCase()}
+                      </button>
+                    ))}
+                    <button
+                      type="button"
+                      onClick={openCustomPicker}
+                      className="cursor-pointer rounded-full border-2 border-border px-4 py-2 font-display text-xs text-muted-foreground"
+                    >
+                      Custom
+                    </button>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <label className="flex items-center gap-2 text-[13px] text-muted-foreground">
+                      Cards
+                      <input type="number" min={MINIMUM_TARGET_CARD_COUNT} value={targetCardCount} onChange={(event) => setTargetCardCount(Math.max(MINIMUM_TARGET_CARD_COUNT, Number(event.target.value)))} className="w-20 rounded-full border-2 border-border bg-background px-3 py-1.5 text-right text-sm font-semibold text-foreground outline-none" />
+                    </label>
+                    <button type="button" onClick={handleGenerateSet} disabled={generateSet.isPending} className="rounded-full bg-primary px-4 py-2 font-display text-xs text-primary-foreground disabled:opacity-60">
+                      {generateSet.isPending ? "Generating" : "Generate"}
+                    </button>
+                  </div>
+                  {reviewedSongs ? (
+                    <div className="mt-4">
+                      <p className="mb-2 text-[13px] text-muted-foreground">Review the set, then confirm to start.</p>
+                      <ul className="max-h-48 space-y-1.5 overflow-y-auto pr-1">
+                        {reviewedSongs.map((preview) => (
+                          <li key={preview.id} className="flex items-baseline justify-between gap-3 rounded-xl border-2 border-border bg-background px-3 py-2">
+                            <span className="truncate text-sm font-semibold text-foreground">{preview.title} <span className="font-normal text-muted-foreground">{(preview.artists ?? []).join(", ")}</span></span>
+                            <span className="shrink-0 font-display text-sm text-accent">{preview.releaseYear}</span>
+                          </li>
+                        ))}
+                      </ul>
+                      <button type="button" onClick={handleConfirmGeneratedSet} disabled={startWithSongs.isPending} className="mt-3 inline-flex items-center gap-2 rounded-full bg-accent px-5 py-2.5 font-display text-xs text-accent-foreground disabled:opacity-60">
+                        {startWithSongs.isPending ? <Loader2 className="size-4 animate-spin" /> : <Play className="size-4 fill-current" />}
+                        Confirm and start
+                      </button>
+                    </div>
+                  ) : null}
+                  {startError ? <p role="alert" className="mt-4 text-sm text-destructive">{startError}</p> : null}
+                </section>
+              </>
             ) : null}
-          </button>
+          </div>
         ) : (
           <div className="inline-flex w-fit items-center gap-2.5 rounded-full border-2 border-border bg-card py-2 pl-2 pr-4">
             <span
@@ -468,7 +541,7 @@ export default function GroupLobbyPage({ params }: PageProps) {
         )}
       </header>
 
-      <section className="relative flex min-h-[480px] flex-1 items-center justify-center overflow-hidden py-10">
+      <section className="relative flex min-h-0 flex-1 items-center justify-center overflow-y-auto py-10">
         <div className="z-10 text-center">
           <p className="mb-3 font-semibold text-[11px] uppercase tracking-[0.25em] text-muted-foreground">
             Enter code to join
@@ -530,18 +603,21 @@ export default function GroupLobbyPage({ params }: PageProps) {
             </section>
           </>
         ) : null}
-        {isPlaylistSelectorOpen ? (
+        {isCustomPickerOpen ? (
           <>
-            <button type="button" aria-label="Close playlist selection" onClick={() => setIsPlaylistSelectorOpen(false)} className="fixed inset-0 z-10 cursor-default" />
-            <section aria-label="Choose playlists" className="absolute bottom-7 left-0 z-20 w-full max-w-[400px] rounded-[18px] border-[3px] border-border bg-card p-6 shadow-[6px_6px_0_rgba(0,0,0,0.35)] sm:left-[228px] sm:p-7">
+            <button type="button" aria-label="Close playlist selection" onClick={closeCustomPicker} className="absolute inset-0 z-20 cursor-default bg-background/80" />
+            <section aria-label="Custom playlist selection" className="absolute inset-x-0 top-0 bottom-0 z-30 overflow-y-auto rounded-[18px] border-[3px] border-border bg-card p-6 shadow-[6px_6px_0_rgba(0,0,0,0.35)] sm:p-8">
               <div className="mb-5 flex items-center justify-between">
-                <h2 className="font-display text-lg text-card-foreground">Playlists</h2>
-                <button type="button" onClick={() => setIsPlaylistSelectorOpen(false)} className="text-muted-foreground hover:text-card-foreground">Close</button>
+                <div className="flex items-center gap-3">
+                  <button type="button" onClick={backToTiers} className="text-muted-foreground hover:text-card-foreground">Back</button>
+                  <h2 className="font-display text-lg text-card-foreground">Choose playlists</h2>
+                </div>
+                <button type="button" onClick={closeCustomPicker} className="text-muted-foreground hover:text-card-foreground">Close</button>
               </div>
               <p className="mb-3 text-[13px] text-muted-foreground">
-                {selectedPlaylistIds.length === 0 ? "No playlists selected" : `${selectedPlaylistIds.length} playlist${selectedPlaylistIds.length === 1 ? "" : "s"} selected`}
+                {selectedPlaylistIds.length === 0 ? "No playlists selected" : `Chosen: ${selectedPlaylistNames}`}
               </p>
-              <div className="grid max-h-64 gap-2 overflow-y-auto pr-1">
+              <div className="grid gap-2 sm:grid-cols-2">
                 {playlistsQuery.data?.map((playlist) => {
                   const isSelected = selectedPlaylistIds.includes(playlist.id);
                   return (
@@ -561,112 +637,23 @@ export default function GroupLobbyPage({ params }: PageProps) {
                   );
                 })}
               </div>
-              <div className="mt-6 flex gap-2.5"><button type="button" onClick={savePlaylistSelection} disabled={updateSettings.isPending} className="rounded-full bg-primary px-4 py-2.5 font-display text-xs text-primary-foreground disabled:opacity-60">{updateSettings.isPending ? "Saving" : "Confirm"}</button><button type="button" onClick={() => setIsPlaylistSelectorOpen(false)} className="rounded-full border-2 border-border px-4 py-2.5 text-xs font-semibold text-card-foreground">Close</button></div>
+              <div className="mt-5">
+                <p className="mb-2 text-[13px] text-muted-foreground">Or paste a playlist link</p>
+                <div className="flex gap-2">
+                  <input type="text" value={playlistLink} onChange={(event) => setPlaylistLink(event.target.value)} placeholder="YouTube playlist link or id" aria-label="YouTube playlist link or id" className="min-w-0 flex-1 rounded-full border-2 border-border bg-background px-4 py-2 text-sm text-foreground outline-none placeholder:text-muted-foreground" />
+                  <button type="button" onClick={handleStartPlaylistLink} disabled={!playlistLink.trim() || startCustom.isPending} className="shrink-0 rounded-full bg-accent px-4 py-2 font-display text-xs text-accent-foreground disabled:cursor-not-allowed disabled:opacity-60">
+                    Start
+                  </button>
+                </div>
+              </div>
+              <div className="mt-6 flex gap-2.5">
+                <button type="button" onClick={handleConfirmCustomSelection} disabled={selectedPlaylistIds.length === 0 || updateSettings.isPending} className="rounded-full bg-primary px-4 py-2.5 font-display text-xs text-primary-foreground disabled:cursor-not-allowed disabled:opacity-60">
+                  {updateSettings.isPending ? "Saving" : "Confirm and start"}
+                </button>
+                <button type="button" onClick={closeCustomPicker} className="rounded-full border-2 border-border px-4 py-2.5 text-xs font-semibold text-card-foreground">Close</button>
+              </div>
+              {startError ? <p role="alert" className="mt-4 text-sm text-destructive">{startError}</p> : null}
             </section>
-          </>
-        ) : null}
-        {isStartOptionsOpen ? (
-          <>
-            <button type="button" aria-label="Close start options" onClick={closeStartOptions} className="fixed inset-0 z-10 cursor-default" />
-            <section aria-label="Custom start options" className="absolute bottom-7 left-0 z-20 w-full max-w-[440px] rounded-[18px] border-[3px] border-border bg-card p-6 shadow-[6px_6px_0_rgba(0,0,0,0.35)] sm:left-[228px] sm:p-7">
-            <div className="mb-5 flex items-center justify-between">
-              <h2 className="font-display text-lg text-card-foreground">Start options</h2>
-              <button type="button" onClick={closeStartOptions} className="text-muted-foreground hover:text-card-foreground">Close</button>
-            </div>
-            <div className="mb-4 flex gap-2">
-              <button
-                type="button"
-                onClick={() => { setStartMode("difficulty"); setReviewedSongs(null); setStartError(""); }}
-                className={`cursor-pointer rounded-full px-5 py-2 font-display text-xs ${startMode === "difficulty" ? "bg-accent text-accent-foreground" : "border-2 border-border text-muted-foreground"}`}
-              >
-                Difficulty
-              </button>
-              <button
-                type="button"
-                onClick={() => { setStartMode("custom"); setStartError(""); }}
-                className={`cursor-pointer rounded-full px-5 py-2 font-display text-xs ${startMode === "custom" ? "bg-accent text-accent-foreground" : "border-2 border-border text-muted-foreground"}`}
-              >
-                Custom
-              </button>
-            </div>
-            {startMode === "difficulty" ? (
-              <div className="space-y-4">
-                <div className="flex items-center gap-3">
-                  <label className="flex items-center gap-2 text-[13px] text-muted-foreground">
-                    Difficulty
-                    <select value={selectedTier} onChange={(event) => setSelectedTier(event.target.value as GenerateDifficultySetRequestTier)} className="rounded-full border-2 border-border bg-background px-3 py-1.5 text-sm font-semibold text-foreground outline-none">
-                      {DIFFICULTY_TIERS.map((tier) => (
-                        <option key={tier} value={tier}>{tier.charAt(0) + tier.slice(1).toLowerCase()}</option>
-                      ))}
-                    </select>
-                  </label>
-                  <label className="flex items-center gap-2 text-[13px] text-muted-foreground">
-                    Cards
-                    <input type="number" min={MINIMUM_TARGET_CARD_COUNT} value={targetCardCount} onChange={(event) => setTargetCardCount(Math.max(MINIMUM_TARGET_CARD_COUNT, Number(event.target.value)))} className="w-20 rounded-full border-2 border-border bg-background px-3 py-1.5 text-right text-sm font-semibold text-foreground outline-none" />
-                  </label>
-                  <button type="button" onClick={handleGenerateSet} disabled={generateSet.isPending} className="rounded-full bg-primary px-4 py-2 font-display text-xs text-primary-foreground disabled:opacity-60">
-                    {generateSet.isPending ? "Generating" : "Generate"}
-                  </button>
-                </div>
-                {reviewedSongs ? (
-                  <div>
-                    <p className="mb-2 text-[13px] text-muted-foreground">Review the set, then confirm to start.</p>
-                    <ul className="max-h-48 space-y-1.5 overflow-y-auto pr-1">
-                      {reviewedSongs.map((preview) => (
-                        <li key={preview.id} className="flex items-baseline justify-between gap-3 rounded-xl border-2 border-border bg-background px-3 py-2">
-                          <span className="truncate text-sm font-semibold text-foreground">{preview.title} <span className="font-normal text-muted-foreground">{(preview.artists ?? []).join(", ")}</span></span>
-                          <span className="shrink-0 font-display text-sm text-accent">{preview.releaseYear}</span>
-                        </li>
-                      ))}
-                    </ul>
-                    <button type="button" onClick={handleConfirmGeneratedSet} disabled={startWithSongs.isPending} className="mt-3 inline-flex items-center gap-2 rounded-full bg-accent px-5 py-2.5 font-display text-xs text-accent-foreground disabled:opacity-60">
-                      {startWithSongs.isPending ? <Loader2 className="size-4 animate-spin" /> : <Play className="size-4 fill-current" />}
-                      Confirm and start
-                    </button>
-                  </div>
-                ) : null}
-              </div>
-            ) : (
-              <div className="space-y-4">
-                <div>
-                  <p className="mb-2 text-[13px] text-muted-foreground">Start from one of your playlists</p>
-                  <div className="grid max-h-40 gap-2 overflow-y-auto pr-1">
-                    {playlistsQuery.data?.map((playlist) => {
-                      const isSelected = selectedCustomPlaylistId === playlist.id;
-                      return (
-                        <button
-                          key={playlist.id}
-                          type="button"
-                          onClick={() => setSelectedCustomPlaylistId(playlist.id)}
-                          className={`flex items-center justify-between rounded-xl border-2 px-3 py-2 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${isSelected ? "border-primary bg-primary/10" : "border-border bg-background hover:border-primary/60"}`}
-                        >
-                          <span>
-                            <span className="block text-sm font-semibold text-foreground">{playlist.name}</span>
-                            <span className="text-xs text-muted-foreground">{playlist.songCount} songs</span>
-                          </span>
-                          {isSelected ? <Check className="size-4 shrink-0 text-primary" /> : null}
-                        </button>
-                      );
-                    })}
-                  </div>
-                  <button type="button" onClick={handleStartCustomPlaylist} disabled={selectedCustomPlaylistId === undefined || startCustom.isPending} className="mt-3 inline-flex items-center gap-2 rounded-full bg-accent px-5 py-2.5 font-display text-xs text-accent-foreground disabled:cursor-not-allowed disabled:opacity-60">
-                    {startCustom.isPending ? <Loader2 className="size-4 animate-spin" /> : <Play className="size-4 fill-current" />}
-                    Start from playlist
-                  </button>
-                </div>
-                <div>
-                  <p className="mb-2 text-[13px] text-muted-foreground">Or paste a playlist link</p>
-                  <div className="flex gap-2">
-                    <input type="text" value={playlistLink} onChange={(event) => setPlaylistLink(event.target.value)} placeholder="YouTube playlist link or id" className="min-w-0 flex-1 rounded-full border-2 border-border bg-background px-4 py-2 text-sm text-foreground outline-none placeholder:text-muted-foreground" />
-                    <button type="button" onClick={handleStartPlaylistLink} disabled={!playlistLink.trim() || startCustom.isPending} className="shrink-0 rounded-full bg-accent px-4 py-2 font-display text-xs text-accent-foreground disabled:cursor-not-allowed disabled:opacity-60">
-                      Start
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
-            {startError ? <p role="alert" className="mt-4 text-sm text-destructive">{startError}</p> : null}
-          </section>
           </>
         ) : null}
         {isChatOpen ? (
@@ -679,7 +666,7 @@ export default function GroupLobbyPage({ params }: PageProps) {
         ) : null}
       </section>
 
-      <footer className="flex flex-wrap items-center gap-3">
+      <footer className="flex shrink-0 flex-wrap items-center gap-3">
         {!isCurrentUserLoading && isCurrentUserAdmin ? (
           <button
             type="button"
@@ -691,19 +678,19 @@ export default function GroupLobbyPage({ params }: PageProps) {
             Start game
           </button>
         ) : null}
-        {!isCurrentUserLoading && isCurrentUserAdmin && members.length < MINIMUM_PLAYERS_TO_START ? (
-          <span className="text-xs text-muted-foreground">Need at least {MINIMUM_PLAYERS_TO_START} players to start.</span>
-        ) : null}
-        {!isCurrentUserLoading && isCurrentUserAdmin ? (
-          <button
-            type="button"
-            onClick={openStartOptions}
-            disabled={groupQuery.data.status !== "OPEN"}
-            className="inline-flex items-center gap-2 rounded-full border-2 border-border bg-card px-5 py-3 text-[13px] font-semibold text-card-foreground disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            Custom start
-          </button>
-        ) : null}
+        <AlertDialog open={isMinPlayersOpen} onOpenChange={setIsMinPlayersOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Not enough players</AlertDialogTitle>
+              <AlertDialogDescription>
+                Need at least {MINIMUM_PLAYERS_TO_START} players to start. Invite someone first.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogAction onClick={() => setIsMinPlayersOpen(false)}>Got it</AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
           <button
             type="button"
             onClick={() => setIsChatOpen((currentValue) => !currentValue)}
