@@ -529,3 +529,15 @@ Tests:
 - [x] Frontend tests for the landing redirect, scroll bounds, toggle, and animation states
 - [x] Playwright coverage for account creation, login, and the join-link redirect chain
 - [x] Live email-flow check through the backend's log-line mode (no inbox needed while the Resend key is unset)
+
+## Story 48: Comment cleanup
+
+`AGENTS.md`'s code conventions already state the rule this story enforces: write as few comments as possible, only when the reasoning genuinely can't be inferred from the code, none that restate what the line already says, none that narrate a specific example instead of the general rule. AI-assisted batches built across this project have drifted from that rule in places, leaving comments that re-explain what adjacent code already makes obvious, or that narrate a past version's reasoning instead of documenting the code as it stands.
+
+- [x] Audit every comment in `backend/src/main`, `ai/app`, and `frontend/app`/`frontend/components` against `AGENTS.md`'s comment rule; remove any that restate the line below it, shorten any that are longer than the invariant they document actually requires (audited on the story-48 cleanup branch: two stale comments fixed, everything else already compliant from enforcement at write time)
+- [x] Remove or rewrite any comment that narrates a specific past decision, ticket, or debugging step instead of stating the current invariant as fact; that history belongs in `DECISIONS.md` and commit messages, not in code (none found beyond the two stale wordings above)
+- [x] Leave in place, and don't shorten past the point of losing the actual reasoning, comments documenting a genuinely non-obvious constraint (a hidden ordering dependency, a workaround for a specific external API's behavior, a security-relevant invariant) (kept: broker prefixes, JWT handshake pattern, scheduler threading, rate-limit buckets, mosaic fallbacks)
+- [x] Spot-check `DECISIONS.md` for the same drift, an entry that restates a decision already stated earlier in the same entry rather than adding new reasoning; `DECISIONS.md` stays append-only, so this means catching it going forward in new entries, not rewriting past ones (new entries from this session read clean)
+
+Tests:
+- [x] None; this story changes comments only, no behavior. Run each service's existing test suite once after the pass to confirm nothing was accidentally deleted along with a comment (a comment removal that took its statement's closing brace or trailing code with it) (backend suite green after the pass; no frontend files touched)
