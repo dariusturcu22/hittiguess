@@ -55,6 +55,7 @@ vi.mock("@tanstack/react-query", () => ({
 describe("AppVoiceSidebar", () => {
   beforeEach(() => {
     inVoice = true;
+    window.localStorage.clear();
     joinVoice.mockClear();
     startMicrophone.mockClear();
     toggleMute.mockClear();
@@ -90,5 +91,31 @@ describe("AppVoiceSidebar", () => {
 
     await waitFor(() => expect(startMicrophone).toHaveBeenCalledOnce());
     expect(joinVoice).toHaveBeenCalledWith({ groupId: 4 }, expect.anything());
+  });
+
+  it("collapses to a slim rail when out of a call and expands again", () => {
+    inVoice = false;
+    render(<AppVoiceSidebar />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Collapse voice sidebar" }));
+
+    expect(screen.queryByRole("button", { name: "Join call" })).toBeNull();
+    expect(screen.getByRole("button", { name: "Expand voice sidebar" })).toBeVisible();
+    expect(window.localStorage.getItem("hittiguess-voice-sidebar-collapsed")).toBe("true");
+
+    fireEvent.click(screen.getByRole("button", { name: "Expand voice sidebar" }));
+
+    expect(screen.getByRole("button", { name: "Join call" })).toBeVisible();
+    expect(window.localStorage.getItem("hittiguess-voice-sidebar-collapsed")).toBe("false");
+  });
+
+  it("stays expanded while in a call even when collapsed storage is set", () => {
+    inVoice = true;
+    window.localStorage.setItem("hittiguess-voice-sidebar-collapsed", "true");
+    render(<AppVoiceSidebar />);
+
+    expect(screen.getByRole("button", { name: "Leave voice" })).toBeVisible();
+    expect(screen.queryByRole("button", { name: "Expand voice sidebar" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Collapse voice sidebar" })).toBeNull();
   });
 });
