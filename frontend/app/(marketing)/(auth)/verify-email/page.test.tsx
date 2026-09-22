@@ -14,7 +14,7 @@ vi.mock("next/navigation", () => ({
   useSearchParams: () => new URLSearchParams("token=verify-token"),
 }));
 
-vi.mock("@/hooks/use-password-reset", () => ({
+vi.mock("@/hooks/generated/authentication-management/authentication-management", () => ({
   useVerifyEmail: () => ({ mutate: verifyMutate, isPending: false }),
 }));
 

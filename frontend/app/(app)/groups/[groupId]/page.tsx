@@ -27,9 +27,9 @@ import {
   useGenerateDifficultySet,
   useStartCustomSession,
   useStartSessionWithSongs,
-  type DifficultyTier,
-  type GeneratedSongPreviewDTO,
-} from "@/hooks/use-difficulty-session-start";
+} from "@/hooks/generated/group-management/group-management";
+import type { GenerateDifficultySetRequestTier } from "@/hooks/models/generateDifficultySetRequestTier";
+import type { GeneratedSongPreviewDTO } from "@/hooks/models/generatedSongPreviewDTO";
 import type { MemberDTO } from "@/hooks/models/memberDTO";
 import { useQueryClient } from "@tanstack/react-query";
 import { GroupChatOverlay } from "@/components/group-chat-overlay";
@@ -72,7 +72,7 @@ const MINIMUM_PLAYERS_TO_START = 2;
 const LOBBY_FLOAT_STAGGER_CYCLE = 5;
 const LOBBY_FLOAT_STAGGER_SECONDS = 1.1;
 const MINIMUM_TARGET_CARD_COUNT = 1;
-const DIFFICULTY_TIERS: DifficultyTier[] = ["EASY", "MEDIUM", "HARD"];
+const DIFFICULTY_TIERS: GenerateDifficultySetRequestTier[] = ["EASY", "MEDIUM", "HARD"];
 
 function mutationErrorMessage(error: unknown): string {
   if (typeof error === "object" && error !== null && "response" in error) {
@@ -155,7 +155,7 @@ export default function GroupLobbyPage({ params }: PageProps) {
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [isStartOptionsOpen, setIsStartOptionsOpen] = useState(false);
   const [startMode, setStartMode] = useState<"difficulty" | "custom">("difficulty");
-  const [selectedTier, setSelectedTier] = useState<DifficultyTier>("MEDIUM");
+  const [selectedTier, setSelectedTier] = useState<GenerateDifficultySetRequestTier>("MEDIUM");
   const [targetCardCount, setTargetCardCount] = useState(MINIMUM_WIN_CONDITION);
   const [reviewedSongs, setReviewedSongs] = useState<GeneratedSongPreviewDTO[] | null>(null);
   const [selectedCustomPlaylistId, setSelectedCustomPlaylistId] = useState<number | undefined>(undefined);
@@ -290,7 +290,14 @@ export default function GroupLobbyPage({ params }: PageProps) {
     }
     setStartError("");
     startWithSongs.mutate(
-      { groupId, data: { songIds: reviewedSongs.map((preview) => preview.id) } },
+      {
+        groupId,
+        data: {
+          songIds: reviewedSongs
+            .map((preview) => preview.id)
+            .filter((id): id is number => id !== undefined),
+        },
+      },
       {
         onSuccess: handleModeStartSuccess,
         onError: (error) => setStartError(mutationErrorMessage(error)),
@@ -355,11 +362,18 @@ export default function GroupLobbyPage({ params }: PageProps) {
   }
 
   function openPlaylistSelector() {
-    setSelectedPlaylistIds((groupQuery.data?.playlists ?? []).map((playlist) => playlist.id));
+    setSelectedPlaylistIds(
+      (groupQuery.data?.playlists ?? [])
+        .map((playlist) => playlist.id)
+        .filter((id): id is number => id !== undefined),
+    );
     setIsPlaylistSelectorOpen(true);
   }
 
-  function togglePlaylistSelected(playlistId: number) {
+  function togglePlaylistSelected(playlistId: number | undefined) {
+    if (playlistId === undefined) {
+      return;
+    }
     setSelectedPlaylistIds((currentIds) =>
       currentIds.includes(playlistId)
         ? currentIds.filter((id) => id !== playlistId)
@@ -580,7 +594,7 @@ export default function GroupLobbyPage({ params }: PageProps) {
                 <div className="flex items-center gap-3">
                   <label className="flex items-center gap-2 text-[13px] text-muted-foreground">
                     Difficulty
-                    <select value={selectedTier} onChange={(event) => setSelectedTier(event.target.value as DifficultyTier)} className="rounded-full border-2 border-border bg-background px-3 py-1.5 text-sm font-semibold text-foreground outline-none">
+                    <select value={selectedTier} onChange={(event) => setSelectedTier(event.target.value as GenerateDifficultySetRequestTier)} className="rounded-full border-2 border-border bg-background px-3 py-1.5 text-sm font-semibold text-foreground outline-none">
                       {DIFFICULTY_TIERS.map((tier) => (
                         <option key={tier} value={tier}>{tier.charAt(0) + tier.slice(1).toLowerCase()}</option>
                       ))}
@@ -600,7 +614,7 @@ export default function GroupLobbyPage({ params }: PageProps) {
                     <ul className="max-h-48 space-y-1.5 overflow-y-auto pr-1">
                       {reviewedSongs.map((preview) => (
                         <li key={preview.id} className="flex items-baseline justify-between gap-3 rounded-xl border-2 border-border bg-background px-3 py-2">
-                          <span className="truncate text-sm font-semibold text-foreground">{preview.title} <span className="font-normal text-muted-foreground">{preview.artists.join(", ")}</span></span>
+                          <span className="truncate text-sm font-semibold text-foreground">{preview.title} <span className="font-normal text-muted-foreground">{(preview.artists ?? []).join(", ")}</span></span>
                           <span className="shrink-0 font-display text-sm text-accent">{preview.releaseYear}</span>
                         </li>
                       ))}

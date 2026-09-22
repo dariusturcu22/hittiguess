@@ -21,13 +21,10 @@ import {
 
 import { useLogin } from "@/hooks/generated/authentication-management/authentication-management";
 import { loginBody } from "@/hooks/zod/authentication-management/authentication-management";
-import "@/hooks/login-request-augmentation";
 import { safeReturnToPath } from "@/lib/return-to";
 import { useRouter, useSearchParams } from "next/navigation";
 
-const LoginFormSchema = loginBody.extend({
-  rememberMe: z.boolean(),
-});
+const LoginFormSchema = loginBody;
 
 type LoginFormValues = z.infer<typeof LoginFormSchema>;
 
