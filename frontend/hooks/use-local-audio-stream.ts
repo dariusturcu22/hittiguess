@@ -29,6 +29,10 @@ function snapshotStream(): MediaStream | null {
   return currentStream;
 }
 
+function snapshotStreamServer(): MediaStream | null {
+  return null;
+}
+
 export function useLocalAudioStream(): MediaStream | null {
-  return useSyncExternalStore(subscribeStream, snapshotStream);
+  return useSyncExternalStore(subscribeStream, snapshotStream, snapshotStreamServer);
 }
