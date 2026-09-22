@@ -23,6 +23,9 @@ public class User {
 
     private String imageUrl;
 
+    @Column(name = "avatar_image")
+    private byte[] avatarImage;
+
     @Enumerated(EnumType.STRING)
     private AuthProvider authProvider;
 
