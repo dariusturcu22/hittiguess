@@ -102,4 +102,6 @@ export * from './twoFactorVerifyRequest';
 export * from './updateGroupSettingsRequest';
 export * from './updateGroupSettingsRequestDjMode';
 export * from './updateMembershipGrantsRequest';
+export * from './uploadOwnAvatarBody';
+export * from './uploadPlaylistCoverBody';
 export * from './verifyEmailRequest';
