@@ -545,3 +545,14 @@ Checked against real code: the backend has exactly one test file, an empty `cont
 - [x] Add Playwright for frontend integration/end-to-end tests, none exist today; separate from the unit test runner above, drives the real browser against the real backend rather than mocking it (see this file's Chore: Playwright end-to-end tooling section)
 - [x] Add Playwright coverage for the core flows that exist today: login/register, playlist CRUD, song add/edit, export (covered by the login, lobby, gameplay, results, rounds-and-import, and core-flows specs)
 - [x] Add the new test steps to `.github/workflows/pr-checks.yml` for all three services
+## Playlist detail and edit fix pass
+
+- [x] Add owner-only playlist deletion and wire the edit-page confirmation flow
+- [x] Redirect to the playlist detail page after save succeeds
+- [x] Expose playlist ownership in the user library and make Owned and Joined filtering work
+- [x] Replace the expanded member list with an accessible collapsed member control
+- [x] Replace bulk-import placeholder progress with the existing real-time progress stream (replaced by the background import jobs with sidebar progress, greyed pending songs, and live progress events)
+
+Tests:
+
+- [x] Add backend deletion coverage and run backend and frontend checks
