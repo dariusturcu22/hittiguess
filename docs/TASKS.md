@@ -790,7 +790,7 @@ App-wide and imports:
 
 - [x] Audit every clickable control for the pointer hand cursor
 - [x] Link songs from an existing playlist instantly
-- [ ] Run YouTube imports in the background with a sidebar progress indicator, hover progress, greyed pending songs in the detail view, and a return path to the live progress screen
+- [x] Run YouTube imports in the background with a sidebar progress indicator, hover progress, greyed pending songs in the detail view, and a return path to the live progress screen
 - [x] Show catalog recommendations by default with fetch-more, and keep the add-tray contents across navigation until committed
 - [x] Show continuous staged progress on single-song fetch: submitted title and channel plus the sources being consulted
 
@@ -818,7 +818,7 @@ Tests:
 
 - [x] Confirm each cluster above against the real code before building it (the gate to Ready)
 - [ ] Frontend tests for every new or changed interactive state, following the story 28 verification pattern
-- [ ] Playwright multi-user coverage for join, lobby, full rounds, results, and the import background flow
+- [x] Playwright multi-user coverage for join, lobby, full rounds, results, and the import background flow
 - [ ] Voice delivery check with the synthetic-tone method, plus the contrast and motion spot checks from story 28
 
 ## Story 48: Comment cleanup

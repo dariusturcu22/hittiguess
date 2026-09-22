@@ -67,6 +67,12 @@ vi.mock("@/hooks/generated/group-management/group-management", () => ({
   useGetActiveMembership: () => ({ data: membership }),
 }));
 
+let activeImportResponse: { data?: unknown; isError: boolean } = { isError: true };
+
+vi.mock("@/hooks/generated/playlist-import-jobs/playlist-import-jobs", () => ({
+  useActiveImport: () => activeImportResponse,
+}));
+
 async function renderContent() {
   const queryClient = new QueryClient();
   await act(async () => {
@@ -84,6 +90,7 @@ describe("PlaylistContent detail states", () => {
     leaveMutate.mockReset();
     membership = { id: 4 };
     playlistSongs = [];
+    activeImportResponse = { isError: true };
     Object.defineProperty(window.navigator, "clipboard", {
       value: { writeText: vi.fn(() => Promise.resolve()) },
       configurable: true,
@@ -95,6 +102,28 @@ describe("PlaylistContent detail states", () => {
 
     expect(screen.getByText("No songs yet")).toBeVisible();
     expect(screen.queryByPlaceholderText("Search songs...")).toBeNull();
+  });
+
+  it("renders pending import songs greyed with hover progress", async () => {
+    activeImportResponse = {
+      isError: false,
+      data: {
+        id: "job-1",
+        playlistId: 7,
+        status: "RUNNING",
+        items: [
+          { youtubeId: "video-9", status: "PENDING" },
+          { youtubeId: "video-8", status: "UNRESOLVED" },
+          { youtubeId: "video-7", status: "RESOLVED", songId: 77 },
+        ],
+      },
+    };
+    await renderContent();
+
+    expect(screen.getByText("Importing 2 songs in the background...")).toBeVisible();
+    expect(screen.getByTitle("2 of 3 songs imported so far.")).toBeVisible();
+    expect(screen.getByTitle("Resolving song details...")).toBeVisible();
+    expect(screen.getByTitle("This video could not be matched to a song.")).toBeVisible();
   });
 
   it("builds a ready invite message for the code action", () => {
