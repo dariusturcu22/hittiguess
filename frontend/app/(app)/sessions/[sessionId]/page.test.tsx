@@ -25,7 +25,11 @@ const MID_GAME_SESSION = {
   },
 };
 
-let mockSessionData: typeof MID_GAME_SESSION | null = MID_GAME_SESSION;
+type MockGameSession = Omit<typeof MID_GAME_SESSION, "currentRound"> & {
+  currentRound: (typeof MID_GAME_SESSION)["currentRound"] | null;
+};
+
+let mockSessionData: MockGameSession | null = MID_GAME_SESSION;
 let mockCurrentUserId = 11;
 
 vi.mock("next/navigation", () => ({
