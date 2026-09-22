@@ -5,7 +5,28 @@ import GameSessionPage from "./page";
 
 let roundEventHandler: ((event: { type: string }) => void) | undefined;
 const placeCard = vi.fn(() => true);
+const submitGuess = vi.fn(() => true);
 const SESSION_PARAMS = Promise.resolve({ sessionId: "1" });
+
+const MID_GAME_SESSION = {
+  id: 1,
+  groupId: 2,
+  currentRoundNumber: 3,
+  djMode: "ROTATING",
+  players: [
+    { id: 7, userId: 11, displayName: "Alex", tokenCount: 2, timeline: [] },
+    { id: 8, userId: 12, displayName: "Sam", tokenCount: 2, timeline: [] },
+  ],
+  currentRound: {
+    roundNumber: 3,
+    status: "AWAITING_PLACEMENT",
+    activePlayerId: 7,
+    djPlayerId: 8,
+  },
+};
+
+let mockSessionData: typeof MID_GAME_SESSION | null = MID_GAME_SESSION;
+let mockCurrentUserId = 11;
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ replace: vi.fn() }),
@@ -14,29 +35,14 @@ vi.mock("next/navigation", () => ({
 vi.mock("@/hooks/generated/game-session/game-session", () => ({
   useGetCurrentRoundLinkOut: () => ({ data: undefined, isLoading: false }),
   useGetSession: () => ({
-    data: {
-      id: 1,
-      groupId: 2,
-      currentRoundNumber: 3,
-      djMode: "ROTATING",
-      players: [
-        { id: 7, userId: 11, displayName: "Alex", tokenCount: 2, timeline: [] },
-        { id: 8, userId: 12, displayName: "Sam", tokenCount: 2, timeline: [] },
-      ],
-      currentRound: {
-        roundNumber: 3,
-        status: "AWAITING_PLACEMENT",
-        activePlayerId: 7,
-        djPlayerId: 8,
-      },
-    },
+    data: mockSessionData,
     isLoading: false,
-    isError: false,
+    isError: !mockSessionData,
   }),
 }));
 
 vi.mock("@/hooks/generated/user-management/user-management", () => ({
-  useGetCurrentUser: () => ({ data: { id: 11 } }),
+  useGetCurrentUser: () => ({ data: { id: mockCurrentUserId } }),
 }));
 
 vi.mock("@/hooks/use-group-realtime", () => ({
@@ -51,7 +57,7 @@ vi.mock("@/hooks/use-game-session-realtime", () => ({
       placeCard,
       placeBet: vi.fn(() => true),
       skipBetting: vi.fn(() => true),
-      submitGuess: vi.fn(() => true),
+      submitGuess,
     };
   },
 }));
@@ -63,7 +69,10 @@ vi.mock("@/components/group-chat-overlay", () => ({
 describe("GameSessionPage gameplay interactions", () => {
   beforeEach(() => {
     placeCard.mockClear();
+    submitGuess.mockClear();
     roundEventHandler = undefined;
+    mockSessionData = MID_GAME_SESSION;
+    mockCurrentUserId = 11;
   });
 
   it("activates the card with the keyboard and reports placement feedback", async () => {
@@ -112,5 +121,56 @@ describe("GameSessionPage gameplay interactions", () => {
 
     expect(screen.getByRole("status")).toHaveTextContent("Alex's turn: get ready");
     expect(screen.getByRole("status")).toHaveTextContent("Round 3");
+  });
+
+  it("submits artist and title guesses with feedback", async () => {
+    await act(async () => {
+      render(<GameSessionPage params={SESSION_PARAMS} />);
+    });
+
+    fireEvent.change(screen.getByPlaceholderText("Guess the artist"), { target: { value: "Beatles" } });
+    fireEvent.change(screen.getByPlaceholderText("Guess the title"), { target: { value: "Yesterday" } });
+    fireEvent.click(screen.getByRole("button", { name: "Submit guess the artist" }));
+
+    await waitFor(() => expect(submitGuess).toHaveBeenCalledWith("Beatles", "Yesterday"));
+    expect(screen.getByText("Guess sent. Keep listening for the result.")).toBeVisible();
+  });
+
+  it("shows the DJ link-out view without a placement card", async () => {
+    mockCurrentUserId = 12;
+    await act(async () => {
+      render(<GameSessionPage params={SESSION_PARAMS} />);
+    });
+
+    expect(await screen.findByRole("button", { name: "Open on YouTube to play" })).toBeVisible();
+    expect(screen.queryByRole("button", { name: "Your card. Choose a timeline position." })).toBeNull();
+  });
+
+  it("shows the waiting state before the first round", async () => {
+    mockSessionData = { ...MID_GAME_SESSION, currentRound: null };
+    await act(async () => {
+      render(<GameSessionPage params={SESSION_PARAMS} />);
+    });
+
+    expect(await screen.findByText("Your timeline will appear when the round starts.")).toBeVisible();
+    expect(screen.queryByRole("button", { name: "Your card. Choose a timeline position." })).toBeNull();
+  });
+
+  it("shows the spectator view for a non-active non-DJ player", async () => {
+    mockSessionData = {
+      ...MID_GAME_SESSION,
+      players: [
+        ...MID_GAME_SESSION.players,
+        { id: 9, userId: 13, displayName: "Jo", tokenCount: 0, timeline: [] },
+      ],
+    };
+    mockCurrentUserId = 13;
+    await act(async () => {
+      render(<GameSessionPage params={SESSION_PARAMS} />);
+    });
+
+    expect(await screen.findByPlaceholderText("Guess the artist")).toBeVisible();
+    expect(screen.queryByRole("button", { name: "Your card. Choose a timeline position." })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Open on YouTube to play" })).toBeNull();
   });
 });

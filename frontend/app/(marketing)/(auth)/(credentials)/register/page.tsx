@@ -52,7 +52,10 @@ export default function RegisterPage() {
     mutation: {
       onSuccess: () => {
         toast.success("Account created. Check your email to verify, then log in.");
-        router.push(returnTo ? `/login?returnTo=${encodeURIComponent(returnTo)}` : "/playlists");
+        // Registration issues no session (unverified accounts cannot use the
+        // app yet), so landing on the login screen instead of pushing a
+        // guarded route that only bounces back.
+        router.push(returnTo ? `/login?returnTo=${encodeURIComponent(returnTo)}` : "/login");
       },
       onError: () => {
         toast.error("Couldn't create account. Username or email may already be in use.");

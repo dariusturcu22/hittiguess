@@ -75,6 +75,8 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
 import java.sql.SQLException;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -96,6 +98,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 class DifficultySessionStartIntegrationTest {
 
     private static final int REVIEWED_CARD_COUNT = 6;
+    private static final int FULL_GROUP_EXTRA_MEMBER_COUNT = 7;
+    private static final int FULL_GROUP_CATALOG_SONG_COUNT = 24;
+    private static final int FULL_GROUP_TARGET_CARD_COUNT = 8;
+    private static final Duration GENERATION_TIME_BUDGET = Duration.ofSeconds(1);
 
     @Configuration
     @EnableAutoConfiguration(exclude = OAuth2ClientAutoConfiguration.class)
@@ -305,6 +311,33 @@ class DifficultySessionStartIntegrationTest {
         roundRepository.findTopBySessionOrderByRoundNumberDesc(session)
                 .ifPresent(round -> playedIds.add(round.getSong().getId()));
         return playedIds;
+    }
+
+    @Test
+    void difficultyGenerateForAFullGroupReturnsInWellUnderASecond() {
+        User admin = persistUser("perf-admin-" + System.nanoTime());
+        Playlist playlist = playlistWithSongs("perf", admin, FULL_GROUP_CATALOG_SONG_COUNT,
+                VerificationStatus.VERIFIED, 30);
+
+        authenticateAs(admin);
+        GroupDetailDTO createdGroup = groupService.createGroup(new CreateGroupRequest(null, null));
+        for (int memberIndex = 0; memberIndex < FULL_GROUP_EXTRA_MEMBER_COUNT; memberIndex++) {
+            User member = persistUser("perf-member-" + memberIndex + "-" + System.nanoTime());
+            authenticateAs(member);
+            groupService.joinGroup(new JoinGroupRequest(createdGroup.inviteCode(), null, null, null));
+        }
+
+        authenticateAs(admin);
+        groupService.updateGroupSettings(createdGroup.id(), new UpdateGroupSettingsRequest(
+                Set.of(playlist.getId()), DjMode.ROTATING, 5, null));
+
+        Instant generationStartedAt = Instant.now();
+        List<GeneratedSongPreviewDTO> previews = gameSessionService.generateDifficultySet(
+                createdGroup.id(), new GenerateDifficultySetRequest(DifficultyTier.EASY, FULL_GROUP_TARGET_CARD_COUNT));
+        Duration generationElapsed = Duration.between(generationStartedAt, Instant.now());
+
+        assertThat(previews).hasSize(FULL_GROUP_TARGET_CARD_COUNT);
+        assertThat(generationElapsed).isLessThan(GENERATION_TIME_BUDGET);
     }
 
     @Test
