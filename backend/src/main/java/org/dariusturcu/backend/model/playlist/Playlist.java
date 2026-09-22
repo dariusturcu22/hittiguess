@@ -30,6 +30,9 @@ public class Playlist {
     @Column(nullable = false)
     private boolean isPublic = false;
 
+    @Column(name = "cover_image")
+    private byte[] coverImage;
+
     @ManyToOne
     @JoinColumn(name = "owner_id", nullable = false)
     private User owner;

@@ -11,7 +11,9 @@ import {
 import { useLogout } from "@/hooks/generated/authentication-management/authentication-management";
 import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
-import { useGetCurrentUser } from "@/hooks/generated/user-management/user-management";
+import { getGetCurrentUserQueryKey, useGetCurrentUser } from "@/hooks/generated/user-management/user-management";
+import { useUploadOwnAvatar } from "@/hooks/generated/pixel-art-images/pixel-art-images";
+import { PixelImageInput } from "@/components/pixel-image-input";
 
 export function NavUser() {
   const router = useRouter();
@@ -40,6 +42,26 @@ export function NavUser() {
   }
 
   const avatarInitial = user?.username?.trim().charAt(0).toUpperCase() ?? "";
+  const [avatarFailed, setAvatarFailed] = React.useState(false);
+  const [avatarVersion, setAvatarVersion] = React.useState(0);
+  const uploadAvatar = useUploadOwnAvatar();
+  const showAvatarImage = Boolean(user?.id) && !avatarFailed;
+  const avatarImageUrl = user?.id
+    ? `${process.env.NEXT_PUBLIC_API_URL}/api/users/${user.id}/avatar?version=${avatarVersion}`
+    : undefined;
+
+  function uploadAvatarImage(pixelBlob: Blob) {
+    uploadAvatar.mutate(
+      { data: { avatar: pixelBlob } },
+      {
+        onSuccess: () => {
+          setAvatarFailed(false);
+          setAvatarVersion((currentVersion) => currentVersion + 1);
+          void queryClient.invalidateQueries({ queryKey: getGetCurrentUserQueryKey() });
+        },
+      },
+    );
+  }
 
   return (
     <DropdownMenu>
@@ -58,8 +80,28 @@ export function NavUser() {
         sideOffset={12}
       >
         <div className="flex items-start gap-3 bg-primary/20 p-4">
-          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-primary font-display text-base text-primary-foreground">
-            {avatarInitial}
+          <div className="group relative h-11 w-11 shrink-0">
+            <div className="flex h-11 w-11 items-center justify-center overflow-hidden rounded-full bg-primary font-display text-base text-primary-foreground">
+              {showAvatarImage ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={avatarImageUrl}
+                  alt=""
+                  onError={() => setAvatarFailed(true)}
+                  className="size-full object-cover [image-rendering:pixelated]"
+                />
+              ) : (
+                avatarInitial
+              )}
+            </div>
+            <PixelImageInput
+              label="Change profile picture"
+              disabled={uploadAvatar.isPending}
+              buttonClassName="absolute inset-0 flex items-center justify-center rounded-full bg-background/55 text-card-foreground opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100 disabled:opacity-0"
+              onPixelized={(pixelBlob) => uploadAvatarImage(pixelBlob)}
+            >
+              <span className="text-[9px] font-bold uppercase">Edit</span>
+            </PixelImageInput>
           </div>
           <div className="flex min-w-0 flex-1 flex-col gap-1.5 pt-0.5">
             <span className="truncate font-display text-base text-card-foreground">
