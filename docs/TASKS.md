@@ -588,15 +588,15 @@ Tests:
 
 The final YouTube-terms confirmation read stays an open question (`PROJECT_STATE.md`), kept open deliberately; the build itself isn't blocked on it since the story's actual output data doesn't include anything YouTube-sourced, so it's placed as the last task before shipping rather than before starting.
 
-- [ ] Add a public read-only endpoint exposing verified `(artist, title, release_year)` triples only, no YouTube-sourced fields
-- [ ] Filter to verified songs only, depends on story 23's `verificationStatus` field existing
-- [ ] Add pagination and rate limiting for public consumption (coordinate with story 27)
+- [x] Add a public read-only endpoint exposing verified `(artist, title, release_year)` triples only, no YouTube-sourced fields (built as `GET /api/ground-truth/songs`, joint MAIN-artist display string plus title plus locked year)
+- [x] Filter to verified songs only, depends on story 23's `verificationStatus` field existing (the query filters on `VERIFIED`; covered by service and data integration tests)
+- [x] Add pagination and rate limiting for public consumption (coordinate with story 27) (Spring page parameters with an explicit envelope, plus the general 60-per-minute anonymous bucket, covered by page-boundary and rate-limit tests)
 - [ ] Final confirmation read of YouTube's terms before shipping, since the catalog's overall provenance mixes sources even though this endpoint's own data doesn't include anything YouTube-sourced
 
 Tests:
-- [ ] Integration test: the endpoint returns only verified songs, unverified songs never appear
-- [ ] Integration test: no YouTube-sourced field (`youtubeId` or anything derived from it) appears in the response shape
-- [ ] Unit tests for pagination and the rate limit, including boundary values
+- [x] Integration test: the endpoint returns only verified songs, unverified songs never appear
+- [x] Integration test: no YouTube-sourced field (`youtubeId` or anything derived from it) appears in the response shape
+- [x] Unit tests for pagination and the rate limit, including boundary values
 
 ## Story 28: UI redesign
 
