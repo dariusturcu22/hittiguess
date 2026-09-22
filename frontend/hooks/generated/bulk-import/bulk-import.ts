@@ -16,7 +16,8 @@ import type {
 
 import type {
   BulkImportRequest,
-  BulkImportResultDTO
+  BulkImportResultDTO,
+  ExpandPlaylistLinkRequest
 } from '../../models';
 
 import { customInstance } from '../../../lib/axios-instance';
@@ -87,6 +88,70 @@ export const useImportImmediately = <TError = unknown,
       > => {
 
       const mutationOptions = getImportImmediatelyMutationOptions(options);
+
+      return useMutation(mutationOptions, queryClient);
+    }
+    /**
+ * @summary Expand a YouTube playlist link or id into its video ids for review before importing
+ */
+export const expandPlaylist = (
+    expandPlaylistLinkRequest: ExpandPlaylistLinkRequest,
+ options?: SecondParameter<typeof customInstance>,signal?: AbortSignal
+) => {
+      
+      
+      return customInstance<string[]>(
+      {url: `/api/bulk-import/expand`, method: 'POST',
+      headers: {'Content-Type': 'application/json', },
+      data: expandPlaylistLinkRequest, signal
+    },
+      options);
+    }
+  
+
+
+export const getExpandPlaylistMutationOptions = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof expandPlaylist>>, TError,{data: ExpandPlaylistLinkRequest}, TContext>, request?: SecondParameter<typeof customInstance>}
+): UseMutationOptions<Awaited<ReturnType<typeof expandPlaylist>>, TError,{data: ExpandPlaylistLinkRequest}, TContext> => {
+
+const mutationKey = ['expandPlaylist'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+      
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof expandPlaylist>>, {data: ExpandPlaylistLinkRequest}> = (props) => {
+          const {data} = props ?? {};
+
+          return  expandPlaylist(data,requestOptions)
+        }
+
+        
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ExpandPlaylistMutationResult = NonNullable<Awaited<ReturnType<typeof expandPlaylist>>>
+    export type ExpandPlaylistMutationBody = ExpandPlaylistLinkRequest
+    export type ExpandPlaylistMutationError = unknown
+
+    /**
+ * @summary Expand a YouTube playlist link or id into its video ids for review before importing
+ */
+export const useExpandPlaylist = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof expandPlaylist>>, TError,{data: ExpandPlaylistLinkRequest}, TContext>, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof expandPlaylist>>,
+        TError,
+        {data: ExpandPlaylistLinkRequest},
+        TContext
+      > => {
+
+      const mutationOptions = getExpandPlaylistMutationOptions(options);
 
       return useMutation(mutationOptions, queryClient);
     }

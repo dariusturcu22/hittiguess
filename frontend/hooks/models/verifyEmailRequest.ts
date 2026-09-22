@@ -5,10 +5,7 @@
  * OpenAPI spec version: v0
  */
 
-export interface LoginRequest {
+export interface VerifyEmailRequest {
   /** @minLength 1 */
-  email: string;
-  /** @minLength 1 */
-  password: string;
-  rememberMe?: boolean;
+  token: string;
 }

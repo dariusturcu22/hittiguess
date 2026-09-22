@@ -14,4 +14,5 @@ export interface SongMetadataResponse {
   source?: string;
   reasoning?: string;
   verificationStatus?: string;
+  sitelinksCount?: number;
 }

@@ -8,6 +8,26 @@ import * as zod from 'zod';
 
 
 /**
+ * @summary Verify an email address using a verification token
+ */
+
+
+
+export const verifyEmailBody = zod.object({
+  "token": zod.string().min(1)
+})
+
+/**
+ * @summary Resend the email verification link, rate-limited
+ */
+
+
+
+export const resendVerificationBody = zod.object({
+  "email": zod.email().min(1)
+})
+
+/**
  * @summary Register a new user
  */
 export const registerBodyUsernameMin = 3;
@@ -26,6 +46,30 @@ export const registerBody = zod.object({
 })
 
 /**
+ * @summary Request a password reset email, always succeeds regardless of whether the email exists
+ */
+
+
+
+export const requestPasswordResetBody = zod.object({
+  "email": zod.email().min(1)
+})
+
+/**
+ * @summary Confirm a password reset using a reset token
+ */
+
+export const confirmPasswordResetBodyNewPasswordMin = 6;
+export const confirmPasswordResetBodyNewPasswordMax = 2147483647;
+
+
+
+export const confirmPasswordResetBody = zod.object({
+  "token": zod.string().min(1),
+  "newPassword": zod.string().min(confirmPasswordResetBodyNewPasswordMin).max(confirmPasswordResetBodyNewPasswordMax)
+})
+
+/**
  * @summary Login with username/email and password
  */
 
@@ -34,6 +78,37 @@ export const registerBody = zod.object({
 
 export const loginBody = zod.object({
   "email": zod.string().min(1),
-  "password": zod.string().min(1)
+  "password": zod.string().min(1),
+  "rememberMe": zod.boolean().optional()
+})
+
+/**
+ * @summary Complete login for a two-factor-enabled account
+ */
+
+
+
+
+export const verifyTwoFactorBody = zod.object({
+  "pendingToken": zod.string().min(1),
+  "code": zod.string().min(1)
+})
+
+/**
+ * @summary Disable two-factor authentication, requires the current password or a valid code
+ */
+export const disableTwoFactorBody = zod.object({
+  "currentPassword": zod.string().optional(),
+  "code": zod.string().optional()
+})
+
+/**
+ * @summary Confirm TOTP two-factor setup with a code from the authenticator app
+ */
+
+
+
+export const confirmTwoFactorBody = zod.object({
+  "code": zod.string().min(1)
 })
 

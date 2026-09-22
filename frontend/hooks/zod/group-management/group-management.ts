@@ -37,6 +37,41 @@ export const startGameSessionParams = zod.object({
 })
 
 /**
+ * @summary Start a game session from reviewed song ids, admin only, locks the group to new members
+ */
+export const startSessionWithSongsParams = zod.object({
+  "groupId": zod.number()
+})
+
+export const startSessionWithSongsBody = zod.object({
+  "songIds": zod.array(zod.number()).optional()
+})
+
+/**
+ * @summary Start a game session from a playlist or pasted playlist link, admin only, locks the group to new members
+ */
+export const startCustomSessionParams = zod.object({
+  "groupId": zod.number()
+})
+
+export const startCustomSessionBody = zod.object({
+  "playlistId": zod.number().optional(),
+  "playlistLink": zod.string().optional()
+})
+
+/**
+ * @summary Generate a difficulty-tuned song set for review, admin only, starts nothing
+ */
+export const generateDifficultySetParams = zod.object({
+  "groupId": zod.number()
+})
+
+export const generateDifficultySetBody = zod.object({
+  "tier": zod.enum(['EASY', 'MEDIUM', 'HARD']).optional(),
+  "targetCardCount": zod.number().optional()
+})
+
+/**
  * @summary Mark the current member reconnected
  */
 export const reconnectParams = zod.object({
@@ -85,7 +120,8 @@ export const updateGroupSettingsParams = zod.object({
 export const updateGroupSettingsBody = zod.object({
   "playlistIds": zod.array(zod.number()).optional(),
   "djMode": zod.enum(['FIXED', 'ROTATING']).optional(),
-  "winConditionCardCount": zod.number().optional()
+  "winConditionCardCount": zod.number().optional(),
+  "fixedDjMemberId": zod.number().optional()
 })
 
 /**
