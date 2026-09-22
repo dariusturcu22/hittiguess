@@ -11,8 +11,10 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 /**
@@ -75,5 +77,21 @@ public class YoutubeIdLookupService {
                 .map(AlternateYoutubeId::getSong)
                 .forEach(canonicalSongs::add);
         return canonicalSongs;
+    }
+
+    /**
+     * Maps each already-known YouTube ID to its canonical song id, following the
+     * alternate-ID mapping the same way resolveCanonicalSongs does. Lets callers
+     * that track per-ID state (a background import's item rows) record the link
+     * without relying on result ordering.
+     */
+    @Transactional(readOnly = true)
+    public Map<String, Long> resolveCanonicalSongIds(Collection<String> knownYoutubeIds) {
+        Map<String, Long> songIdsByYoutubeId = new HashMap<>();
+        songRepository.findByYoutubeIdIn(knownYoutubeIds)
+                .forEach(song -> songIdsByYoutubeId.put(song.getYoutubeId(), song.getId()));
+        alternateYoutubeIdRepository.findByYoutubeIdIn(knownYoutubeIds)
+                .forEach(alternate -> songIdsByYoutubeId.put(alternate.getYoutubeId(), alternate.getSong().getId()));
+        return songIdsByYoutubeId;
     }
 }
