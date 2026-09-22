@@ -83,7 +83,7 @@ export function SongSearchStep({
     hasNextPage,
     isFetchingNextPage,
   } = useRecommendedSongs(RECOMMENDATION_PAGE_SIZE);
-  const recommendedSongs = (recommendedPages?.pages ?? []).flatMap((page) => page.songs);
+  const recommendedSongs = (recommendedPages?.pages ?? []).flatMap((page) => page.songs ?? []);
 
   const queuedIds = new Set(queue.map((song) => song.id));
 

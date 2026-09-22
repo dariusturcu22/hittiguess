@@ -10,4 +10,5 @@ export interface UpdateGroupSettingsRequest {
   playlistIds?: number[];
   djMode?: UpdateGroupSettingsRequestDjMode;
   winConditionCardCount?: number;
+  fixedDjMemberId?: number;
 }

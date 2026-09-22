@@ -12,7 +12,7 @@ import { IconArrowLeft, IconLock } from "@tabler/icons-react";
 import { LogoIcon } from "@/components/logo";
 import { AuthPageBackground } from "@/components/auth-page-background";
 import { ThemeToggle } from "@/components/theme-toggle";
-import { useConfirmPasswordReset } from "@/hooks/use-password-reset";
+import { useConfirmPasswordReset } from "@/hooks/generated/authentication-management/authentication-management";
 
 export default function ResetPasswordPage() {
   return (

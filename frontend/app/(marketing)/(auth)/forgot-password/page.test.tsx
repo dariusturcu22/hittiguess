@@ -10,7 +10,7 @@ vi.mock("next/link", () => ({
   default: ({ children, href }: { children: ReactNode; href: string }) => <a href={href}>{children}</a>,
 }));
 
-vi.mock("@/hooks/use-password-reset", () => ({
+vi.mock("@/hooks/generated/authentication-management/authentication-management", () => ({
   useRequestPasswordReset: () => ({ mutate: requestMutate, isPending: false }),
 }));
 

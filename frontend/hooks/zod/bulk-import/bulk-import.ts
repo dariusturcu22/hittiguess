@@ -17,3 +17,10 @@ export const importImmediatelyBody = zod.object({
   "importJobId": zod.string().optional()
 })
 
+/**
+ * @summary Expand a YouTube playlist link or id into its video ids for review before importing
+ */
+export const expandPlaylistBody = zod.object({
+  "playlistLink": zod.string().optional()
+})
+

@@ -5,10 +5,9 @@
  * OpenAPI spec version: v0
  */
 
-export interface LoginRequest {
+export interface TwoFactorVerifyRequest {
   /** @minLength 1 */
-  email: string;
+  pendingToken: string;
   /** @minLength 1 */
-  password: string;
-  rememberMe?: boolean;
+  code: string;
 }

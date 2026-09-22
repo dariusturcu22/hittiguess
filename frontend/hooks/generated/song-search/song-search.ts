@@ -20,6 +20,8 @@ import type {
 } from '@tanstack/react-query';
 
 import type {
+  RecommendSongsParams,
+  RecommendedSongsDTO,
   SearchSongsParams,
   SongDTO
 } from '../../models';
@@ -113,6 +115,99 @@ export function useSearchSongs<TData = Awaited<ReturnType<typeof searchSongs>>, 
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
   const queryOptions = getSearchSongsQueryOptions(params,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  query.queryKey = queryOptions.queryKey ;
+
+  return query;
+}
+
+
+
+
+/**
+ * @summary Recommend newest verified catalog songs, paged
+ */
+export const recommendSongs = (
+    params?: RecommendSongsParams,
+ options?: SecondParameter<typeof customInstance>,signal?: AbortSignal
+) => {
+      
+      
+      return customInstance<RecommendedSongsDTO>(
+      {url: `/api/songs/recommended`, method: 'GET',
+        params, signal
+    },
+      options);
+    }
+  
+
+
+
+export const getRecommendSongsQueryKey = (params?: RecommendSongsParams,) => {
+    return [
+    `/api/songs/recommended`, ...(params ? [params]: [])
+    ] as const;
+    }
+
+    
+export const getRecommendSongsQueryOptions = <TData = Awaited<ReturnType<typeof recommendSongs>>, TError = unknown>(params?: RecommendSongsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof recommendSongs>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getRecommendSongsQueryKey(params);
+
+  
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof recommendSongs>>> = ({ signal }) => recommendSongs(params, requestOptions, signal);
+
+      
+
+      
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof recommendSongs>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type RecommendSongsQueryResult = NonNullable<Awaited<ReturnType<typeof recommendSongs>>>
+export type RecommendSongsQueryError = unknown
+
+
+export function useRecommendSongs<TData = Awaited<ReturnType<typeof recommendSongs>>, TError = unknown>(
+ params: undefined |  RecommendSongsParams, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof recommendSongs>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof recommendSongs>>,
+          TError,
+          Awaited<ReturnType<typeof recommendSongs>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useRecommendSongs<TData = Awaited<ReturnType<typeof recommendSongs>>, TError = unknown>(
+ params?: RecommendSongsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof recommendSongs>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof recommendSongs>>,
+          TError,
+          Awaited<ReturnType<typeof recommendSongs>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useRecommendSongs<TData = Awaited<ReturnType<typeof recommendSongs>>, TError = unknown>(
+ params?: RecommendSongsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof recommendSongs>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary Recommend newest verified catalog songs, paged
+ */
+
+export function useRecommendSongs<TData = Awaited<ReturnType<typeof recommendSongs>>, TError = unknown>(
+ params?: RecommendSongsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof recommendSongs>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient 
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getRecommendSongsQueryOptions(params,options)
 
   const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 

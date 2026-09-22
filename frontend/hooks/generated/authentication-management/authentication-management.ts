@@ -16,8 +16,18 @@ import type {
 
 import type {
   AuthResponse,
+  Login200,
   LoginRequest,
-  RegisterRequest
+  PasswordResetConfirmRequest,
+  PasswordResetRequest,
+  RegisterRequest,
+  ResendVerificationRequest,
+  TwoFactorConfirmRequest,
+  TwoFactorConfirmResponse,
+  TwoFactorDisableRequest,
+  TwoFactorSetupResponse,
+  TwoFactorVerifyRequest,
+  VerifyEmailRequest
 } from '../../models';
 
 import { customInstance } from '../../../lib/axios-instance';
@@ -28,6 +38,134 @@ type SecondParameter<T extends (...args: never) => unknown> = Parameters<T>[1];
 
 
 /**
+ * @summary Verify an email address using a verification token
+ */
+export const verifyEmail = (
+    verifyEmailRequest: VerifyEmailRequest,
+ options?: SecondParameter<typeof customInstance>,signal?: AbortSignal
+) => {
+      
+      
+      return customInstance<void>(
+      {url: `/auth/verify-email`, method: 'POST',
+      headers: {'Content-Type': 'application/json', },
+      data: verifyEmailRequest, signal
+    },
+      options);
+    }
+  
+
+
+export const getVerifyEmailMutationOptions = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof verifyEmail>>, TError,{data: VerifyEmailRequest}, TContext>, request?: SecondParameter<typeof customInstance>}
+): UseMutationOptions<Awaited<ReturnType<typeof verifyEmail>>, TError,{data: VerifyEmailRequest}, TContext> => {
+
+const mutationKey = ['verifyEmail'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+      
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof verifyEmail>>, {data: VerifyEmailRequest}> = (props) => {
+          const {data} = props ?? {};
+
+          return  verifyEmail(data,requestOptions)
+        }
+
+        
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type VerifyEmailMutationResult = NonNullable<Awaited<ReturnType<typeof verifyEmail>>>
+    export type VerifyEmailMutationBody = VerifyEmailRequest
+    export type VerifyEmailMutationError = unknown
+
+    /**
+ * @summary Verify an email address using a verification token
+ */
+export const useVerifyEmail = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof verifyEmail>>, TError,{data: VerifyEmailRequest}, TContext>, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof verifyEmail>>,
+        TError,
+        {data: VerifyEmailRequest},
+        TContext
+      > => {
+
+      const mutationOptions = getVerifyEmailMutationOptions(options);
+
+      return useMutation(mutationOptions, queryClient);
+    }
+    /**
+ * @summary Resend the email verification link, rate-limited
+ */
+export const resendVerification = (
+    resendVerificationRequest: ResendVerificationRequest,
+ options?: SecondParameter<typeof customInstance>,signal?: AbortSignal
+) => {
+      
+      
+      return customInstance<void>(
+      {url: `/auth/resend-verification`, method: 'POST',
+      headers: {'Content-Type': 'application/json', },
+      data: resendVerificationRequest, signal
+    },
+      options);
+    }
+  
+
+
+export const getResendVerificationMutationOptions = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof resendVerification>>, TError,{data: ResendVerificationRequest}, TContext>, request?: SecondParameter<typeof customInstance>}
+): UseMutationOptions<Awaited<ReturnType<typeof resendVerification>>, TError,{data: ResendVerificationRequest}, TContext> => {
+
+const mutationKey = ['resendVerification'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+      
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof resendVerification>>, {data: ResendVerificationRequest}> = (props) => {
+          const {data} = props ?? {};
+
+          return  resendVerification(data,requestOptions)
+        }
+
+        
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ResendVerificationMutationResult = NonNullable<Awaited<ReturnType<typeof resendVerification>>>
+    export type ResendVerificationMutationBody = ResendVerificationRequest
+    export type ResendVerificationMutationError = unknown
+
+    /**
+ * @summary Resend the email verification link, rate-limited
+ */
+export const useResendVerification = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof resendVerification>>, TError,{data: ResendVerificationRequest}, TContext>, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof resendVerification>>,
+        TError,
+        {data: ResendVerificationRequest},
+        TContext
+      > => {
+
+      const mutationOptions = getResendVerificationMutationOptions(options);
+
+      return useMutation(mutationOptions, queryClient);
+    }
+    /**
  * @summary Register a new user
  */
 export const register = (
@@ -154,6 +292,134 @@ export const useRefresh = <TError = unknown,
       return useMutation(mutationOptions, queryClient);
     }
     /**
+ * @summary Request a password reset email, always succeeds regardless of whether the email exists
+ */
+export const requestPasswordReset = (
+    passwordResetRequest: PasswordResetRequest,
+ options?: SecondParameter<typeof customInstance>,signal?: AbortSignal
+) => {
+      
+      
+      return customInstance<void>(
+      {url: `/auth/password-reset/request`, method: 'POST',
+      headers: {'Content-Type': 'application/json', },
+      data: passwordResetRequest, signal
+    },
+      options);
+    }
+  
+
+
+export const getRequestPasswordResetMutationOptions = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof requestPasswordReset>>, TError,{data: PasswordResetRequest}, TContext>, request?: SecondParameter<typeof customInstance>}
+): UseMutationOptions<Awaited<ReturnType<typeof requestPasswordReset>>, TError,{data: PasswordResetRequest}, TContext> => {
+
+const mutationKey = ['requestPasswordReset'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+      
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof requestPasswordReset>>, {data: PasswordResetRequest}> = (props) => {
+          const {data} = props ?? {};
+
+          return  requestPasswordReset(data,requestOptions)
+        }
+
+        
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RequestPasswordResetMutationResult = NonNullable<Awaited<ReturnType<typeof requestPasswordReset>>>
+    export type RequestPasswordResetMutationBody = PasswordResetRequest
+    export type RequestPasswordResetMutationError = unknown
+
+    /**
+ * @summary Request a password reset email, always succeeds regardless of whether the email exists
+ */
+export const useRequestPasswordReset = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof requestPasswordReset>>, TError,{data: PasswordResetRequest}, TContext>, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof requestPasswordReset>>,
+        TError,
+        {data: PasswordResetRequest},
+        TContext
+      > => {
+
+      const mutationOptions = getRequestPasswordResetMutationOptions(options);
+
+      return useMutation(mutationOptions, queryClient);
+    }
+    /**
+ * @summary Confirm a password reset using a reset token
+ */
+export const confirmPasswordReset = (
+    passwordResetConfirmRequest: PasswordResetConfirmRequest,
+ options?: SecondParameter<typeof customInstance>,signal?: AbortSignal
+) => {
+      
+      
+      return customInstance<void>(
+      {url: `/auth/password-reset/confirm`, method: 'POST',
+      headers: {'Content-Type': 'application/json', },
+      data: passwordResetConfirmRequest, signal
+    },
+      options);
+    }
+  
+
+
+export const getConfirmPasswordResetMutationOptions = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof confirmPasswordReset>>, TError,{data: PasswordResetConfirmRequest}, TContext>, request?: SecondParameter<typeof customInstance>}
+): UseMutationOptions<Awaited<ReturnType<typeof confirmPasswordReset>>, TError,{data: PasswordResetConfirmRequest}, TContext> => {
+
+const mutationKey = ['confirmPasswordReset'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+      
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof confirmPasswordReset>>, {data: PasswordResetConfirmRequest}> = (props) => {
+          const {data} = props ?? {};
+
+          return  confirmPasswordReset(data,requestOptions)
+        }
+
+        
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ConfirmPasswordResetMutationResult = NonNullable<Awaited<ReturnType<typeof confirmPasswordReset>>>
+    export type ConfirmPasswordResetMutationBody = PasswordResetConfirmRequest
+    export type ConfirmPasswordResetMutationError = unknown
+
+    /**
+ * @summary Confirm a password reset using a reset token
+ */
+export const useConfirmPasswordReset = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof confirmPasswordReset>>, TError,{data: PasswordResetConfirmRequest}, TContext>, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof confirmPasswordReset>>,
+        TError,
+        {data: PasswordResetConfirmRequest},
+        TContext
+      > => {
+
+      const mutationOptions = getConfirmPasswordResetMutationOptions(options);
+
+      return useMutation(mutationOptions, queryClient);
+    }
+    /**
  * @summary Logout and clear auth tokens
  */
 export const logout = (
@@ -224,7 +490,7 @@ export const login = (
 ) => {
       
       
-      return customInstance<AuthResponse>(
+      return customInstance<Login200>(
       {url: `/auth/login`, method: 'POST',
       headers: {'Content-Type': 'application/json', },
       data: loginRequest, signal
@@ -276,6 +542,260 @@ export const useLogin = <TError = unknown,
       > => {
 
       const mutationOptions = getLoginMutationOptions(options);
+
+      return useMutation(mutationOptions, queryClient);
+    }
+    /**
+ * @summary Complete login for a two-factor-enabled account
+ */
+export const verifyTwoFactor = (
+    twoFactorVerifyRequest: TwoFactorVerifyRequest,
+ options?: SecondParameter<typeof customInstance>,signal?: AbortSignal
+) => {
+      
+      
+      return customInstance<AuthResponse>(
+      {url: `/auth/2fa/verify`, method: 'POST',
+      headers: {'Content-Type': 'application/json', },
+      data: twoFactorVerifyRequest, signal
+    },
+      options);
+    }
+  
+
+
+export const getVerifyTwoFactorMutationOptions = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof verifyTwoFactor>>, TError,{data: TwoFactorVerifyRequest}, TContext>, request?: SecondParameter<typeof customInstance>}
+): UseMutationOptions<Awaited<ReturnType<typeof verifyTwoFactor>>, TError,{data: TwoFactorVerifyRequest}, TContext> => {
+
+const mutationKey = ['verifyTwoFactor'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+      
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof verifyTwoFactor>>, {data: TwoFactorVerifyRequest}> = (props) => {
+          const {data} = props ?? {};
+
+          return  verifyTwoFactor(data,requestOptions)
+        }
+
+        
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type VerifyTwoFactorMutationResult = NonNullable<Awaited<ReturnType<typeof verifyTwoFactor>>>
+    export type VerifyTwoFactorMutationBody = TwoFactorVerifyRequest
+    export type VerifyTwoFactorMutationError = unknown
+
+    /**
+ * @summary Complete login for a two-factor-enabled account
+ */
+export const useVerifyTwoFactor = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof verifyTwoFactor>>, TError,{data: TwoFactorVerifyRequest}, TContext>, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof verifyTwoFactor>>,
+        TError,
+        {data: TwoFactorVerifyRequest},
+        TContext
+      > => {
+
+      const mutationOptions = getVerifyTwoFactorMutationOptions(options);
+
+      return useMutation(mutationOptions, queryClient);
+    }
+    /**
+ * @summary Start TOTP two-factor setup for the current account
+ */
+export const setupTwoFactor = (
+    
+ options?: SecondParameter<typeof customInstance>,signal?: AbortSignal
+) => {
+      
+      
+      return customInstance<TwoFactorSetupResponse>(
+      {url: `/auth/2fa/setup`, method: 'POST', signal
+    },
+      options);
+    }
+  
+
+
+export const getSetupTwoFactorMutationOptions = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof setupTwoFactor>>, TError,void, TContext>, request?: SecondParameter<typeof customInstance>}
+): UseMutationOptions<Awaited<ReturnType<typeof setupTwoFactor>>, TError,void, TContext> => {
+
+const mutationKey = ['setupTwoFactor'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+      
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof setupTwoFactor>>, void> = () => {
+          
+
+          return  setupTwoFactor(requestOptions)
+        }
+
+        
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SetupTwoFactorMutationResult = NonNullable<Awaited<ReturnType<typeof setupTwoFactor>>>
+    
+    export type SetupTwoFactorMutationError = unknown
+
+    /**
+ * @summary Start TOTP two-factor setup for the current account
+ */
+export const useSetupTwoFactor = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof setupTwoFactor>>, TError,void, TContext>, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof setupTwoFactor>>,
+        TError,
+        void,
+        TContext
+      > => {
+
+      const mutationOptions = getSetupTwoFactorMutationOptions(options);
+
+      return useMutation(mutationOptions, queryClient);
+    }
+    /**
+ * @summary Disable two-factor authentication, requires the current password or a valid code
+ */
+export const disableTwoFactor = (
+    twoFactorDisableRequest: TwoFactorDisableRequest,
+ options?: SecondParameter<typeof customInstance>,signal?: AbortSignal
+) => {
+      
+      
+      return customInstance<void>(
+      {url: `/auth/2fa/disable`, method: 'POST',
+      headers: {'Content-Type': 'application/json', },
+      data: twoFactorDisableRequest, signal
+    },
+      options);
+    }
+  
+
+
+export const getDisableTwoFactorMutationOptions = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof disableTwoFactor>>, TError,{data: TwoFactorDisableRequest}, TContext>, request?: SecondParameter<typeof customInstance>}
+): UseMutationOptions<Awaited<ReturnType<typeof disableTwoFactor>>, TError,{data: TwoFactorDisableRequest}, TContext> => {
+
+const mutationKey = ['disableTwoFactor'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+      
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof disableTwoFactor>>, {data: TwoFactorDisableRequest}> = (props) => {
+          const {data} = props ?? {};
+
+          return  disableTwoFactor(data,requestOptions)
+        }
+
+        
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DisableTwoFactorMutationResult = NonNullable<Awaited<ReturnType<typeof disableTwoFactor>>>
+    export type DisableTwoFactorMutationBody = TwoFactorDisableRequest
+    export type DisableTwoFactorMutationError = unknown
+
+    /**
+ * @summary Disable two-factor authentication, requires the current password or a valid code
+ */
+export const useDisableTwoFactor = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof disableTwoFactor>>, TError,{data: TwoFactorDisableRequest}, TContext>, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof disableTwoFactor>>,
+        TError,
+        {data: TwoFactorDisableRequest},
+        TContext
+      > => {
+
+      const mutationOptions = getDisableTwoFactorMutationOptions(options);
+
+      return useMutation(mutationOptions, queryClient);
+    }
+    /**
+ * @summary Confirm TOTP two-factor setup with a code from the authenticator app
+ */
+export const confirmTwoFactor = (
+    twoFactorConfirmRequest: TwoFactorConfirmRequest,
+ options?: SecondParameter<typeof customInstance>,signal?: AbortSignal
+) => {
+      
+      
+      return customInstance<TwoFactorConfirmResponse>(
+      {url: `/auth/2fa/confirm`, method: 'POST',
+      headers: {'Content-Type': 'application/json', },
+      data: twoFactorConfirmRequest, signal
+    },
+      options);
+    }
+  
+
+
+export const getConfirmTwoFactorMutationOptions = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof confirmTwoFactor>>, TError,{data: TwoFactorConfirmRequest}, TContext>, request?: SecondParameter<typeof customInstance>}
+): UseMutationOptions<Awaited<ReturnType<typeof confirmTwoFactor>>, TError,{data: TwoFactorConfirmRequest}, TContext> => {
+
+const mutationKey = ['confirmTwoFactor'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+      
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof confirmTwoFactor>>, {data: TwoFactorConfirmRequest}> = (props) => {
+          const {data} = props ?? {};
+
+          return  confirmTwoFactor(data,requestOptions)
+        }
+
+        
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ConfirmTwoFactorMutationResult = NonNullable<Awaited<ReturnType<typeof confirmTwoFactor>>>
+    export type ConfirmTwoFactorMutationBody = TwoFactorConfirmRequest
+    export type ConfirmTwoFactorMutationError = unknown
+
+    /**
+ * @summary Confirm TOTP two-factor setup with a code from the authenticator app
+ */
+export const useConfirmTwoFactor = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof confirmTwoFactor>>, TError,{data: TwoFactorConfirmRequest}, TContext>, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof confirmTwoFactor>>,
+        TError,
+        {data: TwoFactorConfirmRequest},
+        TContext
+      > => {
+
+      const mutationOptions = getConfirmTwoFactorMutationOptions(options);
 
       return useMutation(mutationOptions, queryClient);
     }

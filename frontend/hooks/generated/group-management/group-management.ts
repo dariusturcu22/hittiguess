@@ -25,8 +25,12 @@ import type {
 
 import type {
   CreateGroupRequest,
+  GenerateDifficultySetRequest,
+  GeneratedSongPreviewDTO,
   GroupDetailDTO,
   JoinGroupRequest,
+  StartCustomSessionRequest,
+  StartSessionWithSongsRequest,
   TurnCredentialsResponse,
   UpdateGroupSettingsRequest
 } from '../../models';
@@ -285,6 +289,201 @@ export const useStartGameSession = <TError = unknown,
       > => {
 
       const mutationOptions = getStartGameSessionMutationOptions(options);
+
+      return useMutation(mutationOptions, queryClient);
+    }
+    /**
+ * @summary Start a game session from reviewed song ids, admin only, locks the group to new members
+ */
+export const startSessionWithSongs = (
+    groupId: number,
+    startSessionWithSongsRequest: StartSessionWithSongsRequest,
+ options?: SecondParameter<typeof customInstance>,signal?: AbortSignal
+) => {
+      
+      
+      return customInstance<GroupDetailDTO>(
+      {url: `/api/groups/${groupId}/session/start-with-songs`, method: 'POST',
+      headers: {'Content-Type': 'application/json', },
+      data: startSessionWithSongsRequest, signal
+    },
+      options);
+    }
+  
+
+
+export const getStartSessionWithSongsMutationOptions = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof startSessionWithSongs>>, TError,{groupId: number;data: StartSessionWithSongsRequest}, TContext>, request?: SecondParameter<typeof customInstance>}
+): UseMutationOptions<Awaited<ReturnType<typeof startSessionWithSongs>>, TError,{groupId: number;data: StartSessionWithSongsRequest}, TContext> => {
+
+const mutationKey = ['startSessionWithSongs'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+      
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof startSessionWithSongs>>, {groupId: number;data: StartSessionWithSongsRequest}> = (props) => {
+          const {groupId,data} = props ?? {};
+
+          return  startSessionWithSongs(groupId,data,requestOptions)
+        }
+
+        
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type StartSessionWithSongsMutationResult = NonNullable<Awaited<ReturnType<typeof startSessionWithSongs>>>
+    export type StartSessionWithSongsMutationBody = StartSessionWithSongsRequest
+    export type StartSessionWithSongsMutationError = unknown
+
+    /**
+ * @summary Start a game session from reviewed song ids, admin only, locks the group to new members
+ */
+export const useStartSessionWithSongs = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof startSessionWithSongs>>, TError,{groupId: number;data: StartSessionWithSongsRequest}, TContext>, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof startSessionWithSongs>>,
+        TError,
+        {groupId: number;data: StartSessionWithSongsRequest},
+        TContext
+      > => {
+
+      const mutationOptions = getStartSessionWithSongsMutationOptions(options);
+
+      return useMutation(mutationOptions, queryClient);
+    }
+    /**
+ * @summary Start a game session from a playlist or pasted playlist link, admin only, locks the group to new members
+ */
+export const startCustomSession = (
+    groupId: number,
+    startCustomSessionRequest: StartCustomSessionRequest,
+ options?: SecondParameter<typeof customInstance>,signal?: AbortSignal
+) => {
+      
+      
+      return customInstance<GroupDetailDTO>(
+      {url: `/api/groups/${groupId}/session/start-custom`, method: 'POST',
+      headers: {'Content-Type': 'application/json', },
+      data: startCustomSessionRequest, signal
+    },
+      options);
+    }
+  
+
+
+export const getStartCustomSessionMutationOptions = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof startCustomSession>>, TError,{groupId: number;data: StartCustomSessionRequest}, TContext>, request?: SecondParameter<typeof customInstance>}
+): UseMutationOptions<Awaited<ReturnType<typeof startCustomSession>>, TError,{groupId: number;data: StartCustomSessionRequest}, TContext> => {
+
+const mutationKey = ['startCustomSession'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+      
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof startCustomSession>>, {groupId: number;data: StartCustomSessionRequest}> = (props) => {
+          const {groupId,data} = props ?? {};
+
+          return  startCustomSession(groupId,data,requestOptions)
+        }
+
+        
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type StartCustomSessionMutationResult = NonNullable<Awaited<ReturnType<typeof startCustomSession>>>
+    export type StartCustomSessionMutationBody = StartCustomSessionRequest
+    export type StartCustomSessionMutationError = unknown
+
+    /**
+ * @summary Start a game session from a playlist or pasted playlist link, admin only, locks the group to new members
+ */
+export const useStartCustomSession = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof startCustomSession>>, TError,{groupId: number;data: StartCustomSessionRequest}, TContext>, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof startCustomSession>>,
+        TError,
+        {groupId: number;data: StartCustomSessionRequest},
+        TContext
+      > => {
+
+      const mutationOptions = getStartCustomSessionMutationOptions(options);
+
+      return useMutation(mutationOptions, queryClient);
+    }
+    /**
+ * @summary Generate a difficulty-tuned song set for review, admin only, starts nothing
+ */
+export const generateDifficultySet = (
+    groupId: number,
+    generateDifficultySetRequest: GenerateDifficultySetRequest,
+ options?: SecondParameter<typeof customInstance>,signal?: AbortSignal
+) => {
+      
+      
+      return customInstance<GeneratedSongPreviewDTO[]>(
+      {url: `/api/groups/${groupId}/session/generate`, method: 'POST',
+      headers: {'Content-Type': 'application/json', },
+      data: generateDifficultySetRequest, signal
+    },
+      options);
+    }
+  
+
+
+export const getGenerateDifficultySetMutationOptions = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof generateDifficultySet>>, TError,{groupId: number;data: GenerateDifficultySetRequest}, TContext>, request?: SecondParameter<typeof customInstance>}
+): UseMutationOptions<Awaited<ReturnType<typeof generateDifficultySet>>, TError,{groupId: number;data: GenerateDifficultySetRequest}, TContext> => {
+
+const mutationKey = ['generateDifficultySet'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+      
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof generateDifficultySet>>, {groupId: number;data: GenerateDifficultySetRequest}> = (props) => {
+          const {groupId,data} = props ?? {};
+
+          return  generateDifficultySet(groupId,data,requestOptions)
+        }
+
+        
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type GenerateDifficultySetMutationResult = NonNullable<Awaited<ReturnType<typeof generateDifficultySet>>>
+    export type GenerateDifficultySetMutationBody = GenerateDifficultySetRequest
+    export type GenerateDifficultySetMutationError = unknown
+
+    /**
+ * @summary Generate a difficulty-tuned song set for review, admin only, starts nothing
+ */
+export const useGenerateDifficultySet = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof generateDifficultySet>>, TError,{groupId: number;data: GenerateDifficultySetRequest}, TContext>, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof generateDifficultySet>>,
+        TError,
+        {groupId: number;data: GenerateDifficultySetRequest},
+        TContext
+      > => {
+
+      const mutationOptions = getGenerateDifficultySetMutationOptions(options);
 
       return useMutation(mutationOptions, queryClient);
     }

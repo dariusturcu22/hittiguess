@@ -5,9 +5,9 @@
  * OpenAPI spec version: v0
  */
 
-export interface AuthResponse {
+export interface GeneratedSongPreviewDTO {
   id?: number;
-  username?: string;
-  email?: string;
-  emailVerificationRequired?: boolean;
+  title?: string;
+  artists?: string[];
+  releaseYear?: number;
 }
