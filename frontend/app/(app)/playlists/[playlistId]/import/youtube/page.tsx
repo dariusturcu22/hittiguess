@@ -2,11 +2,14 @@
 
 import React, { use } from "react";
 import Link from "next/link";
-import { Check, LoaderCircle, Search, Video } from "lucide-react";
+import { LoaderCircle, Search, Video } from "lucide-react";
 
-import { useExpandPlaylist, useImportImmediately } from "@/hooks/generated/bulk-import/bulk-import";
+import { useExpandPlaylist } from "@/hooks/generated/bulk-import/bulk-import";
+import { useStartImport } from "@/hooks/generated/playlist-import-jobs/playlist-import-jobs";
+import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { useBulkImportRealtime } from "@/hooks/use-bulk-import-realtime";
+import { saveActiveImportJob } from "@/lib/playlist-import-job";
 
 interface PageProps {
   params: Promise<{ playlistId: string }>;
@@ -17,13 +20,13 @@ const YOUTUBE_INPUT_PLACEHOLDER = "https://youtube.com/playlist?list=...";
 export default function ImportYoutubePage({ params }: PageProps) {
   const { playlistId: rawId } = use(params);
   const playlistId = parseInt(rawId);
+  const router = useRouter();
   const expandMutation = useExpandPlaylist();
-  const importMutation = useImportImmediately();
-  const { events, isConnected, reset } = useBulkImportRealtime({ subscribeToProgress: false });
+  const startImportMutation = useStartImport();
+  const { isConnected, reset } = useBulkImportRealtime({ subscribeToProgress: false });
 
   const [playlistLink, setPlaylistLink] = React.useState("");
   const [expandedVideoIds, setExpandedVideoIds] = React.useState<string[] | null>(null);
-  const [activeImportJobId, setActiveImportJobId] = React.useState<string>();
 
   function handleExpand() {
     const trimmedLink = playlistLink.trim();
@@ -41,24 +44,22 @@ export default function ImportYoutubePage({ params }: PageProps) {
     if (!expandedVideoIds || expandedVideoIds.length === 0) {
       return;
     }
-    const toastId = toast.loading("Importing playlist...");
-    const importJobId = crypto.randomUUID();
-    setActiveImportJobId(importJobId);
     reset();
-    window.dispatchEvent(new CustomEvent("playlist-import-progress", { detail: { active: true, playlistId } }));
-    importMutation.mutate(
-      { data: { videoIdsOrLinks: expandedVideoIds, targetPlaylistId: playlistId, importJobId } },
+    startImportMutation.mutate(
+      { playlistId, data: { videoIdsOrLinks: expandedVideoIds } },
       {
-        onSuccess: () => toast.success("Playlist import complete.", { id: toastId }),
-        onError: () => toast.error("Playlist import failed.", { id: toastId }),
-        onSettled: () => window.dispatchEvent(new CustomEvent("playlist-import-progress", { detail: { active: false } })),
+        onSuccess: (response) => {
+          const startedJobId = response.importJobId;
+          if (startedJobId) {
+            saveActiveImportJob({ importJobId: startedJobId, playlistId });
+          }
+          toast.success("Import started. Songs appear as they resolve.");
+          router.push(`/playlists/${playlistId}`);
+        },
+        onError: () => toast.error("Import failed to start. Check the link and try again."),
       },
     );
   }
-
-  const result = importMutation.data;
-  const importEvents = events.filter((event) => event.importJobId === activeImportJobId);
-  const processedSongCount = importEvents.length;
 
   return (
     <div className="flex-1 flex items-center justify-center px-6 py-12">
@@ -130,15 +131,15 @@ export default function ImportYoutubePage({ params }: PageProps) {
               <button
                 type="button"
                 onClick={handleImport}
-                disabled={importMutation.isPending || expandedVideoIds.length === 0}
+                disabled={startImportMutation.isPending || expandedVideoIds.length === 0}
                 className="flex-1 rounded-full bg-primary px-4 py-2.5 font-display text-xs text-primary-foreground disabled:opacity-60"
               >
-                {importMutation.isPending ? "Importing..." : `Import ${expandedVideoIds.length} songs`}
+                {startImportMutation.isPending ? "Starting..." : `Import ${expandedVideoIds.length} songs`}
               </button>
               <button
                 type="button"
                 onClick={() => setExpandedVideoIds(null)}
-                disabled={importMutation.isPending}
+                disabled={startImportMutation.isPending}
                 className="rounded-full border-2 border-border px-4 py-2.5 text-xs font-semibold text-card-foreground disabled:opacity-60"
               >
                 Back
@@ -147,47 +148,17 @@ export default function ImportYoutubePage({ params }: PageProps) {
           </div>
         ) : null}
 
-        {importMutation.isPending ? (
+        {startImportMutation.isPending ? (
           <div className="mt-6 rounded-xl bg-background p-5">
             <div className="flex items-center gap-3 text-[13px] font-semibold text-card-foreground">
               <LoaderCircle className="size-4 animate-spin text-primary" />
-              Reading playlist and matching songs
+              Starting the import
             </div>
-            <div className="mt-4 flex flex-wrap gap-1" aria-live="polite">
-              {importEvents.map((event) => (
-                <span
-                  key={`${event.youtubeId}-${event.outcome}`}
-                  className={`size-2 rounded-full ${event.outcome === "UNRESOLVED" ? "bg-destructive" : event.outcome === "ALREADY_KNOWN" ? "bg-muted-foreground" : "bg-primary"}`}
-                  title={`${event.youtubeId}: ${event.outcome.toLowerCase().replaceAll("_", " ")}`}
-                />
-              ))}
-              {processedSongCount === 0 ? <span className="h-2 w-16 animate-pulse rounded-full bg-secondary" /> : null}
-            </div>
-            <p className="mt-3 text-[11px] text-muted-foreground">
-              {processedSongCount > 0 ? `${processedSongCount} song${processedSongCount === 1 ? "" : "s"} processed so far.` : "Keep this page open while the playlist is processed."}
-            </p>
           </div>
-        ) : importMutation.isError ? (
+        ) : startImportMutation.isError ? (
           <p className="mt-4 text-[12px] text-destructive text-center">
-            Import failed. Check the link or IDs and try again.
+            Import failed to start. Check the link and try again.
           </p>
-        ) : result ? (
-          <div className="mt-6 rounded-xl bg-background px-5 py-4 text-[12px] text-muted-foreground">
-            <div className="flex items-center gap-3 font-semibold text-card-foreground">
-              <span className="flex size-7 items-center justify-center rounded-full bg-primary text-primary-foreground">
-                <Check className="size-4" />
-              </span>
-              Import complete
-            </div>
-            <div className="mt-4 grid grid-cols-3 gap-2 text-center">
-              <div className="rounded-lg bg-card p-3"><strong className="block font-display text-lg text-primary">{result.resolvedYoutubeIds?.length ?? 0}</strong>Added</div>
-              <div className="rounded-lg bg-card p-3"><strong className="block font-display text-lg text-card-foreground">{result.alreadyKnownYoutubeIds?.length ?? 0}</strong>Already known</div>
-              <div className="rounded-lg bg-card p-3"><strong className="block font-display text-lg text-destructive">{result.unresolvedYoutubeIds?.length ?? 0}</strong>Needs review</div>
-            </div>
-            <Link href={`/playlists/${playlistId}`} className="mt-4 block text-center font-display text-[11px] text-primary">
-              View playlist
-            </Link>
-          </div>
         ) : null}
 
         <Link

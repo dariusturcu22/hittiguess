@@ -59,8 +59,11 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { PlaylistCoverMosaic } from "@/components/playlist-cover-mosaic";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/shadcn/popover";
+import { useActiveImport } from "@/hooks/generated/playlist-import-jobs/playlist-import-jobs";
 import { playlistTitleColor } from "@/lib/playlist-colors";
 import { PhantomEmptyState } from "@/components/phantom-empty-state";
+
+const ACTIVE_IMPORT_REFRESH_MILLISECONDS = 5_000;
 
 const MEMBER_AVATAR_COLORS = [
   "var(--primary)",
@@ -114,6 +117,23 @@ export default function PlaylistContent({
   const { data: playlist, isLoading } = useGetPlaylist(playlistId);
   const activeMembershipQuery = useGetActiveMembership({ query: { retry: false } });
   const songs = React.useMemo(() => playlist?.songs ?? [], [playlist?.songs]);
+  const activeImportQuery = useActiveImport(playlistId, {
+    query: { retry: false, refetchInterval: ACTIVE_IMPORT_REFRESH_MILLISECONDS },
+  });
+  const activeImportItems = activeImportQuery.data?.items ?? [];
+  const pendingImportItems = activeImportItems.filter(
+    (item) => item.status === "PENDING" || item.status === "UNRESOLVED",
+  );
+  const finishedImportCount = activeImportItems.filter((item) => item.status !== "PENDING").length;
+  const hadRunningImport = React.useRef(false);
+  React.useEffect(() => {
+    if (activeImportQuery.data) {
+      hadRunningImport.current = true;
+    } else if (hadRunningImport.current) {
+      hadRunningImport.current = false;
+      void queryClient.invalidateQueries({ queryKey: getGetPlaylistQueryKey(playlistId) });
+    }
+  }, [activeImportQuery.data, playlistId, queryClient]);
 
   const { mutate: removeSong } = useDeleteSong();
   const { mutate: leavePlaylist } = useLeavePlaylist();
@@ -501,6 +521,34 @@ export default function PlaylistContent({
           </Link>
         </div>
       )}
+
+      {pendingImportItems.length > 0 ? (
+        <div
+          className="mb-3.5 rounded-[13px] border-2 border-dashed border-border bg-card px-4.5 py-3"
+          title={`${finishedImportCount} of ${activeImportItems.length} songs imported so far.`}
+        >
+          <div className="text-[13px] font-semibold text-card-foreground">
+            Importing {pendingImportItems.length} song{pendingImportItems.length === 1 ? "" : "s"} in the background...
+          </div>
+          <div className="mt-2.5 grid grid-cols-4 gap-2 sm:grid-cols-6">
+            {pendingImportItems.map((item) => (
+              <div
+                key={item.youtubeId}
+                className="opacity-45 grayscale"
+                title={item.status === "UNRESOLVED" ? "This video could not be matched to a song." : "Resolving song details..."}
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={`https://i.ytimg.com/vi/${item.youtubeId}/default.jpg`}
+                  alt=""
+                  loading="lazy"
+                  className="aspect-video w-full rounded-lg object-cover"
+                />
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : null}
 
       <div className="flex min-h-0 w-full min-w-0 flex-1 flex-col overflow-hidden rounded-2xl border-[3px] border-border-strong bg-card shadow-lg">
         <div className="min-h-0 min-w-0 flex-1 overflow-y-auto">
