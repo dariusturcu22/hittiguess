@@ -6,6 +6,15 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import EditPlaylistPage from "./page";
 
 const EDIT_PARAMS = Promise.resolve({ playlistId: "7" });
+const uploadCoverMutate = vi.fn();
+
+vi.mock("@/hooks/generated/pixel-art-images/pixel-art-images", () => ({
+  useUploadPlaylistCover: () => ({ mutate: uploadCoverMutate, isPending: false }),
+}));
+
+vi.mock("@/lib/pixelate", () => ({
+  pixelizeImage: vi.fn(async () => new Blob(["pixels"], { type: "image/png" })),
+}));
 
 vi.mock("next/link", () => ({
   default: ({ children, href }: { children: ReactNode; href: string }) => (
@@ -68,6 +77,10 @@ describe("EditPlaylistPage", () => {
       value: { writeText: vi.fn(() => Promise.resolve()) },
       configurable: true,
     });
+    vi.stubGlobal("URL", {
+      createObjectURL: vi.fn(() => "blob:preview"),
+      revokeObjectURL: vi.fn(),
+    });
   });
 
   it("copies the invite link for the current origin", async () => {
@@ -88,5 +101,24 @@ describe("EditPlaylistPage", () => {
     fireEvent.click(screen.getByRole("button", { name: "Delete" }));
 
     expect(await screen.findByText("Delete this playlist?")).toBeVisible();
+  });
+
+  it("uploads the pixelized file as the playlist cover", async () => {
+    uploadCoverMutate.mockReset();
+    await renderPage();
+
+    const coverPicker = screen.getByRole("button", { name: "Change playlist cover" });
+    const fileInput = coverPicker.parentElement?.querySelector('input[type="file"]');
+    expect(fileInput).not.toBeNull();
+    fireEvent.change(fileInput!, {
+      target: { files: [new File(["source"], "cover.jpg", { type: "image/jpeg" })] },
+    });
+
+    await waitFor(() =>
+      expect(uploadCoverMutate).toHaveBeenCalledWith(
+        { playlistId: 7, data: { cover: expect.any(Blob) } },
+        expect.anything(),
+      ),
+    );
   });
 });

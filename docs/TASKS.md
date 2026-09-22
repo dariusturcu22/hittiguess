@@ -784,7 +784,7 @@ Edit playlist:
 
 - [x] Implement cover change, title, title color, description, public toggle, and invite-link copy
 - [x] Confirm delete works behind its warning, and the members tab grants, kick, and ban all work
-- [ ] Decide the pixel-art cover rule (upload pixelized for direct database storage, same rule for profile pictures); needs an owner decision first
+- [x] Decide the pixel-art cover rule (upload pixelized for direct database storage, same rule for profile pictures); pixelize and store won
 
 App-wide and imports:
 

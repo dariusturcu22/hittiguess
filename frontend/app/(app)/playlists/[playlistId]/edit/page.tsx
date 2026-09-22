@@ -18,7 +18,9 @@ import {
   getGetPlaylistQueryKey,
 } from "@/hooks/generated/playlist-management/playlist-management";
 import type { PlaylistMemberDTO } from "@/hooks/models/playlistMemberDTO";
+import { useUploadPlaylistCover } from "@/hooks/generated/pixel-art-images/pixel-art-images";
 import { PlaylistCoverMosaic } from "@/components/playlist-cover-mosaic";
+import { PixelImageInput } from "@/components/pixel-image-input";
 import { DEFAULT_PLAYLIST_COLOR, PLAYLIST_COLOR_PRESETS } from "@/lib/playlist-colors";
 import { getGetUserPlaylistsQueryKey } from "@/hooks/generated/user-management/user-management";
 import { useQueryClient } from "@tanstack/react-query";
@@ -202,8 +204,11 @@ export default function EditPlaylistPage({ params }: PageProps) {
   const updatePlaylist = useUpdatePlaylist();
   const publishMutation = usePublishPlaylist();
   const unpublishMutation = useUnpublishPlaylist();
+  const uploadCover = useUploadPlaylistCover();
   const [isDeleting, setIsDeleting] = React.useState(false);
   const [deleteError, setDeleteError] = React.useState("");
+  const [coverError, setCoverError] = React.useState("");
+  const [coverVersion, setCoverVersion] = React.useState(0);
 
   const [nameDraft, setNameDraft] = React.useState("");
   const [descriptionDraft, setDescriptionDraft] = React.useState("");
@@ -268,6 +273,22 @@ export default function EditPlaylistPage({ params }: PageProps) {
     );
   }
 
+  function uploadCoverImage(pixelBlob: Blob) {
+    setCoverError("");
+    uploadCover.mutate(
+      { playlistId, data: { cover: pixelBlob } },
+      {
+        onSuccess: () => {
+          setCoverVersion((currentVersion) => currentVersion + 1);
+          invalidatePlaylist();
+        },
+        onError: () => setCoverError("Could not save that cover. Try another image."),
+      },
+    );
+  }
+
+  const customCoverUrl = `${process.env.NEXT_PUBLIC_API_URL}/api/playlists/${playlistId}/cover?version=${coverVersion}`;
+
   const isPublic = Boolean(playlist?.isPublic);
   const publishing = publishMutation.isPending || unpublishMutation.isPending;
 
@@ -299,16 +320,25 @@ export default function EditPlaylistPage({ params }: PageProps) {
           <div className="flex gap-[22px] mb-6">
             <div className="group relative w-[158px] h-[158px] shrink-0">
               <PlaylistCoverMosaic
+                key={coverVersion}
                 previewYoutubeIds={(playlist?.songs ?? []).map((song) => song.youtubeId)}
+                customCoverUrl={customCoverUrl}
                 className="w-full h-full"
               />
-              <button
-                type="button"
-                className="absolute inset-0 rounded-[17px] bg-background/55 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-card-foreground"
-                aria-label="Edit playlist cover"
+              <PixelImageInput
+                label="Change playlist cover"
+                disabled={uploadCover.isPending}
+                buttonClassName="absolute inset-0 rounded-[17px] bg-background/55 opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100 disabled:opacity-0 flex items-center justify-center text-card-foreground"
+                onPixelized={(pixelBlob) => uploadCoverImage(pixelBlob)}
+                onError={setCoverError}
               >
-                <Pencil className="size-6" />
-              </button>
+                {uploadCover.isPending ? "Saving..." : <Pencil className="size-6" />}
+              </PixelImageInput>
+              {coverError ? (
+                <p role="alert" className="absolute -bottom-6 left-0 text-[11px] text-destructive whitespace-nowrap">
+                  {coverError}
+                </p>
+              ) : null}
             </div>
             <div className="flex-1 min-w-0 flex flex-col justify-center gap-4">
               <div>
