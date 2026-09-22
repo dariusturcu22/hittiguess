@@ -26,7 +26,7 @@ public class PlaylistImportJobController {
     private final PlaylistImportJobService playlistImportJobService;
 
     @Operation(summary = "Start a background import into a playlist, returning the job id immediately")
-    @PostMapping("/{playlistId}/imports")
+    @PostMapping("/{playlistId}/import-jobs")
     public ResponseEntity<Map<String, String>> startImport(
             @PathVariable Long playlistId,
             @RequestBody StartPlaylistImportRequest request) {
@@ -35,7 +35,7 @@ public class PlaylistImportJobController {
     }
 
     @Operation(summary = "Read the playlist's running import with per-video progress, if any")
-    @GetMapping("/{playlistId}/imports/active")
+    @GetMapping("/{playlistId}/import-jobs/active")
     public ResponseEntity<PlaylistImportJobDTO> activeImport(@PathVariable Long playlistId) {
         return playlistImportJobService.findActiveImport(playlistId)
                 .map(ResponseEntity::ok)
