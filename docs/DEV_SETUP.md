@@ -40,7 +40,8 @@ To let other devices on the same network play against this machine:
    `http://<address>:3000`. Restart the backend.
 3. Frontend `.env.local`: set `NEXT_PUBLIC_API_URL` to
    `http://<address>:8080`. Restart the dev server or rebuild; the value
-   embeds at build time.
+   embeds at build time. The dev server derives its allowed LAN origin
+   from the same value, so no config edit is needed.
 4. Other players open `http://<address>:3000`. Accept the Windows Firewall
    prompts for Node.js and Java.
 5. Players register local accounts. Google sign-in is unavailable over the
