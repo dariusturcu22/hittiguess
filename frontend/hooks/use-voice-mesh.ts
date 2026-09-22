@@ -32,7 +32,13 @@ function websocketUrl(): string {
   return apiUrl.toString();
 }
 
-export function useVoiceMesh(groupId: number, currentUserId: number | undefined, voiceMembers: MemberDTO[], isInVoice: boolean) {
+interface VoiceMeshOptions {
+  microphoneDeviceId?: string;
+  speakerDeviceId?: string;
+}
+
+export function useVoiceMesh(groupId: number, currentUserId: number | undefined, voiceMembers: MemberDTO[], isInVoice: boolean, options: VoiceMeshOptions = {}) {
+  const { microphoneDeviceId, speakerDeviceId } = options;
   const turnCredentialsQuery = useGetVoiceTurnCredentials(groupId, { query: { enabled: isInVoice, retry: false } });
   const clientReference = useRef<Client | null>(null);
   const streamReference = useRef<MediaStream | null>(null);
@@ -62,6 +68,10 @@ export function useVoiceMesh(groupId: number, currentUserId: number | undefined,
       const audio = new Audio();
       audio.srcObject = remoteStream;
       audio.muted = isDeafenedReference.current;
+      const sinkableAudio = audio as HTMLAudioElement & { setSinkId?: (deviceId: string) => Promise<void> };
+      if (speakerDeviceId && typeof sinkableAudio.setSinkId === "function") {
+        void sinkableAudio.setSinkId(speakerDeviceId).catch(() => {});
+      }
       remoteAudioReference.current.set(targetMemberUserId, audio);
       void audio.play();
     };
@@ -73,7 +83,7 @@ export function useVoiceMesh(groupId: number, currentUserId: number | undefined,
     };
     peersReference.current.set(targetMemberUserId, peer);
     return peer;
-  }, [sendSignal, turnCredentialsQuery.data?.iceServers]);
+  }, [sendSignal, speakerDeviceId, turnCredentialsQuery.data?.iceServers]);
 
   useEffect(() => {
     if (!isInVoice || !currentUserId) return;
@@ -102,7 +112,7 @@ export function useVoiceMesh(groupId: number, currentUserId: number | undefined,
     });
   }, [createPeer, currentUserId, isInVoice, isSignalConnected, sendSignal, voiceMembers]);
 
-  const startMicrophone = useCallback(async () => { try { const microphoneStream = await navigator.mediaDevices.getUserMedia({ audio: true }); const microphoneTrack = microphoneStream.getAudioTracks().at(0); streamReference.current = microphoneStream; publishLocalAudioStream(microphoneStream); peersReference.current.forEach((peer) => { peer.getSenders().filter((sender) => sender.track?.kind === "audio").forEach((sender) => { void sender.replaceTrack(microphoneTrack ?? null); }); }); setMicrophoneError(false); return true; } catch { setMicrophoneError(true); return false; } }, []);
+  const startMicrophone = useCallback(async () => { try { const microphoneStream = await navigator.mediaDevices.getUserMedia({ audio: microphoneDeviceId ? { deviceId: { exact: microphoneDeviceId } } : true }); const microphoneTrack = microphoneStream.getAudioTracks().at(0); streamReference.current = microphoneStream; publishLocalAudioStream(microphoneStream); peersReference.current.forEach((peer) => { peer.getSenders().filter((sender) => sender.track?.kind === "audio").forEach((sender) => { void sender.replaceTrack(microphoneTrack ?? null); }); }); setMicrophoneError(false); return true; } catch { setMicrophoneError(true); return false; } }, [microphoneDeviceId]);
   const startTabAudio = useCallback(async () => {
     try {
       const displayStream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true });

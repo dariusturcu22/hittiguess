@@ -14,3 +14,13 @@ export const searchSongsQueryParams = zod.object({
   "query": zod.string()
 })
 
+/**
+ * @summary Recommend newest verified catalog songs, paged
+ */
+export const recommendSongsQueryPageDefault = 0;export const recommendSongsQuerySizeDefault = 20;
+
+export const recommendSongsQueryParams = zod.object({
+  "page": zod.number().optional(),
+  "size": zod.number().default(recommendSongsQuerySizeDefault)
+})
+

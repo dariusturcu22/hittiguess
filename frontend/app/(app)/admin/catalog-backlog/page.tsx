@@ -14,6 +14,10 @@ const YOUTUBE_ID_INPUT_PLACEHOLDER = [
   "jNQXAC9IVRw",
 ].join("\n");
 
+// The scheduled sweep drains patiently in the background; re-reading on this
+// cadence keeps the processed counts moving without hammering the endpoint.
+const BACKLOG_STATUS_REFRESH_MILLISECONDS = 30_000;
+
 function looksLikePlaylistLink(line: string): boolean {
   return line.includes("youtube.com") || line.includes("youtu.be");
 }
@@ -79,7 +83,7 @@ export default function CatalogBacklogPage() {
     isLoading: statusLoading,
     isError: statusError,
     refetch: refetchStatus,
-  } = useBacklogStatus();
+  } = useBacklogStatus({ query: { refetchInterval: BACKLOG_STATUS_REFRESH_MILLISECONDS } });
   const enqueueMutation = useEnqueue();
 
   const [seedingInput, setSeedingInput] = React.useState("");

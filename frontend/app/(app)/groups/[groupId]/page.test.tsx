@@ -43,6 +43,9 @@ vi.mock("@/hooks/generated/group-management/group-management", () => ({
   useLeaveGroup: () => ({ mutate: leaveMutate, isPending: false }),
   useStartGameSession: () => ({ mutate: vi.fn(), isPending: false }),
   useUpdateGroupSettings: () => ({ mutate: updateSettingsMutate, isPending: false }),
+  useGenerateDifficultySet: () => ({ mutate: generateMutate, isPending: false }),
+  useStartSessionWithSongs: () => ({ mutate: startWithSongsMutate, isPending: false }),
+  useStartCustomSession: () => ({ mutate: startCustomMutate, isPending: false }),
 }));
 
 vi.mock("@/hooks/generated/user-management/user-management", () => ({
@@ -62,12 +65,6 @@ vi.mock("@/hooks/use-group-realtime", () => ({
 
 vi.mock("@/components/group-chat-overlay", () => ({
   GroupChatOverlay: () => <aside aria-label="Chat" />,
-}));
-
-vi.mock("@/hooks/use-difficulty-session-start", () => ({
-  useGenerateDifficultySet: () => ({ mutate: generateMutate, isPending: false }),
-  useStartSessionWithSongs: () => ({ mutate: startWithSongsMutate, isPending: false }),
-  useStartCustomSession: () => ({ mutate: startCustomMutate, isPending: false }),
 }));
 
 const previews = [
