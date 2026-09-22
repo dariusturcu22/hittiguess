@@ -61,6 +61,7 @@ import { PlaylistCoverMosaic } from "@/components/playlist-cover-mosaic";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/shadcn/popover";
 import { useActiveImport } from "@/hooks/generated/playlist-import-jobs/playlist-import-jobs";
 import { playlistTitleColor } from "@/lib/playlist-colors";
+import { copyText } from "@/lib/clipboard";
 import { PhantomEmptyState } from "@/components/phantom-empty-state";
 
 const ACTIVE_IMPORT_REFRESH_MILLISECONDS = 5_000;
@@ -210,7 +211,7 @@ export default function PlaylistContent({
   const handleCopyLink = async () => {
     if (!playlist) return;
     const inviteLink = `${window.location.origin}/playlists/join/${playlist.inviteCode}`;
-    await navigator.clipboard.writeText(inviteLink);
+    await copyText(inviteLink);
     setLinkCopied(true);
     setTimeout(() => setLinkCopied(false), 2000);
   };
@@ -218,7 +219,7 @@ export default function PlaylistContent({
   const handleCopyCode = async () => {
     if (!playlist) return;
     const inviteLink = `${window.location.origin}/playlists/join/${playlist.inviteCode}`;
-    await navigator.clipboard.writeText(buildInviteMessage(playlist.name, playlist.inviteCode, inviteLink));
+    await copyText(buildInviteMessage(playlist.name, playlist.inviteCode, inviteLink));
     setCodeCopied(true);
     setTimeout(() => setCodeCopied(false), 2000);
   };

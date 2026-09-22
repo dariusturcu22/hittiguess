@@ -84,10 +84,10 @@ function PlaylistCard({ playlist }: { playlist: PlaylistCardItem }) {
 }
 
 const LIBRARY_TABS = [
+  { id: "all", label: "All" },
   { id: "owned", label: "Owned" },
   { id: "joined", label: "Joined" },
   { id: "saved", label: "Saved" },
-  { id: "all", label: "All" },
 ] as const;
 
 type LibraryTab = (typeof LIBRARY_TABS)[number]["id"];
@@ -100,13 +100,12 @@ function extractInviteCode(value: string): string {
   return codeOrLink.split(/[?#]/)[0];
 }
 
-function JoinPlaylistCard({ onJoin }: { onJoin: (inviteCode: string) => void }) {
+function JoinPlaylistPopup({ onJoin, onClose }: { onJoin: (inviteCode: string) => void; onClose: () => void }) {
   const [inviteValue, setInviteValue] = React.useState("");
   const inviteCode = extractInviteCode(inviteValue);
 
   return (
-    <div className="flex aspect-square flex-col items-center justify-center gap-3 self-start rounded-2xl border-[3px] border-dashed border-border p-5">
-      <div className="font-display text-sm text-muted-foreground">Join playlist</div>
+    <div className="absolute top-full right-0 z-20 mt-2 flex w-[300px] flex-col gap-3 rounded-2xl border-[3px] border-border-strong bg-card p-5 shadow-lg">
       <input
         type="text"
         value={inviteValue}
@@ -115,14 +114,23 @@ function JoinPlaylistCard({ onJoin }: { onJoin: (inviteCode: string) => void }) 
         aria-label="Invite code or link"
         className="w-full rounded-full border-2 border-border bg-background px-4 py-2 text-sm text-foreground outline-none placeholder:text-muted-foreground"
       />
-      <button
-        type="button"
-        onClick={() => onJoin(inviteCode)}
-        disabled={!inviteCode}
-        className="cursor-pointer rounded-full bg-accent px-6 py-2 font-display text-xs text-accent-foreground disabled:cursor-not-allowed disabled:opacity-50"
-      >
-        Join playlist
-      </button>
+      <div className="flex justify-end gap-2">
+        <button
+          type="button"
+          onClick={onClose}
+          className="cursor-pointer rounded-full px-4 py-2 font-display text-xs text-muted-foreground"
+        >
+          Cancel
+        </button>
+        <button
+          type="button"
+          onClick={() => onJoin(inviteCode)}
+          disabled={!inviteCode}
+          className="cursor-pointer rounded-full bg-accent px-6 py-2 font-display text-xs text-accent-foreground disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          Join playlist
+        </button>
+      </div>
     </div>
   );
 }
@@ -171,7 +179,8 @@ export default function PlaylistsPage() {
   const { mutate: createPlaylist, isPending: isCreating } =
     useCreatePlaylist();
   const [searchQuery, setSearchQuery] = React.useState("");
-  const [libraryTab, setLibraryTab] = React.useState<LibraryTab>("owned");
+  const [libraryTab, setLibraryTab] = React.useState<LibraryTab>("all");
+  const [isJoinOpen, setIsJoinOpen] = React.useState(false);
 
   const handleCreatePlaylist = () => {
     createPlaylist(undefined, {
@@ -223,6 +232,24 @@ export default function PlaylistsPage() {
         </h1>
 
         <div className="flex flex-wrap items-center gap-3">
+          <div className="relative">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setIsJoinOpen((currentValue) => !currentValue)}
+            >
+              Join
+            </Button>
+            {isJoinOpen ? (
+              <JoinPlaylistPopup
+                onJoin={(inviteCode) => {
+                  setIsJoinOpen(false);
+                  handleJoinPlaylist(inviteCode);
+                }}
+                onClose={() => setIsJoinOpen(false)}
+              />
+            ) : null}
+          </div>
           <Button
             type="button"
             onClick={handleCreatePlaylist}
@@ -230,13 +257,6 @@ export default function PlaylistsPage() {
           >
             <PlusIcon />
             {isCreating ? "Creating..." : "Create playlist"}
-          </Button>
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => setLibraryTab("joined")}
-          >
-            Join
           </Button>
         </div>
       </div>
@@ -275,9 +295,7 @@ export default function PlaylistsPage() {
             {visiblePlaylists.map((playlist) => (
               <PlaylistCard key={playlist.id} playlist={playlist} />
             ))}
-            {libraryTab === "joined" ? (
-              <JoinPlaylistCard onJoin={handleJoinPlaylist} />
-            ) : libraryTab === "saved" ? (
+            {libraryTab === "saved" ? (
               <ExploreLinkCard />
             ) : (
               <NewPlaylistCard
