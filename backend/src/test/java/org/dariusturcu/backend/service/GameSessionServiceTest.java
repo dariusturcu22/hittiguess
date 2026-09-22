@@ -885,6 +885,51 @@ class GameSessionServiceTest {
     }
 
     @Test
+    void fixedModeStartsWithTheChosenDjAndTheNextPlayerActive() {
+        Group group = groupWithTwoConnectedMembers();
+        group.setDjMode(DjMode.FIXED);
+        Long otherMemberId = group.getMembers().stream()
+                .filter(member -> member.getUser().getId().equals(OTHER_ID))
+                .map(Member::getId)
+                .findFirst()
+                .orElseThrow();
+        group.setFixedDjMemberId(otherMemberId);
+        when(groupRepository.findById(GROUP_ID)).thenReturn(Optional.of(group));
+        catalogSong(11L, "video-11");
+        catalogSong(12L, "video-12");
+        catalogSong(13L, "video-13");
+        pendingPool.stage(GROUP_ID, List.of(11L, 12L, 13L));
+
+        GameSession session = gameSessionService.startSession(GROUP_ID);
+
+        org.mockito.ArgumentCaptor<Round> roundCaptor = org.mockito.ArgumentCaptor.forClass(Round.class);
+        verify(roundRepository).save(roundCaptor.capture());
+        Round firstRound = roundCaptor.getValue();
+        assertThat(firstRound.getDjPlayer().getDisplayName()).isEqualTo("other-user");
+        assertThat(firstRound.getActivePlayer().getDisplayName()).isEqualTo("admin-user");
+        assertThat(session.getFixedDjPlayerId()).isEqualTo(firstRound.getDjPlayer().getId());
+    }
+
+    @Test
+    void fixedModeFallsBackToTheEarliestMemberWithoutAChosenDj() {
+        Group group = groupWithTwoConnectedMembers();
+        group.setDjMode(DjMode.FIXED);
+        when(groupRepository.findById(GROUP_ID)).thenReturn(Optional.of(group));
+        catalogSong(11L, "video-11");
+        catalogSong(12L, "video-12");
+        catalogSong(13L, "video-13");
+        pendingPool.stage(GROUP_ID, List.of(11L, 12L, 13L));
+
+        GameSession session = gameSessionService.startSession(GROUP_ID);
+
+        org.mockito.ArgumentCaptor<Round> roundCaptor = org.mockito.ArgumentCaptor.forClass(Round.class);
+        verify(roundRepository).save(roundCaptor.capture());
+        Round firstRound = roundCaptor.getValue();
+        assertThat(firstRound.getDjPlayer().getDisplayName()).isEqualTo("admin-user");
+        assertThat(firstRound.getActivePlayer().getDisplayName()).isEqualTo("other-user");
+    }
+
+    @Test
     void startSessionUsesAStagedPoolInsteadOfGroupPlaylists() {
         Group group = groupWithTwoConnectedMembers();
         when(groupRepository.findById(GROUP_ID)).thenReturn(Optional.of(group));

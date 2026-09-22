@@ -11,6 +11,13 @@ const startWithSongsMutate = vi.fn();
 const startCustomMutate = vi.fn();
 let lobbySearchParams = new URLSearchParams();
 
+const updateSettingsMutate = vi.fn();
+const leaveMutate = vi.fn();
+let lobbyMembers = [
+  { id: 1, userId: 11, displayName: "Admin", isAdmin: true, isConnected: true },
+  { id: 2, userId: 12, displayName: "Sam", isAdmin: false, isConnected: true },
+];
+
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ replace: vi.fn(), push: vi.fn() }),
   useSearchParams: () => lobbySearchParams,
@@ -27,18 +34,15 @@ vi.mock("@/hooks/generated/group-management/group-management", () => ({
       winConditionCardCount: 5,
       joinCode: "ABCD",
       inviteCode: "invite-code",
-      members: [
-        { id: 1, userId: 11, displayName: "Admin", isAdmin: true, isConnected: true },
-        { id: 2, userId: 12, displayName: "Sam", isAdmin: false, isConnected: true },
-      ],
+      members: lobbyMembers,
       playlists: [],
     },
     isLoading: false,
     isError: false,
   }),
-  useLeaveGroup: () => ({ mutate: vi.fn(), isPending: false }),
+  useLeaveGroup: () => ({ mutate: leaveMutate, isPending: false }),
   useStartGameSession: () => ({ mutate: vi.fn(), isPending: false }),
-  useUpdateGroupSettings: () => ({ mutate: vi.fn(), isPending: false }),
+  useUpdateGroupSettings: () => ({ mutate: updateSettingsMutate, isPending: false }),
 }));
 
 vi.mock("@/hooks/generated/user-management/user-management", () => ({
@@ -87,10 +91,17 @@ describe("GroupLobbyPage start options", () => {
     generateMutate.mockReset();
     startWithSongsMutate.mockReset();
     startCustomMutate.mockReset();
+    updateSettingsMutate.mockReset();
+    leaveMutate.mockReset();
     lobbySearchParams = new URLSearchParams();
+    lobbyMembers = [
+      { id: 1, userId: 11, displayName: "Admin", isAdmin: true, isConnected: true },
+      { id: 2, userId: 12, displayName: "Sam", isAdmin: false, isConnected: true },
+    ];
     generateMutate.mockImplementation((_args, options) => options?.onSuccess?.(previews));
     startWithSongsMutate.mockImplementation((_args, options) => options?.onSuccess?.({}));
     startCustomMutate.mockImplementation((_args, options) => options?.onSuccess?.({}));
+    updateSettingsMutate.mockImplementation((_args, options) => options?.onSuccess?.({}));
   });
 
   it("generates a difficulty set for review and confirms it into a start", async () => {
@@ -156,5 +167,68 @@ describe("GroupLobbyPage start options", () => {
       { groupId: 1, data: { playlistId: 21 } },
       expect.anything(),
     );
+  });
+
+  it("saves a fixed DJ choice from settings", async () => {
+    await renderPage();
+
+    fireEvent.click(screen.getByRole("button", { name: "Settings" }));
+    fireEvent.change(screen.getByLabelText("DJ mode"), { target: { value: "FIXED" } });
+    fireEvent.change(screen.getByLabelText("Fixed DJ"), { target: { value: "2" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
+
+    expect(updateSettingsMutate).toHaveBeenCalledWith(
+      {
+        groupId: 1,
+        data: { djMode: "FIXED", winConditionCardCount: 5, fixedDjMemberId: 2 },
+      },
+      expect.anything(),
+    );
+  });
+
+  it("confirms a multi-playlist selection from the header chip", async () => {
+    await renderPage();
+
+    fireEvent.click(screen.getByRole("button", { name: "Choose playlists" }));
+    fireEvent.click(screen.getByRole("button", { name: /Party mix/ }));
+    fireEvent.click(screen.getByRole("button", { name: "Confirm" }));
+
+    expect(updateSettingsMutate).toHaveBeenCalledWith(
+      { groupId: 1, data: { playlistIds: [21] } },
+      expect.anything(),
+    );
+  });
+
+  it("closes settings on outside click", async () => {
+    await renderPage();
+
+    fireEvent.click(screen.getByRole("button", { name: "Settings" }));
+    expect(screen.getByText("Cards to win")).toBeVisible();
+
+    fireEvent.click(screen.getByRole("button", { name: "Close settings" }));
+
+    expect(screen.queryByText("Cards to win")).toBeNull();
+  });
+
+  it("asks for confirmation before leaving the lobby", async () => {
+    await renderPage();
+
+    fireEvent.click(screen.getByRole("button", { name: "Leave lobby" }));
+
+    expect(await screen.findByText("Leave the lobby?")).toBeVisible();
+    expect(leaveMutate).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole("button", { name: "Leave" }));
+
+    expect(leaveMutate).toHaveBeenCalledWith({ groupId: 1 }, expect.anything());
+  });
+
+  it("warns when the lobby is too small to start", async () => {
+    lobbyMembers = [
+      { id: 1, userId: 11, displayName: "Admin", isAdmin: true, isConnected: true },
+    ];
+    await renderPage();
+
+    expect(screen.getByText("Need at least 2 players to start.")).toBeVisible();
   });
 });

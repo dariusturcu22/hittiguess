@@ -150,6 +150,13 @@ public class GroupService {
         if (request.djMode() != null) {
             group.setDjMode(request.djMode());
         }
+        if (request.fixedDjMemberId() != null) {
+            group.getMembers().stream()
+                    .filter(member -> member.getId().equals(request.fixedDjMemberId()))
+                    .findFirst()
+                    .orElseThrow(() -> new ResourceNotFoundException(ResourceType.MEMBER, request.fixedDjMemberId()));
+            group.setFixedDjMemberId(request.fixedDjMemberId());
+        }
         if (request.winConditionCardCount() != null) {
             validateWinConditionCardCount(request.winConditionCardCount(), group.getMembers().size());
             group.setWinConditionCardCount(request.winConditionCardCount());

@@ -278,7 +278,7 @@ class DifficultySessionStartIntegrationTest {
 
         authenticateAs(admin);
         groupService.updateGroupSettings(createdGroup.id(), new UpdateGroupSettingsRequest(
-                playlist == null ? Set.of() : Set.of(playlist.getId()), DjMode.ROTATING, winConditionCardCount));
+                playlist == null ? Set.of() : Set.of(playlist.getId()), DjMode.ROTATING, winConditionCardCount, null));
         return createdGroup;
     }
 

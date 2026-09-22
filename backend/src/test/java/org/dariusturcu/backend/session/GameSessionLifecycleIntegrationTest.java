@@ -337,7 +337,7 @@ class GameSessionLifecycleIntegrationTest {
         authenticateAs(admin);
         int minimumWinConditionCardCount = 5;
         groupService.updateGroupSettings(createdGroup.id(), new UpdateGroupSettingsRequest(
-                Set.of(savedPlaylist.getId()), DjMode.ROTATING, minimumWinConditionCardCount));
+                Set.of(savedPlaylist.getId()), DjMode.ROTATING, minimumWinConditionCardCount, null));
 
         groupService.startGameSession(createdGroup.id());
 
@@ -470,7 +470,7 @@ class GameSessionLifecycleIntegrationTest {
 
         authenticateAs(admin);
         groupService.updateGroupSettings(createdGroup.id(), new UpdateGroupSettingsRequest(
-                Set.of(savedPlaylist.getId()), DjMode.ROTATING, 5));
+                Set.of(savedPlaylist.getId()), DjMode.ROTATING, 5, null));
         groupService.startGameSession(createdGroup.id());
 
         return gameSessionRepository.findByGroupId(createdGroup.id()).orElseThrow();

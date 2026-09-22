@@ -169,10 +169,10 @@ public class GameSessionService {
         Player firstActive;
         Player firstDj;
         if (group.getDjMode() == DjMode.FIXED) {
-            firstDj = ordered.get(0);
+            firstDj = fixedDjPlayer(group, ordered);
             savedSession.setFixedDjPlayerId(firstDj.getId());
             savedSession = gameSessionRepository.save(savedSession);
-            firstActive = ordered.get(1);
+            firstActive = ordered.get((ordered.indexOf(firstDj) + 1) % ordered.size());
         } else {
             firstActive = ordered.get(0);
             firstDj = ordered.get(1);
@@ -320,6 +320,25 @@ public class GameSessionService {
         if (!isAdmin) {
             throw new AccessDeniedException("Only the group admin can do this");
         }
+    }
+
+    private Player fixedDjPlayer(Group group, List<Player> ordered) {
+        Long fixedDjMemberId = group.getFixedDjMemberId();
+        if (fixedDjMemberId == null) {
+            return ordered.get(0);
+        }
+        Long fixedDjUserId = group.getMembers().stream()
+                .filter(member -> member.getId().equals(fixedDjMemberId))
+                .map(member -> member.getUser().getId())
+                .findFirst()
+                .orElse(null);
+        if (fixedDjUserId == null) {
+            return ordered.get(0);
+        }
+        return ordered.stream()
+                .filter(player -> player.getUser().getId().equals(fixedDjUserId))
+                .findFirst()
+                .orElse(ordered.get(0));
     }
 
     public SessionResultsDTO completeSession(Long sessionId) {

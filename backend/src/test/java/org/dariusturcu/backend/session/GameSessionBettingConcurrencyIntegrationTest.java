@@ -301,7 +301,7 @@ class GameSessionBettingConcurrencyIntegrationTest {
 
         authenticateAs(admin);
         groupService.updateGroupSettings(createdGroup.id(), new UpdateGroupSettingsRequest(
-                Set.of(savedPlaylist.getId()), DjMode.ROTATING, 5));
+                Set.of(savedPlaylist.getId()), DjMode.ROTATING, 5, null));
         groupService.startGameSession(createdGroup.id());
 
         GameSession session = gameSessionRepository.findByGroupId(createdGroup.id()).orElseThrow();
