@@ -29,3 +29,24 @@ npm run e2e
 
 This targets `http://localhost:3000` by default. The seeded test accounts
 above are what the suite logs in with; it does not register its own users.
+
+## Local-network playtest
+
+To let other devices on the same network play against this machine:
+
+1. Find this machine's LAN address (`ipconfig`, the Wi-Fi adapter's
+   `IPv4 Address`).
+2. Backend `.env`: set `FRONTEND_URL` and `FRONTEND_ALLOWED_ORIGINS` to
+   `http://<address>:3000`. Restart the backend.
+3. Frontend `.env.local`: set `NEXT_PUBLIC_API_URL` to
+   `http://<address>:8080`. Restart the dev server or rebuild; the value
+   embeds at build time.
+4. Other players open `http://<address>:3000`. Accept the Windows Firewall
+   prompts for Node.js and Java.
+5. Players register local accounts. Google sign-in is unavailable over the
+   LAN. Without a Resend key, verification links print in the backend log;
+   forward them manually.
+6. Voice uses STUN only. Direct connections normally succeed on one
+   subnet; one-sided silence indicates TURN is required.
+7. Afterward, delete playtest accounts, playlists, groups, and sessions
+   from the dev database.

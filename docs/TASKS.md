@@ -824,3 +824,20 @@ Tests:
 - [x] Unit tests for TOTP setup/confirm/disable: an unconfirmed secret doesn't enable 2FA, a wrong code during confirm doesn't enable it either, disable requires the extra proof and a bare authenticated request alone is rejected
 - [x] Integration test for the two-step login flow: a 2FA-enabled account's login with just a password doesn't issue real tokens, a correct second-factor code completes it, a wrong or reused backup code is rejected
 - [x] Unit test confirming no DTO or API response ever includes `totpSecret` or an unused backup code in plain form after initial generation
+- [x] Wire the frontend's existing forgot-password form to the new request/confirm endpoints (already wired: the request page calls `useRequestPasswordReset`, the confirm page calls `useConfirmPasswordReset` with a mismatch guard, both covered by colocated tests)
+
+## LAN playtest readiness
+
+Chore, no story: opening the local stack to other devices on the LAN for
+multi-device testing before deployment. Confirmed against the code that no
+behavior change is needed: all API and WebSocket URLs derive from
+`NEXT_PUBLIC_API_URL`, invite links use `window.location.origin`, cookies
+carry no `Domain`, and CORS plus email-link hosts are env-driven. Google
+sign-in is unavailable over LAN; testers use local accounts.
+
+- [x] Document the three LAN env values in both `.env.example` files
+- [x] Add a local-network playtest section to `docs/DEV_SETUP.md`
+- [ ] Manual multi-device playtest: full game plus voice, recorded here once played
+
+Tests:
+- [x] Frontend lint and the two password-flow page tests stay green (no behavior code changes in this batch)
