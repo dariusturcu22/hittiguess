@@ -76,7 +76,7 @@ interface PlaylistContentProps {
 }
 
 export function buildInviteMessage(playlistName: string, inviteCode: string, inviteLink: string): string {
-  return `Hey, join my playlist "${playlistName}" on hittiguess! Invite code: ${inviteCode} — or open ${inviteLink}`;
+  return `Hey, join my playlist "${playlistName}" on hittiguess! Invite code: ${inviteCode}. Open ${inviteLink} to join.`;
 }
 
 function MemberAvatar({

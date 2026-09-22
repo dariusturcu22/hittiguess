@@ -99,7 +99,7 @@ describe("PlaylistContent detail states", () => {
 
   it("builds a ready invite message for the code action", () => {
     expect(buildInviteMessage("Party mix", "ABCD1234", "http://localhost/playlists/join/ABCD1234")).toBe(
-      'Hey, join my playlist "Party mix" on hittiguess! Invite code: ABCD1234 — or open http://localhost/playlists/join/ABCD1234',
+      'Hey, join my playlist "Party mix" on hittiguess! Invite code: ABCD1234. Open http://localhost/playlists/join/ABCD1234 to join.',
     );
   });
 
