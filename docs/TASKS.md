@@ -812,7 +812,7 @@ Lobby, voice, and gameplay:
 
 Design:
 
-- [ ] Update the `docs/design` mockups to this section wherever they disagree
+- [ ] Update the `docs/design` mockups to this section wherever they disagree (the canvas file stores its artboards in an editor-internal script block, so this needs the canvas editor, not raw text edits)
 
 Tests:
 
