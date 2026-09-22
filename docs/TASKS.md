@@ -824,15 +824,20 @@ Tests:
 - [x] Unit tests for TOTP setup/confirm/disable: an unconfirmed secret doesn't enable 2FA, a wrong code during confirm doesn't enable it either, disable requires the extra proof and a bare authenticated request alone is rejected
 - [x] Integration test for the two-step login flow: a 2FA-enabled account's login with just a password doesn't issue real tokens, a correct second-factor code completes it, a wrong or reused backup code is rejected
 - [x] Unit test confirming no DTO or API response ever includes `totpSecret` or an unused backup code in plain form after initial generation
-- [x] Wire the frontend's existing forgot-password form (currently an honest "not implemented" stub, see `ARCHIVE.md`) to the new request/confirm endpoints; the route is present, but this auth flow is not part of the implemented Batch A surface yet (already wired: `forgot-password/page.tsx` calls `useRequestPasswordReset` with an account-existence-neutral confirmation, `reset-password/page.tsx` calls `useConfirmPasswordReset` with a mismatch guard and token from the link query, both covered by colocated tests)
+- [x] Wire the frontend's existing forgot-password form to the new request/confirm endpoints (already wired: the request page calls `useRequestPasswordReset`, the confirm page calls `useConfirmPasswordReset` with a mismatch guard, both covered by colocated tests)
 
 ## LAN playtest readiness
 
-Chore, no story: opening the local stack to apartment mates over the LAN so real multi-device play (full game plus voice) can be tested before any deployment. Verified against the real code that no behavior change is needed: every API and WebSocket URL derives from `NEXT_PUBLIC_API_URL`, invite links use `window.location.origin`, auth cookies are host-based with no `Domain` set (`secure` off and `SameSite=Strict` outside `prod`, which stays correct across ports on the same LAN host since site ignores port), and CORS plus email-link hosts are already env-driven. Google login stays owner-only (its redirect URI can't cover a LAN IP), mates use local accounts.
+Chore, no story: opening the local stack to other devices on the LAN for
+multi-device testing before deployment. Confirmed against the code that no
+behavior change is needed: all API and WebSocket URLs derive from
+`NEXT_PUBLIC_API_URL`, invite links use `window.location.origin`, cookies
+carry no `Domain`, and CORS plus email-link hosts are env-driven. Google
+sign-in is unavailable over LAN; testers use local accounts.
 
-- [x] Document the three LAN env values in both `.env.example` files (`NEXT_PUBLIC_API_URL`, `FRONTEND_URL`, `FRONTEND_ALLOWED_ORIGINS` set to the owner's LAN IP, frontend rebuilt or dev server restarted after setting since `NEXT_PUBLIC_` inlines at build time per the Next.js environment-variables guide)
-- [x] Add a LAN playtest section to `docs/DEV_SETUP.md` (Windows firewall prompts, local accounts only, verification-link relay from the backend log, STUN-only voice note, cleanup of playtest data afterward)
-- [ ] Manual playtest with mates: full game plus voice over the LAN, recorded here once played
+- [x] Document the three LAN env values in both `.env.example` files
+- [x] Add a local-network playtest section to `docs/DEV_SETUP.md`
+- [ ] Manual multi-device playtest: full game plus voice, recorded here once played
 
 Tests:
 - [x] Frontend lint and the two password-flow page tests stay green (no behavior code changes in this batch)
