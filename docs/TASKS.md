@@ -818,7 +818,7 @@ Tests:
 
 - [x] Confirm each cluster above against the real code before building it (the gate to Ready)
 - [ ] Frontend tests for every new or changed interactive state, following the story 28 verification pattern
-- [ ] Playwright multi-user coverage for join, lobby, full rounds, results, and the import background flow
+- [x] Playwright multi-user coverage for join, lobby, full rounds, results, and the import background flow
 - [ ] Voice delivery check with the synthetic-tone method, plus the contrast and motion spot checks from story 28
 
 ## Story 48: Comment cleanup
