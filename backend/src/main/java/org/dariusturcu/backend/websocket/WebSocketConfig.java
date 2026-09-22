@@ -1,9 +1,12 @@
 package org.dariusturcu.backend.websocket;
 
 import org.springframework.context.annotation.Configuration;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.messaging.simp.config.ChannelRegistration;
 import org.springframework.messaging.simp.config.MessageBrokerRegistry;
+import org.springframework.scheduling.TaskScheduler;
 import org.springframework.web.socket.config.annotation.EnableWebSocketMessageBroker;
 import org.springframework.web.socket.config.annotation.StompEndpointRegistry;
 import org.springframework.web.socket.config.annotation.WebSocketMessageBrokerConfigurer;
@@ -32,18 +35,26 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
     private static final String APPLICATION_DESTINATION_PREFIX = "/app";
     private static final String BROADCAST_DESTINATION_PREFIX = "/topic";
     private static final String USER_QUEUE_DESTINATION_PREFIX = "/queue";
+    // The browser client offers 10-second heartbeats each way by default. Meeting it
+    // server-side lets Spring notice a dead socket (sleeping laptop, killed app) and
+    // publish the disconnect that flips the member to Away, instead of leaving the
+    // presence flag stuck until the next clean close.
+    private static final long HEARTBEAT_INTERVAL_MILLISECONDS = 10_000;
     private final StompAuthenticationChannelInterceptor stompAuthenticationChannelInterceptor;
     private final JwtCookieHandshakeInterceptor jwtCookieHandshakeInterceptor;
     private final List<String> allowedFrontendOrigins;
+    private final TaskScheduler messageBrokerTaskScheduler;
 
     public WebSocketConfig(
             StompAuthenticationChannelInterceptor stompAuthenticationChannelInterceptor,
             JwtCookieHandshakeInterceptor jwtCookieHandshakeInterceptor,
-            @Value("${frontend.allowed-origins}") List<String> allowedFrontendOrigins
+            @Value("${frontend.allowed-origins}") List<String> allowedFrontendOrigins,
+            @Lazy @Qualifier("messageBrokerTaskScheduler") TaskScheduler messageBrokerTaskScheduler
     ) {
         this.stompAuthenticationChannelInterceptor = stompAuthenticationChannelInterceptor;
         this.jwtCookieHandshakeInterceptor = jwtCookieHandshakeInterceptor;
         this.allowedFrontendOrigins = allowedFrontendOrigins;
+        this.messageBrokerTaskScheduler = messageBrokerTaskScheduler;
     }
 
     @Override
@@ -56,7 +67,9 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
     @Override
     public void configureMessageBroker(MessageBrokerRegistry registry) {
         registry.setApplicationDestinationPrefixes(APPLICATION_DESTINATION_PREFIX);
-        registry.enableSimpleBroker(BROADCAST_DESTINATION_PREFIX, USER_QUEUE_DESTINATION_PREFIX);
+        registry.enableSimpleBroker(BROADCAST_DESTINATION_PREFIX, USER_QUEUE_DESTINATION_PREFIX)
+                .setHeartbeatValue(new long[]{HEARTBEAT_INTERVAL_MILLISECONDS, HEARTBEAT_INTERVAL_MILLISECONDS})
+                .setTaskScheduler(messageBrokerTaskScheduler);
     }
 
     @Override

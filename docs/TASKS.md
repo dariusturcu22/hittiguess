@@ -804,7 +804,7 @@ Lobby, voice, and gameplay:
 - [x] Close lobby popups on outside click
 - [x] Block starting alone with an explanatory message (two players minimum)
 - [x] Confirm before leaving the lobby; drop the stray Live label
-- [ ] Fix away-status reliability
+- [x] Fix away-status reliability
 - [x] Show the first-time countdown only, enforce DJ, turn, guessing, token, betting, skip, and leaderboard rules per `GAME_DESIGN.md`
 - [x] Animate the unrevealed card as an audio-reactive visualizer
 - [x] Offer results download options (PDF print, copy as text, CSV download; shipped without a prior design)
