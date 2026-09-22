@@ -120,20 +120,22 @@ export default function PlaylistContent({
   const activeImportQuery = useActiveImport(playlistId, {
     query: { retry: false, refetchInterval: ACTIVE_IMPORT_REFRESH_MILLISECONDS },
   });
-  const activeImportItems = activeImportQuery.data?.items ?? [];
+  const activeImportItems = activeImportQuery.data && !activeImportQuery.isError
+    ? activeImportQuery.data.items ?? []
+    : [];
   const pendingImportItems = activeImportItems.filter(
     (item) => item.status === "PENDING" || item.status === "UNRESOLVED",
   );
   const finishedImportCount = activeImportItems.filter((item) => item.status !== "PENDING").length;
   const hadRunningImport = React.useRef(false);
   React.useEffect(() => {
-    if (activeImportQuery.data) {
+    if (activeImportQuery.data && !activeImportQuery.isError) {
       hadRunningImport.current = true;
-    } else if (hadRunningImport.current) {
+    } else if (hadRunningImport.current && (activeImportQuery.isError || !activeImportQuery.data)) {
       hadRunningImport.current = false;
       void queryClient.invalidateQueries({ queryKey: getGetPlaylistQueryKey(playlistId) });
     }
-  }, [activeImportQuery.data, playlistId, queryClient]);
+  }, [activeImportQuery.data, activeImportQuery.isError, playlistId, queryClient]);
 
   const { mutate: removeSong } = useDeleteSong();
   const { mutate: leavePlaylist } = useLeavePlaylist();
