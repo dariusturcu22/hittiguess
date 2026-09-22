@@ -193,7 +193,7 @@ public class GroupService {
         group.setExpiresAt(Instant.now().plus(BETWEEN_SESSION_WINDOW));
 
         Group savedGroup = groupRepository.save(group);
-        return groupMapper.toDetailDTO(savedGroup);
+        return groupMapper.toDetailDTO(savedGroup, null);
     }
 
     public void leaveGroup(Long groupId) {

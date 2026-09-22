@@ -459,6 +459,20 @@ class GroupServiceTest {
     }
 
     @Test
+    void recordGameSessionEndedWorksWithoutAnAuthenticatedUser() {
+        Group group = groupWithAdmin();
+        group.setStatus(GroupStatus.LOCKED);
+        group.setExpiresAt(null);
+        when(groupRepository.findById(10L)).thenReturn(Optional.of(group));
+        SecurityContextHolder.clearContext();
+
+        GroupDetailDTO result = groupService.recordGameSessionEnded(10L);
+
+        assertThat(result.status()).isEqualTo(GroupStatus.OPEN);
+        assertThat(result.expiresAt()).isAfter(Instant.now());
+    }
+
+    @Test
     void deleteExpiredGroupsDeletesOnlyGroupsPastTheirExpiry() {
         Group expiredGroup = groupWithAdmin();
         when(groupRepository.findByExpiresAtBefore(any(Instant.class))).thenReturn(List.of(expiredGroup));
