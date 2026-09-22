@@ -5,6 +5,7 @@ import { Client } from "@stomp/stompjs";
 
 import { useGetVoiceTurnCredentials } from "@/hooks/generated/group-management/group-management";
 import type { MemberDTO } from "@/hooks/models/memberDTO";
+import { publishLocalAudioStream } from "./use-local-audio-stream";
 
 const WEBSOCKET_PATH = "/ws";
 const VOICE_TOPIC_PREFIX = "/topic/groups";
@@ -101,7 +102,7 @@ export function useVoiceMesh(groupId: number, currentUserId: number | undefined,
     });
   }, [createPeer, currentUserId, isInVoice, isSignalConnected, sendSignal, voiceMembers]);
 
-  const startMicrophone = useCallback(async () => { try { const microphoneStream = await navigator.mediaDevices.getUserMedia({ audio: true }); const microphoneTrack = microphoneStream.getAudioTracks().at(0); streamReference.current = microphoneStream; peersReference.current.forEach((peer) => { peer.getSenders().filter((sender) => sender.track?.kind === "audio").forEach((sender) => { void sender.replaceTrack(microphoneTrack ?? null); }); }); setMicrophoneError(false); return true; } catch { setMicrophoneError(true); return false; } }, []);
+  const startMicrophone = useCallback(async () => { try { const microphoneStream = await navigator.mediaDevices.getUserMedia({ audio: true }); const microphoneTrack = microphoneStream.getAudioTracks().at(0); streamReference.current = microphoneStream; publishLocalAudioStream(microphoneStream); peersReference.current.forEach((peer) => { peer.getSenders().filter((sender) => sender.track?.kind === "audio").forEach((sender) => { void sender.replaceTrack(microphoneTrack ?? null); }); }); setMicrophoneError(false); return true; } catch { setMicrophoneError(true); return false; } }, []);
   const startTabAudio = useCallback(async () => {
     try {
       const displayStream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true });
@@ -114,6 +115,7 @@ export function useVoiceMesh(groupId: number, currentUserId: number | undefined,
       const sharedAudioStream = new MediaStream([audioTrack]);
       streamReference.current?.getTracks().forEach((track) => track.stop());
       streamReference.current = sharedAudioStream;
+      publishLocalAudioStream(sharedAudioStream);
       peersReference.current.forEach((peer) => {
         peer.getSenders().filter((sender) => sender.track?.kind === "audio")
           .forEach((sender) => { void sender.replaceTrack(audioTrack); });
@@ -130,6 +132,7 @@ export function useVoiceMesh(groupId: number, currentUserId: number | undefined,
   const stopMicrophone = useCallback(() => {
     streamReference.current?.getTracks().forEach((track) => track.stop());
     streamReference.current = null;
+    publishLocalAudioStream(null);
     peersReference.current.forEach((peer) => peer.close());
     peersReference.current.clear();
     remoteAudioReference.current.clear();
