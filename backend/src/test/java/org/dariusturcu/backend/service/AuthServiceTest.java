@@ -375,4 +375,44 @@ class AuthServiceTest {
         assertThatThrownBy(() -> authService.confirmPasswordReset("raw-token", "new-password123"))
                 .isInstanceOf(ResourceNotFoundException.class);
     }
+
+    @Test
+    void refreshRotatesTheTokenSoTheOldOneDies() {
+        User user = buildUser(true, false);
+        RefreshToken storedToken = new RefreshToken();
+        storedToken.setToken(TokenHasher.hash("old-refresh-token"));
+        storedToken.setUser(user);
+        storedToken.setExpiresAt(Instant.now().plusSeconds(3_600L));
+        storedToken.setRememberMe(true);
+        when(refreshTokenRepository.findByToken(TokenHasher.hash("old-refresh-token")))
+                .thenReturn(Optional.of(storedToken), Optional.empty());
+        when(jwtUtil.generateToken(user)).thenReturn("new-access-token");
+        when(jwtUtil.generateRefreshToken()).thenReturn("new-refresh-token");
+
+        AuthResult result = authService.refreshTokens("old-refresh-token");
+
+        assertThat(result.accessToken()).isEqualTo("new-access-token");
+        assertThat(result.rememberMe()).isTrue();
+        verify(refreshTokenRepository).delete(storedToken);
+        assertThatThrownBy(() -> authService.refreshTokens("old-refresh-token"))
+                .isInstanceOf(RuntimeException.class)
+                .hasMessageContaining("Invalid");
+    }
+
+    @Test
+    void refreshRejectsAnExpiredTokenAndDeletesIt() {
+        User user = buildUser(true, false);
+        RefreshToken expiredToken = new RefreshToken();
+        expiredToken.setToken(TokenHasher.hash("expired-refresh-token"));
+        expiredToken.setUser(user);
+        expiredToken.setExpiresAt(Instant.now().minusSeconds(60L));
+        when(refreshTokenRepository.findByToken(TokenHasher.hash("expired-refresh-token")))
+                .thenReturn(Optional.of(expiredToken));
+
+        assertThatThrownBy(() -> authService.refreshTokens("expired-refresh-token"))
+                .isInstanceOf(RuntimeException.class)
+                .hasMessageContaining("expired");
+        verify(refreshTokenRepository).delete(expiredToken);
+        verify(jwtUtil, never()).generateToken(any(User.class));
+    }
 }

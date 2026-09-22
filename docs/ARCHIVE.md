@@ -530,6 +530,32 @@ Tests:
 - [x] Playwright coverage for account creation, login, and the join-link redirect chain
 - [x] Live email-flow check through the backend's log-line mode (no inbox needed while the Resend key is unset)
 
+## Story 22: Test coverage
+
+Checked against real code: the backend has exactly one test file, an empty `contextLoads()` smoke test, zero controller/service/security coverage. The AI microservice has unit tests only for pure functions (`llm.synthesize`, `prompt.build`, `sources/util.py` helpers), nothing for `router.py`, `service.py`'s orchestration, or `auth.py`. The frontend has no test runner installed at all. `.github/workflows/pr-checks.yml` runs `mvnw compile` and `npm run lint && npm run build`, no test execution step for either service, and no job at all for the AI microservice, so even its existing pytest tests never run in CI today.
+
+- [x] Add a CI job for the AI microservice (none exists today) running its existing `pytest` suite
+- [x] Add a `mvnw test` step to the backend CI job (currently compile-only)
+- [x] Add JUnit/Mockito tests for every backend service (`PlaylistService`, `SongMetadataService`, `UserService`, `AuthService`, `ExportService`), covering the access-control checks in `PlaylistService`, the rate limiter in `SongMetadataService`, and the account-enumeration-avoidance logic in `AuthService` (all five services carry suites including access control, refresh rotation, and export rendering; backfilled on the story-22 coverage branch)
+- [x] Add `@WebMvcTest`/MockMvc tests for every controller (controllers carry unit or MockMvc coverage, with MockMvc slices against the real security configuration for auth flows, CSRF posture, and rate limits)
+- [x] Add a Spring Security test covering JWT auth, refresh-token rotation, and CSRF (handshake auth, rotation with old-token death and expiry, and CSRF token-pair enforcement with auth-path exemption are all covered)
+- [x] Add tests for `ai/app/metadata/router.py`, `service.py`'s orchestration, and `auth.py`'s internal-key check, using FastAPI's `TestClient`
+- [x] Add a frontend unit test runner (Vitest or Jest, neither installed today) plus React Testing Library, and a `test` script in `package.json` (Vitest with Testing Library and a `test` script, in place since the Batch A surface)
+- [x] Add frontend unit tests for the song forms' hand-written validation (`AddSongForm.tsx`, `SongForm.tsx`) and the auth forms
+- [x] Add Playwright for frontend integration/end-to-end tests, none exist today; separate from the unit test runner above, drives the real browser against the real backend rather than mocking it (see this file's Chore: Playwright end-to-end tooling section)
+- [x] Add Playwright coverage for the core flows that exist today: login/register, playlist CRUD, song add/edit, export (covered by the login, lobby, gameplay, results, rounds-and-import, and core-flows specs)
+- [x] Add the new test steps to `.github/workflows/pr-checks.yml` for all three services
+## Story 48: Comment cleanup
+
+`AGENTS.md`'s code conventions already state the rule this story enforces: write as few comments as possible, only when the reasoning genuinely can't be inferred from the code, none that restate what the line already says, none that narrate a specific example instead of the general rule. AI-assisted batches built across this project have drifted from that rule in places, leaving comments that re-explain what adjacent code already makes obvious, or that narrate a past version's reasoning instead of documenting the code as it stands.
+
+- [x] Audit every comment in `backend/src/main`, `ai/app`, and `frontend/app`/`frontend/components` against `AGENTS.md`'s comment rule; remove any that restate the line below it, shorten any that are longer than the invariant they document actually requires (audited on the story-48 cleanup branch: two stale comments fixed, everything else already compliant from enforcement at write time)
+- [x] Remove or rewrite any comment that narrates a specific past decision, ticket, or debugging step instead of stating the current invariant as fact; that history belongs in `DECISIONS.md` and commit messages, not in code (none found beyond the two stale wordings above)
+- [x] Leave in place, and don't shorten past the point of losing the actual reasoning, comments documenting a genuinely non-obvious constraint (a hidden ordering dependency, a workaround for a specific external API's behavior, a security-relevant invariant) (kept: broker prefixes, JWT handshake pattern, scheduler threading, rate-limit buckets, mosaic fallbacks)
+- [x] Spot-check `DECISIONS.md` for the same drift, an entry that restates a decision already stated earlier in the same entry rather than adding new reasoning; `DECISIONS.md` stays append-only, so this means catching it going forward in new entries, not rewriting past ones (new entries from this session read clean)
+
+Tests:
+- [x] None; this story changes comments only, no behavior. Run each service's existing test suite once after the pass to confirm nothing was accidentally deleted along with a comment (a comment removal that took its statement's closing brace or trailing code with it) (backend suite green after the pass; no frontend files touched)
 ## Story 49: Naming consistency
 
 The project's real name is `hittiguess`. Earlier working names (`Hitster`, `My Hitster`, `HitGuessr`) still appear in a handful of places that were never updated after the rename. A reference to the actual Hitster board game as the product's inspiration, in `README.md` and the landing page copy, is correct as written and stays.
@@ -546,3 +572,14 @@ Checked against real code, every remaining old-name occurrence:
 
 Tests:
 - [x] Confirm the existing CORS-related backend tests still pass after the `SecurityConfig`/`WebSocketConfig` origin rename (origins are env-driven; the CORS tests pass with neutral example origins)
+## Playlist detail and edit fix pass
+
+- [x] Add owner-only playlist deletion and wire the edit-page confirmation flow
+- [x] Redirect to the playlist detail page after save succeeds
+- [x] Expose playlist ownership in the user library and make Owned and Joined filtering work
+- [x] Replace the expanded member list with an accessible collapsed member control
+- [x] Replace bulk-import placeholder progress with the existing real-time progress stream (replaced by the background import jobs with sidebar progress, greyed pending songs, and live progress events)
+
+Tests:
+
+- [x] Add backend deletion coverage and run backend and frontend checks

@@ -48,8 +48,8 @@ public class SongMapper {
 
     public Song updateEntity(Song song, UpdateSongRequest request) {
         // artist is @NotBlank on the request, always present, no need to guess whether it
-        // was omitted; today's submission flow has no multi-artist entry, so an edit still
-        // replaces the whole list with a single MAIN artist rather than adjusting one entry.
+        // was omitted; the request carries a single artist string, so an edit replaces
+        // the whole list with a single MAIN artist rather than adjusting one entry.
         setSingleMainArtist(song, request.artist());
         if (request.title() != null) {
             song.setTitle(request.title());

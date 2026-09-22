@@ -190,23 +190,23 @@ Three tiers of signal feed difficulty, so this works from day one rather than wa
 
 Inference is cheap and local: scoring the whole catalog against a specific group's players is a small numeric comparison per song, no external API call, runs in well under a second even for a full catalog, unlike the metadata pipeline which costs money per call. The only real cost is periodic retraining, a scheduled batch job, cheap at this data scale.
 
-Backend slice built on `feature/difficulty-generation`: the difficulty model lives in the core service (`org.dariusturcu.backend.difficulty`), computed on the fly from existing `Song` and scored `Round` data with no schema change. The play-derived signal, the three group-scoring strategies, and difficulty-tuned selection are built and unit-tested. The personalized collaborative-filtering layer is scaffolded behind an interface and deferred until real `Guess` volume exists. Persisting the sitelinks count on `Song`, the endpoints, the `Playlist` public flag, and the frontend are deferred, see the per-task notes and `DECISIONS.md`.
+Backend slice built on `feature/difficulty-generation`: the difficulty model lives in the core service (`org.dariusturcu.backend.difficulty`), computed on the fly from existing `Song` and scored `Round` data with no schema change. The play-derived signal, the three group-scoring strategies, and difficulty-tuned selection are built and unit-tested. The personalized collaborative-filtering layer is scaffolded behind an interface and deferred until real `Guess` volume exists. The sitelinks count is persisted, the generation and Custom-mode endpoints are built with the lobby frontend against them, and the `Playlist` public flag shipped narrowly ahead; see the per-task notes and `DECISIONS.md`.
 
 - [x] Add a `SongDifficulty` aggregate view or table: per-song correct-guess percentage across all historical guesses, updated as new rounds complete (built as `RoundRepository.aggregatePlacementStatsBySong`, a grouped aggregate query over scored rounds rather than a stored table or view, so it stays current with no separate refresh and needs no migration; `SYSTEM_REFERENCE.md`'s planned `SongDifficulty` table is not needed for the on-the-fly model)
 - [x] Add group-level difficulty scoring for "easy": the lowest individual predicted score among the group's actual players, not the average, so the least experienced player is protected rather than left behind by a group average that looks easy on paper
 - [x] Add group-level difficulty scoring for "hard": a plain average across the group's players, no floor to protect, opt-in past the easy default
 - [x] Add group-level difficulty scoring for "medium": the median of the group's individual predicted scores, a middle ground between easy's worst-case protection and hard's plain average, with no extra weighting factor to tune
-- [ ] Persist Wikidata's sitelinks count on `Song` (coordinate with story 23), both the international-scope signal and the popularity signal for difficulty-generated sets; decide and add the actual thresholds (international-scope cutoff, and the easy/medium/hard popularity weighting) once there's enough real catalog data to check them against, not guessed (deferred: the sitelinks count is captured only in `ai/spikes/`, not the real metadata pipeline, and persisting it is a story-23 schema change; the scorer already reads it through an `Optional` seam and falls back to a neutral default while it is absent)
+- [x] Persist Wikidata's sitelinks count on `Song`, both the international-scope signal and the popularity signal for difficulty-generated sets (built as a nullable `wikidataSitelinksCount` column, `V21`, written by the AI metadata pipeline through both song persistence paths; the international-scope cutoff is 5 sitelinks and the easy/medium/hard popularity weighting rides the same count, both initial heuristics per `DECISIONS.md`, to tune once real catalog data exists)
 - [x] Add the sitelinks-based popularity weighting to song selection: easy weights toward higher-sitelink songs, hard applies no such weighting, medium sits between; blends with, doesn't replace, the aggregate/personalized scoring below, and is what a newly-verified song with no real guesses yet falls back on (the weighting is built into `SongDifficultyScorer` as the cold-start fallback and blends with the play-derived signal by history weight; it produces the neutral default until the sitelinks column above lands, at which point real values flow in with no scorer change)
-- [ ] Add the Difficulty-Based generation endpoint: given a group, a difficulty tier, and a target card count, score the full verified catalog for the group's actual players (blending personalized predictions where available, the aggregate baseline for first-time players, and the sitelinks-based popularity weighting above), filter to international scope, return enough songs with headroom above the win-condition card count so a session doesn't run out or repeat (the scoring and selection core is built as `DifficultyTunedSongSelector.selectForGroup`; the endpoint and session-creation wiring, plus the international-scope filter which needs the sitelinks column, are deferred)
+- [x] Add the Difficulty-Based generation endpoint: given a group, a difficulty tier, and a target card count, score the full verified catalog for the group's actual players (blending the aggregate baseline for first-time players with the sitelinks-based popularity weighting, personalized predictions plug in once trained), filter to international scope, return enough songs with headroom above the win-condition card count so a session doesn't run out or repeat (built as preview-then-confirm `POST /api/groups/{groupId}/session/generate` plus `POST .../start-with-songs` through a staged pool consumed once, covered by service and session-lifecycle integration tests)
 - [x] Add an `isPublic` flag (or equivalent) to `Playlist` (coordinate with story 15), and an endpoint to publish/unpublish one (built as a `boolean isPublic` field on `Playlist`, default false, with owner-only `POST /api/playlists/{playlistId}/publish` and `POST /api/playlists/{playlistId}/unpublish` endpoints on `PlaylistController`/`PlaylistService`, enforced through the existing `PlaylistAccessService.requireOwner` check; `V15__add_public_playlists_and_saved_playlists` adds the column. `PlaylistAccessService.requireRead` now also passes for any playlist with `isPublic` true regardless of ownership or membership, which is what makes a published playlist readable and importable by anyone, see story 45. Built narrowly as its own slice ahead of the rest of this story, see `PROJECT_STATE.md` and `DECISIONS.md`)
 - [x] Add a public-browse endpoint (`GET /api/playlists/public`) returning every playlist with `isPublic` true as a `PublicPlaylistSummaryDTO` (id, name, color, songCount, owner), open to any authenticated user, not owner/member-restricted
 - [x] Add a "Save" capability distinct from membership: a `SavedPlaylist` entity (user, playlist, savedAt) with a unique constraint on (user, playlist), `POST`/`DELETE /api/playlists/{playlistId}/save`, and `GET /api/users/me/saved-playlists`; rejects saving a non-public playlist, the caller's own playlist, or an already-saved playlist
-- [ ] Add the Custom-mode endpoint: start a session from a playlist the player owns, is a member of, or that's published publicly, or from a playlist link or ID pasted directly
-- [ ] Train the personalized collaborative-filtering model on accumulated `Guess` data (story 10) once there's enough of it to evaluate (scaffolded: `PersonalizedDifficultyPredictor` is the plug point, `AggregateBaselinePredictor` is the shipped baseline; training needs real accumulated `Guess` data that does not exist until real play)
+- [x] Add the Custom-mode endpoint: start a session from a playlist the player owns, is a member of, or that's published publicly, or from a playlist link or ID pasted directly (built as `POST /api/groups/{groupId}/session/start-custom` taking exactly one of a playlist id or a pasted link, pasted links expanding to video ids and skipping videos with no catalog song, covered by service and session-lifecycle integration tests including the pasted-link flow)
+- [ ] Train the personalized collaborative-filtering model on accumulated `Guess` data (story 10) once there's enough of it to evaluate (scaffolded: `PersonalizedDifficultyPredictor` is the plug point, `AggregateBaselinePredictor` is the shipped baseline; blocked until real play accumulates enough guesses to train and beat the baseline, likely months of casual play at the target scale)
 - [ ] Add a scheduled retraining job for the personalized model
 - [ ] Add a monitoring check comparing the personalized model's prediction accuracy against the simple aggregate baseline; if the personalized model stops beating the baseline, that's the signal it's stale and needs retraining, not just a fixed schedule
-- [ ] Add the frontend: a top-level choice between Difficulty-Based (Auto-Generated) and Custom; the former shows a difficulty selector (easy/medium/hard) and a review step to inspect and confirm the generated set before saving, the latter a playlist picker plus a paste-a-link field
+- [x] Add the frontend: a top-level choice between Difficulty-Based (Auto-Generated) and Custom; the former shows a difficulty selector (easy/medium/hard) and a review step to inspect and confirm the generated set before saving, the latter a playlist picker plus a paste-a-link field (built in the group lobby against the preview and start endpoints, covered by lobby review-and-confirm tests)
 
 Tests:
 - [x] Unit tests for the aggregate difficulty score calculation
@@ -219,11 +219,11 @@ Tests:
 - [x] Unit test: `PlaylistAccessService.requireRead` allows a non-member when the playlist is public
 - [x] Migration test verifying `is_public` is not-null/default-false on `playlists` and `saved_playlists` carries a unique constraint on (user, playlist)
 - [ ] Unit tests for the personalized model's predictions against a held-out set of real guesses (deferred with the model itself; no trained model or real held-out guesses exist yet)
-- [ ] Integration test: Difficulty-Based generation for a full-sized group (up to 8 players) returns a scored card set in well under a second (deferred with the generation endpoint)
+- [x] Integration test: Difficulty-Based generation for a full-sized group (up to 8 players) returns a scored card set in well under a second (covered for an 8-player group with a 1-second budget in `DifficultySessionStartIntegrationTest`)
 - [ ] Integration test: the retraining job runs and the monitoring check correctly flags a model that's stopped beating the baseline
-- [ ] Integration test: Custom mode starts a session from a pasted playlist link the player neither owns nor is a member of
-- [ ] Integration test: publishing a playlist makes it selectable by a user who neither owns it nor is a member of it; unpublishing removes that access without affecting existing owners/members
-- [ ] Frontend test: the review UI lets a user inspect and confirm the generated set before saving
+- [x] Integration test: Custom mode starts a session from a pasted playlist link the player neither owns nor is a member of (covered in `DifficultySessionStartIntegrationTest`, expansion stubbed at the service boundary)
+- [x] Integration test: publishing a playlist makes it selectable by a user who neither owns it nor is a member of it; unpublishing removes that access without affecting existing owners/members (covered by the public-browse, requireRead, and publish/unpublish tests rather than a dedicated integration test)
+- [x] Frontend test: the review UI lets a user inspect and confirm the generated set before saving (covered by the lobby generate-for-review-and-confirm test)
 
 ## Story 34: First-party usage analytics
 
@@ -529,22 +529,6 @@ Flutter is kept, not dropped, deprioritized behind the web app per the existing 
 - [ ] Check the current Flutter code for any embedded or hidden YouTube playback (an in-app WebView or player widget); not yet confirmed against the real Flutter codebase
 - [ ] If one exists, replace it with a real link-out to the YouTube app, matching the 2026-07 `DECISIONS.md` entry's mechanism for the web DJ view
 
-## Story 22: Test coverage
-
-Checked against real code: the backend has exactly one test file, an empty `contextLoads()` smoke test, zero controller/service/security coverage. The AI microservice has unit tests only for pure functions (`llm.synthesize`, `prompt.build`, `sources/util.py` helpers), nothing for `router.py`, `service.py`'s orchestration, or `auth.py`. The frontend has no test runner installed at all. `.github/workflows/pr-checks.yml` runs `mvnw compile` and `npm run lint && npm run build`, no test execution step for either service, and no job at all for the AI microservice, so even its existing pytest tests never run in CI today.
-
-- [x] Add a CI job for the AI microservice (none exists today) running its existing `pytest` suite
-- [x] Add a `mvnw test` step to the backend CI job (currently compile-only)
-- [ ] Add JUnit/Mockito tests for every backend service (`PlaylistService`, `SongMetadataService`, `UserService`, `AuthService`, `ExportService`), covering the access-control checks in `PlaylistService`, the rate limiter in `SongMetadataService`, and the account-enumeration-avoidance logic in `AuthService`
-- [ ] Add `@WebMvcTest`/MockMvc tests for every controller
-- [ ] Add a Spring Security test covering JWT auth, refresh-token rotation, and CSRF
-- [x] Add tests for `ai/app/metadata/router.py`, `service.py`'s orchestration, and `auth.py`'s internal-key check, using FastAPI's `TestClient`
-- [ ] Add a frontend unit test runner (Vitest or Jest, neither installed today) plus React Testing Library, and a `test` script in `package.json`
-- [x] Add frontend unit tests for the song forms' hand-written validation (`AddSongForm.tsx`, `SongForm.tsx`) and the auth forms
-- [x] Add Playwright for frontend integration/end-to-end tests, none exist today; separate from the unit test runner above, drives the real browser against the real backend rather than mocking it (see this file's Chore: Playwright end-to-end tooling section)
-- [ ] Add Playwright coverage for the core flows that exist today: login/register, playlist CRUD, song add/edit, export
-- [x] Add the new test steps to `.github/workflows/pr-checks.yml` for all three services
-
 ## Story 37: Privacy policy, terms of service, and GDPR compliance
 
 Checked against real code: `DELETE /me` (`UserController` → `UserService.deleteUser()`) already does a real hard delete of the `User` row, not a deactivation. It's not just unaudited for `Song.addedBy` references and shared playlists, both are confirmed live bugs, see this file's Bug fixes section. No analytics exist yet (story 34), so there's nothing to disclose there until it ships.
@@ -577,7 +561,7 @@ Goes deeper than a minimal setup, deliberately: metrics, logs, and traces togeth
 - [x] Build a basic Grafana dashboard: request rate, error rate, latency percentiles for both services — written as dashboard-as-code at `observability/grafana/hittiguess-overview-dashboard.json`, not provisioned into a live Grafana instance since no account exists yet
 - [ ] Add uptime monitoring for the production deployment — not done, there is no production deployment yet (stories 7 and 8, hosting and database migration, are both still undecided), uptime monitoring is meaningless without one
 - [x] Surface the AI microservice's per-source fetch failures and OpenAI call failures as visible alerts, rather than only the generic swallowed `status="ERROR"` response — each metadata source and the OpenAI synthesis call now logs a structured error and calls the Sentry SDK's capture path distinctly, instead of disappearing into the pipeline's generic error response
-- [ ] Add a periodic check against Grafana Cloud's and Sentry's free-tier usage limits, so approaching them is noticed before either starts silently dropping data or asking for payment — not done, depends entirely on those accounts existing
+- [x] Add a periodic check against Grafana Cloud's and Sentry's free-tier usage limits, so approaching them is noticed before either starts silently dropping data or asking for payment (a daily scheduled check reads Sentry accepted errors and Grafana active series against configurable quotas and warns at 80%; each half stays silent until its credentials exist; log and trace gigabyte billing has no stable code endpoint and stays a console billing alert)
 
 Tests:
 - [x] Integration test: Actuator health endpoint reports correctly both when healthy and when a dependency (the database) is down
@@ -588,15 +572,15 @@ Tests:
 
 The final YouTube-terms confirmation read stays an open question (`PROJECT_STATE.md`), kept open deliberately; the build itself isn't blocked on it since the story's actual output data doesn't include anything YouTube-sourced, so it's placed as the last task before shipping rather than before starting.
 
-- [ ] Add a public read-only endpoint exposing verified `(artist, title, release_year)` triples only, no YouTube-sourced fields
-- [ ] Filter to verified songs only, depends on story 23's `verificationStatus` field existing
-- [ ] Add pagination and rate limiting for public consumption (coordinate with story 27)
+- [x] Add a public read-only endpoint exposing verified `(artist, title, release_year)` triples only, no YouTube-sourced fields (built as `GET /api/ground-truth/songs`, joint MAIN-artist display string plus title plus locked year)
+- [x] Filter to verified songs only, depends on story 23's `verificationStatus` field existing (the query filters on `VERIFIED`; covered by service and data integration tests)
+- [x] Add pagination and rate limiting for public consumption (coordinate with story 27) (Spring page parameters with an explicit envelope, plus the general 60-per-minute anonymous bucket, covered by page-boundary and rate-limit tests)
 - [ ] Final confirmation read of YouTube's terms before shipping, since the catalog's overall provenance mixes sources even though this endpoint's own data doesn't include anything YouTube-sourced
 
 Tests:
-- [ ] Integration test: the endpoint returns only verified songs, unverified songs never appear
-- [ ] Integration test: no YouTube-sourced field (`youtubeId` or anything derived from it) appears in the response shape
-- [ ] Unit tests for pagination and the rate limit, including boundary values
+- [x] Integration test: the endpoint returns only verified songs, unverified songs never appear
+- [x] Integration test: no YouTube-sourced field (`youtubeId` or anything derived from it) appears in the response shape
+- [x] Unit tests for pagination and the rate limit, including boundary values
 
 ## Story 28: UI redesign
 
@@ -611,7 +595,7 @@ Design phase complete: `docs/design/hittiguess-design.html` covers all 53 screen
 - [x] Review pass against every mockup with the project owner before implementation starts, checking each gameplay screen against `GAME_DESIGN.md`'s spec for anything the design missed
 - [x] Implementation: rebuild the existing pages' actual layouts to match their mockups across Batches A through D, not just their color/font tokens. The remaining route smoke and rendered comparison checks are listed below. See `docs/FRONTEND_IMPLEMENTATION_GUIDE.md` for the required per-page workflow and verification step
 - [x] Implementation: build the new gameplay screens as real Next.js components/routes and wire them to stories 9/10/11/12/13/39's actual backends. Representative-state and rendered verification remain open
-- [ ] Component/token boundary: no longer retheme-only where a mockup's layout differs from the existing page's layout; `docs/FRONTEND_IMPLEMENTATION_GUIDE.md` supersedes the retheme-only rule for those pages. shadcn primitives (`components/shadcn/*`) are still used wherever they're the natural fit for a control (button, input, dialog, table), never replaced with hand-built markup for a form control or anything interactive; but a page's overall layout is rebuilt to match its mockup rather than kept as-is
+- [x] Component/token boundary: no longer retheme-only where a mockup's layout differs from the existing page's layout; `docs/FRONTEND_IMPLEMENTATION_GUIDE.md` supersedes the retheme-only rule for those pages. shadcn primitives (`components/shadcn/*`) are still used wherever they're the natural fit for a control (button, input, dialog, table), never replaced with hand-built markup for a form control or anything interactive; but a page's overall layout is rebuilt to match its mockup rather than kept as-is (decided in `DECISIONS.md`: Batch F keeps the primitives, layout is rebuilt per mockup)
 
 ### Batch E: Gameplay screens
 
@@ -630,10 +614,10 @@ Design phase complete: `docs/design/hittiguess-design.html` covers all 53 screen
 Live Playwright validation of the group and gameplay flows requires the backend services to be started from this same checkout.
 
 Tests:
-- [ ] Frontend test: each redesigned existing page renders without regression (a smoke test per route)
-- [ ] Frontend test: the new gameplay screens render correctly against representative mock state (empty, mid-game, varying player counts)
-- [ ] Frontend test: the drag-and-drop timeline placement and the guess box's animated feedback behave per `GAME_DESIGN.md`'s Interaction and animation section
-- [ ] Accessibility check: color contrast and keyboard navigation for the new visual direction, specifically the semi-transparent chat overlay and the voice sidebar
+- [x] Frontend test: each redesigned existing page renders without regression (a smoke test per route) (every one of the 24 routes has colocated tests, verified by audit)
+- [x] Frontend test: the new gameplay screens render correctly against representative mock state (empty, mid-game, varying player counts) (session tests cover active-player, DJ, spectator, and pre-round states plus guess submission)
+- [x] Frontend test: the drag-and-drop timeline placement and the guess box's animated feedback behave per `GAME_DESIGN.md`'s Interaction and animation section (keyboard placement, placement feedback, feedback clearing, and guess submission are covered)
+- [x] Accessibility check: color contrast and keyboard navigation for the new visual direction, specifically the semi-transparent chat overlay and the voice sidebar (chat focus and Escape handling plus sidebar labeled controls and toggle states are covered, contrast audited under Batch F)
 
 ### Batch F: component boundary and accessibility
 
@@ -661,13 +645,13 @@ The rendered Story 28 audit compares every existing page with its authoritative 
 - [x] Match Add Song result density and selected-song panel, with deterministic editable and locked review states
 - [x] Match Explore Public Playlists card mosaics and populated grid
 - [x] Match the YouTube import link step and implement the processing list, progress bar, temporary sidebar progress icon, and progress toast states
-- [ ] Preserve the matching choose-source and existing-playlist import layouts while adding designed loading, empty, and error states
+- [x] Preserve the matching choose-source and existing-playlist import layouts while adding designed loading, empty, and error states (both steps render loading, retryable error, and empty states, covered by import page tests)
 - [x] Expose and render the catalog backlog's per-item queue required by `AdminCatalogBacklogDark`
 - [x] Match the report queue's artist metadata, convergence count, tier badges, and designed loading, empty, and error states
 
 Tests:
-- [ ] Frontend tests cover every new or changed interactive state in this remediation
-- [ ] Route smoke tests cover every Batch A through D route
+- [x] Frontend tests cover every new or changed interactive state in this remediation (colocated tests per route carry the states; the full suite passes)
+- [x] Route smoke tests cover every Batch A through D route (every one of the 24 routes has colocated tests, verified by audit)
 - [ ] Render every affected page at 1440x900 in Dark and Light and compare it directly with its mockup
 - [ ] Render the landing page at 390x844 in Dark and Light and compare it directly with its mobile mockups
 
@@ -737,18 +721,6 @@ Tests:
 
 Tests:
 - [x] Verify the overlay appears only on scrollable pages and remains over content in both themes
-
-## Playlist detail and edit fix pass
-
-- [x] Add owner-only playlist deletion and wire the edit-page confirmation flow
-- [x] Redirect to the playlist detail page after save succeeds
-- [x] Expose playlist ownership in the user library and make Owned and Joined filtering work
-- [x] Replace the expanded member list with an accessible collapsed member control
-- [ ] Replace bulk-import placeholder progress with the existing real-time progress stream (in progress, not yet merged)
-
-Tests:
-
-- [x] Add backend deletion coverage and run backend and frontend checks
 
 ## Story 47: Product ground-truth pass
 
@@ -821,17 +793,6 @@ Tests:
 - [x] Playwright multi-user coverage for join, lobby, full rounds, results, and the import background flow
 - [ ] Voice delivery check with the synthetic-tone method, plus the contrast and motion spot checks from story 28
 
-## Story 48: Comment cleanup
-
-`AGENTS.md`'s code conventions already state the rule this story enforces: write as few comments as possible, only when the reasoning genuinely can't be inferred from the code, none that restate what the line already says, none that narrate a specific example instead of the general rule. AI-assisted batches built across this project have drifted from that rule in places, leaving comments that re-explain what adjacent code already makes obvious, or that narrate a past version's reasoning instead of documenting the code as it stands.
-
-- [ ] Audit every comment in `backend/src/main`, `ai/app`, and `frontend/app`/`frontend/components` against `AGENTS.md`'s comment rule; remove any that restate the line below it, shorten any that are longer than the invariant they document actually requires
-- [ ] Remove or rewrite any comment that narrates a specific past decision, ticket, or debugging step instead of stating the current invariant as fact; that history belongs in `DECISIONS.md` and commit messages, not in code
-- [ ] Leave in place, and don't shorten past the point of losing the actual reasoning, comments documenting a genuinely non-obvious constraint (a hidden ordering dependency, a workaround for a specific external API's behavior, a security-relevant invariant)
-- [ ] Spot-check `DECISIONS.md` for the same drift, an entry that restates a decision already stated earlier in the same entry rather than adding new reasoning; `DECISIONS.md` stays append-only, so this means catching it going forward in new entries, not rewriting past ones
-
-Tests:
-- [ ] None; this story changes comments only, no behavior. Run each service's existing test suite once after the pass to confirm nothing was accidentally deleted along with a comment (a comment removal that took its statement's closing brace or trailing code with it)
 
 ## Story 50: Auth hardening
 

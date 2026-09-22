@@ -96,8 +96,7 @@ public class PlaylistService {
 
     // VERIFIED is a pipeline-established lock and NEEDS_REVIEW is an LLM-reconciled year;
     // hand-editing either undermines the trust tier the pipeline already assigned it.
-    // UNVERIFIED hasn't been through the pipeline at all yet (today, every song's actual
-    // status, since story 40's pipeline doesn't exist to move it anywhere else), so there's
+    // UNVERIFIED hasn't been through the pipeline at all yet, so there's
     // no established trust tier to protect there, same as the least-trusted MANUAL_ENTRY tier.
     private static final Set<VerificationStatus> EDITABLE_VERIFICATION_STATUSES =
             Set.of(VerificationStatus.UNVERIFIED, VerificationStatus.MANUAL_ENTRY);
@@ -175,6 +174,7 @@ public class PlaylistService {
         playlistRepository.deleteGroupPlaylistLinks(playlistId);
         savedPlaylistRepository.deleteByPlaylistId(playlistId);
         playlistBanRepository.deleteByPlaylistId(playlistId);
+        playlist.getSongs().clear();
         playlistRepository.delete(playlist);
     }
 

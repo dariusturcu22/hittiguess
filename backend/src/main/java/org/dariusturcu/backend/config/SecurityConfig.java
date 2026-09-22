@@ -109,6 +109,7 @@ public class SecurityConfig {
                                 "/api/playlists/invites/*/preview",
                                 "/api/playlists/*/cover",
                                 "/api/users/*/avatar",
+                                "/api/ground-truth/**",
                                 "/error"
                         ).permitAll()
                         .anyRequest().authenticated()
