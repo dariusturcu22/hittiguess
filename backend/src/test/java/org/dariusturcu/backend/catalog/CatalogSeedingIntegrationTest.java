@@ -115,7 +115,7 @@ class CatalogSeedingIntegrationTest {
         PlaylistImportService playlistImportService() {
             // No test here submits a targetPlaylistId, so this service's dependencies
             // are never actually invoked.
-            return new PlaylistImportService(null, null);
+            return new PlaylistImportService(null, null, null);
         }
 
         @Bean

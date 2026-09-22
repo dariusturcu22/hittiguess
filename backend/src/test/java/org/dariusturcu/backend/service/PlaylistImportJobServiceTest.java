@@ -101,9 +101,7 @@ class PlaylistImportJobServiceTest {
         when(playlistExpansionService.expandAndMerge(any(), any())).thenReturn(List.of("video-1", "video-2"));
         when(youtubeIdLookupService.partitionKnownAndUnknown(any()))
                 .thenReturn(new YoutubeIdLookupResult(Set.of("video-1"), Set.of("video-2")));
-        Song knownSong = Mockito.mock(Song.class);
         Song resolvedSong = songWithId(102L);
-        when(youtubeIdLookupService.resolveCanonicalSongs(any())).thenReturn(List.of(knownSong));
         when(youtubeIdLookupService.resolveCanonicalSongIds(any())).thenReturn(Map.of("video-1", 101L));
         when(songResolutionService.resolveAndPersist("video-2")).thenReturn(Optional.of(resolvedSong));
 
@@ -140,7 +138,7 @@ class PlaylistImportJobServiceTest {
         assertThat(progressEvents.getAllValues())
                 .extracting(BulkImportProgressEvent::youtubeId)
                 .containsExactlyInAnyOrder("video-1", "video-2");
-        verify(playlistImportService).addResolvedSongs(PLAYLIST_ID, List.of(knownSong, resolvedSong));
+        verify(playlistImportService).addResolvedSongIds(PLAYLIST_ID, List.of(101L, 102L));
     }
 
     @Test

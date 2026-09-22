@@ -25,6 +25,8 @@ import org.springframework.boot.persistence.autoconfigure.EntityScan;
 import org.springframework.boot.security.oauth2.client.autoconfigure.OAuth2ClientAutoConfiguration;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Bean;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 import org.springframework.security.access.AccessDeniedException;
@@ -37,6 +39,7 @@ import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
+import java.util.List;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -87,8 +90,9 @@ class PlaylistImportIntegrationTest {
         @Bean
         PlaylistImportService playlistImportService(
                 PlaylistRepository playlistRepository,
-                PlaylistAccessService playlistAccessService) {
-            return new PlaylistImportService(playlistRepository, playlistAccessService);
+                PlaylistAccessService playlistAccessService,
+                SongRepository songRepository) {
+            return new PlaylistImportService(playlistRepository, playlistAccessService, songRepository);
         }
 
         @Bean
@@ -128,6 +132,8 @@ class PlaylistImportIntegrationTest {
     private PlaylistMembershipRepository playlistMembershipRepository;
     @Autowired
     private PlaylistImportService playlistImportService;
+    @PersistenceContext
+    private EntityManager entityManager;
 
     private static final String KNOWN_YOUTUBE_ID = "dQw4w9WgXcQ";
 
@@ -219,6 +225,21 @@ class PlaylistImportIntegrationTest {
         assertThat(reload(target.getId()).getSongs())
                 .extracting(Song::getId)
                 .containsExactlyInAnyOrder(sharedSong.getId(), sourceOnlySong.getId());
+    }
+
+    @Test
+    void linksSongsByIdForCallersWithoutManagedEntities() {
+        User owner = persistUser("owner");
+        Playlist target = persistPlaylist(owner, "TGTIDS01");
+        Song song = persistSong(owner, "ById");
+        entityManager.clear();
+        actAs(owner);
+
+        playlistImportService.addResolvedSongIds(target.getId(), List.of(song.getId()));
+
+        assertThat(reload(target.getId()).getSongs())
+                .extracting(Song::getId)
+                .containsExactly(song.getId());
     }
 
     @Test

@@ -128,7 +128,6 @@ public class PlaylistImportJobService {
                     items.stream().map(PlaylistImportJobItem::getYoutubeId).toList());
             Set<String> knownIdSet = new HashSet<>(lookupResult.knownYoutubeIds());
             Map<String, Long> knownSongIds = youtubeIdLookupService.resolveCanonicalSongIds(lookupResult.knownYoutubeIds());
-            List<Song> knownSongs = youtubeIdLookupService.resolveCanonicalSongs(lookupResult.knownYoutubeIds());
             for (PlaylistImportJobItem item : items) {
                 if (!knownIdSet.contains(item.getYoutubeId())) {
                     continue;
@@ -139,7 +138,7 @@ public class PlaylistImportJobService {
                 publishProgress(submittingUsername, jobId, item.getYoutubeId(), BulkImportProgressOutcome.ALREADY_KNOWN);
             }
 
-            List<Song> resolvedSongs = new ArrayList<>();
+            List<Long> resolvedSongIds = new ArrayList<>();
             metadataPriorityCoordinator.beginOnTheSpotWork();
             try {
                 for (PlaylistImportJobItem item : items) {
@@ -150,7 +149,7 @@ public class PlaylistImportJobService {
                     if (resolvedSong.isPresent()) {
                         item.setStatus(PlaylistImportJobItemStatus.RESOLVED);
                         item.setSongId(resolvedSong.get().getId());
-                        resolvedSongs.add(resolvedSong.get());
+                        resolvedSongIds.add(resolvedSong.get().getId());
                         catalogSeedingService.reEnqueueForPatientReprocessing(item.getYoutubeId());
                         publishProgress(submittingUsername, jobId, item.getYoutubeId(), BulkImportProgressOutcome.RESOLVED);
                     } else {
@@ -163,9 +162,9 @@ public class PlaylistImportJobService {
                 metadataPriorityCoordinator.endOnTheSpotWork();
             }
 
-            List<Song> songsToLink = new ArrayList<>(knownSongs);
-            songsToLink.addAll(resolvedSongs);
-            playlistImportService.addResolvedSongs(playlistId, songsToLink);
+            List<Long> songsToLinkIds = new ArrayList<>(knownSongIds.values());
+            songsToLinkIds.addAll(resolvedSongIds);
+            playlistImportService.addResolvedSongIds(playlistId, songsToLinkIds);
             finishJob(jobId, PlaylistImportJobStatus.DONE);
         } catch (RuntimeException failure) {
             log.warn("Background playlist import {} failed", jobId, failure);

@@ -7,6 +7,7 @@ import org.dariusturcu.backend.model.playlist.Playlist;
 import org.dariusturcu.backend.model.song.Song;
 import org.dariusturcu.backend.model.user.User;
 import org.dariusturcu.backend.repository.PlaylistRepository;
+import org.dariusturcu.backend.repository.SongRepository;
 import org.dariusturcu.backend.security.util.SecurityUtils;
 
 import org.springframework.stereotype.Service;
@@ -30,6 +31,7 @@ public class PlaylistImportService {
 
     private final PlaylistRepository playlistRepository;
     private final PlaylistAccessService playlistAccessService;
+    private final SongRepository songRepository;
 
     private Playlist findPlaylist(Long playlistId) {
         return playlistRepository.findById(playlistId)
@@ -90,5 +92,16 @@ public class PlaylistImportService {
         }
 
         playlistRepository.save(target);
+    }
+
+    /**
+     * Links already-resolved catalog songs into a playlist by id, reloading each
+     * into the current persistence context first. Callers running off the request
+     * thread (a background import has no open-in-view session) must use this
+     * instead of addResolvedSongs, whose entities would arrive detached and fail
+     * lazy loading when the bidirectional link sync touches them.
+     */
+    public void addResolvedSongIds(Long targetPlaylistId, List<Long> resolvedSongIds) {
+        addResolvedSongs(targetPlaylistId, songRepository.findAllById(resolvedSongIds));
     }
 }
