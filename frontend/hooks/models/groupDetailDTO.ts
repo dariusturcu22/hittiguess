@@ -15,6 +15,7 @@ export interface GroupDetailDTO {
   joinCode?: string;
   status?: GroupDetailDTOStatus;
   djMode?: GroupDetailDTODjMode;
+  fixedDjMemberId?: number;
   winConditionCardCount?: number;
   playlists?: PlaylistSummaryDTO[];
   members?: MemberDTO[];
