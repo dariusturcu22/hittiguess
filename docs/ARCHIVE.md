@@ -529,3 +529,15 @@ Tests:
 - [x] Frontend tests for the landing redirect, scroll bounds, toggle, and animation states
 - [x] Playwright coverage for account creation, login, and the join-link redirect chain
 - [x] Live email-flow check through the backend's log-line mode (no inbox needed while the Resend key is unset)
+
+## Playlist detail and edit fix pass
+
+- [x] Add owner-only playlist deletion and wire the edit-page confirmation flow
+- [x] Redirect to the playlist detail page after save succeeds
+- [x] Expose playlist ownership in the user library and make Owned and Joined filtering work
+- [x] Replace the expanded member list with an accessible collapsed member control
+- [x] Replace bulk-import placeholder progress with the existing real-time progress stream (replaced by the background import jobs with sidebar progress, greyed pending songs, and live progress events)
+
+Tests:
+
+- [x] Add backend deletion coverage and run backend and frontend checks
