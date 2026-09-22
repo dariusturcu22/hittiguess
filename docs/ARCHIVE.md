@@ -512,3 +512,20 @@ Tests:
 
 - [x] Frontend test: the Saved tab lists the current user's saved playlists and the Owned/Joined filtering still works
 - [x] Run the frontend checks for the touched pages
+
+## Landing and auth fix pass
+
+Covered by PR #172 (plus the OAuth offline tests beside it).
+
+- [x] Unauthenticated users see the landing page instead of a login redirect
+- [x] Bound landing and auth page scroll to their content
+- [x] Fix the theme toggles and the logo animation on landing and auth
+- [x] Verify the join-link flow for logged-out users: login or account creation, then automatic redirect into the join prompt
+- [x] Verify remember-me exists and works; wire the forgot-password form if it is still a stub
+- [x] Verify whether OAuth can be tested without real Google credentials, and test it if so
+
+Tests:
+
+- [x] Frontend tests for the landing redirect, scroll bounds, toggle, and animation states
+- [x] Playwright coverage for account creation, login, and the join-link redirect chain
+- [x] Live email-flow check through the backend's log-line mode (no inbox needed while the Resend key is unset)
