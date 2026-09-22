@@ -838,6 +838,8 @@ sign-in is unavailable over LAN; testers use local accounts.
 - [x] Document the three LAN env values in both `.env.example` files
 - [x] Add a local-network playtest section to `docs/DEV_SETUP.md`
 - [ ] Manual multi-device playtest: full game plus voice, recorded here once played
+- [x] Fix the pre-existing session page test type error blocking `npm run build` (found during LAN verification, untouched by the LAN branch; the mock session type now allows a null round, build passes)
+- [x] Hydration warning on the login page over LAN: caused by the Dark Reader extension rewriting SVG attributes before React hydrates, not by app code; extension-free browsers hydrate cleanly. No code change; disable Dark Reader for the site since it also fights the app's own theme toggle
 
 Tests:
 - [x] Frontend lint and the two password-flow page tests stay green (no behavior code changes in this batch)
