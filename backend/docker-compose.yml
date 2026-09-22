@@ -1,7 +1,7 @@
 services:
   db:
     image: pgvector/pgvector:pg18
-    container_name: my-hitster-postgres
+    container_name: hittiguess-postgres
     restart: always
     ports:
       - "5500:5432"
@@ -10,11 +10,11 @@ services:
       POSTGRES_USER: ${DB_USERNAME}
       POSTGRES_PASSWORD: ${DB_PASSWORD}
     volumes:
-      - hitster_postgres_data:/var/lib/postgresql
+      - hittiguess_postgres_data:/var/lib/postgresql
 
   analytics-db:
     image: postgres:18
-    container_name: my-hitster-analytics-postgres
+    container_name: hittiguess-analytics-postgres
     restart: always
     ports:
       - "5501:5432"
@@ -23,7 +23,7 @@ services:
       POSTGRES_USER: ${ANALYTICS_DB_USERNAME}
       POSTGRES_PASSWORD: ${ANALYTICS_DB_PASSWORD}
     volumes:
-      - hitster_analytics_postgres_data:/var/lib/postgresql
+      - hittiguess_analytics_postgres_data:/var/lib/postgresql
 
   # Scrapes both services' Prometheus endpoints and pushes metrics to Grafana
   # Cloud (observability/alloy/config.alloy). Neither service runs as its own
@@ -46,5 +46,5 @@ services:
       - /etc/alloy/config.alloy
 
 volumes:
-  hitster_postgres_data:
-  hitster_analytics_postgres_data:
+  hittiguess_postgres_data:
+  hittiguess_analytics_postgres_data:

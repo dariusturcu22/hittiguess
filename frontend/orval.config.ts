@@ -1,7 +1,7 @@
 import { defineConfig } from "orval";
 
 export default defineConfig({
-  myHitster: {
+  hittiguess: {
     input: {
       target: "http://localhost:8080/v3/api-docs",
     },
@@ -19,7 +19,7 @@ export default defineConfig({
       },
     },
   },
-  myHitsterZod: {
+  hittiguessZod: {
     input: {
       target: "http://localhost:8080/v3/api-docs",
     },

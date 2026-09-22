@@ -10,7 +10,7 @@ from app.observability.tracing import setup_tracing
 configure_logging()
 init_sentry()
 
-app = FastAPI(title="hitguessr AI microservice")
+app = FastAPI(title="hittiguess AI microservice")
 app.add_middleware(CorrelationIdMiddleware)
 app.include_router(metadata_router)
 
