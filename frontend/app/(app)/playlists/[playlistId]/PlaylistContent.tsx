@@ -121,6 +121,11 @@ export default function PlaylistContent({
   const [searchQuery, setSearchQuery] = React.useState("");
   const [linkCopied, setLinkCopied] = React.useState(false);
   const [codeCopied, setCodeCopied] = React.useState(false);
+  const [isExportOpen, setIsExportOpen] = React.useState(false);
+  const [exportContent, setExportContent] = React.useState<"info" | "qr">("info");
+  const [exportPaperSize, setExportPaperSize] = React.useState<"A4" | "LETTER">("A4");
+  const [isExporting, setIsExporting] = React.useState(false);
+  const [exportError, setExportError] = React.useState("");
 
   const handleDeleteSong = (songId: number) => {
     removeSong(
@@ -149,25 +154,36 @@ export default function PlaylistContent({
     );
   };
 
-  const handleExport = async () => {
-    for (const type of ["info", "qr"] as const) {
+  async function exportPdf(print: boolean) {
+    setExportError("");
+    setIsExporting(true);
+    try {
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/playlists/${playlistId}/export/${type}`,
+        `${process.env.NEXT_PUBLIC_API_URL}/api/playlists/${playlistId}/export/${exportContent}?paperSize=${exportPaperSize}`,
         { credentials: "include" },
       );
       if (!response.ok) {
-        toast.error(`Couldn't export the ${type} cards. Try again.`);
-        continue;
+        setExportError("Couldn't export the cards. Try again.");
+        return;
       }
       const blob = await response.blob();
       const url = URL.createObjectURL(blob);
-      const anchor = document.createElement("a");
-      anchor.href = url;
-      anchor.download = `playlist-${playlistId}-${type}.pdf`;
-      anchor.click();
-      URL.revokeObjectURL(url);
+      if (print) {
+        window.open(url, "_blank");
+      } else {
+        const anchor = document.createElement("a");
+        anchor.href = url;
+        anchor.download = `playlist-${playlistId}-${exportContent}-${exportPaperSize}.pdf`;
+        anchor.click();
+        URL.revokeObjectURL(url);
+      }
+      setIsExportOpen(false);
+    } catch {
+      setExportError("Couldn't export the cards. Try again.");
+    } finally {
+      setIsExporting(false);
     }
-  };
+  }
 
   const handleCopyLink = async () => {
     if (!playlist) return;
@@ -307,7 +323,10 @@ export default function PlaylistContent({
                 size="icon"
                 className="size-[46px] rounded-[13px]"
                 title="Export cards"
-                onClick={handleExport}
+                onClick={() => {
+                  setExportError("");
+                  setIsExportOpen((currentValue) => !currentValue);
+                }}
               >
                 <FileDown className="size-4" />
               </Button>
@@ -389,6 +408,40 @@ export default function PlaylistContent({
           </Popover>
         </aside>
       </div>
+
+      {isExportOpen ? (
+        <section aria-label="Export options" className="mb-4 rounded-2xl border-[3px] border-border-strong bg-card p-5 shadow-lg">
+          <div className="mb-4 flex items-center justify-between">
+            <h2 className="font-display text-sm text-card-foreground">Export cards</h2>
+            <button type="button" onClick={() => setIsExportOpen(false)} className="text-muted-foreground hover:text-card-foreground">Close</button>
+          </div>
+          <div className="flex flex-wrap items-center gap-4">
+            <label className="flex items-center gap-2 text-[13px] text-muted-foreground">
+              Cards
+              <select value={exportContent} onChange={(event) => setExportContent(event.target.value as "info" | "qr")} className="rounded-full border-2 border-border bg-background px-3 py-1.5 text-sm font-semibold text-foreground outline-none">
+                <option value="info">Info cards</option>
+                <option value="qr">QR cards</option>
+              </select>
+            </label>
+            <label className="flex items-center gap-2 text-[13px] text-muted-foreground">
+              Paper
+              <select value={exportPaperSize} onChange={(event) => setExportPaperSize(event.target.value as "A4" | "LETTER")} className="rounded-full border-2 border-border bg-background px-3 py-1.5 text-sm font-semibold text-foreground outline-none">
+                <option value="A4">A4</option>
+                <option value="LETTER">Letter</option>
+              </select>
+            </label>
+            <div className="flex gap-2.5">
+              <button type="button" onClick={() => exportPdf(false)} disabled={isExporting} className="rounded-full bg-primary px-4 py-2 font-display text-xs text-primary-foreground disabled:opacity-60">
+                {isExporting ? "Exporting..." : "Download PDF"}
+              </button>
+              <button type="button" onClick={() => exportPdf(true)} disabled={isExporting} className="rounded-full border-2 border-border px-4 py-2 text-xs font-semibold text-card-foreground disabled:opacity-60">
+                Print
+              </button>
+            </div>
+          </div>
+          {exportError ? <p role="alert" className="mt-3 text-sm text-destructive">{exportError}</p> : null}
+        </section>
+      ) : null}
 
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <div className="font-display text-base">Songs</div>

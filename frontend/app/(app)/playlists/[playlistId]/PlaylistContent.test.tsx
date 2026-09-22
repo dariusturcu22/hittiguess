@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -137,5 +137,30 @@ describe("PlaylistContent detail states", () => {
     fireEvent.click(screen.getByTitle("Leave playlist"));
 
     expect(screen.getByText("Leave playlist?")).toBeVisible();
+  });
+
+  it("exports the chosen cards and paper size", async () => {
+    const fetchMock = vi.fn(async () => ({
+      ok: true,
+      blob: async () => new Blob(["pdf"], { type: "application/pdf" }),
+    }));
+    vi.stubGlobal("fetch", fetchMock);
+    const createObjectUrl = vi.fn(() => "blob:export-url");
+    Object.defineProperty(URL, "createObjectURL", { value: createObjectUrl, configurable: true });
+    Object.defineProperty(URL, "revokeObjectURL", { value: vi.fn(), configurable: true });
+    await renderContent();
+
+    fireEvent.click(screen.getByTitle("Export cards"));
+    fireEvent.change(screen.getByLabelText("Cards"), { target: { value: "qr" } });
+    fireEvent.change(screen.getByLabelText("Paper"), { target: { value: "LETTER" } });
+    fireEvent.click(screen.getByRole("button", { name: "Download PDF" }));
+
+    await waitFor(() =>
+      expect(fetchMock).toHaveBeenCalledWith(
+        expect.stringContaining("/api/playlists/7/export/qr?paperSize=LETTER"),
+        expect.anything(),
+      ),
+    );
+    vi.unstubAllGlobals();
   });
 });
