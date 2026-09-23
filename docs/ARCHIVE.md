@@ -623,3 +623,15 @@ Tests:
 
 Tests:
 - [x] Lobby suite covers the tier popup, custom picker with back path, min-players popup, and the removed custom start (plus a fixed infinite loop in the playlist preselect capture)
+
+## Chore: Documentation accuracy pass
+
+Triggered by a Local-milestone audit: `docs/ROADMAP.md` claimed stories 30, 35, 22, 48, and 49 were still open when `PROJECT_STATE.md` and `ARCHIVE.md` already showed them shipped, and `docs/SYSTEM_REFERENCE.md`/`docs/FRONTEND_IMPLEMENTATION_GUIDE.md` had drifted behind the real schema and routes.
+
+- [x] Correct `docs/ROADMAP.md`'s "Remaining work", "Readiness tiers", and "What's shipped" sections: stories 22, 30, 35, 48, and 49 are shipped, not remaining; story 38's usage-limit check is built; story 28's implementation now runs through Batch F; story 47's actual open items (design-mockup sync, feedback-polish batch, voice check) are named instead
+- [x] Update `docs/SYSTEM_REFERENCE.md`'s migration list from V15 to V25, add the six undocumented endpoints (`import-jobs` pair, `cover`/`avatar` pairs, and the three story-30 session-generation endpoints), and correct the entity block: `Song.gradientColor1`/`gradientColor2` replaced by `color`, plus the undocumented `Song.wikidataSitelinksCount`, `Playlist.coverImage`, `User.avatarImage`, `RefreshToken.rememberMe`, `Group.joinCode`/`fixedDjMemberId`, and the `PlaylistImportJob`/`PlaylistImportJobItem` entities
+- [x] Fix `docs/FRONTEND_IMPLEMENTATION_GUIDE.md`'s two wrong route paths (`/playlists/explore` to `/explore`, `/admin/catalog` to `/admin/catalog-backlog`) and its stale "TBD" import-route entry, replaced with the real implemented routes
+- [x] Fix `docs/TASKS.md`'s own preamble, still citing "Batches A through E"
+
+Tests:
+- [x] None; this chore changes documentation only, no behavior. Frontend and backend suites confirmed green (modulo the sandbox's known loopback-socket limitation on backend integration tests) as part of the same audit that surfaced this drift, not re-run for this chore specifically since no code changed
