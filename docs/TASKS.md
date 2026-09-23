@@ -895,3 +895,13 @@ Second batch; the full findings list lives on the batch-1 branch until it merges
 
 Tests:
 - [x] Playlist content, import, and queue-hook suites stay green; LAN browser probes for export download and fetch-to-review
+
+## LAN playtest findings, batch 3 (lobby start flow, voice sidebar)
+
+- [x] Voice sidebar: no collapse control, hidden outside calls except on the lobby page, slim rail matching the left sidebar with the join action on top
+- [x] Playlist chip opens a tier popup (easy/medium/hard/custom) below it; custom opens a fullscreen multi-playlist picker with a chosen list and a back path; the standalone Custom start button goes away
+- [x] Two-player minimum only as a popup on Start, never persistent
+- [x] Lobby content scrolls on zoom with bottom actions pinned; avatar and name float as one unit
+
+Tests:
+- [x] Lobby suite covers the tier popup, custom picker with back path, min-players popup, and the removed custom start (plus a fixed infinite loop in the playlist preselect capture)
