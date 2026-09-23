@@ -884,3 +884,14 @@ Feedback polish (cross-cutting, own batch):
 
 Tests:
 - [x] Frontend lint and the two password-flow page tests stay green (no behavior code changes in this batch)
+
+## LAN playtest findings, batch 2 (export dialog, fetch reliability)
+
+Second batch; the full findings list lives on the batch-1 branch until it merges.
+
+- [x] Export opens as a dialog with a song/option summary instead of an inline section; combined info+QR output and extra paper sizes need backend support and land separately (download and print verified working on LAN, the failures were stale-bundle)
+- [x] Add-page 500 on render from a missing server snapshot in the queue hook (same latent pattern as the voice hooks)
+- [x] Add-by-link fetch verified end to end on LAN (~35s to review); the earlier failures were the AI service being down plus the 500 above
+
+Tests:
+- [x] Playlist content, import, and queue-hook suites stay green; LAN browser probes for export download and fetch-to-review

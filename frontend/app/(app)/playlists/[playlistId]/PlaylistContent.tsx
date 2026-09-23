@@ -341,18 +341,55 @@ export default function PlaylistContent({
                 </DropdownMenuContent>
               </DropdownMenu>
 
-              <Button
-                variant="outline"
-                size="icon"
-                className="size-[46px] rounded-[13px]"
-                title="Export cards"
-                onClick={() => {
-                  setExportError("");
-                  setIsExportOpen((currentValue) => !currentValue);
-                }}
-              >
-                <FileDown className="size-4" />
-              </Button>
+              <AlertDialog open={isExportOpen} onOpenChange={setIsExportOpen}>
+                <AlertDialogTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="size-[46px] rounded-[13px]"
+                    title="Export cards"
+                    onClick={() => {
+                      setExportError("");
+                    }}
+                  >
+                    <FileDown className="size-4" />
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Export cards</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      {songs.length} songs · {exportContent === "info" ? "Info cards" : "QR cards"} · {exportPaperSize}
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <div className="flex flex-wrap items-center gap-4">
+                    <label className="flex items-center gap-2 text-[13px] text-muted-foreground">
+                      Cards
+                      <select value={exportContent} onChange={(event) => setExportContent(event.target.value as "info" | "qr")} className="rounded-full border-2 border-border bg-background px-3 py-1.5 text-sm font-semibold text-foreground outline-none">
+                        <option value="info">Info cards</option>
+                        <option value="qr">QR cards</option>
+                      </select>
+                    </label>
+                    <label className="flex items-center gap-2 text-[13px] text-muted-foreground">
+                      Paper
+                      <select value={exportPaperSize} onChange={(event) => setExportPaperSize(event.target.value as "A4" | "LETTER")} className="rounded-full border-2 border-border bg-background px-3 py-1.5 text-sm font-semibold text-foreground outline-none">
+                        <option value="A4">A4</option>
+                        <option value="LETTER">Letter</option>
+                      </select>
+                    </label>
+                  </div>
+                  {exportError ? <p role="alert" className="text-sm text-destructive">{exportError}</p> : null}
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Close</AlertDialogCancel>
+                    <button type="button" onClick={() => exportPdf(true)} disabled={isExporting} className="rounded-full border-2 border-border px-4 py-2 text-xs font-semibold text-card-foreground disabled:opacity-60">
+                      Print
+                    </button>
+                    <button type="button" onClick={() => exportPdf(false)} disabled={isExporting} className="rounded-full bg-primary px-4 py-2 font-display text-xs text-primary-foreground disabled:opacity-60">
+                      {isExporting ? "Exporting..." : "Download PDF"}
+                    </button>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
 
               <AlertDialog>
                 <AlertDialogTrigger asChild>
@@ -431,40 +468,6 @@ export default function PlaylistContent({
           </Popover>
         </aside>
       </div>
-
-      {isExportOpen ? (
-        <section aria-label="Export options" className="mb-4 rounded-2xl border-[3px] border-border-strong bg-card p-5 shadow-lg">
-          <div className="mb-4 flex items-center justify-between">
-            <h2 className="font-display text-sm text-card-foreground">Export cards</h2>
-            <button type="button" onClick={() => setIsExportOpen(false)} className="text-muted-foreground hover:text-card-foreground">Close</button>
-          </div>
-          <div className="flex flex-wrap items-center gap-4">
-            <label className="flex items-center gap-2 text-[13px] text-muted-foreground">
-              Cards
-              <select value={exportContent} onChange={(event) => setExportContent(event.target.value as "info" | "qr")} className="rounded-full border-2 border-border bg-background px-3 py-1.5 text-sm font-semibold text-foreground outline-none">
-                <option value="info">Info cards</option>
-                <option value="qr">QR cards</option>
-              </select>
-            </label>
-            <label className="flex items-center gap-2 text-[13px] text-muted-foreground">
-              Paper
-              <select value={exportPaperSize} onChange={(event) => setExportPaperSize(event.target.value as "A4" | "LETTER")} className="rounded-full border-2 border-border bg-background px-3 py-1.5 text-sm font-semibold text-foreground outline-none">
-                <option value="A4">A4</option>
-                <option value="LETTER">Letter</option>
-              </select>
-            </label>
-            <div className="flex gap-2.5">
-              <button type="button" onClick={() => exportPdf(false)} disabled={isExporting} className="rounded-full bg-primary px-4 py-2 font-display text-xs text-primary-foreground disabled:opacity-60">
-                {isExporting ? "Exporting..." : "Download PDF"}
-              </button>
-              <button type="button" onClick={() => exportPdf(true)} disabled={isExporting} className="rounded-full border-2 border-border px-4 py-2 text-xs font-semibold text-card-foreground disabled:opacity-60">
-                Print
-              </button>
-            </div>
-          </div>
-          {exportError ? <p role="alert" className="mt-3 text-sm text-destructive">{exportError}</p> : null}
-        </section>
-      ) : null}
 
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <div className="font-display text-base">Songs</div>
