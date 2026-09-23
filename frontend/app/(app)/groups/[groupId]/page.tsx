@@ -33,6 +33,7 @@ import type { GeneratedSongPreviewDTO } from "@/hooks/models/generatedSongPrevie
 import type { MemberDTO } from "@/hooks/models/memberDTO";
 import { useQueryClient } from "@tanstack/react-query";
 import { copyText } from "@/lib/clipboard";
+import { playlistTitleColor } from "@/lib/playlist-colors";
 import { GroupChatOverlay } from "@/components/group-chat-overlay";
 import { PlaylistCoverMosaic } from "@/components/playlist-cover-mosaic";
 import {
@@ -651,7 +652,7 @@ export default function GroupLobbyPage({ params }: PageProps) {
               <p className="mb-3 text-[13px] text-muted-foreground">
                 {selectedPlaylistIds.length === 0 ? "No playlists selected" : `Chosen: ${selectedPlaylistNames}`}
               </p>
-              <div className="grid gap-2 sm:grid-cols-2">
+              <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
                 {playlistsQuery.data?.map((playlist) => {
                   const isSelected = selectedPlaylistIds.includes(playlist.id);
                   return (
@@ -660,17 +661,26 @@ export default function GroupLobbyPage({ params }: PageProps) {
                       type="button"
                       onClick={() => togglePlaylistSelected(playlist.id)}
                       aria-pressed={isSelected}
-                      className={`flex items-center gap-3 rounded-xl border-2 px-3 py-2 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${isSelected ? "border-primary bg-primary/10" : "border-border bg-background hover:border-primary/60"}`}
+                      className={`relative flex flex-col overflow-hidden rounded-2xl border-[3px] bg-card text-left shadow-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${isSelected ? "border-primary" : "border-border-strong hover:border-primary/60"}`}
                     >
                       <PlaylistCoverMosaic
                         previewYoutubeIds={playlist.previewYoutubeIds ?? []}
-                        className="size-12 shrink-0 rounded-xl border-2"
+                        className="w-full rounded-none border-none"
                       />
-                      <span className="min-w-0 flex-1">
-                        <span className="block truncate text-sm font-semibold text-foreground">{playlist.name}</span>
+                      {isSelected ? (
+                        <span className="absolute right-2 top-2 flex size-6 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-sm">
+                          <Check className="size-3.5" />
+                        </span>
+                      ) : null}
+                      <div className="flex flex-col gap-1.5 p-4 pb-[18px]">
+                        <span
+                          className="font-display text-base"
+                          style={{ color: playlistTitleColor(playlist.color) }}
+                        >
+                          {playlist.name}
+                        </span>
                         <span className="text-xs text-muted-foreground">{playlist.songCount} songs</span>
-                      </span>
-                      {isSelected ? <Check className="size-4 shrink-0 text-primary" /> : null}
+                      </div>
                     </button>
                   );
                 })}
