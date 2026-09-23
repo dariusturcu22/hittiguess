@@ -7,13 +7,25 @@ import { AppSidebar } from "./app-sidebar";
 import { PLAYLIST_IMPORT_STARTED_EVENT_NAME } from "@/lib/playlist-import-job";
 
 vi.mock("next/link", () => ({
-  default: ({ children, href }: { children: ReactNode; href: string }) => (
-    <a href={typeof href === "string" ? href : "#"}>{children}</a>
+  default: ({
+    children,
+    href,
+    className,
+    title,
+  }: {
+    children: ReactNode;
+    href: string;
+    className?: string;
+    title?: string;
+  }) => (
+    <a href={typeof href === "string" ? href : "#"} className={className} title={title}>
+      {children}
+    </a>
   ),
 }));
 
 vi.mock("next/navigation", () => ({
-  usePathname: () => "/playlists",
+  usePathname: () => currentPathname,
   useRouter: () => ({ push: vi.fn() }),
 }));
 
@@ -32,8 +44,11 @@ vi.mock("@tanstack/react-query", async (importOriginal) => {
 vi.mock("@/hooks/generated/group-management/group-management", () => ({
   getGetActiveMembershipQueryKey: () => ["active-membership"],
   useCreateGroup: () => ({ mutate: vi.fn(), isPending: false }),
-  useGetActiveMembership: () => ({ data: undefined }),
+  useGetActiveMembership: () => ({ data: activeMembership }),
 }));
+
+let currentPathname = "/playlists";
+let activeMembership: { id: number } | undefined;
 
 let activeImportResponse: { data?: unknown; isError: boolean } = { isError: true };
 
@@ -69,6 +84,8 @@ describe("AppSidebar import progress", () => {
   beforeEach(() => {
     window.localStorage.clear();
     activeImportResponse = { isError: true };
+    currentPathname = "/playlists";
+    activeMembership = undefined;
   });
 
   it("shows the progress popup with counts for the stored job", () => {
@@ -121,5 +138,35 @@ describe("AppSidebar import progress", () => {
 
     expect(screen.queryByTitle("Import in progress")).toBeNull();
     expect(window.localStorage.getItem("hittiguess-active-playlist-import")).toBeNull();
+  });
+});
+
+describe("AppSidebar group button", () => {
+  beforeEach(() => {
+    currentPathname = "/playlists";
+    activeMembership = undefined;
+  });
+
+  it("hides the group button without an active group", () => {
+    const { container } = renderSidebar();
+
+    expect(container.querySelector('a[href^="/groups/"]')).toBeNull();
+  });
+
+  it("shows the highlighted group button with an active group", () => {
+    activeMembership = { id: 4 };
+    const { container } = renderSidebar();
+
+    const groupButton = container.querySelector('a[href="/groups/4"]');
+    expect(groupButton).not.toBeNull();
+    expect(groupButton?.className).toContain("border-primary");
+  });
+
+  it("strengthens the highlight on the group page", () => {
+    activeMembership = { id: 4 };
+    currentPathname = "/groups/4";
+    const { container } = renderSidebar();
+
+    expect(container.querySelector('a[href="/groups/4"]')?.className).toContain("bg-primary/10");
   });
 });

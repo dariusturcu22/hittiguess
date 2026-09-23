@@ -887,7 +887,6 @@ Tests:
 
 ## LAN playtest findings, batch 2 (export dialog, fetch reliability)
 
-Second batch; the full findings list lives on the batch-1 branch until it merges.
 
 - [x] Export opens as a dialog with a song/option summary instead of an inline section; combined info+QR output and extra paper sizes need backend support and land separately (download and print verified working on LAN, the failures were stale-bundle)
 - [x] Add-page 500 on render from a missing server snapshot in the queue hook (same latent pattern as the voice hooks)
@@ -905,3 +904,15 @@ Tests:
 
 Tests:
 - [x] Lobby suite covers the tier popup, custom picker with back path, min-players popup, and the removed custom start (plus a fixed infinite loop in the playlist preselect capture)
+## LAN playtest findings, batch 4 (library, shell, settings, chat)
+
+- [x] Playlist member stack shows the overlap plus overflow count per the reference
+- [x] Explore call-to-action carries an icon
+- [x] Sidebar logo bars randomize per mount instead of a fixed loop
+- [x] Group nav button exists only in a group, stronger highlight on the group page
+- [x] Settings dropdowns use the shadcn Select instead of native controls
+- [x] Lobby chat floats above its button
+- [ ] Profile and settings pages need mockups before building (blocked on owner direction)
+
+Tests:
+- [x] Stack overflow, Radix settings selects, group button rules, floating chat variant, plus screenshot verification of settings and chat

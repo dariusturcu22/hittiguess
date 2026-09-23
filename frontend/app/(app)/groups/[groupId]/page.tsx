@@ -45,6 +45,13 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/shadcn/alert-dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/shadcn/select";
 import { useGroupRealtime } from "@/hooks/use-group-realtime";
 
 const MEMBER_COLORS = [
@@ -577,23 +584,33 @@ export default function GroupLobbyPage({ params }: PageProps) {
                 <button type="button" onClick={() => setIsSettingsOpen(false)} className="text-muted-foreground hover:text-card-foreground">Close</button>
               </div>
               <div className="space-y-4">
-                <label className="flex items-center justify-between gap-3 text-[13px] text-muted-foreground">
-                  DJ mode
-                  <select value={selectedDjMode} onChange={(event) => setSelectedDjMode(event.target.value as "FIXED" | "ROTATING")} className="rounded-full border-2 border-border bg-background px-3 py-1.5 text-sm font-semibold text-foreground outline-none">
-                    <option value="ROTATING">Rotating</option>
-                    <option value="FIXED">Fixed</option>
-                  </select>
-                </label>
+                <div className="flex items-center justify-between gap-3">
+                  <span id="dj-mode-label" className="text-[13px] text-muted-foreground">DJ mode</span>
+                  <Select value={selectedDjMode} onValueChange={(value) => setSelectedDjMode(value as "FIXED" | "ROTATING")}>
+                    <SelectTrigger aria-labelledby="dj-mode-label" className="w-[140px] rounded-full border-2 border-border bg-background">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="ROTATING">Rotating</SelectItem>
+                      <SelectItem value="FIXED">Fixed</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
                 {selectedDjMode === "FIXED" ? (
-                  <label className="flex items-center justify-between gap-3 text-[13px] text-muted-foreground">
-                    Fixed DJ
-                    <select value={selectedFixedDjMemberId ?? ""} onChange={(event) => setSelectedFixedDjMemberId(event.target.value ? Number(event.target.value) : undefined)} className="rounded-full border-2 border-border bg-background px-3 py-1.5 text-sm font-semibold text-foreground outline-none">
-                      <option value="">First to join</option>
-                      {members.map((member) => (
-                        <option key={member.id} value={member.id ?? ""}>{member.displayName || "Player"}</option>
-                      ))}
-                    </select>
-                  </label>
+                  <div className="flex items-center justify-between gap-3">
+                    <span id="fixed-dj-label" className="text-[13px] text-muted-foreground">Fixed DJ</span>
+                    <Select value={selectedFixedDjMemberId === undefined ? "auto" : String(selectedFixedDjMemberId)} onValueChange={(value) => setSelectedFixedDjMemberId(value === "auto" ? undefined : Number(value))}>
+                      <SelectTrigger aria-labelledby="fixed-dj-label" className="w-[140px] rounded-full border-2 border-border bg-background">
+                        <SelectValue placeholder="First to join" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="auto">First to join</SelectItem>
+                        {members.map((member) => (
+                          <SelectItem key={member.id} value={String(member.id ?? "")}>{member.displayName || "Player"}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
                 ) : null}
                 <label className="flex items-center justify-between gap-3 text-[13px] text-muted-foreground">
                   Cards to win
@@ -657,16 +674,18 @@ export default function GroupLobbyPage({ params }: PageProps) {
             </section>
           </>
         ) : null}
-        {isChatOpen ? (
-          <GroupChatOverlay
-            groupId={groupId}
-            connectionState={groupRealtime.connectionState}
-            sendChat={groupRealtime.sendChat}
-            onClose={() => setIsChatOpen(false)}
-          />
-        ) : null}
       </section>
 
+      <div className="relative shrink-0">
+      {isChatOpen ? (
+        <GroupChatOverlay
+          groupId={groupId}
+          connectionState={groupRealtime.connectionState}
+          sendChat={groupRealtime.sendChat}
+          onClose={() => setIsChatOpen(false)}
+          floating
+        />
+      ) : null}
       <footer className="flex shrink-0 flex-wrap items-center gap-3">
         {!isCurrentUserLoading && isCurrentUserAdmin ? (
           <button
@@ -738,6 +757,7 @@ export default function GroupLobbyPage({ params }: PageProps) {
           </AlertDialogContent>
         </AlertDialog>
       </footer>
+      </div>
     </main>
   );
 }

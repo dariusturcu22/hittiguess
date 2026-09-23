@@ -171,6 +171,7 @@ export function AppSidebar() {
 
   const isPlaylistsActive = pathname?.startsWith("/playlists") ?? false;
   const isExploreActive = pathname?.startsWith("/explore") ?? false;
+  const isGroupPage = pathname?.startsWith("/groups/") ?? false;
 
   return (
     <aside className="flex w-[76px] shrink-0 flex-col items-center border-r-[3px] border-sidebar-border bg-sidebar py-5">
@@ -219,17 +220,15 @@ export function AppSidebar() {
 
       <div className={RAIL_DIVIDER_CLASSES} />
 
-      <Link
-        href={activeGroup?.id ? `/groups/${activeGroup.id}` : "/playlists"}
-        className={`${RAIL_ICON_BASE_CLASSES} ${
-          pathname?.startsWith("/groups/") || activeGroup
-            ? "border-2 border-primary text-primary"
-            : RAIL_ICON_INTERACTIVE_CLASSES
-        }`}
-        title={activeGroup ? "Group lobby (active session)" : "Group lobby"}
-      >
-        <GroupLobbyIcon />
-      </Link>
+      {activeGroup?.id ? (
+        <Link
+          href={`/groups/${activeGroup.id}`}
+          className={`${RAIL_ICON_BASE_CLASSES} border-2 border-primary text-primary ${isGroupPage ? "bg-primary/10 shadow-xs" : ""}`}
+          title="Group lobby (active session)"
+        >
+          <GroupLobbyIcon />
+        </Link>
+      ) : null}
 
       {activeImport && !activeImportQuery.isError ? (
         <div className="group relative mt-3">
