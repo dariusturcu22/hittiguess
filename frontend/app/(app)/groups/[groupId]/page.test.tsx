@@ -2,6 +2,12 @@ import { act, fireEvent, render, screen } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+const toastMocks = vi.hoisted(() => ({ success: vi.fn(), error: vi.fn() }));
+
+vi.mock("sonner", () => ({
+  toast: toastMocks,
+}));
+
 import GroupLobbyPage from "./page";
 
 const GROUP_PARAMS = Promise.resolve({ groupId: "1" });
@@ -101,6 +107,8 @@ describe("GroupLobbyPage start options", () => {
     startWithSongsMutate.mockImplementation((_args, options) => options?.onSuccess?.({}));
     startCustomMutate.mockImplementation((_args, options) => options?.onSuccess?.({}));
     updateSettingsMutate.mockImplementation((_args, options) => options?.onSuccess?.({}));
+    toastMocks.success.mockReset();
+    toastMocks.error.mockReset();
   });
 
   it("generates a difficulty set for review and confirms it into a start", async () => {
@@ -217,6 +225,7 @@ describe("GroupLobbyPage start options", () => {
       },
       expect.anything(),
     );
+    expect(toastMocks.success).toHaveBeenCalledWith("Settings saved");
   });
 
   it("shows the min-players popup only when starting below the minimum", async () => {

@@ -841,6 +841,7 @@ sign-in is unavailable over LAN; testers use local accounts.
 - [ ] Manual multi-device playtest: full game plus voice, recorded here once played
 - [x] Fix the pre-existing session page test type error blocking `npm run build` (found during LAN verification, untouched by the LAN branch; the mock session type now allows a null round, build passes)
 - [x] Hydration warning on the login page over LAN: caused by the Dark Reader extension rewriting SVG attributes before React hydrates, not by app code; extension-free browsers hydrate cleanly. No code change; disable Dark Reader for the site since it also fights the app's own theme toggle
+- [x] Lobby start flow rework from playtest feedback: playlist chip opens a tier popup (easy/medium/hard/custom) instead of a separate modal; custom opens a fullscreen multi-playlist picker with a chosen list and a back path; the standalone custom-start entry point is gone; the two-player minimum shows only as a popup on Start instead of a persistent note; settings save reports success or failure by toast
 
 ## LAN playtest findings (PC client vs laptop server)
 

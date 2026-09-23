@@ -2,6 +2,7 @@
 
 import { use, useCallback, useEffect, useMemo, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { toast } from "sonner";
 import {
   Check,
   Clipboard,
@@ -401,7 +402,14 @@ export default function GroupLobbyPage({ params }: PageProps) {
           fixedDjMemberId: selectedFixedDjMemberId,
         },
       },
-      { onSuccess: () => { refreshGroup(); setIsSettingsOpen(false); } },
+      {
+        onSuccess: () => {
+          refreshGroup();
+          setIsSettingsOpen(false);
+          toast.success("Settings saved");
+        },
+        onError: () => toast.error("Couldn't save settings"),
+      },
     );
   }
 
