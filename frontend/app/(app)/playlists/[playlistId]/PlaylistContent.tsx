@@ -241,7 +241,11 @@ export default function PlaylistContent({
   const handleCopyLink = async () => {
     if (!playlist) return;
     const inviteLink = `${window.location.origin}/playlists/join/${playlist.inviteCode}`;
-    await copyText(inviteLink);
+    const copied = await copyText(inviteLink);
+    if (!copied) {
+      toast.error("Couldn't copy the link. Try again.");
+      return;
+    }
     setLinkCopied(true);
     setTimeout(() => setLinkCopied(false), 2000);
   };
@@ -249,7 +253,11 @@ export default function PlaylistContent({
   const handleCopyCode = async () => {
     if (!playlist) return;
     const inviteLink = `${window.location.origin}/playlists/join/${playlist.inviteCode}`;
-    await copyText(buildInviteMessage(playlist.name, playlist.inviteCode, inviteLink));
+    const copied = await copyText(buildInviteMessage(playlist.name, playlist.inviteCode, inviteLink));
+    if (!copied) {
+      toast.error("Couldn't copy the code. Try again.");
+      return;
+    }
     setCodeCopied(true);
     setTimeout(() => setCodeCopied(false), 2000);
   };
