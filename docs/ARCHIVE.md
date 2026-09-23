@@ -794,3 +794,16 @@ Batch 2's fix-up work (`Carry main-artist plurality and dedup featured credits a
 Tests:
 - [x] `tsc --noEmit` clean project-wide
 - [x] Frontend `npm run test -- --run`, `npm run lint`, and `npm run build` all clean
+
+## Bug fix: import-from-YouTube progress screen matches the design
+
+- [x] AI microservice exposes a `/metadata/video-info` endpoint that batch-fetches each video's raw title and uploading channel name via YouTube's videos.list, chunked to the 50-id batch limit
+- [x] `PlaylistImportJobService.startImport` captures each item's raw title and channel name at job creation time, before the metadata pipeline resolves anything
+- [x] `PlaylistImportJobItemDTO` carries the raw video info plus the resolved song's title, artist credit, release year, and color once `songId` is set
+- [x] The import-from-YouTube page's row list matches the design: a resolved row shows a colored music-note swatch, title, artist, release year, and a checkmark; a still-processing row shows a spinner swatch, the raw YouTube video title (italic), the uploading channel, and a "Fetching..." chip
+- [x] The progress header shows the real playlist name and the submitted link, matching the design, instead of a generic heading
+
+Tests:
+- [x] `youtube.py` covers batching past 50 ids and tolerating a failed batch; a new router test file covers the `/metadata/video-info` endpoint
+- [x] `PlaylistImportJobServiceTest` covers raw video info landing on new items and resolved song details appearing in the job DTO
+- [x] A new `import/youtube/page.test.tsx` covers the resolved-row and still-processing-row rendering, including the raw-title fallback
