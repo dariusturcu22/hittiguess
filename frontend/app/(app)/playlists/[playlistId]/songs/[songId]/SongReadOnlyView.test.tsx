@@ -96,4 +96,56 @@ describe("SongReadOnlyView community actions", () => {
       expect.objectContaining({ onSuccess: expect.any(Function) }),
     );
   });
+
+  it("rejects a report with too little detail", () => {
+    renderWithProviders(buildSong(SongDTOVerificationStatus.NEEDS_REVIEW));
+
+    fireEvent.click(screen.getByRole("button", { name: "Report" }));
+    fireEvent.change(screen.getByLabelText("What's wrong"), { target: { value: "Bad" } });
+    fireEvent.click(screen.getByRole("button", { name: "Submit report" }));
+
+    expect(screen.getByText(/at least 10 characters/)).toBeVisible();
+    expect(mockSubmitReport).not.toHaveBeenCalled();
+  });
+
+  it("rejects a report with an implausible suggested year", () => {
+    renderWithProviders(buildSong(SongDTOVerificationStatus.NEEDS_REVIEW));
+
+    fireEvent.click(screen.getByRole("button", { name: "Report" }));
+    fireEvent.change(screen.getByLabelText("What's wrong"), {
+      target: { value: "The release year looks wrong" },
+    });
+    fireEvent.change(screen.getByLabelText(/Suggested correct year/), {
+      target: { value: "3000" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Submit report" }));
+
+    expect(screen.getByText("Enter a plausible year for the correction.")).toBeVisible();
+    expect(mockSubmitReport).not.toHaveBeenCalled();
+  });
+
+  it("submits a report with enough detail and a plausible year", () => {
+    renderWithProviders(buildSong(SongDTOVerificationStatus.NEEDS_REVIEW));
+
+    fireEvent.click(screen.getByRole("button", { name: "Report" }));
+    fireEvent.change(screen.getByLabelText("What's wrong"), {
+      target: { value: "The release year looks wrong" },
+    });
+    fireEvent.change(screen.getByLabelText(/Suggested correct year/), {
+      target: { value: "1985" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Submit report" }));
+
+    expect(mockSubmitReport).toHaveBeenCalledWith(
+      {
+        songId: 1,
+        data: {
+          message: "The release year looks wrong",
+          suggestedCorrectYear: 1985,
+          sources: undefined,
+        },
+      },
+      expect.anything(),
+    );
+  });
 });

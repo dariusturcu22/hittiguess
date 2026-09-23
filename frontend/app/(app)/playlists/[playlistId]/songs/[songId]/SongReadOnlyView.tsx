@@ -34,6 +34,9 @@ import {
 import { GameCard } from "@/components/game-card";
 import { needsUserAttention } from "@/lib/song-attention";
 
+const REPORT_MESSAGE_MIN_LENGTH = 10;
+const REPORT_YEAR_MIN = 1000;
+
 interface SongReadOnlyViewProps {
   song: SongDTO;
   playlistId: number;
@@ -101,8 +104,19 @@ export function SongReadOnlyView({
 
   const handleSubmitReport = () => {
     setReportError("");
-    if (!reportMessage.trim()) {
-      setReportError("Describe what's wrong before submitting.");
+    const trimmedMessage = reportMessage.trim();
+    if (trimmedMessage.length < REPORT_MESSAGE_MIN_LENGTH) {
+      setReportError(
+        `Describe what's wrong in a little more detail (at least ${REPORT_MESSAGE_MIN_LENGTH} characters).`,
+      );
+      return;
+    }
+    const parsedYear = reportYear ? parseInt(reportYear) : undefined;
+    if (
+      parsedYear !== undefined &&
+      (parsedYear < REPORT_YEAR_MIN || parsedYear > new Date().getFullYear())
+    ) {
+      setReportError("Enter a plausible year for the correction.");
       return;
     }
 
@@ -110,8 +124,8 @@ export function SongReadOnlyView({
       {
         songId: song.id,
         data: {
-          message: reportMessage.trim(),
-          suggestedCorrectYear: reportYear ? parseInt(reportYear) : undefined,
+          message: trimmedMessage,
+          suggestedCorrectYear: parsedYear,
           sources: reportSources.trim() || undefined,
         },
       },
@@ -161,7 +175,8 @@ export function SongReadOnlyView({
             <Input
               id="reportYear"
               type="number"
-              min={1000}
+              min={REPORT_YEAR_MIN}
+              max={new Date().getFullYear()}
               value={reportYear}
               onChange={(event) => setReportYear(event.target.value)}
             />
