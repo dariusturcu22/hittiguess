@@ -4,7 +4,9 @@ import Link from "next/link";
 import React from "react";
 
 import { useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 
+import { Skeleton } from "@/components/shadcn/skeleton";
 import {
   useGetPublicPlaylists,
   useSavePlaylist,
@@ -26,13 +28,17 @@ const EXPLORE_TABS = [
 
 type ExploreTab = (typeof EXPLORE_TABS)[number]["id"];
 
+const LOADING_SKELETON_CARD_COUNT = 8;
+
 function PlaylistCard({ playlist, saved }: { playlist: PublicPlaylistSummaryDTO; saved: boolean }) {
   const queryClient = useQueryClient();
   const saveMutation = useSavePlaylist({
     mutation: {
       onSuccess: () => {
         queryClient.invalidateQueries({ queryKey: getGetSavedPlaylistsQueryKey() });
+        toast.success("Playlist saved");
       },
+      onError: () => toast.error("Couldn't save that playlist. Try again."),
     },
   });
   const isSaved = saved || saveMutation.isSuccess;
@@ -140,7 +146,11 @@ export default function ExplorePlaylistsPage() {
 
       <div className="flex-1 min-h-0 overflow-y-auto pr-1 flex flex-col">
         {isLoading ? (
-          <div className="text-muted-foreground">Loading public playlists...</div>
+          <div className="grid grid-cols-4 gap-6" data-testid="explore-loading-skeleton">
+            {Array.from({ length: LOADING_SKELETON_CARD_COUNT }, (_, index) => (
+              <Skeleton key={index} className="h-56 rounded-xl" />
+            ))}
+          </div>
         ) : isError ? (
           <div className="text-destructive">
             Failed to load public playlists.
@@ -158,7 +168,7 @@ export default function ExplorePlaylistsPage() {
             />
           )
         ) : (
-          <div className="grid grid-cols-4 gap-6">
+          <div className="grid grid-cols-4 gap-6 animate-in fade-in-0 slide-in-from-top-1 duration-200">
             {visiblePlaylists.map((playlist) => (
               <PlaylistCard key={playlist.id} playlist={playlist} saved={savedIds.has(playlist.id)} />
             ))}

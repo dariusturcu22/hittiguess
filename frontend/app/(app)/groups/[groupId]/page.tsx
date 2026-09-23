@@ -232,7 +232,13 @@ export default function GroupLobbyPage({ params }: PageProps) {
       setIsMinPlayersOpen(true);
       return;
     }
-    startSession.mutate({ groupId }, { onSuccess: () => { refreshGroup(); refreshActiveMembership(); } });
+    startSession.mutate(
+      { groupId },
+      {
+        onSuccess: () => { refreshGroup(); refreshActiveMembership(); },
+        onError: (error) => toast.error(mutationErrorMessage(error)),
+      },
+    );
   }
 
   function openTierPopup() {
@@ -381,7 +387,10 @@ export default function GroupLobbyPage({ params }: PageProps) {
   function handleLeaveLobby() {
     leaveGroup.mutate(
       { groupId },
-      { onSuccess: () => { refreshActiveMembership(); router.push("/playlists"); } },
+      {
+        onSuccess: () => { refreshActiveMembership(); router.push("/playlists"); },
+        onError: (error) => toast.error(mutationErrorMessage(error)),
+      },
     );
   }
 

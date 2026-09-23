@@ -4,6 +4,7 @@ import React, { use } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { AlertCircle, ListMusic, LoaderCircle } from "lucide-react";
+import { toast } from "sonner";
 
 import {
   useGetPlaylist,
@@ -74,6 +75,7 @@ export function ImportFromPlaylistConfirmContent({
       },
       {
         onSuccess: () => {
+          toast.success(`${songCount} songs added`);
           router.push(`/playlists/${destinationPlaylistId}`);
         },
       },

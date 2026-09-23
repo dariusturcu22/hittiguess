@@ -22,6 +22,7 @@ import { useUploadPlaylistCover } from "@/hooks/generated/pixel-art-images/pixel
 import { PlaylistCoverMosaic } from "@/components/playlist-cover-mosaic";
 import { PixelImageInput } from "@/components/pixel-image-input";
 import { DEFAULT_PLAYLIST_COLOR, PLAYLIST_COLOR_PRESETS } from "@/lib/playlist-colors";
+import { Skeleton } from "@/components/shadcn/skeleton";
 
 const MAX_DESCRIPTION_LENGTH = 300;
 import { getGetUserPlaylistsQueryKey } from "@/hooks/generated/user-management/user-management";
@@ -108,7 +109,13 @@ function MemberRow({
           [key]: !member[key],
         },
       },
-      { onSuccess: invalidate },
+      {
+        onSuccess: () => {
+          invalidate();
+          toast.success("Member access updated");
+        },
+        onError: () => toast.error("Couldn't update that member's access. Try again."),
+      },
     );
   }
 
@@ -173,7 +180,16 @@ function MemberRow({
           title="Kick, can rejoin"
           onClick={() =>
             userId != null &&
-            kickMember.mutate({ playlistId, userId }, { onSuccess: invalidate })
+            kickMember.mutate(
+              { playlistId, userId },
+              {
+                onSuccess: () => {
+                  invalidate();
+                  toast.success("Member kicked");
+                },
+                onError: () => toast.error("Couldn't kick that member. Try again."),
+              },
+            )
           }
           disabled={kickMember.isPending}
           className="w-[30px] h-[30px] rounded-lg flex items-center justify-center cursor-pointer bg-background text-muted-foreground border-2 border-secondary disabled:opacity-60"
@@ -185,7 +201,16 @@ function MemberRow({
           title="Ban, can't rejoin"
           onClick={() =>
             userId != null &&
-            banMember.mutate({ playlistId, userId }, { onSuccess: invalidate })
+            banMember.mutate(
+              { playlistId, userId },
+              {
+                onSuccess: () => {
+                  invalidate();
+                  toast.success("Member banned");
+                },
+                onError: () => toast.error("Couldn't ban that member. Try again."),
+              },
+            )
           }
           disabled={banMember.isPending}
           className="w-[30px] h-[30px] rounded-lg flex items-center justify-center cursor-pointer bg-background text-destructive border-2 border-secondary disabled:opacity-60"
@@ -203,7 +228,7 @@ export default function EditPlaylistPage({ params }: PageProps) {
   const router = useRouter();
   const queryClient = useQueryClient();
 
-  const { data: playlist } = useGetPlaylist(playlistId);
+  const { data: playlist, isLoading: isPlaylistLoading } = useGetPlaylist(playlistId);
   const { data: members } = useGetMembers(playlistId);
   const updatePlaylist = useUpdatePlaylist();
   const publishMutation = usePublishPlaylist();
@@ -289,7 +314,13 @@ export default function EditPlaylistPage({ params }: PageProps) {
     }
     updatePlaylist.mutate(
       { playlistId, data: { color } },
-      { onSuccess: invalidatePlaylist },
+      {
+        onSuccess: () => {
+          invalidatePlaylist();
+          toast.success("Title color updated");
+        },
+        onError: () => toast.error("Couldn't update the title color. Try again."),
+      },
     );
   }
 
@@ -301,6 +332,7 @@ export default function EditPlaylistPage({ params }: PageProps) {
         onSuccess: () => {
           setCoverVersion((currentVersion) => currentVersion + 1);
           invalidatePlaylist();
+          toast.success("Cover updated");
         },
         onError: () => setCoverError("Could not save that cover. Try another image."),
       },
@@ -313,7 +345,14 @@ export default function EditPlaylistPage({ params }: PageProps) {
   const publishing = publishMutation.isPending || unpublishMutation.isPending;
 
   function togglePublish() {
-    const options = { onSuccess: invalidatePlaylist };
+    const wasPublic = isPublic;
+    const options = {
+      onSuccess: () => {
+        invalidatePlaylist();
+        toast.success(wasPublic ? "Playlist unpublished" : "Playlist published");
+      },
+      onError: () => toast.error("Couldn't change the playlist's public status. Try again."),
+    };
     if (isPublic) {
       unpublishMutation.mutate({ playlistId }, options);
     } else {
@@ -326,8 +365,21 @@ export default function EditPlaylistPage({ params }: PageProps) {
     ? `${typeof window === "undefined" ? "" : window.location.origin}/playlists/join/${playlist.inviteCode}`
     : "";
 
+  if (isPlaylistLoading) {
+    return (
+      <div className="flex-1 min-w-0 flex flex-col px-12 pt-9 pb-8" data-testid="edit-playlist-skeleton">
+        <Skeleton className="h-8 w-56 mb-1" />
+        <Skeleton className="h-4 w-72 mb-[22px]" />
+        <div className="flex gap-6 flex-1 min-h-0">
+          <Skeleton className="flex-[1.5] min-w-0 rounded-2xl" />
+          <Skeleton className="w-[460px] shrink-0 rounded-2xl" />
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="flex-1 min-w-0 flex flex-col px-12 pt-9 pb-8">
+    <div className="flex-1 min-w-0 flex flex-col px-12 pt-9 pb-8 animate-in fade-in-0 duration-200">
       <h1 className="font-display text-[26px] text-accent mb-1 [text-shadow:3px_3px_0_var(--text-shadow-on-page)]">
         Edit playlist
       </h1>
@@ -421,7 +473,15 @@ export default function EditPlaylistPage({ params }: PageProps) {
               </span>
               <button
                 type="button"
-                onClick={() => inviteLink && copyText(inviteLink)}
+                onClick={async () => {
+                  if (!inviteLink) return;
+                  const copied = await copyText(inviteLink);
+                  if (copied) {
+                    toast.success("Invite link copied");
+                  } else {
+                    toast.error("Couldn't copy the invite link. Try again.");
+                  }
+                }}
                 disabled={!inviteLink}
                 className="size-8 rounded-lg bg-secondary text-card-foreground flex items-center justify-center disabled:opacity-50"
                 aria-label="Copy invite link"

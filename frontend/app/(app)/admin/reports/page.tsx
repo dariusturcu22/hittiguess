@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import { toast } from "sonner";
 
 import {
   useReviewQueue,
@@ -9,6 +10,7 @@ import {
 } from "@/hooks/generated/admin-song-report-review/admin-song-report-review";
 import type { AdminReviewItemDTO } from "@/hooks/models/adminReviewItemDTO";
 import type { AdminReviewItemDTOVerificationStatus as VerificationStatus } from "@/hooks/models/adminReviewItemDTOVerificationStatus";
+import { Skeleton } from "@/components/shadcn/skeleton";
 
 import {
   presentPriorityTier,
@@ -131,7 +133,13 @@ function ReportDetail({
           verificationStatus: toResolveVerificationStatus(status),
         },
       },
-      { onSuccess: onResolved },
+      {
+        onSuccess: () => {
+          onResolved();
+          toast.success("Report resolved");
+        },
+        onError: () => toast.error("Couldn't resolve that report. Try again."),
+      },
     );
   }
 
@@ -139,7 +147,16 @@ function ReportDetail({
     if (songId == null) {
       return;
     }
-    dismissMutation.mutate({ songId }, { onSuccess: onResolved });
+    dismissMutation.mutate(
+      { songId },
+      {
+        onSuccess: () => {
+          onResolved();
+          toast.success("Report dismissed");
+        },
+        onError: () => toast.error("Couldn't dismiss that report. Try again."),
+      },
+    );
   }
 
   return (
@@ -279,7 +296,10 @@ export default function ReportQueuePage() {
       </p>
 
       {isLoading ? (
-        <div className="text-muted-foreground">Loading review queue...</div>
+        <div className="flex gap-6 flex-1 min-h-0" data-testid="report-queue-skeleton">
+          <Skeleton className="w-[500px] shrink-0 rounded-xl" />
+          <Skeleton className="flex-1 min-w-0 rounded-xl" />
+        </div>
       ) : isError ? (
         <div className="text-destructive">Failed to load the review queue.</div>
       ) : items.length === 0 ? (
@@ -287,7 +307,7 @@ export default function ReportQueuePage() {
           The review queue is empty. Nothing needs attention right now.
         </div>
       ) : (
-        <div className="flex gap-6 flex-1 min-h-0">
+        <div className="flex gap-6 flex-1 min-h-0 animate-in fade-in-0 duration-200">
           <div className="w-[500px] shrink-0 bg-card border-[3px] border-border-strong rounded-xl shadow-lg box-border overflow-hidden flex flex-col">
             <div className="flex-1 min-h-0 overflow-y-auto">
               {items.map((item) => (

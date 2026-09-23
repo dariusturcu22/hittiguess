@@ -878,12 +878,25 @@ Settings and chat (own batch):
 - [ ] Chat panel floats above its button like the settings panel does
 
 Feedback polish (cross-cutting, own batch):
-- [ ] Loading states everywhere slow work happens: spinners or skeletons for fetches, visible progress for imports and exports, no dead silence while waiting
-- [ ] Minor motion on state changes: small fade or slide transitions where content appears, swaps, or dismisses
-- [ ] Toasts for every action whose result is not immediately visible: saves, adds, copies, publishes
+
+Audited against the real code: every page-level `useGet*` query already renders a spinner, `animate-pulse` block, or placeholder text while loading except the two gaps below; most mutations show a pending state on their triggering control but skip the toast half; there's no exit-animation tooling (no `framer-motion` or equivalent) anywhere in the repo, so this batch adds entrance motion via the already-used `tw-animate-css` `animate-in`/`fade-in-0` utilities (the same primitive every shadcn overlay already uses), not new exit-animation infrastructure.
+
+- [x] Loading: the playlist edit page renders `useGetPlaylist`/`useGetMembers` with no `isLoading` handling at all, showing blank name/color/description fields and an empty member list on first paint. Add a loading skeleton for the whole page
+- [x] Loading: the admin catalog backlog's stat tiles swap to a bare `"..."` string while loading; use the existing shadcn `Skeleton` component instead
+- [x] Loading: the explore and library pages showed bare "Loading..." text; swapped both for a `Skeleton` card grid matching the loaded layout's shape
+- [x] Toasts: playlist edit page's `uploadCoverImage`, `selectColor`, `togglePublish`, and the invite-link copy button; `MemberRow`'s `toggleGrant`/`kickMember`/`banMember`
+- [x] Toasts: explore page's save mutation (no unsave action exists on this page, a saved card just shows disabled)
+- [x] Toasts: group lobby's `startSession` and `leaveGroup` mutations had no error feedback at all (button just stopped spinning on failure); `generateSet`/`startWithSongs`/`startCustom` already show errors inline via `startError` and their successes navigate or open a visible review step, so those were left as-is rather than adding a redundant toast
+- [x] Toasts: admin catalog backlog's enqueue mutation; admin report queue's resolve/dismiss mutations
+- [x] Toasts: copy-from-playlist import mutation gets a success toast naming the count added (`isError` already renders inline and the YouTube-link expand mutation's failure already renders inline too, so neither needed a toast on closer look, just the copy-from-playlist success case was genuinely silent)
+- [x] Toasts: group and playlist join-by-invite mutations already render their failure inline (`setError`) and their success navigates, so no toast was actually missing here on closer look, corrects the earlier audit
+- [x] Motion: apply `animate-in fade-in-0` (with `slide-in-from-top-1` where a list is involved) to the playlist edit page's loaded content, the admin backlog and report queue lists, and the explore/library grid, matching the existing Radix overlay convention rather than inventing a new one
+- [ ] Motion: exit transitions for a removed list item (kicked member, deleted song, dismissed report) are out of scope: they need delayed-removal state management no component in this codebase has today, not a one-line class addition. Left for a dedicated pass if wanted later
 
 Tests:
-- [x] Frontend lint and the two password-flow page tests stay green (no behavior code changes in this batch)
+- [x] Frontend lint and the two password-flow page tests stay green
+- [x] Frontend tests for the new toast coverage on the playlist edit page, the explore save action, and the admin backlog/report queue actions
+- [x] Frontend test for the playlist edit page's loading skeleton rendering before `useGetPlaylist` resolves
 
 ## LAN playtest findings, batch 4 (library, shell, settings, chat)
 

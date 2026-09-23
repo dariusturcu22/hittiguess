@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -6,6 +6,12 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import ExplorePlaylistsPage from "./page";
 
 const saveMutate = vi.fn();
+const toastMocks = vi.hoisted(() => ({ success: vi.fn(), error: vi.fn() }));
+let capturedSaveMutationConfig: { onSuccess?: () => void; onError?: () => void } | undefined;
+
+vi.mock("sonner", () => ({
+  toast: toastMocks,
+}));
 
 const publicPlaylists = [
   {
@@ -55,11 +61,15 @@ vi.mock("@/components/playlist-cover-mosaic", () => ({
 
 vi.mock("@/hooks/generated/playlist-management/playlist-management", () => ({
   useGetPublicPlaylists: () => ({ data: publicPlaylists, isLoading: false, isError: false }),
-  useSavePlaylist: () => ({ mutate: saveMutate, isPending: false, isSuccess: false }),
+  useSavePlaylist: (config: { mutation?: { onSuccess?: () => void; onError?: () => void } }) => {
+    capturedSaveMutationConfig = config?.mutation;
+    return { mutate: saveMutate, isPending: false, isSuccess: false };
+  },
 }));
 
 vi.mock("@/hooks/generated/user-management/user-management", () => ({
   useGetSavedPlaylists: () => ({ data: savedPlaylists, isLoading: false, isError: false }),
+  getGetSavedPlaylistsQueryKey: () => ["saved-playlists"],
 }));
 
 vi.mock("@tanstack/react-query", async (importOriginal) => {
@@ -82,6 +92,9 @@ function renderPage() {
 describe("ExplorePlaylistsPage filters", () => {
   beforeEach(() => {
     saveMutate.mockReset();
+    toastMocks.success.mockReset();
+    toastMocks.error.mockReset();
+    capturedSaveMutationConfig = undefined;
   });
 
   function clickTab(name: string) {
@@ -128,5 +141,25 @@ describe("ExplorePlaylistsPage filters", () => {
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
 
     expect(saveMutate).toHaveBeenCalledWith({ playlistId: 12 });
+  });
+
+  it("toasts on a successful save", async () => {
+    renderPage();
+
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    capturedSaveMutationConfig?.onSuccess?.();
+
+    await waitFor(() => expect(toastMocks.success).toHaveBeenCalledWith("Playlist saved"));
+  });
+
+  it("toasts an error when saving fails", async () => {
+    renderPage();
+
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    capturedSaveMutationConfig?.onError?.();
+
+    await waitFor(() =>
+      expect(toastMocks.error).toHaveBeenCalledWith("Couldn't save that playlist. Try again."),
+    );
   });
 });

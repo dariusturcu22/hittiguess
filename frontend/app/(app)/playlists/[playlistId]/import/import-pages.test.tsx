@@ -1,9 +1,15 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ImportChooseSourceContent } from "./page";
 import { ImportFromPlaylistSelectContent } from "./from-playlist/page";
 import { ImportFromPlaylistConfirmContent } from "./from-playlist/[sourceId]/page";
+
+const toastMocks = vi.hoisted(() => ({ success: vi.fn(), error: vi.fn() }));
+
+vi.mock("sonner", () => ({
+  toast: toastMocks,
+}));
 
 const mocks = vi.hoisted(() => ({
   ownPlaylists: {
@@ -77,6 +83,7 @@ describe("playlist import pages", () => {
     mocks.sourcePlaylist.refetch.mockReset();
     mocks.importMutation.mutate.mockReset();
     mocks.push.mockReset();
+    toastMocks.success.mockReset();
   });
 
   it("renders the designed source choices", async () => {
@@ -160,5 +167,20 @@ describe("playlist import pages", () => {
     );
     fireEvent.click(screen.getByRole("button", { name: "Try again" }));
     expect(mocks.sourcePlaylist.refetch).toHaveBeenCalled();
+  });
+
+  it("toasts the added song count and navigates on a successful import", async () => {
+    mocks.sourcePlaylist.data = {
+      name: "Source playlist",
+      songCount: 3,
+      songs: [{ id: 1, title: "A song", releaseYear: 2000, artists: [] }],
+    };
+    mocks.importMutation.mutate.mockImplementation((_args, options) => options?.onSuccess?.());
+    renderConfirmPage();
+
+    fireEvent.click(screen.getByRole("button", { name: "Add 3 songs to playlist" }));
+
+    await waitFor(() => expect(toastMocks.success).toHaveBeenCalledWith("3 songs added"));
+    expect(mocks.push).toHaveBeenCalledWith("/playlists/12");
   });
 });
