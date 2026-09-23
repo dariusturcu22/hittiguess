@@ -925,9 +925,14 @@ Round flow and session data (backend, `fix/gameplay-round-flow`):
 - [x] Regenerate the frontend API client for the new fields
 
 DJ link-out and audio (frontend, `fix/dj-link-out-and-audio`):
-- [ ] `window.open` with `noopener` returns `null` even when the tab opens, so the blocked-popup fallback also navigates the game tab to YouTube. Open the new tab without relying on the return value
-- [ ] Tab audio capture only starts when the DJ is already in voice, and it runs after `window.open` consumed the click's user activation, so the capture request fails. Request the capture from its own click, join the voice room for the DJ if needed, and keep the warning visible before sharing
-- [ ] The lock-in cutoff tears down the active player's whole voice connection. Mute only the incoming song audio for the active player until the round ends, and keep voice chat working
+- [x] `window.open` with `noopener` returns `null` even when the tab opens, so the blocked-popup fallback also navigates the game tab to YouTube. The link-out is now a real anchor opening one new tab
+- [x] Tab audio capture only starts when the DJ is already in voice, and it runs after `window.open` consumed the click's user activation, so the capture request fails. Request the capture from its own click, join the voice room for the DJ if needed, and keep the warning visible before sharing
+- [x] The lock-in cutoff tears down the active player's whole voice connection. Mute only the incoming song audio for the active player until the round ends, and keep voice chat working
+- [x] The voice mesh listens for `VOICE_PRESENCE_CHANGE` while the server sends `VOICE_PRESENCE_CHANGED`, so no member list ever refreshes and the offering member never learns about later joiners. Refresh the member list on the real event
+- [x] Signals sent before the signaling socket connects are lost, candidates arriving before their offer are rejected, and the signaling client reconnects on every callback change. Keep one client per voice session, buffer early candidates, and retry an offer that never connects
+- [x] A player without a usable microphone (plain-HTTP LAN, refused permission) can't join voice at all, so can't hear the DJ. Join as a listener instead
+- [x] The join rail only shows on the lobby page, so a remote player can't join voice from the game. Show it on the game page too
+- [x] Every player fetches the DJ-only link-out while the session loads, because an undefined player id equals an undefined DJ id. Require a resolved player first
 
 Gameplay screens against the mockups (frontend, `fix/gameplay-screens-match-design`):
 - [ ] Round intro: first-round countdown with the first DJ and first turn, per `GameSessionRoundIntro*`
@@ -944,5 +949,6 @@ Gameplay screens against the mockups (frontend, `fix/gameplay-screens-match-desi
 
 Tests:
 - [x] Backend: service tests for the betting-opened event, the reveal hold before the next round, the placement preview relay, and the new DTO fields
-- [ ] Frontend: unit tests for the link-out helper, the audio cutoff, and the session page's per-phase rendering
+- [x] Frontend: unit tests for the link-out helper, the DJ silencing rule, listen-only joining, and the DJ share request
+- [ ] Frontend: unit tests for the session page's per-phase rendering
 - [ ] Rendered comparison of every gameplay state against its mockup, dark and light, on a live three-player session
