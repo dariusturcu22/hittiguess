@@ -10,7 +10,7 @@ import type { PlaylistImportJobItemDTOStatus } from "@/hooks/models/playlistImpo
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { useBulkImportRealtime } from "@/hooks/use-bulk-import-realtime";
-import { saveActiveImportJob } from "@/lib/playlist-import-job";
+import { loadActiveImportJob, saveActiveImportJob } from "@/lib/playlist-import-job";
 
 interface PageProps {
   params: Promise<{ playlistId: string }>;
@@ -18,6 +18,15 @@ interface PageProps {
 
 const YOUTUBE_INPUT_PLACEHOLDER = "https://youtube.com/playlist?list=...";
 const ACTIVE_IMPORT_REFRESH_MILLISECONDS = 5_000;
+const NOT_FOUND_STATUS = 404;
+
+function isJobGoneError(error: unknown): boolean {
+  if (typeof error === "object" && error !== null && "response" in error) {
+    const response = (error as { response?: { status?: number } }).response;
+    return response?.status === NOT_FOUND_STATUS;
+  }
+  return false;
+}
 
 function ImportItemRow({ youtubeId, status }: { youtubeId: string; status?: PlaylistImportJobItemDTOStatus }) {
   const isFinished = status === "RESOLVED" || status === "ALREADY_KNOWN";
@@ -62,7 +71,10 @@ export default function ImportYoutubePage({ params }: PageProps) {
 
   const [playlistLink, setPlaylistLink] = React.useState("");
   const [expandedVideoIds, setExpandedVideoIds] = React.useState<string[] | null>(null);
-  const [isImportStarted, setIsImportStarted] = React.useState(false);
+  const [isImportStarted, setIsImportStarted] = React.useState(() => {
+    const storedJob = loadActiveImportJob();
+    return storedJob !== null && storedJob.playlistId === playlistId;
+  });
   const activeImportQuery = useActiveImport(playlistId, {
     query: {
       retry: false,
@@ -70,15 +82,17 @@ export default function ImportYoutubePage({ params }: PageProps) {
       enabled: isImportStarted,
     },
   });
-  const importItems = activeImportQuery.data && !activeImportQuery.isError
+  const importItems = activeImportQuery.data
     ? (activeImportQuery.data.items ?? [])
     : [];
   const processedImportCount = importItems.filter((item) => item.status !== "PENDING").length;
   const addedImportCount = importItems.filter(
     (item) => item.status === "RESOLVED" || item.status === "ALREADY_KNOWN",
   ).length;
+  const isJobGone = activeImportQuery.isError && isJobGoneError(activeImportQuery.error);
+  const isConnectionStale = activeImportQuery.isError && !isJobGone;
   const isImportFinished = isImportStarted
-    && (activeImportQuery.isError || (importItems.length > 0 && processedImportCount === importItems.length));
+    && (isJobGone || (importItems.length > 0 && processedImportCount === importItems.length));
 
   function handleExpand() {
     const trimmedLink = playlistLink.trim();
@@ -141,6 +155,9 @@ export default function ImportYoutubePage({ params }: PageProps) {
                   style={{ width: `${(processedImportCount / importItems.length) * 100}%` }}
                 />
               </div>
+            ) : null}
+            {isConnectionStale && !isImportFinished ? (
+              <p className="mt-2 text-[12px] text-warning">Connection hiccup. Retrying...</p>
             ) : null}
             {importItems.length > 0 ? (
               <div className="mt-3 max-h-64 overflow-y-auto rounded-xl border-2 border-border bg-card pr-1">

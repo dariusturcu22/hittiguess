@@ -18,8 +18,13 @@ vi.mock("@/hooks/generated/playlist-import-jobs/playlist-import-jobs", () => ({
   useActiveImport: () => activeImportState,
 }));
 
-let activeImportState: { data?: { items: Array<{ youtubeId: string; status: string }> }; isError: boolean } = {
+let activeImportState: {
+  data?: { items: Array<{ youtubeId: string; status: string }> };
+  isError: boolean;
+  error?: unknown;
+} = {
   isError: false,
+  error: null,
   data: {
     items: [
       { youtubeId: "video-1", status: "RESOLVED" },
@@ -27,6 +32,14 @@ let activeImportState: { data?: { items: Array<{ youtubeId: string; status: stri
     ],
   },
 };
+
+function notFoundError(): unknown {
+  return { response: { status: 404 } };
+}
+
+function transientError(): unknown {
+  return { message: "Network Error" };
+}
 
 vi.mock("@/hooks/use-bulk-import-realtime", () => ({
   useBulkImportRealtime: () => ({ events: [], isConnected: false, reset: vi.fn() }),
@@ -42,13 +55,15 @@ vi.mock("sonner", () => ({
 
 async function renderPage() {
   const queryClient = new QueryClient();
+  let renderResult: { unmount: () => void } | undefined;
   await act(async () => {
-    render(
+    renderResult = render(
       <QueryClientProvider client={queryClient}>
         <ImportYoutubePage params={YOUTUBE_PARAMS} />
       </QueryClientProvider>,
     );
   });
+  return renderResult!;
 }
 
 describe("ImportYoutubePage background import", () => {
@@ -63,6 +78,16 @@ describe("ImportYoutubePage background import", () => {
     startImportMutate.mockImplementation((_args, options) =>
       options?.onSuccess?.({ importJobId: "job-1" }),
     );
+    activeImportState = {
+      isError: false,
+      error: null,
+      data: {
+        items: [
+          { youtubeId: "video-1", status: "RESOLVED" },
+          { youtubeId: "video-2", status: "PENDING" },
+        ],
+      },
+    };
   });
 
   it("starts a background job and shows progress instead of redirecting", async () => {
@@ -100,6 +125,7 @@ describe("ImportYoutubePage background import", () => {
   it("shows the done state with a path back once every song finishes", async () => {
     activeImportState = {
       isError: false,
+      error: null,
       data: {
         items: [
           { youtubeId: "video-1", status: "RESOLVED" },
@@ -119,5 +145,50 @@ describe("ImportYoutubePage background import", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "View playlist" }));
     expect(routerPush).toHaveBeenCalledWith("/playlists/7");
+  });
+
+  it("resumes the progress view from a stored job without starting over", async () => {
+    window.localStorage.setItem(
+      "hittiguess-active-playlist-import",
+      JSON.stringify({ importJobId: "job-1", playlistId: 7 }),
+    );
+    await renderPage();
+
+    expect(await screen.findByText("1 of 2 processed")).toBeVisible();
+    expect(screen.queryByLabelText("YouTube playlist link")).toBeNull();
+    expect(startImportMutate).not.toHaveBeenCalled();
+  });
+
+  it("ignores a stored job for a different playlist", async () => {
+    window.localStorage.setItem(
+      "hittiguess-active-playlist-import",
+      JSON.stringify({ importJobId: "job-9", playlistId: 9 }),
+    );
+    await renderPage();
+
+    expect(screen.getByLabelText("YouTube playlist link")).toBeVisible();
+    expect(screen.queryByText("1 of 2 processed")).toBeNull();
+  });
+
+  it("treats a missing job as complete but keeps retrying transient errors", async () => {
+    window.localStorage.setItem(
+      "hittiguess-active-playlist-import",
+      JSON.stringify({ importJobId: "job-1", playlistId: 7 }),
+    );
+    activeImportState = { isError: true, error: transientError(), data: undefined };
+    const renderResult = await renderPage();
+
+    expect(await screen.findByText("Connection hiccup. Retrying...")).toBeVisible();
+    expect(screen.queryByText(/Import complete/)).toBeNull();
+    renderResult.unmount();
+
+    window.localStorage.setItem(
+      "hittiguess-active-playlist-import",
+      JSON.stringify({ importJobId: "job-1", playlistId: 7 }),
+    );
+    activeImportState = { isError: true, error: notFoundError(), data: undefined };
+    await renderPage();
+
+    expect(await screen.findByText("Import complete. 0 songs added.")).toBeVisible();
   });
 });
