@@ -12,4 +12,8 @@ export type ExportPlaylistInfoPaperSize = typeof ExportPlaylistInfoPaperSize[key
 export const ExportPlaylistInfoPaperSize = {
   A4: 'A4',
   LETTER: 'LETTER',
+  LEGAL: 'LEGAL',
+  A3: 'A3',
+  A5: 'A5',
+  TABLOID: 'TABLOID',
 } as const;

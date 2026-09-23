@@ -138,3 +138,10 @@ export const getVoiceTurnCredentialsParams = zod.object({
   "groupId": zod.number()
 })
 
+/**
+ * @summary Preview a group by invite code, no membership or authentication required
+ */
+export const getInvitePreview1Params = zod.object({
+  "inviteCode": zod.string()
+})
+

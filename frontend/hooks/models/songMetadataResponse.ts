@@ -7,7 +7,8 @@
 
 export interface SongMetadataResponse {
   title?: string;
-  artist?: string;
+  mainArtists?: string[];
+  featuredArtists?: string[];
   releaseYear?: number;
   color?: string;
   confidence?: string;

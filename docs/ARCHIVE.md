@@ -782,3 +782,15 @@ Tests:
 - [x] Frontend `npm run test -- --run`, `npm run lint`, and `npm run build` clean
 - [x] Backend `./mvnw test` clean
 - [x] AI `pytest` clean
+
+## Chore: Regenerate the frontend API client after the main/featured-artist schema change
+
+Batch 2's fix-up work (`Carry main-artist plurality and dedup featured credits as lists`) changed `SongMetadataResponse.java`'s `artist: String` field to `mainArtists: List<String>` / `featuredArtists: List<String>`, but the frontend's orval-generated client was never regenerated to match. `frontend/hooks/models/songMetadataResponse.ts` still had the old `artist?: string` shape, and since the field is typed optional rather than removed, `npm run build` stayed green while `AddSongForm.tsx`'s manual "Add song via link" review step silently read `metadata.artist` as always-undefined, submitting a blank artist for every song added that way.
+
+- [x] Started the backend in WSL (`ai`/`backend`/Postgres containers), ran `npm run api:gen` against its live OpenAPI spec, picking up every schema drift accumulated since the last regeneration (`SongMetadataResponse`, the new export duplex mode, group invite preview, ground-truth data, and others)
+- [x] Fixed `AddSongForm.tsx` to build the artist credit from `mainArtists`/`featuredArtists`, matching the `Main & Main (feat. Featured, Featured)` convention `CardGenerator.formatArtists()` already uses on the backend
+- [x] Confirmed no other frontend code referenced the removed `.artist` field (`tsc --noEmit` across the whole project was the only error, now clean)
+
+Tests:
+- [x] `tsc --noEmit` clean project-wide
+- [x] Frontend `npm run test -- --run`, `npm run lint`, and `npm run build` all clean

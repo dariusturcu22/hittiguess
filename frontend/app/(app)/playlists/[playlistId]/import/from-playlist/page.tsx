@@ -44,7 +44,7 @@ export function ImportFromPlaylistSelectContent({
         name: playlist.name,
         songCount: playlist.songCount,
         color: playlist.color ? `#${playlist.color}` : undefined,
-        provenance: "owned by you",
+        provenance: playlist.ownedByCurrentUser ? "owned by you" : "joined",
       })),
     ...(publicPlaylists ?? []).map((playlist) => ({
       id: playlist.id,
