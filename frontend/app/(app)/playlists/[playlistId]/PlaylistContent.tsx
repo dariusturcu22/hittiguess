@@ -474,7 +474,7 @@ export default function PlaylistContent({
           </div>
         </div>
 
-        <aside className="w-[260px] shrink-0 rounded-2xl border-[3px] border-border-strong bg-card p-4 shadow-lg">
+        <aside className="shrink-0">
           <Popover>
             <PopoverTrigger
               aria-label={`Members (${playlist.members.length})`}
