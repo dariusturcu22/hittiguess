@@ -26,7 +26,6 @@ import { useGetCurrentUser, useGetUserPlaylists } from "@/hooks/generated/user-m
 import { useGetActiveSessionForGroup } from "@/hooks/generated/game-session/game-session";
 import {
   useGenerateDifficultySet,
-  useStartCustomSession,
   useStartSessionWithSongs,
 } from "@/hooks/generated/group-management/group-management";
 import type { GenerateDifficultySetRequestTier } from "@/hooks/models/generateDifficultySetRequestTier";
@@ -35,6 +34,7 @@ import type { MemberDTO } from "@/hooks/models/memberDTO";
 import { useQueryClient } from "@tanstack/react-query";
 import { copyText } from "@/lib/clipboard";
 import { GroupChatOverlay } from "@/components/group-chat-overlay";
+import { PlaylistCoverMosaic } from "@/components/playlist-cover-mosaic";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -81,6 +81,7 @@ const MINIMUM_PLAYERS_TO_START = 2;
 const LOBBY_FLOAT_STAGGER_CYCLE = 5;
 const LOBBY_FLOAT_STAGGER_SECONDS = 1.1;
 const MINIMUM_TARGET_CARD_COUNT = 1;
+const DIFFICULTY_CARD_HEADROOM_MULTIPLIER = 3;
 const DIFFICULTY_TIERS: GenerateDifficultySetRequestTier[] = ["EASY", "MEDIUM", "HARD"];
 
 function mutationErrorMessage(error: unknown): string {
@@ -165,9 +166,8 @@ export default function GroupLobbyPage({ params }: PageProps) {
   const [isMinPlayersOpen, setIsMinPlayersOpen] = useState(false);
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [selectedTier, setSelectedTier] = useState<GenerateDifficultySetRequestTier>("MEDIUM");
-  const [targetCardCount, setTargetCardCount] = useState(MINIMUM_WIN_CONDITION);
+  const [playlistSource, setPlaylistSource] = useState<"tier" | "custom">("tier");
   const [reviewedSongs, setReviewedSongs] = useState<GeneratedSongPreviewDTO[] | null>(null);
-  const [playlistLink, setPlaylistLink] = useState("");
   const [startError, setStartError] = useState("");
   const [selectedDjMode, setSelectedDjMode] = useState<"FIXED" | "ROTATING">("ROTATING");
   const [selectedPlaylistIds, setSelectedPlaylistIds] = useState<number[]>([]);
@@ -180,7 +180,6 @@ export default function GroupLobbyPage({ params }: PageProps) {
   const startSession = useStartGameSession();
   const generateSet = useGenerateDifficultySet();
   const startWithSongs = useStartSessionWithSongs();
-  const startCustom = useStartCustomSession();
   const leaveGroup = useLeaveGroup();
   const updateSettings = useUpdateGroupSettings();
   const activeSessionQuery = useGetActiveSessionForGroup(groupId, {
@@ -244,12 +243,6 @@ export default function GroupLobbyPage({ params }: PageProps) {
   function openTierPopup() {
     setReviewedSongs(null);
     setStartError("");
-    setTargetCardCount(
-      Math.max(
-        MINIMUM_TARGET_CARD_COUNT,
-        (groupQuery.data?.winConditionCardCount ?? MINIMUM_WIN_CONDITION) + members.length,
-      ),
-    );
     setIsTierPopupOpen(true);
   }
 
@@ -266,7 +259,6 @@ export default function GroupLobbyPage({ params }: PageProps) {
         .filter((id): id is number => id !== undefined),
     );
     setStartError("");
-    setPlaylistLink("");
     setIsTierPopupOpen(false);
     setIsCustomPickerOpen(true);
   }
@@ -308,7 +300,6 @@ export default function GroupLobbyPage({ params }: PageProps) {
       currentIds.length === 1 && currentIds[0] === playlistId ? currentIds : [playlistId],
     );
     setStartError("");
-    setPlaylistLink("");
     setIsTierPopupOpen(false);
     setIsCustomPickerOpen(true);
   }, []);
@@ -322,8 +313,12 @@ export default function GroupLobbyPage({ params }: PageProps) {
 
   function handleGenerateSet() {
     setStartError("");
+    const computedCardCount = Math.max(
+      MINIMUM_TARGET_CARD_COUNT,
+      members.length * (groupQuery.data?.winConditionCardCount ?? MINIMUM_WIN_CONDITION) * DIFFICULTY_CARD_HEADROOM_MULTIPLIER,
+    );
     generateSet.mutate(
-      { groupId, data: { tier: selectedTier, targetCardCount } },
+      { groupId, data: { tier: selectedTier, targetCardCount: computedCardCount } },
       {
         onSuccess: (previews) => setReviewedSongs(previews),
         onError: (error) => setStartError(mutationErrorMessage(error)),
@@ -362,23 +357,9 @@ export default function GroupLobbyPage({ params }: PageProps) {
       {
         onSuccess: () => {
           refreshGroup();
+          setPlaylistSource("custom");
           setIsCustomPickerOpen(false);
-          handleStartGame();
         },
-        onError: (error) => setStartError(mutationErrorMessage(error)),
-      },
-    );
-  }
-
-  function handleStartPlaylistLink() {
-    if (!playlistLink.trim()) {
-      return;
-    }
-    setStartError("");
-    startCustom.mutate(
-      { groupId, data: { playlistLink: playlistLink.trim() } },
-      {
-        onSuccess: handleModeStartSuccess,
         onError: (error) => setStartError(mutationErrorMessage(error)),
       },
     );
@@ -504,9 +485,9 @@ export default function GroupLobbyPage({ params }: PageProps) {
                       <button
                         key={tier}
                         type="button"
-                        onClick={() => { setSelectedTier(tier); setReviewedSongs(null); setStartError(""); }}
-                        aria-pressed={selectedTier === tier}
-                        className={`cursor-pointer rounded-full px-4 py-2 font-display text-xs ${selectedTier === tier ? "bg-accent text-accent-foreground" : "border-2 border-border text-muted-foreground"}`}
+                        onClick={() => { setSelectedTier(tier); setPlaylistSource("tier"); setReviewedSongs(null); setStartError(""); }}
+                        aria-pressed={playlistSource === "tier" && selectedTier === tier}
+                        className={`cursor-pointer rounded-full px-4 py-2 font-display text-xs ${playlistSource === "tier" && selectedTier === tier ? "bg-accent text-accent-foreground" : "border-2 border-border text-muted-foreground"}`}
                       >
                         {tier.charAt(0) + tier.slice(1).toLowerCase()}
                       </button>
@@ -514,16 +495,13 @@ export default function GroupLobbyPage({ params }: PageProps) {
                     <button
                       type="button"
                       onClick={openCustomPicker}
-                      className="cursor-pointer rounded-full border-2 border-border px-4 py-2 font-display text-xs text-muted-foreground"
+                      aria-pressed={playlistSource === "custom"}
+                      className={`cursor-pointer rounded-full px-4 py-2 font-display text-xs ${playlistSource === "custom" ? "bg-accent text-accent-foreground" : "border-2 border-border text-muted-foreground"}`}
                     >
                       Custom
                     </button>
                   </div>
                   <div className="flex items-center gap-3">
-                    <label className="flex items-center gap-2 text-[13px] text-muted-foreground">
-                      Cards
-                      <input type="number" min={MINIMUM_TARGET_CARD_COUNT} value={targetCardCount} onChange={(event) => setTargetCardCount(Math.max(MINIMUM_TARGET_CARD_COUNT, Number(event.target.value)))} className="w-20 rounded-full border-2 border-border bg-background px-3 py-1.5 text-right text-sm font-semibold text-foreground outline-none" />
-                    </label>
                     <button type="button" onClick={handleGenerateSet} disabled={generateSet.isPending} className="rounded-full bg-primary px-4 py-2 font-display text-xs text-primary-foreground disabled:opacity-60">
                       {generateSet.isPending ? "Generating" : "Generate"}
                     </button>
@@ -641,7 +619,7 @@ export default function GroupLobbyPage({ params }: PageProps) {
         {isCustomPickerOpen ? (
           <>
             <button type="button" aria-label="Close playlist selection" onClick={closeCustomPicker} className="absolute inset-0 z-20 cursor-default bg-background/80" />
-            <section aria-label="Custom playlist selection" className="absolute inset-x-0 top-0 bottom-0 z-30 overflow-y-auto rounded-[18px] border-[3px] border-border bg-card p-6 shadow-[6px_6px_0_rgba(0,0,0,0.35)] sm:p-8">
+            <section aria-label="Custom playlist selection" className="absolute inset-x-0 top-6 bottom-6 z-30 overflow-y-auto rounded-[18px] border-[3px] border-border bg-card p-6 shadow-[6px_6px_0_rgba(0,0,0,0.35)] sm:p-8">
               <div className="mb-5 flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <button type="button" onClick={backToTiers} className="text-muted-foreground hover:text-card-foreground">Back</button>
@@ -661,10 +639,14 @@ export default function GroupLobbyPage({ params }: PageProps) {
                       type="button"
                       onClick={() => togglePlaylistSelected(playlist.id)}
                       aria-pressed={isSelected}
-                      className={`flex items-center justify-between rounded-xl border-2 px-3 py-2 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${isSelected ? "border-primary bg-primary/10" : "border-border bg-background hover:border-primary/60"}`}
+                      className={`flex items-center gap-3 rounded-xl border-2 px-3 py-2 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${isSelected ? "border-primary bg-primary/10" : "border-border bg-background hover:border-primary/60"}`}
                     >
-                      <span>
-                        <span className="block text-sm font-semibold text-foreground">{playlist.name}</span>
+                      <PlaylistCoverMosaic
+                        previewYoutubeIds={playlist.previewYoutubeIds ?? []}
+                        className="size-12 shrink-0 rounded-xl border-2"
+                      />
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-sm font-semibold text-foreground">{playlist.name}</span>
                         <span className="text-xs text-muted-foreground">{playlist.songCount} songs</span>
                       </span>
                       {isSelected ? <Check className="size-4 shrink-0 text-primary" /> : null}
@@ -672,18 +654,9 @@ export default function GroupLobbyPage({ params }: PageProps) {
                   );
                 })}
               </div>
-              <div className="mt-5">
-                <p className="mb-2 text-[13px] text-muted-foreground">Or paste a playlist link</p>
-                <div className="flex gap-2">
-                  <input type="text" value={playlistLink} onChange={(event) => setPlaylistLink(event.target.value)} placeholder="YouTube playlist link or id" aria-label="YouTube playlist link or id" className="min-w-0 flex-1 rounded-full border-2 border-border bg-background px-4 py-2 text-sm text-foreground outline-none placeholder:text-muted-foreground" />
-                  <button type="button" onClick={handleStartPlaylistLink} disabled={!playlistLink.trim() || startCustom.isPending} className="shrink-0 rounded-full bg-accent px-4 py-2 font-display text-xs text-accent-foreground disabled:cursor-not-allowed disabled:opacity-60">
-                    Start
-                  </button>
-                </div>
-              </div>
               <div className="mt-6 flex gap-2.5">
                 <button type="button" onClick={handleConfirmCustomSelection} disabled={selectedPlaylistIds.length === 0 || updateSettings.isPending} className="rounded-full bg-primary px-4 py-2.5 font-display text-xs text-primary-foreground disabled:cursor-not-allowed disabled:opacity-60">
-                  {updateSettings.isPending ? "Saving" : "Confirm and start"}
+                  {updateSettings.isPending ? "Saving" : "Confirm"}
                 </button>
                 <button type="button" onClick={closeCustomPicker} className="rounded-full border-2 border-border px-4 py-2.5 text-xs font-semibold text-card-foreground">Close</button>
               </div>
