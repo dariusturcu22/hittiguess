@@ -15,7 +15,18 @@ vi.mock("@/hooks/generated/bulk-import/bulk-import", () => ({
 
 vi.mock("@/hooks/generated/playlist-import-jobs/playlist-import-jobs", () => ({
   useStartImport: () => ({ mutate: startImportMutate, isPending: false, isError: false }),
+  useActiveImport: () => activeImportState,
 }));
+
+let activeImportState: { data?: { items: Array<{ youtubeId: string; status: string }> }; isError: boolean } = {
+  isError: false,
+  data: {
+    items: [
+      { youtubeId: "video-1", status: "RESOLVED" },
+      { youtubeId: "video-2", status: "PENDING" },
+    ],
+  },
+};
 
 vi.mock("@/hooks/use-bulk-import-realtime", () => ({
   useBulkImportRealtime: () => ({ events: [], isConnected: false, reset: vi.fn() }),
@@ -54,7 +65,7 @@ describe("ImportYoutubePage background import", () => {
     );
   });
 
-  it("starts a background job and returns to the playlist", async () => {
+  it("starts a background job and shows progress instead of redirecting", async () => {
     await renderPage();
 
     fireEvent.change(screen.getByLabelText("YouTube playlist link"), {
@@ -76,6 +87,37 @@ describe("ImportYoutubePage background import", () => {
     expect(window.localStorage.getItem("hittiguess-active-playlist-import")).toBe(
       JSON.stringify({ importJobId: "job-1", playlistId: 7 }),
     );
+    expect(routerPush).not.toHaveBeenCalled();
+
+    expect(await screen.findByText("1 of 2 processed")).toBeVisible();
+    expect(screen.getByText("Added")).toBeVisible();
+    expect(screen.getByText("Resolving...")).toBeVisible();
+    expect(
+      screen.getByText("You can close this page. The import keeps running in the background."),
+    ).toBeVisible();
+  });
+
+  it("shows the done state with a path back once every song finishes", async () => {
+    activeImportState = {
+      isError: false,
+      data: {
+        items: [
+          { youtubeId: "video-1", status: "RESOLVED" },
+          { youtubeId: "video-2", status: "ALREADY_KNOWN" },
+        ],
+      },
+    };
+    await renderPage();
+
+    fireEvent.change(screen.getByLabelText("YouTube playlist link"), {
+      target: { value: "https://youtube.com/playlist?list=abc" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Fetch playlist" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Import 2 songs" }));
+
+    expect(await screen.findByText("Import complete. 2 songs added.")).toBeVisible();
+
+    fireEvent.click(screen.getByRole("button", { name: "View playlist" }));
     expect(routerPush).toHaveBeenCalledWith("/playlists/7");
   });
 });

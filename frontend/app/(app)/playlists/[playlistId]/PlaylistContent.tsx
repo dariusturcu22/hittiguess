@@ -20,6 +20,7 @@ import {
   Hash,
   Crown,
   ChevronDown,
+  LoaderCircle,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -137,14 +138,20 @@ export default function PlaylistContent({
   );
   const finishedImportCount = activeImportItems.filter((item) => item.status !== "PENDING").length;
   const hadRunningImport = React.useRef(false);
+  const lastFinishedImportCount = React.useRef(0);
   React.useEffect(() => {
     if (activeImportQuery.data && !activeImportQuery.isError) {
       hadRunningImport.current = true;
+      if (finishedImportCount > lastFinishedImportCount.current) {
+        lastFinishedImportCount.current = finishedImportCount;
+        void queryClient.invalidateQueries({ queryKey: getGetPlaylistQueryKey(playlistId) });
+      }
     } else if (hadRunningImport.current && (activeImportQuery.isError || !activeImportQuery.data)) {
       hadRunningImport.current = false;
+      lastFinishedImportCount.current = 0;
       void queryClient.invalidateQueries({ queryKey: getGetPlaylistQueryKey(playlistId) });
     }
-  }, [activeImportQuery.data, activeImportQuery.isError, playlistId, queryClient]);
+  }, [activeImportQuery.data, activeImportQuery.isError, finishedImportCount, playlistId, queryClient]);
 
   const { mutate: removeSong } = useDeleteSong();
   const { mutate: leavePlaylist } = useLeavePlaylist();
@@ -567,31 +574,19 @@ export default function PlaylistContent({
       )}
 
       {pendingImportItems.length > 0 ? (
-        <div
-          className="mb-3.5 rounded-[13px] border-2 border-dashed border-border bg-card px-4.5 py-3"
+        <Link
+          href={`/playlists/${playlistId}/import/youtube`}
+          className="mb-3.5 flex items-center gap-2.5 rounded-[13px] border-2 border-dashed border-border bg-card px-4 py-3"
           title={`${finishedImportCount} of ${activeImportItems.length} songs imported so far.`}
         >
-          <div className="text-[13px] font-semibold text-card-foreground">
-            Importing {pendingImportItems.length} song{pendingImportItems.length === 1 ? "" : "s"} in the background...
-          </div>
-          <div className="mt-2.5 grid grid-cols-4 gap-2 sm:grid-cols-6">
-            {pendingImportItems.map((item) => (
-              <div
-                key={item.youtubeId}
-                className="opacity-45 grayscale"
-                title={item.status === "UNRESOLVED" ? "This video could not be matched to a song." : "Resolving song details..."}
-              >
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={`https://i.ytimg.com/vi/${item.youtubeId}/default.jpg`}
-                  alt=""
-                  loading="lazy"
-                  className="aspect-video w-full rounded-lg object-cover"
-                />
-              </div>
-            ))}
-          </div>
-        </div>
+          <LoaderCircle className="size-4 shrink-0 animate-spin text-primary" />
+          <span className="text-[13px] text-card-foreground">
+            <strong>
+              Importing {pendingImportItems.length} song{pendingImportItems.length === 1 ? "" : "s"} in the background...
+            </strong>{" "}
+            <span className="text-muted-foreground underline underline-offset-4">Follow progress</span>
+          </span>
+        </Link>
       ) : null}
 
       <div className="flex min-h-0 w-full min-w-0 flex-1 flex-col overflow-hidden rounded-2xl border-[3px] border-border-strong bg-card shadow-lg">

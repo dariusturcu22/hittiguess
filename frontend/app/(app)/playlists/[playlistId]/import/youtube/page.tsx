@@ -2,10 +2,11 @@
 
 import React, { use } from "react";
 import Link from "next/link";
-import { LoaderCircle, Search, Video } from "lucide-react";
+import { AlertTriangle, Check, LoaderCircle, Search, Video } from "lucide-react";
 
 import { useExpandPlaylist } from "@/hooks/generated/bulk-import/bulk-import";
-import { useStartImport } from "@/hooks/generated/playlist-import-jobs/playlist-import-jobs";
+import { useActiveImport, useStartImport } from "@/hooks/generated/playlist-import-jobs/playlist-import-jobs";
+import type { PlaylistImportJobItemDTOStatus } from "@/hooks/models/playlistImportJobItemDTOStatus";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { useBulkImportRealtime } from "@/hooks/use-bulk-import-realtime";
@@ -16,6 +17,40 @@ interface PageProps {
 }
 
 const YOUTUBE_INPUT_PLACEHOLDER = "https://youtube.com/playlist?list=...";
+const ACTIVE_IMPORT_REFRESH_MILLISECONDS = 5_000;
+
+function ImportItemRow({ youtubeId, status }: { youtubeId: string; status?: PlaylistImportJobItemDTOStatus }) {
+  const isFinished = status === "RESOLVED" || status === "ALREADY_KNOWN";
+  const isUnmatched = status === "UNRESOLVED";
+  return (
+    <div className="flex items-center gap-3 border-b-2 border-background px-4 py-2.5 last:border-b-0">
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={`https://i.ytimg.com/vi/${youtubeId}/default.jpg`}
+        alt=""
+        loading="lazy"
+        className="aspect-video w-16 shrink-0 rounded-lg object-cover"
+      />
+      <span className="min-w-0 flex-1 truncate font-mono text-[11px] text-muted-foreground">{youtubeId}</span>
+      {isFinished ? (
+        <span className="flex shrink-0 items-center gap-1.5 text-[12px] font-semibold text-green">
+          <Check className="size-4" />
+          {status === "ALREADY_KNOWN" ? "Already added" : "Added"}
+        </span>
+      ) : isUnmatched ? (
+        <span className="flex shrink-0 items-center gap-1.5 text-[12px] font-semibold text-destructive">
+          <AlertTriangle className="size-4" />
+          No match found
+        </span>
+      ) : (
+        <span className="flex shrink-0 items-center gap-1.5 text-[12px] text-muted-foreground">
+          <LoaderCircle className="size-4 animate-spin text-primary" />
+          Resolving...
+        </span>
+      )}
+    </div>
+  );
+}
 
 export default function ImportYoutubePage({ params }: PageProps) {
   const { playlistId: rawId } = use(params);
@@ -27,6 +62,23 @@ export default function ImportYoutubePage({ params }: PageProps) {
 
   const [playlistLink, setPlaylistLink] = React.useState("");
   const [expandedVideoIds, setExpandedVideoIds] = React.useState<string[] | null>(null);
+  const [isImportStarted, setIsImportStarted] = React.useState(false);
+  const activeImportQuery = useActiveImport(playlistId, {
+    query: {
+      retry: false,
+      refetchInterval: ACTIVE_IMPORT_REFRESH_MILLISECONDS,
+      enabled: isImportStarted,
+    },
+  });
+  const importItems = activeImportQuery.data && !activeImportQuery.isError
+    ? (activeImportQuery.data.items ?? [])
+    : [];
+  const processedImportCount = importItems.filter((item) => item.status !== "PENDING").length;
+  const addedImportCount = importItems.filter(
+    (item) => item.status === "RESOLVED" || item.status === "ALREADY_KNOWN",
+  ).length;
+  const isImportFinished = isImportStarted
+    && (activeImportQuery.isError || (importItems.length > 0 && processedImportCount === importItems.length));
 
   function handleExpand() {
     const trimmedLink = playlistLink.trim();
@@ -53,8 +105,7 @@ export default function ImportYoutubePage({ params }: PageProps) {
           if (startedJobId) {
             saveActiveImportJob({ importJobId: startedJobId, playlistId });
           }
-          toast.success("Import started. Songs appear as they resolve.");
-          router.push(`/playlists/${playlistId}`);
+          setIsImportStarted(true);
         },
         onError: () => toast.error("Import failed to start. Check the link and try again."),
       },
@@ -74,6 +125,50 @@ export default function ImportYoutubePage({ params }: PageProps) {
           Paste a playlist link. We&apos;ll list every song and fetch details for each one.
         </p>
 
+        {isImportStarted ? (
+          <div className="mt-6 rounded-xl bg-background p-5">
+            <p className="text-[13px] font-semibold text-card-foreground">
+              {isImportFinished
+                ? `Import complete. ${addedImportCount} song${addedImportCount === 1 ? "" : "s"} added.`
+                : importItems.length === 0
+                  ? "Starting the import..."
+                  : `${processedImportCount} of ${importItems.length} processed`}
+            </p>
+            {importItems.length > 0 ? (
+              <div className="mt-3 h-2 overflow-hidden rounded-full bg-secondary">
+                <div
+                  className="h-full rounded-full bg-green transition-all"
+                  style={{ width: `${(processedImportCount / importItems.length) * 100}%` }}
+                />
+              </div>
+            ) : null}
+            {importItems.length > 0 ? (
+              <div className="mt-3 max-h-64 overflow-y-auto rounded-xl border-2 border-border bg-card pr-1">
+                {importItems.map((item) => (
+                  <ImportItemRow
+                    key={item.youtubeId ?? ""}
+                    youtubeId={item.youtubeId ?? ""}
+                    status={item.status}
+                  />
+                ))}
+              </div>
+            ) : null}
+            {isImportFinished ? (
+              <button
+                type="button"
+                onClick={() => router.push(`/playlists/${playlistId}`)}
+                className="mt-4 w-full rounded-full bg-primary px-4 py-2.5 font-display text-xs text-primary-foreground"
+              >
+                View playlist
+              </button>
+            ) : (
+              <p className="mt-4 text-[12px] leading-relaxed text-muted-foreground">
+                You can close this page. The import keeps running in the background.
+              </p>
+            )}
+          </div>
+        ) : (
+          <>
         <label
           htmlFor="youtube-input"
           className="block mb-1.5 text-[11px] font-semibold uppercase tracking-[0.5px] text-muted-foreground"
@@ -148,24 +243,19 @@ export default function ImportYoutubePage({ params }: PageProps) {
           </div>
         ) : null}
 
-        {startImportMutation.isPending ? (
-          <div className="mt-6 rounded-xl bg-background p-5">
-            <div className="flex items-center gap-3 text-[13px] font-semibold text-card-foreground">
-              <LoaderCircle className="size-4 animate-spin text-primary" />
-              Starting the import
-            </div>
-          </div>
-        ) : startImportMutation.isError ? (
+        {startImportMutation.isError && !isImportStarted ? (
           <p className="mt-4 text-[12px] text-destructive text-center">
             Import failed to start. Check the link and try again.
           </p>
         ) : null}
+          </>
+        )}
 
         <Link
-          href={`/playlists/${playlistId}/import`}
+          href={isImportStarted ? `/playlists/${playlistId}` : `/playlists/${playlistId}/import`}
           className="text-[12px] text-muted-foreground mt-6 text-center cursor-pointer hover:text-card-foreground"
         >
-          ‹ Back
+          {isImportStarted ? "Back to playlist" : "‹ Back"}
         </Link>
       </div>
     </div>

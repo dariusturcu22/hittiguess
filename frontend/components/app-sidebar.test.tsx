@@ -1,4 +1,4 @@
-import { act, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -26,8 +26,10 @@ vi.mock("next/link", () => ({
 
 vi.mock("next/navigation", () => ({
   usePathname: () => currentPathname,
-  useRouter: () => ({ push: vi.fn() }),
+  useRouter: () => ({ push: routerPush }),
 }));
+
+const routerPush = vi.hoisted(() => vi.fn());
 
 vi.mock("next-themes", () => ({
   useTheme: () => ({ resolvedTheme: "light", setTheme: vi.fn() }),
@@ -83,6 +85,7 @@ function renderSidebar() {
 describe("AppSidebar import progress", () => {
   beforeEach(() => {
     window.localStorage.clear();
+    routerPush.mockReset();
     activeImportResponse = { isError: true };
     currentPathname = "/playlists";
     activeMembership = undefined;
@@ -117,6 +120,19 @@ describe("AppSidebar import progress", () => {
     });
 
     expect(screen.getByTitle("Import in progress")).toBeVisible();
+  });
+
+  it("opens the import progress page from the indicator", () => {
+    window.localStorage.setItem(
+      "hittiguess-active-playlist-import",
+      JSON.stringify({ importJobId: "job-1", playlistId: 7 }),
+    );
+    activeImportResponse = { data: RUNNING_JOB, isError: false };
+    renderSidebar();
+
+    fireEvent.click(screen.getByTitle("Import in progress"));
+
+    expect(routerPush).toHaveBeenCalledWith("/playlists/7/import/youtube");
   });
 
   it("clears the indicator once the job is gone", () => {

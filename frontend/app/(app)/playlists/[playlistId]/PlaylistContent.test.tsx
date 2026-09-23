@@ -109,7 +109,7 @@ describe("PlaylistContent detail states", () => {
     expect(screen.queryByPlaceholderText("Search songs...")).toBeNull();
   });
 
-  it("renders pending import songs greyed with hover progress", async () => {
+  it("links pending imports to the progress page", async () => {
     activeImportResponse = {
       isError: false,
       data: {
@@ -125,10 +125,11 @@ describe("PlaylistContent detail states", () => {
     };
     await renderContent();
 
-    expect(screen.getByText("Importing 2 songs in the background...")).toBeVisible();
-    expect(screen.getByTitle("2 of 3 songs imported so far.")).toBeVisible();
-    expect(screen.getByTitle("Resolving song details...")).toBeVisible();
-    expect(screen.getByTitle("This video could not be matched to a song.")).toBeVisible();
+    expect(screen.getByText(/Importing 2 songs in the background/)).toBeVisible();
+    expect(screen.getByRole("link", { name: /Importing 2 songs in the background/ })).toHaveAttribute(
+      "href",
+      "/playlists/7/import/youtube",
+    );
   });
 
   it("builds a ready invite message for the code action", () => {
