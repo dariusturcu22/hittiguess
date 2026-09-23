@@ -24,12 +24,12 @@ describe("PlaylistCoverMosaic", () => {
     }
   });
 
-  it("over-zooms a custom cover the same way", () => {
+  it("leaves a custom cover unscaled", () => {
     const { container } = render(
       <PlaylistCoverMosaic previewYoutubeIds={[]} customCoverUrl="https://example.com/cover.png" />,
     );
 
-    expect(container.querySelector("img")).toHaveClass("scale-[1.35]");
+    expect(container.querySelector("img")).not.toHaveClass("scale-[1.35]");
   });
 
   it("renders four placeholders when the playlist is empty", () => {

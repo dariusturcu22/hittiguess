@@ -45,7 +45,7 @@ export function PlaylistCoverMosaic({ previewYoutubeIds, customCoverUrl, classNa
           src={customCoverUrl}
           alt=""
           onError={() => setCustomCoverFailed(true)}
-          className={`col-span-2 row-span-2 size-full object-cover [image-rendering:pixelated] ${THUMBNAIL_ZOOM_CLASSES}`}
+          className="col-span-2 row-span-2 size-full object-cover [image-rendering:pixelated]"
         />
       ) : (
         tiles.map((youtubeId, index) =>
