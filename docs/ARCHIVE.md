@@ -794,3 +794,13 @@ Batch 2's fix-up work (`Carry main-artist plurality and dedup featured credits a
 Tests:
 - [x] `tsc --noEmit` clean project-wide
 - [x] Frontend `npm run test -- --run`, `npm run lint`, and `npm run build` all clean
+
+## Bug batch: playlist content box/state fixes and sidebar hydration
+
+- [x] Invite link/code copy actions show an error toast instead of a false "copied" state when the clipboard write fails
+- [x] The playlist detail members trigger no longer sits inside a bordered/backgrounded box
+- [x] The songs empty state is vertically centered whether or not the import banner is showing
+- [x] The sidebar's active-import indicator reads localStorage after mount instead of during the initial render, removing a hydration mismatch
+
+Tests:
+- [x] `PlaylistContent.test.tsx` covers the copy-failure toast path via a rejected clipboard write and a failing execCommand fallback
