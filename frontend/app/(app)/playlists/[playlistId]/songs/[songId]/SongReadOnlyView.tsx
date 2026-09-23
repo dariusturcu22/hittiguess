@@ -37,6 +37,19 @@ import { needsUserAttention } from "@/lib/song-attention";
 const REPORT_MESSAGE_MIN_LENGTH = 10;
 const REPORT_YEAR_MIN = 1000;
 
+export function validateReportFields(message: string, yearInput: string): string | null {
+  if (message.trim().length < REPORT_MESSAGE_MIN_LENGTH) {
+    return `Describe what's wrong in a little more detail (at least ${REPORT_MESSAGE_MIN_LENGTH} characters).`;
+  }
+  if (yearInput) {
+    const parsedYear = parseInt(yearInput);
+    if (Number.isNaN(parsedYear) || parsedYear < REPORT_YEAR_MIN || parsedYear > new Date().getFullYear()) {
+      return "Enter a plausible year for the correction.";
+    }
+  }
+  return null;
+}
+
 interface SongReadOnlyViewProps {
   song: SongDTO;
   playlistId: number;
@@ -104,27 +117,18 @@ export function SongReadOnlyView({
 
   const handleSubmitReport = () => {
     setReportError("");
-    const trimmedMessage = reportMessage.trim();
-    if (trimmedMessage.length < REPORT_MESSAGE_MIN_LENGTH) {
-      setReportError(
-        `Describe what's wrong in a little more detail (at least ${REPORT_MESSAGE_MIN_LENGTH} characters).`,
-      );
+    const validationError = validateReportFields(reportMessage, reportYear);
+    if (validationError) {
+      setReportError(validationError);
       return;
     }
     const parsedYear = reportYear ? parseInt(reportYear) : undefined;
-    if (
-      parsedYear !== undefined &&
-      (parsedYear < REPORT_YEAR_MIN || parsedYear > new Date().getFullYear())
-    ) {
-      setReportError("Enter a plausible year for the correction.");
-      return;
-    }
 
     submitReport(
       {
         songId: song.id,
         data: {
-          message: trimmedMessage,
+          message: reportMessage.trim(),
           suggestedCorrectYear: parsedYear,
           sources: reportSources.trim() || undefined,
         },

@@ -3,7 +3,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { describe, expect, it, vi } from "vitest";
 
 import { SongDTO, SongDTOVerificationStatus } from "@/hooks/models";
-import { SongReadOnlyView } from "./SongReadOnlyView";
+import { SongReadOnlyView, validateReportFields } from "./SongReadOnlyView";
 
 const mockDeleteSong = vi.fn();
 const mockSubmitConfirmation = vi.fn();
@@ -147,5 +147,31 @@ describe("SongReadOnlyView community actions", () => {
       },
       expect.anything(),
     );
+  });
+});
+
+describe("validateReportFields", () => {
+  it("rejects a description under the minimum length", () => {
+    expect(validateReportFields("Bad", "")).toMatch(/at least 10 characters/);
+  });
+
+  it("rejects a malformed year that parses to NaN", () => {
+    expect(validateReportFields("The release year looks wrong", "not-a-year")).toBe(
+      "Enter a plausible year for the correction.",
+    );
+  });
+
+  it("rejects an out-of-range year", () => {
+    expect(validateReportFields("The release year looks wrong", "3000")).toBe(
+      "Enter a plausible year for the correction.",
+    );
+  });
+
+  it("accepts a detailed report with no year", () => {
+    expect(validateReportFields("The release year looks wrong", "")).toBeNull();
+  });
+
+  it("accepts a detailed report with a plausible year", () => {
+    expect(validateReportFields("The release year looks wrong", "1985")).toBeNull();
   });
 });
