@@ -6,6 +6,7 @@ package org.dariusturcu.backend.websocket;
 public enum SessionEventType {
     ROUND_STARTED,
     GUESS_LOCKED,
+    BETTING_OPENED,
     BET_PLACED,
     REVEAL_TRIGGERED,
     ROUND_SCORED,

@@ -14,6 +14,7 @@ import org.dariusturcu.backend.model.session.PlayerCard;
 import org.dariusturcu.backend.model.session.PlayerStatus;
 import org.dariusturcu.backend.model.session.Round;
 import org.dariusturcu.backend.model.session.RoundStatus;
+import org.dariusturcu.backend.model.session.RoundTiming;
 import org.dariusturcu.backend.model.session.SessionStatus;
 import org.dariusturcu.backend.model.session.StartCustomSessionRequest;
 import org.dariusturcu.backend.model.session.StartSessionWithSongsRequest;
@@ -39,6 +40,8 @@ import org.dariusturcu.backend.repository.RoundRepository;
 import org.dariusturcu.backend.repository.SongRepository;
 import org.dariusturcu.backend.scheduling.GameSessionScheduler;
 import org.dariusturcu.backend.security.UserPrincipal;
+import org.dariusturcu.backend.websocket.SessionBroadcastEvent;
+import org.dariusturcu.backend.websocket.SessionEventType;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -589,6 +592,7 @@ class GameSessionServiceTest {
         round.setPlacementCorrect(false);
 
         gameSessionService.scoreRoundEffect(round.getId());
+        runScheduledEffects();
 
         org.mockito.ArgumentCaptor<Round> captor = org.mockito.ArgumentCaptor.forClass(Round.class);
         verify(roundRepository, org.mockito.Mockito.atLeastOnce()).save(captor.capture());
@@ -614,6 +618,7 @@ class GameSessionServiceTest {
         round.setPlacementCorrect(false);
 
         gameSessionService.scoreRoundEffect(round.getId());
+        runScheduledEffects();
 
         org.mockito.ArgumentCaptor<Round> captor = org.mockito.ArgumentCaptor.forClass(Round.class);
         verify(roundRepository, org.mockito.Mockito.atLeastOnce()).save(captor.capture());
@@ -639,6 +644,7 @@ class GameSessionServiceTest {
         round.setPlacementCorrect(false);
 
         gameSessionService.scoreRoundEffect(round.getId());
+        runScheduledEffects();
 
         org.mockito.ArgumentCaptor<Round> captor = org.mockito.ArgumentCaptor.forClass(Round.class);
         verify(roundRepository, org.mockito.Mockito.atLeastOnce()).save(captor.capture());
@@ -728,6 +734,90 @@ class GameSessionServiceTest {
         assertThat(round.getStatus()).isEqualTo(RoundStatus.BETTING);
         assertThat(round.getBettingWindowEndsAt()).isNotNull();
         verify(gameSessionScheduler).scheduleAfter(any(), any());
+    }
+
+    @Test
+    void openingTheBettingWindowPublishesABettingOpenedEvent() {
+        GameSession session = session(DjMode.ROTATING, 10);
+        Player active = player(session, 1L, 0, PlayerStatus.ACTIVE);
+        Player dj = player(session, 2L, 1, PlayerStatus.ACTIVE);
+        Player bystander = player(session, 3L, 2, PlayerStatus.ACTIVE);
+        bystander.setTokenCount(1);
+        Round round = round(session, 10L, 1, active, dj, song(200, "Round Song", 2000));
+        round.setStatus(RoundStatus.COUNTDOWN);
+
+        gameSessionService.startBettingWindowEffect(round.getId());
+
+        org.mockito.ArgumentCaptor<Object> events = org.mockito.ArgumentCaptor.forClass(Object.class);
+        verify(eventPublisher, org.mockito.Mockito.atLeastOnce()).publishEvent(events.capture());
+        assertThat(events.getAllValues())
+                .filteredOn(SessionBroadcastEvent.class::isInstance)
+                .map(event -> ((SessionBroadcastEvent) event).type())
+                .contains(SessionEventType.BETTING_OPENED);
+    }
+
+    // --- Reveal hold before the next round ---------------------------------------------------
+
+    @Test
+    void scoringHoldsTheRevealBeforeStartingTheNextRound() {
+        GameSession session = session(DjMode.ROTATING, 10);
+        Player playerA = player(session, 1L, 0, PlayerStatus.ACTIVE);
+        Player playerB = player(session, 2L, 1, PlayerStatus.ACTIVE);
+        anchorCard(playerA, song(100, "Anchor A", 1990));
+        anchorCard(playerB, song(101, "Anchor B", 1990));
+        Round round = round(session, 10L, 1, playerA, playerB, song(200, "Round Song", 2000));
+        round.setPlacementCorrect(false);
+
+        gameSessionService.scoreRoundEffect(round.getId());
+
+        assertThat(round.getStatus()).isEqualTo(RoundStatus.SCORED);
+        assertThat(savedRoundNumbers()).doesNotContain(2);
+        verify(gameSessionScheduler).scheduleAfter(org.mockito.ArgumentMatchers.eq(RoundTiming.REVEAL_HOLD), any());
+
+        runScheduledEffects();
+
+        assertThat(savedRoundNumbers()).contains(2);
+    }
+
+    @Test
+    void advancingAfterTheRevealHoldIsANoOpOnceTheSessionHasEnded() {
+        GameSession session = session(DjMode.ROTATING, 10);
+        Player playerA = player(session, 1L, 0, PlayerStatus.ACTIVE);
+        Player playerB = player(session, 2L, 1, PlayerStatus.ACTIVE);
+        Round round = round(session, 10L, 1, playerA, playerB, song(200, "Round Song", 2000));
+        round.setStatus(RoundStatus.SCORED);
+        session.setStatus(SessionStatus.COMPLETED);
+
+        gameSessionService.advanceRoundEffect(round.getId());
+
+        assertThat(savedRoundNumbers()).doesNotContain(2);
+    }
+
+    @Test
+    void advancingAfterTheRevealHoldIsANoOpWhenANewerRoundAlreadyExists() {
+        GameSession session = session(DjMode.ROTATING, 10);
+        Player playerA = player(session, 1L, 0, PlayerStatus.ACTIVE);
+        Player playerB = player(session, 2L, 1, PlayerStatus.ACTIVE);
+        Round scoredRound = round(session, 10L, 1, playerA, playerB, song(200, "Round Song", 2000));
+        scoredRound.setStatus(RoundStatus.SCORED);
+        round(session, 11L, 2, playerB, playerA, song(201, "Next Song", 2001));
+
+        gameSessionService.advanceRoundEffect(scoredRound.getId());
+
+        assertThat(savedRoundNumbers()).doesNotContain(3);
+    }
+
+    private List<Integer> savedRoundNumbers() {
+        org.mockito.ArgumentCaptor<Round> captor = org.mockito.ArgumentCaptor.forClass(Round.class);
+        verify(roundRepository, org.mockito.Mockito.atLeast(0)).save(captor.capture());
+        return captor.getAllValues().stream().map(Round::getRoundNumber).toList();
+    }
+
+    // Runs every effect handed to the scheduler so far, standing in for the real delay.
+    private void runScheduledEffects() {
+        org.mockito.ArgumentCaptor<Runnable> effects = org.mockito.ArgumentCaptor.forClass(Runnable.class);
+        verify(gameSessionScheduler, org.mockito.Mockito.atLeastOnce()).scheduleAfter(any(), effects.capture());
+        effects.getAllValues().forEach(Runnable::run);
     }
 
     @AfterEach

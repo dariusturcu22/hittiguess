@@ -22,6 +22,7 @@ import org.dariusturcu.backend.model.session.PlayerStatus;
 import org.dariusturcu.backend.model.session.Round;
 import org.dariusturcu.backend.model.session.RoundStatus;
 import org.dariusturcu.backend.model.session.RoundLinkOutDTO;
+import org.dariusturcu.backend.model.session.RoundTiming;
 import org.dariusturcu.backend.model.session.SessionResultsDTO;
 import org.dariusturcu.backend.model.session.SessionStatus;
 import org.dariusturcu.backend.model.session.StartCustomSessionRequest;
@@ -80,8 +81,6 @@ import java.util.stream.Collectors;
 public class GameSessionService {
 
     private static final int MINIMUM_PLAYERS = 2;
-    private static final int LOCK_IN_COUNTDOWN_SECONDS = 4;
-    private static final int BETTING_WINDOW_SECONDS = 15;
     private static final int ACTIVE_PLAYER_TURN_TIMEOUT_SECONDS = 90;
     private static final int AUTO_ABANDON_MINUTES = 10;
 
@@ -427,7 +426,7 @@ public class GameSessionService {
         Round savedRound = roundRepository.save(round);
 
         publishRoundEvent(SessionEventType.GUESS_LOCKED, session, savedRound);
-        gameSessionScheduler.scheduleAfter(Duration.ofSeconds(LOCK_IN_COUNTDOWN_SECONDS),
+        gameSessionScheduler.scheduleAfter(RoundTiming.LOCK_IN_COUNTDOWN,
                 () -> self.startBettingWindowEffect(savedRound.getId()));
     }
 
@@ -446,10 +445,11 @@ public class GameSessionService {
             return;
         }
 
-        round.setBettingWindowEndsAt(Instant.now().plusSeconds(BETTING_WINDOW_SECONDS));
+        round.setBettingWindowEndsAt(Instant.now().plus(RoundTiming.BETTING_WINDOW));
         round.setStatus(RoundStatus.BETTING);
-        roundRepository.save(round);
-        gameSessionScheduler.scheduleAfter(Duration.ofSeconds(BETTING_WINDOW_SECONDS), () -> self.revealEffect(roundId));
+        Round savedRound = roundRepository.save(round);
+        publishRoundEvent(SessionEventType.BETTING_OPENED, savedRound.getSession(), savedRound);
+        gameSessionScheduler.scheduleAfter(RoundTiming.BETTING_WINDOW, () -> self.revealEffect(roundId));
     }
 
     public boolean placeBet(Long sessionId, Long userId, int position) {
@@ -541,8 +541,8 @@ public class GameSessionService {
     }
 
     // Effect method applying the four scoring outcome rules from GAME_DESIGN.md, then
-    // either completing the session (win condition reached) or advancing to the next
-    // round. Also the reuse point for the turn-timeout and explicit-leave paths: both set
+    // either completing the session (win condition reached) or scheduling the next round
+    // after the reveal hold, so every client shows the revealed card before it moves on. Also the reuse point for the turn-timeout and explicit-leave paths: both set
     // placementCorrect to false with no bets before calling this, which discards the
     // card exactly as a live wrong-guess-no-bets round would.
     public void scoreRoundEffect(Long roundId) {
@@ -597,8 +597,29 @@ public class GameSessionService {
             // DECISIONS.md.
             abandonSession(session.getId());
         } else {
-            advanceRound(session, savedRound);
+            gameSessionScheduler.scheduleAfter(RoundTiming.REVEAL_HOLD, () -> self.advanceRoundEffect(roundId));
         }
+    }
+
+    // Effect method for the reveal-hold timer. A no-op unless the scored round is still the
+    // session's latest one and the session is still in progress, so a session that ended
+    // or already moved on during the hold is left alone.
+    public void advanceRoundEffect(Long roundId) {
+        Round round = roundRepository.findById(roundId).orElse(null);
+        if (round == null || round.getStatus() != RoundStatus.SCORED) {
+            return;
+        }
+        GameSession session = round.getSession();
+        if (session.getStatus() != SessionStatus.IN_PROGRESS) {
+            return;
+        }
+        boolean isLatestRound = roundRepository.findTopBySessionOrderByRoundNumberDesc(session)
+                .map(latestRound -> latestRound.getId().equals(round.getId()))
+                .orElse(false);
+        if (!isLatestRound) {
+            return;
+        }
+        advanceRound(session, round);
     }
 
     private boolean isPlacementCorrect(Player player, int position, int newSongReleaseYear) {
