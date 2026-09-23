@@ -521,7 +521,11 @@ public class GameSessionService {
                 round.getId(),
                 round.getRoundNumber(),
                 song.getYoutubeId(),
-                YoutubeLinkParser.buildWatchUrl(song.getYoutubeId()));
+                YoutubeLinkParser.buildWatchUrl(song.getYoutubeId()),
+                sessionMapper.artistNames(song),
+                song.getTitle(),
+                song.getReleaseYear(),
+                song.getColor());
     }
 
     // Effect method for the betting-window-close timer, and called directly whenever the

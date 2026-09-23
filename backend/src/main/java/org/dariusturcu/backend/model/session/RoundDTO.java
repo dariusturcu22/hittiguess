@@ -1,11 +1,13 @@
 package org.dariusturcu.backend.model.session;
 
+import java.time.Instant;
 import java.util.List;
 
 // artist/title/year are populated only once status is REVEALED or SCORED: the reveal is
 // what makes them public, broadcasting the DTO earlier in the round's life omits them.
 // bets lists every bet accepted so far this round against the active player's timeline,
-// one entry per distinct gap.
+// one entry per distinct gap. The three deadlines drive every client's timers: the
+// countdown after lock-in, the betting window, and the reveal hold before the next round.
 public record RoundDTO(
         Long id,
         int roundNumber,
@@ -17,5 +19,9 @@ public record RoundDTO(
         List<BetDTO> bets,
         String revealedArtist,
         String revealedTitle,
-        Integer revealedYear) {
+        Integer revealedYear,
+        String revealedColor,
+        Instant countdownEndsAt,
+        Instant bettingWindowEndsAt,
+        Instant nextRoundStartsAt) {
 }
