@@ -68,7 +68,7 @@ export function NavUser() {
       <DropdownMenuTrigger asChild>
         <button
           type="button"
-          className="flex h-11 w-11 shrink-0 cursor-pointer items-center justify-center rounded-full border-2 border-sidebar-border bg-primary font-display text-base text-primary-foreground"
+          className="avatar-initial flex h-11 w-11 shrink-0 cursor-pointer items-center justify-center rounded-full border-2 border-sidebar-border bg-primary font-display text-base text-primary-foreground"
         >
           {avatarInitial}
         </button>

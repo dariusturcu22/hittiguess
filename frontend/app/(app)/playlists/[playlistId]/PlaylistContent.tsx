@@ -104,7 +104,7 @@ function MemberAvatar({
 }) {
   return (
     <div
-      className="flex shrink-0 items-center justify-center rounded-full border-[3px] border-card font-display text-accent-foreground"
+      className="avatar-initial flex shrink-0 items-center justify-center rounded-full border-[3px] border-card font-display text-accent-foreground"
       style={{
         width: size,
         height: size,
@@ -472,7 +472,7 @@ export default function PlaylistContent({
                   />
                 ))}
                 {playlist.members.length > MEMBER_STACK_VISIBLE_COUNT ? (
-                  <span className="flex size-[26px] shrink-0 items-center justify-center rounded-full border-[3px] border-card bg-muted font-display text-[10px] text-muted-foreground">
+                  <span className="avatar-initial flex size-[26px] shrink-0 items-center justify-center rounded-full border-[3px] border-card bg-muted font-display text-[10px] text-muted-foreground">
                     +{playlist.members.length - MEMBER_STACK_VISIBLE_COUNT}
                   </span>
                 ) : null}

@@ -342,6 +342,18 @@ html.theme-transition .theme-toggle-thumb {
   button:not(:disabled) {
     cursor: pointer;
   }
+  /* Icon and linked images never start a native drag gesture: dragging a
+     button's icon does nothing useful and breaks the click feel. */
+  button img,
+  a img {
+    -webkit-user-drag: none;
+    user-select: none;
+  }
+  /* Avatar and profile-picture initial badges are decorative identity chips,
+     their letters are not content to copy. */
+  .avatar-initial {
+    user-select: none;
+  }
   /* The next/font variables are declared on <body>, and Tailwind's own
      preflight sets font-family on <html>, where those variables don't
      resolve. Applying font-sans here is what actually puts Space Grotesk on

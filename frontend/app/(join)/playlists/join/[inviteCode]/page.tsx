@@ -117,7 +117,7 @@ export default function JoinPlaylistPage({ params }: PageProps) {
               {(invitePreview?.members ?? []).slice(0, 4).map((member) => (
                 <span
                   key={member.userId}
-                  className="flex size-6 items-center justify-center rounded-full border-2 border-background bg-primary font-display text-[8px] text-primary-foreground"
+                  className="avatar-initial flex size-6 items-center justify-center rounded-full border-2 border-background bg-primary font-display text-[8px] text-primary-foreground"
                 >
                   {(member.displayName || member.username || "?").charAt(0).toUpperCase()}
                 </span>
@@ -145,7 +145,7 @@ export default function JoinPlaylistPage({ params }: PageProps) {
                   className="size-full object-cover"
                 />
               ) : (
-                <div className="flex size-full items-center justify-center bg-primary font-display text-xl text-primary-foreground">
+                <div className="avatar-initial flex size-full items-center justify-center bg-primary font-display text-xl text-primary-foreground">
                   {avatarInitial}
                 </div>
               )}

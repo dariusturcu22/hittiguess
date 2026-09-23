@@ -128,7 +128,7 @@ export default function JoinGroupPage({ params }: PageProps) {
                   className="size-full object-cover"
                 />
               ) : (
-                <div className="flex size-full items-center justify-center bg-primary font-display text-xl text-primary-foreground">
+                <div className="avatar-initial flex size-full items-center justify-center bg-primary font-display text-xl text-primary-foreground">
                   {avatarInitial}
                 </div>
               )}
