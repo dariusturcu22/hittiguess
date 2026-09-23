@@ -9,7 +9,7 @@ from app.dedup.schemas import VerifiedSongMatch
 from app.metadata import content_safety
 from app.metadata.content_safety_prompts import build_precheck_prompt
 from app.metadata.llm import extract_structured
-from app.metadata.schemas import MetadataResolveResponse, SongMetadataResult, SubmissionPreCheckResult
+from app.metadata.schemas import MetadataResolveResponse, SongMetadataResult, SubmissionPreCheckResult, VideoInfoItem
 from app.metadata.sources import discogs, musicbrainz, wikidata, wikipedia, youtube
 from app.metadata.sources.util import clean_youtube_text, extract_youtube_playlist_id, strip_featured_artist_suffix
 from app.metadata.verification import (
@@ -234,6 +234,18 @@ def expand_playlist(playlist_url_or_id: str) -> list[str]:
             f"Not a valid YouTube playlist link or id: {playlist_url_or_id}"
         )
     return youtube.fetch_playlist_video_ids(playlist_id)
+
+
+def fetch_video_info(video_ids: list[str]) -> list[VideoInfoItem]:
+    """Best-effort raw title and channel name per video id, for display
+    before the metadata pipeline resolves a submission. An id YouTube
+    doesn't recognize, or one dropped by a failed batch call, is left out
+    of the result rather than defaulted here."""
+    video_info_by_id = youtube.fetch_video_titles_and_channels(video_ids)
+    return [
+        VideoInfoItem(video_id=video_id, title=info["title"], channel_title=info["channel_title"])
+        for video_id, info in video_info_by_id.items()
+    ]
 
 
 def resolve_metadata(youtube_url: str) -> MetadataResolveResponse:
