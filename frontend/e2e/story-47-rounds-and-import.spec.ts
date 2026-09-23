@@ -68,7 +68,7 @@ async function login(browser: Browser, account: TestAccount): Promise<Page> {
 
   await page.goto(LOGIN_PATH);
   await page.getByLabel("Email").fill(account.email);
-  await page.getByLabel("Password").fill(account.password);
+  await page.getByLabel("Password", { exact: true }).fill(account.password);
   await page.getByRole("button", { name: "Log in" }).click();
   await page.waitForURL(PLAYLISTS_PATH);
 
@@ -165,22 +165,18 @@ async function readSession(page: Page, sessionId: number): Promise<SessionRespon
   return response.json() as Promise<SessionResponse>;
 }
 
-async function waitForRoundOneDecided(page: Page, sessionId: number): Promise<void> {
+// The scored round holds on its reveal before the next one starts, so round 2 existing
+// is what proves round 1 fully resolved.
+async function waitForRoundTwo(page: Page, sessionId: number): Promise<void> {
   const deadline = Date.now() + REVEAL_WAIT_TIMEOUT_MILLISECONDS;
   for (;;) {
     const session = await readSession(page, sessionId);
     const round = session.currentRound;
-    // The reveal and scoring pass in one server-side chain, so a 2-second poll
-    // can land past them: round 2 starting proves round 1 fully resolved too.
-    if (
-      round !== null &&
-      ((round.roundNumber === 1 && (round.status === "REVEALED" || round.status === "SCORED")) ||
-        round.roundNumber > 1)
-    ) {
+    if (round !== null && round.roundNumber > 1) {
       return;
     }
     if (Date.now() > deadline) {
-      throw new Error(`Round 1 did not resolve in time, stuck on ${round?.status ?? "no round"}`);
+      throw new Error(`Round 2 did not start in time, round 1 stuck on ${round?.status ?? "no round"}`);
     }
     await page.waitForTimeout(REVEAL_POLL_INTERVAL_MILLISECONDS);
   }
@@ -241,10 +237,10 @@ test("two players complete a full round to the reveal", async ({ browser }) => {
 
     await activePage.getByRole("button", { name: "Your card. Choose a timeline position." }).focus();
     await activePage.keyboard.press("Enter");
-    await activePage.getByRole("button", { name: /Place card at timeline position/ }).first().click();
-    await expect(activePage.getByText("Card placed. Waiting for the reveal.")).toBeVisible();
+    await activePage.getByRole("button", { name: "Lock in answer" }).click();
+    await expect(activePage.getByText("Card locked in")).toBeVisible();
 
-    await waitForRoundOneDecided(adminPage, sessionId);
+    await waitForRoundTwo(adminPage, sessionId);
 
     for (const page of [adminPage, memberPage]) {
       await page.reload();

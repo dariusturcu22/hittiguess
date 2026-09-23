@@ -27,7 +27,7 @@ const RESULTS_FILE_NAME = `hittiguess-results-${RESULTS_SESSION_ID}.csv`;
 const GAMEPLAY_SESSION_ID = 779;
 const GAMEPLAY_SESSION_API_PATH = `/api/sessions/${GAMEPLAY_SESSION_ID}`;
 const CURRENT_USER_API_PATH = "/api/users/me";
-const LINK_OUT_API_PATH = `/api/sessions/${GAMEPLAY_SESSION_ID}/round/link-out`;
+const LINK_OUT_API_PATH = `/api/sessions/${GAMEPLAY_SESSION_ID}/link-out`;
 const PLAYER_ID = 10;
 const DJ_ID = 20;
 
@@ -62,7 +62,7 @@ async function login(browser: Browser, account: TestAccount): Promise<Page> {
 
   await page.goto(LOGIN_PATH);
   await page.getByLabel("Email").fill(account.email);
-  await page.getByLabel("Password").fill(account.password);
+  await page.getByLabel("Password", { exact: true }).fill(account.password);
   await page.getByRole("button", { name: "Log in" }).click();
   await page.waitForURL(PLAYLISTS_PATH);
 
@@ -255,13 +255,14 @@ test("gameplay shell renders placement, betting, and DJ link-out states", async 
       currentRound: { roundNumber: 4, activePlayerId: PLAYER_ID, djPlayerId: DJ_ID, status: "AWAITING_PLACEMENT" },
     } }));
     await page.goto(`/sessions/${GAMEPLAY_SESSION_ID}`);
-    const card = page.locator('[draggable="true"]');
+    const card = page.getByRole("button", { name: "Your card. Choose a timeline position." });
     await expect(card).toBeVisible();
     await page.getByRole("button", { name: "Open chat" }).click();
     await expect(page.getByRole("heading", { name: "Chat" })).toBeVisible();
     await page.getByRole("complementary").getByRole("button", { name: "Close chat" }).click();
-    await card.dispatchEvent("dragstart");
-    await expect(page.getByRole("button", { name: "Place card at timeline position 1" })).toBeVisible();
+    await card.focus();
+    await page.keyboard.press("Enter");
+    await expect(page.getByRole("button", { name: "Lock in answer" })).toBeVisible();
 
     await page.unroute(`**${GAMEPLAY_SESSION_API_PATH}`);
     await page.route(`**${GAMEPLAY_SESSION_API_PATH}`, (route) => route.fulfill({ json: {
@@ -270,10 +271,9 @@ test("gameplay shell renders placement, betting, and DJ link-out states", async 
       currentRound: { roundNumber: 4, activePlayerId: DJ_ID, djPlayerId: DJ_ID, status: "BETTING" },
     } }));
     await page.reload();
-    await page.getByRole("button", { name: "Use 1 token to bet" }).click();
-    await expect(page.getByRole("button", { name: "Choose a timeline gap" })).toBeVisible();
-    await page.getByRole("button", { name: "Skip betting" }).click();
-    await expect(page.getByText("Betting skipped. Waiting for the reveal.")).toBeVisible();
+    await expect(page.getByText("Drag a token into a gap you think is right")).toBeVisible();
+    await expect(page.getByText("Betting closes")).toBeVisible();
+    await expect(page.getByRole("button", { name: "Skip betting" })).toBeVisible();
 
     await page.unroute(`**${CURRENT_USER_API_PATH}`);
     await page.route(`**${CURRENT_USER_API_PATH}`, (route) => route.fulfill({ json: { id: DJ_ID } }));
@@ -286,11 +286,9 @@ test("gameplay shell renders placement, betting, and DJ link-out states", async 
     await page.route(`**${LINK_OUT_API_PATH}`, (route) => route.fulfill({
       json: { watchUrl: "https://www.youtube.com/watch?v=dQw4w9WgXcQ" },
     }));
-    await page.addInitScript(() => {
-      window.open = () => null;
-    });
     await page.goto(`/sessions/${GAMEPLAY_SESSION_ID}`);
-    await page.getByRole("button", { name: "Open on YouTube to play" }).click();
+    const youtubeLink = page.getByRole("link", { name: "Open on YouTube to play" });
+    await expect(youtubeLink).toHaveAttribute("target", "_blank");
     await expect(page.getByText("Shares your tab or system audio with the group.")).toBeVisible();
   } finally {
     await page.context().close();
