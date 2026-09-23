@@ -6,6 +6,7 @@ import org.dariusturcu.backend.model.group.CreateGroupRequest;
 import org.dariusturcu.backend.model.group.DjMode;
 import org.dariusturcu.backend.model.group.Group;
 import org.dariusturcu.backend.model.group.GroupDetailDTO;
+import org.dariusturcu.backend.model.group.GroupInvitePreviewDTO;
 import org.dariusturcu.backend.model.group.GroupStatus;
 import org.dariusturcu.backend.model.group.JoinGroupRequest;
 import org.dariusturcu.backend.model.group.Member;
@@ -205,6 +206,27 @@ class GroupServiceTest {
 
         assertThatThrownBy(() -> groupService.joinGroup(new JoinGroupRequest(null, null, null, null)))
                 .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    void getInvitePreviewReturnsMemberCountAndMembersForAValidCode() {
+        Group group = groupWithAdmin();
+        when(groupRepository.findByInviteCode("invite-code")).thenReturn(Optional.of(group));
+
+        GroupInvitePreviewDTO result = groupService.getInvitePreview("invite-code");
+
+        assertThat(result.memberCount()).isEqualTo(1);
+        assertThat(result.members()).hasSize(1);
+        assertThat(result.members().getFirst().displayName()).isEqualTo("admin-user");
+        assertThat(result.members().getFirst().isAdmin()).isTrue();
+    }
+
+    @Test
+    void getInvitePreviewRejectsAnUnknownInviteCode() {
+        when(groupRepository.findByInviteCode("unknown-code")).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> groupService.getInvitePreview("unknown-code"))
+                .isInstanceOf(ResourceNotFoundException.class);
     }
 
     @Test

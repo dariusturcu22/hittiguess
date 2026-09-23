@@ -259,6 +259,38 @@ describe("GroupLobbyPage start options", () => {
     expect(screen.queryByText("Cards to win")).toBeNull();
   });
 
+  it("keeps only one popup open at a time", async () => {
+    await renderPage();
+
+    fireEvent.click(screen.getByRole("button", { name: "Settings" }));
+    expect(screen.getByText("Cards to win")).toBeVisible();
+
+    fireEvent.click(screen.getByRole("button", { name: "Choose playlists" }));
+    expect(screen.queryByText("Cards to win")).toBeNull();
+    expect(screen.getByRole("button", { name: "Generate" })).toBeVisible();
+
+    fireEvent.click(screen.getByRole("button", { name: "Settings" }));
+    expect(screen.queryByRole("button", { name: "Generate" })).toBeNull();
+    expect(screen.getByText("Cards to win")).toBeVisible();
+
+    fireEvent.click(screen.getByRole("button", { name: "Chat" }));
+    expect(screen.queryByText("Cards to win")).toBeNull();
+    expect(screen.getByLabelText("Chat")).toBeVisible();
+  });
+
+  it("closes every popup when the session starts", async () => {
+    startSessionMutate.mockImplementation((_args, options) => options?.onSuccess?.({}));
+    await renderPage();
+
+    fireEvent.click(screen.getByRole("button", { name: "Settings" }));
+    expect(screen.getByText("Cards to win")).toBeVisible();
+
+    fireEvent.click(screen.getByRole("button", { name: "Start game" }));
+
+    expect(startSessionMutate).toHaveBeenCalled();
+    expect(screen.queryByText("Cards to win")).toBeNull();
+  });
+
   it("asks for confirmation before leaving the lobby", async () => {
     await renderPage();
 

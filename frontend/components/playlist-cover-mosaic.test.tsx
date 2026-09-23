@@ -16,6 +16,22 @@ describe("PlaylistCoverMosaic", () => {
     expect(thumbnails[0]).toHaveClass("object-cover");
   });
 
+  it("over-zooms thumbnails past baked-in letterbox bars", () => {
+    render(<PlaylistCoverMosaic previewYoutubeIds={["abc12345678", "def12345678"]} />);
+
+    for (const thumbnail of screen.getAllByRole("presentation", { hidden: true })) {
+      expect(thumbnail).toHaveClass("scale-[1.35]");
+    }
+  });
+
+  it("leaves a custom cover unscaled", () => {
+    const { container } = render(
+      <PlaylistCoverMosaic previewYoutubeIds={[]} customCoverUrl="https://example.com/cover.png" />,
+    );
+
+    expect(container.querySelector("img")).not.toHaveClass("scale-[1.35]");
+  });
+
   it("renders four placeholders when the playlist is empty", () => {
     const { container } = render(<PlaylistCoverMosaic previewYoutubeIds={[]} />);
 

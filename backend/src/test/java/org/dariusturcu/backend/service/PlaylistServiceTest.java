@@ -251,7 +251,7 @@ class PlaylistServiceTest {
         Song newSong = new Song();
         newSong.setId(SONG_ID);
         SongMetadataResponse metadata = new SongMetadataResponse(
-                "Title", "Artist", 2000, "abcdef", "high", "sources", "matched", "VERIFIED", RESOLVED_SITELINKS_COUNT);
+                "Title", List.of("Artist"), List.of(), 2000, "abcdef", "high", "sources", "matched", "VERIFIED", RESOLVED_SITELINKS_COUNT);
         AiResponse response = new AiResponse(metadata, null, 0L, null, "SUCCESS", null, null);
         when(songRepository.findByYoutubeId(request.youtubeId())).thenReturn(List.of());
         when(songMapper.toEntity(request)).thenReturn(newSong);
@@ -273,7 +273,7 @@ class PlaylistServiceTest {
         Song newSong = new Song();
         newSong.setId(SONG_ID);
         SongMetadataResponse metadata = new SongMetadataResponse(
-                "Original title", "Artist", 2000, "abcdef", "high", "sources", "matched", "VERIFIED", null);
+                "Original title", List.of("Artist"), List.of(), 2000, "abcdef", "high", "sources", "matched", "VERIFIED", null);
         AiResponse response = new AiResponse(metadata, null, 0L, null, "SUCCESS", null, null);
         when(songRepository.findByYoutubeId(request.youtubeId())).thenReturn(List.of());
         when(songMapper.toEntity(request)).thenReturn(newSong);
@@ -573,6 +573,44 @@ class PlaylistServiceTest {
         var result = playlistService.getPublicPlaylists();
 
         assertThat(result).containsExactly(summary);
+    }
+
+    @Test
+    void getPublicPlaylistsExcludesPlaylistsTheCallerOwns() {
+        Playlist ownedPlaylist = new Playlist();
+        ownedPlaylist.setId(98L);
+        ownedPlaylist.setPublic(true);
+        ownedPlaylist.setOwner(currentUser);
+
+        when(playlistRepository.findByIsPublicTrue()).thenReturn(List.of(ownedPlaylist));
+
+        assertThat(playlistService.getPublicPlaylists()).isEmpty();
+    }
+
+    @Test
+    void getPublicPlaylistsExcludesPlaylistsTheCallerHasJoined() {
+        Playlist joinedPlaylist = new Playlist();
+        joinedPlaylist.setId(97L);
+        joinedPlaylist.setPublic(true);
+
+        when(playlistRepository.findByIsPublicTrue()).thenReturn(List.of(joinedPlaylist));
+        when(playlistMembershipRepository.existsByPlaylistIdAndUserId(97L, OWNER_ID)).thenReturn(true);
+
+        assertThat(playlistService.getPublicPlaylists()).isEmpty();
+    }
+
+    @Test
+    void getPublicPlaylistsChecksMembershipThroughTheRepository() {
+        Playlist publicPlaylist = new Playlist();
+        publicPlaylist.setId(99L);
+        publicPlaylist.setPublic(true);
+
+        when(playlistRepository.findByIsPublicTrue()).thenReturn(List.of(publicPlaylist));
+        when(playlistMembershipRepository.existsByPlaylistIdAndUserId(99L, OWNER_ID)).thenReturn(false);
+
+        playlistService.getPublicPlaylists();
+
+        verify(playlistMembershipRepository).existsByPlaylistIdAndUserId(99L, OWNER_ID);
     }
 
     @Test

@@ -3,6 +3,7 @@ package org.dariusturcu.backend.controller;
 import jakarta.validation.Valid;
 import org.dariusturcu.backend.model.group.CreateGroupRequest;
 import org.dariusturcu.backend.model.group.GroupDetailDTO;
+import org.dariusturcu.backend.model.group.GroupInvitePreviewDTO;
 import org.dariusturcu.backend.model.group.JoinGroupRequest;
 import org.dariusturcu.backend.model.group.UpdateGroupSettingsRequest;
 import org.dariusturcu.backend.model.session.GenerateDifficultySetRequest;
@@ -45,6 +46,14 @@ public class GroupController {
             @Valid @RequestBody JoinGroupRequest request) {
         GroupDetailDTO group = groupService.joinGroup(request);
         return ResponseEntity.ok(group);
+    }
+
+    @Operation(summary = "Preview a group by invite code, no membership or authentication required")
+    @GetMapping("/invites/{inviteCode}/preview")
+    public ResponseEntity<GroupInvitePreviewDTO> getInvitePreview(
+            @PathVariable String inviteCode) {
+        GroupInvitePreviewDTO preview = groupService.getInvitePreview(inviteCode);
+        return ResponseEntity.ok(preview);
     }
 
     @Operation(summary = "Check the logged-in user's active group membership, if any")

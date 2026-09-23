@@ -109,7 +109,7 @@ describe("PlaylistContent detail states", () => {
     expect(screen.queryByPlaceholderText("Search songs...")).toBeNull();
   });
 
-  it("renders pending import songs greyed with hover progress", async () => {
+  it("links pending imports to the progress page", async () => {
     activeImportResponse = {
       isError: false,
       data: {
@@ -125,10 +125,11 @@ describe("PlaylistContent detail states", () => {
     };
     await renderContent();
 
-    expect(screen.getByText("Importing 2 songs in the background...")).toBeVisible();
-    expect(screen.getByTitle("2 of 3 songs imported so far.")).toBeVisible();
-    expect(screen.getByTitle("Resolving song details...")).toBeVisible();
-    expect(screen.getByTitle("This video could not be matched to a song.")).toBeVisible();
+    expect(screen.getByText(/Importing 2 songs in the background/)).toBeVisible();
+    expect(screen.getByRole("link", { name: /Importing 2 songs in the background/ })).toHaveAttribute(
+      "href",
+      "/playlists/7/import/youtube",
+    );
   });
 
   it("builds a ready invite message for the code action", () => {
@@ -172,7 +173,7 @@ describe("PlaylistContent detail states", () => {
   it("opens the full member list from the avatar stack", async () => {
     await renderContent();
 
-    fireEvent.click(screen.getByText("Members (2)"));
+    fireEvent.click(screen.getByRole("button", { name: "Members (2)" }));
 
     expect(screen.getByText("Alex")).toBeVisible();
     expect(screen.getByText("Sam")).toBeVisible();
@@ -195,11 +196,16 @@ describe("PlaylistContent detail states", () => {
     const createObjectUrl = vi.fn(() => "blob:export-url");
     Object.defineProperty(URL, "createObjectURL", { value: createObjectUrl, configurable: true });
     Object.defineProperty(URL, "revokeObjectURL", { value: vi.fn(), configurable: true });
+    playlistSongs = [
+      { id: 1, title: "Song One", artists: [{ name: "Artist One" }], youtubeId: "video-1" },
+    ];
     await renderContent();
 
     fireEvent.click(screen.getByTitle("Export cards"));
-    fireEvent.change(screen.getByLabelText("Cards"), { target: { value: "qr" } });
-    fireEvent.change(screen.getByLabelText("Paper"), { target: { value: "LETTER" } });
+    fireEvent.click(screen.getByRole("combobox", { name: "Cards" }));
+    fireEvent.click(screen.getByRole("option", { name: "QR cards (manual duplex)" }));
+    fireEvent.click(screen.getByRole("combobox", { name: "Paper" }));
+    fireEvent.click(screen.getByRole("option", { name: "Letter" }));
     fireEvent.click(screen.getByRole("button", { name: "Download PDF" }));
 
     await waitFor(() =>
@@ -211,7 +217,7 @@ describe("PlaylistContent detail states", () => {
     vi.unstubAllGlobals();
   });
 
-  it("exports the combined info+QR cards on the new paper sizes", async () => {
+  it("exports the single file duplex cards on the new paper sizes", async () => {
     const fetchMock = vi.fn(async () => ({
       ok: true,
       blob: async () => new Blob(["pdf"], { type: "application/pdf" }),
@@ -220,19 +226,34 @@ describe("PlaylistContent detail states", () => {
     const createObjectUrl = vi.fn(() => "blob:export-url");
     Object.defineProperty(URL, "createObjectURL", { value: createObjectUrl, configurable: true });
     Object.defineProperty(URL, "revokeObjectURL", { value: vi.fn(), configurable: true });
+    playlistSongs = [
+      { id: 1, title: "Song One", artists: [{ name: "Artist One" }], youtubeId: "video-1" },
+    ];
     await renderContent();
 
     fireEvent.click(screen.getByTitle("Export cards"));
-    fireEvent.change(screen.getByLabelText("Cards"), { target: { value: "combined" } });
-    fireEvent.change(screen.getByLabelText("Paper"), { target: { value: "A3" } });
+    fireEvent.click(screen.getByRole("combobox", { name: "Cards" }));
+    fireEvent.click(screen.getByRole("option", { name: "Single file (auto duplex)" }));
+    fireEvent.click(screen.getByRole("combobox", { name: "Paper" }));
+    fireEvent.click(screen.getByRole("option", { name: "A3" }));
     fireEvent.click(screen.getByRole("button", { name: "Download PDF" }));
 
     await waitFor(() =>
       expect(fetchMock).toHaveBeenCalledWith(
-        expect.stringContaining("/api/playlists/7/export/combined?paperSize=A3"),
+        expect.stringContaining("/api/playlists/7/export/duplex?paperSize=A3"),
         expect.anything(),
       ),
     );
     vi.unstubAllGlobals();
+  });
+
+  it("refuses to open the export dialog for an empty playlist", async () => {
+    const { toast } = await import("sonner");
+    await renderContent();
+
+    fireEvent.click(screen.getByTitle("Export cards"));
+
+    expect(toast.error).toHaveBeenCalledWith("Can't export an empty playlist");
+    expect(screen.queryByRole("button", { name: "Download PDF" })).toBeNull();
   });
 });

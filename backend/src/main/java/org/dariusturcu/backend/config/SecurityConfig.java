@@ -111,6 +111,7 @@ public class SecurityConfig {
                                 "/v3/api-docs",
                                 "/api/enums/**",
                                 "/api/playlists/invites/*/preview",
+                                "/api/groups/invites/*/preview",
                                 "/api/playlists/*/cover",
                                 "/api/users/*/avatar",
                                 "/api/ground-truth/**",

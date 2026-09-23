@@ -58,7 +58,7 @@ class SongMetadataServiceTest {
     void successfulResolutionPassesThroughContent() {
         expectResolveCallReturning("""
                 {"status":"SUCCESS","model":"gpt-5.1","content":{
-                  "title":"Title","artist":"Artist","release_year":1999,
+                  "title":"Title","main_artists":["Artist"],"featured_artists":["Guest"],"release_year":1999,
                   "color":"8B5CF6",
                   "confidence":"high","source":"MusicBrainz","reasoning":"Matched."}}
                 """);
@@ -68,6 +68,8 @@ class SongMetadataServiceTest {
         assertThat(result.status()).isEqualTo("SUCCESS");
         assertThat(result.content()).isNotNull();
         assertThat(result.content().title()).isEqualTo("Title");
+        assertThat(result.content().mainArtists()).containsExactly("Artist");
+        assertThat(result.content().featuredArtists()).containsExactly("Guest");
         assertThat(result.rejectionReason()).isNull();
         assertThat(songMetadataService.findCachedPreview("dQw4w9WgXcQ")).contains(result);
         mockServer.verify();

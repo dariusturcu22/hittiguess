@@ -20,6 +20,7 @@ import {
   Hash,
   Crown,
   ChevronDown,
+  LoaderCircle,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -59,6 +60,13 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { PlaylistCoverMosaic } from "@/components/playlist-cover-mosaic";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/shadcn/popover";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/shadcn/select";
 import { useActiveImport } from "@/hooks/generated/playlist-import-jobs/playlist-import-jobs";
 import { playlistTitleColor } from "@/lib/playlist-colors";
 import { copyText } from "@/lib/clipboard";
@@ -67,6 +75,7 @@ import { PhantomEmptyState } from "@/components/phantom-empty-state";
 const ACTIVE_IMPORT_REFRESH_MILLISECONDS = 5_000;
 
 const MEMBER_STACK_VISIBLE_COUNT = 3;
+const MEMBER_STACK_TRIGGER_AVATAR_SIZE = 34;
 const MEMBER_AVATAR_COLORS = [
   "var(--primary)",
   "#89b4fa",
@@ -97,7 +106,7 @@ function MemberAvatar({
 }) {
   return (
     <div
-      className="flex shrink-0 items-center justify-center rounded-full border-[3px] border-card font-display text-accent-foreground"
+      className="avatar-initial flex shrink-0 items-center justify-center rounded-full border-[3px] border-card font-display text-accent-foreground"
       style={{
         width: size,
         height: size,
@@ -130,14 +139,20 @@ export default function PlaylistContent({
   );
   const finishedImportCount = activeImportItems.filter((item) => item.status !== "PENDING").length;
   const hadRunningImport = React.useRef(false);
+  const lastFinishedImportCount = React.useRef(0);
   React.useEffect(() => {
     if (activeImportQuery.data && !activeImportQuery.isError) {
       hadRunningImport.current = true;
+      if (finishedImportCount > lastFinishedImportCount.current) {
+        lastFinishedImportCount.current = finishedImportCount;
+        void queryClient.invalidateQueries({ queryKey: getGetPlaylistQueryKey(playlistId) });
+      }
     } else if (hadRunningImport.current && (activeImportQuery.isError || !activeImportQuery.data)) {
       hadRunningImport.current = false;
+      lastFinishedImportCount.current = 0;
       void queryClient.invalidateQueries({ queryKey: getGetPlaylistQueryKey(playlistId) });
     }
-  }, [activeImportQuery.data, activeImportQuery.isError, playlistId, queryClient]);
+  }, [activeImportQuery.data, activeImportQuery.isError, finishedImportCount, playlistId, queryClient]);
 
   const { mutate: removeSong } = useDeleteSong();
   const { mutate: leavePlaylist } = useLeavePlaylist();
@@ -146,10 +161,24 @@ export default function PlaylistContent({
   const [linkCopied, setLinkCopied] = React.useState(false);
   const [codeCopied, setCodeCopied] = React.useState(false);
   const [isExportOpen, setIsExportOpen] = React.useState(false);
-  const [exportContent, setExportContent] = React.useState<"info" | "qr" | "combined">("info");
+  const [exportContent, setExportContent] = React.useState<"info" | "qr" | "duplex">("info");
   const [exportPaperSize, setExportPaperSize] = React.useState<"A4" | "LETTER" | "LEGAL" | "A3" | "A5" | "TABLOID">("A4");
   const [isExporting, setIsExporting] = React.useState(false);
   const [exportError, setExportError] = React.useState("");
+  const exportContentLabel = exportContent === "info"
+    ? "Info cards"
+    : exportContent === "qr"
+      ? "QR cards (manual duplex)"
+      : "Single file (auto duplex)";
+
+  function openExportDialog() {
+    if (songs.length === 0) {
+      toast.error("Can't export an empty playlist");
+      return;
+    }
+    setExportError("");
+    setIsExportOpen(true);
+  }
 
   const handleDeleteSong = (songId: number) => {
     removeSong(
@@ -343,46 +372,52 @@ export default function PlaylistContent({
               </DropdownMenu>
 
               <AlertDialog open={isExportOpen} onOpenChange={setIsExportOpen}>
-                <AlertDialogTrigger asChild>
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    className="size-[46px] rounded-[13px]"
-                    title="Export cards"
-                    onClick={() => {
-                      setExportError("");
-                    }}
-                  >
-                    <FileDown className="size-4" />
-                  </Button>
-                </AlertDialogTrigger>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="size-[46px] rounded-[13px]"
+                  title="Export cards"
+                  onClick={openExportDialog}
+                >
+                  <FileDown className="size-4" />
+                </Button>
                 <AlertDialogContent>
                   <AlertDialogHeader>
                     <AlertDialogTitle>Export cards</AlertDialogTitle>
                     <AlertDialogDescription>
-                      {songs.length} songs · {exportContent === "info" ? "Info cards" : exportContent === "qr" ? "QR cards" : "Combined info+QR cards"} · {exportPaperSize}
+                      {songs.length} songs · {exportContentLabel} · {exportPaperSize}
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <div className="flex flex-wrap items-center gap-4">
-                    <label className="flex items-center gap-2 text-[13px] text-muted-foreground">
-                      Cards
-                      <select value={exportContent} onChange={(event) => setExportContent(event.target.value as "info" | "qr" | "combined")} className="rounded-full border-2 border-border bg-background px-3 py-1.5 text-sm font-semibold text-foreground outline-none">
-                        <option value="info">Info cards</option>
-                        <option value="qr">QR cards</option>
-                        <option value="combined">Combined info+QR cards</option>
-                      </select>
-                    </label>
-                    <label className="flex items-center gap-2 text-[13px] text-muted-foreground">
-                      Paper
-                      <select value={exportPaperSize} onChange={(event) => setExportPaperSize(event.target.value as "A4" | "LETTER" | "LEGAL" | "A3" | "A5" | "TABLOID")} className="rounded-full border-2 border-border bg-background px-3 py-1.5 text-sm font-semibold text-foreground outline-none">
-                        <option value="A4">A4</option>
-                        <option value="LETTER">Letter</option>
-                        <option value="LEGAL">Legal</option>
-                        <option value="A3">A3</option>
-                        <option value="A5">A5</option>
-                        <option value="TABLOID">Tabloid</option>
-                      </select>
-                    </label>
+                    <div className="flex items-center gap-2 text-[13px] text-muted-foreground">
+                      <span id="export-cards-label">Cards</span>
+                      <Select value={exportContent} onValueChange={(value) => setExportContent(value as "info" | "qr" | "duplex")}>
+                        <SelectTrigger aria-labelledby="export-cards-label" className="w-[240px] rounded-full border-2 border-border bg-background">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="info">Info cards</SelectItem>
+                          <SelectItem value="qr">QR cards (manual duplex)</SelectItem>
+                          <SelectItem value="duplex">Single file (auto duplex)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="flex items-center gap-2 text-[13px] text-muted-foreground">
+                      <span id="export-paper-label">Paper</span>
+                      <Select value={exportPaperSize} onValueChange={(value) => setExportPaperSize(value as "A4" | "LETTER" | "LEGAL" | "A3" | "A5" | "TABLOID")}>
+                        <SelectTrigger aria-labelledby="export-paper-label" className="w-[140px] rounded-full border-2 border-border bg-background">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="A4">A4</SelectItem>
+                          <SelectItem value="LETTER">Letter</SelectItem>
+                          <SelectItem value="LEGAL">Legal</SelectItem>
+                          <SelectItem value="A3">A3</SelectItem>
+                          <SelectItem value="A5">A5</SelectItem>
+                          <SelectItem value="TABLOID">Tabloid</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
                   </div>
                   {exportError ? <p role="alert" className="text-sm text-destructive">{exportError}</p> : null}
                   <AlertDialogFooter>
@@ -433,19 +468,24 @@ export default function PlaylistContent({
 
         <aside className="w-[260px] shrink-0 rounded-2xl border-[3px] border-border-strong bg-card p-4 shadow-lg">
           <Popover>
-            <PopoverTrigger className="flex w-full items-center justify-between gap-3 rounded-lg text-left outline-none transition-colors hover:bg-secondary/50 focus-visible:ring-2 focus-visible:ring-ring">
-              <span className="font-display text-[11px] text-muted-foreground">Members ({playlist.members.length})</span>
+            <PopoverTrigger
+              aria-label={`Members (${playlist.members.length})`}
+              className="flex cursor-pointer items-center outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
               <span className="flex -space-x-2">
                 {playlist.members.slice(0, MEMBER_STACK_VISIBLE_COUNT).map((member, index) => (
                   <MemberAvatar
                     key={member.userId ?? index}
                     initial={(member.displayName ?? member.username ?? "?").charAt(0).toUpperCase()}
                     color={MEMBER_AVATAR_COLORS[index % MEMBER_AVATAR_COLORS.length]}
-                    size={26}
+                    size={MEMBER_STACK_TRIGGER_AVATAR_SIZE}
                   />
                 ))}
                 {playlist.members.length > MEMBER_STACK_VISIBLE_COUNT ? (
-                  <span className="flex size-[26px] shrink-0 items-center justify-center rounded-full border-[3px] border-card bg-muted font-display text-[10px] text-muted-foreground">
+                  <span
+                    className="avatar-initial flex shrink-0 items-center justify-center rounded-full border-[3px] border-card bg-muted font-display text-[10px] text-muted-foreground"
+                    style={{ width: MEMBER_STACK_TRIGGER_AVATAR_SIZE, height: MEMBER_STACK_TRIGGER_AVATAR_SIZE }}
+                  >
                     +{playlist.members.length - MEMBER_STACK_VISIBLE_COUNT}
                   </span>
                 ) : null}
@@ -540,31 +580,19 @@ export default function PlaylistContent({
       )}
 
       {pendingImportItems.length > 0 ? (
-        <div
-          className="mb-3.5 rounded-[13px] border-2 border-dashed border-border bg-card px-4.5 py-3"
+        <Link
+          href={`/playlists/${playlistId}/import/youtube`}
+          className="mb-3.5 flex items-center gap-2.5 rounded-[13px] border-2 border-dashed border-border bg-card px-4 py-3"
           title={`${finishedImportCount} of ${activeImportItems.length} songs imported so far.`}
         >
-          <div className="text-[13px] font-semibold text-card-foreground">
-            Importing {pendingImportItems.length} song{pendingImportItems.length === 1 ? "" : "s"} in the background...
-          </div>
-          <div className="mt-2.5 grid grid-cols-4 gap-2 sm:grid-cols-6">
-            {pendingImportItems.map((item) => (
-              <div
-                key={item.youtubeId}
-                className="opacity-45 grayscale"
-                title={item.status === "UNRESOLVED" ? "This video could not be matched to a song." : "Resolving song details..."}
-              >
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={`https://i.ytimg.com/vi/${item.youtubeId}/default.jpg`}
-                  alt=""
-                  loading="lazy"
-                  className="aspect-video w-full rounded-lg object-cover"
-                />
-              </div>
-            ))}
-          </div>
-        </div>
+          <LoaderCircle className="size-4 shrink-0 animate-spin text-primary" />
+          <span className="text-[13px] text-card-foreground">
+            <strong>
+              Importing {pendingImportItems.length} song{pendingImportItems.length === 1 ? "" : "s"} in the background...
+            </strong>{" "}
+            <span className="text-muted-foreground underline underline-offset-4">Follow progress</span>
+          </span>
+        </Link>
       ) : null}
 
       <div className="flex min-h-0 w-full min-w-0 flex-1 flex-col overflow-hidden rounded-2xl border-[3px] border-border-strong bg-card shadow-lg">

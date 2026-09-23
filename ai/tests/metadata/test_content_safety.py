@@ -9,7 +9,7 @@ from app.metadata.schemas import RejectionReason, SubmissionPreCheckResult
 def _precheck(**overrides) -> SubmissionPreCheckResult:
     fields = {
         "title": "Clean Song Title",
-        "artist": "Real Artist",
+        "main_artists": ["Real Artist"],
         "color": "8B5CF6",
         "contains_injection_attempt": False,
         "injection_reasoning": "Ordinary song text.",

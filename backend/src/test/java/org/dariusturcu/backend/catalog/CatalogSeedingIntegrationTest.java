@@ -164,7 +164,7 @@ class CatalogSeedingIntegrationTest {
                 return new AiResponse(null, "stub-model", 0, LocalDateTime.now(), "ERROR", null, null);
             }
             SongMetadataResponse content = new SongMetadataResponse(
-                    "Title for " + youtubeId, "Artist for " + youtubeId, 1999,
+                    "Title for " + youtubeId, List.of("Artist for " + youtubeId), List.of(), 1999,
                     "111111", "high", "musicbrainz", "stubbed", "NEEDS_REVIEW", null);
             return new AiResponse(content, "stub-model", 0, LocalDateTime.now(), "SUCCESS", null, null);
         }

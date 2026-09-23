@@ -34,6 +34,22 @@ import {
 import { GameCard } from "@/components/game-card";
 import { needsUserAttention } from "@/lib/song-attention";
 
+const REPORT_MESSAGE_MIN_LENGTH = 10;
+const REPORT_YEAR_MIN = 1000;
+
+export function validateReportFields(message: string, yearInput: string): string | null {
+  if (message.trim().length < REPORT_MESSAGE_MIN_LENGTH) {
+    return `Describe what's wrong in a little more detail (at least ${REPORT_MESSAGE_MIN_LENGTH} characters).`;
+  }
+  if (yearInput) {
+    const parsedYear = parseInt(yearInput);
+    if (Number.isNaN(parsedYear) || parsedYear < REPORT_YEAR_MIN || parsedYear > new Date().getFullYear()) {
+      return "Enter a plausible year for the correction.";
+    }
+  }
+  return null;
+}
+
 interface SongReadOnlyViewProps {
   song: SongDTO;
   playlistId: number;
@@ -101,17 +117,19 @@ export function SongReadOnlyView({
 
   const handleSubmitReport = () => {
     setReportError("");
-    if (!reportMessage.trim()) {
-      setReportError("Describe what's wrong before submitting.");
+    const validationError = validateReportFields(reportMessage, reportYear);
+    if (validationError) {
+      setReportError(validationError);
       return;
     }
+    const parsedYear = reportYear ? parseInt(reportYear) : undefined;
 
     submitReport(
       {
         songId: song.id,
         data: {
           message: reportMessage.trim(),
-          suggestedCorrectYear: reportYear ? parseInt(reportYear) : undefined,
+          suggestedCorrectYear: parsedYear,
           sources: reportSources.trim() || undefined,
         },
       },
@@ -161,7 +179,8 @@ export function SongReadOnlyView({
             <Input
               id="reportYear"
               type="number"
-              min={1000}
+              min={REPORT_YEAR_MIN}
+              max={new Date().getFullYear()}
               value={reportYear}
               onChange={(event) => setReportYear(event.target.value)}
             />

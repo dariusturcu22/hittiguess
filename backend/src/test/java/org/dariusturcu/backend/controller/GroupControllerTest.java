@@ -2,6 +2,8 @@ package org.dariusturcu.backend.controller;
 
 import org.dariusturcu.backend.difficulty.DifficultyTier;
 import org.dariusturcu.backend.model.group.GroupDetailDTO;
+import org.dariusturcu.backend.model.group.GroupInvitePreviewDTO;
+import org.dariusturcu.backend.model.group.GroupInvitePreviewMemberDTO;
 import org.dariusturcu.backend.model.session.GenerateDifficultySetRequest;
 import org.dariusturcu.backend.model.session.GeneratedSongPreviewDTO;
 import org.dariusturcu.backend.model.session.StartCustomSessionRequest;
@@ -73,5 +75,17 @@ class GroupControllerTest {
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(response.getBody()).isEqualTo(started);
+    }
+
+    @Test
+    void invitePreviewReturnsMemberCountAndDisplayIdentityOnly() {
+        GroupInvitePreviewDTO preview = new GroupInvitePreviewDTO(
+                2, List.of(new GroupInvitePreviewMemberDTO("Alex", null, true)));
+        when(groupService.getInvitePreview("invite-code")).thenReturn(preview);
+
+        ResponseEntity<GroupInvitePreviewDTO> response = controller().getInvitePreview("invite-code");
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody()).isEqualTo(preview);
     }
 }

@@ -975,3 +975,45 @@ Why: hotlinked originals leak whatever the source serves over time and bypass an
 Decision: the invite returnTo survives Google sign in inside the OAuth2 authorization request itself. The login and register pages append a validated returnTo to the `/oauth2/authorization/google` link, a request resolver carries it into the saved authorization request's additionalParameters (persisted by the existing cookie repository), and the success handler reads it back and appends it to the frontend redirect. The redirect handler routes to the validated value instead of the fixed library path. Validation is same origin absolute paths only, applied when the link is built, when the request is saved, and when the redirect is sent, so a crafted value is dropped at each step rather than trusted once.
 
 Why: the authorization request cookie is the only state that spans the round trip to the provider, so anything else (a query param on the start link alone, a request attribute) is gone by the time the callback runs. Keeping the value inside that request reuses the persistence the flow already has instead of adding a second cookie with its own lifetime and cleanup. Triple validation keeps each side safe on its own: the frontend never builds an off site link, the backend never saves or redirects to one.
+
+## 2026-09 | Export duplex interleave replaces the combined single-face mode
+
+Decision: the combined card face (QR printed beside the answer) is removed, and the third export mode is an interleaved duplex PDF: info page, matching mirrored QR page, next info page, and so on in natural order. The separate info and QR files keep their manual flip-the-stack behavior, including the QR sheet-order reversal. The interleaved file skips that reversal so a printer's native double-sided mode lines each pair up in one pass.
+
+Why: a QR on the same face as the answer removes the hiding half of a physical card game. Interleaving keeps the per-card mirroring that aligns backs to fronts while letting the printer, not the user, handle the duplexing.
+
+## 2026-09 | Group invite preview mirrors the playlist one
+
+Decision: `GET /api/groups/invites/{inviteCode}/preview` returns member count and members with no authentication, mirroring the playlist preview endpoint, and both join pages render an invalid-link screen off the preview error instead of a form with placeholder data.
+
+Why: a dead code should read as dead before the join click, not after it. The group page had no preview to gate on, so it gets the same endpoint shape rather than a different error path.
+
+## 2026-09 | Featured artists ride a structured list, not the title string
+
+Decision: the precheck prompt extracts featured credits into a `featured_artists` list while the title keeps only the song name, and the Java side persists them as `FEATURED` song-artist rows behind the `MAIN` one. Card rendering already reads those roles, so no card change was needed.
+
+Why: embedding the credit in the title leaks the answer onto the card face and collapses two roles into one string every downstream reader would have to re-parse. A list keeps the split where the model already made it instead of reconstructing it with string matching later.
+
+## 2026-09 | YouTube import progress lives on its own page with a slim playlist banner
+
+Decision: the YouTube import page keeps the job open in place with a progress bar and per-song checklist instead of redirecting to the playlist, the playlist song list refetches as items finish rather than once at the end, and the sidebar indicator links to that progress page. The playlist banner trims to a single line linking there.
+
+Why: redirecting away hid the only view that shows per-song state, and a banner with thumbnails duplicated what the sidebar and the page already cover. One progress view plus a pointer to it keeps all three surfaces consistent.
+
+## 2026-09 | Import progress resumes from storage, 404 alone means done
+
+Decision: the YouTube import page seeds its started state from the stored active-import job for that playlist, and only a 404 from the active-job poll counts as completion. Any other fetch error keeps the last known items on screen with a retrying note while the five-second poll continues.
+
+Why: a stored job is the only record that survives a reload, and the backend answers 404 exactly when no job is active. Treating every error as done turned a blip into a false completion, while the job kept running server-side.
+
+## 2026-09 | Dedup match carries artist lists split by role
+
+Decision: the verified-song similarity query aggregates artist names into main and featured arrays by role instead of one comma-joined string, and the match, precheck, and result schemas carry both lists end to end. Structured-source queries and LLM prompts take the mains joined for display; persistence writes one row per name.
+
+Why: the joined string collapsed roles the game needs apart, and a name containing a comma would have split wrong on the way back. Arrays keep the database's own role split intact through the fast path instead of reconstructing it.
+
+## 2026-09 | Public group preview exposes display identity only
+
+Decision: the unauthenticated group invite preview maps members to a lean shape with display name, avatar, and admin flag. User ids, presence, voice state, and join time stay behind membership.
+
+Why: the preview needs no auth by design, so everything it returns is public to anyone holding a code. The full member DTO was built for logged-in members, not for that audience.

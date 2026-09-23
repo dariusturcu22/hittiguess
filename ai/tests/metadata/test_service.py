@@ -25,7 +25,7 @@ def _youtube_data(**overrides):
 def _precheck_result(**overrides):
     fields = {
         "title": "Test Song",
-        "artist": "Test Artist",
+        "main_artists": ["Test Artist"],
         "color": "8B5CF6",
         "contains_injection_attempt": False,
         "injection_reasoning": "Ordinary song text.",
@@ -41,7 +41,8 @@ def _precheck_result(**overrides):
 def _verified_match():
     return VerifiedSongMatch(
         id=42,
-        artist="Test Artist",
+        main_artists=["Test Artist"],
+        featured_artists=["Guest Artist"],
         title="Test Song",
         release_year=1999,
         color="8B5CF6",
@@ -75,6 +76,8 @@ def test_high_confidence_match_reuses_existing_data_without_running_any_llm(mock
 
     assert result.status == "SUCCESS"
     assert result.content.title == "Test Song"
+    assert result.content.main_artists == ["Test Artist"]
+    assert result.content.featured_artists == ["Guest Artist"]
     assert result.content.source == service.DUPLICATE_MATCH_SOURCE_LABEL
     precheck_mock.assert_not_called()
 
@@ -314,9 +317,9 @@ def test_clean_music_passes_the_gate_and_reaches_the_pipeline(mocker):
 
 def test_precheck_falls_back_to_regex_cleaned_names_for_an_unidentifiable_submission(mocker):
     """The precheck call itself still runs (it also carries the safety
-    checks), but a null title/artist from a genuinely unidentifiable
-    submission falls back to the free regex clean rather than passing
-    None into the structured-source queries."""
+    checks), but a null title and empty main artists from a genuinely
+    unidentifiable submission fall back to the free regex clean rather
+    than passing None into the structured-source queries."""
     mocker.patch.object(
         service.youtube,
         "fetch_youtube_metadata",
@@ -324,7 +327,7 @@ def test_precheck_falls_back_to_regex_cleaned_names_for_an_unidentifiable_submis
     )
     mocker.patch.object(service, "generate_embedding", return_value=[0.1, 0.2, 0.3])
     mocker.patch.object(service, "find_best_verified_match", return_value=None)
-    mocker.patch.object(service, "_run_precheck", return_value=_precheck_result(title=None, artist=None))
+    mocker.patch.object(service, "_run_precheck", return_value=_precheck_result(title=None, main_artists=[]))
     musicbrainz_mock = mocker.patch.object(service.musicbrainz, "search", return_value=[])
     mocker.patch.object(service.discogs, "search", return_value=[])
     mocker.patch.object(service.wikidata, "search", return_value=[])
@@ -348,7 +351,7 @@ def test_verification_pipeline_reports_the_track_entity_sitelinks_count(mocker):
     mocker.patch("app.metadata.service.evaluate_lock", return_value=_locked_verification_result())
     sitelinks_mock = mocker.patch.object(service.wikidata, "get_sitelinks_count", return_value=12)
 
-    result = service._run_verification_pipeline("Test Song", "Test Artist", "8B5CF6")
+    result = service._run_verification_pipeline("Test Song", ["Test Artist"], "8B5CF6", [])
 
     sitelinks_mock.assert_called_once_with("Q1")
     assert result.sitelinks_count == 12
@@ -362,7 +365,7 @@ def test_verification_pipeline_leaves_sitelinks_count_unknown_without_a_wikidata
     mocker.patch("app.metadata.service.evaluate_lock", return_value=_locked_verification_result())
     sitelinks_mock = mocker.patch.object(service.wikidata, "get_sitelinks_count", return_value=12)
 
-    result = service._run_verification_pipeline("Test Song", "Test Artist", "8B5CF6")
+    result = service._run_verification_pipeline("Test Song", ["Test Artist"], "8B5CF6", [])
 
     sitelinks_mock.assert_not_called()
     assert result.sitelinks_count is None
@@ -383,7 +386,68 @@ def test_structured_queries_strip_only_featured_artist_suffixes(mocker, display_
     mocker.patch.object(service.wikipedia, "search", return_value=[])
     mocker.patch("app.metadata.service.evaluate_lock", return_value=_locked_verification_result())
 
-    result = service._run_verification_pipeline(display_title, "Test Artist", "8B5CF6")
+    result = service._run_verification_pipeline(display_title, ["Test Artist"], "8B5CF6", [])
 
     musicbrainz_mock.assert_called_once_with(source_query_title, "Test Artist")
     assert result.title == display_title
+
+
+def test_structured_queries_join_multiple_main_artists_for_display(mocker):
+    musicbrainz_mock = mocker.patch.object(service.musicbrainz, "search", return_value=[])
+    mocker.patch.object(service.discogs, "search", return_value=[])
+    mocker.patch.object(service.wikidata, "search", return_value=[])
+    mocker.patch.object(service.wikipedia, "search", return_value=[])
+    mocker.patch("app.metadata.service.evaluate_lock", return_value=_locked_verification_result())
+
+    result = service._run_verification_pipeline(
+        "Cold Heart", ["Elton John", "Dua Lipa"], "8B5CF6", []
+    )
+
+    musicbrainz_mock.assert_called_once_with("Cold Heart", "Elton John & Dua Lipa")
+    assert result.main_artists == ["Elton John", "Dua Lipa"]
+
+
+def test_verification_pipeline_carries_featured_artists_onto_the_result(mocker):
+    mocker.patch.object(service.musicbrainz, "search", return_value=[])
+    mocker.patch.object(service.discogs, "search", return_value=[])
+    mocker.patch.object(service.wikidata, "search", return_value=[])
+    mocker.patch.object(service.wikipedia, "search", return_value=[])
+    mocker.patch("app.metadata.service.evaluate_lock", return_value=_locked_verification_result())
+
+    result = service._run_verification_pipeline("Titanium", ["David Guetta"], "8B5CF6", ["Sia"])
+
+    assert result.title == "Titanium"
+    assert result.main_artists == ["David Guetta"]
+    assert result.featured_artists == ["Sia"]
+
+
+def test_resolve_metadata_forwards_precheck_featured_artists(mocker):
+    precheck = _precheck_result(featured_artists=["Sia"])
+    mocker.patch.object(service.youtube, "fetch_youtube_metadata", return_value=_youtube_data())
+    mocker.patch.object(service, "generate_embedding", return_value=[0.1, 0.2, 0.3])
+    mocker.patch.object(service, "find_best_verified_match", return_value=None)
+    mocker.patch.object(service, "_run_precheck", return_value=precheck)
+    mocker.patch.object(service.content_safety, "evaluate_precheck", return_value=ContentSafetyOutcome(rejected=False, rejection_reason=None, rejection_detail=None))
+    pipeline_mock = mocker.patch.object(
+        service, "_run_verification_pipeline", return_value=_locked_verification_result()
+    )
+
+    service.resolve_metadata("https://youtube.com/watch?v=abc12345678")
+
+    pipeline_mock.assert_called_once_with("Test Song", ["Test Artist"], "8B5CF6", ["Sia"])
+
+
+def test_resolve_metadata_falls_back_to_regex_names_as_single_main_artist(mocker):
+    precheck = _precheck_result(title=None, main_artists=[])
+    mocker.patch.object(service.youtube, "fetch_youtube_metadata", return_value=_youtube_data())
+    mocker.patch.object(service, "generate_embedding", return_value=[0.1, 0.2, 0.3])
+    mocker.patch.object(service, "find_best_verified_match", return_value=None)
+    mocker.patch.object(service, "_run_precheck", return_value=precheck)
+    mocker.patch.object(service.content_safety, "evaluate_precheck", return_value=ContentSafetyOutcome(rejected=False, rejection_reason=None, rejection_detail=None))
+    pipeline_mock = mocker.patch.object(
+        service, "_run_verification_pipeline", return_value=_locked_verification_result()
+    )
+
+    service.resolve_metadata("https://youtube.com/watch?v=abc12345678")
+
+    pipeline_mock.assert_called_once_with("Test Song", ["Test Artist"], "8B5CF6", [])

@@ -30,7 +30,7 @@ export default function JoinPlaylistPage({ params }: PageProps) {
     query: { retry: false },
     request: { skipAuthRedirect: true },
   });
-  const { data: invitePreview } = useGetInvitePreview(inviteCode);
+  const { data: invitePreview, isError: isInvitePreviewError } = useGetInvitePreview(inviteCode);
   const { mutate: joinPlaylist, isPending } = useJoinPlaylist();
 
   const [displayName, setDisplayName] = useState("");
@@ -85,6 +85,37 @@ export default function JoinPlaylistPage({ params }: PageProps) {
     currentUser?.username?.trim().charAt(0).toUpperCase() ||
     "?";
 
+  if (isInvitePreviewError) {
+    return (
+      <div className="flex h-full items-center justify-center p-6">
+        <div className="flex w-full max-w-[460px] flex-col items-center rounded-2xl border-[3px] border-border-strong bg-card p-8 shadow-lg sm:p-11">
+          <div className="mb-6">
+            <LogoIcon />
+          </div>
+
+          <h1
+            className="mb-5 font-display text-xl text-accent"
+            style={{ textShadow: "3px 3px 0 var(--text-shadow-on-card)" }}
+          >
+            This invite link is no longer valid
+          </h1>
+
+          <p className="mb-6 text-center text-sm text-muted-foreground">
+            The playlist may have been deleted or the link revoked. Ask the owner for a fresh one.
+          </p>
+
+          <button
+            type="button"
+            onClick={() => router.push("/")}
+            className="text-[13px] text-muted-foreground underline underline-offset-4"
+          >
+            Back to home
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="flex h-full items-center justify-center p-6">
       <div className="flex w-full max-w-[460px] flex-col items-center rounded-2xl border-[3px] border-border-strong bg-card p-8 shadow-lg sm:p-11">
@@ -117,7 +148,7 @@ export default function JoinPlaylistPage({ params }: PageProps) {
               {(invitePreview?.members ?? []).slice(0, 4).map((member) => (
                 <span
                   key={member.userId}
-                  className="flex size-6 items-center justify-center rounded-full border-2 border-background bg-primary font-display text-[8px] text-primary-foreground"
+                  className="avatar-initial flex size-6 items-center justify-center rounded-full border-2 border-background bg-primary font-display text-[8px] text-primary-foreground"
                 >
                   {(member.displayName || member.username || "?").charAt(0).toUpperCase()}
                 </span>
@@ -145,7 +176,7 @@ export default function JoinPlaylistPage({ params }: PageProps) {
                   className="size-full object-cover"
                 />
               ) : (
-                <div className="flex size-full items-center justify-center bg-primary font-display text-xl text-primary-foreground">
+                <div className="avatar-initial flex size-full items-center justify-center bg-primary font-display text-xl text-primary-foreground">
                   {avatarInitial}
                 </div>
               )}

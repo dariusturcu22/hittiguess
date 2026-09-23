@@ -44,6 +44,8 @@ import java.util.Set;
 
 public class PlaylistService {
 
+    private static final String MAIN_ARTIST_MATCH_SEPARATOR = " & ";
+
     private final PlaylistRepository playlistRepository;
     private final SongRepository songRepository;
     private final PlaylistMapper playlistMapper;
@@ -248,8 +250,11 @@ public class PlaylistService {
     }
 
     private boolean matchesSubmittedSong(SongMetadataResponse metadata, CreateSongRequest request) {
+        String metadataArtists = metadata.mainArtists() == null
+                ? ""
+                : String.join(MAIN_ARTIST_MATCH_SEPARATOR, metadata.mainArtists());
         return normalized(metadata.title()).equals(normalized(request.title()))
-                && normalized(metadata.artist()).equals(normalized(request.artist()))
+                && normalized(metadataArtists).equals(normalized(request.artist()))
                 && metadata.releaseYear() != null
                 && metadata.releaseYear() == request.releaseYear();
     }
@@ -394,9 +399,18 @@ public class PlaylistService {
 
     @Transactional(readOnly = true)
     public List<PublicPlaylistSummaryDTO> getPublicPlaylists() {
+        User currentUser = SecurityUtils.getCurrentUser();
         return playlistRepository.findByIsPublicTrue().stream()
+                .filter(playlist -> !playlist.isOwnedBy(currentUser) && !isMember(playlist, currentUser))
                 .map(playlistMapper::toPublicSummaryDTO)
                 .toList();
+    }
+
+    private boolean isMember(Playlist playlist, User user) {
+        if (user == null || user.getId() == null || playlist.getId() == null) {
+            return false;
+        }
+        return playlistMembershipRepository.existsByPlaylistIdAndUserId(playlist.getId(), user.getId());
     }
 
     public PublicPlaylistSummaryDTO savePlaylist(Long playlistId) {

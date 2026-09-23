@@ -11,6 +11,7 @@ import { Input } from "@/components/shadcn/input";
 import { Label } from "@/components/shadcn/label";
 import { LogoIcon } from "@/components/logo";
 import { useGetCurrentUser } from "@/hooks/generated/user-management/user-management";
+import { useGroupInvitePreview } from "@/hooks/use-group-invite-preview";
 import {
   getGetActiveMembershipQueryKey,
   useJoinGroup,
@@ -30,6 +31,7 @@ export default function JoinGroupPage({ params }: PageProps) {
     request: { skipAuthRedirect: true },
   });
   const { mutate: joinGroup, isPending } = useJoinGroup();
+  const { data: invitePreview, isError: isInvitePreviewError } = useGroupInvitePreview(inviteCode);
 
   const [displayName, setDisplayName] = useState("");
   const [avatarUrl, setAvatarUrl] = useState("");
@@ -83,6 +85,37 @@ export default function JoinGroupPage({ params }: PageProps) {
     currentUser?.username?.trim().charAt(0).toUpperCase() ||
     "?";
 
+  if (isInvitePreviewError) {
+    return (
+      <div className="flex h-full items-center justify-center p-6">
+        <div className="flex w-full max-w-[460px] flex-col items-center rounded-2xl border-[3px] border-border-strong bg-card p-8 shadow-lg sm:p-11">
+          <div className="mb-6">
+            <LogoIcon />
+          </div>
+
+          <h1
+            className="mb-5 font-display text-xl text-accent"
+            style={{ textShadow: "3px 3px 0 var(--text-shadow-on-card)" }}
+          >
+            This invite link is no longer valid
+          </h1>
+
+          <p className="mb-6 text-center text-sm text-muted-foreground">
+            The group may have ended or the link revoked. Ask the host for a fresh one.
+          </p>
+
+          <button
+            type="button"
+            onClick={() => router.push("/")}
+            className="text-[13px] text-muted-foreground underline underline-offset-4"
+          >
+            Back to home
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="flex h-full items-center justify-center p-6">
       <div className="flex w-full max-w-[460px] flex-col items-center rounded-2xl border-[3px] border-border-strong bg-card p-8 shadow-lg sm:p-11">
@@ -104,6 +137,7 @@ export default function JoinGroupPage({ params }: PageProps) {
           <div className="min-w-0 flex-1">
             <div className="font-display text-base text-foreground">Group Lobby</div>
             <div className="mt-1 text-xs text-muted-foreground">
+              {invitePreview ? `${invitePreview.memberCount ?? 0} members · ` : ""}
               Join this group to play together
             </div>
           </div>
@@ -128,7 +162,7 @@ export default function JoinGroupPage({ params }: PageProps) {
                   className="size-full object-cover"
                 />
               ) : (
-                <div className="flex size-full items-center justify-center bg-primary font-display text-xl text-primary-foreground">
+                <div className="avatar-initial flex size-full items-center justify-center bg-primary font-display text-xl text-primary-foreground">
                   {avatarInitial}
                 </div>
               )}

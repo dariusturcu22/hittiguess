@@ -14,6 +14,13 @@ const RECONNECT_DELAY_MILLISECONDS = 3_000;
 const OFFER_SIGNAL = "OFFER";
 const ANSWER_SIGNAL = "ANSWER";
 const CANDIDATE_SIGNAL = "CANDIDATE";
+const NOT_ALLOWED_ERROR_NAME = "NotAllowedError";
+const NOT_FOUND_ERROR_NAME = "NotFoundError";
+const OVERCONSTRAINED_ERROR_NAME = "OverconstrainedError";
+const INSECURE_CONTEXT_MESSAGE = "Voice chat needs HTTPS or localhost.";
+const MICROPHONE_PERMISSION_MESSAGE = "Microphone permission is needed.";
+const MICROPHONE_NOT_FOUND_MESSAGE = "No microphone was found.";
+const MICROPHONE_START_FAILED_MESSAGE = "Could not start the microphone.";
 
 interface VoiceSignal { type: string; senderUserId: number; targetMemberUserId: number; payload: string; }
 
@@ -22,6 +29,18 @@ export function shouldCutoffAudioStream(
   currentPlayerId: number | undefined,
 ): boolean {
   return event.type === "GUESS_LOCKED" && event.payload?.activePlayerId === currentPlayerId;
+}
+
+function describeMicrophoneError(error: unknown): string {
+  if (error instanceof DOMException) {
+    if (error.name === NOT_ALLOWED_ERROR_NAME) {
+      return MICROPHONE_PERMISSION_MESSAGE;
+    }
+    if (error.name === NOT_FOUND_ERROR_NAME || error.name === OVERCONSTRAINED_ERROR_NAME) {
+      return MICROPHONE_NOT_FOUND_MESSAGE;
+    }
+  }
+  return MICROPHONE_START_FAILED_MESSAGE;
 }
 
 function websocketUrl(): string {
@@ -48,6 +67,7 @@ export function useVoiceMesh(groupId: number, currentUserId: number | undefined,
   const [isMuted, setIsMuted] = useState(false);
   const [isDeafened, setIsDeafened] = useState(false);
   const [microphoneError, setMicrophoneError] = useState(false);
+  const [microphoneErrorMessage, setMicrophoneErrorMessage] = useState<string | null>(null);
   const [tabAudioError, setTabAudioError] = useState(false);
   const [isSignalConnected, setIsSignalConnected] = useState(false);
 
@@ -112,7 +132,27 @@ export function useVoiceMesh(groupId: number, currentUserId: number | undefined,
     });
   }, [createPeer, currentUserId, isInVoice, isSignalConnected, sendSignal, voiceMembers]);
 
-  const startMicrophone = useCallback(async () => { try { const microphoneStream = await navigator.mediaDevices.getUserMedia({ audio: microphoneDeviceId ? { deviceId: { exact: microphoneDeviceId } } : true }); const microphoneTrack = microphoneStream.getAudioTracks().at(0); streamReference.current = microphoneStream; publishLocalAudioStream(microphoneStream); peersReference.current.forEach((peer) => { peer.getSenders().filter((sender) => sender.track?.kind === "audio").forEach((sender) => { void sender.replaceTrack(microphoneTrack ?? null); }); }); setMicrophoneError(false); return true; } catch { setMicrophoneError(true); return false; } }, [microphoneDeviceId]);
+  const startMicrophone = useCallback(async () => {
+    if (typeof navigator === "undefined" || !navigator.mediaDevices?.getUserMedia) {
+      setMicrophoneError(true);
+      setMicrophoneErrorMessage(INSECURE_CONTEXT_MESSAGE);
+      return false;
+    }
+    try {
+      const microphoneStream = await navigator.mediaDevices.getUserMedia({ audio: microphoneDeviceId ? { deviceId: { exact: microphoneDeviceId } } : true });
+      const microphoneTrack = microphoneStream.getAudioTracks().at(0);
+      streamReference.current = microphoneStream;
+      publishLocalAudioStream(microphoneStream);
+      peersReference.current.forEach((peer) => { peer.getSenders().filter((sender) => sender.track?.kind === "audio").forEach((sender) => { void sender.replaceTrack(microphoneTrack ?? null); }); });
+      setMicrophoneError(false);
+      setMicrophoneErrorMessage(null);
+      return true;
+    } catch (error) {
+      setMicrophoneError(true);
+      setMicrophoneErrorMessage(describeMicrophoneError(error));
+      return false;
+    }
+  }, [microphoneDeviceId]);
   const startTabAudio = useCallback(async () => {
     try {
       const displayStream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true });
@@ -131,6 +171,7 @@ export function useVoiceMesh(groupId: number, currentUserId: number | undefined,
           .forEach((sender) => { void sender.replaceTrack(audioTrack); });
       });
       setMicrophoneError(false);
+      setMicrophoneErrorMessage(null);
       setTabAudioError(false);
       audioTrack.addEventListener?.("ended", () => { void startMicrophone(); }, { once: true });
       return true;
@@ -158,5 +199,5 @@ export function useVoiceMesh(groupId: number, currentUserId: number | undefined,
     setIsDeafened(nextDeafened);
   }, [isDeafened]);
 
-  return { isMuted, isDeafened, microphoneError, tabAudioError, startMicrophone, startTabAudio, stopMicrophone, toggleMute, toggleDeafen };
+  return { isMuted, isDeafened, microphoneError, microphoneErrorMessage, tabAudioError, startMicrophone, startTabAudio, stopMicrophone, toggleMute, toggleDeafen };
 }

@@ -232,7 +232,7 @@ export function AppSidebar() {
 
       {activeImport && !activeImportQuery.isError ? (
         <div className="group relative mt-3">
-          <button type="button" onClick={() => router.push(`/playlists/${activeImport.playlistId}`)} className="flex size-[30px] cursor-pointer items-center justify-center rounded-full bg-primary text-primary-foreground" title="Import in progress" aria-describedby="import-progress-popup">
+          <button type="button" onClick={() => router.push(`/playlists/${activeImport.playlistId}/import/youtube`)} className="flex size-[30px] cursor-pointer items-center justify-center rounded-full bg-primary text-primary-foreground" title="Import in progress" aria-describedby="import-progress-popup">
             <span className="size-3 rounded-full border-2 border-current border-t-transparent animate-spin" />
           </button>
           <div id="import-progress-popup" role="status" className="pointer-events-none absolute left-full top-1/2 z-30 ml-3 hidden w-52 -translate-y-1/2 rounded-2xl border-[3px] border-border-strong bg-card p-4 shadow-lg group-hover:block">
