@@ -6,9 +6,9 @@ import { cn } from "@/lib/utils";
 const MOSAIC_TILE_COUNT = 4;
 
 // YouTube thumbnails bake letterbox bars into the image pixels, which
-// object-cover cannot trim. Over-zooming inside the overflow-hidden tiles
-// pushes the crop past the bars.
-const THUMBNAIL_ZOOM_CLASSES = "scale-[1.35]";
+// object-cover cannot trim. Over-zooming inside each tile's own
+// overflow-hidden boundary pushes the crop past the bars.
+const THUMBNAIL_ZOOM_CLASSES = "scale-[1.6]";
 
 interface PlaylistCoverMosaicProps {
   /** Up to 4 YouTube ids, first-in-playlist first. Fewer than 4 (including
@@ -50,13 +50,14 @@ export function PlaylistCoverMosaic({ previewYoutubeIds, customCoverUrl, classNa
       ) : (
         tiles.map((youtubeId, index) =>
           youtubeId ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              key={index}
-              src={thumbnailUrl(youtubeId)}
-              alt=""
-              className={`size-full object-cover ${THUMBNAIL_ZOOM_CLASSES}`}
-            />
+            <div key={index} className="size-full overflow-hidden">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={thumbnailUrl(youtubeId)}
+                alt=""
+                className={`size-full object-cover ${THUMBNAIL_ZOOM_CLASSES}`}
+              />
+            </div>
           ) : (
             <div key={index} className="flex items-center justify-center bg-secondary">
               <Play className="size-5 fill-muted-foreground/55 text-muted-foreground/55" />

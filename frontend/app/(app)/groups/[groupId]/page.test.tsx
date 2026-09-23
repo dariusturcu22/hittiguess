@@ -26,6 +26,7 @@ let lobbyMembers = [
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ replace: vi.fn(), push: vi.fn() }),
+  usePathname: () => "/groups/1",
   useSearchParams: () => lobbySearchParams,
 }));
 
