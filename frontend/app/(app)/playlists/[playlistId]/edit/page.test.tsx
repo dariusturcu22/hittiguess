@@ -7,6 +7,9 @@ import EditPlaylistPage from "./page";
 
 const EDIT_PARAMS = Promise.resolve({ playlistId: "7" });
 const uploadCoverMutate = vi.fn();
+const updatePlaylistMutate = vi.fn();
+const routerPush = vi.fn();
+const toastMocks = vi.hoisted(() => ({ success: vi.fn(), error: vi.fn() }));
 
 vi.mock("@/hooks/generated/pixel-art-images/pixel-art-images", () => ({
   useUploadPlaylistCover: () => ({ mutate: uploadCoverMutate, isPending: false }),
@@ -23,11 +26,11 @@ vi.mock("next/link", () => ({
 }));
 
 vi.mock("next/navigation", () => ({
-  useRouter: () => ({ push: vi.fn() }),
+  useRouter: () => ({ push: routerPush }),
 }));
 
 vi.mock("sonner", () => ({
-  toast: { error: vi.fn(), success: vi.fn() },
+  toast: toastMocks,
 }));
 
 vi.mock("@/components/playlist-cover-mosaic", () => ({
@@ -48,7 +51,7 @@ vi.mock("@/hooks/generated/playlist-management/playlist-management", () => ({
     },
   }),
   useGetMembers: () => ({ data: [] }),
-  useUpdatePlaylist: () => ({ mutate: vi.fn() }),
+  useUpdatePlaylist: () => ({ mutate: updatePlaylistMutate, isPending: false }),
   useUpdateMemberGrants: () => ({ mutate: vi.fn() }),
   useKickMember: () => ({ mutate: vi.fn() }),
   useBanMember: () => ({ mutate: vi.fn() }),
@@ -81,6 +84,9 @@ describe("EditPlaylistPage", () => {
       createObjectURL: vi.fn(() => "blob:preview"),
       revokeObjectURL: vi.fn(),
     });
+    updatePlaylistMutate.mockReset();
+    routerPush.mockReset();
+    toastMocks.success.mockReset();
   });
 
   it("copies the invite link for the current origin", async () => {
@@ -93,6 +99,32 @@ describe("EditPlaylistPage", () => {
         `${window.location.origin}/playlists/join/ABCD1234`,
       ),
     );
+  });
+
+  it("saves a changed name with a toast and returns to the detail page", async () => {
+    updatePlaylistMutate.mockImplementation((_args, options) => options?.onSuccess?.());
+    await renderPage();
+
+    fireEvent.change(screen.getByLabelText("Name"), { target: { value: "Renamed mix" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
+
+    expect(updatePlaylistMutate).toHaveBeenCalledWith(
+      { playlistId: 7, data: { name: "Renamed mix" } },
+      expect.anything(),
+    );
+    await waitFor(() => expect(toastMocks.success).toHaveBeenCalledWith("Changes saved"));
+    expect(routerPush).toHaveBeenCalledWith("/playlists/7");
+  });
+
+  it("shows an error when saving fails", async () => {
+    updatePlaylistMutate.mockImplementation((_args, options) => options?.onError?.());
+    await renderPage();
+
+    fireEvent.change(screen.getByLabelText("Name"), { target: { value: "Renamed mix" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
+
+    await waitFor(() => expect(screen.getByRole("alert")).toHaveTextContent("Couldn't save the changes"));
+    expect(routerPush).not.toHaveBeenCalled();
   });
 
   it("asks for confirmation before deleting", async () => {
