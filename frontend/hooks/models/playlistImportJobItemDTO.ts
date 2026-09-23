@@ -10,4 +10,10 @@ export interface PlaylistImportJobItemDTO {
   youtubeId?: string;
   status?: PlaylistImportJobItemDTOStatus;
   songId?: number;
+  rawTitle?: string;
+  rawChannelTitle?: string;
+  resolvedTitle?: string;
+  resolvedArtists?: string;
+  resolvedReleaseYear?: number;
+  resolvedColor?: string;
 }

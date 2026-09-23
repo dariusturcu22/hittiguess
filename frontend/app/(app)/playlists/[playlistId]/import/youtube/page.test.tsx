@@ -18,8 +18,24 @@ vi.mock("@/hooks/generated/playlist-import-jobs/playlist-import-jobs", () => ({
   useActiveImport: () => activeImportState,
 }));
 
+vi.mock("@/hooks/generated/playlist-management/playlist-management", () => ({
+  useGetPlaylist: () => ({ data: { name: "Late Night Coding Mix" } }),
+}));
+
+interface ActiveImportItem {
+  youtubeId: string;
+  status: string;
+  songId?: number;
+  rawTitle?: string;
+  rawChannelTitle?: string;
+  resolvedTitle?: string;
+  resolvedArtists?: string;
+  resolvedReleaseYear?: number;
+  resolvedColor?: string;
+}
+
 let activeImportState: {
-  data?: { items: Array<{ youtubeId: string; status: string }> };
+  data?: { items: ActiveImportItem[] };
   isError: boolean;
   error?: unknown;
 } = {
@@ -27,8 +43,16 @@ let activeImportState: {
   error: null,
   data: {
     items: [
-      { youtubeId: "video-1", status: "RESOLVED" },
-      { youtubeId: "video-2", status: "PENDING" },
+      {
+        youtubeId: "video-1",
+        status: "RESOLVED",
+        songId: 101,
+        resolvedTitle: "Chasing Cars",
+        resolvedArtists: "Snow Patrol",
+        resolvedReleaseYear: 2006,
+        resolvedColor: "cba6f7",
+      },
+      { youtubeId: "video-2", status: "PENDING", rawTitle: "midnight drive (official video)", rawChannelTitle: "Nocturne Records" },
     ],
   },
 };
@@ -83,8 +107,16 @@ describe("ImportYoutubePage background import", () => {
       error: null,
       data: {
         items: [
-          { youtubeId: "video-1", status: "RESOLVED" },
-          { youtubeId: "video-2", status: "PENDING" },
+          {
+            youtubeId: "video-1",
+            status: "RESOLVED",
+            songId: 101,
+            resolvedTitle: "Chasing Cars",
+            resolvedArtists: "Snow Patrol",
+            resolvedReleaseYear: 2006,
+            resolvedColor: "cba6f7",
+          },
+          { youtubeId: "video-2", status: "PENDING", rawTitle: "midnight drive (official video)", rawChannelTitle: "Nocturne Records" },
         ],
       },
     };
@@ -115,8 +147,8 @@ describe("ImportYoutubePage background import", () => {
     expect(routerPush).not.toHaveBeenCalled();
 
     expect(await screen.findByText("1 of 2 processed")).toBeVisible();
-    expect(screen.getByText("Added")).toBeVisible();
-    expect(screen.getByText("Resolving...")).toBeVisible();
+    expect(screen.getByText("Chasing Cars")).toBeVisible();
+    expect(screen.getByText("Fetching...")).toBeVisible();
     expect(
       screen.getByText("You can close this page. The import keeps running in the background."),
     ).toBeVisible();
@@ -128,8 +160,16 @@ describe("ImportYoutubePage background import", () => {
       error: null,
       data: {
         items: [
-          { youtubeId: "video-1", status: "RESOLVED" },
-          { youtubeId: "video-2", status: "ALREADY_KNOWN" },
+          {
+            youtubeId: "video-1",
+            status: "RESOLVED",
+            songId: 101,
+            resolvedTitle: "Chasing Cars",
+            resolvedArtists: "Snow Patrol",
+            resolvedReleaseYear: 2006,
+            resolvedColor: "cba6f7",
+          },
+          { youtubeId: "video-2", status: "ALREADY_KNOWN", songId: 102 },
         ],
       },
     };
@@ -141,7 +181,7 @@ describe("ImportYoutubePage background import", () => {
     fireEvent.click(screen.getByRole("button", { name: "Fetch playlist" }));
     fireEvent.click(await screen.findByRole("button", { name: "Import 2 songs" }));
 
-    expect(await screen.findByText("Import complete. 2 songs added.")).toBeVisible();
+    expect(await screen.findByText("2 of 2 added")).toBeVisible();
 
     fireEvent.click(screen.getByRole("button", { name: "View playlist" }));
     expect(routerPush).toHaveBeenCalledWith("/playlists/7");
@@ -179,7 +219,7 @@ describe("ImportYoutubePage background import", () => {
     const renderResult = await renderPage();
 
     expect(await screen.findByText("Connection hiccup. Retrying...")).toBeVisible();
-    expect(screen.queryByText(/Import complete/)).toBeNull();
+    expect(screen.queryByText(/added$/)).toBeNull();
     renderResult.unmount();
 
     window.localStorage.setItem(
@@ -189,6 +229,55 @@ describe("ImportYoutubePage background import", () => {
     activeImportState = { isError: true, error: notFoundError(), data: undefined };
     await renderPage();
 
-    expect(await screen.findByText("Import complete. 0 songs added.")).toBeVisible();
+    expect(await screen.findByText("0 of 0 added")).toBeVisible();
+  });
+
+  it("shows the playlist name in the header once the import is running", async () => {
+    window.localStorage.setItem(
+      "hittiguess-active-playlist-import",
+      JSON.stringify({ importJobId: "job-1", playlistId: 7 }),
+    );
+    await renderPage();
+
+    expect(screen.getByText("Importing playlist")).toBeVisible();
+    expect(screen.getByText(/Late Night Coding Mix/)).toBeVisible();
+  });
+
+  it("shows a resolved item's title, artist, and release year with a checkmark", async () => {
+    window.localStorage.setItem(
+      "hittiguess-active-playlist-import",
+      JSON.stringify({ importJobId: "job-1", playlistId: 7 }),
+    );
+    await renderPage();
+
+    expect(await screen.findByText("Chasing Cars")).toBeVisible();
+    expect(screen.getByText("Snow Patrol")).toBeVisible();
+    expect(screen.getByText("2006")).toBeVisible();
+  });
+
+  it("shows a still-processing item's raw video title and channel while fetching", async () => {
+    window.localStorage.setItem(
+      "hittiguess-active-playlist-import",
+      JSON.stringify({ importJobId: "job-1", playlistId: 7 }),
+    );
+    await renderPage();
+
+    expect(await screen.findByText("midnight drive (official video)")).toBeVisible();
+    expect(screen.getByText("Uploaded by Nocturne Records")).toBeVisible();
+  });
+
+  it("falls back to the youtube id when a pending item has no raw title yet", async () => {
+    activeImportState = {
+      isError: false,
+      error: null,
+      data: { items: [{ youtubeId: "video-3", status: "PENDING" }] },
+    };
+    window.localStorage.setItem(
+      "hittiguess-active-playlist-import",
+      JSON.stringify({ importJobId: "job-1", playlistId: 7 }),
+    );
+    await renderPage();
+
+    expect(await screen.findByText("video-3")).toBeVisible();
   });
 });
