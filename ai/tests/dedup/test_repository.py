@@ -24,7 +24,8 @@ def test_find_best_verified_match_returns_none_when_no_row_matches(mocker):
 def test_find_best_verified_match_builds_a_match_from_the_returned_row(mocker):
     expected_match = VerifiedSongMatch(
         id=42,
-        artist="Daft Punk",
+        main_artists=["Daft Punk"],
+        featured_artists=[],
         title="One More Time",
         release_year=2000,
         color="8B5CF6",

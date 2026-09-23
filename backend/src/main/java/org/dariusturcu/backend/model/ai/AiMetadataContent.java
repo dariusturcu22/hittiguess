@@ -8,7 +8,7 @@ import java.util.List;
 @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
 public record AiMetadataContent(
         String title,
-        String artist,
+        List<String> mainArtists,
         List<String> featuredArtists,
         Integer releaseYear,
         String color,

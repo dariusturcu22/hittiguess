@@ -62,7 +62,8 @@ def test_submitting_a_near_duplicate_song_reuses_verified_data_instead_of_runnin
 
     assert result.status == "SUCCESS"
     assert result.content.title == "One More Time"
-    assert result.content.artist == "Daft Punk"
+    assert result.content.main_artists == ["Daft Punk"]
+    assert result.content.featured_artists == []
     assert result.content.release_year == 2000
     assert result.content.source == service.DUPLICATE_MATCH_SOURCE_LABEL
     precheck_mock.assert_not_called()

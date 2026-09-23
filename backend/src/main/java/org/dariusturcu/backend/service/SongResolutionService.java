@@ -29,8 +29,7 @@ import java.util.Optional;
 public class SongResolutionService {
 
     private static final String SUCCESS_STATUS = "SUCCESS";
-    private static final int MAIN_ARTIST_DISPLAY_ORDER = 0;
-    private static final int FEATURED_ARTIST_DISPLAY_ORDER_START = 1;
+    private static final int MAIN_ARTIST_DISPLAY_ORDER_START = 0;
 
     private final SongMetadataService songMetadataService;
     private final SongRepository songRepository;
@@ -61,16 +60,22 @@ public class SongResolutionService {
         }
 
         song.getArtists().clear();
-        if (metadata.artist() != null && !metadata.artist().isBlank()) {
-            SongArtist mainArtist = new SongArtist();
-            mainArtist.setSong(song);
-            mainArtist.setName(metadata.artist());
-            mainArtist.setRole(ArtistRole.MAIN);
-            mainArtist.setDisplayOrder(MAIN_ARTIST_DISPLAY_ORDER);
-            song.getArtists().add(mainArtist);
+        int displayOrder = MAIN_ARTIST_DISPLAY_ORDER_START;
+        if (metadata.mainArtists() != null) {
+            for (String mainName : metadata.mainArtists()) {
+                if (mainName == null || mainName.isBlank()) {
+                    continue;
+                }
+                SongArtist mainArtist = new SongArtist();
+                mainArtist.setSong(song);
+                mainArtist.setName(mainName);
+                mainArtist.setRole(ArtistRole.MAIN);
+                mainArtist.setDisplayOrder(displayOrder);
+                song.getArtists().add(mainArtist);
+                displayOrder++;
+            }
         }
         if (metadata.featuredArtists() != null) {
-            int featuredDisplayOrder = FEATURED_ARTIST_DISPLAY_ORDER_START;
             for (String featuredName : metadata.featuredArtists()) {
                 if (featuredName == null || featuredName.isBlank()) {
                     continue;
@@ -79,9 +84,9 @@ public class SongResolutionService {
                 featuredArtist.setSong(song);
                 featuredArtist.setName(featuredName);
                 featuredArtist.setRole(ArtistRole.FEATURED);
-                featuredArtist.setDisplayOrder(featuredDisplayOrder);
+                featuredArtist.setDisplayOrder(displayOrder);
                 song.getArtists().add(featuredArtist);
-                featuredDisplayOrder++;
+                displayOrder++;
             }
         }
 

@@ -105,7 +105,8 @@ def _gather_structured_sources(title: str, artist: str) -> dict[str, list[dict]]
 def _build_duplicate_match_result(match: VerifiedSongMatch) -> SongMetadataResult:
     return SongMetadataResult(
         title=match.title,
-        artist=match.artist,
+        main_artists=match.main_artists,
+        featured_artists=match.featured_artists,
         release_year=match.release_year,
         color=match.color or "",
         confidence=match.confidence or DEFAULT_DUPLICATE_MATCH_CONFIDENCE,
@@ -143,16 +144,19 @@ def _check_for_duplicate(title: str, artist: str) -> SongMetadataResult | None:
 
 
 def _run_verification_pipeline(
-    title: str, artist: str, color: str, featured_artists: list[str]
+    title: str, main_artists: list[str], color: str, featured_artists: list[str]
 ) -> SongMetadataResult:
     """Runs story 18's lock-or-LLM verification pipeline: query MusicBrainz,
     Discogs, and Wikidata always (free, deterministic, zero LLM cost); if
     all three agree exactly, lock with no further LLM call; otherwise fetch
-    Wikipedia and run four-source reconciliation. title, artist, and color
-    already came from the shared precheck call that ran once before
-    content-safety evaluation, not from a separate display-synthesis call."""
+    Wikipedia and run four-source reconciliation. title, main artists, and
+    color already came from the shared precheck call that ran once before
+    content-safety evaluation, not from a separate display-synthesis call.
+    Structured sources and LLM prompts take the artists as one display
+    string; the result keeps them as a list."""
+    display_artists = " & ".join(main_artists)
     source_query_title = strip_featured_artist_suffix(title)
-    structured_candidates = _gather_structured_sources(source_query_title, artist)
+    structured_candidates = _gather_structured_sources(source_query_title, display_artists)
     musicbrainz_candidates = structured_candidates["musicbrainz"]
     discogs_candidates = structured_candidates["discogs"]
     wikidata_candidates = structured_candidates["wikidata"]
@@ -163,11 +167,11 @@ def _run_verification_pipeline(
 
     wikipedia_entries: list[dict] = []
     if not _all_three_agree(musicbrainz_year, discogs_year, wikidata_year):
-        wikipedia_entries = wikipedia.search(source_query_title, artist)
+        wikipedia_entries = wikipedia.search(source_query_title, display_artists)
 
     release_year, confidence, route = evaluate_lock(
         source_query_title,
-        artist,
+        display_artists,
         musicbrainz_candidates,
         discogs_candidates,
         wikidata_candidates,
@@ -206,7 +210,7 @@ def _run_verification_pipeline(
 
     return SongMetadataResult(
         title=title,
-        artist=artist,
+        main_artists=main_artists,
         featured_artists=featured_artists,
         release_year=release_year,
         color=color,
@@ -270,10 +274,10 @@ def resolve_metadata(youtube_url: str) -> MetadataResolveResponse:
             )
 
         title = precheck.title or regex_title
-        artist = precheck.artist or regex_artist
+        main_artists = precheck.main_artists or ([regex_artist] if regex_artist else [])
         featured_artists = precheck.featured_artists or []
 
-        result = _run_verification_pipeline(title, artist, precheck.color, featured_artists)
+        result = _run_verification_pipeline(title, main_artists, precheck.color, featured_artists)
         return MetadataResolveResponse(status="SUCCESS", model=settings.deepinfra_model, content=result)
     except Exception as pipeline_error:
         logger.warning("Metadata pipeline failed: %s", pipeline_error)

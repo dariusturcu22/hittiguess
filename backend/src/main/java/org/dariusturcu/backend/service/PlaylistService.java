@@ -44,6 +44,8 @@ import java.util.Set;
 
 public class PlaylistService {
 
+    private static final String MAIN_ARTIST_MATCH_SEPARATOR = " & ";
+
     private final PlaylistRepository playlistRepository;
     private final SongRepository songRepository;
     private final PlaylistMapper playlistMapper;
@@ -248,8 +250,11 @@ public class PlaylistService {
     }
 
     private boolean matchesSubmittedSong(SongMetadataResponse metadata, CreateSongRequest request) {
+        String metadataArtists = metadata.mainArtists() == null
+                ? ""
+                : String.join(MAIN_ARTIST_MATCH_SEPARATOR, metadata.mainArtists());
         return normalized(metadata.title()).equals(normalized(request.title()))
-                && normalized(metadata.artist()).equals(normalized(request.artist()))
+                && normalized(metadataArtists).equals(normalized(request.artist()))
                 && metadata.releaseYear() != null
                 && metadata.releaseYear() == request.releaseYear();
     }

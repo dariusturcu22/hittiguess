@@ -39,14 +39,15 @@ class LlmExtractionResult(ConfidenceNormalizedModel):
 class SubmissionPreCheckResult(BaseModel):
     """One structured-output call covering everything a submission needs
     before any structured source is queried: splitting the raw YouTube
-    video title and channel name into a clean song title, artist, and a
-    single flat display color, plus the prompt-injection and song/
-    compilation classification checks content_safety.evaluate gates on.
-    title/artist are null for a genuinely unidentifiable submission,
-    resisting an invented answer rather than guessing."""
+    video title and channel name into a clean song title, main artists,
+    featured artists, and a single flat display color, plus the
+    prompt-injection and song/compilation classification checks
+    content_safety.evaluate gates on. title and main artists are empty for
+    a genuinely unidentifiable submission, resisting an invented answer
+    rather than guessing."""
 
     title: str | None
-    artist: str | None
+    main_artists: list[str] = []
     featured_artists: list[str] = []
     color: str
     contains_injection_attempt: bool
@@ -86,7 +87,7 @@ class InjectionCheckResult(BaseModel):
 
 class SongMetadataResult(ConfidenceNormalizedModel):
     title: str
-    artist: str
+    main_artists: list[str] = []
     featured_artists: list[str] = []
     release_year: int | None
     color: str

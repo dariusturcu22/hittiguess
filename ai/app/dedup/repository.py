@@ -7,7 +7,10 @@ VERIFICATION_STATUS_VERIFIED = "VERIFIED"
 
 _FIND_BEST_VERIFIED_MATCH_QUERY = """
     SELECT s.id AS id,
-           string_agg(song_artists.name, ', ' ORDER BY song_artists.display_order) AS artist,
+           COALESCE(array_agg(song_artists.name ORDER BY song_artists.display_order)
+               FILTER (WHERE song_artists.role = 'MAIN'), '{}') AS main_artists,
+           COALESCE(array_agg(song_artists.name ORDER BY song_artists.display_order)
+               FILTER (WHERE song_artists.role = 'FEATURED'), '{}') AS featured_artists,
            s.title AS title,
            s.release_year AS release_year,
            s.color AS color,

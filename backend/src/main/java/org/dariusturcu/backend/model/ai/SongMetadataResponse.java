@@ -8,7 +8,7 @@ import java.util.List;
 
 public record SongMetadataResponse(
         String title,
-        String artist,
+        List<String> mainArtists,
         List<String> featuredArtists,
         Integer releaseYear,
         String color,

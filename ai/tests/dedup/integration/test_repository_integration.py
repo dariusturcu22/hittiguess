@@ -70,9 +70,44 @@ def test_finds_the_closest_verified_song_within_a_real_database(db_connection):
 
     assert match is not None
     assert match.id == matching_song_id
-    assert match.artist == "Daft Punk"
+    assert match.main_artists == ["Daft Punk"]
+    assert match.featured_artists == []
     assert match.title == "One More Time"
     assert match.cosine_distance == pytest.approx(0.0, abs=1e-6)
+
+
+def test_match_splits_main_and_featured_artists_by_role(db_connection):
+    embedding = _embedding(1.0)
+    song_id = _insert_song(
+        db_connection,
+        title="Cold Heart",
+        release_year=2021,
+        artist_name="Elton John",
+        verification_status="VERIFIED",
+        embedding=embedding,
+    )
+    db_connection.run(
+        "INSERT INTO song_artists (song_id, name, role, display_order)"
+        " VALUES (:song_id, :name, :role, :display_order)",
+        song_id=song_id,
+        name="Dua Lipa",
+        role="MAIN",
+        display_order=1,
+    )
+    db_connection.run(
+        "INSERT INTO song_artists (song_id, name, role, display_order)"
+        " VALUES (:song_id, :name, :role, :display_order)",
+        song_id=song_id,
+        name="Pnau",
+        role="FEATURED",
+        display_order=2,
+    )
+
+    match = repository.find_best_verified_match(embedding)
+
+    assert match is not None
+    assert match.main_artists == ["Elton John", "Dua Lipa"]
+    assert match.featured_artists == ["Pnau"]
 
 
 def test_ignores_unverified_songs_even_with_a_close_embedding(db_connection):
