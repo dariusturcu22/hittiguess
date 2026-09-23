@@ -45,4 +45,20 @@ describe("OAuth2RedirectHandler", () => {
 
     expect(pushedPaths).toEqual(["/login?error=oauth2_failed"]);
   });
+
+  it("routes a clean callback back to the invite that started it", () => {
+    pushedPaths.length = 0;
+    redirectSearchParams = new URLSearchParams("returnTo=/groups/join/abc123");
+    render(<OAuth2RedirectHandler />);
+
+    expect(pushedPaths).toEqual(["/groups/join/abc123"]);
+  });
+
+  it("ignores an off-site callback destination", () => {
+    pushedPaths.length = 0;
+    redirectSearchParams = new URLSearchParams("returnTo=https://evil.example.com");
+    render(<OAuth2RedirectHandler />);
+
+    expect(pushedPaths).toEqual(["/playlists"]);
+  });
 });

@@ -970,6 +970,12 @@ Decision: playlist covers and profile pictures upload pixelized and persist as n
 
 Why: hotlinked originals leak whatever the source serves over time and bypass any size discipline, while tiny PNG bytes keep image storage inside the schema the core service already owns. Client-side pixelization sets the style, server-side validation keeps a hostile client from storing anything else. Public reads follow from how browsers load images, not from a judgment that covers are public content.
 
+## 2026-09 | OAuth returnTo: additionalParameters round trip, validated on both ends
+
+Decision: the invite returnTo survives Google sign in inside the OAuth2 authorization request itself. The login and register pages append a validated returnTo to the `/oauth2/authorization/google` link, a request resolver carries it into the saved authorization request's additionalParameters (persisted by the existing cookie repository), and the success handler reads it back and appends it to the frontend redirect. The redirect handler routes to the validated value instead of the fixed library path. Validation is same origin absolute paths only, applied when the link is built, when the request is saved, and when the redirect is sent, so a crafted value is dropped at each step rather than trusted once.
+
+Why: the authorization request cookie is the only state that spans the round trip to the provider, so anything else (a query param on the start link alone, a request attribute) is gone by the time the callback runs. Keeping the value inside that request reuses the persistence the flow already has instead of adding a second cookie with its own lifetime and cleanup. Triple validation keeps each side safe on its own: the frontend never builds an off site link, the backend never saves or redirects to one.
+
 ## 2026-09 | Export duplex interleave replaces the combined single-face mode
 
 Decision: the combined card face (QR printed beside the answer) is removed, and the third export mode is an interleaved duplex PDF: info page, matching mirrored QR page, next info page, and so on in natural order. The separate info and QR files keep their manual flip-the-stack behavior, including the QR sheet-order reversal. The interleaved file skips that reversal so a printer's native double-sided mode lines each pair up in one pass.

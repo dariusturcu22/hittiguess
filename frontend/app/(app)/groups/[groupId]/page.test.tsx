@@ -14,7 +14,6 @@ const GROUP_PARAMS = Promise.resolve({ groupId: "1" });
 
 const generateMutate = vi.fn();
 const startWithSongsMutate = vi.fn();
-const startCustomMutate = vi.fn();
 const startSessionMutate = vi.fn();
 let lobbySearchParams = new URLSearchParams();
 
@@ -52,7 +51,6 @@ vi.mock("@/hooks/generated/group-management/group-management", () => ({
   useUpdateGroupSettings: () => ({ mutate: updateSettingsMutate, isPending: false }),
   useGenerateDifficultySet: () => ({ mutate: generateMutate, isPending: false }),
   useStartSessionWithSongs: () => ({ mutate: startWithSongsMutate, isPending: false }),
-  useStartCustomSession: () => ({ mutate: startCustomMutate, isPending: false }),
 }));
 
 vi.mock("@/hooks/generated/user-management/user-management", () => ({
@@ -94,7 +92,6 @@ describe("GroupLobbyPage start options", () => {
   beforeEach(() => {
     generateMutate.mockReset();
     startWithSongsMutate.mockReset();
-    startCustomMutate.mockReset();
     startSessionMutate.mockReset();
     updateSettingsMutate.mockReset();
     leaveMutate.mockReset();
@@ -105,7 +102,6 @@ describe("GroupLobbyPage start options", () => {
     ];
     generateMutate.mockImplementation((_args, options) => options?.onSuccess?.(previews));
     startWithSongsMutate.mockImplementation((_args, options) => options?.onSuccess?.({}));
-    startCustomMutate.mockImplementation((_args, options) => options?.onSuccess?.({}));
     updateSettingsMutate.mockImplementation((_args, options) => options?.onSuccess?.({}));
     toastMocks.success.mockReset();
     toastMocks.error.mockReset();
@@ -118,7 +114,7 @@ describe("GroupLobbyPage start options", () => {
     fireEvent.click(screen.getByRole("button", { name: "Generate" }));
 
     expect(generateMutate).toHaveBeenCalledWith(
-      { groupId: 1, data: { tier: "MEDIUM", targetCardCount: 7 } },
+      { groupId: 1, data: { tier: "MEDIUM", targetCardCount: 30 } },
       expect.anything(),
     );
     expect(screen.getByText("Song One")).toBeVisible();
@@ -140,7 +136,7 @@ describe("GroupLobbyPage start options", () => {
     fireEvent.click(screen.getByRole("button", { name: "Generate" }));
 
     expect(generateMutate).toHaveBeenCalledWith(
-      { groupId: 1, data: { tier: "HARD", targetCardCount: 7 } },
+      { groupId: 1, data: { tier: "HARD", targetCardCount: 30 } },
       expect.anything(),
     );
   });
@@ -162,36 +158,46 @@ describe("GroupLobbyPage start options", () => {
     expect(screen.getByRole("button", { name: "Generate" })).toBeVisible();
   });
 
-  it("confirms a custom multi-playlist selection into a start", async () => {
+  it("confirms a custom multi-playlist selection without starting", async () => {
     startSessionMutate.mockImplementation((_args, options) => options?.onSuccess?.({}));
     await renderPage();
 
     fireEvent.click(screen.getByRole("button", { name: "Choose playlists" }));
     fireEvent.click(screen.getByRole("button", { name: "Custom" }));
     fireEvent.click(screen.getByRole("button", { name: /Party mix/ }));
-    fireEvent.click(screen.getByRole("button", { name: "Confirm and start" }));
+    fireEvent.click(screen.getByRole("button", { name: "Confirm" }));
 
     expect(updateSettingsMutate).toHaveBeenCalledWith(
       { groupId: 1, data: { playlistIds: [21] } },
       expect.anything(),
     );
-    expect(startSessionMutate).toHaveBeenCalledWith({ groupId: 1 }, expect.anything());
+    expect(startSessionMutate).not.toHaveBeenCalled();
   });
 
-  it("starts a custom session from a pasted playlist link", async () => {
+  it("highlights Custom once a custom selection is active", async () => {
     await renderPage();
 
     fireEvent.click(screen.getByRole("button", { name: "Choose playlists" }));
     fireEvent.click(screen.getByRole("button", { name: "Custom" }));
-    fireEvent.change(screen.getByPlaceholderText("YouTube playlist link or id"), {
-      target: { value: "https://youtube.com/playlist?list=abc" },
-    });
-    fireEvent.click(screen.getByRole("button", { name: "Start" }));
+    fireEvent.click(screen.getByRole("button", { name: /Party mix/ }));
+    fireEvent.click(screen.getByRole("button", { name: "Confirm" }));
 
-    expect(startCustomMutate).toHaveBeenCalledWith(
-      { groupId: 1, data: { playlistLink: "https://youtube.com/playlist?list=abc" } },
-      expect.anything(),
-    );
+    fireEvent.click(screen.getByRole("button", { name: "Choose playlists" }));
+
+    expect(screen.getByRole("button", { name: "Custom" })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByRole("button", { name: "Medium" })).toHaveAttribute("aria-pressed", "false");
+  });
+
+  it("closes the custom picker on outside click", async () => {
+    await renderPage();
+
+    fireEvent.click(screen.getByRole("button", { name: "Choose playlists" }));
+    fireEvent.click(screen.getByRole("button", { name: "Custom" }));
+    expect(screen.getByRole("button", { name: "Confirm" })).toBeVisible();
+
+    fireEvent.click(screen.getByRole("button", { name: "Close playlist selection" }));
+
+    expect(screen.queryByRole("button", { name: "Confirm" })).toBeNull();
   });
 
   it("opens the custom picker with the playlist preselected from the link", async () => {
@@ -200,7 +206,7 @@ describe("GroupLobbyPage start options", () => {
 
     expect(screen.getByText("Chosen: Party mix")).toBeVisible();
 
-    fireEvent.click(screen.getByRole("button", { name: "Confirm and start" }));
+    fireEvent.click(screen.getByRole("button", { name: "Confirm" }));
 
     expect(updateSettingsMutate).toHaveBeenCalledWith(
       { groupId: 1, data: { playlistIds: [21] } },

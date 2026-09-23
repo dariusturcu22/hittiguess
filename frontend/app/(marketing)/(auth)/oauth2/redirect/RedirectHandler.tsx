@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { LogoIcon } from "@/components/logo";
 import { AuthPageBackground } from "@/components/auth-page-background";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { safeReturnToPath } from "@/lib/return-to";
 import Link from "next/link";
 
 export default function OAuth2RedirectHandler() {
@@ -18,7 +19,7 @@ export default function OAuth2RedirectHandler() {
     if (error) {
       router.push("/login?error=" + encodeURIComponent(error));
     } else {
-      router.push("/playlists");
+      router.push(safeReturnToPath(searchParams.get("returnTo")) ?? "/playlists");
     }
   }, [router, searchParams]);
 

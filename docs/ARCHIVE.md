@@ -656,6 +656,40 @@ Tests:
 - [x] Unit test: `GroupServiceTest`, the admin leaving alone while a `GameSession` still references the group does not delete it
 - [x] `batch-e-group-lobby.spec.ts`'s real-backend lobby test (join, settings, chat, start session) and the mocked results-export test both pass end to end against a real two-session backend; the third (fully-mocked gameplay-shell) test remains flaky under back-to-back local runs sharing the same seeded accounts, unrelated to this fix, not chased further
 
+## Fix batch: group lobby picker, chat backdrop, invite OAuth return, password toggles
+
+Lobby playlist and difficulty picker (`frontend/app/(app)/groups/[groupId]/page.tsx`):
+- [x] Custom button matches tier pills in row, styling, and aria-pressed treatment
+- [x] Playlist source state tracks tier vs custom and drives the active highlight
+- [x] Cards count input removed, target count computed as memberCount * winCondition * 3 clamped to minimum
+- [x] Custom picker modal gets vertical margin so the backdrop stays clickable, backdrop click closes it
+- [x] Playlist link input, Start button, and playlistLink state removed, startCustom usage cleared
+- [x] Picker rows render compact playlist cards reusing the library cover pattern
+- [x] Confirm button saves selection only, no session start
+
+Chat overlay (`frontend/components/group-chat-overlay.tsx`):
+- [x] Backdrop click closes the panel in floating and non-floating paths, Chat toggle stays usable
+
+Invite and OAuth return path:
+- [x] Login and register Google links carry validated returnTo
+- [x] Backend passes returnTo through the OAuth2 request and appends it to the frontend redirect
+- [x] RedirectHandler routes to validated returnTo instead of fixed /playlists
+- [x] Playlist join page carries the same returnTo login link as the group join page
+- [x] Logged out group join route checked for real redirect or query race vs dev only noise
+
+Password fields:
+- [x] Reusable PasswordInput wrapper with Eye and EyeOff toggle
+- [x] Login, register, and reset password fields use the wrapper with existing bindings intact
+
+Tests:
+- [x] Lobby tests for custom highlight, confirm without start, and backdrop close
+- [x] Chat test for click outside close
+- [x] Frontend tests for returnTo on Google links and RedirectHandler routing
+- [x] Backend tests for returnTo propagation through the OAuth handlers
+- [x] Password toggle reveal and hide test
+- [x] Frontend `npm run test -- --run`, `npm run lint`, and `npm run build` clean
+- [x] Backend `./mvnw test` clean
+
 ## Fix batch 2: lobby popups, export, import, explore, invites, metadata, UI polish
 
 Popup mutual exclusion and spacing (`frontend/app/(app)/groups/[groupId]/page.tsx`):
