@@ -20,7 +20,7 @@ describe("PlaylistCoverMosaic", () => {
     render(<PlaylistCoverMosaic previewYoutubeIds={["abc12345678", "def12345678"]} />);
 
     for (const thumbnail of screen.getAllByRole("presentation", { hidden: true })) {
-      expect(thumbnail).toHaveClass("scale-[1.35]");
+      expect(thumbnail).toHaveClass("scale-[1.6]");
     }
   });
 
@@ -29,7 +29,7 @@ describe("PlaylistCoverMosaic", () => {
       <PlaylistCoverMosaic previewYoutubeIds={[]} customCoverUrl="https://example.com/cover.png" />,
     );
 
-    expect(container.querySelector("img")).not.toHaveClass("scale-[1.35]");
+    expect(container.querySelector("img")).not.toHaveClass("scale-[1.6]");
   });
 
   it("renders four placeholders when the playlist is empty", () => {
