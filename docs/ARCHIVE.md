@@ -794,3 +794,14 @@ Batch 2's fix-up work (`Carry main-artist plurality and dedup featured credits a
 Tests:
 - [x] `tsc --noEmit` clean project-wide
 - [x] Frontend `npm run test -- --run`, `npm run lint`, and `npm run build` all clean
+
+## Bug batch: group lobby picker, mosaic zoom, and song attribution
+
+- [x] The group lobby's custom playlist picker no longer reopens itself after being closed when reached through a `?playlist=` preselect link
+- [x] The custom picker's playlist grid matches the playlist library's tiled card layout instead of a compact row list
+- [x] Playlist cover mosaic tiles clip their own zoomed thumbnail instead of bleeding across the tile divider, and zoom further past YouTube's baked-in letterbox bars
+- [x] Songs added through bulk import, playlist import, and the admin catalog backlog are attributed to the submitting user instead of always showing "Added by a deleted account"
+
+Tests:
+- [x] `SongResolutionServiceTest` covers attributing a new song to the given user and not reassigning an already-attributed song on reprocessing; existing `BulkImportServiceTest` and `PlaylistImportJobServiceTest` stubs updated for the new signature
+- [x] `frontend/app/(app)/groups/[groupId]/page.tsx` and `frontend/components/playlist-cover-mosaic.tsx` covered by the existing full suite
