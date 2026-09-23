@@ -644,3 +644,14 @@ Surfaced during a visual verification pass against the mockups: `proxy.ts`'s `PU
 
 Tests:
 - [x] Unit tests for `proxy.ts` (none existed before): every public route (including the two fixed here) passes through for a logged-out request, a protected route redirects a logged-out request to `/login`, a protected route passes through once `session_hint` is present
+
+## Fix: leaving a group with an in-progress game session crashed, and stale e2e locators
+
+Surfaced running the real Playwright e2e suite (`batch-e-group-lobby.spec.ts`) against a live backend and two genuinely separate sessions, per `docs/DEV_SETUP.md`. `GroupService.leaveGroup`'s last-member-deletes-the-group branch called `groupRepository.delete(group)` unconditionally, with no check for whether a `GameSession` still referenced that group. Since a group locks once a session starts and stays referenced by that session's row until it ends or auto-abandons, the last connected member explicitly leaving mid-session hit an unhandled SQL foreign key violation, surfaced to the client as a raw SQL error string in a 400 response.
+
+- [x] `GroupService.leaveGroup`: when the group would otherwise be deleted (no members left), skip the delete if a `GameSession` still references it; the session's own 10-minute zero-connected-players auto-abandon path already purges the session and reopens the group through `recordGameSessionEnded`, so nothing else needs to change to clean it up afterward
+- [x] Fix three stale locators in `batch-e-group-lobby.spec.ts`, all from UI changes the test was never updated for: `.selectOption("ROTATING")` on the DJ-mode dropdown (now a shadcn/Radix `Select`, not a native `<select>`), an ambiguous `getByRole("button", { name: "Settings" })` now also matching the popup's "Close settings" overlay button, an ambiguous `getByRole("button", { name: "Close chat" })` now matching both the chat panel's own close button and the footer toggle, and the results page's single-click download now opening a format-choice panel (PDF/text/CSV) per story 47's design instead of downloading directly
+
+Tests:
+- [x] Unit test: `GroupServiceTest`, the admin leaving alone while a `GameSession` still references the group does not delete it
+- [x] `batch-e-group-lobby.spec.ts`'s real-backend lobby test (join, settings, chat, start session) and the mocked results-export test both pass end to end against a real two-session backend; the third (fully-mocked gameplay-shell) test remains flaky under back-to-back local runs sharing the same seeded accounts, unrelated to this fix, not chased further

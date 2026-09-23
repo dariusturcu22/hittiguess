@@ -14,6 +14,7 @@ import org.dariusturcu.backend.model.group.UpdateGroupSettingsRequest;
 import org.dariusturcu.backend.model.mapper.GroupMapper;
 import org.dariusturcu.backend.model.playlist.Playlist;
 import org.dariusturcu.backend.model.user.User;
+import org.dariusturcu.backend.repository.GameSessionRepository;
 import org.dariusturcu.backend.repository.GroupRepository;
 import org.dariusturcu.backend.repository.MemberRepository;
 import org.dariusturcu.backend.repository.PlaylistRepository;
@@ -57,6 +58,7 @@ public class GroupService {
 
     private final GroupRepository groupRepository;
     private final MemberRepository memberRepository;
+    private final GameSessionRepository gameSessionRepository;
     private final PlaylistRepository playlistRepository;
     private final GroupMapper groupMapper;
     private final ApplicationEventPublisher eventPublisher;
@@ -219,9 +221,14 @@ public class GroupService {
             GroupDetailDTO result = groupMapper.toDetailDTO(savedGroup);
             eventPublisher.publishEvent(new GroupBroadcastEvent(GroupEventType.MEMBER_LEFT, result));
             eventPublisher.publishEvent(new GroupBroadcastEvent(GroupEventType.ADMIN_CHANGED, result));
-        } else {
+        } else if (gameSessionRepository.findByGroupId(group.getId()).isEmpty()) {
             groupRepository.delete(group);
         }
+        // Else: the last member left while a game session for this group still exists.
+        // Deleting the group here would violate the session's foreign key to it, so the
+        // now-memberless group is left in place; the session's own 10-minute zero-connected-
+        // players auto-abandon path purges it and reopens the group through
+        // recordGameSessionEnded, which is what actually clears it out.
     }
 
     public void disconnect(Long groupId) {

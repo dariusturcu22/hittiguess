@@ -13,8 +13,10 @@ import org.dariusturcu.backend.model.group.MemberDTO;
 import org.dariusturcu.backend.model.group.UpdateGroupSettingsRequest;
 import org.dariusturcu.backend.model.mapper.GroupMapper;
 import org.dariusturcu.backend.model.mapper.PlaylistMapper;
+import org.dariusturcu.backend.model.session.GameSession;
 import org.dariusturcu.backend.model.user.Role;
 import org.dariusturcu.backend.model.user.User;
+import org.dariusturcu.backend.repository.GameSessionRepository;
 import org.dariusturcu.backend.repository.GroupRepository;
 import org.dariusturcu.backend.repository.MemberRepository;
 import org.dariusturcu.backend.repository.PlaylistRepository;
@@ -56,6 +58,8 @@ class GroupServiceTest {
     @Mock
     private MemberRepository memberRepository;
     @Mock
+    private GameSessionRepository gameSessionRepository;
+    @Mock
     private PlaylistRepository playlistRepository;
     @Mock
     private ApplicationEventPublisher eventPublisher;
@@ -84,7 +88,7 @@ class GroupServiceTest {
         otherUser.setRole(Role.USER);
 
         groupMapper = new GroupMapper(new PlaylistMapper(null));
-        groupService = new GroupService(groupRepository, memberRepository, playlistRepository, groupMapper, eventPublisher, playlistAccessService);
+        groupService = new GroupService(groupRepository, memberRepository, gameSessionRepository, playlistRepository, groupMapper, eventPublisher, playlistAccessService);
 
         lenient().when(groupRepository.save(any(Group.class))).thenAnswer(invocation -> invocation.getArgument(0));
         lenient().when(memberRepository.save(any(Member.class))).thenAnswer(invocation -> invocation.getArgument(0));
@@ -308,6 +312,20 @@ class GroupServiceTest {
 
         verify(groupRepository).delete(group);
         verify(groupRepository, never()).save(any());
+    }
+
+    @Test
+    void leaveGroupLeavesTheGroupInPlaceWhenTheAdminLeavesAloneWhileAGameSessionStillExistsForIt() {
+        Group group = groupWithAdmin();
+        when(groupRepository.findById(10L)).thenReturn(Optional.of(group));
+        GameSession session = new GameSession();
+        session.setId(20L);
+        session.setGroupId(10L);
+        when(gameSessionRepository.findByGroupId(10L)).thenReturn(Optional.of(session));
+
+        groupService.leaveGroup(10L);
+
+        verify(groupRepository, never()).delete(any());
     }
 
     @Test
