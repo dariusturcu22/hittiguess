@@ -112,3 +112,17 @@ class PlaylistVideoIdsRequest(BaseModel):
 
 class PlaylistVideoIdsResponse(BaseModel):
     video_ids: list[str]
+
+
+class VideoInfoRequest(BaseModel):
+    video_ids: list[str]
+
+
+class VideoInfoItem(BaseModel):
+    video_id: str
+    title: str
+    channel_title: str
+
+
+class VideoInfoResponse(BaseModel):
+    videos: list[VideoInfoItem]

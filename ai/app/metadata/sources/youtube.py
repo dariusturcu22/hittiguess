@@ -2,8 +2,10 @@ import httpx
 
 from app.config import settings
 from app.metadata.sources.util import (
+    YOUTUBE_VIDEOS_BATCH_SIZE,
     build_youtube_api_url,
     build_youtube_playlist_items_api_url,
+    build_youtube_videos_batch_api_url,
     extract_youtube_video_id,
     parse_iso8601_duration_seconds,
 )
@@ -95,3 +97,36 @@ def fetch_playlist_video_ids(playlist_id: str) -> list[str]:
             break
 
     return video_ids
+
+
+def fetch_video_titles_and_channels(video_ids: list[str]) -> dict[str, dict[str, str]]:
+    """Batch-fetches each video's raw title and uploading channel name via
+    videos.list, chunked to the API's 50-id-per-call limit. Best effort: a
+    failed chunk is skipped rather than raising, since this only feeds a
+    still-processing row's display text, not the resolution pipeline itself.
+    A video id absent from the result (a failed chunk, or an id YouTube
+    doesn't recognize) is left for the caller to default."""
+    video_info_by_id: dict[str, dict[str, str]] = {}
+
+    for chunk_start in range(0, len(video_ids), YOUTUBE_VIDEOS_BATCH_SIZE):
+        chunk = video_ids[chunk_start:chunk_start + YOUTUBE_VIDEOS_BATCH_SIZE]
+        api_url = build_youtube_videos_batch_api_url(chunk, settings.youtube_api_key)
+        try:
+            response = httpx.get(api_url, timeout=5.0)
+            response.raise_for_status()
+            payload = response.json()
+        except Exception as video_batch_error:
+            report_source_failure(SOURCE_NAME, video_batch_error, title=",".join(chunk), artist="unknown")
+            continue
+
+        for item in payload.get("items", []):
+            video_id = item.get("id")
+            if not video_id:
+                continue
+            snippet = item.get("snippet", {})
+            video_info_by_id[video_id] = {
+                "title": snippet.get("title", "unknown"),
+                "channel_title": snippet.get("channelTitle", "unknown"),
+            }
+
+    return video_info_by_id

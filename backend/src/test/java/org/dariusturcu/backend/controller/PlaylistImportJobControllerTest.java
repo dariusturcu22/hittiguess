@@ -48,7 +48,8 @@ class PlaylistImportJobControllerTest {
     void activeImportReturnsTheRunningJob() {
         PlaylistImportJobDTO job = new PlaylistImportJobDTO(
                 "job-1", 7L, PlaylistImportJobStatus.RUNNING, null, null,
-                List.of(new PlaylistImportJobItemDTO("video-1", PlaylistImportJobItemStatus.PENDING, null)));
+                List.of(new PlaylistImportJobItemDTO(
+                        "video-1", PlaylistImportJobItemStatus.PENDING, null, null, null, null, null, null, null)));
         when(playlistImportJobService.findActiveImport(7L)).thenReturn(Optional.of(job));
 
         ResponseEntity<PlaylistImportJobDTO> response = controller().activeImport(7L);

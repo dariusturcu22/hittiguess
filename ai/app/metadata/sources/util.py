@@ -25,6 +25,8 @@ PLAYLIST_LIST_QUERY_PARAM_PATTERN = re.compile(r"[?&]list=(?P<playlist_id>[a-zA-
 YOUTUBE_HOST_MARKERS = ("youtube.com", "youtu.be")
 
 YOUTUBE_PLAYLIST_ITEMS_PAGE_SIZE = 50
+# YouTube's videos.list endpoint accepts at most 50 comma-separated ids per call.
+YOUTUBE_VIDEOS_BATCH_SIZE = 50
 
 LUCENE_SPECIAL_CHARS = re.compile(r'([+\-!(){}\[\]^"~*?:\\&|/])')
 
@@ -108,6 +110,14 @@ def build_youtube_api_url(video_id: str, api_key: str) -> str:
     return (
         "https://www.googleapis.com/youtube/v3/videos"
         f"?part=snippet,contentDetails&id={quote(video_id)}&key={api_key}"
+    )
+
+
+def build_youtube_videos_batch_api_url(video_ids: list[str], api_key: str) -> str:
+    joined_ids = ",".join(quote(video_id) for video_id in video_ids)
+    return (
+        "https://www.googleapis.com/youtube/v3/videos"
+        f"?part=snippet&id={joined_ids}&key={api_key}"
     )
 
 

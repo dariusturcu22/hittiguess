@@ -2,15 +2,17 @@
 
 import React, { use } from "react";
 import Link from "next/link";
-import { AlertTriangle, Check, LoaderCircle, Search, Video } from "lucide-react";
+import { AlertTriangle, Check, LoaderCircle, Music, Search, Video } from "lucide-react";
 
 import { useExpandPlaylist } from "@/hooks/generated/bulk-import/bulk-import";
 import { useActiveImport, useStartImport } from "@/hooks/generated/playlist-import-jobs/playlist-import-jobs";
-import type { PlaylistImportJobItemDTOStatus } from "@/hooks/models/playlistImportJobItemDTOStatus";
+import { useGetPlaylist } from "@/hooks/generated/playlist-management/playlist-management";
+import type { PlaylistImportJobItemDTO } from "@/hooks/models/playlistImportJobItemDTO";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { useBulkImportRealtime } from "@/hooks/use-bulk-import-realtime";
 import { loadActiveImportJob, saveActiveImportJob } from "@/lib/playlist-import-job";
+import { playlistTitleColor } from "@/lib/playlist-colors";
 
 interface PageProps {
   params: Promise<{ playlistId: string }>;
@@ -28,35 +30,76 @@ function isJobGoneError(error: unknown): boolean {
   return false;
 }
 
-function ImportItemRow({ youtubeId, status }: { youtubeId: string; status?: PlaylistImportJobItemDTOStatus }) {
-  const isFinished = status === "RESOLVED" || status === "ALREADY_KNOWN";
-  const isUnmatched = status === "UNRESOLVED";
-  return (
-    <div className="flex items-center gap-3 border-b-2 border-background px-4 py-2.5 last:border-b-0">
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
-        src={`https://i.ytimg.com/vi/${youtubeId}/default.jpg`}
-        alt=""
-        loading="lazy"
-        className="aspect-video w-16 shrink-0 rounded-lg object-cover"
-      />
-      <span className="min-w-0 flex-1 truncate font-mono text-[11px] text-muted-foreground">{youtubeId}</span>
-      {isFinished ? (
-        <span className="flex shrink-0 items-center gap-1.5 text-[12px] font-semibold text-green">
-          <Check className="size-4" />
-          {status === "ALREADY_KNOWN" ? "Already added" : "Added"}
+function ImportItemRow({ item }: { item: PlaylistImportJobItemDTO }) {
+  const isResolved = item.status === "RESOLVED" || item.status === "ALREADY_KNOWN";
+  const isUnmatched = item.status === "UNRESOLVED";
+
+  if (isResolved) {
+    return (
+      <div className="flex items-center gap-3.5 border-b-2 border-background px-5 py-3 last:border-b-0">
+        <span
+          className="flex size-10 shrink-0 items-center justify-center rounded-[10px]"
+          style={{ backgroundColor: playlistTitleColor(item.resolvedColor) }}
+        >
+          <Music className="size-[18px]" stroke="rgba(17,17,27,0.5)" />
         </span>
-      ) : isUnmatched ? (
+        <span className="min-w-0 flex-1">
+          <span className="block truncate text-sm text-card-foreground">{item.resolvedTitle}</span>
+          <span className="mt-0.5 block truncate text-xs text-muted-foreground">{item.resolvedArtists}</span>
+        </span>
+        <span
+          className="w-[50px] shrink-0 text-right font-display text-[15px]"
+          style={{ color: playlistTitleColor(item.resolvedColor) }}
+        >
+          {item.resolvedReleaseYear}
+        </span>
+        <Check className="size-[17px] shrink-0 text-green" strokeWidth={2.5} />
+      </div>
+    );
+  }
+
+  if (isUnmatched) {
+    return (
+      <div className="flex items-center gap-3.5 border-b-2 border-background px-5 py-3 last:border-b-0">
+        <span className="flex size-10 shrink-0 items-center justify-center rounded-[10px] border-2 border-dashed border-secondary bg-background">
+          <AlertTriangle className="size-[18px] text-destructive" />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block truncate text-sm italic text-muted-foreground">
+            {item.rawTitle ?? item.youtubeId}
+          </span>
+          {item.rawChannelTitle ? (
+            <span className="mt-0.5 block truncate text-xs text-muted-foreground/70">
+              Uploaded by {item.rawChannelTitle}
+            </span>
+          ) : null}
+        </span>
         <span className="flex shrink-0 items-center gap-1.5 text-[12px] font-semibold text-destructive">
-          <AlertTriangle className="size-4" />
           No match found
         </span>
-      ) : (
-        <span className="flex shrink-0 items-center gap-1.5 text-[12px] text-muted-foreground">
-          <LoaderCircle className="size-4 animate-spin text-primary" />
-          Resolving...
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex items-center gap-3.5 border-b-2 border-background px-5 py-3 last:border-b-0">
+      <span className="flex size-10 shrink-0 items-center justify-center rounded-[10px] border-2 border-dashed border-secondary bg-background">
+        <LoaderCircle className="size-[18px] animate-spin text-muted-foreground" />
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="block truncate text-sm italic text-muted-foreground">
+          {item.rawTitle ?? item.youtubeId}
         </span>
-      )}
+        {item.rawChannelTitle ? (
+          <span className="mt-0.5 block truncate text-xs text-muted-foreground/70">
+            Uploaded by {item.rawChannelTitle}
+          </span>
+        ) : null}
+      </span>
+      <span className="flex shrink-0 items-center gap-1.5 whitespace-nowrap text-xs text-muted-foreground">
+        <LoaderCircle className="size-3 animate-spin" />
+        Fetching...
+      </span>
     </div>
   );
 }
@@ -65,6 +108,7 @@ export default function ImportYoutubePage({ params }: PageProps) {
   const { playlistId: rawId } = use(params);
   const playlistId = parseInt(rawId);
   const router = useRouter();
+  const playlistQuery = useGetPlaylist(playlistId);
   const expandMutation = useExpandPlaylist();
   const startImportMutation = useStartImport();
   const { reset } = useBulkImportRealtime({ subscribeToProgress: false });
@@ -129,44 +173,54 @@ export default function ImportYoutubePage({ params }: PageProps) {
   return (
     <div className="flex-1 flex items-center justify-center px-6 py-12">
       <div className="w-[560px] max-w-full bg-card border-[3px] border-border-strong rounded-2xl shadow-lg box-border px-12 pt-11 pb-12 flex flex-col">
-        <div className="mx-auto mb-6 flex size-[84px] items-center justify-center rounded-2xl bg-destructive/15 text-destructive">
-          <Video className="size-8" />
-        </div>
-        <h1 className="font-display text-2xl text-destructive text-center mb-2 [text-shadow:3px_3px_0_var(--text-shadow-on-card)]">
-          Import from YouTube
-        </h1>
-        <p className="text-[13px] text-muted-foreground text-center mb-7 leading-[1.5]">
-          Paste a playlist link. We&apos;ll list every song and fetch details for each one.
-        </p>
+        {isImportStarted ? (
+          <>
+            <h1 className="font-display text-2xl text-destructive mb-1.5 [text-shadow:3px_3px_0_var(--text-shadow-on-card)]">
+              Importing playlist
+            </h1>
+            <p className="text-[13px] text-muted-foreground mb-6">
+              {playlistQuery.data?.name ?? "This playlist"}
+              {playlistLink ? <>&nbsp;&bull;&nbsp;{playlistLink}</> : null}
+            </p>
+          </>
+        ) : (
+          <>
+            <div className="mx-auto mb-6 flex size-[84px] items-center justify-center rounded-2xl bg-destructive/15 text-destructive">
+              <Video className="size-8" />
+            </div>
+            <h1 className="font-display text-2xl text-destructive text-center mb-2 [text-shadow:3px_3px_0_var(--text-shadow-on-card)]">
+              Import from YouTube
+            </h1>
+            <p className="text-[13px] text-muted-foreground text-center mb-7 leading-[1.5]">
+              Paste a playlist link. We&apos;ll list every song and fetch details for each one.
+            </p>
+          </>
+        )}
 
         {isImportStarted ? (
-          <div className="mt-6 rounded-xl bg-background p-5">
-            <p className="text-[13px] font-semibold text-card-foreground">
-              {isImportFinished
-                ? `Import complete. ${addedImportCount} song${addedImportCount === 1 ? "" : "s"} added.`
-                : importItems.length === 0
-                  ? "Starting the import..."
-                  : `${processedImportCount} of ${importItems.length} processed`}
-            </p>
-            {importItems.length > 0 ? (
-              <div className="mt-3 h-2 overflow-hidden rounded-full bg-secondary">
+          <div className="mt-1">
+            <div className="flex items-center gap-3">
+              <div className="h-2 flex-1 overflow-hidden rounded-full border-2 border-border-strong bg-secondary">
                 <div
                   className="h-full rounded-full bg-green transition-all"
-                  style={{ width: `${(processedImportCount / importItems.length) * 100}%` }}
+                  style={{ width: `${importItems.length === 0 ? 0 : (processedImportCount / importItems.length) * 100}%` }}
                 />
               </div>
-            ) : null}
+              <span className="shrink-0 whitespace-nowrap text-xs text-muted-foreground">
+                {isImportFinished
+                  ? `${addedImportCount} of ${importItems.length} added`
+                  : importItems.length === 0
+                    ? "Starting..."
+                    : `${processedImportCount} of ${importItems.length} processed`}
+              </span>
+            </div>
             {isConnectionStale && !isImportFinished ? (
               <p className="mt-2 text-[12px] text-warning">Connection hiccup. Retrying...</p>
             ) : null}
             {importItems.length > 0 ? (
-              <div className="mt-3 max-h-64 overflow-y-auto rounded-xl border-2 border-border bg-card pr-1">
+              <div className="mt-4 max-h-[420px] overflow-y-auto rounded-2xl border-[3px] border-border-strong bg-card">
                 {importItems.map((item) => (
-                  <ImportItemRow
-                    key={item.youtubeId ?? ""}
-                    youtubeId={item.youtubeId ?? ""}
-                    status={item.status}
-                  />
+                  <ImportItemRow key={item.youtubeId ?? ""} item={item} />
                 ))}
               </div>
             ) : null}

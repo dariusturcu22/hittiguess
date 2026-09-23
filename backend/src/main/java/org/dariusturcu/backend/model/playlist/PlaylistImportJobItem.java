@@ -31,4 +31,10 @@ public class PlaylistImportJobItem {
 
     @Column(name = "song_id")
     private Long songId;
+
+    @Column(name = "raw_title")
+    private String rawTitle;
+
+    @Column(name = "raw_channel_title")
+    private String rawChannelTitle;
 }

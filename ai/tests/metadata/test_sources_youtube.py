@@ -118,3 +118,58 @@ def test_fetch_playlist_video_ids_stops_and_returns_partial_results_when_a_later
 
     assert video_ids == ["video-one"]
     assert call_count["total"] == 2
+
+
+def _videos_batch_payload(video_infos: list[tuple[str, str, str]]) -> dict:
+    return {
+        "items": [
+            {"id": video_id, "snippet": {"title": title, "channelTitle": channel_title}}
+            for video_id, title, channel_title in video_infos
+        ]
+    }
+
+
+@respx.mock
+def test_fetch_video_titles_and_channels_maps_each_id_to_its_title_and_channel():
+    respx.get(url__startswith=VIDEO_API_HOST).mock(
+        return_value=Response(
+            200,
+            json=_videos_batch_payload(
+                [("video-one", "Real Song", "Real Channel"), ("video-two", "Another Song", "Another Channel")]
+            ),
+        )
+    )
+
+    video_info = youtube.fetch_video_titles_and_channels(["video-one", "video-two"])
+
+    assert video_info == {
+        "video-one": {"title": "Real Song", "channel_title": "Real Channel"},
+        "video-two": {"title": "Another Song", "channel_title": "Another Channel"},
+    }
+
+
+@respx.mock
+def test_fetch_video_titles_and_channels_batches_past_fifty_ids():
+    video_ids = [f"video-{index}" for index in range(60)]
+    call_count = {"total": 0}
+
+    def respond_for_batch(request: httpx.Request) -> Response:
+        call_count["total"] += 1
+        requested_ids = request.url.params.get("id").split(",")
+        return Response(200, json=_videos_batch_payload([(video_id, "Title", "Channel") for video_id in requested_ids]))
+
+    respx.get(url__startswith=VIDEO_API_HOST).mock(side_effect=respond_for_batch)
+
+    video_info = youtube.fetch_video_titles_and_channels(video_ids)
+
+    assert call_count["total"] == 2
+    assert len(video_info) == 60
+
+
+@respx.mock
+def test_fetch_video_titles_and_channels_skips_a_failed_batch_without_raising():
+    respx.get(url__startswith=VIDEO_API_HOST).mock(return_value=Response(500, json={"error": "server error"}))
+
+    video_info = youtube.fetch_video_titles_and_channels(["video-one"])
+
+    assert video_info == {}

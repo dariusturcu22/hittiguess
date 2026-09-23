@@ -9,6 +9,7 @@ import org.dariusturcu.backend.model.playlist.PlaylistImportJobItem;
 import org.dariusturcu.backend.model.playlist.PlaylistImportJobItemDTO;
 import org.dariusturcu.backend.model.playlist.PlaylistImportJobItemStatus;
 import org.dariusturcu.backend.model.playlist.PlaylistImportJobStatus;
+import org.dariusturcu.backend.model.ai.VideoInfoItem;
 import org.dariusturcu.backend.model.playlist.StartPlaylistImportRequest;
 import org.dariusturcu.backend.model.song.Song;
 import org.dariusturcu.backend.model.song.YoutubeIdLookupResult;
@@ -16,9 +17,11 @@ import org.dariusturcu.backend.model.user.User;
 import org.dariusturcu.backend.repository.PlaylistImportJobItemRepository;
 import org.dariusturcu.backend.repository.PlaylistImportJobRepository;
 import org.dariusturcu.backend.repository.PlaylistRepository;
+import org.dariusturcu.backend.repository.SongRepository;
 import org.dariusturcu.backend.repository.UserRepository;
 import org.dariusturcu.backend.security.UserPrincipal;
 import org.dariusturcu.backend.security.util.SecurityUtils;
+import org.dariusturcu.backend.util.SongArtistFormatter;
 import org.dariusturcu.backend.util.YoutubeLinkParser;
 import org.dariusturcu.backend.websocket.BulkImportProgressEvent;
 import org.dariusturcu.backend.websocket.BulkImportProgressOutcome;
@@ -37,9 +40,12 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 /**
  * Playlist-scoped background imports. The HTTP call only parses the submitted ids,
@@ -56,6 +62,7 @@ public class PlaylistImportJobService {
     private final PlaylistImportJobRepository jobRepository;
     private final PlaylistImportJobItemRepository itemRepository;
     private final PlaylistRepository playlistRepository;
+    private final SongRepository songRepository;
     private final UserRepository userRepository;
     private final PlaylistAccessService playlistAccessService;
     private final YoutubeIdLookupService youtubeIdLookupService;
@@ -78,6 +85,7 @@ public class PlaylistImportJobService {
         List<String> parsedYoutubeIds = YoutubeLinkParser.parseAllVideoIds(
                 request.videoIdsOrLinks() == null ? List.of() : request.videoIdsOrLinks());
         List<String> mergedYoutubeIds = playlistExpansionService.expandAndMerge(request.playlistLink(), parsedYoutubeIds);
+        Map<String, VideoInfoItem> videoInfoByYoutubeId = playlistExpansionService.fetchVideoInfo(mergedYoutubeIds);
 
         PlaylistImportJob job = new PlaylistImportJob();
         String jobId = UUID.randomUUID().toString();
@@ -93,6 +101,11 @@ public class PlaylistImportJobService {
             item.setJob(job);
             item.setYoutubeId(youtubeId);
             item.setStatus(PlaylistImportJobItemStatus.PENDING);
+            VideoInfoItem videoInfo = videoInfoByYoutubeId.get(youtubeId);
+            if (videoInfo != null) {
+                item.setRawTitle(videoInfo.title());
+                item.setRawChannelTitle(videoInfo.channelTitle());
+            }
             itemRepository.save(item);
         }
 
@@ -184,8 +197,28 @@ public class PlaylistImportJobService {
     }
 
     private PlaylistImportJobDTO toDTO(PlaylistImportJob job) {
-        List<PlaylistImportJobItemDTO> items = itemRepository.findByJobIdOrderByIdAsc(job.getId()).stream()
-                .map(item -> new PlaylistImportJobItemDTO(item.getYoutubeId(), item.getStatus(), item.getSongId()))
+        List<PlaylistImportJobItem> jobItems = itemRepository.findByJobIdOrderByIdAsc(job.getId());
+        List<Long> resolvedSongIds = jobItems.stream()
+                .map(PlaylistImportJobItem::getSongId)
+                .filter(Objects::nonNull)
+                .toList();
+        Map<Long, Song> songsById = songRepository.findAllById(resolvedSongIds).stream()
+                .collect(Collectors.toMap(Song::getId, Function.identity()));
+
+        List<PlaylistImportJobItemDTO> items = jobItems.stream()
+                .map(item -> {
+                    Song resolvedSong = item.getSongId() == null ? null : songsById.get(item.getSongId());
+                    return new PlaylistImportJobItemDTO(
+                            item.getYoutubeId(),
+                            item.getStatus(),
+                            item.getSongId(),
+                            item.getRawTitle(),
+                            item.getRawChannelTitle(),
+                            resolvedSong == null ? null : resolvedSong.getTitle(),
+                            resolvedSong == null ? null : SongArtistFormatter.formatCredit(resolvedSong),
+                            resolvedSong == null ? null : resolvedSong.getReleaseYear(),
+                            resolvedSong == null ? null : resolvedSong.getColor());
+                })
                 .toList();
         return new PlaylistImportJobDTO(
                 job.getId(),

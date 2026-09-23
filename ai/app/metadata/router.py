@@ -6,8 +6,10 @@ from app.metadata.schemas import (
     MetadataResolveResponse,
     PlaylistVideoIdsRequest,
     PlaylistVideoIdsResponse,
+    VideoInfoRequest,
+    VideoInfoResponse,
 )
-from app.metadata.service import InvalidPlaylistLinkError, expand_playlist, resolve_metadata
+from app.metadata.service import InvalidPlaylistLinkError, expand_playlist, fetch_video_info, resolve_metadata
 from app.metadata.sources.youtube import PlaylistFetchError
 from app.rate_limit import enforce_metadata_resolve_rate_limit
 
@@ -37,3 +39,8 @@ def playlist_video_ids(request: PlaylistVideoIdsRequest) -> PlaylistVideoIdsResp
         ) from playlist_fetch_error
 
     return PlaylistVideoIdsResponse(video_ids=video_ids)
+
+
+@router.post("/video-info", response_model=VideoInfoResponse)
+def video_info(request: VideoInfoRequest) -> VideoInfoResponse:
+    return VideoInfoResponse(videos=fetch_video_info(request.video_ids))

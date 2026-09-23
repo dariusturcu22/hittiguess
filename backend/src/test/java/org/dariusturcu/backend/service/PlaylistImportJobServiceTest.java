@@ -6,14 +6,18 @@ import org.dariusturcu.backend.model.playlist.PlaylistImportJobDTO;
 import org.dariusturcu.backend.model.playlist.PlaylistImportJobItem;
 import org.dariusturcu.backend.model.playlist.PlaylistImportJobItemStatus;
 import org.dariusturcu.backend.model.playlist.PlaylistImportJobStatus;
+import org.dariusturcu.backend.model.ai.VideoInfoItem;
 import org.dariusturcu.backend.model.playlist.StartPlaylistImportRequest;
+import org.dariusturcu.backend.model.song.ArtistRole;
 import org.dariusturcu.backend.model.song.Song;
+import org.dariusturcu.backend.model.song.SongArtist;
 import org.dariusturcu.backend.model.song.YoutubeIdLookupResult;
 import org.dariusturcu.backend.model.user.Role;
 import org.dariusturcu.backend.model.user.User;
 import org.dariusturcu.backend.repository.PlaylistImportJobItemRepository;
 import org.dariusturcu.backend.repository.PlaylistImportJobRepository;
 import org.dariusturcu.backend.repository.PlaylistRepository;
+import org.dariusturcu.backend.repository.SongRepository;
 import org.dariusturcu.backend.repository.UserRepository;
 import org.dariusturcu.backend.security.util.SecurityUtils;
 import org.dariusturcu.backend.websocket.BulkImportProgressEvent;
@@ -53,6 +57,8 @@ class PlaylistImportJobServiceTest {
     @Mock
     private PlaylistRepository playlistRepository;
     @Mock
+    private SongRepository songRepository;
+    @Mock
     private UserRepository userRepository;
     @Mock
     private PlaylistAccessService playlistAccessService;
@@ -73,7 +79,7 @@ class PlaylistImportJobServiceTest {
 
     private PlaylistImportJobService service() {
         return new PlaylistImportJobService(
-                jobRepository, itemRepository, playlistRepository, userRepository,
+                jobRepository, itemRepository, playlistRepository, songRepository, userRepository,
                 playlistAccessService, youtubeIdLookupService, songResolutionService,
                 catalogSeedingService, metadataPriorityCoordinator, playlistExpansionService,
                 playlistImportService, applicationEventPublisher, new SyncTaskExecutor());
@@ -100,6 +106,8 @@ class PlaylistImportJobServiceTest {
         when(playlistRepository.findById(PLAYLIST_ID)).thenReturn(Optional.of(playlist));
         when(userRepository.findById(SUBMITTING_USER_ID)).thenReturn(Optional.of(submittingUser()));
         when(playlistExpansionService.expandAndMerge(any(), any())).thenReturn(List.of("video-1", "video-2"));
+        when(playlistExpansionService.fetchVideoInfo(any())).thenReturn(Map.of(
+                "video-2", new VideoInfoItem("video-2", "Raw Video Title", "Uploading Channel")));
         when(youtubeIdLookupService.partitionKnownAndUnknown(any()))
                 .thenReturn(new YoutubeIdLookupResult(Set.of("video-1"), Set.of("video-2")));
         Song resolvedSong = songWithId(102L);
@@ -131,6 +139,9 @@ class PlaylistImportJobServiceTest {
         assertThat(savedItems.get(0).getSongId()).isEqualTo(101L);
         assertThat(savedItems.get(1).getStatus()).isEqualTo(PlaylistImportJobItemStatus.RESOLVED);
         assertThat(savedItems.get(1).getSongId()).isEqualTo(102L);
+        assertThat(savedItems.get(1).getRawTitle()).isEqualTo("Raw Video Title");
+        assertThat(savedItems.get(1).getRawChannelTitle()).isEqualTo("Uploading Channel");
+        assertThat(savedItems.get(0).getRawTitle()).isNull();
         assertThat(storedJob.getStatus()).isEqualTo(PlaylistImportJobStatus.DONE);
         assertThat(storedJob.getCompletedAt()).isNotNull();
 
@@ -159,6 +170,56 @@ class PlaylistImportJobServiceTest {
         assertThat(activeImport).isPresent();
         assertThat(activeImport.get().id()).isEqualTo("job-1");
         assertThat(activeImport.get().playlistId()).isEqualTo(PLAYLIST_ID);
+    }
+
+    @Test
+    void activeImportItemsCarryResolvedSongDetailsAndRawVideoInfoByStatus() {
+        PlaylistImportJob runningJob = new PlaylistImportJob();
+        runningJob.setId("job-1");
+        Playlist playlist = new Playlist();
+        playlist.setId(PLAYLIST_ID);
+        runningJob.setPlaylist(playlist);
+        runningJob.setStatus(PlaylistImportJobStatus.RUNNING);
+        when(jobRepository.findByPlaylistIdAndStatusOrderByCreatedAtDesc(PLAYLIST_ID, PlaylistImportJobStatus.RUNNING))
+                .thenReturn(List.of(runningJob));
+
+        PlaylistImportJobItem resolvedItem = new PlaylistImportJobItem();
+        resolvedItem.setYoutubeId("video-1");
+        resolvedItem.setStatus(PlaylistImportJobItemStatus.RESOLVED);
+        resolvedItem.setSongId(101L);
+
+        PlaylistImportJobItem pendingItem = new PlaylistImportJobItem();
+        pendingItem.setYoutubeId("video-2");
+        pendingItem.setStatus(PlaylistImportJobItemStatus.PENDING);
+        pendingItem.setRawTitle("Raw Video Title");
+        pendingItem.setRawChannelTitle("Uploading Channel");
+
+        when(itemRepository.findByJobIdOrderByIdAsc("job-1")).thenReturn(List.of(resolvedItem, pendingItem));
+
+        Song resolvedSong = new Song();
+        resolvedSong.setId(101L);
+        resolvedSong.setTitle("Resolved Title");
+        resolvedSong.setReleaseYear(2011);
+        resolvedSong.setColor("abcdef");
+        SongArtist mainArtist = new SongArtist();
+        mainArtist.setName("Main Artist");
+        mainArtist.setRole(ArtistRole.MAIN);
+        resolvedSong.getArtists().add(mainArtist);
+        when(songRepository.findAllById(List.of(101L))).thenReturn(List.of(resolvedSong));
+
+        Optional<PlaylistImportJobDTO> activeImport = service().findActiveImport(PLAYLIST_ID);
+
+        assertThat(activeImport).isPresent();
+        var items = activeImport.get().items();
+        assertThat(items.get(0).resolvedTitle()).isEqualTo("Resolved Title");
+        assertThat(items.get(0).resolvedArtists()).isEqualTo("Main Artist");
+        assertThat(items.get(0).resolvedReleaseYear()).isEqualTo(2011);
+        assertThat(items.get(0).resolvedColor()).isEqualTo("abcdef");
+        assertThat(items.get(0).rawTitle()).isNull();
+
+        assertThat(items.get(1).resolvedTitle()).isNull();
+        assertThat(items.get(1).rawTitle()).isEqualTo("Raw Video Title");
+        assertThat(items.get(1).rawChannelTitle()).isEqualTo("Uploading Channel");
     }
 
     @Test
