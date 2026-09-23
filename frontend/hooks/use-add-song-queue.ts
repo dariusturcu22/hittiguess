@@ -29,7 +29,9 @@ function queueFor(playlistId: number): SongDTO[] {
 }
 
 export function useAddSongQueue(playlistId: number) {
-  const queue = useSyncExternalStore(subscribe, () => queueFor(playlistId));
+  // No persisted queue exists during prerender, so the server snapshot is
+  // always the shared empty queue; the live snapshot takes over on the client.
+  const queue = useSyncExternalStore(subscribe, () => queueFor(playlistId), () => EMPTY_QUEUE);
 
   function toggleQueued(song: SongDTO) {
     const currentQueue = queueFor(playlistId);

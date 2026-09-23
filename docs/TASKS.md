@@ -842,8 +842,59 @@ sign-in is unavailable over LAN; testers use local accounts.
 - [x] Fix the pre-existing session page test type error blocking `npm run build` (found during LAN verification, untouched by the LAN branch; the mock session type now allows a null round, build passes)
 - [x] Hydration warning on the login page over LAN: caused by the Dark Reader extension rewriting SVG attributes before React hydrates, not by app code; extension-free browsers hydrate cleanly. No code change; disable Dark Reader for the site since it also fights the app's own theme toggle
 
+## LAN playtest findings (PC client vs laptop server)
+
+Reported during the first multi-device playtest. Items marked reproduce-first may be stale-bundle symptoms from before the `allowedDevOrigins` fix; verify each against the fixed stack before changing code.
+
+Confirmed bugs (verified in code, fix directly):
+- [x] Clipboard copies assume `navigator.clipboard`, which is undefined over plain-HTTP LAN, so every invite and results copy throws. Add a shared copy helper with a non-Clipboard fallback and use it at all five call sites
+- [ ] Export renders as an inline section, not a dialog, with no preview and only info/QR plus A4/Letter. Convert to a dialog; combined info+QR output and extra paper sizes need backend support and land separately
+- [x] Library tabs run Owned-first with All last. Move All first and default it; put Join left of Create playlist with a code/link popup below it
+- [x] Edit-playlist save has no toast and fails silently; cancel gives no feedback. Add success toast with detail redirect (already redirects) and an error message
+- [ ] Playlist description has no backend support at all (no column, no update field), so the edit-page description field silently drops input. Needs an entity/migration/endpoint slice before the field can work
+
+Reproduce-first on the fixed stack:
+- [x] YouTube playlist import stuck at connecting (real bug, not stale-bundle: the page never opens the socket it gates on. Fixed by dropping the gate since expansion is REST)
+- [ ] Add-by-YouTube-link metadata fetch failures
+- [ ] Export download and print doing nothing
+- [x] Edit-playlist save and cancel reported dead (covered by the save fix above; cancel resets the name draft, description waits on backend support)
+
+Lobby redesign (own batch):
+- [ ] Join-call button top-aligned, not bottom-aligned
+- [ ] No sidebar collapse control; hide the right sidebar outside calls except on the group lobby page; match the left sidebar width
+- [ ] Playlist selection as a near-fullscreen overlay with bottom lobby actions still visible
+- [ ] Difficulty options (easy/medium/hard/custom) directly in playlist selection; custom opens the fullscreen multi-playlist picker with a back path; remove the standalone custom start
+- [ ] Two-player minimum only as a popup on Start, never persistent
+- [ ] Lobby content shrinks on zoom instead of pushing bottom actions off screen; avatar and name animate as one unit
+
+Library and shell redesign (own batch):
+- [ ] Joined tab copy and explore call-to-action icon (blocked on mockup direction for new profile/settings pages)
+- [ ] Sidebar logo animation genuinely random per sound-wave input, not a fixed loop
+- [ ] Group nav button only when in a group, stronger highlight on the group page, Play routes into the existing group
+- [ ] Playlist member stack matches the uploaded reference (overlapping avatars plus overflow count)
+
+Settings and chat (own batch):
+- [ ] Restyle settings dropdowns off the native control look, verified by screenshot
+- [ ] Chat panel floats above its button like the settings panel does
+
+Feedback polish (cross-cutting, own batch):
+- [ ] Loading states everywhere slow work happens: spinners or skeletons for fetches, visible progress for imports and exports, no dead silence while waiting
+- [ ] Minor motion on state changes: small fade or slide transitions where content appears, swaps, or dismisses
+- [ ] Toasts for every action whose result is not immediately visible: saves, adds, copies, publishes
+
 Tests:
 - [x] Frontend lint and the two password-flow page tests stay green (no behavior code changes in this batch)
+
+## LAN playtest findings, batch 2 (export dialog, fetch reliability)
+
+Second batch; the full findings list lives on the batch-1 branch until it merges.
+
+- [x] Export opens as a dialog with a song/option summary instead of an inline section; combined info+QR output and extra paper sizes need backend support and land separately (download and print verified working on LAN, the failures were stale-bundle)
+- [x] Add-page 500 on render from a missing server snapshot in the queue hook (same latent pattern as the voice hooks)
+- [x] Add-by-link fetch verified end to end on LAN (~35s to review); the earlier failures were the AI service being down plus the 500 above
+
+Tests:
+- [x] Playlist content, import, and queue-hook suites stay green; LAN browser probes for export download and fetch-to-review
 
 ## LAN playtest findings, batch 3 (lobby start flow, voice sidebar)
 

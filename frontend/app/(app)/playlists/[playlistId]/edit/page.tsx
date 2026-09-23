@@ -25,6 +25,8 @@ import { DEFAULT_PLAYLIST_COLOR, PLAYLIST_COLOR_PRESETS } from "@/lib/playlist-c
 import { getGetUserPlaylistsQueryKey } from "@/hooks/generated/user-management/user-management";
 import { useQueryClient } from "@tanstack/react-query";
 import { AXIOS_INSTANCE } from "@/lib/axios-instance";
+import { copyText } from "@/lib/clipboard";
+import { toast } from "sonner";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -212,6 +214,7 @@ export default function EditPlaylistPage({ params }: PageProps) {
 
   const [nameDraft, setNameDraft] = React.useState("");
   const [descriptionDraft, setDescriptionDraft] = React.useState("");
+  const [saveError, setSaveError] = React.useState("");
   React.useEffect(() => {
     if (playlist?.name != null) {
       setNameDraft(playlist.name);
@@ -231,15 +234,24 @@ export default function EditPlaylistPage({ params }: PageProps) {
 
   function saveName() {
     const trimmed = nameDraft.trim();
-    if (trimmed.length === 0 || trimmed === playlist?.name) {
+    if (trimmed.length === 0) {
       return;
     }
+    if (trimmed === playlist?.name) {
+      router.push(`/playlists/${playlistId}`);
+      return;
+    }
+    setSaveError("");
     updatePlaylist.mutate(
       { playlistId, data: { name: trimmed } },
       {
         onSuccess: () => {
           invalidatePlaylist();
+          toast.success("Changes saved");
           router.push(`/playlists/${playlistId}`);
+        },
+        onError: () => {
+          setSaveError("Couldn't save the changes. Try again.");
         },
       },
     );
@@ -401,7 +413,7 @@ export default function EditPlaylistPage({ params }: PageProps) {
               </span>
               <button
                 type="button"
-                onClick={() => inviteLink && navigator.clipboard.writeText(inviteLink)}
+                onClick={() => inviteLink && copyText(inviteLink)}
                 disabled={!inviteLink}
                 className="size-8 rounded-lg bg-secondary text-card-foreground flex items-center justify-center disabled:opacity-50"
                 aria-label="Copy invite link"
@@ -471,6 +483,9 @@ export default function EditPlaylistPage({ params }: PageProps) {
             >
               {updatePlaylist.isPending ? "Saving..." : "Save changes"}
             </button>
+            {saveError ? (
+              <p role="alert" className="col-span-2 text-sm text-destructive text-center">{saveError}</p>
+            ) : null}
           </div>
 
           <div className="h-0.5 bg-secondary mb-5" />

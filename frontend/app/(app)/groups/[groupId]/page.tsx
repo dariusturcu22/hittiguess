@@ -32,6 +32,7 @@ import type { GenerateDifficultySetRequestTier } from "@/hooks/models/generateDi
 import type { GeneratedSongPreviewDTO } from "@/hooks/models/generatedSongPreviewDTO";
 import type { MemberDTO } from "@/hooks/models/memberDTO";
 import { useQueryClient } from "@tanstack/react-query";
+import { copyText } from "@/lib/clipboard";
 import { GroupChatOverlay } from "@/components/group-chat-overlay";
 import {
   AlertDialog,
@@ -214,7 +215,7 @@ export default function GroupLobbyPage({ params }: PageProps) {
       return;
     }
 
-    await navigator.clipboard.writeText(`${window.location.origin}/groups/join/${inviteCode}`);
+    await copyText(`${window.location.origin}/groups/join/${inviteCode}`);
     setCopyFeedback("Invite link copied");
   }
 
