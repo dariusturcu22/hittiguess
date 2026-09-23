@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -264,5 +264,24 @@ describe("GroupLobbyPage start options", () => {
     fireEvent.click(screen.getByRole("button", { name: "Leave" }));
 
     expect(leaveMutate).toHaveBeenCalledWith({ groupId: 1 }, expect.anything());
+  });
+
+  it("toasts an error when leaving the lobby fails", async () => {
+    leaveMutate.mockImplementation((_args, options) => options?.onError?.(new Error("network down")));
+    await renderPage();
+
+    fireEvent.click(screen.getByRole("button", { name: "Leave lobby" }));
+    fireEvent.click(screen.getByRole("button", { name: "Leave" }));
+
+    await waitFor(() => expect(toastMocks.error).toHaveBeenCalled());
+  });
+
+  it("toasts an error when starting the game fails", async () => {
+    startSessionMutate.mockImplementation((_args, options) => options?.onError?.(new Error("network down")));
+    await renderPage();
+
+    fireEvent.click(screen.getByRole("button", { name: "Start game" }));
+
+    await waitFor(() => expect(toastMocks.error).toHaveBeenCalled());
   });
 });

@@ -1,12 +1,14 @@
 "use client";
 
 import React from "react";
+import { toast } from "sonner";
 
 import {
   useBacklogStatus,
   useEnqueue,
 } from "@/hooks/generated/admin-catalog-seeding/admin-catalog-seeding";
 import type { EnqueueResultDTO } from "@/hooks/models/enqueueResultDTO";
+import { Skeleton } from "@/components/shadcn/skeleton";
 
 const YOUTUBE_ID_INPUT_PLACEHOLDER = [
   "https://youtube.com/playlist?list=...",
@@ -99,7 +101,9 @@ export default function CatalogBacklogPage() {
         onSuccess: () => {
           setSeedingInput("");
           void refetchStatus();
+          toast.success("Added to backlog");
         },
+        onError: () => toast.error("Enqueue failed. Check the link or IDs and try again."),
       },
     );
   }
@@ -134,17 +138,17 @@ export default function CatalogBacklogPage() {
           <>
             <StatTile
               label="Pending"
-              value={statusLoading ? "..." : pending.toLocaleString()}
+              value={statusLoading ? <Skeleton className="h-[34px] w-16" /> : pending.toLocaleString()}
               valueClassName="text-warning"
             />
             <StatTile
               label="Processed today"
-              value={statusLoading ? "..." : processedToday.toLocaleString()}
+              value={statusLoading ? <Skeleton className="h-[34px] w-16" /> : processedToday.toLocaleString()}
               valueClassName="text-primary"
             />
             <StatTile
               label="Daily quota remaining"
-              value={statusLoading ? "..." : quotaRemaining.toLocaleString()}
+              value={statusLoading ? <Skeleton className="h-[34px] w-16" /> : quotaRemaining.toLocaleString()}
               suffix={statusLoading ? undefined : `/ ${dailyQuota.toLocaleString()}`}
               valueClassName="text-accent"
             />
@@ -214,7 +218,7 @@ export default function CatalogBacklogPage() {
               {statusLoading ? "" : `${pending.toLocaleString()} waiting`}
             </span>
           </div>
-          <div className="flex-1 min-h-0 overflow-y-auto">
+          <div className="flex-1 min-h-0 overflow-y-auto animate-in fade-in-0 duration-200">
             {queueItems.length === 0 ? (
               <div className="h-full flex items-center justify-center p-6 text-center">
                 <p className="text-[12px] text-muted-foreground leading-[1.6] max-w-[360px]">

@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 
 import { Button } from "@/components/shadcn/button";
+import { Skeleton } from "@/components/shadcn/skeleton";
 import { PlaylistSummaryDTO } from "@/hooks/models";
 import {
   useCreatePlaylist,
@@ -83,6 +84,8 @@ function PlaylistCard({ playlist }: { playlist: PlaylistCardItem }) {
     </Link>
   );
 }
+
+const LOADING_SKELETON_CARD_COUNT = 8;
 
 const LIBRARY_TABS = [
   { id: "all", label: "All" },
@@ -285,9 +288,11 @@ export default function PlaylistsPage() {
 
       <div className="min-h-0 flex-1 overflow-y-auto pr-1">
         {isLoading && (
-          <p className="text-muted-foreground text-sm">
-            Loading playlists...
-          </p>
+          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4" data-testid="playlists-loading-skeleton">
+            {Array.from({ length: LOADING_SKELETON_CARD_COUNT }, (_, index) => (
+              <Skeleton key={index} className="h-56 rounded-xl" />
+            ))}
+          </div>
         )}
         {isError && (
           <p className="text-destructive text-sm">
@@ -295,7 +300,7 @@ export default function PlaylistsPage() {
           </p>
         )}
         {!isLoading && !isError && (
-          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4 animate-in fade-in-0 slide-in-from-top-1 duration-200">
             {visiblePlaylists.map((playlist) => (
               <PlaylistCard key={playlist.id} playlist={playlist} />
             ))}
