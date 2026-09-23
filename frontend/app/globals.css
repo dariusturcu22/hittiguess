@@ -432,3 +432,50 @@ html.theme-transition .theme-toggle-thumb {
 .animate-waveform-bar {
   animation: waveform-bar 1500ms ease-in-out infinite;
 }
+
+@keyframes gameplay-wobble {
+  0%, 100% { transform: rotate(-2deg); }
+  50% { transform: rotate(2deg); }
+}
+
+@keyframes gameplay-gap-pulse {
+  0%, 100% { opacity: 0.55; }
+  50% { opacity: 1; }
+}
+
+@keyframes gameplay-card-float {
+  0%, 100% { transform: rotate(-3deg) translateY(0); }
+  50% { transform: rotate(-3deg) translateY(-8px); }
+}
+
+@keyframes gameplay-reveal-flip {
+  0% { transform: scaleX(0.1) rotate(0); }
+  60% { transform: scaleX(1.08) rotate(-2deg); }
+  100% { transform: scaleX(1) rotate(0); }
+}
+
+@keyframes gameplay-timer-blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.45; }
+}
+
+@keyframes gameplay-ring-drain {
+  from { stroke-dashoffset: 0; }
+  to { stroke-dashoffset: var(--ring-circumference); }
+}
+
+@keyframes gameplay-role-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
+}
+
+.gameplay-wobble { animation: gameplay-wobble 1.2s ease-in-out infinite; }
+.gameplay-gap-pulse { animation: gameplay-gap-pulse 1.4s ease-in-out infinite; }
+.gameplay-card-float { animation: gameplay-card-float 4.5s ease-in-out infinite; }
+.gameplay-reveal-flip { animation: gameplay-reveal-flip 600ms ease-out both; }
+.gameplay-timer-blink { animation: gameplay-timer-blink 1s ease-in-out infinite; }
+.gameplay-role-float { animation: gameplay-role-float 3s ease-in-out infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+  .gameplay-wobble, .gameplay-gap-pulse, .gameplay-card-float, .gameplay-reveal-flip, .gameplay-timer-blink, .gameplay-role-float { animation: none; }
+}
