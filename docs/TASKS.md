@@ -4,7 +4,7 @@ This is the source of truth for day-to-day work. Consult PROJECT_STATE.md only w
 
 Before starting any task, check it against the current code: some tasks may already be done, some may not apply the way they're written, and some may be missing. Once a story's tasks are confirmed accurate, update its status to Ready (or Implemented, once its own backend batch is actually done) in PROJECT_STATE.md.
 
-Stories 9, 10, 11, 12, 13, 39, and most of the rest of Phase 1 and Phase 2 are now implemented (backend); see PROJECT_STATE.md for the current status of every story. Story 28 now implements the frontend surface for Batches A through E against those backends. Remaining visual, route, representative-state, and accessibility checks stay listed under story 28.
+Stories 9, 10, 11, 12, 13, 39, and most of the rest of Phase 1 and Phase 2 are now implemented (backend); see PROJECT_STATE.md for the current status of every story. Story 28 now implements the frontend surface for Batches A through F against those backends. Remaining visual, route, and representative-state checks stay listed under story 28.
 
 "Next available task" means the earliest unchecked box under a Ready or In Progress story.
 
@@ -793,7 +793,6 @@ Tests:
 - [x] Playwright multi-user coverage for join, lobby, full rounds, results, and the import background flow
 - [ ] Voice delivery check with the synthetic-tone method, plus the contrast and motion spot checks from story 28
 
-
 ## Story 50: Auth hardening
 
 Checked against real code: `User` has no `emailVerified` field, `AuthController`/`AuthService` have no password-reset endpoints at all, and there's no TOTP secret, backup codes, or any second factor anywhere in `security/`. `docs/ARCHIVE.md`'s batch 5 entry made the frontend forgot-password form honestly say "not implemented yet" rather than silently failing; this story is what actually builds it. No email-sending capability exists anywhere in the backend (`pom.xml` has no `spring-boot-starter-mail`, no third-party email SDK). Gates Beta, not Local: friends playing with real accounts need working password recovery and a real signup verification step; the project owner playing alone or with one other person locally doesn't.
@@ -886,25 +885,6 @@ Feedback polish (cross-cutting, own batch):
 Tests:
 - [x] Frontend lint and the two password-flow page tests stay green (no behavior code changes in this batch)
 
-## LAN playtest findings, batch 2 (export dialog, fetch reliability)
-
-
-- [x] Export opens as a dialog with a song/option summary instead of an inline section; combined info+QR output and extra paper sizes need backend support and land separately (download and print verified working on LAN, the failures were stale-bundle)
-- [x] Add-page 500 on render from a missing server snapshot in the queue hook (same latent pattern as the voice hooks)
-- [x] Add-by-link fetch verified end to end on LAN (~35s to review); the earlier failures were the AI service being down plus the 500 above
-
-Tests:
-- [x] Playlist content, import, and queue-hook suites stay green; LAN browser probes for export download and fetch-to-review
-
-## LAN playtest findings, batch 3 (lobby start flow, voice sidebar)
-
-- [x] Voice sidebar: no collapse control, hidden outside calls except on the lobby page, slim rail matching the left sidebar with the join action on top
-- [x] Playlist chip opens a tier popup (easy/medium/hard/custom) below it; custom opens a fullscreen multi-playlist picker with a chosen list and a back path; the standalone Custom start button goes away
-- [x] Two-player minimum only as a popup on Start, never persistent
-- [x] Lobby content scrolls on zoom with bottom actions pinned; avatar and name float as one unit
-
-Tests:
-- [x] Lobby suite covers the tier popup, custom picker with back path, min-players popup, and the removed custom start (plus a fixed infinite loop in the playlist preselect capture)
 ## LAN playtest findings, batch 4 (library, shell, settings, chat)
 
 - [x] Playlist member stack shows the overlap plus overflow count per the reference
