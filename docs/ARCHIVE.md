@@ -814,3 +814,13 @@ Tests:
 Tests:
 - [x] `SongResolutionServiceTest` covers attributing a new song to the given user and not reassigning an already-attributed song on reprocessing; existing `BulkImportServiceTest` and `PlaylistImportJobServiceTest` stubs updated for the new signature
 - [x] `frontend/app/(app)/groups/[groupId]/page.tsx` and `frontend/components/playlist-cover-mosaic.tsx` covered by the existing full suite
+
+## Bug batch: playlist content box/state fixes and sidebar hydration
+
+- [x] Invite link/code copy actions show an error toast instead of a false "copied" state when the clipboard write fails
+- [x] The playlist detail members trigger no longer sits inside a bordered/backgrounded box
+- [x] The songs empty state is vertically centered whether or not the import banner is showing
+- [x] The sidebar's active-import indicator reads localStorage after mount instead of during the initial render, removing a hydration mismatch
+
+Tests:
+- [x] `PlaylistContent.test.tsx` covers the copy-failure toast path via a rejected clipboard write and a failing execCommand fallback

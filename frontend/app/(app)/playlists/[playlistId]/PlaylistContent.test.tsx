@@ -138,6 +138,24 @@ describe("PlaylistContent detail states", () => {
     );
   });
 
+  it("shows an error toast and leaves the label unchanged when copying the invite link fails", async () => {
+    Object.defineProperty(window.navigator, "clipboard", {
+      value: { writeText: vi.fn(() => Promise.reject(new Error("denied"))) },
+      configurable: true,
+    });
+    document.execCommand = vi.fn(() => false);
+    const { toast } = await import("sonner");
+    await renderContent();
+
+    const inviteTrigger = screen.getByTitle("Invite");
+    fireEvent.pointerDown(inviteTrigger, { button: 0, pointerId: 1 });
+    fireEvent.click(inviteTrigger);
+    fireEvent.click(await screen.findByText("Copy invite link"));
+
+    await waitFor(() => expect(toast.error).toHaveBeenCalledWith("Couldn't copy the link. Try again."));
+    expect(screen.queryByText("Link copied")).toBeNull();
+  });
+
   it("starts a session through the active group with the playlist selected", async () => {
     await renderContent();
 

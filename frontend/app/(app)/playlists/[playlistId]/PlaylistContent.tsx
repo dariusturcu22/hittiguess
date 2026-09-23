@@ -241,7 +241,11 @@ export default function PlaylistContent({
   const handleCopyLink = async () => {
     if (!playlist) return;
     const inviteLink = `${window.location.origin}/playlists/join/${playlist.inviteCode}`;
-    await copyText(inviteLink);
+    const copied = await copyText(inviteLink);
+    if (!copied) {
+      toast.error("Couldn't copy the link. Try again.");
+      return;
+    }
     setLinkCopied(true);
     setTimeout(() => setLinkCopied(false), 2000);
   };
@@ -249,7 +253,11 @@ export default function PlaylistContent({
   const handleCopyCode = async () => {
     if (!playlist) return;
     const inviteLink = `${window.location.origin}/playlists/join/${playlist.inviteCode}`;
-    await copyText(buildInviteMessage(playlist.name, playlist.inviteCode, inviteLink));
+    const copied = await copyText(buildInviteMessage(playlist.name, playlist.inviteCode, inviteLink));
+    if (!copied) {
+      toast.error("Couldn't copy the code. Try again.");
+      return;
+    }
     setCodeCopied(true);
     setTimeout(() => setCodeCopied(false), 2000);
   };
@@ -466,7 +474,7 @@ export default function PlaylistContent({
           </div>
         </div>
 
-        <aside className="w-[260px] shrink-0 rounded-2xl border-[3px] border-border-strong bg-card p-4 shadow-lg">
+        <aside className="shrink-0">
           <Popover>
             <PopoverTrigger
               aria-label={`Members (${playlist.members.length})`}
@@ -596,7 +604,7 @@ export default function PlaylistContent({
       ) : null}
 
       <div className="flex min-h-0 w-full min-w-0 flex-1 flex-col overflow-hidden rounded-2xl border-[3px] border-border-strong bg-card shadow-lg">
-        <div className="min-h-0 min-w-0 flex-1 overflow-y-auto">
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto">
           {visibleSongs.length === 0 && songs.length === 0 && (
             <div className="flex flex-1 items-center justify-center p-8">
               <PhantomEmptyState
