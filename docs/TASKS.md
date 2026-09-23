@@ -910,3 +910,38 @@ Tests:
 
 Tests:
 - [x] Stack overflow, Radix settings selects, group button rules, floating chat variant, plus screenshot verification of settings and chat
+
+## Gameplay playtest findings (round flow, DJ audio, design match)
+
+Reported from a live playtest: audio streaming never reaches other players, "Open on YouTube" opens two tabs, the timeline sits left instead of centered and can't be scrolled, placement looks nothing like the mockups, and most gameplay screens differ from `docs/design/source/GameSession*.dc.html`. Each item below is confirmed against the running stack and the code. Rules follow `GAME_DESIGN.md` and `DECISIONS.md` where a mockup's copy predates them (the betting mockups still describe one bettor per round; betting is one bet per gap).
+
+Round flow and session data (backend, `fix/gameplay-round-flow`):
+- [ ] Opening the betting window publishes no session event, so every client stays on the countdown view until the reveal. Publish a `BETTING_OPENED` event when the window opens
+- [ ] Reveal, scoring, and the next round all run in one call chain, so the reveal state is never visible. Hold the scored round for a fixed reveal interval before advancing, and expose when the next round starts
+- [ ] `RoundDTO` carries no deadlines, so no client can render the countdown or the betting timer. Add the lock-in time, betting-window end, and next-round start
+- [ ] `PlayerCardDTO` carries no artist or card color, so timeline cards print the title twice in one fixed palette. Add the artist credit and the song's color
+- [ ] The DJ view in the mockup shows the current song's card; `RoundLinkOutDTO` carries only the video. Add artist, title, year, and color for the DJ only
+- [ ] Regenerate the frontend API client for the new fields
+
+DJ link-out and audio (frontend, `fix/dj-link-out-and-audio`):
+- [ ] `window.open` with `noopener` returns `null` even when the tab opens, so the blocked-popup fallback also navigates the game tab to YouTube. Open the new tab without relying on the return value
+- [ ] Tab audio capture only starts when the DJ is already in voice, and it runs after `window.open` consumed the click's user activation, so the capture request fails. Request the capture from its own click, join the voice room for the DJ if needed, and keep the warning visible before sharing
+- [ ] The lock-in cutoff tears down the active player's whole voice connection. Mute only the incoming song audio for the active player until the round ends, and keep voice chat working
+
+Gameplay screens against the mockups (frontend, `fix/gameplay-screens-match-design`):
+- [ ] Round intro: first-round countdown with the first DJ and first turn, per `GameSessionRoundIntro*`
+- [ ] Header: round title with the per-state status line, playlist chip with name and song count read from the group's playlists, per every `GameSession*` mockup
+- [ ] Timeline: centered track, edge fade, working previous/next scroll, cards show artist, year, and title in the song's color
+- [ ] Placement: pointer drag of the mystery card, the timeline opens a dashed gap under the pointer with tilted neighbors, dropping keeps the card movable with a "Lock in answer" action, keyboard placement kept, per `GameSessionCardDragging*`, `GameSessionCardDropped*`, `GameSessionCardLocked*`
+- [ ] Spectator view: the active player's live drag gap, per `GameSessionCardDraggingSpectator*`
+- [ ] DJ view: the song card beside the "Open on YouTube to play" action and the audio-sharing warning, per `GameSessionDJ*`
+- [ ] Betting: countdown ring before the window, betting timer, coin dragged into a gap, placed bets shown as coins with the bettor's initial, skip action, per `GameSessionBetting*`
+- [ ] Reveal: the card lands in the timeline with the outcome line and a "Next turn starts in" pill with a progress bar, per `GameSessionReveal*`
+- [ ] Footer: DJ and turn pill, token coin stack (sitting out while it's the player's own turn)
+- [ ] Turn banner centered above the header instead of overlapping it; guess boxes hidden for the DJ and closed after lock-in
+- [ ] Fix the literal `&apos;` rendered in the countdown status line
+
+Tests:
+- [ ] Backend: service tests for the betting-opened event, the reveal hold before the next round, and the new DTO fields
+- [ ] Frontend: unit tests for the link-out helper, the audio cutoff, and the session page's per-phase rendering
+- [ ] Rendered comparison of every gameplay state against its mockup, dark and light, on a live three-player session
