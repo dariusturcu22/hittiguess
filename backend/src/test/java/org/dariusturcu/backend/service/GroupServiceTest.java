@@ -218,6 +218,7 @@ class GroupServiceTest {
         assertThat(result.memberCount()).isEqualTo(1);
         assertThat(result.members()).hasSize(1);
         assertThat(result.members().getFirst().displayName()).isEqualTo("admin-user");
+        assertThat(result.members().getFirst().isAdmin()).isTrue();
     }
 
     @Test

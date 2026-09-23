@@ -4,5 +4,5 @@ import java.util.List;
 
 public record GroupInvitePreviewDTO(
         int memberCount,
-        List<MemberDTO> members) {
+        List<GroupInvitePreviewMemberDTO> members) {
 }

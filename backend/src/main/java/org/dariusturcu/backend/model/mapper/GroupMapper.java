@@ -3,6 +3,7 @@ package org.dariusturcu.backend.model.mapper;
 import org.dariusturcu.backend.model.group.Group;
 import org.dariusturcu.backend.model.group.GroupDetailDTO;
 import org.dariusturcu.backend.model.group.GroupInvitePreviewDTO;
+import org.dariusturcu.backend.model.group.GroupInvitePreviewMemberDTO;
 import org.dariusturcu.backend.model.group.Member;
 import org.dariusturcu.backend.model.group.MemberDTO;
 import org.dariusturcu.backend.security.util.SecurityUtils;
@@ -38,8 +39,15 @@ public class GroupMapper {
         return new GroupInvitePreviewDTO(
                 group.getMembers().size(),
                 group.getMembers().stream()
-                        .map(this::toMemberDTO)
+                        .map(this::toInvitePreviewMemberDTO)
                         .toList());
+    }
+
+    private GroupInvitePreviewMemberDTO toInvitePreviewMemberDTO(Member member) {
+        return new GroupInvitePreviewMemberDTO(
+                member.getDisplayName(),
+                member.getAvatarUrl(),
+                member.isAdmin());
     }
 
     // A null user id marks every per-user flag false. Scheduler-driven paths
