@@ -18,8 +18,10 @@ vi.mock("next/link", () => ({
 }));
 
 vi.mock("next/navigation", () => ({
-  useRouter: () => ({ push: vi.fn() }),
+  useRouter: () => ({ push: routerPush }),
 }));
+
+const routerPush = vi.hoisted(() => vi.fn());
 
 vi.mock("@/hooks/generated/user-management/user-management", () => ({
   useGetCurrentUser: () => currentUserState,
@@ -53,6 +55,7 @@ async function renderPage() {
 describe("JoinGroupPage", () => {
   beforeEach(() => {
     joinMutate.mockReset();
+    routerPush.mockReset();
     currentUserState = { data: undefined, isLoading: false, isError: true };
     groupPreviewState = { data: { memberCount: 3, members: [] }, isError: false };
   });
@@ -86,6 +89,9 @@ describe("JoinGroupPage", () => {
     expect(screen.getByText("This invite link is no longer valid")).toBeVisible();
     expect(screen.queryByRole("button", { name: "Join group" })).toBeNull();
     expect(screen.queryByRole("link", { name: "Log in to join" })).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: "Back to home" }));
+    expect(routerPush).toHaveBeenCalledWith("/");
   });
 
   it("shows the live member count from the invite preview", async () => {

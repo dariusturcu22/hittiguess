@@ -18,8 +18,10 @@ vi.mock("next/link", () => ({
 }));
 
 vi.mock("next/navigation", () => ({
-  useRouter: () => ({ push: vi.fn() }),
+  useRouter: () => ({ push: routerPush }),
 }));
+
+const routerPush = vi.hoisted(() => vi.fn());
 
 vi.mock("@/hooks/generated/user-management/user-management", () => ({
   getGetUserPlaylistsQueryKey: () => ["user-playlists"],
@@ -50,6 +52,7 @@ async function renderPage() {
 describe("JoinPlaylistPage", () => {
   beforeEach(() => {
     joinMutate.mockReset();
+    routerPush.mockReset();
     joinMutate.mockImplementation((_args, options) => options?.onSuccess?.({ id: 21 }));
     currentUserState = { data: undefined, isLoading: false, isError: true };
     invitePreviewState = {
@@ -89,5 +92,8 @@ describe("JoinPlaylistPage", () => {
     expect(screen.getByText("This invite link is no longer valid")).toBeVisible();
     expect(screen.queryByRole("button", { name: "Join playlist" })).toBeNull();
     expect(screen.queryByRole("link", { name: "Log in to join" })).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: "Back to home" }));
+    expect(routerPush).toHaveBeenCalledWith("/");
   });
 });

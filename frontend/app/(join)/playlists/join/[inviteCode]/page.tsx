@@ -106,10 +106,10 @@ export default function JoinPlaylistPage({ params }: PageProps) {
 
           <button
             type="button"
-            onClick={() => router.push("/playlists")}
+            onClick={() => router.push("/")}
             className="text-[13px] text-muted-foreground underline underline-offset-4"
           >
-            Back to playlists
+            Back to home
           </button>
         </div>
       </div>
