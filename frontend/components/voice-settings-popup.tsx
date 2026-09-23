@@ -9,6 +9,25 @@ const TEST_TONE_FREQUENCY_HERTZ = 440;
 const TEST_TONE_GAIN = 0.2;
 const TEST_TONE_DURATION_MILLISECONDS = 1200;
 const MICROPHONE_METER_SMOOTHING = 128;
+const NOT_ALLOWED_ERROR_NAME = "NotAllowedError";
+const NOT_FOUND_ERROR_NAME = "NotFoundError";
+const OVERCONSTRAINED_ERROR_NAME = "OverconstrainedError";
+const INSECURE_CONTEXT_MESSAGE = "Voice chat needs HTTPS or localhost.";
+const MICROPHONE_PERMISSION_MESSAGE = "Microphone permission is needed.";
+const MICROPHONE_NOT_FOUND_MESSAGE = "No microphone was found.";
+const MICROPHONE_TEST_FAILED_MESSAGE = "Could not start the microphone.";
+
+function describeMicrophoneTestError(error: unknown): string {
+  if (error instanceof DOMException) {
+    if (error.name === NOT_ALLOWED_ERROR_NAME) {
+      return MICROPHONE_PERMISSION_MESSAGE;
+    }
+    if (error.name === NOT_FOUND_ERROR_NAME || error.name === OVERCONSTRAINED_ERROR_NAME) {
+      return MICROPHONE_NOT_FOUND_MESSAGE;
+    }
+  }
+  return MICROPHONE_TEST_FAILED_MESSAGE;
+}
 
 interface AudioContextWindow extends Window {
   webkitAudioContext?: typeof AudioContext;
@@ -33,6 +52,7 @@ export function VoiceSettingsPopup({ onClose }: { onClose: () => void }) {
   } = useAudioDevices();
   const [microphoneLevel, setMicrophoneLevel] = useState(0);
   const [isTestingMicrophone, setIsTestingMicrophone] = useState(false);
+  const [microphoneTestError, setMicrophoneTestError] = useState<string | null>(null);
   const microphoneTestReference = useRef<{
     stream?: MediaStream;
     animationFrame?: number;
@@ -67,8 +87,10 @@ export function VoiceSettingsPopup({ onClose }: { onClose: () => void }) {
       stopMicrophoneTest();
       return;
     }
+    setMicrophoneTestError(null);
     const Context = audioContextConstructor();
-    if (!Context || !navigator.mediaDevices?.getUserMedia) {
+    if (!Context || typeof navigator === "undefined" || !navigator.mediaDevices?.getUserMedia) {
+      setMicrophoneTestError(INSECURE_CONTEXT_MESSAGE);
       return;
     }
     try {
@@ -90,8 +112,9 @@ export function VoiceSettingsPopup({ onClose }: { onClose: () => void }) {
       microphoneTestReference.current = { stream, context };
       setIsTestingMicrophone(true);
       readLevel();
-    } catch {
+    } catch (error) {
       stopMicrophoneTest();
+      setMicrophoneTestError(describeMicrophoneTestError(error));
     }
   }
 
@@ -173,6 +196,11 @@ export function VoiceSettingsPopup({ onClose }: { onClose: () => void }) {
             </Button>
           </span>
         </label>
+        {microphoneTestError ? (
+          <p className="text-[12px] text-destructive" role="alert">
+            {microphoneTestError}
+          </p>
+        ) : null}
         {isTestingMicrophone ? (
           <div
             className="h-2 overflow-hidden rounded-full bg-secondary"
