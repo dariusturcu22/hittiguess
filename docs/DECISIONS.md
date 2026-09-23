@@ -969,3 +969,27 @@ Why: previewing without starting is what the review step needs, and revalidating
 Decision: playlist covers and profile pictures upload pixelized and persist as normalized PNG bytes in the database (`playlists.cover_image`, `users.avatar_image`, `V25`), never as hotlinked originals. The client shrinks uploads onto a 32-pixel grid with smoothing off; the server re-validates (decodable image, at most 64 pixels per side, 256KB cap) and normalizes to PNG before storing. Cover writes require playlist write access; both reads are public so plain image elements can load them without credentials, which pixel art needs and which is safe because the bytes carry no private data. Playlists without a custom cover keep the song-thumbnail mosaic, users without an avatar keep their initial.
 
 Why: hotlinked originals leak whatever the source serves over time and bypass any size discipline, while tiny PNG bytes keep image storage inside the schema the core service already owns. Client-side pixelization sets the style, server-side validation keeps a hostile client from storing anything else. Public reads follow from how browsers load images, not from a judgment that covers are public content.
+
+## 2026-09 | Export duplex interleave replaces the combined single-face mode
+
+Decision: the combined card face (QR printed beside the answer) is removed, and the third export mode is an interleaved duplex PDF: info page, matching mirrored QR page, next info page, and so on in natural order. The separate info and QR files keep their manual flip-the-stack behavior, including the QR sheet-order reversal. The interleaved file skips that reversal so a printer's native double-sided mode lines each pair up in one pass.
+
+Why: a QR on the same face as the answer removes the hiding half of a physical card game. Interleaving keeps the per-card mirroring that aligns backs to fronts while letting the printer, not the user, handle the duplexing.
+
+## 2026-09 | Group invite preview mirrors the playlist one
+
+Decision: `GET /api/groups/invites/{inviteCode}/preview` returns member count and members with no authentication, mirroring the playlist preview endpoint, and both join pages render an invalid-link screen off the preview error instead of a form with placeholder data.
+
+Why: a dead code should read as dead before the join click, not after it. The group page had no preview to gate on, so it gets the same endpoint shape rather than a different error path.
+
+## 2026-09 | Featured artists ride a structured list, not the title string
+
+Decision: the precheck prompt extracts featured credits into a `featured_artists` list while the title keeps only the song name, and the Java side persists them as `FEATURED` song-artist rows behind the `MAIN` one. Card rendering already reads those roles, so no card change was needed.
+
+Why: embedding the credit in the title leaks the answer onto the card face and collapses two roles into one string every downstream reader would have to re-parse. A list keeps the split where the model already made it instead of reconstructing it with string matching later.
+
+## 2026-09 | YouTube import progress lives on its own page with a slim playlist banner
+
+Decision: the YouTube import page keeps the job open in place with a progress bar and per-song checklist instead of redirecting to the playlist, the playlist song list refetches as items finish rather than once at the end, and the sidebar indicator links to that progress page. The playlist banner trims to a single line linking there.
+
+Why: redirecting away hid the only view that shows per-song state, and a banner with thumbnails duplicated what the sidebar and the page already cover. One progress view plus a pointer to it keeps all three surfaces consistent.

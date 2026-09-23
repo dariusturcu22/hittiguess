@@ -655,3 +655,58 @@ Surfaced running the real Playwright e2e suite (`batch-e-group-lobby.spec.ts`) a
 Tests:
 - [x] Unit test: `GroupServiceTest`, the admin leaving alone while a `GameSession` still references the group does not delete it
 - [x] `batch-e-group-lobby.spec.ts`'s real-backend lobby test (join, settings, chat, start session) and the mocked results-export test both pass end to end against a real two-session backend; the third (fully-mocked gameplay-shell) test remains flaky under back-to-back local runs sharing the same seeded accounts, unrelated to this fix, not chased further
+
+## Fix batch 2: lobby popups, export, import, explore, invites, metadata, UI polish
+
+Popup mutual exclusion and spacing (`frontend/app/(app)/groups/[groupId]/page.tsx`):
+- [x] Opening settings, tier popup, custom picker, or chat closes the other three
+- [x] Starting a session closes all four popups
+- [x] Chat, settings, and tier popups share one footer gap distance
+
+Voice mesh error text (`frontend/hooks/use-voice-mesh.ts`):
+- [x] Missing mediaDevices reports an HTTPS or localhost message, not the permission one
+- [x] getUserMedia catch branches on error name for distinct messages
+
+Export redesign (backend `CardGenerator`, `ExportService`, `ExportController`, `PlaylistContent.tsx`):
+- [x] Combined mode removed on backend and frontend
+- [x] Single PDF interleaved duplex mode added on backend with frontend option
+- [x] Export dialog pickers use shadcn Select instead of raw select
+- [x] Empty playlist export shows an error toast instead of opening the dialog
+
+Icon drag and avatar selection (global):
+- [x] Icon images not natively draggable, avatar initials not text selectable
+
+Explore listing (`PlaylistService.getPublicPlaylists`):
+- [x] Owned and joined playlists excluded from explore results, saved unaffected
+
+Invite preview error states:
+- [x] Dead playlist invite renders an invalid link screen instead of the join form
+- [x] Backend group invite preview endpoint mirroring the playlist one
+- [x] Group join page gates on the preview error state the same way
+
+Import progress:
+- [x] YouTube import page shows inline crawling progress with per song checklist and no auto redirect
+- [x] Playlist songs refetch incrementally as import items finish
+- [x] Sidebar import indicator links to the YouTube import progress page
+- [x] Playlist page importing banner revisited once the above land
+- [x] From playlist import page spot checked against its mockup step
+
+Members trigger (`PlaylistContent.tsx`):
+- [x] Trigger renders bare avatar stack with no box or label text, popup content unchanged
+
+Featured artist extraction (AI prompt plus Java mapping):
+- [x] Prompt extracts featured credits into the artist field instead of embedding them
+- [x] Java mapping splits credits into MAIN and FEATURED SongArtist rows
+
+Report dialog validation:
+- [x] Light validation pass on the report fields
+
+Cover mosaic letterboxing (`playlist-cover-mosaic.tsx`):
+- [x] Tiles scale images past baked in bars in mosaic and single cover paths
+
+Tests:
+- [x] Frontend tests for popup exclusion, export dialog, invite error states, import progress, members trigger, report validation
+- [x] Backend tests for explore filtering, group invite preview, duplex interleave, artist role split
+- [x] AI prompt or schema tests if the suite covers them
+- [x] Frontend `npm run test -- --run`, `npm run lint`, and `npm run build` clean
+- [x] Backend `./mvnw test` clean
