@@ -5,11 +5,11 @@
  * OpenAPI spec version: v0
  */
 
-export type ExportPlaylistQrPaperSize = typeof ExportPlaylistQrPaperSize[keyof typeof ExportPlaylistQrPaperSize];
+export type ExportPlaylistDuplexPaperSize = typeof ExportPlaylistDuplexPaperSize[keyof typeof ExportPlaylistDuplexPaperSize];
 
 
 // eslint-disable-next-line @typescript-eslint/no-redeclare
-export const ExportPlaylistQrPaperSize = {
+export const ExportPlaylistDuplexPaperSize = {
   A4: 'A4',
   LETTER: 'LETTER',
   LEGAL: 'LEGAL',

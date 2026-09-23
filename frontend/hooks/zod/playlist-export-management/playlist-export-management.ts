@@ -17,7 +17,7 @@ export const exportPlaylistQrParams = zod.object({
 export const exportPlaylistQrQueryPaperSizeDefault = "A4";
 
 export const exportPlaylistQrQueryParams = zod.object({
-  "paperSize": zod.enum(['A4', 'LETTER']).default(exportPlaylistQrQueryPaperSizeDefault)
+  "paperSize": zod.enum(['A4', 'LETTER', 'LEGAL', 'A3', 'A5', 'TABLOID']).default(exportPlaylistQrQueryPaperSizeDefault)
 })
 
 /**
@@ -30,6 +30,19 @@ export const exportPlaylistInfoParams = zod.object({
 export const exportPlaylistInfoQueryPaperSizeDefault = "A4";
 
 export const exportPlaylistInfoQueryParams = zod.object({
-  "paperSize": zod.enum(['A4', 'LETTER']).default(exportPlaylistInfoQueryPaperSizeDefault)
+  "paperSize": zod.enum(['A4', 'LETTER', 'LEGAL', 'A3', 'A5', 'TABLOID']).default(exportPlaylistInfoQueryPaperSizeDefault)
+})
+
+/**
+ * @summary Generate interleaved info+QR PDF for playlist songs, printer duplex
+ */
+export const exportPlaylistDuplexParams = zod.object({
+  "playlistId": zod.number()
+})
+
+export const exportPlaylistDuplexQueryPaperSizeDefault = "A4";
+
+export const exportPlaylistDuplexQueryParams = zod.object({
+  "paperSize": zod.enum(['A4', 'LETTER', 'LEGAL', 'A3', 'A5', 'TABLOID']).default(exportPlaylistDuplexQueryPaperSizeDefault)
 })
 

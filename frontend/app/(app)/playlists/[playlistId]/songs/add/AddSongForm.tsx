@@ -22,6 +22,15 @@ import { useAddSongQueue } from "@/hooks/use-add-song-queue";
 type Mode = "search" | "new-link" | "new-review";
 
 const DEFAULT_COLOR = "#8B5CF6";
+
+// Matches the "Main & Main (feat. Featured, Featured)" convention CardGenerator
+// uses on the backend, so the editable artist text mirrors how the card renders.
+function formatArtistCredit(mainArtists?: string[], featuredArtists?: string[]): string {
+  const main = (mainArtists ?? []).join(" & ");
+  const featured = (featuredArtists ?? []).join(", ");
+  return featured ? `${main} (feat. ${featured})` : main;
+}
+
 const REVIEW_PREVIEW_DETAILS: PendingSongDetails = {
   title: "Dreams",
   artist: "Fleetwood Mac",
@@ -133,7 +142,7 @@ export function AddSongForm({ playlistId, backPath }: AddSongFormProps) {
 
       setPendingDetails({
         title: metadata.title ?? "",
-        artist: metadata.artist ?? "",
+        artist: formatArtistCredit(metadata.mainArtists, metadata.featuredArtists),
         releaseYear: metadata.releaseYear ?? "",
         color: metadata.color ? `#${metadata.color}` : DEFAULT_COLOR,
         country: CreateSongRequestCountry.NONE,

@@ -113,11 +113,15 @@ export const updatePlaylistParams = zod.object({
 })
 
 export const updatePlaylistBodyColorRegExp = new RegExp('(?i)^(cba6f7|fab387|a6e3a1|89b4fa|f5c2e7|f9e2af)$');
+export const updatePlaylistBodyDescriptionMin = 0;
+export const updatePlaylistBodyDescriptionMax = 300;
+
 
 
 export const updatePlaylistBody = zod.object({
   "name": zod.string().optional(),
-  "color": zod.string().regex(updatePlaylistBodyColorRegExp).optional()
+  "color": zod.string().regex(updatePlaylistBodyColorRegExp).optional(),
+  "description": zod.string().min(updatePlaylistBodyDescriptionMin).max(updatePlaylistBodyDescriptionMax).optional()
 })
 
 /**

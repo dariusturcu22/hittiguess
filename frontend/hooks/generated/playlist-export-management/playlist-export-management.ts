@@ -20,6 +20,7 @@ import type {
 } from '@tanstack/react-query';
 
 import type {
+  ExportPlaylistDuplexParams,
   ExportPlaylistInfoParams,
   ExportPlaylistQrParams
 } from '../../models';
@@ -220,6 +221,106 @@ export function useExportPlaylistInfo<TData = Awaited<ReturnType<typeof exportPl
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
   const queryOptions = getExportPlaylistInfoQueryOptions(playlistId,params,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  query.queryKey = queryOptions.queryKey ;
+
+  return query;
+}
+
+
+
+
+/**
+ * @summary Generate interleaved info+QR PDF for playlist songs, printer duplex
+ */
+export const exportPlaylistDuplex = (
+    playlistId: number,
+    params?: ExportPlaylistDuplexParams,
+ options?: SecondParameter<typeof customInstance>,signal?: AbortSignal
+) => {
+      
+      
+      return customInstance<string>(
+      {url: `/api/playlists/${playlistId}/export/duplex`, method: 'GET',
+        params, signal
+    },
+      options);
+    }
+  
+
+
+
+export const getExportPlaylistDuplexQueryKey = (playlistId?: number,
+    params?: ExportPlaylistDuplexParams,) => {
+    return [
+    `/api/playlists/${playlistId}/export/duplex`, ...(params ? [params]: [])
+    ] as const;
+    }
+
+    
+export const getExportPlaylistDuplexQueryOptions = <TData = Awaited<ReturnType<typeof exportPlaylistDuplex>>, TError = unknown>(playlistId: number,
+    params?: ExportPlaylistDuplexParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof exportPlaylistDuplex>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getExportPlaylistDuplexQueryKey(playlistId,params);
+
+  
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof exportPlaylistDuplex>>> = ({ signal }) => exportPlaylistDuplex(playlistId,params, requestOptions, signal);
+
+      
+
+      
+
+   return  { queryKey, queryFn, enabled: !!(playlistId), ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof exportPlaylistDuplex>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type ExportPlaylistDuplexQueryResult = NonNullable<Awaited<ReturnType<typeof exportPlaylistDuplex>>>
+export type ExportPlaylistDuplexQueryError = unknown
+
+
+export function useExportPlaylistDuplex<TData = Awaited<ReturnType<typeof exportPlaylistDuplex>>, TError = unknown>(
+ playlistId: number,
+    params: undefined |  ExportPlaylistDuplexParams, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof exportPlaylistDuplex>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof exportPlaylistDuplex>>,
+          TError,
+          Awaited<ReturnType<typeof exportPlaylistDuplex>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useExportPlaylistDuplex<TData = Awaited<ReturnType<typeof exportPlaylistDuplex>>, TError = unknown>(
+ playlistId: number,
+    params?: ExportPlaylistDuplexParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof exportPlaylistDuplex>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof exportPlaylistDuplex>>,
+          TError,
+          Awaited<ReturnType<typeof exportPlaylistDuplex>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useExportPlaylistDuplex<TData = Awaited<ReturnType<typeof exportPlaylistDuplex>>, TError = unknown>(
+ playlistId: number,
+    params?: ExportPlaylistDuplexParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof exportPlaylistDuplex>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary Generate interleaved info+QR PDF for playlist songs, printer duplex
+ */
+
+export function useExportPlaylistDuplex<TData = Awaited<ReturnType<typeof exportPlaylistDuplex>>, TError = unknown>(
+ playlistId: number,
+    params?: ExportPlaylistDuplexParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof exportPlaylistDuplex>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient 
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getExportPlaylistDuplexQueryOptions(playlistId,params,options)
 
   const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 

@@ -28,6 +28,7 @@ import type {
   GenerateDifficultySetRequest,
   GeneratedSongPreviewDTO,
   GroupDetailDTO,
+  GroupInvitePreviewDTO,
   JoinGroupRequest,
   StartCustomSessionRequest,
   StartSessionWithSongsRequest,
@@ -1037,6 +1038,98 @@ export function useGetVoiceTurnCredentials<TData = Awaited<ReturnType<typeof get
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
   const queryOptions = getGetVoiceTurnCredentialsQueryOptions(groupId,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  query.queryKey = queryOptions.queryKey ;
+
+  return query;
+}
+
+
+
+
+/**
+ * @summary Preview a group by invite code, no membership or authentication required
+ */
+export const getInvitePreview1 = (
+    inviteCode: string,
+ options?: SecondParameter<typeof customInstance>,signal?: AbortSignal
+) => {
+      
+      
+      return customInstance<GroupInvitePreviewDTO>(
+      {url: `/api/groups/invites/${inviteCode}/preview`, method: 'GET', signal
+    },
+      options);
+    }
+  
+
+
+
+export const getGetInvitePreview1QueryKey = (inviteCode?: string,) => {
+    return [
+    `/api/groups/invites/${inviteCode}/preview`
+    ] as const;
+    }
+
+    
+export const getGetInvitePreview1QueryOptions = <TData = Awaited<ReturnType<typeof getInvitePreview1>>, TError = unknown>(inviteCode: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getInvitePreview1>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetInvitePreview1QueryKey(inviteCode);
+
+  
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getInvitePreview1>>> = ({ signal }) => getInvitePreview1(inviteCode, requestOptions, signal);
+
+      
+
+      
+
+   return  { queryKey, queryFn, enabled: !!(inviteCode), ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getInvitePreview1>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetInvitePreview1QueryResult = NonNullable<Awaited<ReturnType<typeof getInvitePreview1>>>
+export type GetInvitePreview1QueryError = unknown
+
+
+export function useGetInvitePreview1<TData = Awaited<ReturnType<typeof getInvitePreview1>>, TError = unknown>(
+ inviteCode: string, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getInvitePreview1>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getInvitePreview1>>,
+          TError,
+          Awaited<ReturnType<typeof getInvitePreview1>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetInvitePreview1<TData = Awaited<ReturnType<typeof getInvitePreview1>>, TError = unknown>(
+ inviteCode: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getInvitePreview1>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getInvitePreview1>>,
+          TError,
+          Awaited<ReturnType<typeof getInvitePreview1>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetInvitePreview1<TData = Awaited<ReturnType<typeof getInvitePreview1>>, TError = unknown>(
+ inviteCode: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getInvitePreview1>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary Preview a group by invite code, no membership or authentication required
+ */
+
+export function useGetInvitePreview1<TData = Awaited<ReturnType<typeof getInvitePreview1>>, TError = unknown>(
+ inviteCode: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getInvitePreview1>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient 
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetInvitePreview1QueryOptions(inviteCode,options)
 
   const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 
