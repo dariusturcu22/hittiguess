@@ -922,6 +922,7 @@ Round flow and session data (backend, `fix/gameplay-round-flow`):
 - [x] `PlayerCardDTO` carries no artist or card color, so timeline cards print the title twice in one fixed palette. Add the artist credit and the song's color
 - [x] The DJ view in the mockup shows the current song's card; `RoundLinkOutDTO` carries only the video. Add artist, title, year, and color for the DJ only
 - [x] Spectators have no way to see the active player's drag before lock-in. Relay the active player's placement preview over the session's round topic, never persisted
+- [x] Session and group broadcasts go out before their transaction commits, so a client refetching on the event can read the previous state and stay stuck on it. Broadcast after commit
 - [x] Regenerate the frontend API client for the new fields
 
 DJ link-out and audio (frontend, `fix/dj-link-out-and-audio`):
