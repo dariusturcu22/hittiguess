@@ -51,4 +51,44 @@ describe("useVoiceMesh device selection", () => {
 
     expect(getUserMedia).toHaveBeenCalledWith({ audio: true });
   });
+
+  it("reports an insecure context instead of a permission denial", async () => {
+    Object.defineProperty(window.navigator, "mediaDevices", {
+      value: undefined,
+      configurable: true,
+    });
+
+    const { result } = renderHook(() => useVoiceMesh(4, 11, [], false, {}));
+
+    let opened = true;
+    await act(async () => {
+      opened = await result.current.startMicrophone();
+    });
+
+    expect(opened).toBe(false);
+    expect(result.current.microphoneError).toBe(true);
+    expect(result.current.microphoneErrorMessage).toBe("Voice chat needs HTTPS or localhost.");
+  });
+
+  it("names permission denial and missing devices distinctly", async () => {
+    const failingMediaDevices = { getUserMedia: vi.fn() };
+    Object.defineProperty(window.navigator, "mediaDevices", {
+      value: failingMediaDevices,
+      configurable: true,
+    });
+
+    const { result } = renderHook(() => useVoiceMesh(4, 11, [], false, {}));
+
+    failingMediaDevices.getUserMedia.mockRejectedValueOnce(new DOMException("denied", "NotAllowedError"));
+    await act(async () => {
+      await result.current.startMicrophone();
+    });
+    expect(result.current.microphoneErrorMessage).toBe("Microphone permission is needed.");
+
+    failingMediaDevices.getUserMedia.mockRejectedValueOnce(new DOMException("none", "NotFoundError"));
+    await act(async () => {
+      await result.current.startMicrophone();
+    });
+    expect(result.current.microphoneErrorMessage).toBe("No microphone was found.");
+  });
 });
