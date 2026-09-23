@@ -18,7 +18,7 @@ vi.mock("@/hooks/generated/playlist-import-jobs/playlist-import-jobs", () => ({
 }));
 
 vi.mock("@/hooks/use-bulk-import-realtime", () => ({
-  useBulkImportRealtime: () => ({ events: [], isConnected: true, reset: vi.fn() }),
+  useBulkImportRealtime: () => ({ events: [], isConnected: false, reset: vi.fn() }),
 }));
 
 vi.mock("next/navigation", () => ({

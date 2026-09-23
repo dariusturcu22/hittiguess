@@ -23,7 +23,7 @@ export default function ImportYoutubePage({ params }: PageProps) {
   const router = useRouter();
   const expandMutation = useExpandPlaylist();
   const startImportMutation = useStartImport();
-  const { isConnected, reset } = useBulkImportRealtime({ subscribeToProgress: false });
+  const { reset } = useBulkImportRealtime({ subscribeToProgress: false });
 
   const [playlistLink, setPlaylistLink] = React.useState("");
   const [expandedVideoIds, setExpandedVideoIds] = React.useState<string[] | null>(null);
@@ -92,11 +92,11 @@ export default function ImportYoutubePage({ params }: PageProps) {
         <button
           type="button"
           onClick={handleExpand}
-          disabled={expandMutation.isPending || !isConnected || playlistLink.trim().length === 0}
+          disabled={expandMutation.isPending || playlistLink.trim().length === 0}
           className="w-full font-display text-sm text-primary-foreground bg-primary py-[15px] rounded-full shadow-sm box-border cursor-pointer text-center disabled:opacity-60 disabled:cursor-not-allowed"
         >
           <Search className="mr-2 inline size-4" />
-          {expandMutation.isPending ? "Fetching..." : isConnected ? "Fetch playlist" : "Connecting..."}
+          {expandMutation.isPending ? "Fetching..." : "Fetch playlist"}
         </button>
 
         {expandMutation.isPending ? (
