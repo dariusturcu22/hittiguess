@@ -604,7 +604,7 @@ export default function PlaylistContent({
       ) : null}
 
       <div className="flex min-h-0 w-full min-w-0 flex-1 flex-col overflow-hidden rounded-2xl border-[3px] border-border-strong bg-card shadow-lg">
-        <div className="min-h-0 min-w-0 flex-1 overflow-y-auto">
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto">
           {visibleSongs.length === 0 && songs.length === 0 && (
             <div className="flex flex-1 items-center justify-center p-8">
               <PhantomEmptyState
