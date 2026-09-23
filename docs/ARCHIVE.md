@@ -635,3 +635,12 @@ Triggered by a Local-milestone audit: `docs/ROADMAP.md` claimed stories 30, 35, 
 
 Tests:
 - [x] None; this chore changes documentation only, no behavior. Frontend and backend suites confirmed green (modulo the sandbox's known loopback-socket limitation on backend integration tests) as part of the same audit that surfaced this drift, not re-run for this chore specifically since no code changed
+
+## Fix: reset-password and verify-email unreachable while logged out
+
+Surfaced during a visual verification pass against the mockups: `proxy.ts`'s `PUBLIC_ROUTES` list omitted `/reset-password` and `/verify-email`, so the middleware redirected any logged-out request to either page straight to `/login` before it ever rendered. Both pages are reached almost exclusively by a logged-out visitor clicking a link from their email, so this broke both flows entirely rather than being an edge case.
+
+- [x] Add `/reset-password` and `/verify-email` to `proxy.ts`'s `PUBLIC_ROUTES`
+
+Tests:
+- [x] Unit tests for `proxy.ts` (none existed before): every public route (including the two fixed here) passes through for a logged-out request, a protected route redirects a logged-out request to `/login`, a protected route passes through once `session_hint` is present
