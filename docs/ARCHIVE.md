@@ -636,6 +636,15 @@ Triggered by a Local-milestone audit: `docs/ROADMAP.md` claimed stories 30, 35, 
 Tests:
 - [x] None; this chore changes documentation only, no behavior. Frontend and backend suites confirmed green (modulo the sandbox's known loopback-socket limitation on backend integration tests) as part of the same audit that surfaced this drift, not re-run for this chore specifically since no code changed
 
+## Fix: reset-password and verify-email unreachable while logged out
+
+Surfaced during a visual verification pass against the mockups: `proxy.ts`'s `PUBLIC_ROUTES` list omitted `/reset-password` and `/verify-email`, so the middleware redirected any logged-out request to either page straight to `/login` before it ever rendered. Both pages are reached almost exclusively by a logged-out visitor clicking a link from their email, so this broke both flows entirely rather than being an edge case.
+
+- [x] Add `/reset-password` and `/verify-email` to `proxy.ts`'s `PUBLIC_ROUTES`
+
+Tests:
+- [x] Unit tests for `proxy.ts` (none existed before): every public route (including the two fixed here) passes through for a logged-out request, a protected route redirects a logged-out request to `/login`, a protected route passes through once `session_hint` is present
+
 ## Fix: leaving a group with an in-progress game session crashed, and stale e2e locators
 
 Surfaced running the real Playwright e2e suite (`batch-e-group-lobby.spec.ts`) against a live backend and two genuinely separate sessions, per `docs/DEV_SETUP.md`. `GroupService.leaveGroup`'s last-member-deletes-the-group branch called `groupRepository.delete(group)` unconditionally, with no check for whether a `GameSession` still referenced that group. Since a group locks once a session starts and stays referenced by that session's row until it ends or auto-abandons, the last connected member explicitly leaving mid-session hit an unhandled SQL foreign key violation, surfaced to the client as a raw SQL error string in a 400 response.
