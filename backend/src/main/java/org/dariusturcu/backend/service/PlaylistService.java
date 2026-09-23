@@ -402,12 +402,10 @@ public class PlaylistService {
     }
 
     private boolean isMember(Playlist playlist, User user) {
-        if (user == null || user.getId() == null) {
+        if (user == null || user.getId() == null || playlist.getId() == null) {
             return false;
         }
-        return playlist.getMemberships().stream()
-                .anyMatch(membership -> membership.getUser() != null
-                        && user.getId().equals(membership.getUser().getId()));
+        return playlistMembershipRepository.existsByPlaylistIdAndUserId(playlist.getId(), user.getId());
     }
 
     public PublicPlaylistSummaryDTO savePlaylist(Long playlistId) {

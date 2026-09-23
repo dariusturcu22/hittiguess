@@ -589,23 +589,28 @@ class PlaylistServiceTest {
 
     @Test
     void getPublicPlaylistsExcludesPlaylistsTheCallerHasJoined() {
-        User stranger = new User();
-        stranger.setId(OTHER_USER_ID);
-        stranger.setUsername("stranger");
-        stranger.setRole(Role.USER);
-
         Playlist joinedPlaylist = new Playlist();
         joinedPlaylist.setId(97L);
         joinedPlaylist.setPublic(true);
-        joinedPlaylist.setOwner(stranger);
-        PlaylistMembership membership = new PlaylistMembership();
-        membership.setPlaylist(joinedPlaylist);
-        membership.setUser(currentUser);
-        joinedPlaylist.setMemberships(new ArrayList<>(List.of(membership)));
 
         when(playlistRepository.findByIsPublicTrue()).thenReturn(List.of(joinedPlaylist));
+        when(playlistMembershipRepository.existsByPlaylistIdAndUserId(97L, OWNER_ID)).thenReturn(true);
 
         assertThat(playlistService.getPublicPlaylists()).isEmpty();
+    }
+
+    @Test
+    void getPublicPlaylistsChecksMembershipThroughTheRepository() {
+        Playlist publicPlaylist = new Playlist();
+        publicPlaylist.setId(99L);
+        publicPlaylist.setPublic(true);
+
+        when(playlistRepository.findByIsPublicTrue()).thenReturn(List.of(publicPlaylist));
+        when(playlistMembershipRepository.existsByPlaylistIdAndUserId(99L, OWNER_ID)).thenReturn(false);
+
+        playlistService.getPublicPlaylists();
+
+        verify(playlistMembershipRepository).existsByPlaylistIdAndUserId(99L, OWNER_ID);
     }
 
     @Test
