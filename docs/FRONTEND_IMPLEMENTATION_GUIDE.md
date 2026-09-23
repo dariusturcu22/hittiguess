@@ -49,15 +49,15 @@ Grouped by where each maps in the app. "Route" is the real or planned path under
 
 | Route (proposed) | Mockup files |
 | --- | --- |
-| `/playlists/explore` | `ExplorePlaylistsDark.dc.html`, `ExplorePlaylistsLight.dc.html` |
+| `/explore` | `ExplorePlaylistsDark.dc.html`, `ExplorePlaylistsLight.dc.html` |
 | `/playlists/[playlistId]/edit` | `EditPlaylistDark.dc.html`, `EditPlaylistLight.dc.html` |
-| Import flow, exact route structure TBD when story 40/45 frontend tasks are scoped | `ImportChooseSourceDark.dc.html`, `ImportChooseSourceLight.dc.html`, `ImportPlaylistLinkDark.dc.html`, `ImportPlaylistLinkLight.dc.html`, `ImportFromPlaylistSelectDark.dc.html`, `ImportFromPlaylistSelectLight.dc.html`, `ImportFromPlaylistConfirmDark.dc.html`, `ImportFromPlaylistConfirmLight.dc.html`, `ImportPlaylistProcessingDark.dc.html`, `ImportPlaylistProcessingLight.dc.html`, `ImportProgressDark.dc.html`, `ImportProgressLight.dc.html` |
+| Import flow: `/playlists/[playlistId]/import`, `/playlists/[playlistId]/import/youtube`, `/playlists/[playlistId]/import/from-playlist`, `/playlists/[playlistId]/import/from-playlist/[sourceId]` | `ImportChooseSourceDark.dc.html`, `ImportChooseSourceLight.dc.html`, `ImportPlaylistLinkDark.dc.html`, `ImportPlaylistLinkLight.dc.html`, `ImportFromPlaylistSelectDark.dc.html`, `ImportFromPlaylistSelectLight.dc.html`, `ImportFromPlaylistConfirmDark.dc.html`, `ImportFromPlaylistConfirmLight.dc.html`, `ImportPlaylistProcessingDark.dc.html`, `ImportPlaylistProcessingLight.dc.html`, `ImportProgressDark.dc.html`, `ImportProgressLight.dc.html` |
 
 ### Admin (routes implemented, story 17/40, gated on the `ADMIN` role)
 
 | Route (proposed) | Mockup files |
 | --- | --- |
-| `/admin/catalog` | `AdminCatalogBacklogDark.dc.html`, `AdminCatalogBacklogLight.dc.html` |
+| `/admin/catalog-backlog` | `AdminCatalogBacklogDark.dc.html`, `AdminCatalogBacklogLight.dc.html` |
 | `/admin/reports` | `AdminReportQueueDark.dc.html`, `AdminReportQueueLight.dc.html` |
 
 ### Gameplay (routes implemented, stories 9/10/11/12/13/39)

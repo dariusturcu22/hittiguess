@@ -52,12 +52,21 @@ Every rate-limited request the core service rejects, whichever limiter caught it
 | POST | `/api/users/me/playlists/{playlistInviteCode}` | `UserController`, optional body carries a per-playlist display name and avatar, rejects a banned user, story 46 |
 | DELETE | `/api/users/me/playlists/{playlistId}` | `UserController`, the owner can leave at any time, leadership passes to the earliest-joined remaining member, story 46 |
 | GET | `/api/users/me/saved-playlists` | `UserController`, the current user's saved public playlists, distinct from `/api/users/me/playlists`, story 30 |
+| PUT | `/api/users/me/avatar` | `PixelArtImageController`, multipart upload, pixelizes and stores the image as PNG bytes on `User.avatarImage`, story 47 |
+| GET | `/api/users/{userId}/avatar` | `PixelArtImageController`, returns the stored avatar PNG bytes, story 47 |
+| PUT | `/api/playlists/{playlistId}/cover` | `PixelArtImageController`, multipart upload, owner only, pixelizes and stores the image as PNG bytes on `Playlist.coverImage`, story 47 |
+| GET | `/api/playlists/{playlistId}/cover` | `PixelArtImageController`, returns the stored cover PNG bytes, story 47 |
+| POST | `/api/playlists/{playlistId}/import-jobs` | `PlaylistImportJobController`, starts a background YouTube import into the playlist and returns the job id immediately, story 47 |
+| GET | `/api/playlists/{playlistId}/import-jobs/active` | `PlaylistImportJobController`, the playlist's currently running import job with per-video progress, if any, story 47 |
 | POST | `/api/groups` | `GroupController`, creates a group, the creator becomes its admin, story 39 |
 | POST | `/api/groups/join` | `GroupController`, join by invite link, rejects a banned or already-in-a-group user, story 39 |
 | GET | `/api/groups/active` | `GroupController`, the caller's current active group, story 39 |
 | GET | `/api/groups/{groupId}` | `GroupController`, story 39 |
 | PATCH | `/api/groups/{groupId}/settings` | `GroupController`, admin only, story 39 |
 | POST | `/api/groups/{groupId}/start-session` | `GroupController`, admin only, locks the group to new members, story 39 |
+| POST | `/api/groups/{groupId}/session/generate` | `GroupController`, admin only, generates a difficulty-tuned song set for review without starting anything, story 30 |
+| POST | `/api/groups/{groupId}/session/start-with-songs` | `GroupController`, admin only, starts a game session from the reviewed song ids, locks the group to new members, story 30 |
+| POST | `/api/groups/{groupId}/session/start-custom` | `GroupController`, admin only, starts a game session from an accessible playlist or a pasted playlist link, locks the group to new members, story 30 |
 | POST | `/api/groups/{groupId}/leave` | `GroupController`, an explicit leave, admin leave passes leadership to the earliest-joined member, story 39 |
 | POST | `/api/groups/{groupId}/disconnect` | `GroupController`, marks the caller disconnected without ending membership, story 39 |
 | POST | `/api/groups/{groupId}/reconnect` | `GroupController`, story 39 |
@@ -106,17 +115,19 @@ Story 39's group endpoints, story 10's game-session endpoints, story 40's admin 
 | `/app/sessions/{sessionId}/bet` | `GameActionController` | Place a bet after the active player's guess locks, story 10 |
 | `/app/sessions/{sessionId}/skip-betting` | `GameActionController` | Skip the betting window, story 10 |
 
-Story 30's Difficulty-Based-generation and Custom-mode session-start endpoints do not exist on `dev` yet. See that story in `TASKS.md` for the planned shape. Story 9's link-out endpoint is live and listed above. Story 13's group text chat has also shipped (`V14__add_chat_messages`, member-only STOMP send and REST history), though its routes aren't itemized in the tables above. Story 12's voice signaling relay is live as a STOMP mapping on `/app/groups/{groupId}/voice/signal`, which forwards one WebRTC offer, answer, or ICE candidate onto the group's `/topic/groups/{groupId}/voice` topic for member-to-member routing; story 28 now implements the WebRTC mesh and gameplay clients that use it. Visual, representative-state, route smoke, and accessibility verification remain open. This table lists the REST surface live on `dev` today.
+Story 30's Difficulty-Based-generation and Custom-mode session-start endpoints (`/session/generate`, `/session/start-with-songs`, `/session/start-custom`) are live and listed above. Story 9's link-out endpoint is live and listed above. Story 13's group text chat has also shipped (`V14__add_chat_messages`, member-only STOMP send and REST history), though its routes aren't itemized in the tables above. Story 12's voice signaling relay is live as a STOMP mapping on `/app/groups/{groupId}/voice/signal`, which forwards one WebRTC offer, answer, or ICE candidate onto the group's `/topic/groups/{groupId}/voice` topic for member-to-member routing; story 28 now implements the WebRTC mesh and gameplay clients that use it. Visual, representative-state, route smoke, and accessibility verification remain open. This table lists the REST surface live on `dev` today.
 
 ## Entity model
 
 ### Current (JPA entities, core service)
 
-Current JPA entities: `User`, `Playlist`, `PlaylistMembership`, `PlaylistBan`, `SavedPlaylist`, `Song`, `SongArtist`, `RefreshToken`, `EmailVerificationToken`, `PasswordResetToken`, `TwoFactorBackupCode` (story 50), plus `Group` and `Member` (story 39), `GameSession`, `Player`, `Round`, `Guess`, and `Bet` (story 10), `ChatMessage` (story 13), `AlternateYoutubeId` and `PendingImport` (story 40), and `SongReport` and `SongConfirmation` (story 17). `Bet` (round, player, position, placedAt) is one accepted bet against a round's active-player timeline; a round can carry several, one per distinct gap, enforced by unique constraints on the `bets` table rather than a single bettor column on `Round`. The core seven are detailed below; the game, group, and chat entities follow the shapes in `ARCHITECTURE.md` and their own story sections in `TASKS.md`.
+Current JPA entities: `User`, `Playlist`, `PlaylistMembership`, `PlaylistBan`, `SavedPlaylist`, `Song`, `SongArtist`, `RefreshToken`, `EmailVerificationToken`, `PasswordResetToken`, `TwoFactorBackupCode` (story 50), plus `Group` and `Member` (story 39), `GameSession`, `Player`, `Round`, `Guess`, and `Bet` (story 10), `ChatMessage` (story 13), `AlternateYoutubeId` and `PendingImport` (story 40), `SongReport` and `SongConfirmation` (story 17), and `PlaylistImportJob` and `PlaylistImportJobItem` (story 47). `Bet` (round, player, position, placedAt) is one accepted bet against a round's active-player timeline; a round can carry several, one per distinct gap, enforced by unique constraints on the `bets` table rather than a single bettor column on `Round`. The core seven are detailed below; the game, group, and chat entities follow the shapes in `ARCHITECTURE.md` and their own story sections in `TASKS.md`.
 
 ```
 User
   ├── id, username, email, password, imageUrl
+  ├── avatarImage (nullable byte[], pixelized PNG uploaded via PUT /api/users/me/avatar; distinct from
+  │     imageUrl, which carries an OAuth provider's own picture URL, story 47)
   ├── authProvider, authProviderId
   ├── emailVerified (default false; true immediately for a Google OAuth2 signup, story 50)
   ├── totpSecret (nullable, plain column, never returned by any DTO, story 50)
@@ -137,6 +148,8 @@ TwoFactorBackupCode
 
 Playlist
   ├── id, name, color, inviteCode (unique, immutable)
+  ├── coverImage (nullable byte[], pixelized PNG uploaded via PUT /api/playlists/{playlistId}/cover,
+  │     owner only; a playlist without one keeps the song-thumbnail mosaic cover, story 47)
   ├── isPublic (default false, story 30; only the owner can publish/unpublish; a public playlist is
   │     readable by any authenticated user through requireRead, independent of ownership or membership)
   ├── owner: User  (@ManyToOne, set to the creator on creation, story 46; only the owner can rename,
@@ -169,7 +182,10 @@ SavedPlaylist
         a currently public playlist can be saved, and the owner cannot save their own playlist)
 
 Song
-  ├── id, title, releaseYear, youtubeId, gradientColor1, gradientColor2
+  ├── id, title, releaseYear, youtubeId, color  (single color field, replaces the old
+  │     gradientColor1/gradientColor2 pair, story 47, V20)
+  ├── wikidataSitelinksCount (nullable int, the international-scope and popularity-weighting signal
+  │     for story 30's difficulty generation, written by the AI metadata pipeline, V21)
   ├── artists: List<SongArtist>  (@OneToMany, ordered by displayOrder; today always one MAIN entry,
   │     the submission flow has no multi-artist entry UI yet, see story 40's featured-artist extraction)
   ├── genre  (nullable String, populated by the metadata pipeline once it runs, not user-submitted,
@@ -192,10 +208,25 @@ SongArtist
 RefreshToken
   ├── id, token (unique, hashed)
   ├── user: User  (@OneToOne)
+  ├── rememberMe (default false, V22, controls the issued cookie's expiry length)
   └── expiresAt
 ```
 
-Schema changes now go through Flyway migrations (`backend/src/main/resources/db/migration/`), not Hibernate's `ddl-auto` (moved to `validate`); `spring-boot-flyway` is a required dependency alongside the third-party `flyway-core`/`flyway-database-postgresql` libraries for Spring Boot's own autoconfiguration to actually run it. Migrations on `dev` run through V15 (`V15__add_public_playlists_and_saved_playlists`, story 30; `V14__add_chat_messages`, story 13; `V13__add_song_reports_and_confirmations`, story 17; `V12__add_alternate_youtube_ids_and_pending_imports`, story 40).
+`Group` also carries a `joinCode` (unique 4-letter code, alongside the existing invite link, story 39) and a nullable `fixedDjMemberId` (the admin's chosen fixed DJ when `djMode` is `FIXED`, V23; unset falls back to the earliest-joined-member behavior). See `ARCHITECTURE.md` for the rest of `Group`'s shape.
+
+```
+PlaylistImportJob
+  ├── id (UUID string), playlistId, submittedByUsername, status, createdAt, completedAt
+  └── items: List<PlaylistImportJobItem>  (@OneToMany, cascade ALL; one row per submitted video id)
+
+PlaylistImportJobItem
+  ├── id, youtubeId, status, songId (nullable until resolved)
+  └── job: PlaylistImportJob  (@ManyToOne, owns the FK)
+```
+
+Tracks a playlist-scoped background YouTube import (story 47) so a user can keep browsing while it resolves; the playlist detail view reads the active job to render pending songs greyed out (V24).
+
+Schema changes now go through Flyway migrations (`backend/src/main/resources/db/migration/`), not Hibernate's `ddl-auto` (moved to `validate`); `spring-boot-flyway` is a required dependency alongside the third-party `flyway-core`/`flyway-database-postgresql` libraries for Spring Boot's own autoconfiguration to actually run it. Migrations on `dev` run through V25 (`V25__add_pixel_art_images`, story 47, adds `cover_image`/`avatar_image`; `V24__add_playlist_import_jobs`, story 47; `V23__add_group_fixed_dj_member`, story 47; `V22__add_refresh_token_remember_me`; `V21__add_song_wikidata_sitelinks_count`, story 30; `V20__replace_song_gradient_colors_with_one_color`, story 47; `V19__add_two_factor_authentication` and `V18__add_email_verification_and_password_reset`, story 50; `V17__replace_bet_position_with_bets_table` and `V16__add_bet_position`, story 10; `V15__add_public_playlists_and_saved_playlists`, story 30; `V14__add_chat_messages`, story 13; `V13__add_song_reports_and_confirmations`, story 17; `V12__add_alternate_youtube_ids_and_pending_imports`, story 40).
 
 ### Planned (not yet code, target shape per ARCHITECTURE.md and TASKS.md)
 

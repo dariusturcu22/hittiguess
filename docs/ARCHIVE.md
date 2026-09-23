@@ -583,3 +583,35 @@ Tests:
 Tests:
 
 - [x] Add backend deletion coverage and run backend and frontend checks
+
+## LAN playtest findings, batch 2 (export dialog, fetch reliability)
+
+
+- [x] Export opens as a dialog with a song/option summary instead of an inline section; combined info+QR output and extra paper sizes need backend support and land separately (download and print verified working on LAN, the failures were stale-bundle)
+- [x] Add-page 500 on render from a missing server snapshot in the queue hook (same latent pattern as the voice hooks)
+- [x] Add-by-link fetch verified end to end on LAN (~35s to review); the earlier failures were the AI service being down plus the 500 above
+
+Tests:
+- [x] Playlist content, import, and queue-hook suites stay green; LAN browser probes for export download and fetch-to-review
+
+## LAN playtest findings, batch 3 (lobby start flow, voice sidebar)
+
+- [x] Voice sidebar: no collapse control, hidden outside calls except on the lobby page, slim rail matching the left sidebar with the join action on top
+- [x] Playlist chip opens a tier popup (easy/medium/hard/custom) below it; custom opens a fullscreen multi-playlist picker with a chosen list and a back path; the standalone Custom start button goes away
+- [x] Two-player minimum only as a popup on Start, never persistent
+- [x] Lobby content scrolls on zoom with bottom actions pinned; avatar and name float as one unit
+
+Tests:
+- [x] Lobby suite covers the tier popup, custom picker with back path, min-players popup, and the removed custom start (plus a fixed infinite loop in the playlist preselect capture)
+
+## Chore: Documentation accuracy pass
+
+Triggered by a Local-milestone audit: `docs/ROADMAP.md` claimed stories 30, 35, 22, 48, and 49 were still open when `PROJECT_STATE.md` and `ARCHIVE.md` already showed them shipped, and `docs/SYSTEM_REFERENCE.md`/`docs/FRONTEND_IMPLEMENTATION_GUIDE.md` had drifted behind the real schema and routes.
+
+- [x] Correct `docs/ROADMAP.md`'s "Remaining work", "Readiness tiers", and "What's shipped" sections: stories 22, 30, 35, 48, and 49 are shipped, not remaining; story 38's usage-limit check is built; story 28's implementation now runs through Batch F; story 47's actual open items (design-mockup sync, feedback-polish batch, voice check) are named instead
+- [x] Update `docs/SYSTEM_REFERENCE.md`'s migration list from V15 to V25, add the six undocumented endpoints (`import-jobs` pair, `cover`/`avatar` pairs, and the three story-30 session-generation endpoints), and correct the entity block: `Song.gradientColor1`/`gradientColor2` replaced by `color`, plus the undocumented `Song.wikidataSitelinksCount`, `Playlist.coverImage`, `User.avatarImage`, `RefreshToken.rememberMe`, `Group.joinCode`/`fixedDjMemberId`, and the `PlaylistImportJob`/`PlaylistImportJobItem` entities
+- [x] Fix `docs/FRONTEND_IMPLEMENTATION_GUIDE.md`'s two wrong route paths (`/playlists/explore` to `/explore`, `/admin/catalog` to `/admin/catalog-backlog`) and its stale "TBD" import-route entry, replaced with the real implemented routes
+- [x] Fix `docs/TASKS.md`'s own preamble, still citing "Batches A through E"
+
+Tests:
+- [x] None; this chore changes documentation only, no behavior. Frontend and backend suites confirmed green (modulo the sandbox's known loopback-socket limitation on backend integration tests) as part of the same audit that surfaced this drift, not re-run for this chore specifically since no code changed
