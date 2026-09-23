@@ -731,7 +731,7 @@ export default function GroupLobbyPage({ params }: PageProps) {
           <button
             type="button"
             onClick={() => setIsChatOpen((currentValue) => !currentValue)}
-            className={`inline-flex items-center gap-2 rounded-full border-2 bg-card px-5 py-3 text-[13px] font-semibold text-card-foreground ${isChatOpen ? "border-primary text-primary" : "border-border"}`}
+            className={`relative z-20 inline-flex items-center gap-2 rounded-full border-2 bg-card px-5 py-3 text-[13px] font-semibold text-card-foreground ${isChatOpen ? "border-primary text-primary" : "border-border"}`}
           >
           <MessageCircle className="size-4" />
           Chat
