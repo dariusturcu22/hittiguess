@@ -113,7 +113,7 @@ export function AppSidebar() {
   const queryClient = useQueryClient();
   const { resolvedTheme, setTheme } = useTheme();
   const [mounted, setMounted] = React.useState(false);
-  const [activeImport, setActiveImport] = React.useState<ActivePlaylistImportJob | null>(() => loadActiveImportJob());
+  const [activeImport, setActiveImport] = React.useState<ActivePlaylistImportJob | null>(null);
   const { data: activeGroup } = useGetActiveMembership({
     query: { retry: false },
   });
@@ -145,6 +145,7 @@ export function AppSidebar() {
 
   React.useEffect(() => {
     setMounted(true);
+    setActiveImport(loadActiveImportJob());
     const updateImportState = (event: Event) => {
       setActiveImport((event as CustomEvent<ActivePlaylistImportJob>).detail);
     };
