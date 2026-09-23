@@ -5,7 +5,7 @@ import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 
 import { Button } from "@/components/shadcn/button";
-import { Input } from "@/components/shadcn/input";
+import { PasswordInput } from "@/components/password-input";
 import { Label } from "@/components/shadcn/label";
 import { IconArrowLeft, IconLock } from "@tabler/icons-react";
 
@@ -84,8 +84,7 @@ function ResetPasswordForm() {
                 <Label htmlFor="new-password" className="text-[13px] font-semibold text-muted-foreground">
                   New password
                 </Label>
-                <Input
-                  type="password"
+                <PasswordInput
                   required
                   minLength={6}
                   autoComplete="new-password"
@@ -100,8 +99,7 @@ function ResetPasswordForm() {
                 <Label htmlFor="confirm-password" className="text-[13px] font-semibold text-muted-foreground">
                   Confirm password
                 </Label>
-                <Input
-                  type="password"
+                <PasswordInput
                   required
                   minLength={6}
                   autoComplete="new-password"

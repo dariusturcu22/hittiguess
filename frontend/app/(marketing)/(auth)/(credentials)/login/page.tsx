@@ -9,6 +9,7 @@ import { toast } from "sonner";
 
 import { Button } from "@/components/shadcn/button";
 import { Input } from "@/components/shadcn/input";
+import { PasswordInput } from "@/components/password-input";
 import { Checkbox } from "@/components/shadcn/checkbox";
 import {
   Form,
@@ -140,8 +141,7 @@ export default function LoginPage() {
                       Password
                     </FormLabel>
                     <FormControl>
-                      <Input
-                        type="password"
+                      <PasswordInput
                         autoComplete="current-password"
                         placeholder="••••••••••"
                         className={AUTH_INPUT_CLASSES}
