@@ -793,7 +793,6 @@ Tests:
 - [x] Playwright multi-user coverage for join, lobby, full rounds, results, and the import background flow
 - [ ] Voice delivery check with the synthetic-tone method, plus the contrast and motion spot checks from story 28
 
-
 ## Story 50: Auth hardening
 
 Checked against real code: `User` has no `emailVerified` field, `AuthController`/`AuthService` have no password-reset endpoints at all, and there's no TOTP secret, backup codes, or any second factor anywhere in `security/`. `docs/ARCHIVE.md`'s batch 5 entry made the frontend forgot-password form honestly say "not implemented yet" rather than silently failing; this story is what actually builds it. No email-sending capability exists anywhere in the backend (`pom.xml` has no `spring-boot-starter-mail`, no third-party email SDK). Gates Beta, not Local: friends playing with real accounts need working password recovery and a real signup verification step; the project owner playing alone or with one other person locally doesn't.
@@ -849,10 +848,10 @@ Reported during the first multi-device playtest. Items marked reproduce-first ma
 
 Confirmed bugs (verified in code, fix directly):
 - [x] Clipboard copies assume `navigator.clipboard`, which is undefined over plain-HTTP LAN, so every invite and results copy throws. Add a shared copy helper with a non-Clipboard fallback and use it at all five call sites
-- [ ] Export renders as an inline section, not a dialog, with no preview and only info/QR plus A4/Letter. Convert to a dialog; combined info+QR output and extra paper sizes need backend support and land separately
+- [x] Export renders as an inline section, not a dialog, with no preview and only info/QR plus A4/Letter. Convert to a dialog (done); combined info+QR output and extra paper sizes need backend support and land separately (see the Fix: Export paper sizes section below)
 - [x] Library tabs run Owned-first with All last. Move All first and default it; put Join left of Create playlist with a code/link popup below it
 - [x] Edit-playlist save has no toast and fails silently; cancel gives no feedback. Add success toast with detail redirect (already redirects) and an error message
-- [ ] Playlist description has no backend support at all (no column, no update field), so the edit-page description field silently drops input. Needs an entity/migration/endpoint slice before the field can work
+- [x] Playlist description has no backend support at all (no column, no update field), so the edit-page description field silently drops input. Needs an entity/migration/endpoint slice before the field can work (see the Fix: Export paper sizes section below)
 
 Reproduce-first on the fixed stack:
 - [x] YouTube playlist import stuck at connecting (real bug, not stale-bundle: the page never opens the socket it gates on. Fixed by dropping the gate since expansion is REST)
@@ -886,25 +885,6 @@ Feedback polish (cross-cutting, own batch):
 Tests:
 - [x] Frontend lint and the two password-flow page tests stay green (no behavior code changes in this batch)
 
-## LAN playtest findings, batch 2 (export dialog, fetch reliability)
-
-
-- [x] Export opens as a dialog with a song/option summary instead of an inline section; combined info+QR output and extra paper sizes need backend support and land separately (download and print verified working on LAN, the failures were stale-bundle)
-- [x] Add-page 500 on render from a missing server snapshot in the queue hook (same latent pattern as the voice hooks)
-- [x] Add-by-link fetch verified end to end on LAN (~35s to review); the earlier failures were the AI service being down plus the 500 above
-
-Tests:
-- [x] Playlist content, import, and queue-hook suites stay green; LAN browser probes for export download and fetch-to-review
-
-## LAN playtest findings, batch 3 (lobby start flow, voice sidebar)
-
-- [x] Voice sidebar: no collapse control, hidden outside calls except on the lobby page, slim rail matching the left sidebar with the join action on top
-- [x] Playlist chip opens a tier popup (easy/medium/hard/custom) below it; custom opens a fullscreen multi-playlist picker with a chosen list and a back path; the standalone Custom start button goes away
-- [x] Two-player minimum only as a popup on Start, never persistent
-- [x] Lobby content scrolls on zoom with bottom actions pinned; avatar and name float as one unit
-
-Tests:
-- [x] Lobby suite covers the tier popup, custom picker with back path, min-players popup, and the removed custom start (plus a fixed infinite loop in the playlist preselect capture)
 ## LAN playtest findings, batch 4 (library, shell, settings, chat)
 
 - [x] Playlist member stack shows the overlap plus overflow count per the reference

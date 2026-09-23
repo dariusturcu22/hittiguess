@@ -210,4 +210,29 @@ describe("PlaylistContent detail states", () => {
     );
     vi.unstubAllGlobals();
   });
+
+  it("exports the combined info+QR cards on the new paper sizes", async () => {
+    const fetchMock = vi.fn(async () => ({
+      ok: true,
+      blob: async () => new Blob(["pdf"], { type: "application/pdf" }),
+    }));
+    vi.stubGlobal("fetch", fetchMock);
+    const createObjectUrl = vi.fn(() => "blob:export-url");
+    Object.defineProperty(URL, "createObjectURL", { value: createObjectUrl, configurable: true });
+    Object.defineProperty(URL, "revokeObjectURL", { value: vi.fn(), configurable: true });
+    await renderContent();
+
+    fireEvent.click(screen.getByTitle("Export cards"));
+    fireEvent.change(screen.getByLabelText("Cards"), { target: { value: "combined" } });
+    fireEvent.change(screen.getByLabelText("Paper"), { target: { value: "A3" } });
+    fireEvent.click(screen.getByRole("button", { name: "Download PDF" }));
+
+    await waitFor(() =>
+      expect(fetchMock).toHaveBeenCalledWith(
+        expect.stringContaining("/api/playlists/7/export/combined?paperSize=A3"),
+        expect.anything(),
+      ),
+    );
+    vi.unstubAllGlobals();
+  });
 });

@@ -22,6 +22,8 @@ import { useUploadPlaylistCover } from "@/hooks/generated/pixel-art-images/pixel
 import { PlaylistCoverMosaic } from "@/components/playlist-cover-mosaic";
 import { PixelImageInput } from "@/components/pixel-image-input";
 import { DEFAULT_PLAYLIST_COLOR, PLAYLIST_COLOR_PRESETS } from "@/lib/playlist-colors";
+
+const MAX_DESCRIPTION_LENGTH = 300;
 import { getGetUserPlaylistsQueryKey } from "@/hooks/generated/user-management/user-management";
 import { useQueryClient } from "@tanstack/react-query";
 import { AXIOS_INSTANCE } from "@/lib/axios-instance";
@@ -220,6 +222,9 @@ export default function EditPlaylistPage({ params }: PageProps) {
       setNameDraft(playlist.name);
     }
   }, [playlist?.name]);
+  React.useEffect(() => {
+    setDescriptionDraft(playlist?.description ?? "");
+  }, [playlist?.description]);
 
   const currentColor = playlist?.color ?? DEFAULT_PLAYLIST_COLOR;
 
@@ -237,13 +242,15 @@ export default function EditPlaylistPage({ params }: PageProps) {
     if (trimmed.length === 0) {
       return;
     }
-    if (trimmed === playlist?.name) {
+    const trimmedDescription = descriptionDraft.trim();
+    const currentDescription = playlist?.description ?? "";
+    if (trimmed === playlist?.name && trimmedDescription === currentDescription) {
       router.push(`/playlists/${playlistId}`);
       return;
     }
     setSaveError("");
     updatePlaylist.mutate(
-      { playlistId, data: { name: trimmed } },
+      { playlistId, data: { name: trimmed, description: trimmedDescription } },
       {
         onSuccess: () => {
           invalidatePlaylist();
@@ -259,6 +266,7 @@ export default function EditPlaylistPage({ params }: PageProps) {
 
   function resetName() {
     setNameDraft(playlist?.name ?? "");
+    setDescriptionDraft(playlist?.description ?? "");
   }
 
   async function deletePlaylist() {
@@ -460,6 +468,7 @@ export default function EditPlaylistPage({ params }: PageProps) {
             <textarea
               id="playlist-description"
               rows={3}
+              maxLength={MAX_DESCRIPTION_LENGTH}
               value={descriptionDraft}
               onChange={(event) => setDescriptionDraft(event.target.value)}
               placeholder="Tell people what this playlist sounds like."

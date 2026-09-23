@@ -48,6 +48,7 @@ public class PlaylistMapper {
                 playlist.getId(),
                 playlist.getName(),
                 playlist.getColor(),
+                playlist.getDescription(),
                 playlist.getInviteCode(),
                 playlist.getSongCount(),
                 playlist.getSongs().stream()
@@ -104,6 +105,9 @@ public class PlaylistMapper {
         }
         if (request.color() != null) {
             playlist.setColor(request.color());
+        }
+        if (request.description() != null) {
+            playlist.setDescription(request.description().isBlank() ? null : request.description());
         }
         return playlist;
     }

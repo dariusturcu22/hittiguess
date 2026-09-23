@@ -146,8 +146,8 @@ export default function PlaylistContent({
   const [linkCopied, setLinkCopied] = React.useState(false);
   const [codeCopied, setCodeCopied] = React.useState(false);
   const [isExportOpen, setIsExportOpen] = React.useState(false);
-  const [exportContent, setExportContent] = React.useState<"info" | "qr">("info");
-  const [exportPaperSize, setExportPaperSize] = React.useState<"A4" | "LETTER">("A4");
+  const [exportContent, setExportContent] = React.useState<"info" | "qr" | "combined">("info");
+  const [exportPaperSize, setExportPaperSize] = React.useState<"A4" | "LETTER" | "LEGAL" | "A3" | "A5" | "TABLOID">("A4");
   const [isExporting, setIsExporting] = React.useState(false);
   const [exportError, setExportError] = React.useState("");
 
@@ -360,22 +360,27 @@ export default function PlaylistContent({
                   <AlertDialogHeader>
                     <AlertDialogTitle>Export cards</AlertDialogTitle>
                     <AlertDialogDescription>
-                      {songs.length} songs · {exportContent === "info" ? "Info cards" : "QR cards"} · {exportPaperSize}
+                      {songs.length} songs · {exportContent === "info" ? "Info cards" : exportContent === "qr" ? "QR cards" : "Combined info+QR cards"} · {exportPaperSize}
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <div className="flex flex-wrap items-center gap-4">
                     <label className="flex items-center gap-2 text-[13px] text-muted-foreground">
                       Cards
-                      <select value={exportContent} onChange={(event) => setExportContent(event.target.value as "info" | "qr")} className="rounded-full border-2 border-border bg-background px-3 py-1.5 text-sm font-semibold text-foreground outline-none">
+                      <select value={exportContent} onChange={(event) => setExportContent(event.target.value as "info" | "qr" | "combined")} className="rounded-full border-2 border-border bg-background px-3 py-1.5 text-sm font-semibold text-foreground outline-none">
                         <option value="info">Info cards</option>
                         <option value="qr">QR cards</option>
+                        <option value="combined">Combined info+QR cards</option>
                       </select>
                     </label>
                     <label className="flex items-center gap-2 text-[13px] text-muted-foreground">
                       Paper
-                      <select value={exportPaperSize} onChange={(event) => setExportPaperSize(event.target.value as "A4" | "LETTER")} className="rounded-full border-2 border-border bg-background px-3 py-1.5 text-sm font-semibold text-foreground outline-none">
+                      <select value={exportPaperSize} onChange={(event) => setExportPaperSize(event.target.value as "A4" | "LETTER" | "LEGAL" | "A3" | "A5" | "TABLOID")} className="rounded-full border-2 border-border bg-background px-3 py-1.5 text-sm font-semibold text-foreground outline-none">
                         <option value="A4">A4</option>
                         <option value="LETTER">Letter</option>
+                        <option value="LEGAL">Legal</option>
+                        <option value="A3">A3</option>
+                        <option value="A5">A5</option>
+                        <option value="TABLOID">Tabloid</option>
                       </select>
                     </label>
                   </div>

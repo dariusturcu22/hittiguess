@@ -583,3 +583,43 @@ Tests:
 Tests:
 
 - [x] Add backend deletion coverage and run backend and frontend checks
+
+## Fix: Export paper sizes, combined info+QR output, and playlist description backend
+
+Closes out the two items the LAN playtest findings above left open pending backend support. No story gate: both are bug-fix-shaped backend/frontend slices tracked directly in `TASKS.md`, not new feature scope.
+
+- [x] Extend `PaperSize` with `LEGAL` (8.5x14in), `A3` (297x420mm), `A5` (148x210mm), and `TABLOID` (11x17in) at the existing 300dpi convention, alongside `A4`/`LETTER`
+- [x] Add a combined info+QR card face: each card shows its info (artist/year/title) on the same face as a small QR code, a single-sided alternative to the existing double-sided info/QR pair, since duplex printing isn't built
+- [x] Add `GET /api/playlists/{playlistId}/export/combined` (`ExportController`/`ExportService`), same `paperSize` query param and access check as `/export/info` and `/export/qr`
+- [x] Add a `description` column to `Playlist` (migration, nullable, `VARCHAR(300)` matching `Playlist.MAX_DESCRIPTION_LENGTH`, the same constant `UpdatePlaylistRequest`'s validation bounds against)
+- [x] Add `description` to `UpdatePlaylistRequest` (bounded length, matching the field's existing textarea) and `PlaylistDetailDTO` (not `PlaylistSummaryDTO`, no mockup shows a description on the playlist grid cards), and wire it through `PlaylistMapper`/`PlaylistService.updatePlaylist`
+- [x] Frontend: hydrate the edit page's description draft from the playlist, include it in the save call, and save whenever either the name or the description actually changed, not just the name
+- [x] Frontend: add the new paper sizes and the combined content option to the export dialog's selects
+- [x] Regenerate the orval API client against the updated OpenAPI schema
+
+Tests:
+- [x] Unit tests for the new `PaperSize` values' page/margin math, same shape as the existing `A4`/`LETTER` coverage
+- [x] Combined-page rendering is exercised through `ExportServiceTest`'s new combined-PDF tests, matching how `CardGenerator`/`QRGenerator` already have no direct unit tests of their own and are only exercised through `ExportServiceTest`
+- [x] Unit test: the combined export checks read access the same way `ExportServiceTest`'s existing info/QR tests do, no separate controller-level export test existed to extend
+- [x] Unit tests for the description update: within the length bound saves, over it is rejected, a non-owner update is rejected the same as the existing name/color update
+- [x] Frontend test: the edit page saves a description-only change (no name change) and hydrates the existing description into the draft on load
+
+## LAN playtest findings, batch 2 (export dialog, fetch reliability)
+
+
+- [x] Export opens as a dialog with a song/option summary instead of an inline section; combined info+QR output and extra paper sizes need backend support and land separately (download and print verified working on LAN, the failures were stale-bundle)
+- [x] Add-page 500 on render from a missing server snapshot in the queue hook (same latent pattern as the voice hooks)
+- [x] Add-by-link fetch verified end to end on LAN (~35s to review); the earlier failures were the AI service being down plus the 500 above
+
+Tests:
+- [x] Playlist content, import, and queue-hook suites stay green; LAN browser probes for export download and fetch-to-review
+
+## LAN playtest findings, batch 3 (lobby start flow, voice sidebar)
+
+- [x] Voice sidebar: no collapse control, hidden outside calls except on the lobby page, slim rail matching the left sidebar with the join action on top
+- [x] Playlist chip opens a tier popup (easy/medium/hard/custom) below it; custom opens a fullscreen multi-playlist picker with a chosen list and a back path; the standalone Custom start button goes away
+- [x] Two-player minimum only as a popup on Start, never persistent
+- [x] Lobby content scrolls on zoom with bottom actions pinned; avatar and name float as one unit
+
+Tests:
+- [x] Lobby suite covers the tier popup, custom picker with back path, min-players popup, and the removed custom start (plus a fixed infinite loop in the playlist preselect capture)

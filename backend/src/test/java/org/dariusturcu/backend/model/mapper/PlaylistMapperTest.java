@@ -1,8 +1,10 @@
 package org.dariusturcu.backend.model.mapper;
 
 import org.dariusturcu.backend.model.playlist.Playlist;
+import org.dariusturcu.backend.model.playlist.PlaylistDetailDTO;
 import org.dariusturcu.backend.model.playlist.PlaylistInvitePreviewDTO;
 import org.dariusturcu.backend.model.playlist.PlaylistMembership;
+import org.dariusturcu.backend.model.playlist.UpdatePlaylistRequest;
 import org.dariusturcu.backend.model.song.Song;
 import org.dariusturcu.backend.model.user.User;
 import org.junit.jupiter.api.Test;
@@ -56,5 +58,54 @@ class PlaylistMapperTest {
         assertThat(preview.members()).hasSize(2);
         assertThat(preview.members().get(0).owner()).isTrue();
         assertThat(preview.members().get(1).owner()).isFalse();
+    }
+
+    @Test
+    void toDetailDTOCarriesTheDescription() {
+        User owner = new User();
+        owner.setId(OWNER_ID);
+        owner.setUsername("owner-user");
+
+        Playlist playlist = new Playlist();
+        playlist.setName("Midnight Radio");
+        playlist.setColor("cba6f7");
+        playlist.setDescription("Late-night driving songs");
+        playlist.setInviteCode("invite-code");
+        playlist.setOwner(owner);
+        playlist.getMemberships().add(membershipFor(owner, "Owner"));
+
+        PlaylistDetailDTO detail = playlistMapper.toDetailDTO(playlist);
+
+        assertThat(detail.description()).isEqualTo("Late-night driving songs");
+    }
+
+    @Test
+    void updateEntitySetsTheDescription() {
+        Playlist playlist = new Playlist();
+        playlist.setDescription("Old description");
+
+        playlistMapper.updateEntity(playlist, new UpdatePlaylistRequest(null, null, "New description"));
+
+        assertThat(playlist.getDescription()).isEqualTo("New description");
+    }
+
+    @Test
+    void updateEntityClearsTheDescriptionOnABlankValue() {
+        Playlist playlist = new Playlist();
+        playlist.setDescription("Old description");
+
+        playlistMapper.updateEntity(playlist, new UpdatePlaylistRequest(null, null, "   "));
+
+        assertThat(playlist.getDescription()).isNull();
+    }
+
+    @Test
+    void updateEntityLeavesTheDescriptionUntouchedWhenNotProvided() {
+        Playlist playlist = new Playlist();
+        playlist.setDescription("Unchanged description");
+
+        playlistMapper.updateEntity(playlist, new UpdatePlaylistRequest("New name", null, null));
+
+        assertThat(playlist.getDescription()).isEqualTo("Unchanged description");
     }
 }

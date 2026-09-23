@@ -41,6 +41,16 @@ public class ExportController {
         return buildPdfResponse(pdfBytes, "qr-" + playlistId + ".pdf");
     }
 
+    @Operation(summary = "Generate combined info+QR PDF for playlist songs, single-sided")
+    @GetMapping("/{playlistId}/export/combined")
+    public ResponseEntity<byte[]> exportPlaylistCombined(
+            @PathVariable Long playlistId,
+            @RequestParam(defaultValue = "A4") PaperSize paperSize
+    ) {
+        byte[] pdfBytes = exportService.generateCombinedPdf(playlistId, paperSize);
+        return buildPdfResponse(pdfBytes, "combined-" + playlistId + ".pdf");
+    }
+
     private ResponseEntity<byte[]> buildPdfResponse(byte[] pdfBytes, String filename) {
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_PDF);

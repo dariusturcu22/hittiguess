@@ -37,7 +37,11 @@ public class ExportService {
     private final PlaylistRepository playlistRepository;
     private final PlaylistAccessService playlistAccessService;
 
-    private byte[] buildPdf(List<Song> songs, PaperSize paperSize, boolean isQr) throws IOException {
+    private enum PageContent {
+        INFO, QR, COMBINED
+    }
+
+    private byte[] buildPdf(List<Song> songs, PaperSize paperSize, PageContent pageContent) throws IOException {
         PDDocument document = new PDDocument();
 
         List<List<Song>> chunks = new ArrayList<>();
@@ -46,12 +50,14 @@ public class ExportService {
             chunks.add(songs.subList(i, Math.min(i + pageSize, songs.size())));
         }
 
-        if (isQr) Collections.reverse(chunks);
+        if (pageContent == PageContent.QR) Collections.reverse(chunks);
 
         for (List<Song> chunk : chunks) {
-            BufferedImage image = isQr
-                    ? QRGenerator.generateQRPage(chunk, paperSize)
-                    : CardGenerator.generateInfoPage(chunk, paperSize);
+            BufferedImage image = switch (pageContent) {
+                case QR -> QRGenerator.generateQRPage(chunk, paperSize);
+                case COMBINED -> CardGenerator.generateCombinedPage(chunk, paperSize);
+                case INFO -> CardGenerator.generateInfoPage(chunk, paperSize);
+            };
             addImagePage(document, image);
         }
 
@@ -79,7 +85,7 @@ public class ExportService {
     public byte[] generateInfoPdf(Long playlistId, PaperSize paperSize) {
         List<Song> songs = getValidatedSongs(playlistId);
         try {
-            return buildPdf(songs, paperSize, false);
+            return buildPdf(songs, paperSize, PageContent.INFO);
         } catch (Exception e) {
             throw new RuntimeException("Failed to generate PDF: " + e.getMessage());
         }
@@ -88,7 +94,16 @@ public class ExportService {
     public byte[] generateQrPdf(Long playlistId, PaperSize paperSize) {
         List<Song> songs = getValidatedSongs(playlistId);
         try {
-            return buildPdf(songs, paperSize, true);
+            return buildPdf(songs, paperSize, PageContent.QR);
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to generate PDF: " + e.getMessage());
+        }
+    }
+
+    public byte[] generateCombinedPdf(Long playlistId, PaperSize paperSize) {
+        List<Song> songs = getValidatedSongs(playlistId);
+        try {
+            return buildPdf(songs, paperSize, PageContent.COMBINED);
         } catch (Exception e) {
             throw new RuntimeException("Failed to generate PDF: " + e.getMessage());
         }
