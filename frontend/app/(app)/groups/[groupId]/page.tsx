@@ -1,7 +1,7 @@
 "use client";
 
 import { use, useCallback, useEffect, useMemo, useState, Suspense } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 import {
   Check,
@@ -154,10 +154,27 @@ function LobbyLoadingState() {
   );
 }
 
+function PlaylistPreselectCapture({ onCapture }: { onCapture: (playlistId: number | null) => void }) {
+  const searchParams = useSearchParams();
+
+  useEffect(() => {
+    const rawPlaylistId = searchParams.get("playlist");
+    if (rawPlaylistId === null) {
+      onCapture(null);
+      return;
+    }
+    const parsedPlaylistId = Number(rawPlaylistId);
+    onCapture(Number.isInteger(parsedPlaylistId) && parsedPlaylistId > 0 ? parsedPlaylistId : null);
+  }, [searchParams, onCapture]);
+
+  return null;
+}
+
 export default function GroupLobbyPage({ params }: PageProps) {
   const { groupId: groupIdParam } = use(params);
   const groupId = Number(groupIdParam);
   const router = useRouter();
+  const pathname = usePathname();
   const queryClient = useQueryClient();
   const [copyFeedback, setCopyFeedback] = useState("");
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
@@ -284,37 +301,20 @@ export default function GroupLobbyPage({ params }: PageProps) {
     setIsTierPopupOpen(true);
   }
 
-  function PlaylistPreselectCapture({ onCapture }: { onCapture: (playlistId: number | null) => void }) {
-    const searchParams = useSearchParams();
-
-    useEffect(() => {
-      const rawPlaylistId = searchParams.get("playlist");
-      if (rawPlaylistId === null) {
-        onCapture(null);
-        return;
-      }
-      const parsedPlaylistId = Number(rawPlaylistId);
-      onCapture(Number.isInteger(parsedPlaylistId) && parsedPlaylistId > 0 ? parsedPlaylistId : null);
-    }, [searchParams, onCapture]);
-
-    return null;
-  }
-
   const applyPlaylistPreselect = useCallback((playlistId: number | null) => {
     if (playlistId === null) {
       return;
     }
-    // Functional update returning the same reference when nothing changes:
-    // the capture component above is re-created every render, so its effect
-    // re-fires on each remount and only identical-state bailouts stop it.
-    setSelectedPlaylistIds((currentIds) =>
-      currentIds.length === 1 && currentIds[0] === playlistId ? currentIds : [playlistId],
-    );
+    setSelectedPlaylistIds([playlistId]);
     setStartError("");
     closeAllPopups();
     setIsTierPopupOpen(false);
     setIsCustomPickerOpen(true);
-  }, []);
+    const params = new URLSearchParams(window.location.search);
+    params.delete("playlist");
+    const query = params.toString();
+    router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
+  }, [pathname, router]);
 
   function handleModeStartSuccess() {
     refreshGroup();
