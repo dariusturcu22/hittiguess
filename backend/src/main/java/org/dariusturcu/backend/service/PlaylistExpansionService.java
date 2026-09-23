@@ -5,13 +5,19 @@ import lombok.extern.slf4j.Slf4j;
 import org.dariusturcu.backend.exception.PlaylistImportException;
 import org.dariusturcu.backend.model.ai.PlaylistVideoIdsRequest;
 import org.dariusturcu.backend.model.ai.PlaylistVideoIdsResponse;
+import org.dariusturcu.backend.model.ai.VideoInfoItem;
+import org.dariusturcu.backend.model.ai.VideoInfoRequest;
+import org.dariusturcu.backend.model.ai.VideoInfoResponse;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
 
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 /**
  * Expands a YouTube playlist link or bare playlist id into its video ids by calling the
@@ -26,6 +32,7 @@ import java.util.Set;
 public class PlaylistExpansionService {
 
     private static final String PLAYLIST_VIDEO_IDS_ENDPOINT = "/metadata/playlist-video-ids";
+    private static final String VIDEO_INFO_ENDPOINT = "/metadata/video-info";
 
     private final RestClient aiServiceRestClient;
 
@@ -66,5 +73,33 @@ public class PlaylistExpansionService {
         Set<String> mergedIds = new LinkedHashSet<>(expandedVideoIds);
         mergedIds.addAll(alreadyParsedYoutubeIds);
         return new ArrayList<>(mergedIds);
+    }
+
+    /**
+     * Best-effort raw title and channel name per video id, for display before the
+     * metadata pipeline resolves a submission. Never throws: a failed call or an id
+     * YouTube doesn't recognize is simply absent from the result, since this only
+     * feeds a still-processing row's display text, not the resolution pipeline.
+     */
+    public Map<String, VideoInfoItem> fetchVideoInfo(List<String> videoIds) {
+        if (videoIds.isEmpty()) {
+            return Map.of();
+        }
+        try {
+            VideoInfoResponse response = aiServiceRestClient.post()
+                    .uri(VIDEO_INFO_ENDPOINT)
+                    .body(new VideoInfoRequest(videoIds))
+                    .retrieve()
+                    .body(VideoInfoResponse.class);
+
+            if (response == null || response.videos() == null) {
+                return Map.of();
+            }
+            return response.videos().stream()
+                    .collect(Collectors.toMap(VideoInfoItem::videoId, Function.identity()));
+        } catch (Exception videoInfoFailure) {
+            log.warn("Video info call failed: {}", videoInfoFailure.getMessage());
+            return Map.of();
+        }
     }
 }
