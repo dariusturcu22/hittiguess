@@ -7,6 +7,7 @@ import org.dariusturcu.backend.model.group.CreateGroupRequest;
 import org.dariusturcu.backend.model.group.DjMode;
 import org.dariusturcu.backend.model.group.Group;
 import org.dariusturcu.backend.model.group.GroupDetailDTO;
+import org.dariusturcu.backend.model.group.GroupInvitePreviewDTO;
 import org.dariusturcu.backend.model.group.GroupStatus;
 import org.dariusturcu.backend.model.group.JoinGroupRequest;
 import org.dariusturcu.backend.model.group.Member;
@@ -119,6 +120,14 @@ public class GroupService {
         GroupDetailDTO result = groupMapper.toDetailDTO(savedGroup);
         eventPublisher.publishEvent(new GroupBroadcastEvent(GroupEventType.MEMBER_JOINED, result));
         return result;
+    }
+
+    @Transactional(readOnly = true)
+    public GroupInvitePreviewDTO getInvitePreview(String inviteCode) {
+        Group group = groupRepository.findByInviteCode(inviteCode)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Invite code {" + inviteCode + "} not found"));
+        return groupMapper.toInvitePreviewDTO(group);
     }
 
     @Transactional(readOnly = true)

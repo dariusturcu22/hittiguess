@@ -30,6 +30,15 @@ vi.mock("@/hooks/generated/group-management/group-management", () => ({
   useJoinGroup: () => ({ mutate: joinMutate, isPending: false }),
 }));
 
+vi.mock("@/hooks/use-group-invite-preview", () => ({
+  useGroupInvitePreview: () => groupPreviewState,
+}));
+
+let groupPreviewState: { data?: { memberCount: number; members: never[] }; isError: boolean } = {
+  data: { memberCount: 3, members: [] },
+  isError: false,
+};
+
 async function renderPage() {
   const queryClient = new QueryClient();
   await act(async () => {
@@ -45,6 +54,7 @@ describe("JoinGroupPage", () => {
   beforeEach(() => {
     joinMutate.mockReset();
     currentUserState = { data: undefined, isLoading: false, isError: true };
+    groupPreviewState = { data: { memberCount: 3, members: [] }, isError: false };
   });
 
   it("points logged-out users at login with a return to the invite", async () => {
@@ -67,5 +77,20 @@ describe("JoinGroupPage", () => {
     fireEvent.click(screen.getByRole("button", { name: "Join group" }));
 
     await waitFor(() => expect(joinMutate).toHaveBeenCalled());
+  });
+
+  it("shows an invalid screen for a dead invite instead of the join form", async () => {
+    groupPreviewState = { data: undefined, isError: true };
+    await renderPage();
+
+    expect(screen.getByText("This invite link is no longer valid")).toBeVisible();
+    expect(screen.queryByRole("button", { name: "Join group" })).toBeNull();
+    expect(screen.queryByRole("link", { name: "Log in to join" })).toBeNull();
+  });
+
+  it("shows the live member count from the invite preview", async () => {
+    await renderPage();
+
+    expect(screen.getByText("3 members · Join this group to play together")).toBeVisible();
   });
 });

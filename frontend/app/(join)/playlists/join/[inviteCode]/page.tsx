@@ -30,7 +30,7 @@ export default function JoinPlaylistPage({ params }: PageProps) {
     query: { retry: false },
     request: { skipAuthRedirect: true },
   });
-  const { data: invitePreview } = useGetInvitePreview(inviteCode);
+  const { data: invitePreview, isError: isInvitePreviewError } = useGetInvitePreview(inviteCode);
   const { mutate: joinPlaylist, isPending } = useJoinPlaylist();
 
   const [displayName, setDisplayName] = useState("");
@@ -84,6 +84,37 @@ export default function JoinPlaylistPage({ params }: PageProps) {
     displayName.trim().charAt(0).toUpperCase() ||
     currentUser?.username?.trim().charAt(0).toUpperCase() ||
     "?";
+
+  if (isInvitePreviewError) {
+    return (
+      <div className="flex h-full items-center justify-center p-6">
+        <div className="flex w-full max-w-[460px] flex-col items-center rounded-2xl border-[3px] border-border-strong bg-card p-8 shadow-lg sm:p-11">
+          <div className="mb-6">
+            <LogoIcon />
+          </div>
+
+          <h1
+            className="mb-5 font-display text-xl text-accent"
+            style={{ textShadow: "3px 3px 0 var(--text-shadow-on-card)" }}
+          >
+            This invite link is no longer valid
+          </h1>
+
+          <p className="mb-6 text-center text-sm text-muted-foreground">
+            The playlist may have been deleted or the link revoked. Ask the owner for a fresh one.
+          </p>
+
+          <button
+            type="button"
+            onClick={() => router.push("/playlists")}
+            className="text-[13px] text-muted-foreground underline underline-offset-4"
+          >
+            Back to playlists
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex h-full items-center justify-center p-6">

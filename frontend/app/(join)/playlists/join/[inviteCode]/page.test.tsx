@@ -28,10 +28,13 @@ vi.mock("@/hooks/generated/user-management/user-management", () => ({
 }));
 
 vi.mock("@/hooks/generated/playlist-management/playlist-management", () => ({
-  useGetInvitePreview: () => ({
-    data: { name: "Party mix", color: "cba6f7", songCount: 9, members: [] },
-  }),
+  useGetInvitePreview: () => invitePreviewState,
 }));
+
+let invitePreviewState: { data?: { name: string; color: string; songCount: number; members: never[] }; isError: boolean } = {
+  data: { name: "Party mix", color: "cba6f7", songCount: 9, members: [] },
+  isError: false,
+};
 
 async function renderPage() {
   const queryClient = new QueryClient();
@@ -49,6 +52,10 @@ describe("JoinPlaylistPage", () => {
     joinMutate.mockReset();
     joinMutate.mockImplementation((_args, options) => options?.onSuccess?.({ id: 21 }));
     currentUserState = { data: undefined, isLoading: false, isError: true };
+    invitePreviewState = {
+      data: { name: "Party mix", color: "cba6f7", songCount: 9, members: [] },
+      isError: false,
+    };
   });
 
   it("points logged-out users at login with a return to the invite", async () => {
@@ -73,5 +80,14 @@ describe("JoinPlaylistPage", () => {
       { playlistInviteCode: "abc123", data: { displayName: undefined, avatarUrl: undefined } },
       expect.anything(),
     ));
+  });
+
+  it("shows an invalid screen for a dead invite instead of the join form", async () => {
+    invitePreviewState = { data: undefined, isError: true };
+    await renderPage();
+
+    expect(screen.getByText("This invite link is no longer valid")).toBeVisible();
+    expect(screen.queryByRole("button", { name: "Join playlist" })).toBeNull();
+    expect(screen.queryByRole("link", { name: "Log in to join" })).toBeNull();
   });
 });
