@@ -576,6 +576,39 @@ class PlaylistServiceTest {
     }
 
     @Test
+    void getPublicPlaylistsExcludesPlaylistsTheCallerOwns() {
+        Playlist ownedPlaylist = new Playlist();
+        ownedPlaylist.setId(98L);
+        ownedPlaylist.setPublic(true);
+        ownedPlaylist.setOwner(currentUser);
+
+        when(playlistRepository.findByIsPublicTrue()).thenReturn(List.of(ownedPlaylist));
+
+        assertThat(playlistService.getPublicPlaylists()).isEmpty();
+    }
+
+    @Test
+    void getPublicPlaylistsExcludesPlaylistsTheCallerHasJoined() {
+        User stranger = new User();
+        stranger.setId(OTHER_USER_ID);
+        stranger.setUsername("stranger");
+        stranger.setRole(Role.USER);
+
+        Playlist joinedPlaylist = new Playlist();
+        joinedPlaylist.setId(97L);
+        joinedPlaylist.setPublic(true);
+        joinedPlaylist.setOwner(stranger);
+        PlaylistMembership membership = new PlaylistMembership();
+        membership.setPlaylist(joinedPlaylist);
+        membership.setUser(currentUser);
+        joinedPlaylist.setMemberships(new ArrayList<>(List.of(membership)));
+
+        when(playlistRepository.findByIsPublicTrue()).thenReturn(List.of(joinedPlaylist));
+
+        assertThat(playlistService.getPublicPlaylists()).isEmpty();
+    }
+
+    @Test
     void getInvitePreviewReturnsTheMappedPreviewForAValidCode() {
         PlaylistInvitePreviewDTO preview = new PlaylistInvitePreviewDTO(
                 "Midnight Radio",

@@ -394,9 +394,20 @@ public class PlaylistService {
 
     @Transactional(readOnly = true)
     public List<PublicPlaylistSummaryDTO> getPublicPlaylists() {
+        User currentUser = SecurityUtils.getCurrentUser();
         return playlistRepository.findByIsPublicTrue().stream()
+                .filter(playlist -> !playlist.isOwnedBy(currentUser) && !isMember(playlist, currentUser))
                 .map(playlistMapper::toPublicSummaryDTO)
                 .toList();
+    }
+
+    private boolean isMember(Playlist playlist, User user) {
+        if (user == null || user.getId() == null) {
+            return false;
+        }
+        return playlist.getMemberships().stream()
+                .anyMatch(membership -> membership.getUser() != null
+                        && user.getId().equals(membership.getUser().getId()));
     }
 
     public PublicPlaylistSummaryDTO savePlaylist(Long playlistId) {
