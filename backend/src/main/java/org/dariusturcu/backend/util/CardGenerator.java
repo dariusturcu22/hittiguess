@@ -1,8 +1,6 @@
 package org.dariusturcu.backend.util;
 
-import org.dariusturcu.backend.model.song.ArtistRole;
 import org.dariusturcu.backend.model.song.Song;
-import org.dariusturcu.backend.model.song.SongArtist;
 import org.springframework.stereotype.Component;
 
 import java.awt.*;
@@ -10,7 +8,6 @@ import java.awt.geom.RoundRectangle2D;
 import java.awt.image.BufferedImage;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Collectors;
 
 // Matches the settled card design in docs/design/source/CardOptions.dc.html: square, one flat
 // color, no gradient, a thick dark border, and a hard (unblurred) offset shadow. Artist, year,
@@ -118,21 +115,8 @@ public class CardGenerator {
         }
     }
 
-    // A physical card prints the main artist(s), then "featuring" the featured ones
-    // (see docs/GAME_DESIGN.md); role is a display concern only, guessing treats every
-    // artist on the list identically.
     private static String formatArtists(Song song) {
-        String mainArtists = song.getArtists().stream()
-                .filter(artist -> artist.getRole() == ArtistRole.MAIN)
-                .map(SongArtist::getName)
-                .collect(Collectors.joining(" & "));
-
-        String featuredArtists = song.getArtists().stream()
-                .filter(artist -> artist.getRole() == ArtistRole.FEATURED)
-                .map(SongArtist::getName)
-                .collect(Collectors.joining(", "));
-
-        return featuredArtists.isEmpty() ? mainArtists : mainArtists + " (feat. " + featuredArtists + ")";
+        return SongArtistFormatter.formatCredit(song);
     }
 
     private static Color decodeColorSafe(String hex) {
