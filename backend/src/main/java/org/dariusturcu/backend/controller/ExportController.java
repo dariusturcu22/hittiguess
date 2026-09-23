@@ -41,14 +41,14 @@ public class ExportController {
         return buildPdfResponse(pdfBytes, "qr-" + playlistId + ".pdf");
     }
 
-    @Operation(summary = "Generate combined info+QR PDF for playlist songs, single-sided")
-    @GetMapping("/{playlistId}/export/combined")
-    public ResponseEntity<byte[]> exportPlaylistCombined(
+    @Operation(summary = "Generate interleaved info+QR PDF for playlist songs, printer duplex")
+    @GetMapping("/{playlistId}/export/duplex")
+    public ResponseEntity<byte[]> exportPlaylistDuplex(
             @PathVariable Long playlistId,
             @RequestParam(defaultValue = "A4") PaperSize paperSize
     ) {
-        byte[] pdfBytes = exportService.generateCombinedPdf(playlistId, paperSize);
-        return buildPdfResponse(pdfBytes, "combined-" + playlistId + ".pdf");
+        byte[] pdfBytes = exportService.generateDuplexPdf(playlistId, paperSize);
+        return buildPdfResponse(pdfBytes, "duplex-" + playlistId + ".pdf");
     }
 
     private ResponseEntity<byte[]> buildPdfResponse(byte[] pdfBytes, String filename) {

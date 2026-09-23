@@ -59,6 +59,13 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { PlaylistCoverMosaic } from "@/components/playlist-cover-mosaic";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/shadcn/popover";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/shadcn/select";
 import { useActiveImport } from "@/hooks/generated/playlist-import-jobs/playlist-import-jobs";
 import { playlistTitleColor } from "@/lib/playlist-colors";
 import { copyText } from "@/lib/clipboard";
@@ -146,10 +153,24 @@ export default function PlaylistContent({
   const [linkCopied, setLinkCopied] = React.useState(false);
   const [codeCopied, setCodeCopied] = React.useState(false);
   const [isExportOpen, setIsExportOpen] = React.useState(false);
-  const [exportContent, setExportContent] = React.useState<"info" | "qr" | "combined">("info");
+  const [exportContent, setExportContent] = React.useState<"info" | "qr" | "duplex">("info");
   const [exportPaperSize, setExportPaperSize] = React.useState<"A4" | "LETTER" | "LEGAL" | "A3" | "A5" | "TABLOID">("A4");
   const [isExporting, setIsExporting] = React.useState(false);
   const [exportError, setExportError] = React.useState("");
+  const exportContentLabel = exportContent === "info"
+    ? "Info cards"
+    : exportContent === "qr"
+      ? "QR cards (manual duplex)"
+      : "Single file (auto duplex)";
+
+  function openExportDialog() {
+    if (songs.length === 0) {
+      toast.error("Can't export an empty playlist");
+      return;
+    }
+    setExportError("");
+    setIsExportOpen(true);
+  }
 
   const handleDeleteSong = (songId: number) => {
     removeSong(
@@ -343,46 +364,52 @@ export default function PlaylistContent({
               </DropdownMenu>
 
               <AlertDialog open={isExportOpen} onOpenChange={setIsExportOpen}>
-                <AlertDialogTrigger asChild>
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    className="size-[46px] rounded-[13px]"
-                    title="Export cards"
-                    onClick={() => {
-                      setExportError("");
-                    }}
-                  >
-                    <FileDown className="size-4" />
-                  </Button>
-                </AlertDialogTrigger>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="size-[46px] rounded-[13px]"
+                  title="Export cards"
+                  onClick={openExportDialog}
+                >
+                  <FileDown className="size-4" />
+                </Button>
                 <AlertDialogContent>
                   <AlertDialogHeader>
                     <AlertDialogTitle>Export cards</AlertDialogTitle>
                     <AlertDialogDescription>
-                      {songs.length} songs · {exportContent === "info" ? "Info cards" : exportContent === "qr" ? "QR cards" : "Combined info+QR cards"} · {exportPaperSize}
+                      {songs.length} songs · {exportContentLabel} · {exportPaperSize}
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <div className="flex flex-wrap items-center gap-4">
-                    <label className="flex items-center gap-2 text-[13px] text-muted-foreground">
-                      Cards
-                      <select value={exportContent} onChange={(event) => setExportContent(event.target.value as "info" | "qr" | "combined")} className="rounded-full border-2 border-border bg-background px-3 py-1.5 text-sm font-semibold text-foreground outline-none">
-                        <option value="info">Info cards</option>
-                        <option value="qr">QR cards</option>
-                        <option value="combined">Combined info+QR cards</option>
-                      </select>
-                    </label>
-                    <label className="flex items-center gap-2 text-[13px] text-muted-foreground">
-                      Paper
-                      <select value={exportPaperSize} onChange={(event) => setExportPaperSize(event.target.value as "A4" | "LETTER" | "LEGAL" | "A3" | "A5" | "TABLOID")} className="rounded-full border-2 border-border bg-background px-3 py-1.5 text-sm font-semibold text-foreground outline-none">
-                        <option value="A4">A4</option>
-                        <option value="LETTER">Letter</option>
-                        <option value="LEGAL">Legal</option>
-                        <option value="A3">A3</option>
-                        <option value="A5">A5</option>
-                        <option value="TABLOID">Tabloid</option>
-                      </select>
-                    </label>
+                    <div className="flex items-center gap-2 text-[13px] text-muted-foreground">
+                      <span id="export-cards-label">Cards</span>
+                      <Select value={exportContent} onValueChange={(value) => setExportContent(value as "info" | "qr" | "duplex")}>
+                        <SelectTrigger aria-labelledby="export-cards-label" className="w-[240px] rounded-full border-2 border-border bg-background">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="info">Info cards</SelectItem>
+                          <SelectItem value="qr">QR cards (manual duplex)</SelectItem>
+                          <SelectItem value="duplex">Single file (auto duplex)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="flex items-center gap-2 text-[13px] text-muted-foreground">
+                      <span id="export-paper-label">Paper</span>
+                      <Select value={exportPaperSize} onValueChange={(value) => setExportPaperSize(value as "A4" | "LETTER" | "LEGAL" | "A3" | "A5" | "TABLOID")}>
+                        <SelectTrigger aria-labelledby="export-paper-label" className="w-[140px] rounded-full border-2 border-border bg-background">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="A4">A4</SelectItem>
+                          <SelectItem value="LETTER">Letter</SelectItem>
+                          <SelectItem value="LEGAL">Legal</SelectItem>
+                          <SelectItem value="A3">A3</SelectItem>
+                          <SelectItem value="A5">A5</SelectItem>
+                          <SelectItem value="TABLOID">Tabloid</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
                   </div>
                   {exportError ? <p role="alert" className="text-sm text-destructive">{exportError}</p> : null}
                   <AlertDialogFooter>

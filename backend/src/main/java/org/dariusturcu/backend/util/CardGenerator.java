@@ -1,10 +1,5 @@
 package org.dariusturcu.backend.util;
 
-import com.google.zxing.BarcodeFormat;
-import com.google.zxing.WriterException;
-import com.google.zxing.client.j2se.MatrixToImageWriter;
-import com.google.zxing.common.BitMatrix;
-import com.google.zxing.qrcode.QRCodeWriter;
 import org.dariusturcu.backend.model.song.ArtistRole;
 import org.dariusturcu.backend.model.song.Song;
 import org.dariusturcu.backend.model.song.SongArtist;
@@ -31,9 +26,6 @@ public class CardGenerator {
     private static final Color LIGHT_TEXT_COLOR = Color.WHITE;
     private static final Color DARK_TEXT_COLOR = new Color(0x1e, 0x1e, 0x2e);
     private static final int LUMINANCE_THRESHOLD_FOR_DARK_TEXT = 150;
-    private static final int COMBINED_QR_SIZE = 160;
-    private static final int COMBINED_QR_MARGIN = 40;
-    private static final int COMBINED_QR_QUIET_ZONE = 10;
 
     public static BufferedImage generateInfoPage(List<Song> songs, PaperSize paperSize) {
         int pageWidth = paperSize.getWidthPixels();
@@ -59,56 +51,6 @@ public class CardGenerator {
 
         graphics2D.dispose();
         return page;
-    }
-
-    // A single-sided alternative to the separate info/QR page pair: each card carries its own
-    // QR code on the same face as its info, for a printout that needs no duplex alignment.
-    public static BufferedImage generateCombinedPage(List<Song> songs, PaperSize paperSize) {
-        int pageWidth = paperSize.getWidthPixels();
-        int pageHeight = paperSize.getHeightPixels();
-        int cardsPerRow = paperSize.cardsPerRow(CARD_SIZE);
-        int marginX = paperSize.marginX(CARD_SIZE);
-        int marginY = paperSize.marginY(CARD_SIZE);
-
-        BufferedImage page = new BufferedImage(pageWidth, pageHeight, BufferedImage.TYPE_INT_RGB);
-        Graphics2D graphics2D = page.createGraphics();
-
-        graphics2D.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-        graphics2D.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
-
-        graphics2D.setColor(Color.WHITE);
-        graphics2D.fillRect(0, 0, pageWidth, pageHeight);
-
-        for (int i = 0; i < songs.size(); i++) {
-            int x = marginX + (i % cardsPerRow) * CARD_SIZE;
-            int y = marginY + (i / cardsPerRow) * CARD_SIZE;
-            Song song = songs.get(i);
-            drawFrontCard(graphics2D, x, y, CARD_SIZE, song);
-            drawQrCorner(graphics2D, x, y, song);
-        }
-
-        graphics2D.dispose();
-        return page;
-    }
-
-    private static void drawQrCorner(Graphics2D graphics2D, int cardX, int cardY, Song song) {
-        try {
-            QRCodeWriter qrCodeWriter = new QRCodeWriter();
-            BitMatrix bitMatrix = qrCodeWriter.encode(song.getYoutubeId(), BarcodeFormat.QR_CODE, COMBINED_QR_SIZE, COMBINED_QR_SIZE);
-            BufferedImage qrCode = MatrixToImageWriter.toBufferedImage(bitMatrix);
-
-            int quietBoxSize = COMBINED_QR_SIZE + COMBINED_QR_QUIET_ZONE * 2;
-            int quietBoxX = cardX + CARD_SIZE - COMBINED_QR_MARGIN - quietBoxSize;
-            int quietBoxY = cardY + COMBINED_QR_MARGIN;
-
-            graphics2D.setColor(Color.WHITE);
-            graphics2D.fillRoundRect(quietBoxX, quietBoxY, quietBoxSize, quietBoxSize, CORNER_RADIUS / 4, CORNER_RADIUS / 4);
-
-            graphics2D.drawImage(qrCode, quietBoxX + COMBINED_QR_QUIET_ZONE, quietBoxY + COMBINED_QR_QUIET_ZONE, null);
-        } catch (WriterException e) {
-            graphics2D.setColor(Color.RED);
-            graphics2D.drawString("QR Error: " + song.getId(), cardX + COMBINED_QR_MARGIN, cardY + COMBINED_QR_MARGIN);
-        }
     }
 
     private static void drawFrontCard(Graphics2D graphics2D, int x, int y, int size, Song song) {

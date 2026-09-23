@@ -38,7 +38,7 @@ public class ExportService {
     private final PlaylistAccessService playlistAccessService;
 
     private enum PageContent {
-        INFO, QR, COMBINED
+        INFO, QR, DUPLEX
     }
 
     private byte[] buildPdf(List<Song> songs, PaperSize paperSize, PageContent pageContent) throws IOException {
@@ -53,12 +53,14 @@ public class ExportService {
         if (pageContent == PageContent.QR) Collections.reverse(chunks);
 
         for (List<Song> chunk : chunks) {
-            BufferedImage image = switch (pageContent) {
-                case QR -> QRGenerator.generateQRPage(chunk, paperSize);
-                case COMBINED -> CardGenerator.generateCombinedPage(chunk, paperSize);
-                case INFO -> CardGenerator.generateInfoPage(chunk, paperSize);
-            };
-            addImagePage(document, image);
+            switch (pageContent) {
+                case QR -> addImagePage(document, QRGenerator.generateQRPage(chunk, paperSize));
+                case DUPLEX -> {
+                    addImagePage(document, CardGenerator.generateInfoPage(chunk, paperSize));
+                    addImagePage(document, QRGenerator.generateQRPage(chunk, paperSize));
+                }
+                case INFO -> addImagePage(document, CardGenerator.generateInfoPage(chunk, paperSize));
+            }
         }
 
         ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
@@ -100,10 +102,10 @@ public class ExportService {
         }
     }
 
-    public byte[] generateCombinedPdf(Long playlistId, PaperSize paperSize) {
+    public byte[] generateDuplexPdf(Long playlistId, PaperSize paperSize) {
         List<Song> songs = getValidatedSongs(playlistId);
         try {
-            return buildPdf(songs, paperSize, PageContent.COMBINED);
+            return buildPdf(songs, paperSize, PageContent.DUPLEX);
         } catch (Exception e) {
             throw new RuntimeException("Failed to generate PDF: " + e.getMessage());
         }

@@ -195,11 +195,16 @@ describe("PlaylistContent detail states", () => {
     const createObjectUrl = vi.fn(() => "blob:export-url");
     Object.defineProperty(URL, "createObjectURL", { value: createObjectUrl, configurable: true });
     Object.defineProperty(URL, "revokeObjectURL", { value: vi.fn(), configurable: true });
+    playlistSongs = [
+      { id: 1, title: "Song One", artists: [{ name: "Artist One" }], youtubeId: "video-1" },
+    ];
     await renderContent();
 
     fireEvent.click(screen.getByTitle("Export cards"));
-    fireEvent.change(screen.getByLabelText("Cards"), { target: { value: "qr" } });
-    fireEvent.change(screen.getByLabelText("Paper"), { target: { value: "LETTER" } });
+    fireEvent.click(screen.getByRole("combobox", { name: "Cards" }));
+    fireEvent.click(screen.getByRole("option", { name: "QR cards (manual duplex)" }));
+    fireEvent.click(screen.getByRole("combobox", { name: "Paper" }));
+    fireEvent.click(screen.getByRole("option", { name: "Letter" }));
     fireEvent.click(screen.getByRole("button", { name: "Download PDF" }));
 
     await waitFor(() =>
@@ -211,7 +216,7 @@ describe("PlaylistContent detail states", () => {
     vi.unstubAllGlobals();
   });
 
-  it("exports the combined info+QR cards on the new paper sizes", async () => {
+  it("exports the single file duplex cards on the new paper sizes", async () => {
     const fetchMock = vi.fn(async () => ({
       ok: true,
       blob: async () => new Blob(["pdf"], { type: "application/pdf" }),
@@ -220,19 +225,34 @@ describe("PlaylistContent detail states", () => {
     const createObjectUrl = vi.fn(() => "blob:export-url");
     Object.defineProperty(URL, "createObjectURL", { value: createObjectUrl, configurable: true });
     Object.defineProperty(URL, "revokeObjectURL", { value: vi.fn(), configurable: true });
+    playlistSongs = [
+      { id: 1, title: "Song One", artists: [{ name: "Artist One" }], youtubeId: "video-1" },
+    ];
     await renderContent();
 
     fireEvent.click(screen.getByTitle("Export cards"));
-    fireEvent.change(screen.getByLabelText("Cards"), { target: { value: "combined" } });
-    fireEvent.change(screen.getByLabelText("Paper"), { target: { value: "A3" } });
+    fireEvent.click(screen.getByRole("combobox", { name: "Cards" }));
+    fireEvent.click(screen.getByRole("option", { name: "Single file (auto duplex)" }));
+    fireEvent.click(screen.getByRole("combobox", { name: "Paper" }));
+    fireEvent.click(screen.getByRole("option", { name: "A3" }));
     fireEvent.click(screen.getByRole("button", { name: "Download PDF" }));
 
     await waitFor(() =>
       expect(fetchMock).toHaveBeenCalledWith(
-        expect.stringContaining("/api/playlists/7/export/combined?paperSize=A3"),
+        expect.stringContaining("/api/playlists/7/export/duplex?paperSize=A3"),
         expect.anything(),
       ),
     );
     vi.unstubAllGlobals();
+  });
+
+  it("refuses to open the export dialog for an empty playlist", async () => {
+    const { toast } = await import("sonner");
+    await renderContent();
+
+    fireEvent.click(screen.getByTitle("Export cards"));
+
+    expect(toast.error).toHaveBeenCalledWith("Can't export an empty playlist");
+    expect(screen.queryByRole("button", { name: "Download PDF" })).toBeNull();
   });
 });

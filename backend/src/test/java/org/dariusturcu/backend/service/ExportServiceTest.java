@@ -7,6 +7,8 @@ import org.dariusturcu.backend.model.user.User;
 import org.dariusturcu.backend.repository.PlaylistRepository;
 import org.dariusturcu.backend.security.util.SecurityUtils;
 import org.dariusturcu.backend.util.PaperSize;
+import org.apache.pdfbox.Loader;
+import org.apache.pdfbox.pdmodel.PDDocument;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
@@ -90,15 +92,31 @@ class ExportServiceTest {
     }
 
     @Test
-    void combinedPdfRendersOnEveryPaperSize() {
+    void duplexPdfRendersOnEveryPaperSize() {
         Playlist playlist = playlistWithSongs(songWithTitle("One"));
         Mockito.when(playlistRepository.findById(PLAYLIST_ID)).thenReturn(Optional.of(playlist));
 
         for (PaperSize paperSize : PaperSize.values()) {
             byte[] pdf = exportWithUser(service(), playlist,
-                    (exportService, playlistId) -> exportService.generateCombinedPdf(playlistId, paperSize));
+                    (exportService, playlistId) -> exportService.generateDuplexPdf(playlistId, paperSize));
             assertThat(pdf).isNotEmpty();
             assertThat(new String(pdf, 0, 5, StandardCharsets.US_ASCII)).isEqualTo("%PDF-");
+        }
+    }
+
+    @Test
+    void duplexPdfInterleavesOneQrPagePerInfoPage() throws Exception {
+        Playlist playlist = playlistWithSongs(songWithTitle("One"), songWithTitle("Two"));
+        Mockito.when(playlistRepository.findById(PLAYLIST_ID)).thenReturn(Optional.of(playlist));
+
+        byte[] duplex = exportWithUser(service(), playlist,
+                (exportService, playlistId) -> exportService.generateDuplexPdf(playlistId, PaperSize.A4));
+        byte[] info = exportWithUser(service(), playlist,
+                (exportService, playlistId) -> exportService.generateInfoPdf(playlistId, PaperSize.A4));
+
+        try (PDDocument duplexDocument = Loader.loadPDF(duplex);
+             PDDocument infoDocument = Loader.loadPDF(info)) {
+            assertThat(duplexDocument.getNumberOfPages()).isEqualTo(infoDocument.getNumberOfPages() * 2);
         }
     }
 
@@ -134,12 +152,12 @@ class ExportServiceTest {
     }
 
     @Test
-    void readAccessIsCheckedBeforeCombinedExportTheSameAsTheOtherTwoOutputs() {
+    void readAccessIsCheckedBeforeDuplexExportTheSameAsTheOtherTwoOutputs() {
         Playlist playlist = playlistWithSongs(songWithTitle("One"));
         Mockito.when(playlistRepository.findById(PLAYLIST_ID)).thenReturn(Optional.of(playlist));
 
         exportWithUser(service(), playlist,
-                (exportService, playlistId) -> exportService.generateCombinedPdf(playlistId, PaperSize.A4));
+                (exportService, playlistId) -> exportService.generateDuplexPdf(playlistId, PaperSize.A4));
 
         verify(playlistAccessService).requireRead(any(Playlist.class), any(User.class));
     }
