@@ -9,6 +9,7 @@ const GROUP_PARAMS = Promise.resolve({ groupId: "1" });
 const generateMutate = vi.fn();
 const startWithSongsMutate = vi.fn();
 const startCustomMutate = vi.fn();
+const startSessionMutate = vi.fn();
 let lobbySearchParams = new URLSearchParams();
 
 const updateSettingsMutate = vi.fn();
@@ -41,7 +42,7 @@ vi.mock("@/hooks/generated/group-management/group-management", () => ({
     isError: false,
   }),
   useLeaveGroup: () => ({ mutate: leaveMutate, isPending: false }),
-  useStartGameSession: () => ({ mutate: vi.fn(), isPending: false }),
+  useStartGameSession: () => ({ mutate: startSessionMutate, isPending: false }),
   useUpdateGroupSettings: () => ({ mutate: updateSettingsMutate, isPending: false }),
   useGenerateDifficultySet: () => ({ mutate: generateMutate, isPending: false }),
   useStartSessionWithSongs: () => ({ mutate: startWithSongsMutate, isPending: false }),
@@ -88,6 +89,7 @@ describe("GroupLobbyPage start options", () => {
     generateMutate.mockReset();
     startWithSongsMutate.mockReset();
     startCustomMutate.mockReset();
+    startSessionMutate.mockReset();
     updateSettingsMutate.mockReset();
     leaveMutate.mockReset();
     lobbySearchParams = new URLSearchParams();
@@ -104,7 +106,7 @@ describe("GroupLobbyPage start options", () => {
   it("generates a difficulty set for review and confirms it into a start", async () => {
     await renderPage();
 
-    fireEvent.click(screen.getByRole("button", { name: "Custom start" }));
+    fireEvent.click(screen.getByRole("button", { name: "Choose playlists" }));
     fireEvent.click(screen.getByRole("button", { name: "Generate" }));
 
     expect(generateMutate).toHaveBeenCalledWith(
@@ -122,48 +124,50 @@ describe("GroupLobbyPage start options", () => {
     );
   });
 
-  it("starts a custom session from a picked playlist", async () => {
+  it("switches difficulty tiers inside the chip popup", async () => {
     await renderPage();
 
-    fireEvent.click(screen.getByRole("button", { name: "Custom start" }));
-    fireEvent.click(screen.getByRole("button", { name: "Custom" }));
-    fireEvent.click(screen.getByRole("button", { name: /Party mix/ }));
-    fireEvent.click(screen.getByRole("button", { name: "Start from playlist" }));
+    fireEvent.click(screen.getByRole("button", { name: "Choose playlists" }));
+    fireEvent.click(screen.getByRole("button", { name: "Hard" }));
+    fireEvent.click(screen.getByRole("button", { name: "Generate" }));
 
-    expect(startCustomMutate).toHaveBeenCalledWith(
-      { groupId: 1, data: { playlistId: 21 } },
+    expect(generateMutate).toHaveBeenCalledWith(
+      { groupId: 1, data: { tier: "HARD", targetCardCount: 7 } },
       expect.anything(),
     );
   });
 
-  it("starts a custom session from a pasted playlist link", async () => {
+  it("opens the fullscreen custom picker with a back path to the tiers", async () => {
     await renderPage();
 
-    fireEvent.click(screen.getByRole("button", { name: "Custom start" }));
+    fireEvent.click(screen.getByRole("button", { name: "Choose playlists" }));
     fireEvent.click(screen.getByRole("button", { name: "Custom" }));
-    fireEvent.change(screen.getByPlaceholderText("YouTube playlist link or id"), {
-      target: { value: "https://youtube.com/playlist?list=abc" },
-    });
-    fireEvent.click(screen.getByRole("button", { name: "Start" }));
 
-    expect(startCustomMutate).toHaveBeenCalledWith(
-      { groupId: 1, data: { playlistLink: "https://youtube.com/playlist?list=abc" } },
-      expect.anything(),
-    );
+    expect(screen.getByRole("button", { name: "Back" })).toBeVisible();
+    expect(screen.getByText("No playlists selected")).toBeVisible();
+
+    fireEvent.click(screen.getByRole("button", { name: /Party mix/i }));
+
+    expect(screen.getByText("Chosen: Party mix")).toBeVisible();
+
+    fireEvent.click(screen.getByRole("button", { name: "Back" }));
+
+    expect(screen.getByRole("button", { name: "Generate" })).toBeVisible();
   });
 
-  it("opens custom start with the playlist preselected from the link", async () => {
-    lobbySearchParams = new URLSearchParams("playlist=21");
+  it("confirms a custom multi-playlist selection into a start", async () => {
     await renderPage();
 
-    expect(screen.getByRole("button", { name: "Start from playlist" })).toBeVisible();
+    fireEvent.click(screen.getByRole("button", { name: "Choose playlists" }));
+    fireEvent.click(screen.getByRole("button", { name: "Custom" }));
+    fireEvent.click(screen.getByRole("button", { name: /Party mix/i }));
+    fireEvent.click(screen.getByRole("button", { name: "Confirm and start" }));
 
-    fireEvent.click(screen.getByRole("button", { name: "Start from playlist" }));
-
-    expect(startCustomMutate).toHaveBeenCalledWith(
-      { groupId: 1, data: { playlistId: 21 } },
+    expect(updateSettingsMutate).toHaveBeenCalledWith(
+      { groupId: 1, data: { playlistIds: [21] } },
       expect.anything(),
     );
+    expect(startSessionMutate).toHaveBeenCalledWith({ groupId: 1 }, expect.anything());
   });
 
   it("saves a fixed DJ choice from settings", async () => {
@@ -187,8 +191,9 @@ describe("GroupLobbyPage start options", () => {
     await renderPage();
 
     fireEvent.click(screen.getByRole("button", { name: "Choose playlists" }));
+    fireEvent.click(screen.getByRole("button", { name: "Custom" }));
     fireEvent.click(screen.getByRole("button", { name: /Party mix/ }));
-    fireEvent.click(screen.getByRole("button", { name: "Confirm" }));
+    fireEvent.click(screen.getByRole("button", { name: "Confirm and start" }));
 
     expect(updateSettingsMutate).toHaveBeenCalledWith(
       { groupId: 1, data: { playlistIds: [21] } },
@@ -226,6 +231,17 @@ describe("GroupLobbyPage start options", () => {
     ];
     await renderPage();
 
-    expect(screen.getByText("Need at least 2 players to start.")).toBeVisible();
+    const minPlayersText = (_: string, element: Element | null) =>
+      element?.textContent === "Need at least 2 players to start. Invite someone first.";
+    expect(screen.queryByText(minPlayersText)).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: "Start game" }));
+
+    expect(screen.getByText(minPlayersText)).toBeVisible();
+    expect(screen.getByRole("button", { name: "Got it" })).toBeVisible();
+
+    fireEvent.click(screen.getByRole("button", { name: "Got it" }));
+
+    expect(screen.queryByText(minPlayersText)).toBeNull();
   });
 });
