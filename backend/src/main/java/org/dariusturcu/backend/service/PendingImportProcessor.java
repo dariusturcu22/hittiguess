@@ -31,7 +31,7 @@ public class PendingImportProcessor {
         pendingImport.setStatus(PendingImportStatus.PROCESSING);
         pendingImportRepository.save(pendingImport);
 
-        boolean resolved = songResolutionService.resolveAndPersist(pendingImport.getYoutubeId()).isPresent();
+        boolean resolved = songResolutionService.resolveAndPersist(pendingImport.getYoutubeId(), null).isPresent();
 
         pendingImport.setProcessedAt(Instant.now());
         if (resolved) {

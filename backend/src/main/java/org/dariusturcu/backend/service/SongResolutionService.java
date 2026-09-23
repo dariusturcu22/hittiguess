@@ -8,6 +8,7 @@ import org.dariusturcu.backend.model.song.ArtistRole;
 import org.dariusturcu.backend.model.song.Song;
 import org.dariusturcu.backend.model.song.SongArtist;
 import org.dariusturcu.backend.model.song.VerificationStatus;
+import org.dariusturcu.backend.model.user.User;
 import org.dariusturcu.backend.repository.SongRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -35,18 +36,21 @@ public class SongResolutionService {
     private final SongRepository songRepository;
 
     @Transactional
-    public Optional<Song> resolveAndPersist(String youtubeId) {
+    public Optional<Song> resolveAndPersist(String youtubeId, User addedBy) {
         AiResponse aiResponse = songMetadataService.resolveByYoutubeId(youtubeId);
         if (!SUCCESS_STATUS.equals(aiResponse.status()) || aiResponse.content() == null) {
             return Optional.empty();
         }
-        return Optional.of(persistResolvedSong(youtubeId, aiResponse.content()));
+        return Optional.of(persistResolvedSong(youtubeId, aiResponse.content(), addedBy));
     }
 
-    private Song persistResolvedSong(String youtubeId, SongMetadataResponse metadata) {
+    private Song persistResolvedSong(String youtubeId, SongMetadataResponse metadata, User addedBy) {
         List<Song> existingSongs = songRepository.findByYoutubeId(youtubeId);
         Song song = existingSongs.isEmpty() ? new Song() : existingSongs.get(0);
 
+        if (song.getAddedBy() == null && addedBy != null) {
+            song.setAddedBy(addedBy);
+        }
         song.setYoutubeId(youtubeId);
         song.setTitle(metadata.title());
         if (metadata.releaseYear() != null) {

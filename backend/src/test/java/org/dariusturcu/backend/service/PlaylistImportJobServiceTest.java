@@ -39,6 +39,7 @@ import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -111,7 +112,7 @@ class PlaylistImportJobServiceTest {
                 .thenReturn(new YoutubeIdLookupResult(Set.of("video-1"), Set.of("video-2")));
         Song resolvedSong = songWithId(102L);
         when(youtubeIdLookupService.resolveCanonicalSongIds(any())).thenReturn(Map.of("video-1", 101L));
-        when(songResolutionService.resolveAndPersist("video-2")).thenReturn(Optional.of(resolvedSong));
+        when(songResolutionService.resolveAndPersist(eq("video-2"), any(User.class))).thenReturn(Optional.of(resolvedSong));
 
         List<PlaylistImportJobItem> savedItems = new ArrayList<>();
         when(itemRepository.save(any(PlaylistImportJobItem.class))).thenAnswer(invocation -> {

@@ -795,6 +795,36 @@ Tests:
 - [x] `tsc --noEmit` clean project-wide
 - [x] Frontend `npm run test -- --run`, `npm run lint`, and `npm run build` all clean
 
+## Bug batch: session page stale state and voice settings error feedback
+
+- [x] Session page's link-out warning banner and bet-selection mode reset when a new round starts, instead of persisting from an earlier round
+- [x] Timeline drop targets no longer stay clickable once the betting window closes
+- [x] Voice settings popup surfaces a distinct message for an insecure context and for each `getUserMedia` failure, instead of testing the microphone silently
+
+Tests:
+- [x] `frontend/app/(app)/sessions/[sessionId]/page.tsx`, `frontend/components/voice-settings-popup.tsx` covered by the existing full suite (193 passed), no prior automated coverage of these two components to extend
+
+## Bug batch: group lobby picker, mosaic zoom, and song attribution
+
+- [x] The group lobby's custom playlist picker no longer reopens itself after being closed when reached through a `?playlist=` preselect link
+- [x] The custom picker's playlist grid matches the playlist library's tiled card layout instead of a compact row list
+- [x] Playlist cover mosaic tiles clip their own zoomed thumbnail instead of bleeding across the tile divider, and zoom further past YouTube's baked-in letterbox bars
+- [x] Songs added through bulk import, playlist import, and the admin catalog backlog are attributed to the submitting user instead of always showing "Added by a deleted account"
+
+Tests:
+- [x] `SongResolutionServiceTest` covers attributing a new song to the given user and not reassigning an already-attributed song on reprocessing; existing `BulkImportServiceTest` and `PlaylistImportJobServiceTest` stubs updated for the new signature
+- [x] `frontend/app/(app)/groups/[groupId]/page.tsx` and `frontend/components/playlist-cover-mosaic.tsx` covered by the existing full suite
+
+## Bug batch: playlist content box/state fixes and sidebar hydration
+
+- [x] Invite link/code copy actions show an error toast instead of a false "copied" state when the clipboard write fails
+- [x] The playlist detail members trigger no longer sits inside a bordered/backgrounded box
+- [x] The songs empty state is vertically centered whether or not the import banner is showing
+- [x] The sidebar's active-import indicator reads localStorage after mount instead of during the initial render, removing a hydration mismatch
+
+Tests:
+- [x] `PlaylistContent.test.tsx` covers the copy-failure toast path via a rejected clipboard write and a failing execCommand fallback
+
 ## Bug fix: import-from-YouTube progress screen matches the design
 
 - [x] AI microservice exposes a `/metadata/video-info` endpoint that batch-fetches each video's raw title and uploading channel name via YouTube's videos.list, chunked to the 50-id batch limit

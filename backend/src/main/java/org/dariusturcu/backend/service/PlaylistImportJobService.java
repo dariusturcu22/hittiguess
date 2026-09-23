@@ -158,7 +158,7 @@ public class PlaylistImportJobService {
                     if (item.getStatus() != PlaylistImportJobItemStatus.PENDING) {
                         continue;
                     }
-                    Optional<Song> resolvedSong = songResolutionService.resolveAndPersist(item.getYoutubeId());
+                    Optional<Song> resolvedSong = songResolutionService.resolveAndPersist(item.getYoutubeId(), submittingUser);
                     if (resolvedSong.isPresent()) {
                         item.setStatus(PlaylistImportJobItemStatus.RESOLVED);
                         item.setSongId(resolvedSong.get().getId());
