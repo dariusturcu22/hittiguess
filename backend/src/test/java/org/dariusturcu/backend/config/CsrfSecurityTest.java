@@ -7,6 +7,7 @@ import org.dariusturcu.backend.security.oauth2.CustomOAuth2UserService;
 import org.dariusturcu.backend.security.oauth2.HttpCookieOAuth2AuthorizationRequestRepository;
 import org.dariusturcu.backend.security.oauth2.OAuth2AuthenticationFailureHandler;
 import org.dariusturcu.backend.security.oauth2.OAuth2AuthenticationSuccessHandler;
+import org.dariusturcu.backend.security.oauth2.ReturnToOAuth2AuthorizationRequestResolver;
 import org.dariusturcu.backend.util.CookieUtil;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -99,6 +100,7 @@ class CsrfSecurityTest {
                 OAuth2AuthenticationSuccessHandler successHandler,
                 OAuth2AuthenticationFailureHandler failureHandler,
                 HttpCookieOAuth2AuthorizationRequestRepository authorizationRequestRepository,
+                ReturnToOAuth2AuthorizationRequestResolver returnToAuthorizationRequestResolver,
                 ObjectMapper objectMapper) {
             return new SecurityConfig(
                     jwtAuthenticationFilter,
@@ -108,6 +110,7 @@ class CsrfSecurityTest {
                     successHandler,
                     failureHandler,
                     authorizationRequestRepository,
+                    returnToAuthorizationRequestResolver,
                     objectMapper,
                     List.of("http://localhost:3000"));
         }
@@ -135,6 +138,11 @@ class CsrfSecurityTest {
         @Bean
         HttpCookieOAuth2AuthorizationRequestRepository authorizationRequestRepository() {
             return mock(HttpCookieOAuth2AuthorizationRequestRepository.class);
+        }
+
+        @Bean
+        ReturnToOAuth2AuthorizationRequestResolver returnToAuthorizationRequestResolver() {
+            return mock(ReturnToOAuth2AuthorizationRequestResolver.class);
         }
 
         @Bean

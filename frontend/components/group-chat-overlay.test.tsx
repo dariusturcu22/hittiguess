@@ -96,4 +96,37 @@ describe("GroupChatOverlay", () => {
 
     expect(onClose).toHaveBeenCalledTimes(2);
   });
+
+  it("closes when clicking outside the panel", () => {
+    const onClose = vi.fn();
+    render(
+      <GroupChatOverlay
+        groupId={GROUP_IDENTIFIER}
+        connectionState="connected"
+        onClose={onClose}
+        sendChat={vi.fn(() => true)}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Close chat overlay" }));
+
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it("closes from the backdrop in the floating variant", () => {
+    const onClose = vi.fn();
+    render(
+      <GroupChatOverlay
+        groupId={GROUP_IDENTIFIER}
+        connectionState="connected"
+        onClose={onClose}
+        sendChat={vi.fn(() => true)}
+        floating
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Close chat overlay" }));
+
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
 });

@@ -9,6 +9,7 @@ import { toast } from "sonner";
 
 import { Button } from "@/components/shadcn/button";
 import { Input } from "@/components/shadcn/input";
+import { PasswordInput } from "@/components/password-input";
 import { Checkbox } from "@/components/shadcn/checkbox";
 import {
   Form,
@@ -140,8 +141,7 @@ export default function LoginPage() {
                       Password
                     </FormLabel>
                     <FormControl>
-                      <Input
-                        type="password"
+                      <PasswordInput
                         autoComplete="current-password"
                         placeholder="••••••••••"
                         className={AUTH_INPUT_CLASSES}
@@ -192,7 +192,7 @@ export default function LoginPage() {
       </div>
 
         <Button asChild variant="outline" className="auth-google w-full mt-5">
-        <a href={`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080"}/oauth2/authorization/google`}>
+        <a href={`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080"}/oauth2/authorization/google${returnTo ? `?returnTo=${encodeURIComponent(returnTo)}` : ""}`}>
           <svg
             xmlns="http://www.w3.org/2000/svg"
             width="18"
