@@ -15,6 +15,7 @@ import org.dariusturcu.backend.model.session.GenerateDifficultySetRequest;
 import org.dariusturcu.backend.model.session.Guess;
 import org.dariusturcu.backend.model.session.LeaderboardEntryDTO;
 import org.dariusturcu.backend.model.session.PlaceCardRequest;
+import org.dariusturcu.backend.model.session.PlacementPreviewDTO;
 import org.dariusturcu.backend.model.session.Player;
 import org.dariusturcu.backend.model.session.PlayerCard;
 import org.dariusturcu.backend.model.session.PlayerResultDTO;
@@ -405,6 +406,28 @@ public class GameSessionService {
     }
 
     // --- Round flow: placement, countdown, betting, reveal, scoring --------------
+
+    // Relays where the active player's card currently sits so spectators can watch the
+    // placement live. Silently ignored once the round has locked in, since a preview
+    // racing the lock-in is harmless and not worth an error on the sender's socket.
+    @Transactional(readOnly = true)
+    public void previewPlacement(Long sessionId, Long userId, Integer position) {
+        GameSession session = getSession(sessionId);
+        Player player = findPlayerByUserId(session, userId);
+        Round round = requireCurrentRound(session);
+
+        if (!round.getActivePlayer().getId().equals(player.getId())) {
+            throw new AccessDeniedException("Only the active player can preview a placement this round");
+        }
+        if (round.getStatus() != RoundStatus.AWAITING_PLACEMENT) {
+            return;
+        }
+        if (position != null && (position < 0 || position > player.getTimeline().size())) {
+            throw new IllegalArgumentException("Placement position is out of range for this player's timeline");
+        }
+        eventPublisher.publishEvent(new SessionBroadcastEvent(SessionEventType.PLACEMENT_PREVIEW, sessionId,
+                new PlacementPreviewDTO(round.getId(), player.getId(), position)));
+    }
 
     public void lockInPlacement(Long sessionId, Long userId, PlaceCardRequest request) {
         GameSession session = getSession(sessionId);
