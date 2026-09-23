@@ -217,6 +217,13 @@ export default function GroupLobbyPage({ params }: PageProps) {
     queryClient.invalidateQueries({ queryKey: getGetActiveMembershipQueryKey() });
   }
 
+  function closeAllPopups() {
+    setIsSettingsOpen(false);
+    setIsTierPopupOpen(false);
+    setIsCustomPickerOpen(false);
+    setIsChatOpen(false);
+  }
+
   async function copyInviteLink() {
     const inviteCode = groupQuery.data?.inviteCode;
     if (!inviteCode) {
@@ -235,7 +242,7 @@ export default function GroupLobbyPage({ params }: PageProps) {
     startSession.mutate(
       { groupId },
       {
-        onSuccess: () => { refreshGroup(); refreshActiveMembership(); },
+        onSuccess: () => { refreshGroup(); refreshActiveMembership(); closeAllPopups(); },
         onError: (error) => toast.error(mutationErrorMessage(error)),
       },
     );
@@ -250,6 +257,7 @@ export default function GroupLobbyPage({ params }: PageProps) {
         (groupQuery.data?.winConditionCardCount ?? MINIMUM_WIN_CONDITION) + members.length,
       ),
     );
+    closeAllPopups();
     setIsTierPopupOpen(true);
   }
 
@@ -267,6 +275,8 @@ export default function GroupLobbyPage({ params }: PageProps) {
     );
     setStartError("");
     setPlaylistLink("");
+    setIsSettingsOpen(false);
+    setIsChatOpen(false);
     setIsTierPopupOpen(false);
     setIsCustomPickerOpen(true);
   }
@@ -278,6 +288,8 @@ export default function GroupLobbyPage({ params }: PageProps) {
 
   function backToTiers() {
     setIsCustomPickerOpen(false);
+    setIsSettingsOpen(false);
+    setIsChatOpen(false);
     setIsTierPopupOpen(true);
   }
 
@@ -309,6 +321,8 @@ export default function GroupLobbyPage({ params }: PageProps) {
     );
     setStartError("");
     setPlaylistLink("");
+    setIsSettingsOpen(false);
+    setIsChatOpen(false);
     setIsTierPopupOpen(false);
     setIsCustomPickerOpen(true);
   }, []);
@@ -316,8 +330,7 @@ export default function GroupLobbyPage({ params }: PageProps) {
   function handleModeStartSuccess() {
     refreshGroup();
     refreshActiveMembership();
-    closeTierPopup();
-    closeCustomPicker();
+    closeAllPopups();
   }
 
   function handleGenerateSet() {
@@ -398,7 +411,17 @@ export default function GroupLobbyPage({ params }: PageProps) {
     setSelectedDjMode(groupQuery.data?.djMode ?? "ROTATING");
     setSelectedFixedDjMemberId(groupQuery.data?.fixedDjMemberId ?? undefined);
     setWinCondition(groupQuery.data?.winConditionCardCount ?? MINIMUM_WIN_CONDITION);
+    closeAllPopups();
     setIsSettingsOpen(true);
+  }
+
+  function toggleChat() {
+    if (isChatOpen) {
+      setIsChatOpen(false);
+      return;
+    }
+    closeAllPopups();
+    setIsChatOpen(true);
   }
 
   function saveSettings() {
@@ -595,7 +618,7 @@ export default function GroupLobbyPage({ params }: PageProps) {
         {isSettingsOpen ? (
           <>
             <button type="button" aria-label="Close settings" onClick={() => setIsSettingsOpen(false)} className="fixed inset-0 z-10 cursor-default" />
-            <section aria-label="Group settings" className="absolute bottom-7 left-0 z-20 w-full max-w-[400px] rounded-[18px] border-[3px] border-border bg-card p-6 shadow-[6px_6px_0_rgba(0,0,0,0.35)] sm:left-[228px] sm:p-7">
+            <section aria-label="Group settings" className="absolute bottom-3 left-0 z-20 w-full max-w-[400px] rounded-[18px] border-[3px] border-border bg-card p-6 shadow-[6px_6px_0_rgba(0,0,0,0.35)] sm:left-[228px] sm:p-7">
               <div className="mb-5 flex items-center justify-between">
                 <h2 className="font-display text-lg text-card-foreground">Settings</h2>
                 <button type="button" onClick={() => setIsSettingsOpen(false)} className="text-muted-foreground hover:text-card-foreground">Close</button>
@@ -730,7 +753,7 @@ export default function GroupLobbyPage({ params }: PageProps) {
         </AlertDialog>
           <button
             type="button"
-            onClick={() => setIsChatOpen((currentValue) => !currentValue)}
+            onClick={toggleChat}
             className={`inline-flex items-center gap-2 rounded-full border-2 bg-card px-5 py-3 text-[13px] font-semibold text-card-foreground ${isChatOpen ? "border-primary text-primary" : "border-border"}`}
           >
           <MessageCircle className="size-4" />
