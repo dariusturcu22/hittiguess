@@ -794,3 +794,12 @@ Batch 2's fix-up work (`Carry main-artist plurality and dedup featured credits a
 Tests:
 - [x] `tsc --noEmit` clean project-wide
 - [x] Frontend `npm run test -- --run`, `npm run lint`, and `npm run build` all clean
+
+## Bug batch: session page stale state and voice settings error feedback
+
+- [x] Session page's link-out warning banner and bet-selection mode reset when a new round starts, instead of persisting from an earlier round
+- [x] Timeline drop targets no longer stay clickable once the betting window closes
+- [x] Voice settings popup surfaces a distinct message for an insecure context and for each `getUserMedia` failure, instead of testing the microphone silently
+
+Tests:
+- [x] `frontend/app/(app)/sessions/[sessionId]/page.tsx`, `frontend/components/voice-settings-popup.tsx` covered by the existing full suite (193 passed), no prior automated coverage of these two components to extend
