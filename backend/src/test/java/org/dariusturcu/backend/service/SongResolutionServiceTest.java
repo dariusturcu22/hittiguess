@@ -5,6 +5,7 @@ import org.dariusturcu.backend.model.ai.SongMetadataResponse;
 import org.dariusturcu.backend.model.song.ArtistRole;
 import org.dariusturcu.backend.model.song.Song;
 import org.dariusturcu.backend.model.song.VerificationStatus;
+import org.dariusturcu.backend.model.user.User;
 import org.dariusturcu.backend.repository.SongRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -55,7 +56,7 @@ class SongResolutionServiceTest {
         when(songRepository.save(org.mockito.ArgumentMatchers.any(Song.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
 
-        Optional<Song> resolvedSong = songResolutionService.resolveAndPersist(YOUTUBE_ID);
+        Optional<Song> resolvedSong = songResolutionService.resolveAndPersist(YOUTUBE_ID, null);
 
         assertThat(resolvedSong).isPresent();
         assertThat(resolvedSong.get().getVerificationStatus()).isEqualTo(VerificationStatus.VERIFIED);
@@ -69,7 +70,7 @@ class SongResolutionServiceTest {
         when(songRepository.save(org.mockito.ArgumentMatchers.any(Song.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
 
-        Optional<Song> resolvedSong = songResolutionService.resolveAndPersist(YOUTUBE_ID);
+        Optional<Song> resolvedSong = songResolutionService.resolveAndPersist(YOUTUBE_ID, null);
 
         assertThat(resolvedSong).isPresent();
         assertThat(resolvedSong.get().getWikidataSitelinksCount()).isEqualTo(RESOLVED_SITELINKS_COUNT);
@@ -87,7 +88,7 @@ class SongResolutionServiceTest {
         when(songRepository.findByYoutubeId(YOUTUBE_ID)).thenReturn(List.of(existingSong));
         when(songRepository.save(existingSong)).thenReturn(existingSong);
 
-        Optional<Song> resolvedSong = songResolutionService.resolveAndPersist(YOUTUBE_ID);
+        Optional<Song> resolvedSong = songResolutionService.resolveAndPersist(YOUTUBE_ID, null);
 
         ArgumentCaptor<Song> savedSongCaptor = ArgumentCaptor.forClass(Song.class);
         verify(songRepository).save(savedSongCaptor.capture());
@@ -109,7 +110,7 @@ class SongResolutionServiceTest {
         when(songRepository.save(org.mockito.ArgumentMatchers.any(Song.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
 
-        Optional<Song> resolvedSong = songResolutionService.resolveAndPersist(YOUTUBE_ID);
+        Optional<Song> resolvedSong = songResolutionService.resolveAndPersist(YOUTUBE_ID, null);
 
         assertThat(resolvedSong).isPresent();
         assertThat(resolvedSong.get().getArtists()).hasSize(2);
@@ -132,7 +133,7 @@ class SongResolutionServiceTest {
         when(songRepository.save(org.mockito.ArgumentMatchers.any(Song.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
 
-        Optional<Song> resolvedSong = songResolutionService.resolveAndPersist(YOUTUBE_ID);
+        Optional<Song> resolvedSong = songResolutionService.resolveAndPersist(YOUTUBE_ID, null);
 
         assertThat(resolvedSong).isPresent();
         assertThat(resolvedSong.get().getArtists()).hasSize(3);
@@ -148,12 +149,50 @@ class SongResolutionServiceTest {
     }
 
     @Test
+    void attributesANewSongToTheGivenUser() {
+        songResolutionService = service();
+        User addedBy = new User();
+        addedBy.setId(9L);
+        when(songMetadataService.resolveByYoutubeId(YOUTUBE_ID)).thenReturn(successResponse("VERIFIED"));
+        when(songRepository.findByYoutubeId(YOUTUBE_ID)).thenReturn(List.of());
+        when(songRepository.save(org.mockito.ArgumentMatchers.any(Song.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        Optional<Song> resolvedSong = songResolutionService.resolveAndPersist(YOUTUBE_ID, addedBy);
+
+        assertThat(resolvedSong).isPresent();
+        assertThat(resolvedSong.get().getAddedBy()).isEqualTo(addedBy);
+    }
+
+    @Test
+    void reprocessingAnAlreadyAttributedSongDoesNotReassignItToTheReprocessingUser() {
+        songResolutionService = service();
+        User originalAdder = new User();
+        originalAdder.setId(1L);
+        User reprocessingUser = new User();
+        reprocessingUser.setId(2L);
+        Song existingSong = new Song();
+        existingSong.setId(EXISTING_SONG_ID);
+        existingSong.setYoutubeId(YOUTUBE_ID);
+        existingSong.setAddedBy(originalAdder);
+
+        when(songMetadataService.resolveByYoutubeId(YOUTUBE_ID)).thenReturn(successResponse("VERIFIED"));
+        when(songRepository.findByYoutubeId(YOUTUBE_ID)).thenReturn(List.of(existingSong));
+        when(songRepository.save(existingSong)).thenReturn(existingSong);
+
+        Optional<Song> resolvedSong = songResolutionService.resolveAndPersist(YOUTUBE_ID, reprocessingUser);
+
+        assertThat(resolvedSong).isPresent();
+        assertThat(resolvedSong.get().getAddedBy()).isEqualTo(originalAdder);
+    }
+
+    @Test
     void aNonSuccessResponseResolvesToEmptyWithoutTouchingTheRepository() {
         songResolutionService = service();
         AiResponse errorResponse = new AiResponse(null, null, 10L, LocalDateTime.now(), "ERROR", null, null);
         when(songMetadataService.resolveByYoutubeId(YOUTUBE_ID)).thenReturn(errorResponse);
 
-        Optional<Song> resolvedSong = songResolutionService.resolveAndPersist(YOUTUBE_ID);
+        Optional<Song> resolvedSong = songResolutionService.resolveAndPersist(YOUTUBE_ID, null);
 
         assertThat(resolvedSong).isEmpty();
         verify(songRepository, never()).save(org.mockito.ArgumentMatchers.any());

@@ -6,6 +6,7 @@ import org.dariusturcu.backend.model.song.BulkImportRequest;
 import org.dariusturcu.backend.model.song.BulkImportResultDTO;
 import org.dariusturcu.backend.model.song.Song;
 import org.dariusturcu.backend.model.song.YoutubeIdLookupResult;
+import org.dariusturcu.backend.model.user.User;
 import org.dariusturcu.backend.security.util.SecurityUtils;
 import org.dariusturcu.backend.util.YoutubeLinkParser;
 import org.dariusturcu.backend.websocket.BulkImportProgressEvent;
@@ -50,7 +51,8 @@ public class BulkImportService {
     private final ApplicationEventPublisher applicationEventPublisher;
 
     public BulkImportResultDTO importImmediately(BulkImportRequest request) {
-        String submittingUsername = SecurityUtils.getCurrentUser().getUsername();
+        User currentUser = SecurityUtils.getCurrentUser();
+        String submittingUsername = currentUser.getUsername();
         List<String> parsedYoutubeIds = YoutubeLinkParser.parseAllVideoIds(request.videoIdsOrLinks());
         List<String> mergedYoutubeIds = playlistExpansionService.expandAndMerge(request.playlistLink(), parsedYoutubeIds);
 
@@ -67,7 +69,7 @@ public class BulkImportService {
         metadataPriorityCoordinator.beginOnTheSpotWork();
         try {
             for (String youtubeId : lookupResult.unknownYoutubeIds()) {
-                Optional<Song> resolvedSong = songResolutionService.resolveAndPersist(youtubeId);
+                Optional<Song> resolvedSong = songResolutionService.resolveAndPersist(youtubeId, currentUser);
                 if (resolvedSong.isPresent()) {
                     resolvedIds.add(youtubeId);
                     resolvedSongs.add(resolvedSong.get());
