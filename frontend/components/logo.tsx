@@ -1,4 +1,32 @@
-const WAVEFORM_ANIMATION_DELAYS = ["0ms", "-180ms", "-360ms", "-540ms"];
+"use client";
+
+import { useEffect, useState } from "react";
+
+const BAR_COUNT = 5;
+const MIN_BAR_HEIGHT_PERCENT = 30;
+const MAX_BAR_HEIGHT_PERCENT = 100;
+const MIN_BAR_DURATION_MS = 900;
+const MAX_BAR_DURATION_MS = 2100;
+
+interface WaveformBar {
+  heightPercent: number;
+  durationMs: number;
+  delayMs: number;
+}
+
+function randomWaveformBars(): WaveformBar[] {
+  return Array.from({ length: BAR_COUNT }, () => ({
+    heightPercent: MIN_BAR_HEIGHT_PERCENT + Math.random() * (MAX_BAR_HEIGHT_PERCENT - MIN_BAR_HEIGHT_PERCENT),
+    durationMs: MIN_BAR_DURATION_MS + Math.random() * (MAX_BAR_DURATION_MS - MIN_BAR_DURATION_MS),
+    delayMs: -Math.random() * MAX_BAR_DURATION_MS,
+  }));
+}
+
+const STATIC_BARS: WaveformBar[] = Array.from({ length: BAR_COUNT }, () => ({
+  heightPercent: MAX_BAR_HEIGHT_PERCENT,
+  durationMs: MAX_BAR_DURATION_MS,
+  delayMs: 0,
+}));
 
 type LogoBarsProps = {
   barWidthPx?: number;
@@ -11,13 +39,26 @@ export const LogoBars = ({
   colorClassName = "bg-[#499f36] dark:bg-[#a6e3a1]",
   containerClassName = "h-6",
 }: LogoBarsProps = {}) => {
+  // Randomized once after mount so server and client render identically;
+  // every mount gets its own organic rhythm instead of a fixed loop.
+  const [bars, setBars] = useState<WaveformBar[]>(STATIC_BARS);
+
+  useEffect(() => {
+    setBars(randomWaveformBars());
+  }, []);
+
   return (
     <div className={`flex items-center gap-[3px] shrink-0 ${containerClassName}`}>
-      {WAVEFORM_ANIMATION_DELAYS.map((animationDelay) => (
+      {bars.map((bar, index) => (
         <span
-          key={animationDelay}
-          className={`h-full origin-center rounded-full animate-waveform-bar ${colorClassName}`}
-          style={{ width: `${barWidthPx}px`, animationDelay }}
+          key={index}
+          className={`origin-center rounded-full animate-waveform-bar ${colorClassName}`}
+          style={{
+            width: `${barWidthPx}px`,
+            height: `${bar.heightPercent}%`,
+            animationDuration: `${bar.durationMs}ms`,
+            animationDelay: `${bar.delayMs}ms`,
+          }}
         />
       ))}
     </div>

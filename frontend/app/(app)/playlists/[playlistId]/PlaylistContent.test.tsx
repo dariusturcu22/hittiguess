@@ -8,6 +8,10 @@ import PlaylistContent, { buildInviteMessage } from "./PlaylistContent";
 const routerPush = vi.fn();
 const leaveMutate = vi.fn();
 let membership: { id: number } | undefined = { id: 4 };
+let playlistMembers = [
+  { userId: 11, displayName: "Alex", username: "alex", owner: true },
+  { userId: 12, displayName: "Sam", username: "sam", owner: false },
+];
 let playlistSongs: Array<{ id: number; title: string; artists: Array<{ name: string }>; youtubeId: string }> = [];
 
 const playlistDetail = {
@@ -16,10 +20,7 @@ const playlistDetail = {
   color: "cba6f7",
   songCount: 0,
   inviteCode: "ABCD1234",
-  members: [
-    { userId: 11, displayName: "Alex", username: "alex", owner: true },
-    { userId: 12, displayName: "Sam", username: "sam", owner: false },
-  ],
+  members: playlistMembers,
 };
 
 vi.mock("next/link", () => ({
@@ -52,7 +53,7 @@ vi.mock("@/components/phantom-empty-state", () => ({
 vi.mock("@/hooks/generated/playlist-management/playlist-management", () => ({
   getGetPlaylistQueryKey: (playlistId: number) => ["playlist", playlistId],
   useGetPlaylist: () => ({
-    data: { ...playlistDetail, songs: playlistSongs, songCount: playlistSongs.length },
+    data: { ...playlistDetail, members: playlistMembers, songs: playlistSongs, songCount: playlistSongs.length },
     isLoading: false,
   }),
   useDeleteSong: () => ({ mutate: vi.fn() }),
@@ -90,6 +91,10 @@ describe("PlaylistContent detail states", () => {
     leaveMutate.mockReset();
     membership = { id: 4 };
     playlistSongs = [];
+    playlistMembers = [
+      { userId: 11, displayName: "Alex", username: "alex", owner: true },
+      { userId: 12, displayName: "Sam", username: "sam", owner: false },
+    ];
     activeImportResponse = { isError: true };
     Object.defineProperty(window.navigator, "clipboard", {
       value: { writeText: vi.fn(() => Promise.resolve()) },
@@ -149,6 +154,19 @@ describe("PlaylistContent detail states", () => {
 
     expect(toast.error).toHaveBeenCalledWith("Join or create a group to start a session.");
     expect(routerPush).not.toHaveBeenCalled();
+  });
+
+  it("shows an overflow count on the avatar stack past three members", async () => {
+    playlistMembers = [
+      { userId: 11, displayName: "Alex", username: "alex", owner: true },
+      { userId: 12, displayName: "Sam", username: "sam", owner: false },
+      { userId: 13, displayName: "Mara", username: "mara", owner: false },
+      { userId: 14, displayName: "Theo", username: "theo", owner: false },
+      { userId: 15, displayName: "Lena", username: "lena", owner: false },
+    ];
+    await renderContent();
+
+    expect(screen.getByText("+2")).toBeVisible();
   });
 
   it("opens the full member list from the avatar stack", async () => {

@@ -15,18 +15,6 @@ import {
 } from "lucide-react";
 
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/shadcn/alert-dialog";
-
-import {
   getGetGroupQueryKey,
   getGetActiveMembershipQueryKey,
   useGetGroup,
@@ -45,7 +33,26 @@ import type { GenerateDifficultySetRequestTier } from "@/hooks/models/generateDi
 import type { GeneratedSongPreviewDTO } from "@/hooks/models/generatedSongPreviewDTO";
 import type { MemberDTO } from "@/hooks/models/memberDTO";
 import { useQueryClient } from "@tanstack/react-query";
+import { copyText } from "@/lib/clipboard";
 import { GroupChatOverlay } from "@/components/group-chat-overlay";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/shadcn/alert-dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/shadcn/select";
 import { useGroupRealtime } from "@/hooks/use-group-realtime";
 
 const MEMBER_COLORS = [
@@ -108,8 +115,8 @@ function LobbyMember({
   const floatDelay = `${(index % LOBBY_FLOAT_STAGGER_CYCLE) * -LOBBY_FLOAT_STAGGER_SECONDS}s`;
 
   return (
-    <div className={`absolute ${orbitPosition} flex flex-col items-center`}>
-      <div className="relative lobby-float" style={{ animationDelay: floatDelay }}>
+    <div className={`absolute ${orbitPosition} lobby-float flex flex-col items-center`} style={{ animationDelay: floatDelay }}>
+      <div className="relative">
         <div
           className={`flex size-[76px] items-center justify-center rounded-full font-display text-2xl shadow-[0_0_0_3px_var(--background),0_0_0_8px_var(--green)] sm:size-[108px] sm:text-[34px] ${colorClass} ${
             member.isConnected ? "" : "opacity-50 grayscale"
@@ -216,7 +223,7 @@ export default function GroupLobbyPage({ params }: PageProps) {
       return;
     }
 
-    await navigator.clipboard.writeText(`${window.location.origin}/groups/join/${inviteCode}`);
+    await copyText(`${window.location.origin}/groups/join/${inviteCode}`);
     setCopyFeedback("Invite link copied");
   }
 
@@ -268,24 +275,6 @@ export default function GroupLobbyPage({ params }: PageProps) {
     setIsTierPopupOpen(true);
   }
 
-  function handleConfirmCustomSelection() {
-    if (selectedPlaylistIds.length === 0) {
-      return;
-    }
-    setStartError("");
-    updateSettings.mutate(
-      { groupId, data: { playlistIds: selectedPlaylistIds } },
-      {
-        onSuccess: () => {
-          refreshGroup();
-          setIsCustomPickerOpen(false);
-          handleStartGame();
-        },
-        onError: (error) => setStartError(mutationErrorMessage(error)),
-      },
-    );
-  }
-
   function PlaylistPreselectCapture({ onCapture }: { onCapture: (playlistId: number | null) => void }) {
     const searchParams = useSearchParams();
 
@@ -306,7 +295,12 @@ export default function GroupLobbyPage({ params }: PageProps) {
     if (playlistId === null) {
       return;
     }
-    setSelectedPlaylistIds([playlistId]);
+    // Functional update returning the same reference when nothing changes:
+    // the capture component above is re-created every render, so its effect
+    // re-fires on each remount and only identical-state bailouts stop it.
+    setSelectedPlaylistIds((currentIds) =>
+      currentIds.length === 1 && currentIds[0] === playlistId ? currentIds : [playlistId],
+    );
     setStartError("");
     setPlaylistLink("");
     setIsTierPopupOpen(false);
@@ -347,6 +341,24 @@ export default function GroupLobbyPage({ params }: PageProps) {
       },
       {
         onSuccess: handleModeStartSuccess,
+        onError: (error) => setStartError(mutationErrorMessage(error)),
+      },
+    );
+  }
+
+  function handleConfirmCustomSelection() {
+    if (selectedPlaylistIds.length === 0) {
+      return;
+    }
+    setStartError("");
+    updateSettings.mutate(
+      { groupId, data: { playlistIds: selectedPlaylistIds } },
+      {
+        onSuccess: () => {
+          refreshGroup();
+          setIsCustomPickerOpen(false);
+          handleStartGame();
+        },
         onError: (error) => setStartError(mutationErrorMessage(error)),
       },
     );
@@ -478,7 +490,7 @@ export default function GroupLobbyPage({ params }: PageProps) {
               <>
                 <button type="button" aria-label="Close start options" onClick={closeTierPopup} className="fixed inset-0 z-10 cursor-default" />
                 <section aria-label="Start options" className="absolute right-0 top-full z-20 mt-2 w-[320px] rounded-[18px] border-[3px] border-border bg-card p-5 shadow-[6px_6px_0_rgba(0,0,0,0.35)]">
-                  <div className="mb-4 flex gap-2">
+                  <div className="mb-4 flex flex-wrap gap-2">
                     {DIFFICULTY_TIERS.map((tier) => (
                       <button
                         key={tier}
@@ -545,7 +557,7 @@ export default function GroupLobbyPage({ params }: PageProps) {
         )}
       </header>
 
-      <section className="relative flex min-h-[480px] flex-1 items-center justify-center overflow-hidden py-10">
+      <section className="relative flex min-h-0 flex-1 items-center justify-center overflow-y-auto py-10">
         <div className="z-10 text-center">
           <p className="mb-3 font-semibold text-[11px] uppercase tracking-[0.25em] text-muted-foreground">
             Enter code to join
@@ -580,23 +592,33 @@ export default function GroupLobbyPage({ params }: PageProps) {
                 <button type="button" onClick={() => setIsSettingsOpen(false)} className="text-muted-foreground hover:text-card-foreground">Close</button>
               </div>
               <div className="space-y-4">
-                <label className="flex items-center justify-between gap-3 text-[13px] text-muted-foreground">
-                  DJ mode
-                  <select value={selectedDjMode} onChange={(event) => setSelectedDjMode(event.target.value as "FIXED" | "ROTATING")} className="rounded-full border-2 border-border bg-background px-3 py-1.5 text-sm font-semibold text-foreground outline-none">
-                    <option value="ROTATING">Rotating</option>
-                    <option value="FIXED">Fixed</option>
-                  </select>
-                </label>
+                <div className="flex items-center justify-between gap-3">
+                  <span id="dj-mode-label" className="text-[13px] text-muted-foreground">DJ mode</span>
+                  <Select value={selectedDjMode} onValueChange={(value) => setSelectedDjMode(value as "FIXED" | "ROTATING")}>
+                    <SelectTrigger aria-labelledby="dj-mode-label" className="w-[140px] rounded-full border-2 border-border bg-background">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="ROTATING">Rotating</SelectItem>
+                      <SelectItem value="FIXED">Fixed</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
                 {selectedDjMode === "FIXED" ? (
-                  <label className="flex items-center justify-between gap-3 text-[13px] text-muted-foreground">
-                    Fixed DJ
-                    <select value={selectedFixedDjMemberId ?? ""} onChange={(event) => setSelectedFixedDjMemberId(event.target.value ? Number(event.target.value) : undefined)} className="rounded-full border-2 border-border bg-background px-3 py-1.5 text-sm font-semibold text-foreground outline-none">
-                      <option value="">First to join</option>
-                      {members.map((member) => (
-                        <option key={member.id} value={member.id ?? ""}>{member.displayName || "Player"}</option>
-                      ))}
-                    </select>
-                  </label>
+                  <div className="flex items-center justify-between gap-3">
+                    <span id="fixed-dj-label" className="text-[13px] text-muted-foreground">Fixed DJ</span>
+                    <Select value={selectedFixedDjMemberId === undefined ? "auto" : String(selectedFixedDjMemberId)} onValueChange={(value) => setSelectedFixedDjMemberId(value === "auto" ? undefined : Number(value))}>
+                      <SelectTrigger aria-labelledby="fixed-dj-label" className="w-[140px] rounded-full border-2 border-border bg-background">
+                        <SelectValue placeholder="First to join" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="auto">First to join</SelectItem>
+                        {members.map((member) => (
+                          <SelectItem key={member.id} value={String(member.id ?? "")}>{member.displayName || "Player"}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
                 ) : null}
                 <label className="flex items-center justify-between gap-3 text-[13px] text-muted-foreground">
                   Cards to win
@@ -660,16 +682,18 @@ export default function GroupLobbyPage({ params }: PageProps) {
             </section>
           </>
         ) : null}
-        {isChatOpen ? (
-          <GroupChatOverlay
-            groupId={groupId}
-            connectionState={groupRealtime.connectionState}
-            sendChat={groupRealtime.sendChat}
-            onClose={() => setIsChatOpen(false)}
-          />
-        ) : null}
       </section>
 
+      <div className="relative shrink-0">
+      {isChatOpen ? (
+        <GroupChatOverlay
+          groupId={groupId}
+          connectionState={groupRealtime.connectionState}
+          sendChat={groupRealtime.sendChat}
+          onClose={() => setIsChatOpen(false)}
+          floating
+        />
+      ) : null}
       <footer className="flex shrink-0 flex-wrap items-center gap-3">
         {!isCurrentUserLoading && isCurrentUserAdmin ? (
           <button
@@ -741,6 +765,7 @@ export default function GroupLobbyPage({ params }: PageProps) {
           </AlertDialogContent>
         </AlertDialog>
       </footer>
+      </div>
     </main>
   );
 }

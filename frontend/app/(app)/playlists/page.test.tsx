@@ -76,21 +76,38 @@ describe("PlaylistsPage library tabs", () => {
     routerPush.mockReset();
   });
 
-  it("shows owned playlists by default and joined ones on the Joined tab", () => {
+  it("shows everything by default on the All tab", () => {
     renderPage();
 
     expect(screen.getByText("Owned mix")).toBeVisible();
+    expect(screen.getByText("Joined mix")).toBeVisible();
+    expect(screen.getByText("Saved mix")).toBeVisible();
+  });
+
+  it("lists only owned playlists on the Owned tab", () => {
+    renderPage();
+
+    fireEvent.click(screen.getByRole("button", { name: "Owned" }));
+
+    expect(screen.getByText("Owned mix")).toBeVisible();
     expect(screen.queryByText("Joined mix")).toBeNull();
+    expect(screen.queryByText("Saved mix")).toBeNull();
+  });
+
+  it("lists joined playlists without a join tile on the Joined tab", () => {
+    renderPage();
 
     fireEvent.click(screen.getByRole("button", { name: "Joined" }));
 
     expect(screen.getByText("Joined mix")).toBeVisible();
     expect(screen.queryByText("Owned mix")).toBeNull();
+    expect(screen.queryByLabelText("Invite code or link")).toBeNull();
   });
 
   it("lists saved playlists on the Saved tab", () => {
     renderPage();
 
+    fireEvent.click(screen.getByRole("button", { name: "Owned" }));
     expect(screen.queryByText("Saved mix")).toBeNull();
 
     fireEvent.click(screen.getByRole("button", { name: "Saved" }));
@@ -103,6 +120,7 @@ describe("PlaylistsPage library tabs", () => {
   it("lists everything on the All tab", () => {
     renderPage();
 
+    fireEvent.click(screen.getByRole("button", { name: "Owned" }));
     fireEvent.click(screen.getByRole("button", { name: "All" }));
 
     expect(screen.getByText("Owned mix")).toBeVisible();
@@ -110,13 +128,13 @@ describe("PlaylistsPage library tabs", () => {
     expect(screen.getByText("Saved mix")).toBeVisible();
   });
 
-  it("shows the join tile instead of new playlist on the Joined tab", () => {
+  it("shows no join tile on the Joined tab", () => {
     renderPage();
 
     fireEvent.click(screen.getByRole("button", { name: "Joined" }));
 
-    expect(screen.getByLabelText("Invite code or link")).toBeVisible();
-    expect(screen.queryByRole("button", { name: "New playlist" })).toBeNull();
+    expect(screen.queryByLabelText("Invite code or link")).toBeNull();
+    expect(screen.getByRole("button", { name: /New playlist/ })).toBeVisible();
   });
 
   it("shows the explore tile instead of new playlist on the Saved tab", () => {
@@ -128,10 +146,10 @@ describe("PlaylistsPage library tabs", () => {
     expect(screen.queryByRole("button", { name: "New playlist" })).toBeNull();
   });
 
-  it("joins from a pasted invite link by extracting its code", () => {
+  it("joins from the header popup by extracting the code", () => {
     renderPage();
 
-    fireEvent.click(screen.getByRole("button", { name: "Joined" }));
+    fireEvent.click(screen.getByRole("button", { name: "Join" }));
     fireEvent.change(screen.getByLabelText("Invite code or link"), {
       target: { value: "http://localhost:3000/playlists/join/abc123?x=1" },
     });
@@ -140,11 +158,12 @@ describe("PlaylistsPage library tabs", () => {
     expect(routerPush).toHaveBeenCalledWith("/playlists/join/abc123");
   });
 
-  it("header Join button switches to the Joined tab", () => {
+  it("header Join button opens a popup instead of switching tabs", () => {
     renderPage();
 
     fireEvent.click(screen.getByRole("button", { name: "Join" }));
 
     expect(screen.getByLabelText("Invite code or link")).toBeVisible();
+    expect(screen.getByText("Owned mix")).toBeVisible();
   });
 });

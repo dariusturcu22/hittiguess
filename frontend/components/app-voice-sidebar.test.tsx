@@ -8,6 +8,11 @@ const startMicrophone = vi.fn(async () => true);
 const toggleMute = vi.fn();
 const toggleDeafen = vi.fn();
 let inVoice = true;
+let currentPathname = "/groups/4";
+
+vi.mock("next/navigation", () => ({
+  usePathname: () => currentPathname,
+}));
 
 vi.mock("@/hooks/generated/group-management/group-management", () => ({
   getGetActiveMembershipQueryKey: () => ["active-membership"],
@@ -55,6 +60,7 @@ vi.mock("@tanstack/react-query", () => ({
 describe("AppVoiceSidebar", () => {
   beforeEach(() => {
     inVoice = true;
+    currentPathname = "/groups/4";
     window.localStorage.clear();
     joinVoice.mockClear();
     startMicrophone.mockClear();
@@ -93,29 +99,29 @@ describe("AppVoiceSidebar", () => {
     expect(joinVoice).toHaveBeenCalledWith({ groupId: 4 }, expect.anything());
   });
 
-  it("collapses to a slim rail when out of a call and expands again", () => {
+  it("hides the sidebar outside a call except on the lobby page", () => {
+    inVoice = false;
+    currentPathname = "/playlists";
+    render(<AppVoiceSidebar />);
+
+    expect(screen.queryByRole("complementary", { name: "Voice sidebar" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Join call" })).toBeNull();
+  });
+
+  it("shows only the slim rail with no collapse control outside a call", () => {
     inVoice = false;
     render(<AppVoiceSidebar />);
 
-    fireEvent.click(screen.getByRole("button", { name: "Collapse voice sidebar" }));
-
-    expect(screen.queryByRole("button", { name: "Join call" })).toBeNull();
-    expect(screen.getByRole("button", { name: "Expand voice sidebar" })).toBeVisible();
-    expect(window.localStorage.getItem("hittiguess-voice-sidebar-collapsed")).toBe("true");
-
-    fireEvent.click(screen.getByRole("button", { name: "Expand voice sidebar" }));
-
     expect(screen.getByRole("button", { name: "Join call" })).toBeVisible();
-    expect(window.localStorage.getItem("hittiguess-voice-sidebar-collapsed")).toBe("false");
+    expect(screen.queryByRole("button", { name: /ollapse|Expand/ })).toBeNull();
   });
 
-  it("stays expanded while in a call even when collapsed storage is set", () => {
+  it("keeps the full sidebar everywhere while in a call", () => {
     inVoice = true;
-    window.localStorage.setItem("hittiguess-voice-sidebar-collapsed", "true");
+    currentPathname = "/playlists";
     render(<AppVoiceSidebar />);
 
     expect(screen.getByRole("button", { name: "Leave voice" })).toBeVisible();
-    expect(screen.queryByRole("button", { name: "Expand voice sidebar" })).toBeNull();
-    expect(screen.queryByRole("button", { name: "Collapse voice sidebar" })).toBeNull();
+    expect(screen.queryByRole("button", { name: /ollapse|Expand/ })).toBeNull();
   });
 });

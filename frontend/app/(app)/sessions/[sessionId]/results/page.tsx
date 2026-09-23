@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Check, Copy, Download, Loader2, Printer, RotateCcw, Trophy } from "lucide-react";
 
 import { useGetResults, useGetSession } from "@/hooks/generated/game-session/game-session";
+import { copyText } from "@/lib/clipboard";
 import type { LeaderboardEntryDTO } from "@/hooks/models/leaderboardEntryDTO";
 import type { PlayerResultDTO } from "@/hooks/models/playerResultDTO";
 
@@ -125,7 +126,7 @@ export default function SessionResultsPage({ params }: PageProps) {
   }
 
   async function copyResultsText() {
-    await navigator.clipboard.writeText(resultsText());
+    await copyText(resultsText());
     setCopiedFeedback(true);
     window.setTimeout(() => setCopiedFeedback(false), 2000);
   }

@@ -2,6 +2,12 @@ import { act, fireEvent, render, screen } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+const toastMocks = vi.hoisted(() => ({ success: vi.fn(), error: vi.fn() }));
+
+vi.mock("sonner", () => ({
+  toast: toastMocks,
+}));
+
 import GroupLobbyPage from "./page";
 
 const GROUP_PARAMS = Promise.resolve({ groupId: "1" });
@@ -101,6 +107,8 @@ describe("GroupLobbyPage start options", () => {
     startWithSongsMutate.mockImplementation((_args, options) => options?.onSuccess?.({}));
     startCustomMutate.mockImplementation((_args, options) => options?.onSuccess?.({}));
     updateSettingsMutate.mockImplementation((_args, options) => options?.onSuccess?.({}));
+    toastMocks.success.mockReset();
+    toastMocks.error.mockReset();
   });
 
   it("generates a difficulty set for review and confirms it into a start", async () => {
@@ -146,8 +154,7 @@ describe("GroupLobbyPage start options", () => {
     expect(screen.getByRole("button", { name: "Back" })).toBeVisible();
     expect(screen.getByText("No playlists selected")).toBeVisible();
 
-    fireEvent.click(screen.getByRole("button", { name: /Party mix/i }));
-
+    fireEvent.click(screen.getByRole("button", { name: /Party mix/ }));
     expect(screen.getByText("Chosen: Party mix")).toBeVisible();
 
     fireEvent.click(screen.getByRole("button", { name: "Back" }));
@@ -156,38 +163,7 @@ describe("GroupLobbyPage start options", () => {
   });
 
   it("confirms a custom multi-playlist selection into a start", async () => {
-    await renderPage();
-
-    fireEvent.click(screen.getByRole("button", { name: "Choose playlists" }));
-    fireEvent.click(screen.getByRole("button", { name: "Custom" }));
-    fireEvent.click(screen.getByRole("button", { name: /Party mix/i }));
-    fireEvent.click(screen.getByRole("button", { name: "Confirm and start" }));
-
-    expect(updateSettingsMutate).toHaveBeenCalledWith(
-      { groupId: 1, data: { playlistIds: [21] } },
-      expect.anything(),
-    );
-    expect(startSessionMutate).toHaveBeenCalledWith({ groupId: 1 }, expect.anything());
-  });
-
-  it("saves a fixed DJ choice from settings", async () => {
-    await renderPage();
-
-    fireEvent.click(screen.getByRole("button", { name: "Settings" }));
-    fireEvent.change(screen.getByLabelText("DJ mode"), { target: { value: "FIXED" } });
-    fireEvent.change(screen.getByLabelText("Fixed DJ"), { target: { value: "2" } });
-    fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
-
-    expect(updateSettingsMutate).toHaveBeenCalledWith(
-      {
-        groupId: 1,
-        data: { djMode: "FIXED", winConditionCardCount: 5, fixedDjMemberId: 2 },
-      },
-      expect.anything(),
-    );
-  });
-
-  it("confirms a multi-playlist selection from the header chip", async () => {
+    startSessionMutate.mockImplementation((_args, options) => options?.onSuccess?.({}));
     await renderPage();
 
     fireEvent.click(screen.getByRole("button", { name: "Choose playlists" }));
@@ -199,6 +175,71 @@ describe("GroupLobbyPage start options", () => {
       { groupId: 1, data: { playlistIds: [21] } },
       expect.anything(),
     );
+    expect(startSessionMutate).toHaveBeenCalledWith({ groupId: 1 }, expect.anything());
+  });
+
+  it("starts a custom session from a pasted playlist link", async () => {
+    await renderPage();
+
+    fireEvent.click(screen.getByRole("button", { name: "Choose playlists" }));
+    fireEvent.click(screen.getByRole("button", { name: "Custom" }));
+    fireEvent.change(screen.getByPlaceholderText("YouTube playlist link or id"), {
+      target: { value: "https://youtube.com/playlist?list=abc" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Start" }));
+
+    expect(startCustomMutate).toHaveBeenCalledWith(
+      { groupId: 1, data: { playlistLink: "https://youtube.com/playlist?list=abc" } },
+      expect.anything(),
+    );
+  });
+
+  it("opens the custom picker with the playlist preselected from the link", async () => {
+    lobbySearchParams = new URLSearchParams("playlist=21");
+    await renderPage();
+
+    expect(screen.getByText("Chosen: Party mix")).toBeVisible();
+
+    fireEvent.click(screen.getByRole("button", { name: "Confirm and start" }));
+
+    expect(updateSettingsMutate).toHaveBeenCalledWith(
+      { groupId: 1, data: { playlistIds: [21] } },
+      expect.anything(),
+    );
+  });
+
+  it("saves a fixed DJ choice from settings", async () => {
+    await renderPage();
+
+    fireEvent.click(screen.getByRole("button", { name: "Settings" }));
+    fireEvent.click(screen.getByRole("combobox", { name: "DJ mode" }));
+    fireEvent.click(screen.getByRole("option", { name: "Fixed" }));
+    fireEvent.click(screen.getByRole("combobox", { name: "Fixed DJ" }));
+    fireEvent.click(screen.getByRole("option", { name: "Sam" }));
+    fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
+
+    expect(updateSettingsMutate).toHaveBeenCalledWith(
+      {
+        groupId: 1,
+        data: { djMode: "FIXED", winConditionCardCount: 5, fixedDjMemberId: 2 },
+      },
+      expect.anything(),
+    );
+    expect(toastMocks.success).toHaveBeenCalledWith("Settings saved");
+  });
+
+  it("shows the min-players popup only when starting below the minimum", async () => {
+    lobbyMembers = [
+      { id: 1, userId: 11, displayName: "Admin", isAdmin: true, isConnected: true },
+    ];
+    await renderPage();
+
+    expect(screen.queryByText("Not enough players")).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: "Start game" }));
+
+    expect(screen.getByText("Not enough players")).toBeVisible();
+    expect(startSessionMutate).not.toHaveBeenCalled();
   });
 
   it("closes settings on outside click", async () => {
@@ -223,25 +264,5 @@ describe("GroupLobbyPage start options", () => {
     fireEvent.click(screen.getByRole("button", { name: "Leave" }));
 
     expect(leaveMutate).toHaveBeenCalledWith({ groupId: 1 }, expect.anything());
-  });
-
-  it("warns when the lobby is too small to start", async () => {
-    lobbyMembers = [
-      { id: 1, userId: 11, displayName: "Admin", isAdmin: true, isConnected: true },
-    ];
-    await renderPage();
-
-    const minPlayersText = (_: string, element: Element | null) =>
-      element?.textContent === "Need at least 2 players to start. Invite someone first.";
-    expect(screen.queryByText(minPlayersText)).toBeNull();
-
-    fireEvent.click(screen.getByRole("button", { name: "Start game" }));
-
-    expect(screen.getByText(minPlayersText)).toBeVisible();
-    expect(screen.getByRole("button", { name: "Got it" })).toBeVisible();
-
-    fireEvent.click(screen.getByRole("button", { name: "Got it" }));
-
-    expect(screen.queryByText(minPlayersText)).toBeNull();
   });
 });
