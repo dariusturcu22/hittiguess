@@ -936,20 +936,21 @@ DJ link-out and audio (frontend, `fix/dj-link-out-and-audio`):
 - [x] Every player fetches the DJ-only link-out while the session loads, because an undefined player id equals an undefined DJ id. Require a resolved player first
 
 Gameplay screens against the mockups (frontend, `fix/gameplay-screens-match-design`):
-- [ ] Round intro: first-round countdown with the first DJ and first turn, per `GameSessionRoundIntro*`
-- [ ] Header: round title with the per-state status line, playlist chip with name and song count read from the group's playlists, per every `GameSession*` mockup
-- [ ] Timeline: centered track, edge fade, working previous/next scroll, cards show artist, year, and title in the song's color
-- [ ] Placement: pointer drag of the mystery card, the timeline opens a dashed gap under the pointer with tilted neighbors, dropping keeps the card movable with a "Lock in answer" action, keyboard placement kept, per `GameSessionCardDragging*`, `GameSessionCardDropped*`, `GameSessionCardLocked*`
-- [ ] Spectator view: the active player's live drag gap, per `GameSessionCardDraggingSpectator*`
-- [ ] DJ view: the song card beside the "Open on YouTube to play" action and the audio-sharing warning, per `GameSessionDJ*`
-- [ ] Betting: countdown ring before the window, betting timer, coin dragged into a gap, placed bets shown as coins with the bettor's initial, skip action, per `GameSessionBetting*`
-- [ ] Reveal: the card lands in the timeline with the outcome line and a "Next turn starts in" pill with a progress bar, per `GameSessionReveal*`
-- [ ] Footer: DJ and turn pill, token coin stack (sitting out while it's the player's own turn)
-- [ ] Turn banner centered above the header instead of overlapping it; guess boxes hidden for the DJ and closed after lock-in
-- [ ] Fix the literal `&apos;` rendered in the countdown status line
+- [x] Round intro: first-round countdown with the first DJ and first turn, per `GameSessionRoundIntro*`
+- [x] Header: round title with the per-state status line, playlist chip with name and song count read from the group's playlists, per every `GameSession*` mockup
+- [x] Timeline: centered track, edge fade, working previous/next scroll, cards show artist, year, and title in the song's color
+- [x] Placement: pointer drag of the mystery card, the timeline opens a dashed gap under the pointer with tilted neighbors, dropping keeps the card movable with a "Lock in answer" action, keyboard placement kept, per `GameSessionCardDragging*`, `GameSessionCardDropped*`, `GameSessionCardLocked*`
+- [x] Spectator view: the active player's live drag gap, per `GameSessionCardDraggingSpectator*`
+- [x] DJ view: the song card beside the "Open on YouTube to play" action and the audio-sharing warning, per `GameSessionDJ*`
+- [x] Betting: countdown ring before the window, betting timer, coin dragged into a gap, placed bets shown as coins with the bettor's initial, skip action, per `GameSessionBetting*`
+- [x] Reveal: the card lands in the timeline with the outcome line and a "Next turn starts in" pill with a progress bar, per `GameSessionReveal*`
+- [x] Footer: DJ and turn pill, token coin stack (sitting out while it's the player's own turn)
+- [x] Turn banner centered above the header instead of overlapping it; guess boxes hidden for the DJ and closed after lock-in
+- [x] Fix the literal `&apos;` rendered in the countdown status line
+- [x] The gameplay end-to-end specs log in through a password label that now also matches the show-password toggle, mock the link-out at a path the API never serves, and expect the next round the moment a round scores. Match the current login field, the real link-out path, and the reveal hold
 
 Tests:
 - [x] Backend: service tests for the betting-opened event, the reveal hold before the next round, the placement preview relay, and the new DTO fields
 - [x] Frontend: unit tests for the link-out helper, the DJ silencing rule, listen-only joining, and the DJ share request
-- [ ] Frontend: unit tests for the session page's per-phase rendering
-- [ ] Rendered comparison of every gameplay state against its mockup, dark and light, on a live three-player session
+- [x] Frontend: unit tests for the session page's per-phase rendering and the gameplay helpers
+- [x] Rendered comparison of every gameplay state against its mockup, dark and light, on a live three-player session
