@@ -916,12 +916,13 @@ Tests:
 Reported from a live playtest: audio streaming never reaches other players, "Open on YouTube" opens two tabs, the timeline sits left instead of centered and can't be scrolled, placement looks nothing like the mockups, and most gameplay screens differ from `docs/design/source/GameSession*.dc.html`. Each item below is confirmed against the running stack and the code. Rules follow `GAME_DESIGN.md` and `DECISIONS.md` where a mockup's copy predates them (the betting mockups still describe one bettor per round; betting is one bet per gap).
 
 Round flow and session data (backend, `fix/gameplay-round-flow`):
-- [ ] Opening the betting window publishes no session event, so every client stays on the countdown view until the reveal. Publish a `BETTING_OPENED` event when the window opens
-- [ ] Reveal, scoring, and the next round all run in one call chain, so the reveal state is never visible. Hold the scored round for a fixed reveal interval before advancing, and expose when the next round starts
-- [ ] `RoundDTO` carries no deadlines, so no client can render the countdown or the betting timer. Add the lock-in time, betting-window end, and next-round start
-- [ ] `PlayerCardDTO` carries no artist or card color, so timeline cards print the title twice in one fixed palette. Add the artist credit and the song's color
-- [ ] The DJ view in the mockup shows the current song's card; `RoundLinkOutDTO` carries only the video. Add artist, title, year, and color for the DJ only
-- [ ] Regenerate the frontend API client for the new fields
+- [x] Opening the betting window publishes no session event, so every client stays on the countdown view until the reveal. Publish a `BETTING_OPENED` event when the window opens
+- [x] Reveal, scoring, and the next round all run in one call chain, so the reveal state is never visible. Hold the scored round for a fixed reveal interval before advancing, and expose when the next round starts
+- [x] `RoundDTO` carries no deadlines, so no client can render the countdown or the betting timer. Add the lock-in time, betting-window end, and next-round start
+- [x] `PlayerCardDTO` carries no artist or card color, so timeline cards print the title twice in one fixed palette. Add the artist credit and the song's color
+- [x] The DJ view in the mockup shows the current song's card; `RoundLinkOutDTO` carries only the video. Add artist, title, year, and color for the DJ only
+- [x] Spectators have no way to see the active player's drag before lock-in. Relay the active player's placement preview over the session's round topic, never persisted
+- [x] Regenerate the frontend API client for the new fields
 
 DJ link-out and audio (frontend, `fix/dj-link-out-and-audio`):
 - [ ] `window.open` with `noopener` returns `null` even when the tab opens, so the blocked-popup fallback also navigates the game tab to YouTube. Open the new tab without relying on the return value
@@ -942,6 +943,6 @@ Gameplay screens against the mockups (frontend, `fix/gameplay-screens-match-desi
 - [ ] Fix the literal `&apos;` rendered in the countdown status line
 
 Tests:
-- [ ] Backend: service tests for the betting-opened event, the reveal hold before the next round, and the new DTO fields
+- [x] Backend: service tests for the betting-opened event, the reveal hold before the next round, the placement preview relay, and the new DTO fields
 - [ ] Frontend: unit tests for the link-out helper, the audio cutoff, and the session page's per-phase rendering
 - [ ] Rendered comparison of every gameplay state against its mockup, dark and light, on a live three-player session
