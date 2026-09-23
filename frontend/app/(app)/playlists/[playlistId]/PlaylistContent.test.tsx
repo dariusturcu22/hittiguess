@@ -173,7 +173,7 @@ describe("PlaylistContent detail states", () => {
   it("opens the full member list from the avatar stack", async () => {
     await renderContent();
 
-    fireEvent.click(screen.getByText("Members (2)"));
+    fireEvent.click(screen.getByRole("button", { name: "Members (2)" }));
 
     expect(screen.getByText("Alex")).toBeVisible();
     expect(screen.getByText("Sam")).toBeVisible();

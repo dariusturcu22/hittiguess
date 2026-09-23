@@ -75,6 +75,7 @@ import { PhantomEmptyState } from "@/components/phantom-empty-state";
 const ACTIVE_IMPORT_REFRESH_MILLISECONDS = 5_000;
 
 const MEMBER_STACK_VISIBLE_COUNT = 3;
+const MEMBER_STACK_TRIGGER_AVATAR_SIZE = 34;
 const MEMBER_AVATAR_COLORS = [
   "var(--primary)",
   "#89b4fa",
@@ -467,19 +468,24 @@ export default function PlaylistContent({
 
         <aside className="w-[260px] shrink-0 rounded-2xl border-[3px] border-border-strong bg-card p-4 shadow-lg">
           <Popover>
-            <PopoverTrigger className="flex w-full items-center justify-between gap-3 rounded-lg text-left outline-none transition-colors hover:bg-secondary/50 focus-visible:ring-2 focus-visible:ring-ring">
-              <span className="font-display text-[11px] text-muted-foreground">Members ({playlist.members.length})</span>
+            <PopoverTrigger
+              aria-label={`Members (${playlist.members.length})`}
+              className="flex cursor-pointer items-center outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
               <span className="flex -space-x-2">
                 {playlist.members.slice(0, MEMBER_STACK_VISIBLE_COUNT).map((member, index) => (
                   <MemberAvatar
                     key={member.userId ?? index}
                     initial={(member.displayName ?? member.username ?? "?").charAt(0).toUpperCase()}
                     color={MEMBER_AVATAR_COLORS[index % MEMBER_AVATAR_COLORS.length]}
-                    size={26}
+                    size={MEMBER_STACK_TRIGGER_AVATAR_SIZE}
                   />
                 ))}
                 {playlist.members.length > MEMBER_STACK_VISIBLE_COUNT ? (
-                  <span className="avatar-initial flex size-[26px] shrink-0 items-center justify-center rounded-full border-[3px] border-card bg-muted font-display text-[10px] text-muted-foreground">
+                  <span
+                    className="avatar-initial flex shrink-0 items-center justify-center rounded-full border-[3px] border-card bg-muted font-display text-[10px] text-muted-foreground"
+                    style={{ width: MEMBER_STACK_TRIGGER_AVATAR_SIZE, height: MEMBER_STACK_TRIGGER_AVATAR_SIZE }}
+                  >
                     +{playlist.members.length - MEMBER_STACK_VISIBLE_COUNT}
                   </span>
                 ) : null}
