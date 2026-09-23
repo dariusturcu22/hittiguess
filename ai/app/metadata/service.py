@@ -142,7 +142,9 @@ def _check_for_duplicate(title: str, artist: str) -> SongMetadataResult | None:
     return _build_duplicate_match_result(best_match)
 
 
-def _run_verification_pipeline(title: str, artist: str, color: str) -> SongMetadataResult:
+def _run_verification_pipeline(
+    title: str, artist: str, color: str, featured_artists: list[str]
+) -> SongMetadataResult:
     """Runs story 18's lock-or-LLM verification pipeline: query MusicBrainz,
     Discogs, and Wikidata always (free, deterministic, zero LLM cost); if
     all three agree exactly, lock with no further LLM call; otherwise fetch
@@ -205,6 +207,7 @@ def _run_verification_pipeline(title: str, artist: str, color: str) -> SongMetad
     return SongMetadataResult(
         title=title,
         artist=artist,
+        featured_artists=featured_artists,
         release_year=release_year,
         color=color,
         confidence=confidence,
@@ -268,8 +271,9 @@ def resolve_metadata(youtube_url: str) -> MetadataResolveResponse:
 
         title = precheck.title or regex_title
         artist = precheck.artist or regex_artist
+        featured_artists = precheck.featured_artists or []
 
-        result = _run_verification_pipeline(title, artist, precheck.color)
+        result = _run_verification_pipeline(title, artist, precheck.color, featured_artists)
         return MetadataResolveResponse(status="SUCCESS", model=settings.deepinfra_model, content=result)
     except Exception as pipeline_error:
         logger.warning("Metadata pipeline failed: %s", pipeline_error)

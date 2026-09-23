@@ -42,9 +42,9 @@ def build_precheck_prompt(
             "around the name",
             "- KEEP: 'Remix', 'Mashup', 'Original Mix', 'Extended Mix', they identify a specific "
             "version",
-            "- a featured-artist credit ('feat. X', 'ft. X', 'featuring X') stays part of the "
-            "title text exactly as it would in the cleaned song title, do not merge it into the "
-            "artist field or drop it",
+            "- a featured-artist credit ('feat. X', 'ft. X', 'featuring X') comes out of "
+            "the title into the featured_artists field, the title keeps only the song "
+            "name and the artist field keeps only the main artist",
             "- fix an obvious typo in the title or artist when you're confident of the real name, "
             "but don't fix a stylized or intentionally unusual real name",
             "- if the raw text genuinely does not identify a real song (a mixtape label, a "

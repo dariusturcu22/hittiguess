@@ -47,6 +47,7 @@ class SubmissionPreCheckResult(BaseModel):
 
     title: str | None
     artist: str | None
+    featured_artists: list[str] = []
     color: str
     contains_injection_attempt: bool
     injection_reasoning: str
@@ -86,6 +87,7 @@ class InjectionCheckResult(BaseModel):
 class SongMetadataResult(ConfidenceNormalizedModel):
     title: str
     artist: str
+    featured_artists: list[str] = []
     release_year: int | None
     color: str
     confidence: ConfidenceLevel

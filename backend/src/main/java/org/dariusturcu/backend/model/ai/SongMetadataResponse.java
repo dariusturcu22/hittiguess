@@ -4,9 +4,12 @@ package org.dariusturcu.backend.model.ai;
 // returned to the frontend (which expects camelCase, matching every other
 // DTO in the API), unlike AiMetadataContent, which mirrors the AI
 // microservice's snake_case wire format on the way in.
+import java.util.List;
+
 public record SongMetadataResponse(
         String title,
         String artist,
+        List<String> featuredArtists,
         Integer releaseYear,
         String color,
         String confidence,

@@ -348,7 +348,7 @@ def test_verification_pipeline_reports_the_track_entity_sitelinks_count(mocker):
     mocker.patch("app.metadata.service.evaluate_lock", return_value=_locked_verification_result())
     sitelinks_mock = mocker.patch.object(service.wikidata, "get_sitelinks_count", return_value=12)
 
-    result = service._run_verification_pipeline("Test Song", "Test Artist", "8B5CF6")
+    result = service._run_verification_pipeline("Test Song", "Test Artist", "8B5CF6", [])
 
     sitelinks_mock.assert_called_once_with("Q1")
     assert result.sitelinks_count == 12
@@ -362,7 +362,7 @@ def test_verification_pipeline_leaves_sitelinks_count_unknown_without_a_wikidata
     mocker.patch("app.metadata.service.evaluate_lock", return_value=_locked_verification_result())
     sitelinks_mock = mocker.patch.object(service.wikidata, "get_sitelinks_count", return_value=12)
 
-    result = service._run_verification_pipeline("Test Song", "Test Artist", "8B5CF6")
+    result = service._run_verification_pipeline("Test Song", "Test Artist", "8B5CF6", [])
 
     sitelinks_mock.assert_not_called()
     assert result.sitelinks_count is None
@@ -383,7 +383,37 @@ def test_structured_queries_strip_only_featured_artist_suffixes(mocker, display_
     mocker.patch.object(service.wikipedia, "search", return_value=[])
     mocker.patch("app.metadata.service.evaluate_lock", return_value=_locked_verification_result())
 
-    result = service._run_verification_pipeline(display_title, "Test Artist", "8B5CF6")
+    result = service._run_verification_pipeline(display_title, "Test Artist", "8B5CF6", [])
 
     musicbrainz_mock.assert_called_once_with(source_query_title, "Test Artist")
     assert result.title == display_title
+
+
+def test_verification_pipeline_carries_featured_artists_onto_the_result(mocker):
+    mocker.patch.object(service.musicbrainz, "search", return_value=[])
+    mocker.patch.object(service.discogs, "search", return_value=[])
+    mocker.patch.object(service.wikidata, "search", return_value=[])
+    mocker.patch.object(service.wikipedia, "search", return_value=[])
+    mocker.patch("app.metadata.service.evaluate_lock", return_value=_locked_verification_result())
+
+    result = service._run_verification_pipeline("Titanium", "David Guetta", "8B5CF6", ["Sia"])
+
+    assert result.title == "Titanium"
+    assert result.artist == "David Guetta"
+    assert result.featured_artists == ["Sia"]
+
+
+def test_resolve_metadata_forwards_precheck_featured_artists(mocker):
+    precheck = _precheck_result(featured_artists=["Sia"])
+    mocker.patch.object(service.youtube, "fetch_youtube_metadata", return_value=_youtube_data())
+    mocker.patch.object(service, "generate_embedding", return_value=[0.1, 0.2, 0.3])
+    mocker.patch.object(service, "find_best_verified_match", return_value=None)
+    mocker.patch.object(service, "_run_precheck", return_value=precheck)
+    mocker.patch.object(service.content_safety, "evaluate_precheck", return_value=ContentSafetyOutcome(rejected=False, rejection_reason=None, rejection_detail=None))
+    pipeline_mock = mocker.patch.object(
+        service, "_run_verification_pipeline", return_value=_locked_verification_result()
+    )
+
+    service.resolve_metadata("https://youtube.com/watch?v=abc12345678")
+
+    pipeline_mock.assert_called_once_with("Test Song", "Test Artist", "8B5CF6", ["Sia"])

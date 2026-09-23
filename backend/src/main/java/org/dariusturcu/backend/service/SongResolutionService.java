@@ -30,6 +30,7 @@ public class SongResolutionService {
 
     private static final String SUCCESS_STATUS = "SUCCESS";
     private static final int MAIN_ARTIST_DISPLAY_ORDER = 0;
+    private static final int FEATURED_ARTIST_DISPLAY_ORDER_START = 1;
 
     private final SongMetadataService songMetadataService;
     private final SongRepository songRepository;
@@ -67,6 +68,21 @@ public class SongResolutionService {
             mainArtist.setRole(ArtistRole.MAIN);
             mainArtist.setDisplayOrder(MAIN_ARTIST_DISPLAY_ORDER);
             song.getArtists().add(mainArtist);
+        }
+        if (metadata.featuredArtists() != null) {
+            int featuredDisplayOrder = FEATURED_ARTIST_DISPLAY_ORDER_START;
+            for (String featuredName : metadata.featuredArtists()) {
+                if (featuredName == null || featuredName.isBlank()) {
+                    continue;
+                }
+                SongArtist featuredArtist = new SongArtist();
+                featuredArtist.setSong(song);
+                featuredArtist.setName(featuredName);
+                featuredArtist.setRole(ArtistRole.FEATURED);
+                featuredArtist.setDisplayOrder(featuredDisplayOrder);
+                song.getArtists().add(featuredArtist);
+                featuredDisplayOrder++;
+            }
         }
 
         return songRepository.save(song);

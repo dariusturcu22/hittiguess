@@ -123,6 +123,7 @@ public class SongMetadataService {
         return new SongMetadataResponse(
                 content.title(),
                 content.artist(),
+                content.featuredArtists(),
                 content.releaseYear(),
                 content.color(),
                 content.confidence(),
