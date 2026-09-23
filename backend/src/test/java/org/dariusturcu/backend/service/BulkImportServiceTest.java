@@ -88,8 +88,8 @@ class BulkImportServiceTest {
                 .thenReturn(List.of(EXPANDED_VIDEO_ID, EXTRA_VIDEO_ID));
         when(youtubeIdLookupService.partitionKnownAndUnknown(List.of(EXPANDED_VIDEO_ID, EXTRA_VIDEO_ID)))
                 .thenReturn(new YoutubeIdLookupResult(Set.of(), Set.of(EXPANDED_VIDEO_ID, EXTRA_VIDEO_ID)));
-        when(songResolutionService.resolveAndPersist(EXPANDED_VIDEO_ID)).thenReturn(Optional.of(mock(Song.class)));
-        when(songResolutionService.resolveAndPersist(EXTRA_VIDEO_ID)).thenReturn(Optional.of(mock(Song.class)));
+        when(songResolutionService.resolveAndPersist(eq(EXPANDED_VIDEO_ID), org.mockito.ArgumentMatchers.any(User.class))).thenReturn(Optional.of(mock(Song.class)));
+        when(songResolutionService.resolveAndPersist(eq(EXTRA_VIDEO_ID), org.mockito.ArgumentMatchers.any(User.class))).thenReturn(Optional.of(mock(Song.class)));
 
         BulkImportResultDTO result = bulkImportService.importImmediately(
                 new BulkImportRequest("playlist-link", List.of(EXTRA_VIDEO_ID), null, null));
@@ -103,7 +103,7 @@ class BulkImportServiceTest {
                 .thenReturn(List.of(PLAIN_VIDEO_ID));
         when(youtubeIdLookupService.partitionKnownAndUnknown(List.of(PLAIN_VIDEO_ID)))
                 .thenReturn(new YoutubeIdLookupResult(Set.of(), Set.of(PLAIN_VIDEO_ID)));
-        when(songResolutionService.resolveAndPersist(PLAIN_VIDEO_ID)).thenReturn(Optional.of(mock(Song.class)));
+        when(songResolutionService.resolveAndPersist(eq(PLAIN_VIDEO_ID), org.mockito.ArgumentMatchers.any(User.class))).thenReturn(Optional.of(mock(Song.class)));
 
         bulkImportService.importImmediately(new BulkImportRequest(null, List.of(PLAIN_VIDEO_ID), null, null));
 
@@ -116,8 +116,8 @@ class BulkImportServiceTest {
         when(playlistExpansionService.expandAndMerge(null, submittedIds)).thenReturn(submittedIds);
         when(youtubeIdLookupService.partitionKnownAndUnknown(submittedIds)).thenReturn(new YoutubeIdLookupResult(
                 Set.of(ALREADY_KNOWN_VIDEO_ID), Set.of(RESOLVES_VIDEO_ID, UNRESOLVED_VIDEO_ID)));
-        when(songResolutionService.resolveAndPersist(RESOLVES_VIDEO_ID)).thenReturn(Optional.of(mock(Song.class)));
-        when(songResolutionService.resolveAndPersist(UNRESOLVED_VIDEO_ID)).thenReturn(Optional.empty());
+        when(songResolutionService.resolveAndPersist(eq(RESOLVES_VIDEO_ID), org.mockito.ArgumentMatchers.any(User.class))).thenReturn(Optional.of(mock(Song.class)));
+        when(songResolutionService.resolveAndPersist(eq(UNRESOLVED_VIDEO_ID), org.mockito.ArgumentMatchers.any(User.class))).thenReturn(Optional.empty());
 
         bulkImportService.importImmediately(new BulkImportRequest(null, submittedIds, null, "job-123"));
 
@@ -150,7 +150,7 @@ class BulkImportServiceTest {
         when(playlistExpansionService.expandAndMerge(null, List.of(PLAIN_VIDEO_ID))).thenReturn(List.of(PLAIN_VIDEO_ID));
         when(youtubeIdLookupService.partitionKnownAndUnknown(List.of(PLAIN_VIDEO_ID)))
                 .thenReturn(new YoutubeIdLookupResult(Set.of(), Set.of(PLAIN_VIDEO_ID)));
-        when(songResolutionService.resolveAndPersist(PLAIN_VIDEO_ID)).thenReturn(Optional.of(mock(Song.class)));
+        when(songResolutionService.resolveAndPersist(eq(PLAIN_VIDEO_ID), org.mockito.ArgumentMatchers.any(User.class))).thenReturn(Optional.of(mock(Song.class)));
 
         bulkImportService.importImmediately(new BulkImportRequest(null, List.of(PLAIN_VIDEO_ID), null, null));
 
@@ -169,7 +169,7 @@ class BulkImportServiceTest {
                 new YoutubeIdLookupResult(Set.of(ALREADY_KNOWN_VIDEO_ID), Set.of(RESOLVES_VIDEO_ID)));
         when(youtubeIdLookupService.resolveCanonicalSongs(Set.of(ALREADY_KNOWN_VIDEO_ID)))
                 .thenReturn(List.of(alreadyKnownSong));
-        when(songResolutionService.resolveAndPersist(RESOLVES_VIDEO_ID)).thenReturn(Optional.of(resolvedSong));
+        when(songResolutionService.resolveAndPersist(eq(RESOLVES_VIDEO_ID), org.mockito.ArgumentMatchers.any(User.class))).thenReturn(Optional.of(resolvedSong));
 
         bulkImportService.importImmediately(new BulkImportRequest(null, submittedIds, targetPlaylistId, null));
 
