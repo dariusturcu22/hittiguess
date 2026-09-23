@@ -993,3 +993,21 @@ Why: embedding the credit in the title leaks the answer onto the card face and c
 Decision: the YouTube import page keeps the job open in place with a progress bar and per-song checklist instead of redirecting to the playlist, the playlist song list refetches as items finish rather than once at the end, and the sidebar indicator links to that progress page. The playlist banner trims to a single line linking there.
 
 Why: redirecting away hid the only view that shows per-song state, and a banner with thumbnails duplicated what the sidebar and the page already cover. One progress view plus a pointer to it keeps all three surfaces consistent.
+
+## 2026-09 | Import progress resumes from storage, 404 alone means done
+
+Decision: the YouTube import page seeds its started state from the stored active-import job for that playlist, and only a 404 from the active-job poll counts as completion. Any other fetch error keeps the last known items on screen with a retrying note while the five-second poll continues.
+
+Why: a stored job is the only record that survives a reload, and the backend answers 404 exactly when no job is active. Treating every error as done turned a blip into a false completion, while the job kept running server-side.
+
+## 2026-09 | Dedup match carries artist lists split by role
+
+Decision: the verified-song similarity query aggregates artist names into main and featured arrays by role instead of one comma-joined string, and the match, precheck, and result schemas carry both lists end to end. Structured-source queries and LLM prompts take the mains joined for display; persistence writes one row per name.
+
+Why: the joined string collapsed roles the game needs apart, and a name containing a comma would have split wrong on the way back. Arrays keep the database's own role split intact through the fast path instead of reconstructing it.
+
+## 2026-09 | Public group preview exposes display identity only
+
+Decision: the unauthenticated group invite preview maps members to a lean shape with display name, avatar, and admin flag. User ids, presence, voice state, and join time stay behind membership.
+
+Why: the preview needs no auth by design, so everything it returns is public to anyone holding a code. The full member DTO was built for logged-in members, not for that audience.

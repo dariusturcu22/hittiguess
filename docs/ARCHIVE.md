@@ -710,3 +710,41 @@ Tests:
 - [x] AI prompt or schema tests if the suite covers them
 - [x] Frontend `npm run test -- --run`, `npm run lint`, and `npm run build` clean
 - [x] Backend `./mvnw test` clean
+
+## Fix-up batch: import resume, dedup artists, preview privacy, mosaic zoom, report year, explore query, invite exit, multi-artist
+
+Import progress resume (`frontend/app/(app)/playlists/[playlistId]/import/youtube/page.tsx`):
+- [x] Progress view initializes from an already running import on mount and reload
+- [x] Transient query errors no longer render as import complete, only genuine job absence does
+
+Dedup featured artists (`ai/app/metadata/service.py`, `ai/app/dedup/schemas.py`):
+- [x] VerifiedSongMatch carries featured artists from the stored row through the fast path result
+
+Group preview privacy (backend `GroupController`, `GroupMapper`):
+- [x] Public preview uses a lean member shape with display identity only, no user ids or presence
+
+Mosaic zoom (`frontend/components/playlist-cover-mosaic.tsx`):
+- [x] Zoom applies to YouTube thumbnail tiles only, custom covers render unscaled
+
+Report year validation (`SongReadOnlyView.tsx`):
+- [x] Malformed year input fails validation instead of passing the bounds check
+
+Explore membership check (`PlaylistService.java`):
+- [x] Membership test uses the existing repository exists query instead of streaming in Java
+
+Dead invite exit (both join pages):
+- [x] Invalid screen routes logged-out users to home instead of the protected library
+
+Multi-artist main credits (AI schemas, prompt, service, Java mapping):
+- [x] Precheck and result schemas carry main artists as a list with prompt guidance
+- [x] Service threads the list through verification, fallback, and dedup paths
+- [x] Java records and resolution persist one MAIN row per name with sequential orders
+- [x] Guess matching confirmed correct for multiple MAIN artists
+
+Tests:
+- [x] Frontend tests for import resume, error vs complete, mosaic zoom scope, report NaN year, invite exit route
+- [x] Backend tests for lean preview shape and repository membership check
+- [x] AI tests for dedup featured carry and main-artist list threading
+- [x] Frontend `npm run test -- --run`, `npm run lint`, and `npm run build` clean
+- [x] Backend `./mvnw test` clean
+- [x] AI `pytest` clean
