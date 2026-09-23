@@ -6,6 +6,7 @@ import org.dariusturcu.backend.security.oauth2.CustomOAuth2UserService;
 import org.dariusturcu.backend.security.oauth2.HttpCookieOAuth2AuthorizationRequestRepository;
 import org.dariusturcu.backend.security.oauth2.OAuth2AuthenticationFailureHandler;
 import org.dariusturcu.backend.security.oauth2.OAuth2AuthenticationSuccessHandler;
+import org.dariusturcu.backend.security.oauth2.ReturnToOAuth2AuthorizationRequestResolver;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
@@ -47,6 +48,9 @@ class SecurityConfigTest {
     private HttpCookieOAuth2AuthorizationRequestRepository authorizationRequestRepository;
 
     @Mock
+    private ReturnToOAuth2AuthorizationRequestResolver returnToAuthorizationRequestResolver;
+
+    @Mock
     private ObjectMapper objectMapper;
 
     @Test
@@ -82,6 +86,7 @@ class SecurityConfigTest {
                 oAuth2AuthenticationSuccessHandler,
                 oAuth2AuthenticationFailureHandler,
                 authorizationRequestRepository,
+                returnToAuthorizationRequestResolver,
                 objectMapper,
                 allowedOrigins);
     }

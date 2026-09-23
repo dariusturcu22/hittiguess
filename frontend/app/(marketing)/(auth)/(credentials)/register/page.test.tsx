@@ -60,4 +60,14 @@ describe("RegisterPage", () => {
     registerMutationCallbacks.onSuccess?.({});
     await waitFor(() => expect(registerPush).toHaveBeenCalledWith("/login?returnTo=%2Fplaylists%2Fjoin%2Fabc123"));
   });
+
+  it("carries the return target on the Google link", () => {
+    registerSearchParams = new URLSearchParams("returnTo=/groups/join/abc123");
+    render(<RegisterPage />);
+
+    expect(screen.getByRole("link", { name: "Continue with Google" })).toHaveAttribute(
+      "href",
+      expect.stringContaining("returnTo=%2Fgroups%2Fjoin%2Fabc123"),
+    );
+  });
 });

@@ -8,6 +8,7 @@ import org.dariusturcu.backend.security.oauth2.CustomOAuth2UserService;
 import org.dariusturcu.backend.security.oauth2.HttpCookieOAuth2AuthorizationRequestRepository;
 import org.dariusturcu.backend.security.oauth2.OAuth2AuthenticationFailureHandler;
 import org.dariusturcu.backend.security.oauth2.OAuth2AuthenticationSuccessHandler;
+import org.dariusturcu.backend.security.oauth2.ReturnToOAuth2AuthorizationRequestResolver;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.beans.factory.annotation.Value;
@@ -49,6 +50,7 @@ public class SecurityConfig {
     private final OAuth2AuthenticationSuccessHandler oAuth2AuthenticationSuccessHandler;
     private final OAuth2AuthenticationFailureHandler oAuth2AuthenticationFailureHandler;
     private final HttpCookieOAuth2AuthorizationRequestRepository authorizationRequestRepository;
+    private final ReturnToOAuth2AuthorizationRequestResolver returnToAuthorizationRequestResolver;
     private final ObjectMapper objectMapper;
     private final List<String> allowedFrontendOrigins;
 
@@ -60,6 +62,7 @@ public class SecurityConfig {
             OAuth2AuthenticationSuccessHandler oAuth2AuthenticationSuccessHandler,
             OAuth2AuthenticationFailureHandler oAuth2AuthenticationFailureHandler,
             HttpCookieOAuth2AuthorizationRequestRepository authorizationRequestRepository,
+            ReturnToOAuth2AuthorizationRequestResolver returnToAuthorizationRequestResolver,
             ObjectMapper objectMapper,
             @Value("${frontend.allowed-origins}") List<String> allowedFrontendOrigins
     ) {
@@ -70,6 +73,7 @@ public class SecurityConfig {
         this.oAuth2AuthenticationSuccessHandler = oAuth2AuthenticationSuccessHandler;
         this.oAuth2AuthenticationFailureHandler = oAuth2AuthenticationFailureHandler;
         this.authorizationRequestRepository = authorizationRequestRepository;
+        this.returnToAuthorizationRequestResolver = returnToAuthorizationRequestResolver;
         this.objectMapper = objectMapper;
         this.allowedFrontendOrigins = allowedFrontendOrigins;
     }
@@ -126,7 +130,8 @@ public class SecurityConfig {
                 .addFilterAfter(rateLimitingFilter, JwtAuthenticationFilter.class)
                 .oauth2Login(oauth2 -> oauth2
                         .authorizationEndpoint(auth -> auth
-                                .authorizationRequestRepository(authorizationRequestRepository))
+                                .authorizationRequestRepository(authorizationRequestRepository)
+                                .authorizationRequestResolver(returnToAuthorizationRequestResolver))
                         .userInfoEndpoint(userInfoEndpointConfig -> userInfoEndpointConfig
                                 .userService(customOAuth2UserService)
                         )

@@ -14,6 +14,7 @@ import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.oauth2.core.OAuth2AuthenticationException;
 import org.springframework.security.oauth2.core.OAuth2Error;
+import org.springframework.security.oauth2.core.endpoint.OAuth2AuthorizationRequest;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.Collection;
@@ -47,9 +48,40 @@ class OAuth2AuthenticationHandlerTest {
         CookieUtil cookieUtil = new CookieUtil();
         ReflectionTestUtils.setField(cookieUtil, "appEnv", "dev");
         OAuth2AuthenticationSuccessHandler handler =
-                new OAuth2AuthenticationSuccessHandler(jwtUtil, cookieUtil, authService);
+                new OAuth2AuthenticationSuccessHandler(
+                        jwtUtil, cookieUtil, new HttpCookieOAuth2AuthorizationRequestRepository(), authService);
         ReflectionTestUtils.setField(handler, "redirectUri", REDIRECT_URI);
         return handler;
+    }
+
+    private MockHttpServletRequest requestWithSavedAuthorizationRequest(
+            String returnTo, MockHttpServletResponse saveResponse) {
+        OAuth2AuthorizationRequest.Builder requestBuilder = OAuth2AuthorizationRequest.authorizationCode()
+                .clientId("google-client-id")
+                .authorizationUri("https://accounts.google.com/o/oauth2/auth")
+                .redirectUri("http://localhost:8080/login/oauth2/code/google");
+        if (returnTo != null) {
+            requestBuilder.additionalParameters(Map.of("returnTo", returnTo));
+        }
+        new HttpCookieOAuth2AuthorizationRequestRepository().saveAuthorizationRequest(
+                requestBuilder.build(), new MockHttpServletRequest(), saveResponse);
+        MockHttpServletRequest callbackRequest = new MockHttpServletRequest();
+        callbackRequest.setCookies(saveResponse.getCookies());
+        return callbackRequest;
+    }
+
+    private UsernamePasswordAuthenticationToken googleAuthentication() {
+        CustomOAuth2User principal = new CustomOAuth2User(googleUser(), Map.of("sub", "google-subject-1"));
+        return new UsernamePasswordAuthenticationToken(principal, null, List.of());
+    }
+
+    private void stubTokenCookies() {
+        when(jwtUtil.generateToken(org.mockito.ArgumentMatchers.any(User.class))).thenReturn("access-token");
+        when(authService.createAndSaveRefreshToken(
+                org.mockito.ArgumentMatchers.any(User.class), org.mockito.ArgumentMatchers.eq(false)))
+                .thenReturn("refresh-token");
+        when(jwtUtil.getExpirationSeconds()).thenReturn(900L);
+        when(jwtUtil.getRefreshExpirationSeconds()).thenReturn(604800L);
     }
 
     @Test
@@ -70,6 +102,32 @@ class OAuth2AuthenticationHandlerTest {
         Collection<String> setCookieHeaders = response.getHeaders("Set-Cookie");
         assertThat(setCookieHeaders).hasSize(3);
         assertThat(String.join(";", setCookieHeaders)).contains("refresh_token=refresh-token");
+    }
+
+    @Test
+    void successCarriesAReturnToDestinationThroughToTheFrontend() throws Exception {
+        stubTokenCookies();
+        MockHttpServletResponse saveResponse = new MockHttpServletResponse();
+        MockHttpServletRequest callbackRequest =
+                requestWithSavedAuthorizationRequest("/groups/join/abc123", saveResponse);
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        successHandler().onAuthenticationSuccess(callbackRequest, response, googleAuthentication());
+
+        assertThat(response.getRedirectedUrl()).isEqualTo(REDIRECT_URI + "?returnTo=/groups/join/abc123");
+    }
+
+    @Test
+    void successDropsAnOffSiteReturnToDestination() throws Exception {
+        stubTokenCookies();
+        MockHttpServletResponse saveResponse = new MockHttpServletResponse();
+        MockHttpServletRequest callbackRequest =
+                requestWithSavedAuthorizationRequest("https://evil.example.com", saveResponse);
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        successHandler().onAuthenticationSuccess(callbackRequest, response, googleAuthentication());
+
+        assertThat(response.getRedirectedUrl()).isEqualTo(REDIRECT_URI);
     }
 
     @Test

@@ -75,4 +75,23 @@ describe("LoginPage", () => {
     loginMutationCallbacks.onSuccess?.({});
     await waitFor(() => expect(loginPush).toHaveBeenCalledWith("/playlists"));
   });
+
+  it("carries the return target on the Google link", () => {
+    loginSearchParams = new URLSearchParams("returnTo=/groups/join/abc123");
+    render(<LoginPage />);
+
+    expect(screen.getByRole("link", { name: "Continue with Google" })).toHaveAttribute(
+      "href",
+      expect.stringContaining("returnTo=%2Fgroups%2Fjoin%2Fabc123"),
+    );
+  });
+
+  it("leaves the Google link bare without a return target", () => {
+    render(<LoginPage />);
+
+    expect(screen.getByRole("link", { name: "Continue with Google" })).toHaveAttribute(
+      "href",
+      expect.not.stringContaining("returnTo"),
+    );
+  });
 });
