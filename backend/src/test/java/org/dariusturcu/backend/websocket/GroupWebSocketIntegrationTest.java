@@ -9,6 +9,7 @@ import org.dariusturcu.backend.model.mapper.SongMapper;
 import org.dariusturcu.backend.model.user.AuthProvider;
 import org.dariusturcu.backend.model.user.Role;
 import org.dariusturcu.backend.model.user.User;
+import org.dariusturcu.backend.repository.GameSessionRepository;
 import org.dariusturcu.backend.repository.GroupRepository;
 import org.dariusturcu.backend.repository.MemberRepository;
 import org.dariusturcu.backend.repository.PlaylistMembershipRepository;
@@ -145,10 +146,10 @@ class GroupWebSocketIntegrationTest {
         }
 
         @Bean
-        GroupService groupService(GroupRepository groupRepository, MemberRepository memberRepository,
+        GroupService groupService(GroupRepository groupRepository, MemberRepository memberRepository, GameSessionRepository gameSessionRepository,
                                    PlaylistRepository playlistRepository, GroupMapper groupMapper,
                                    ApplicationEventPublisher eventPublisher, PlaylistAccessService playlistAccessService) {
-            return new GroupService(groupRepository, memberRepository, playlistRepository, groupMapper, eventPublisher, playlistAccessService);
+            return new GroupService(groupRepository, memberRepository, gameSessionRepository, playlistRepository, groupMapper, eventPublisher, playlistAccessService);
         }
     }
 

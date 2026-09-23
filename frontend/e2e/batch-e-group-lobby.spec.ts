@@ -154,10 +154,11 @@ test("group lobby joins members, persists settings, relays chat, and starts a se
     await expect(adminPage.getByRole("heading", { name: "Group Lobby" })).toBeVisible();
     await expect(memberPage.getByText(MEMBER_DISPLAY_NAME)).toBeVisible();
 
-    await adminPage.getByRole("button", { name: "Settings" }).click();
-    await adminPage.getByLabel("DJ mode").selectOption("ROTATING");
+    await adminPage.getByRole("button", { name: "Settings", exact: true }).click();
+    await adminPage.getByRole("combobox", { name: "DJ mode" }).click();
+    await adminPage.getByRole("option", { name: "Rotating" }).click();
     await adminPage.getByRole("button", { name: "Save changes" }).click();
-    await expect(adminPage.getByRole("button", { name: "Settings" })).toBeVisible();
+    await expect(adminPage.getByRole("button", { name: "Settings", exact: true })).toBeVisible();
 
     await adminPage.getByRole("button", { name: "Chat" }).click();
     await expect(
@@ -211,8 +212,9 @@ test("results screen exports the final ranking", async ({ browser }) => {
     await page.goto(`/sessions/${RESULTS_SESSION_ID}/results`);
 
     await expect(page.getByRole("heading", { name: "Game Over" })).toBeVisible();
-    const downloadPromise = page.waitForEvent("download");
     await page.getByRole("button", { name: "Download results" }).click();
+    const downloadPromise = page.waitForEvent("download");
+    await page.getByRole("button", { name: "Download CSV" }).click();
     const download = await downloadPromise;
     expect(download.suggestedFilename()).toBe(RESULTS_FILE_NAME);
   } finally {
@@ -257,7 +259,7 @@ test("gameplay shell renders placement, betting, and DJ link-out states", async 
     await expect(card).toBeVisible();
     await page.getByRole("button", { name: "Open chat" }).click();
     await expect(page.getByRole("heading", { name: "Chat" })).toBeVisible();
-    await page.getByRole("button", { name: "Close chat" }).click();
+    await page.getByRole("complementary").getByRole("button", { name: "Close chat" }).click();
     await card.dispatchEvent("dragstart");
     await expect(page.getByRole("button", { name: "Place card at timeline position 1" })).toBeVisible();
 
