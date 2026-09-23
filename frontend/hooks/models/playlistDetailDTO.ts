@@ -11,6 +11,7 @@ export interface PlaylistDetailDTO {
   id: number;
   name: string;
   color: string;
+  description?: string;
   inviteCode: string;
   songCount: number;
   songs?: SongDTO[];

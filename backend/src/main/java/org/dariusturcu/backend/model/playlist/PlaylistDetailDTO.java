@@ -13,6 +13,7 @@ public record PlaylistDetailDTO(
         String name,
         @NotNull
         String color,
+        String description,
         @NotNull
         String inviteCode,
         @NotNull

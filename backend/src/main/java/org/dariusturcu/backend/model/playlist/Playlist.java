@@ -16,6 +16,8 @@ import java.util.List;
 @Getter
 @Table(name = "playlists")
 public class Playlist {
+    public static final int MAX_DESCRIPTION_LENGTH = 300;
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -23,6 +25,9 @@ public class Playlist {
     private String name;
 
     private String color;
+
+    @Column(length = MAX_DESCRIPTION_LENGTH)
+    private String description;
 
     @Column(nullable = false, updatable = false, unique = true)
     private String inviteCode;

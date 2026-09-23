@@ -584,6 +584,26 @@ Tests:
 
 - [x] Add backend deletion coverage and run backend and frontend checks
 
+## Fix: Export paper sizes, combined info+QR output, and playlist description backend
+
+Closes out the two items the LAN playtest findings above left open pending backend support. No story gate: both are bug-fix-shaped backend/frontend slices tracked directly in `TASKS.md`, not new feature scope.
+
+- [x] Extend `PaperSize` with `LEGAL` (8.5x14in), `A3` (297x420mm), `A5` (148x210mm), and `TABLOID` (11x17in) at the existing 300dpi convention, alongside `A4`/`LETTER`
+- [x] Add a combined info+QR card face: each card shows its info (artist/year/title) on the same face as a small QR code, a single-sided alternative to the existing double-sided info/QR pair, since duplex printing isn't built
+- [x] Add `GET /api/playlists/{playlistId}/export/combined` (`ExportController`/`ExportService`), same `paperSize` query param and access check as `/export/info` and `/export/qr`
+- [x] Add a `description` column to `Playlist` (migration, nullable, `VARCHAR(300)` matching `Playlist.MAX_DESCRIPTION_LENGTH`, the same constant `UpdatePlaylistRequest`'s validation bounds against)
+- [x] Add `description` to `UpdatePlaylistRequest` (bounded length, matching the field's existing textarea) and `PlaylistDetailDTO` (not `PlaylistSummaryDTO`, no mockup shows a description on the playlist grid cards), and wire it through `PlaylistMapper`/`PlaylistService.updatePlaylist`
+- [x] Frontend: hydrate the edit page's description draft from the playlist, include it in the save call, and save whenever either the name or the description actually changed, not just the name
+- [x] Frontend: add the new paper sizes and the combined content option to the export dialog's selects
+- [x] Regenerate the orval API client against the updated OpenAPI schema
+
+Tests:
+- [x] Unit tests for the new `PaperSize` values' page/margin math, same shape as the existing `A4`/`LETTER` coverage
+- [x] Combined-page rendering is exercised through `ExportServiceTest`'s new combined-PDF tests, matching how `CardGenerator`/`QRGenerator` already have no direct unit tests of their own and are only exercised through `ExportServiceTest`
+- [x] Unit test: the combined export checks read access the same way `ExportServiceTest`'s existing info/QR tests do, no separate controller-level export test existed to extend
+- [x] Unit tests for the description update: within the length bound saves, over it is rejected, a non-owner update is rejected the same as the existing name/color update
+- [x] Frontend test: the edit page saves a description-only change (no name change) and hydrates the existing description into the draft on load
+
 ## LAN playtest findings, batch 2 (export dialog, fetch reliability)
 
 

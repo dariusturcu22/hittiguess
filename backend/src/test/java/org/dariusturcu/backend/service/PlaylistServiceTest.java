@@ -300,7 +300,7 @@ class PlaylistServiceTest {
 
     @Test
     void updatePlaylistRejectsANonOwnerMember() {
-        UpdatePlaylistRequest request = new UpdatePlaylistRequest("New name", null);
+        UpdatePlaylistRequest request = new UpdatePlaylistRequest("New name", null, null);
         doThrow(new AccessDeniedException("Only the playlist owner can perform this action"))
                 .when(playlistAccessService).requireOwner(playlist, currentUser);
 

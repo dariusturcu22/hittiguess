@@ -45,6 +45,7 @@ vi.mock("@/hooks/generated/playlist-management/playlist-management", () => ({
       id: 7,
       name: "Party mix",
       color: "cba6f7",
+      description: "Late-night driving songs",
       inviteCode: "ABCD1234",
       songs: [],
       members: [],
@@ -109,11 +110,31 @@ describe("EditPlaylistPage", () => {
     fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
 
     expect(updatePlaylistMutate).toHaveBeenCalledWith(
-      { playlistId: 7, data: { name: "Renamed mix" } },
+      { playlistId: 7, data: { name: "Renamed mix", description: "Late-night driving songs" } },
       expect.anything(),
     );
     await waitFor(() => expect(toastMocks.success).toHaveBeenCalledWith("Changes saved"));
     expect(routerPush).toHaveBeenCalledWith("/playlists/7");
+  });
+
+  it("hydrates the description field from the loaded playlist", async () => {
+    await renderPage();
+
+    expect(screen.getByLabelText("Description")).toHaveValue("Late-night driving songs");
+  });
+
+  it("saves a description-only change with the unchanged name", async () => {
+    updatePlaylistMutate.mockImplementation((_args, options) => options?.onSuccess?.());
+    await renderPage();
+
+    fireEvent.change(screen.getByLabelText("Description"), { target: { value: "Songs for the drive home" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
+
+    expect(updatePlaylistMutate).toHaveBeenCalledWith(
+      { playlistId: 7, data: { name: "Party mix", description: "Songs for the drive home" } },
+      expect.anything(),
+    );
+    await waitFor(() => expect(toastMocks.success).toHaveBeenCalledWith("Changes saved"));
   });
 
   it("shows an error when saving fails", async () => {

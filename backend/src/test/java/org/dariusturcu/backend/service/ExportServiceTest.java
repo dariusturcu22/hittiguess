@@ -78,7 +78,7 @@ class ExportServiceTest {
     }
 
     @Test
-    void qrPdfRendersOnBothPaperSizes() {
+    void qrPdfRendersOnEveryPaperSize() {
         Playlist playlist = playlistWithSongs(songWithTitle("One"));
         Mockito.when(playlistRepository.findById(PLAYLIST_ID)).thenReturn(Optional.of(playlist));
 
@@ -86,6 +86,19 @@ class ExportServiceTest {
             byte[] pdf = exportWithUser(service(), playlist,
                     (exportService, playlistId) -> exportService.generateQrPdf(playlistId, paperSize));
             assertThat(pdf).isNotEmpty();
+        }
+    }
+
+    @Test
+    void combinedPdfRendersOnEveryPaperSize() {
+        Playlist playlist = playlistWithSongs(songWithTitle("One"));
+        Mockito.when(playlistRepository.findById(PLAYLIST_ID)).thenReturn(Optional.of(playlist));
+
+        for (PaperSize paperSize : PaperSize.values()) {
+            byte[] pdf = exportWithUser(service(), playlist,
+                    (exportService, playlistId) -> exportService.generateCombinedPdf(playlistId, paperSize));
+            assertThat(pdf).isNotEmpty();
+            assertThat(new String(pdf, 0, 5, StandardCharsets.US_ASCII)).isEqualTo("%PDF-");
         }
     }
 
@@ -116,6 +129,17 @@ class ExportServiceTest {
 
         exportWithUser(service(), playlist,
                 (exportService, playlistId) -> exportService.generateInfoPdf(playlistId, PaperSize.A4));
+
+        verify(playlistAccessService).requireRead(any(Playlist.class), any(User.class));
+    }
+
+    @Test
+    void readAccessIsCheckedBeforeCombinedExportTheSameAsTheOtherTwoOutputs() {
+        Playlist playlist = playlistWithSongs(songWithTitle("One"));
+        Mockito.when(playlistRepository.findById(PLAYLIST_ID)).thenReturn(Optional.of(playlist));
+
+        exportWithUser(service(), playlist,
+                (exportService, playlistId) -> exportService.generateCombinedPdf(playlistId, PaperSize.A4));
 
         verify(playlistAccessService).requireRead(any(Playlist.class), any(User.class));
     }

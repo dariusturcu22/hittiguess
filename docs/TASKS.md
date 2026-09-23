@@ -848,10 +848,10 @@ Reported during the first multi-device playtest. Items marked reproduce-first ma
 
 Confirmed bugs (verified in code, fix directly):
 - [x] Clipboard copies assume `navigator.clipboard`, which is undefined over plain-HTTP LAN, so every invite and results copy throws. Add a shared copy helper with a non-Clipboard fallback and use it at all five call sites
-- [ ] Export renders as an inline section, not a dialog, with no preview and only info/QR plus A4/Letter. Convert to a dialog; combined info+QR output and extra paper sizes need backend support and land separately
+- [x] Export renders as an inline section, not a dialog, with no preview and only info/QR plus A4/Letter. Convert to a dialog (done); combined info+QR output and extra paper sizes need backend support and land separately (see the Fix: Export paper sizes section below)
 - [x] Library tabs run Owned-first with All last. Move All first and default it; put Join left of Create playlist with a code/link popup below it
 - [x] Edit-playlist save has no toast and fails silently; cancel gives no feedback. Add success toast with detail redirect (already redirects) and an error message
-- [ ] Playlist description has no backend support at all (no column, no update field), so the edit-page description field silently drops input. Needs an entity/migration/endpoint slice before the field can work
+- [x] Playlist description has no backend support at all (no column, no update field), so the edit-page description field silently drops input. Needs an entity/migration/endpoint slice before the field can work (see the Fix: Export paper sizes section below)
 
 Reproduce-first on the fixed stack:
 - [x] YouTube playlist import stuck at connecting (real bug, not stale-bundle: the page never opens the socket it gates on. Fixed by dropping the gate since expansion is REST)

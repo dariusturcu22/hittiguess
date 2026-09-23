@@ -2,7 +2,11 @@ package org.dariusturcu.backend.util;
 
 public enum PaperSize {
     A4(2480, 3508),
-    LETTER(2550, 3300);
+    LETTER(2550, 3300),
+    LEGAL(2550, 4200),
+    A3(3508, 4961),
+    A5(1748, 2480),
+    TABLOID(3300, 5100);
 
     private final int widthPixels;
     private final int heightPixels;
