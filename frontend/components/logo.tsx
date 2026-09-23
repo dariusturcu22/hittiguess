@@ -44,6 +44,10 @@ export const LogoBars = ({
   const [bars, setBars] = useState<WaveformBar[]>(STATIC_BARS);
 
   useEffect(() => {
+    // Math.random() must not run during the server render, or the client's first render
+    // mismatches it and React discards the mismatched markup; this effect is the only place
+    // safe to call it, not a synchronization step the lint rule's generic advice applies to.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setBars(randomWaveformBars());
   }, []);
 
