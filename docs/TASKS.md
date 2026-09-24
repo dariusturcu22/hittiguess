@@ -961,11 +961,11 @@ Batch 7, error handling and redirects (high and medium):
 - [ ] Without a Resend key, verification and password-reset links are written to the application log, so anyone with log access can take over an account. Refuse to start in production without an email key, and never log the link
 
 Batch 8, hardening (low):
-- [ ] The frontend sends no Content-Security-Policy, `frame-ancestors`, or `Referrer-Policy`. Add them in `next.config.ts`
-- [ ] The results CSV export writes display names without neutralizing leading `=`, `+`, `-`, or `@`, so a name can run as a spreadsheet formula. Prefix such cells
-- [ ] Swagger UI and `/v3/api-docs` are public in production. Disable them outside development
-- [ ] The AI microservice compares the internal API key with `!=` and would accept an empty header if the key were left blank, and exposes `/metrics` and the FastAPI docs unauthenticated. Use a constant-time compare, refuse to start with an empty key, and restrict or disable those routes
-- [ ] `GroupService.joinGroup` checks the 8-member cap without a lock, so concurrent joins can exceed it. Enforce the cap atomically
+- [x] The frontend sends no Content-Security-Policy, `frame-ancestors`, or `Referrer-Policy`. Add them in `next.config.ts`
+- [x] The results CSV export writes display names without neutralizing leading `=`, `+`, `-`, or `@`, so a name can run as a spreadsheet formula. Prefix such cells
+- [x] Swagger UI and `/v3/api-docs` are public in production. Disable them outside development
+- [x] The AI microservice compares the internal API key with `!=` and would accept an empty header if the key were left blank, and exposes `/metrics` and the FastAPI docs unauthenticated. Use a constant-time compare, refuse to start with an empty key, and restrict or disable those routes
+- [x] `GroupService.joinGroup` checks the 8-member cap without a lock, so concurrent joins can exceed it. Enforce the cap atomically
 
 Existing test failures:
 - [x] `frontend/app/(app)/groups/[groupId]/page.test.tsx` never finishes and pins a worker, which stalls `npm run test`

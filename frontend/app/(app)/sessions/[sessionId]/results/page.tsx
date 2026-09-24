@@ -27,7 +27,10 @@ function StatBoard({ title, entries, colorClass }: { title: string; entries: Lea
 }
 
 function csvCell(value: string | number | undefined): string {
-  return `"${String(value ?? "").replaceAll('"', '""')}"`;
+  const renderedValue = String(value ?? "");
+  const formulaPrefix = /^[=+\-@]/;
+  const safeValue = formulaPrefix.test(renderedValue) ? `'${renderedValue}` : renderedValue;
+  return `"${safeValue.replaceAll('"', '""')}"`;
 }
 
 function escapeHtml(value: string): string {
