@@ -1048,6 +1048,12 @@ Decision: an import holds at most 200 songs, on both the on-the-spot bulk import
 
 Why: every new song costs OpenAI and YouTube calls, and both import paths accepted unbounded lists, so one user could run up the bill without limit. The reservation is atomic so concurrent imports can't together pass the day's limit. Four-letter join codes are guessable, and without removal an unwanted joiner could only be escaped by abandoning the group. A STOMP subscription is authorized only when it's made, so a removed member would keep receiving group messages until their socket closed; closing it forces every subscription through the membership check again.
 
+## 2026-09 | Batch 7 preserves explained refusals and hides unexpected failures
+
+Decision: the global handler preserves `ResponseStatusException` status and reason, returns 403 for `AccessDeniedException`, returns 400 with its message for `IllegalArgumentException`, which services throw for a request they refuse as invalid, and keeps the existing explicit exception mappings. Other runtime failures are logged server-side and return a generic 500 message. OAuth `returnTo` values are accepted only as slash-prefixed paths without backslashes, control characters, or a protocol-relative prefix. Production startup requires a Resend API key, while environments without a key silently skip email delivery and never write a token-bearing link to logs.
+
+Why: explicit refusals are user-facing state that the frontend already shows. Infrastructure failures are not safe client detail. Browser URL parsing treats a backslash after a slash as an authority boundary and strips tabs and newlines, so path-prefix checking alone does not establish a local redirect. Email tokens grant account access and cannot appear in logs.
+
 ## 2026-09 | Batch 8 uses response headers and transactional locks for low-risk hardening
 
 Decision: the frontend sends a CSP that permits the API origin and matching WebSocket origin, YouTube thumbnails, Google avatars, self-hosted fonts, browser media blobs, and Next inline scripts, plus `unsafe-eval` in development only, which React needs there. Production disables Springdoc. The AI service rejects an empty internal key at startup, uses a constant-time comparison, and exposes neither docs nor metrics. CSV formula prefixes are escaped with an apostrophe. Group joins lock the matching group row pessimistically before capacity is checked, through dedicated finders so read-only lookups such as the invite preview never take the lock.

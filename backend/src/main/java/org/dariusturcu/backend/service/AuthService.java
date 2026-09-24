@@ -3,6 +3,8 @@ package org.dariusturcu.backend.service;
 import io.jsonwebtoken.JwtException;
 import lombok.RequiredArgsConstructor;
 import org.dariusturcu.backend.exception.ConflictException;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
 import org.dariusturcu.backend.exception.EmailNotVerifiedException;
 import org.dariusturcu.backend.exception.ResourceNotFoundException;
 import org.dariusturcu.backend.model.EmailVerificationToken;
@@ -206,11 +208,11 @@ public class AuthService {
 
     public AuthResult refreshTokens(String refreshToken) {
         RefreshToken storedToken = refreshTokenRepository.findByToken(TokenHasher.hash(refreshToken))
-                .orElseThrow(() -> new RuntimeException("Invalid refresh accessToken"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid refresh token"));
 
         if (storedToken.isExpired()) {
             refreshTokenRepository.delete(storedToken);
-            throw new RuntimeException("Refresh accessToken expired, please log in again");
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Refresh token expired, please log in again");
         }
 
         User user = storedToken.getUser();

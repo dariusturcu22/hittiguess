@@ -65,7 +65,7 @@ class TwoFactorServiceTest {
     @Test
     void confirmWithNoPendingSetupIsRejected() {
         assertThatThrownBy(() -> twoFactorService.confirm(user, "123456"))
-                .isInstanceOf(IllegalStateException.class);
+                .isInstanceOf(ConflictException.class);
     }
 
     @Test

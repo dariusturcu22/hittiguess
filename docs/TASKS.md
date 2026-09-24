@@ -956,9 +956,11 @@ Batch 6, resource abuse (high):
 - [x] A removed member keeps receiving group topic messages on subscriptions made before the kick, and could rejoin with the same code. Close the removed user's sockets so every group subscription has to be authorized again, and refuse a removed user's rejoin for the life of the group. The lobby gets a remove control for the admin, and the removed member's page falls back to the group unavailable state
 
 Batch 7, error handling and redirects (high and medium):
-- [ ] `GlobalExceptionHandler` maps every `RuntimeException` to 400 with its raw message, so Spring's `AccessDeniedException` returns 400 instead of 403, `ResponseStatusException` loses its status, and internal messages (database constraint names, PDF failures) reach clients. Map the specific exceptions to their statuses and return a generic message for everything else
-- [ ] The `returnTo` checks in `ReturnToOAuth2AuthorizationRequestResolver`, `OAuth2AuthenticationSuccessHandler`, and `frontend/lib/return-to.ts` reject `//` but accept `/\`, which browsers treat the same way, so a crafted login link can likely redirect off-site after sign-in (unverified). Reject backslashes and any value that resolves to another origin
-- [ ] Without a Resend key, verification and password-reset links are written to the application log, so anyone with log access can take over an account. Refuse to start in production without an email key, and never log the link
+- [x] `GlobalExceptionHandler` maps every `RuntimeException` to 400 with its raw message, so Spring's `AccessDeniedException` returns 400 instead of 403, `ResponseStatusException` loses its status, and internal messages (database constraint names, PDF failures) reach clients. Map the specific exceptions to their statuses and return a generic message for everything else
+- [x] The `returnTo` checks in `ReturnToOAuth2AuthorizationRequestResolver`, `OAuth2AuthenticationSuccessHandler`, and `frontend/lib/return-to.ts` reject `//` but accept `/\`, which browsers treat the same way, so a crafted login link can likely redirect off-site after sign-in (unverified). Reject backslashes and any value that resolves to another origin
+- [x] Without a Resend key, verification and password-reset links are written to the application log, so anyone with log access can take over an account. Refuse to start in production without an email key, and never log the link
+- [x] With the generic 500 fallback, refusals thrown as `IllegalArgumentException` (a wrong two-factor code, an empty chat message, an out-of-range win condition), an expired refresh token, two-factor confirm before setup, and an empty playlist export would all read as server errors. Map `IllegalArgumentException` to 400 and give the others their own client status
+- [x] `returnTo` also accepts tabs and newlines, which browsers strip, so `/\t/host` becomes `//host`. Reject control characters on both sides
 
 Batch 8, hardening (low):
 - [x] The frontend sends no Content-Security-Policy, `frame-ancestors`, or `Referrer-Policy`. Add them in `next.config.ts`
@@ -986,5 +988,5 @@ Tests:
 - [x] Batch 6: service tests for the background playlist import cap and quota, the join-attempt limit, the admin kick (admin only, not while a session runs, the kicked user can't rejoin), and closing a kicked user's sockets
 - [x] The batch 5 display name pattern uses Java's `\p{Cntrl}`, which the OpenAPI spec publishes unchanged and the generated zod schema compiles as a JavaScript `u` regex, which throws on load. Use `\p{Cc}`, valid in both, and regenerate the client
 - [x] Batch 6: frontend tests for the lobby kick control and the import page showing the server's refusal message
-- [ ] Batch 7: handler tests for each mapped status and the generic message, and unit tests for `returnTo` rejecting `/\` and other-origin values on both sides
+- [x] Batch 7: handler tests for each mapped status and the generic message, and unit tests for `returnTo` rejecting `/\` and other-origin values on both sides
 - [x] Batch 8: tests for CSV cell neutralizing, the AI key compare and empty-key startup refusal, and the atomic group cap

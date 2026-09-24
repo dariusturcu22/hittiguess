@@ -120,7 +120,7 @@ public class ExportService {
         List<Song> songs = playlist.getSongs();
 
         if (songs.isEmpty()) {
-            throw new RuntimeException("Playlist has no songs to generate PDF for");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Playlist has no songs to generate PDF for");
         }
         if (songs.size() > MAX_SONGS_PER_EXPORT) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,

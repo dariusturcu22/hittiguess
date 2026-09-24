@@ -105,7 +105,10 @@ public class OAuth2AuthenticationSuccessHandler extends SimpleUrlAuthenticationS
     }
 
     private static String safeReturnToPath(String value) {
-        if (value == null || !value.startsWith("/") || value.startsWith("//")) {
+        // Browsers strip tabs and newlines from URLs and read a backslash as a slash, so any
+        // of them could turn the path into "//host".
+        if (value == null || !value.startsWith("/") || value.startsWith("//") || value.contains("\\")
+                || value.chars().anyMatch(Character::isISOControl)) {
             return null;
         }
         return value;
