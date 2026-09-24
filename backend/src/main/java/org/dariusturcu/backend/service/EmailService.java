@@ -7,13 +7,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
-// RESEND_API_KEY needs a real Resend account, which does not exist in every environment yet
-// (see .env.example). Rather than failing registration or a password-reset request outright
-// when it's absent, sending degrades to a log line carrying the same link a real email would,
-// so local development and CI can still walk the verification/reset flow by hand. See
-// DECISIONS.md.
-@Slf4j
 @Service
+@Slf4j
 public class EmailService {
     private static final String VERIFICATION_EMAIL_SUBJECT = "Verify your hittiguess email";
     private static final String PASSWORD_RESET_EMAIL_SUBJECT = "Reset your hittiguess password";
@@ -53,8 +48,6 @@ public class EmailService {
 
     private void send(String recipientEmail, String subject, String htmlBody) {
         if (!sendingEnabled) {
-            log.warn("RESEND_API_KEY not configured, logging instead of sending. To: {}, Subject: {}, Body: {}",
-                    recipientEmail, subject, htmlBody);
             return;
         }
 
@@ -71,7 +64,7 @@ public class EmailService {
             // A transient email-provider failure should not block account creation or a
             // password-reset request from otherwise succeeding; the caller already generated
             // a valid token, and resend-verification/password-reset/request exist to retry.
-            log.error("Failed to send email to {}: {}", recipientEmail, exception.getMessage());
+            log.error("Email delivery failed", exception);
         }
     }
 }

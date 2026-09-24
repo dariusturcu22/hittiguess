@@ -14,5 +14,8 @@ describe("safeReturnToPath", () => {
     expect(safeReturnToPath("playlists/join/abc")).toBeNull();
     expect(safeReturnToPath("https://evil.example.com")).toBeNull();
     expect(safeReturnToPath("//evil.example.com/playlists")).toBeNull();
+    expect(safeReturnToPath("/\\evil.example.com/playlists")).toBeNull();
+    expect(safeReturnToPath("/\t/evil.example.com/playlists")).toBeNull();
+    expect(safeReturnToPath("/\n/evil.example.com/playlists")).toBeNull();
   });
 });

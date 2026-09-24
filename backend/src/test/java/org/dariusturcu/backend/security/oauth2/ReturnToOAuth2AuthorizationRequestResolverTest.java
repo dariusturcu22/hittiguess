@@ -66,6 +66,17 @@ class ReturnToOAuth2AuthorizationRequestResolverTest {
     }
 
     @Test
+    void backslashAndProtocolRelativeReturnToAreDroppedFromTheSavedAuthorizationRequest() {
+        for (String unsafeReturnTo : java.util.List.of("/\\evil.example.com", "//evil.example.com", "/\n/evil.example.com")) {
+            OAuth2AuthorizationRequest resolved = resolver().resolve(
+                    authorizationEndpointRequest(unsafeReturnTo), GOOGLE_REGISTRATION_ID);
+
+            assertThat(resolved).isNotNull();
+            assertThat(resolved.getAdditionalParameters()).doesNotContainKey("returnTo");
+        }
+    }
+
+    @Test
     void missingReturnToLeavesTheSavedAuthorizationRequestUntouched() {
         OAuth2AuthorizationRequest resolved =
                 resolver().resolve(authorizationEndpointRequest(null), GOOGLE_REGISTRATION_ID);
