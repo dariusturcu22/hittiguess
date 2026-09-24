@@ -57,6 +57,7 @@ Every rate-limited request the core service rejects, whichever limiter caught it
 | PUT | `/api/playlists/{playlistId}/cover` | `PixelArtImageController`, multipart upload, owner only, pixelizes and stores the image as PNG bytes on `Playlist.coverImage`, story 47 |
 | GET | `/api/playlists/{playlistId}/cover` | `PixelArtImageController`, returns the stored cover PNG bytes, story 47 |
 | POST | `/api/playlists/{playlistId}/import-jobs` | `PlaylistImportJobController`, starts a background YouTube import into the playlist and returns the job id immediately, story 47 |
+| GET | `/api/playlists/{playlistId}/import-jobs/{importJobId}` | `PlaylistImportJobController`, one import job of the playlist, running or finished, with per-video results; needs read access to the playlist. The import screen reads a finished job's final results through it |
 | GET | `/api/playlists/{playlistId}/import-jobs/active` | `PlaylistImportJobController`, the playlist's currently running import job with per-video progress, if any, story 47 |
 | POST | `/api/groups` | `GroupController`, creates a group, the creator becomes its admin, story 39 |
 | POST | `/api/groups/join` | `GroupController`, join by invite link, rejects a banned or already-in-a-group user, story 39 |
