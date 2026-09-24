@@ -206,7 +206,6 @@ export default function GameSessionPage({ params }: PageProps) {
   const [isTurnNoticeVisible, setIsTurnNoticeVisible] = useState(false);
   const [correctGuessToast, setCorrectGuessToast] = useState<CorrectGuessToast | null>(null);
   const [isGuessResultCorrect, setIsGuessResultCorrect] = useState<boolean | null>(null);
-  const currentPlayerIdReference = useRef<number | undefined>(undefined);
   const [isIntroDismissed, setIsIntroDismissed] = useState(() => typeof window !== "undefined" && readIntroSeen(sessionId));
   const [now, setNow] = useState(() => Date.now());
   const trackReference = useRef<HTMLDivElement>(null);
@@ -225,17 +224,13 @@ export default function GameSessionPage({ params }: PageProps) {
     setIsGuessResultCorrect(null);
   }
 
-  useEffect(() => {
-    currentPlayerIdReference.current = currentPlayer?.id;
-  });
-
   const handleRoundEvent = useCallback((event: SessionRoundEvent) => {
     if (event.type === PLACEMENT_PREVIEW_EVENT) {
       setPreviewGap({ roundId: event.payload?.roundId, position: event.payload?.position ?? null });
       return;
     }
     if (event.type === GUESS_CORRECT_EVENT) {
-      if (event.payload?.playerId !== currentPlayerIdReference.current) setCorrectGuessToast(event.payload ?? null);
+      setCorrectGuessToast(event.payload ?? null);
       return;
     }
     if (event.type === NEXT_ROUND_EVENT || event.type === ROUND_STARTED_EVENT) {
@@ -593,7 +588,7 @@ export default function GameSessionPage({ params }: PageProps) {
       <span className="shrink-0 text-xs text-muted-foreground">Round {roundNumber}</span>
     </div> : null}
 
-    {correctGuessToast ? <div role="status" className="absolute right-6 top-24 z-30 flex items-center gap-2.5 rounded-2xl border-2 border-border bg-card px-4 py-2.5 shadow-[4px_4px_0_var(--shadow-color)] animate-in fade-in-0 slide-in-from-right-4 sm:right-14">
+    {correctGuessToast && correctGuessToast.playerId !== currentPlayer?.id ? <div role="status" className="absolute right-6 top-24 z-30 flex items-center gap-2.5 rounded-2xl border-2 border-border bg-card px-4 py-2.5 shadow-[4px_4px_0_var(--shadow-color)] animate-in fade-in-0 slide-in-from-right-4 sm:right-14">
       <PlayerAvatar name={correctGuessToast.displayName} colorIndex={Math.max(0, players.findIndex((player) => player.id === correctGuessToast.playerId))} />
       <span className="text-xs font-bold text-card-foreground">{correctGuessHeadline(correctGuessToast)}</span>
       <Check className="size-4 text-green" strokeWidth={3} />
