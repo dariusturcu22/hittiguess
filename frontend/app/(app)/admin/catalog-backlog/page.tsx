@@ -5,9 +5,11 @@ import { toast } from "sonner";
 
 import {
   useBacklogStatus,
+  useDrainNow,
   useEnqueue,
 } from "@/hooks/generated/admin-catalog-seeding/admin-catalog-seeding";
 import type { EnqueueResultDTO } from "@/hooks/models/enqueueResultDTO";
+import type { PatientRecheckDTO } from "@/hooks/models/patientRecheckDTO";
 import { Skeleton } from "@/components/shadcn/skeleton";
 
 const YOUTUBE_ID_INPUT_PLACEHOLDER = [
@@ -19,6 +21,39 @@ const YOUTUBE_ID_INPUT_PLACEHOLDER = [
 // The scheduled sweep drains patiently in the background; re-reading on this
 // cadence keeps the processed counts moving without hammering the endpoint.
 const BACKLOG_STATUS_REFRESH_MILLISECONDS = 30_000;
+// While a drain runs, the rechecks table follows each patient answer as it lands.
+const DRAINING_STATUS_REFRESH_MILLISECONDS = 3_000;
+const RECHECK_ORIGIN_LABELS: Record<string, string> = {
+  FAST_TIER_RECHECK: "Fast-tier import",
+  USER_ADD_RECHECK: "Added by hand",
+};
+
+function RecheckRow({ recheck }: { recheck: PatientRecheckDTO }) {
+  const hasPatientYear = recheck.patientYear !== undefined && recheck.patientYear !== null;
+  const isYearChanged = hasPatientYear && recheck.patientYear !== recheck.provisionalYear;
+  const isFailed = recheck.status === "FAILED";
+  return (
+    <div className="flex items-center gap-4 px-5 py-3 border-b-2 border-background last:border-b-0" data-year-changed={isYearChanged ? "" : undefined}>
+      <div className="flex-1 min-w-0">
+        <div className="text-[13px] text-card-foreground truncate">{recheck.title ?? recheck.youtubeId}</div>
+        <div className="mt-0.5 text-[11px] text-muted-foreground truncate">
+          {[recheck.artists, recheck.origin ? RECHECK_ORIGIN_LABELS[recheck.origin] : undefined].filter(Boolean).join(" · ")}
+        </div>
+      </div>
+      <div className="flex items-center gap-2 font-display text-sm shrink-0">
+        <span className="text-muted-foreground" title="Provisional year">{recheck.provisionalYear ?? "?"}</span>
+        <span className="text-muted-foreground/60" aria-hidden="true">→</span>
+        {isFailed ? (
+          <span className="text-[11px] font-sans font-semibold text-destructive">Failed</span>
+        ) : hasPatientYear ? (
+          <span className={isYearChanged ? "text-destructive" : "text-green"} title="Patient-tier year">{recheck.patientYear}</span>
+        ) : (
+          <span className="text-[11px] font-sans font-semibold text-warning">Queued</span>
+        )}
+      </div>
+    </div>
+  );
+}
 
 function looksLikePlaylistLink(line: string): boolean {
   return line.includes("youtube.com") || line.includes("youtu.be");
@@ -85,8 +120,23 @@ export default function CatalogBacklogPage() {
     isLoading: statusLoading,
     isError: statusError,
     refetch: refetchStatus,
-  } = useBacklogStatus({ query: { refetchInterval: BACKLOG_STATUS_REFRESH_MILLISECONDS } });
+  } = useBacklogStatus({
+    query: {
+      refetchInterval: (query) => (query.state.data?.draining ? DRAINING_STATUS_REFRESH_MILLISECONDS : BACKLOG_STATUS_REFRESH_MILLISECONDS),
+    },
+  });
   const enqueueMutation = useEnqueue();
+  const drainMutation = useDrainNow();
+
+  function handleDrainNow() {
+    drainMutation.mutate(undefined, {
+      onSuccess: () => {
+        void refetchStatus();
+        toast.success("Draining the backlog now");
+      },
+      onError: () => toast.error("The backlog is already draining, or the drain couldn't start."),
+    });
+  }
 
   const [seedingInput, setSeedingInput] = React.useState("");
 
@@ -113,6 +163,10 @@ export default function CatalogBacklogPage() {
   const quotaRemaining = status?.quotaRemainingToday ?? 0;
   const dailyQuota = status?.dailyDrainQuota ?? 0;
   const queueItems = status?.queueItems ?? [];
+  const recentRechecks = status?.recentRechecks ?? [];
+  const changedRecheckCount = recentRechecks.filter((recheck) =>
+    recheck.patientYear !== undefined && recheck.patientYear !== null && recheck.patientYear !== recheck.provisionalYear).length;
+  const isDraining = Boolean(status?.draining);
 
   return (
     <div className="flex-1 min-w-0 box-border bg-dotted flex flex-col px-14 pt-11 pb-10">
@@ -124,10 +178,21 @@ export default function CatalogBacklogPage() {
           ADMIN
         </span>
       </div>
-      <p className="text-[13px] text-muted-foreground mb-[26px]">
-        Grows the catalog proactively. Patient by design, a multi-day drain is
-        fine.
-      </p>
+      <div className="flex items-start justify-between gap-4 mb-[26px]">
+        <p className="text-[13px] text-muted-foreground">
+          Grows the catalog proactively and rechecks every provisional answer
+          with the patient pipeline. Patient by design, a multi-day drain is
+          fine.
+        </p>
+        <button
+          type="button"
+          onClick={handleDrainNow}
+          disabled={isDraining || drainMutation.isPending || pending === 0}
+          className="shrink-0 rounded-full border-2 border-border-strong bg-card px-4 py-2 font-display text-[11px] text-card-foreground disabled:opacity-60"
+        >
+          {isDraining ? "Draining..." : "Drain now"}
+        </button>
+      </div>
 
       <div className="flex gap-5 mb-[26px] shrink-0">
         {statusError ? (
@@ -255,6 +320,26 @@ export default function CatalogBacklogPage() {
           </div>
         </div>
       </div>
+
+      <section aria-label="Provisional answers being rechecked" className="mt-6 bg-card border-[3px] border-border-strong rounded-xl shadow-lg box-border overflow-hidden flex flex-col max-h-[420px]">
+        <div className="px-5 pt-[18px] pb-[14px] font-display text-sm text-card-foreground border-b-2 border-background flex items-center justify-between">
+          Provisional answers being rechecked
+          <span className="font-sans font-semibold text-[11px] text-muted-foreground">
+            {changedRecheckCount > 0 ? `${changedRecheckCount} year${changedRecheckCount === 1 ? "" : "s"} corrected` : "Provisional year → patient year"}
+          </span>
+        </div>
+        <div className="flex-1 min-h-0 overflow-y-auto">
+          {recentRechecks.length === 0 ? (
+            <p className="p-6 text-center text-[12px] text-muted-foreground">
+              Songs users import land here with their fast-tier year, and get the patient pipeline&apos;s year once the drain reaches them.
+            </p>
+          ) : (
+            recentRechecks.map((recheck) => (
+              <RecheckRow key={`${recheck.youtubeId}-${recheck.enqueuedAt}`} recheck={recheck} />
+            ))
+          )}
+        </div>
+      </section>
     </div>
   );
 }
