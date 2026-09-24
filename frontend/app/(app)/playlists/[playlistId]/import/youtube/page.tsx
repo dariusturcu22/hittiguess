@@ -20,9 +20,9 @@ interface PageProps {
 }
 
 const YOUTUBE_INPUT_PLACEHOLDER = "https://youtube.com/playlist?list=...";
-// Songs now finish in parallel within seconds of each other, so the list refreshes
-// often enough to show each one as it lands.
-const ACTIVE_IMPORT_REFRESH_MILLISECONDS = 2_000;
+// Every API call counts toward the core service's per-user limit of 60 a minute, and
+// the sidebar polls the same import alongside this page, so this stays at five seconds.
+const ACTIVE_IMPORT_REFRESH_MILLISECONDS = 5_000;
 const WORKING_STAGE_LABELS: Record<string, string> = {
   IDENTIFYING: "Identifying the song...",
   DATING: "Finding the year...",

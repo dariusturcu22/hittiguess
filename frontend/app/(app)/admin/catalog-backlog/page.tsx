@@ -21,8 +21,9 @@ const YOUTUBE_ID_INPUT_PLACEHOLDER = [
 // The scheduled sweep drains patiently in the background; re-reading on this
 // cadence keeps the processed counts moving without hammering the endpoint.
 const BACKLOG_STATUS_REFRESH_MILLISECONDS = 30_000;
-// While a drain runs, the rechecks table follows each patient answer as it lands.
-const DRAINING_STATUS_REFRESH_MILLISECONDS = 3_000;
+// While a drain runs, the rechecks table follows each patient answer as it lands,
+// still well inside the core service's per-user limit of 60 requests a minute.
+const DRAINING_STATUS_REFRESH_MILLISECONDS = 5_000;
 const RECHECK_ORIGIN_LABELS: Record<string, string> = {
   FAST_TIER_RECHECK: "Fast-tier import",
   USER_ADD_RECHECK: "Added by hand",

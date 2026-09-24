@@ -15,8 +15,13 @@ vi.mock("@/hooks/generated/bulk-import/bulk-import", () => ({
 
 vi.mock("@/hooks/generated/playlist-import-jobs/playlist-import-jobs", () => ({
   useStartImport: () => ({ mutate: startImportMutate, isPending: false, isError: false }),
-  useActiveImport: () => activeImportState,
+  useActiveImport: (_playlistId: number, options: unknown) => {
+    activeImportOptions.current = options;
+    return activeImportState;
+  },
 }));
+
+const activeImportOptions = vi.hoisted(() => ({ current: undefined as unknown }));
 
 vi.mock("@/hooks/generated/playlist-management/playlist-management", () => ({
   useGetPlaylist: () => ({ data: { name: "Late Night Coding Mix" } }),
@@ -152,6 +157,13 @@ describe("ImportYoutubePage background import", () => {
     expect(
       screen.getByText("You can close this page. The import keeps running in the background."),
     ).toBeVisible();
+  });
+
+  it("polls the running import no faster than every five seconds, inside the per-user request limit", async () => {
+    await renderPage();
+
+    const refetchInterval = (activeImportOptions.current as { query: { refetchInterval: number } }).query.refetchInterval;
+    expect(refetchInterval).toBeGreaterThanOrEqual(5_000);
   });
 
   it("separates songs being worked on from those still waiting", async () => {
