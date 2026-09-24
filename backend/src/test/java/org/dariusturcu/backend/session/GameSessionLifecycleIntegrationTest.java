@@ -49,6 +49,8 @@ import org.dariusturcu.backend.difficulty.DifficultyBand;
 import org.dariusturcu.backend.difficulty.GroupDifficultyStrategy;
 import org.dariusturcu.backend.difficulty.SongDifficultyScorer;
 import org.dariusturcu.backend.service.SessionResultsStore;
+import org.dariusturcu.backend.repository.StoredSessionResultsRepository;
+import tools.jackson.databind.json.JsonMapper;
 import org.dariusturcu.backend.difficulty.DifficultyTunedSongSelector;
 
 import org.flywaydb.core.Flyway;
@@ -102,6 +104,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class GameSessionLifecycleIntegrationTest {
 
     private static final int MAX_ROUNDS_BEFORE_GIVING_UP = 30;
+    private static final int DEFAULT_WIN_CONDITION_CARD_COUNT = 5;
 
     static class ImmediateTaskScheduler implements TaskScheduler {
         @Override
@@ -174,8 +177,8 @@ class GameSessionLifecycleIntegrationTest {
         }
 
         @Bean
-        SessionResultsStore sessionResultsStore() {
-            return new SessionResultsStore();
+        SessionResultsStore sessionResultsStore(StoredSessionResultsRepository storedSessionResultsRepository) {
+            return new SessionResultsStore(storedSessionResultsRepository, JsonMapper.builder().build());
         }
 
         @Bean
@@ -464,7 +467,8 @@ class GameSessionLifecycleIntegrationTest {
         playlist.setInviteCode(label + "-playlist-" + System.nanoTime());
         playlist.setOwner(admin);
         Playlist savedPlaylist = playlistRepository.save(playlist);
-        for (int songIndex = 0; songIndex < 10; songIndex++) {
+        int startableSongCount = playerCount * DEFAULT_WIN_CONDITION_CARD_COUNT;
+        for (int songIndex = 0; songIndex < startableSongCount; songIndex++) {
             persistSong(savedPlaylist, admin, 1960 + songIndex, label + " Song " + songIndex);
         }
 

@@ -32,4 +32,10 @@ public class SessionBroadcastListener {
         messagingTemplate.convertAndSend(destination, objectMapper.writeValueAsString(event));
         log.info("sessionEvent type={} sessionId={}", event.type(), sessionId);
     }
+
+    @TransactionalEventListener(fallbackExecution = true)
+    public void onGuessResultEvent(GuessResultEvent event) {
+        messagingTemplate.convertAndSendToUser(event.username(), SessionDestinations.guessResultQueue(event.sessionId()),
+                objectMapper.writeValueAsString(event.result()));
+    }
 }

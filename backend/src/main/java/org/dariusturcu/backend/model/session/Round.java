@@ -9,7 +9,9 @@ import org.hibernate.annotations.BatchSize;
 
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 @Entity
 @Getter
@@ -44,6 +46,8 @@ public class Round {
     @Column(nullable = false)
     private RoundStatus status;
 
+    private Instant placementEndsAt;
+
     // Null until the active player locks in a placement.
     private Integer placedPosition;
     private Boolean placementCorrect;
@@ -53,6 +57,11 @@ public class Round {
 
     private Instant revealedAt;
     private Instant scoredAt;
+
+    @ElementCollection
+    @CollectionTable(name = "round_betting_skips", joinColumns = @JoinColumn(name = "round_id"))
+    @Column(name = "player_id")
+    private Set<Long> bettingSkippedPlayerIds = new HashSet<>();
 
     @OneToMany(mappedBy = "round", cascade = CascadeType.ALL, orphanRemoval = true)
     @BatchSize(size = 20)

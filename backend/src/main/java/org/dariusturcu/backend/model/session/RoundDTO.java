@@ -17,10 +17,12 @@ public record RoundDTO(
         Integer placedPosition,
         Boolean placementCorrect,
         List<BetDTO> bets,
+        List<Long> bettingSkippedPlayerIds,
         String revealedArtist,
         String revealedTitle,
         Integer revealedYear,
         String revealedColor,
+        Instant placementEndsAt,
         Instant countdownEndsAt,
         Instant bettingWindowEndsAt,
         Instant nextRoundStartsAt) {

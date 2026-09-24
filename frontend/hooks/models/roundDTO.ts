@@ -16,10 +16,12 @@ export interface RoundDTO {
   placedPosition?: number;
   placementCorrect?: boolean;
   bets?: BetDTO[];
+  bettingSkippedPlayerIds?: number[];
   revealedArtist?: string;
   revealedTitle?: string;
   revealedYear?: number;
   revealedColor?: string;
+  placementEndsAt?: string;
   countdownEndsAt?: string;
   bettingWindowEndsAt?: string;
   nextRoundStartsAt?: string;

@@ -49,6 +49,8 @@ import org.dariusturcu.backend.service.PendingSessionSongPool;
 import org.dariusturcu.backend.service.PlaylistAccessService;
 import org.dariusturcu.backend.service.PlaylistExpansionService;
 import org.dariusturcu.backend.service.SessionResultsStore;
+import org.dariusturcu.backend.repository.StoredSessionResultsRepository;
+import tools.jackson.databind.json.JsonMapper;
 
 import org.flywaydb.core.Flyway;
 import org.junit.jupiter.api.AfterEach;
@@ -97,7 +99,13 @@ import static org.assertj.core.api.Assertions.assertThat;
 @Transactional
 class DifficultySessionStartIntegrationTest {
 
-    private static final int REVIEWED_CARD_COUNT = 6;
+    private static final int TWO_PLAYER_WIN_CONDITION_CARD_COUNT = 5;
+    // Two players times the five-card win condition: the smallest pool a session starts with.
+    private static final int STARTABLE_TWO_PLAYER_POOL_SIZE = 10;
+    private static final int REVIEWED_CARD_COUNT = STARTABLE_TWO_PLAYER_POOL_SIZE;
+    private static final int SPARE_CATALOG_SONG_COUNT = 2;
+    private static final String KNOWN_VIDEO_ID_PREFIX = "known-video-";
+    private static final String UNKNOWN_VIDEO_ID = "ghost-video";
     private static final int FULL_GROUP_EXTRA_MEMBER_COUNT = 7;
     private static final int FULL_GROUP_CATALOG_SONG_COUNT = 24;
     private static final int FULL_GROUP_TARGET_CARD_COUNT = 8;
@@ -133,7 +141,12 @@ class DifficultySessionStartIntegrationTest {
             return new PlaylistExpansionService(null) {
                 @Override
                 public List<String> expandPlaylist(String playlistUrlOrId) {
-                    return List.of("known-video-1", "known-video-2", "known-video-3", "ghost-video");
+                    List<String> videoIds = new ArrayList<>();
+                    for (int videoNumber = 1; videoNumber <= STARTABLE_TWO_PLAYER_POOL_SIZE; videoNumber++) {
+                        videoIds.add(KNOWN_VIDEO_ID_PREFIX + videoNumber);
+                    }
+                    videoIds.add(UNKNOWN_VIDEO_ID);
+                    return videoIds;
                 }
             };
         }
@@ -144,8 +157,8 @@ class DifficultySessionStartIntegrationTest {
         }
 
         @Bean
-        SessionResultsStore sessionResultsStore() {
-            return new SessionResultsStore();
+        SessionResultsStore sessionResultsStore(StoredSessionResultsRepository storedSessionResultsRepository) {
+            return new SessionResultsStore(storedSessionResultsRepository, JsonMapper.builder().build());
         }
 
         @Bean
@@ -344,8 +357,9 @@ class DifficultySessionStartIntegrationTest {
     void difficultyGenerateThenStartPlaysExactlyTheReviewedSet() {
         User admin = persistUser("difficulty-admin-" + System.nanoTime());
         User other = persistUser("difficulty-player-" + System.nanoTime());
-        Playlist playlist = playlistWithSongs("difficulty", admin, 8, VerificationStatus.VERIFIED, 30);
-        GroupDetailDTO createdGroup = twoPlayerGroup(admin, other, playlist, 5);
+        Playlist playlist = playlistWithSongs("difficulty", admin, REVIEWED_CARD_COUNT + SPARE_CATALOG_SONG_COUNT,
+                VerificationStatus.VERIFIED, 30);
+        GroupDetailDTO createdGroup = twoPlayerGroup(admin, other, playlist, TWO_PLAYER_WIN_CONDITION_CARD_COUNT);
 
         authenticateAs(admin);
         List<GeneratedSongPreviewDTO> previews = gameSessionService.generateDifficultySet(
@@ -365,8 +379,8 @@ class DifficultySessionStartIntegrationTest {
     void customStartFromPlaylistPlaysThatPlaylistsSongs() {
         User admin = persistUser("custom-admin-" + System.nanoTime());
         User other = persistUser("custom-player-" + System.nanoTime());
-        Playlist playlist = playlistWithSongs("custom", admin, 6, VerificationStatus.UNVERIFIED, null);
-        GroupDetailDTO createdGroup = twoPlayerGroup(admin, other, playlist, 5);
+        Playlist playlist = playlistWithSongs("custom", admin, STARTABLE_TWO_PLAYER_POOL_SIZE, VerificationStatus.UNVERIFIED, null);
+        GroupDetailDTO createdGroup = twoPlayerGroup(admin, other, playlist, TWO_PLAYER_WIN_CONDITION_CARD_COUNT);
         List<Long> playlistSongIds = new ArrayList<>(playlist.getSongs().stream().map(Song::getId).toList());
 
         authenticateAs(admin);
@@ -380,11 +394,12 @@ class DifficultySessionStartIntegrationTest {
     void customStartFromPastedLinkSkipsVideosWithNoCatalogSong() {
         User admin = persistUser("link-admin-" + System.nanoTime());
         User other = persistUser("link-player-" + System.nanoTime());
-        List<Long> knownIds = List.of(
-                persistCatalogSong(null, admin, 1960, "Known One", VerificationStatus.VERIFIED, 30, "known-video-1").getId(),
-                persistCatalogSong(null, admin, 1961, "Known Two", VerificationStatus.VERIFIED, 30, "known-video-2").getId(),
-                persistCatalogSong(null, admin, 1962, "Known Three", VerificationStatus.VERIFIED, 30, "known-video-3").getId());
-        GroupDetailDTO createdGroup = twoPlayerGroup(admin, other, null, 5);
+        List<Long> knownIds = new ArrayList<>();
+        for (int videoNumber = 1; videoNumber <= STARTABLE_TWO_PLAYER_POOL_SIZE; videoNumber++) {
+            knownIds.add(persistCatalogSong(null, admin, 1960 + videoNumber, "Known " + videoNumber,
+                    VerificationStatus.VERIFIED, 30, KNOWN_VIDEO_ID_PREFIX + videoNumber).getId());
+        }
+        GroupDetailDTO createdGroup = twoPlayerGroup(admin, other, null, TWO_PLAYER_WIN_CONDITION_CARD_COUNT);
 
         authenticateAs(admin);
         gameSessionService.startCustomSession(
