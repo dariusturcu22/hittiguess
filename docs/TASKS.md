@@ -930,6 +930,7 @@ Batch 2, WebSocket authorization (critical):
 Batch 3, dependencies (critical):
 - [ ] `next` 16.3.2 is inside the range of published unauthenticated remote code execution advisories (16.0.0 to 16.3.2, including the Image Optimization API). Upgrade to a patched release
 - [ ] `npm audit` also reports high-severity `sharp` (libheif) and `fast-uri` advisories and a moderate `baseline-browser-mapping` one. Upgrade them
+- [ ] `npm audit` now also reports a critical `orval` advisory (fixed in 8.37.0, which also clears the high `js-yaml` one it pulls in), high `brace-expansion` and `browserslist` advisories, moderate `@humanfs/node`, `hono`, and `qs` ones, and a low `postcss-selector-parser` one. Upgrade them, and regenerate the API hooks with the upgraded `orval` so the generated code matches it
 - [ ] The AI microservice's dependencies are unpinned `>=` ranges with no lockfile. Pin them with a lockfile so builds are reproducible and auditable
 
 Batch 4, game session reliability (critical and high):
