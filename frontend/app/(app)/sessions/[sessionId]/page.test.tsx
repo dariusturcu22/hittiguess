@@ -227,17 +227,22 @@ describe("GameSessionPage", () => {
     expect(screen.queryByPlaceholderText("Guess the artist")).toBeNull();
   });
 
-  it("asks the voice sidebar to share tab audio from the DJ's own click", async () => {
+  it("starts the audio share and opens YouTube in its own window from one click", async () => {
     mockCurrentUserId = DJ_USER_ID;
     const shareRequests = vi.fn();
+    const youtubeWindow = { opener: window };
+    const openWindow = vi.spyOn(window, "open").mockReturnValue(youtubeWindow as unknown as Window);
     window.addEventListener("session-start-audio-share", shareRequests);
     await renderPage();
 
     fireEvent.click(await screen.findByRole("link", { name: "Open on YouTube to play" }));
-    fireEvent.click(screen.getByRole("button", { name: "Share YouTube audio with the group" }));
 
     expect(shareRequests).toHaveBeenCalledOnce();
+    expect(openWindow).toHaveBeenCalledWith(WATCH_URL, "hittiguess-youtube", expect.stringContaining("popup"));
+    expect(youtubeWindow.opener).toBeNull();
+    expect(screen.getByRole("button", { name: "Pick the YouTube window to share its audio" })).toBeVisible();
     window.removeEventListener("session-start-audio-share", shareRequests);
+    openWindow.mockRestore();
   });
 
   it("shows spectators the live placement preview", async () => {

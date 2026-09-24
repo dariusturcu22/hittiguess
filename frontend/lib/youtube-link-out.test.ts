@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { youtubeLinkOutHref } from "./youtube-link-out";
+import { canShareTabAudio, youtubeLinkOutHref } from "./youtube-link-out";
 
 const WATCH_URL = "https://www.youtube.com/watch?v=dQw4w9WgXcQ";
 const DESKTOP_USER_AGENT = "Mozilla/5.0 (X11; Linux x86_64)";
@@ -20,5 +20,13 @@ describe("youtubeLinkOutHref", () => {
 
   it("uses the universal YouTube link on iOS so the app can claim it", () => {
     expect(youtubeLinkOutHref(WATCH_URL, IOS_USER_AGENT)).toBe(WATCH_URL);
+  });
+});
+
+describe("canShareTabAudio", () => {
+  it("shares tab audio from desktop browsers only", () => {
+    expect(canShareTabAudio("Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/140.0")).toBe(true);
+    expect(canShareTabAudio("Mozilla/5.0 (Linux; Android 14) Chrome/140.0 Mobile")).toBe(false);
+    expect(canShareTabAudio("Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X)")).toBe(false);
   });
 });
