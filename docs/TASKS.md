@@ -857,6 +857,14 @@ sign-in is unavailable over LAN; testers use local accounts.
 - [x] Add a local-network playtest section to `docs/DEV_SETUP.md`
 - [x] Allow the dev server's LAN origin: Next.js blocks non-localhost origins on dev-only assets (`/_next/*` chunks return 403 with no client JS at all), so `next.config.ts` derives `allowedDevOrigins` from `NEXT_PUBLIC_API_URL` instead of hardcoding a machine-specific IP
 - [ ] Manual multi-device playtest: full game plus voice, recorded here once played
+- [x] The lobby's `min-h-[720px]` on `<main>` still pushed the footer actions below the fold on a short or zoomed window (verified at 1280x600, despite batch 3 recording it fixed). Give the member stage its own minimum height and let it scroll inside the middle section instead
+- [x] When the admin and another member leave at the same moment, the admin's leave promotes a member whose row the other leave just deleted, and the request fails with a 500. Lock the group row while leaving, the same way joins do
+- [x] The two lobby e2e specs seed fewer songs than a session now needs (players times the win condition), so their start-session steps fail. Seed enough songs
+- [x] The story 47 e2e still looks for the per-song "Resolving song details..." rows that the inline import banner replaced. Assert the banner and its link to the import page instead
+
+Tests:
+- [x] e2e: the lobby's footer actions stay in the viewport at 1280x600
+- [x] Integration test: an admin and a member leaving at the same moment both succeed
 - [x] Fix the pre-existing session page test type error blocking `npm run build` (found during LAN verification, untouched by the LAN branch; the mock session type now allows a null round, build passes)
 - [x] Hydration warning on the login page over LAN: caused by the Dark Reader extension rewriting SVG attributes before React hydrates, not by app code; extension-free browsers hydrate cleanly. No code change; disable Dark Reader for the site since it also fights the app's own theme toggle
 - [x] Lobby start flow rework from playtest feedback: playlist chip opens a tier popup (easy/medium/hard/custom) instead of a separate modal; custom opens a fullscreen multi-playlist picker with a chosen list and a back path; the standalone custom-start entry point is gone; the two-player minimum shows only as a popup on Start instead of a persistent note; settings save reports success or failure by toast
@@ -874,27 +882,27 @@ Confirmed bugs (verified in code, fix directly):
 
 Reproduce-first on the fixed stack:
 - [x] YouTube playlist import stuck at connecting (real bug, not stale-bundle: the page never opens the socket it gates on. Fixed by dropping the gate since expansion is REST)
-- [ ] Add-by-YouTube-link metadata fetch failures
-- [ ] Export download and print doing nothing
+- [x] Add-by-YouTube-link metadata fetch failures (fixed and verified end to end on LAN in batch 2, see `ARCHIVE.md`: the failures were the AI service being down plus the add page's queue-hook 500)
+- [x] Export download and print doing nothing (verified working on LAN in batch 2, see `ARCHIVE.md`: the failures were a stale bundle)
 - [x] Edit-playlist save and cancel reported dead (covered by the save fix above; cancel resets the name draft, description waits on backend support)
 
 Lobby redesign (own batch):
-- [ ] Join-call button top-aligned, not bottom-aligned
-- [ ] No sidebar collapse control; hide the right sidebar outside calls except on the group lobby page; match the left sidebar width
-- [ ] Playlist selection as a near-fullscreen overlay with bottom lobby actions still visible
-- [ ] Difficulty options (easy/medium/hard/custom) directly in playlist selection; custom opens the fullscreen multi-playlist picker with a back path; remove the standalone custom start
-- [ ] Two-player minimum only as a popup on Start, never persistent
-- [ ] Lobby content shrinks on zoom instead of pushing bottom actions off screen; avatar and name animate as one unit
+- [x] Join-call button placement (settled in batch 3, see `ARCHIVE.md`: the slim rail keeps the join action on top)
+- [x] No sidebar collapse control; hide the right sidebar outside calls except on the group lobby page; match the left sidebar width (done in batch 3, see `ARCHIVE.md`)
+- [x] Playlist selection as a near-fullscreen overlay with bottom lobby actions still visible (superseded by batch 3's tier popup and fullscreen custom picker, see `ARCHIVE.md`)
+- [x] Difficulty options (easy/medium/hard/custom) directly in playlist selection; custom opens the fullscreen multi-playlist picker with a back path; remove the standalone custom start (done in batch 3, see `ARCHIVE.md`)
+- [x] Two-player minimum only as a popup on Start, never persistent (done in batch 3, see `ARCHIVE.md`)
+- [x] Lobby content shrinks on zoom instead of pushing bottom actions off screen; avatar and name animate as one unit (avatar and name done in batch 3; the zoom half didn't hold and is fixed below)
 
 Library and shell redesign (own batch):
 - [ ] Joined tab copy and explore call-to-action icon (blocked on mockup direction for new profile/settings pages)
-- [ ] Sidebar logo animation genuinely random per sound-wave input, not a fixed loop
-- [ ] Group nav button only when in a group, stronger highlight on the group page, Play routes into the existing group
-- [ ] Playlist member stack matches the uploaded reference (overlapping avatars plus overflow count)
+- [x] Sidebar logo animation genuinely random per sound-wave input, not a fixed loop (done in batch 4 below)
+- [x] Group nav button only when in a group, stronger highlight on the group page, Play routes into the existing group (done in batch 4 below; Play already opens the active group)
+- [x] Playlist member stack matches the uploaded reference (overlapping avatars plus overflow count) (done in batch 4 below)
 
 Settings and chat (own batch):
-- [ ] Restyle settings dropdowns off the native control look, verified by screenshot
-- [ ] Chat panel floats above its button like the settings panel does
+- [x] Restyle settings dropdowns off the native control look, verified by screenshot (done in batch 4 below)
+- [x] Chat panel floats above its button like the settings panel does (done in batch 4 below)
 
 Feedback polish (cross-cutting, own batch):
 

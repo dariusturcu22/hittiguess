@@ -4,6 +4,7 @@ import React, { use, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
+import type { AxiosError } from "axios";
 import { Pencil, UsersRound } from "lucide-react";
 
 import { Button } from "@/components/shadcn/button";
@@ -20,6 +21,9 @@ import {
 interface PageProps {
   params: Promise<{ inviteCode: string }>;
 }
+
+const BAD_REQUEST_STATUS = 400;
+const DISPLAY_NAME_MAX_LENGTH = 30;
 
 export default function JoinGroupPage({ params }: PageProps) {
   const { inviteCode } = use(params);
@@ -73,8 +77,12 @@ export default function JoinGroupPage({ params }: PageProps) {
           });
           router.push(`/groups/${group.id}`);
         },
-        onError: () => {
-          setError("That invite link isn't valid.");
+        onError: (joinError) => {
+          const response = (joinError as AxiosError<Record<string, string | undefined>>).response;
+          const identityProblem = response?.status === BAD_REQUEST_STATUS
+            ? response.data?.displayName ?? response.data?.avatarUrl
+            : undefined;
+          setError(identityProblem ?? "That invite link isn't valid.");
         },
       },
     );
@@ -173,6 +181,7 @@ export default function JoinGroupPage({ params }: PageProps) {
             <Input
               value={displayName}
               onChange={(event) => setDisplayName(event.target.value)}
+              maxLength={DISPLAY_NAME_MAX_LENGTH}
               className="flex-1"
             />
           </div>

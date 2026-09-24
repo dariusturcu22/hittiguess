@@ -36,10 +36,10 @@ public class PixelArtImageController {
         return ResponseEntity.ok().build();
     }
 
-    @Operation(summary = "Read a playlist's custom cover, if it has one")
+    @Operation(summary = "Read a playlist's custom cover, if it has one, must be able to read the playlist")
     @GetMapping(value = "/playlists/{playlistId}/cover", produces = MediaType.IMAGE_PNG_VALUE)
     public ResponseEntity<byte[]> readPlaylistCover(@PathVariable Long playlistId) {
-        return ResponseEntity.ok(pixelArtImageService.readPlaylistCover(playlistId));
+        return ResponseEntity.ok(pixelArtImageService.readPlaylistCover(playlistId, SecurityUtils.getCurrentUser()));
     }
 
     @Operation(summary = "Upload the current user's pixelized profile picture")

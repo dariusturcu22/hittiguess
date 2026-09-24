@@ -17,18 +17,23 @@ public final class SessionDestinations {
 
     private static final String ROUND_SEGMENT = "/round";
     private static final String ENDED_SEGMENT = "/ended";
+    private static final String PREVIEW_SEGMENT = "/preview";
     private static final String PLACE_SEGMENT = "/place";
     private static final String GUESS_SEGMENT = "/guess";
     private static final String BET_SEGMENT = "/bet";
     private static final String SKIP_BETTING_SEGMENT = "/skip-betting";
+    private static final String SESSION_QUEUE_PREFIX = "/queue/sessions/";
+    private static final String GUESS_RESULT_SEGMENT = "/guess-result";
 
+    private static final Pattern SESSION_TOPIC_PATTERN = Pattern.compile(
+            "^" + Pattern.quote(SESSION_TOPIC_PREFIX) + "(?<sessionId>\\d+)/[^/]+$");
     private static final Pattern ROUND_TOPIC_PATTERN = Pattern.compile(
             "^" + Pattern.quote(SESSION_TOPIC_PREFIX) + "(?<sessionId>\\d+)" + Pattern.quote(ROUND_SEGMENT) + "$");
 
     private SessionDestinations() {
     }
 
-    // Round started, guess locked, bet placed, reveal triggered, round scored, and next
+    // Placement preview, round started, guess locked, betting opened, bet placed, reveal triggered, round scored, and next
     // round all broadcast here; SessionEventType distinguishes them within the payload.
     public static String roundTopic(Long sessionId) {
         return SESSION_TOPIC_PREFIX + sessionId + ROUND_SEGMENT;
@@ -40,6 +45,16 @@ public final class SessionDestinations {
     // every round event to receive it.
     public static String endedTopic(Long sessionId) {
         return SESSION_TOPIC_PREFIX + sessionId + ENDED_SEGMENT;
+    }
+
+    // Per-user queue each guess's result is sent to through
+    // SimpMessagingTemplate#convertAndSendToUser. A client subscribes with the "/user" prefix.
+    public static String guessResultQueue(Long sessionId) {
+        return SESSION_QUEUE_PREFIX + sessionId + GUESS_RESULT_SEGMENT;
+    }
+
+    public static String previewDestination(Long sessionId) {
+        return SESSION_APP_PREFIX + sessionId + PREVIEW_SEGMENT;
     }
 
     public static String placeDestination(Long sessionId) {
@@ -58,11 +73,19 @@ public final class SessionDestinations {
         return SESSION_APP_PREFIX + sessionId + SKIP_BETTING_SEGMENT;
     }
 
+    public static Optional<Long> sessionIdFromTopic(String destination) {
+        return sessionIdMatching(SESSION_TOPIC_PATTERN, destination);
+    }
+
     public static Optional<Long> sessionIdFromRoundTopic(String destination) {
+        return sessionIdMatching(ROUND_TOPIC_PATTERN, destination);
+    }
+
+    private static Optional<Long> sessionIdMatching(Pattern pattern, String destination) {
         if (destination == null) {
             return Optional.empty();
         }
-        Matcher matcher = ROUND_TOPIC_PATTERN.matcher(destination);
+        Matcher matcher = pattern.matcher(destination);
         if (!matcher.matches()) {
             return Optional.empty();
         }

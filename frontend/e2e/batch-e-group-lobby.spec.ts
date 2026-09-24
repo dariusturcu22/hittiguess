@@ -12,13 +12,17 @@ const MEMBER_DISPLAY_NAME = "Batch E lobby member";
 const CHAT_MESSAGE = "Batch E realtime chat check";
 const LIVE_CONNECTION_TEXT = "Live";
 const LOGIN_PATH = "/login";
-const PLAYLISTS_PATH = "/playlists";
 const GROUPS_PATH = "/api/groups";
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
 const GROUP_CLEANUP_TIMEOUT_MILLISECONDS = 10_000;
 const PLAYLISTS_API_PATH = "/api/users/me/playlists";
 const SONG_COLOR = "a6e3a1";
-const MINIMUM_GAMEPLAY_SONG_COUNT = 3;
+const LOBBY_PLAYER_COUNT = 2;
+const WIN_CONDITION_CARD_COUNT = 5;
+// A session needs a song per card every player could win with.
+const MINIMUM_GAMEPLAY_SONG_COUNT = LOBBY_PLAYER_COUNT * WIN_CONDITION_CARD_COUNT;
+const FIRST_SONG_RELEASE_YEAR = 1990;
+const SONG_NUMBER_WIDTH = 2;
 const RESULTS_SESSION_ID = 777;
 const RESULTS_GROUP_ID = 888;
 const SESSION_API_PATH = `/api/sessions/${RESULTS_SESSION_ID}`;
@@ -27,7 +31,9 @@ const RESULTS_FILE_NAME = `hittiguess-results-${RESULTS_SESSION_ID}.csv`;
 const GAMEPLAY_SESSION_ID = 779;
 const GAMEPLAY_SESSION_API_PATH = `/api/sessions/${GAMEPLAY_SESSION_ID}`;
 const CURRENT_USER_API_PATH = "/api/users/me";
-const LINK_OUT_API_PATH = `/api/sessions/${GAMEPLAY_SESSION_ID}/round/link-out`;
+const LINK_OUT_API_PATH = `/api/sessions/${GAMEPLAY_SESSION_ID}/link-out`;
+// A short window, about what a 900px-tall screen shows at 150% zoom.
+const SHORT_VIEWPORT = { width: 1280, height: 600 };
 const PLAYER_ID = 10;
 const DJ_ID = 20;
 
@@ -62,9 +68,9 @@ async function login(browser: Browser, account: TestAccount): Promise<Page> {
 
   await page.goto(LOGIN_PATH);
   await page.getByLabel("Email").fill(account.email);
-  await page.getByLabel("Password").fill(account.password);
+  await page.getByLabel("Password", { exact: true }).fill(account.password);
   await page.getByRole("button", { name: "Log in" }).click();
-  await page.waitForURL(PLAYLISTS_PATH);
+  await expect(page.getByRole("heading", { name: "Your playlists" })).toBeVisible();
 
   return page;
 }
@@ -105,12 +111,15 @@ async function configurePlayablePlaylist(page: Page, groupId: number): Promise<v
   });
   expect(playlistResponse.ok()).toBeTruthy();
   const playlist = await playlistResponse.json() as PlaylistResponse;
-  const songs = [
-    { artist: "Batch E artist one", title: "Batch E song one", releaseYear: 1998, youtubeId: "dQw4w9WgXcQ" },
-    { artist: "Batch E artist two", title: "Batch E song two", releaseYear: 2003, youtubeId: "3JZ_D3ELwOQ" },
-    { artist: "Batch E artist three", title: "Batch E song three", releaseYear: 2009, youtubeId: "L_jWHffIx5E" },
-  ];
-  expect(songs).toHaveLength(MINIMUM_GAMEPLAY_SONG_COUNT);
+  const songs = Array.from({ length: MINIMUM_GAMEPLAY_SONG_COUNT }, (unusedEntry, songIndex) => {
+    const songNumber = String(songIndex + 1).padStart(SONG_NUMBER_WIDTH, "0");
+    return {
+      artist: `Batch E artist ${songNumber}`,
+      title: `Batch E song ${songNumber}`,
+      releaseYear: FIRST_SONG_RELEASE_YEAR + songIndex,
+      youtubeId: `batchEsng${songNumber}`,
+    };
+  });
   for (const song of songs) {
     const songResponse = await page.request.post(apiUrl(`/api/playlists/${playlist.id}/songs`), {
       data: { ...song, color: SONG_COLOR },
@@ -119,7 +128,7 @@ async function configurePlayablePlaylist(page: Page, groupId: number): Promise<v
     expect(songResponse.ok()).toBeTruthy();
   }
   const settingsResponse = await page.request.patch(apiUrl(`${GROUPS_PATH}/${groupId}/settings`), {
-    data: { playlistIds: [playlist.id], djMode: "ROTATING", winConditionCardCount: 5 },
+    data: { playlistIds: [playlist.id], djMode: "ROTATING", winConditionCardCount: WIN_CONDITION_CARD_COUNT },
     headers: await csrfHeaders(page),
   });
   expect(settingsResponse.ok()).toBeTruthy();
@@ -182,6 +191,27 @@ test("group lobby joins members, persists settings, relays chat, and starts a se
       ]);
     }
     await Promise.all([adminPage.context().close(), memberPage.context().close()]);
+  }
+});
+
+test("lobby keeps its footer actions on screen in a short or zoomed window", async ({ browser }) => {
+  const page = await login(browser, ADMIN_ACCOUNT);
+  let groupId: number | undefined;
+
+  try {
+    const group = await createGroupFromSidebar(page);
+    groupId = group.id;
+    await page.setViewportSize(SHORT_VIEWPORT);
+    await expect(page.getByRole("heading", { name: "Group Lobby" })).toBeVisible();
+
+    for (const footerAction of ["Start game", "Leave lobby"]) {
+      await expect(page.getByRole("button", { name: footerAction })).toBeInViewport({ ratio: 1 });
+    }
+  } finally {
+    if (groupId !== undefined) {
+      await leaveGroup(page, groupId);
+    }
+    await page.context().close();
   }
 });
 
@@ -255,13 +285,14 @@ test("gameplay shell renders placement, betting, and DJ link-out states", async 
       currentRound: { roundNumber: 4, activePlayerId: PLAYER_ID, djPlayerId: DJ_ID, status: "AWAITING_PLACEMENT" },
     } }));
     await page.goto(`/sessions/${GAMEPLAY_SESSION_ID}`);
-    const card = page.locator('[draggable="true"]');
+    const card = page.getByRole("button", { name: "Your card. Choose a timeline position." });
     await expect(card).toBeVisible();
     await page.getByRole("button", { name: "Open chat" }).click();
     await expect(page.getByRole("heading", { name: "Chat" })).toBeVisible();
     await page.getByRole("complementary").getByRole("button", { name: "Close chat" }).click();
-    await card.dispatchEvent("dragstart");
-    await expect(page.getByRole("button", { name: "Place card at timeline position 1" })).toBeVisible();
+    await card.focus();
+    await page.keyboard.press("Enter");
+    await expect(page.getByRole("button", { name: "Lock in answer" })).toBeVisible();
 
     await page.unroute(`**${GAMEPLAY_SESSION_API_PATH}`);
     await page.route(`**${GAMEPLAY_SESSION_API_PATH}`, (route) => route.fulfill({ json: {
@@ -270,10 +301,9 @@ test("gameplay shell renders placement, betting, and DJ link-out states", async 
       currentRound: { roundNumber: 4, activePlayerId: DJ_ID, djPlayerId: DJ_ID, status: "BETTING" },
     } }));
     await page.reload();
-    await page.getByRole("button", { name: "Use 1 token to bet" }).click();
-    await expect(page.getByRole("button", { name: "Choose a timeline gap" })).toBeVisible();
-    await page.getByRole("button", { name: "Skip betting" }).click();
-    await expect(page.getByText("Betting skipped. Waiting for the reveal.")).toBeVisible();
+    await expect(page.getByText("Drag a token into a gap you think is right")).toBeVisible();
+    await expect(page.getByText("Betting closes")).toBeVisible();
+    await expect(page.getByRole("button", { name: "Skip betting" })).toBeVisible();
 
     await page.unroute(`**${CURRENT_USER_API_PATH}`);
     await page.route(`**${CURRENT_USER_API_PATH}`, (route) => route.fulfill({ json: { id: DJ_ID } }));
@@ -286,11 +316,9 @@ test("gameplay shell renders placement, betting, and DJ link-out states", async 
     await page.route(`**${LINK_OUT_API_PATH}`, (route) => route.fulfill({
       json: { watchUrl: "https://www.youtube.com/watch?v=dQw4w9WgXcQ" },
     }));
-    await page.addInitScript(() => {
-      window.open = () => null;
-    });
     await page.goto(`/sessions/${GAMEPLAY_SESSION_ID}`);
-    await page.getByRole("button", { name: "Open on YouTube to play" }).click();
+    const youtubeLink = page.getByRole("link", { name: "Open on YouTube to play" });
+    await expect(youtubeLink).toHaveAttribute("target", "_blank");
     await expect(page.getByText("Shares your tab or system audio with the group.")).toBeVisible();
   } finally {
     await page.context().close();

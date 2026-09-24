@@ -18,7 +18,11 @@ prometheus.scrape "ai_service" {
 		"job"         = "hittiguess-ai",
 	}]
 	metrics_path = "/metrics"
-	forward_to   = [prometheus.remote_write.grafana_cloud.receiver]
+	// The AI service serves metrics only to a caller holding its internal key.
+	http_headers = {
+		"X-Internal-Api-Key" = [sys.env("INTERNAL_SERVICE_API_KEY")],
+	}
+	forward_to = [prometheus.remote_write.grafana_cloud.receiver]
 }
 
 prometheus.remote_write "grafana_cloud" {

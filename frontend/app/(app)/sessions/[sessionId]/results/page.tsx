@@ -26,8 +26,11 @@ function StatBoard({ title, entries, colorClass }: { title: string; entries: Lea
   return <section className="w-full max-w-[280px]"><h2 className={`font-display text-[11px] tracking-wide ${colorClass}`}>{title}</h2><div className={`mt-2 h-0.5 w-9 ${colorClass.replace("text-", "bg-")}`} />{entries.map((entry, index) => <div key={`${entry.playerId}-${entry.displayName}`} className="flex items-center gap-2 border-b border-border/70 py-2.5 last:border-0"><span className={`avatar-initial flex size-7 items-center justify-center rounded-full font-display text-[10px] text-primary-foreground ${PLAYER_COLORS[index % PLAYER_COLORS.length]}`}>{initial(entry.displayName)}</span><span className="flex-1 text-sm text-card-foreground">{entry.displayName ?? "Player"}</span><strong className={colorClass}>{entry.value ?? 0}</strong></div>)}</section>;
 }
 
-function csvCell(value: string | number | undefined): string {
-  return `"${String(value ?? "").replaceAll('"', '""')}"`;
+export function csvCell(value: string | number | undefined): string {
+  const renderedValue = String(value ?? "");
+  const formulaPrefix = /^[=+\-@]/;
+  const safeValue = formulaPrefix.test(renderedValue) ? `'${renderedValue}` : renderedValue;
+  return `"${safeValue.replaceAll('"', '""')}"`;
 }
 
 function escapeHtml(value: string): string {

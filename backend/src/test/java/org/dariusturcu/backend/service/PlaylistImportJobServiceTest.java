@@ -1,5 +1,7 @@
 package org.dariusturcu.backend.service;
 
+import org.dariusturcu.backend.exception.PlaylistImportException;
+import org.dariusturcu.backend.exception.RateLimitExceededException;
 import org.dariusturcu.backend.model.playlist.Playlist;
 import org.dariusturcu.backend.model.playlist.PlaylistImportJob;
 import org.dariusturcu.backend.model.playlist.PlaylistImportJobDTO;
@@ -38,9 +40,13 @@ import java.util.Optional;
 import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -49,6 +55,9 @@ class PlaylistImportJobServiceTest {
     private static final Long PLAYLIST_ID = 7L;
     private static final Long SUBMITTING_USER_ID = 11L;
     private static final String SUBMITTING_USERNAME = "importer";
+    private static final String KNOWN_VIDEO_ID = "knownVideo1";
+    private static final String NEW_VIDEO_ID = "newVideoId1";
+    private static final int ONE_NEW_SONG = 1;
 
     @Mock
     private PlaylistImportJobRepository jobRepository;
@@ -75,6 +84,8 @@ class PlaylistImportJobServiceTest {
     @Mock
     private PlaylistImportService playlistImportService;
     @Mock
+    private ImportQuotaService importQuotaService;
+    @Mock
     private ApplicationEventPublisher applicationEventPublisher;
 
     private PlaylistImportJobService service() {
@@ -82,7 +93,7 @@ class PlaylistImportJobServiceTest {
                 jobRepository, itemRepository, playlistRepository, songRepository, userRepository,
                 playlistAccessService, youtubeIdLookupService, songResolutionService,
                 catalogSeedingService, metadataPriorityCoordinator, playlistExpansionService,
-                playlistImportService, applicationEventPublisher, new SyncTaskExecutor());
+                playlistImportService, importQuotaService, applicationEventPublisher, new SyncTaskExecutor());
     }
 
     private User submittingUser() {
@@ -151,6 +162,51 @@ class PlaylistImportJobServiceTest {
                 .extracting(BulkImportProgressEvent::youtubeId)
                 .containsExactlyInAnyOrder("video-1", "video-2");
         verify(playlistImportService).addResolvedSongIds(PLAYLIST_ID, List.of(101L, 102L));
+    }
+
+    @Test
+    void startImportReservesOnlyTheSongsNotYetInTheCatalog() {
+        Playlist playlist = new Playlist();
+        playlist.setId(PLAYLIST_ID);
+        when(playlistRepository.findById(PLAYLIST_ID)).thenReturn(Optional.of(playlist));
+        when(playlistExpansionService.expandAndMerge(any(), any())).thenReturn(List.of(KNOWN_VIDEO_ID, NEW_VIDEO_ID));
+        when(youtubeIdLookupService.partitionKnownAndUnknown(any()))
+                .thenReturn(new YoutubeIdLookupResult(Set.of(KNOWN_VIDEO_ID), Set.of(NEW_VIDEO_ID)));
+        doThrow(new RateLimitExceededException("Daily limit reached"))
+                .when(importQuotaService).reserveNewSongResolutions(SUBMITTING_USER_ID, ONE_NEW_SONG);
+
+        try (MockedStatic<SecurityUtils> security = Mockito.mockStatic(SecurityUtils.class)) {
+            security.when(SecurityUtils::getCurrentUser).thenReturn(submittingUser());
+            PlaylistImportJobService importJobService = service();
+            StartPlaylistImportRequest request = new StartPlaylistImportRequest(List.of(KNOWN_VIDEO_ID, NEW_VIDEO_ID), null);
+
+            assertThatThrownBy(() -> importJobService.startImport(PLAYLIST_ID, request))
+                    .isInstanceOf(RateLimitExceededException.class);
+        }
+
+        verify(jobRepository, never()).save(any());
+        verifyNoInteractions(songResolutionService);
+    }
+
+    @Test
+    void startImportRefusesAnOversizedSubmissionBeforeExpandingOrPersisting() {
+        Playlist playlist = new Playlist();
+        playlist.setId(PLAYLIST_ID);
+        when(playlistRepository.findById(PLAYLIST_ID)).thenReturn(Optional.of(playlist));
+        doThrow(new PlaylistImportException("Too many songs"))
+                .when(importQuotaService).requireWithinImportSize(ONE_NEW_SONG);
+
+        try (MockedStatic<SecurityUtils> security = Mockito.mockStatic(SecurityUtils.class)) {
+            security.when(SecurityUtils::getCurrentUser).thenReturn(submittingUser());
+            PlaylistImportJobService importJobService = service();
+            StartPlaylistImportRequest request = new StartPlaylistImportRequest(List.of(NEW_VIDEO_ID), "playlist-link");
+
+            assertThatThrownBy(() -> importJobService.startImport(PLAYLIST_ID, request))
+                    .isInstanceOf(PlaylistImportException.class);
+        }
+
+        verifyNoInteractions(playlistExpansionService);
+        verify(jobRepository, never()).save(any());
     }
 
     @Test

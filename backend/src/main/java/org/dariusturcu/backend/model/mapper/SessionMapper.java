@@ -10,10 +10,16 @@ import org.dariusturcu.backend.model.session.PlayerDTO;
 import org.dariusturcu.backend.model.session.Round;
 import org.dariusturcu.backend.model.session.RoundDTO;
 import org.dariusturcu.backend.model.session.RoundStatus;
+import org.dariusturcu.backend.model.session.RoundTiming;
+import org.dariusturcu.backend.model.song.Song;
 import org.dariusturcu.backend.repository.BetRepository;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
+
+import java.time.Duration;
+import java.time.Instant;
+import java.util.List;
 
 @Component
 @RequiredArgsConstructor
@@ -22,7 +28,8 @@ public class SessionMapper {
     private final BetRepository betRepository;
 
     public PlayerCardDTO toCardDTO(PlayerCard card) {
-        return new PlayerCardDTO(card.getSong().getId(), card.getSong().getTitle(), card.getReleaseYear(), card.getPosition());
+        Song song = card.getSong();
+        return new PlayerCardDTO(song.getId(), artistNames(song), song.getTitle(), card.getReleaseYear(), song.getColor(), card.getPosition());
     }
 
     public PlayerDTO toPlayerDTO(Player player) {
@@ -56,13 +63,23 @@ public class SessionMapper {
                 betRepository.findByRoundId(round.getId()).stream()
                         .map(bet -> new BetDTO(bet.getPlayer().getId(), bet.getPosition()))
                         .toList(),
-                isRevealedOrLater ? artistNames(round) : null,
+                List.copyOf(round.getBettingSkippedPlayerIds()),
+                isRevealedOrLater ? artistNames(round.getSong()) : null,
                 isRevealedOrLater ? round.getSong().getTitle() : null,
-                isRevealedOrLater ? round.getSong().getReleaseYear() : null);
+                isRevealedOrLater ? round.getSong().getReleaseYear() : null,
+                isRevealedOrLater ? round.getSong().getColor() : null,
+                round.getStatus() == RoundStatus.AWAITING_PLACEMENT ? round.getPlacementEndsAt() : null,
+                plusOrNull(round.getLockedInAt(), RoundTiming.LOCK_IN_COUNTDOWN),
+                round.getBettingWindowEndsAt(),
+                round.getStatus() == RoundStatus.SCORED ? plusOrNull(round.getScoredAt(), RoundTiming.REVEAL_HOLD) : null);
     }
 
-    private String artistNames(Round round) {
-        return round.getSong().getArtists().stream()
+    private static Instant plusOrNull(Instant start, Duration length) {
+        return start != null ? start.plus(length) : null;
+    }
+
+    public String artistNames(Song song) {
+        return song.getArtists().stream()
                 .map(songArtist -> songArtist.getName())
                 .reduce((first, second) -> first + ", " + second)
                 .orElse("");

@@ -8,20 +8,40 @@ import { getGetSessionQueryKey } from "@/hooks/generated/game-session/game-sessi
 
 const WEBSOCKET_PATH = "/ws";
 const SESSION_ROUND_TOPIC = "/topic/sessions";
+const SESSION_USER_QUEUE = "/user/queue/sessions";
 const SESSION_APP_DESTINATION = "/app/sessions";
 const RECONNECT_DELAY_MILLISECONDS = 3_000;
+const PREVIEW_ACTION = "preview";
 const PLACE_ACTION = "place";
+export const PLACEMENT_PREVIEW_EVENT = "PLACEMENT_PREVIEW";
+export const GUESS_CORRECT_EVENT = "GUESS_CORRECT";
 const GUESS_ACTION = "guess";
 const BET_ACTION = "bet";
 const SKIP_BETTING_ACTION = "skip-betting";
 const ROUND_EVENT_PARSE_FAILURE_MESSAGE = "Unable to parse session round event";
+const GUESS_RESULT_PARSE_FAILURE_MESSAGE = "Unable to parse guess result";
 
 type ConnectionState = "connecting" | "connected" | "disconnected" | "error";
 
 export interface SessionRoundEvent {
   type: string;
   sessionId: number;
-  payload?: { activePlayerId?: number };
+  payload?: {
+    activePlayerId?: number;
+    roundId?: number;
+    position?: number | null;
+    playerId?: number;
+    displayName?: string;
+    artistGuessed?: boolean;
+    titleGuessed?: boolean;
+  };
+}
+
+// Sent only to the player who guessed.
+export interface GuessResult {
+  roundId?: number;
+  artistCorrect?: boolean;
+  titleCorrect?: boolean;
 }
 
 function websocketUrl(): string {
@@ -39,8 +59,13 @@ function sessionDestination(sessionId: number, action: string): string {
 export function useGameSessionRealtime(
   sessionId: number,
   onRoundEvent?: (event: SessionRoundEvent) => void,
+  onGuessResult?: (result: GuessResult) => void,
 ) {
   const queryClient = useQueryClient();
+  const onGuessResultReference = useRef(onGuessResult);
+  useEffect(() => {
+    onGuessResultReference.current = onGuessResult;
+  });
   const clientReference = useRef<Client | null>(null);
   const [connectionState, setConnectionState] = useState<ConnectionState>("connecting");
   const hasValidSessionId = Number.isInteger(sessionId) && sessionId > 0;
@@ -56,12 +81,25 @@ export function useGameSessionRealtime(
       onConnect: () => {
         setConnectionState("connected");
         client.subscribe(`${SESSION_ROUND_TOPIC}/${sessionId}/round`, (message) => {
+          let roundEvent: SessionRoundEvent | undefined;
           try {
-            onRoundEvent?.(JSON.parse(message.body) as SessionRoundEvent);
+            roundEvent = JSON.parse(message.body) as SessionRoundEvent;
+            onRoundEvent?.(roundEvent);
           } catch (parseError) {
             console.warn(ROUND_EVENT_PARSE_FAILURE_MESSAGE, parseError);
           }
-          void queryClient.invalidateQueries({ queryKey: getGetSessionQueryKey(sessionId) });
+          // A placement preview only mirrors the active player's drag; the round itself
+          // hasn't changed, so there's nothing to refetch.
+          if (roundEvent?.type !== PLACEMENT_PREVIEW_EVENT) {
+            void queryClient.invalidateQueries({ queryKey: getGetSessionQueryKey(sessionId) });
+          }
+        });
+        client.subscribe(`${SESSION_USER_QUEUE}/${sessionId}/guess-result`, (message) => {
+          try {
+            onGuessResultReference.current?.(JSON.parse(message.body) as GuessResult);
+          } catch (parseError) {
+            console.warn(GUESS_RESULT_PARSE_FAILURE_MESSAGE, parseError);
+          }
         });
         client.subscribe(`${SESSION_ROUND_TOPIC}/${sessionId}/ended`, () => {
           void queryClient.invalidateQueries({ queryKey: getGetSessionQueryKey(sessionId) });
@@ -95,6 +133,7 @@ export function useGameSessionRealtime(
 
   return {
     connectionState: hasValidSessionId ? connectionState : "disconnected",
+    previewPlacement: (position: number | null) => publish(PREVIEW_ACTION, { position }),
     placeCard: (position: number) => publish(PLACE_ACTION, { position }),
     submitGuess: (guessedArtist: string, guessedTitle: string) => publish(GUESS_ACTION, { guessedArtist, guessedTitle }),
     placeBet: (position: number) => publish(BET_ACTION, { position }),

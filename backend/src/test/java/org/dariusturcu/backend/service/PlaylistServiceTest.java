@@ -83,6 +83,7 @@ class PlaylistServiceTest {
 
     private static final Long PLAYLIST_ID = 1L;
     private static final Long SONG_ID = 2L;
+    private static final Long OTHER_PLAYLIST_ID = 3L;
     private static final Integer RESOLVED_SITELINKS_COUNT = 24;
     private static final Long OWNER_ID = 10L;
     private static final Long MEMBER_ID = 20L;
@@ -162,6 +163,46 @@ class PlaylistServiceTest {
         UpdateSongRequest request = anyUpdateRequest();
         when(songRepository.findById(SONG_ID)).thenReturn(Optional.of(song));
         when(songRepository.existsByIdAndPlaylistsId(SONG_ID, PLAYLIST_ID)).thenReturn(true);
+        when(playlistAccessService.canWrite(playlist, currentUser)).thenReturn(true);
+        when(songMapper.updateEntity(song, request)).thenReturn(song);
+
+        playlistService.updateSong(PLAYLIST_ID, SONG_ID, request);
+
+        verify(songMapper).updateEntity(song, request);
+    }
+
+    private Playlist otherPlaylistHolding(Song song) {
+        Playlist otherPlaylist = new Playlist();
+        otherPlaylist.setId(OTHER_PLAYLIST_ID);
+        song.getPlaylists().add(otherPlaylist);
+        return otherPlaylist;
+    }
+
+    @Test
+    void updateSongRefusesASongSharedWithAPlaylistTheEditorCantWrite() {
+        Song song = songWithStatus(VerificationStatus.UNVERIFIED);
+        Playlist otherPlaylist = otherPlaylistHolding(song);
+        UpdateSongRequest request = anyUpdateRequest();
+        when(songRepository.findById(SONG_ID)).thenReturn(Optional.of(song));
+        when(songRepository.existsByIdAndPlaylistsId(SONG_ID, PLAYLIST_ID)).thenReturn(true);
+        lenient().when(playlistAccessService.canWrite(playlist, currentUser)).thenReturn(true);
+        when(playlistAccessService.canWrite(otherPlaylist, currentUser)).thenReturn(false);
+
+        assertThatThrownBy(() -> playlistService.updateSong(PLAYLIST_ID, SONG_ID, request))
+                .isInstanceOf(ConflictException.class);
+
+        verify(songMapper, never()).updateEntity(any(), any());
+    }
+
+    @Test
+    void updateSongAllowsASongSharedOnlyWithPlaylistsTheEditorCanWrite() {
+        Song song = songWithStatus(VerificationStatus.UNVERIFIED);
+        Playlist otherPlaylist = otherPlaylistHolding(song);
+        UpdateSongRequest request = anyUpdateRequest();
+        when(songRepository.findById(SONG_ID)).thenReturn(Optional.of(song));
+        when(songRepository.existsByIdAndPlaylistsId(SONG_ID, PLAYLIST_ID)).thenReturn(true);
+        when(playlistAccessService.canWrite(playlist, currentUser)).thenReturn(true);
+        when(playlistAccessService.canWrite(otherPlaylist, currentUser)).thenReturn(true);
         when(songMapper.updateEntity(song, request)).thenReturn(song);
 
         playlistService.updateSong(PLAYLIST_ID, SONG_ID, request);

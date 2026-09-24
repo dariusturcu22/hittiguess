@@ -99,7 +99,9 @@ class GroupChatIntegrationTest {
             CustomUserDetailsService.class,
             GroupPresenceRegistry.class,
             StompAuthenticationChannelInterceptor.class,
+            StompSubscriptionAuthorizationInterceptor.class,
             JwtCookieHandshakeInterceptor.class,
+            UserSocketCloser.class,
             WebSocketConfig.class,
             GroupSessionEventListener.class,
             GroupBroadcastListener.class,
@@ -201,11 +203,12 @@ class GroupChatIntegrationTest {
                 new UsernamePasswordAuthenticationToken(new UserPrincipal(user), null, null));
     }
 
-    private void subscribe(String sessionId, String destination) throws InterruptedException {
+    private void subscribe(String sessionId, String destination, User subscriber) throws InterruptedException {
         StompHeaderAccessor accessor = StompHeaderAccessor.create(StompCommand.SUBSCRIBE);
         accessor.setSessionId(sessionId);
         accessor.setSubscriptionId("sub-0");
         accessor.setDestination(destination);
+        accessor.setUser(new UsernamePasswordAuthenticationToken(new UserPrincipal(subscriber), null, null));
         accessor.setLeaveMutable(true);
         Message<byte[]> message = MessageBuilder.createMessage(new byte[0], accessor.getMessageHeaders());
 
@@ -238,7 +241,7 @@ class GroupChatIntegrationTest {
         authenticateAs(admin);
         GroupDetailDTO created = groupService.createGroup(new CreateGroupRequest(null, null));
 
-        subscribe("chat-send-session", GroupDestinations.chatTopic(created.id()));
+        subscribe("chat-send-session", GroupDestinations.chatTopic(created.id()), admin);
 
         ChatMessageDTO sent = chatService.sendMessage(created.id(), admin.getId(), "hello group");
 

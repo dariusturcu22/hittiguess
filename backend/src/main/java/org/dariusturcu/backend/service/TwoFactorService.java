@@ -2,14 +2,16 @@ package org.dariusturcu.backend.service;
 
 import dev.samstevens.totp.code.CodeGenerator;
 import dev.samstevens.totp.code.DefaultCodeGenerator;
-import dev.samstevens.totp.code.DefaultCodeVerifier;
 import dev.samstevens.totp.code.HashingAlgorithm;
+import dev.samstevens.totp.exceptions.CodeGenerationException;
+import dev.samstevens.totp.exceptions.TimeProviderException;
 import dev.samstevens.totp.qr.QrData;
 import dev.samstevens.totp.secret.DefaultSecretGenerator;
 import dev.samstevens.totp.secret.SecretGenerator;
 import dev.samstevens.totp.time.SystemTimeProvider;
 import dev.samstevens.totp.time.TimeProvider;
 import lombok.RequiredArgsConstructor;
+import org.dariusturcu.backend.exception.ConflictException;
 import org.dariusturcu.backend.model.TwoFactorBackupCode;
 import org.dariusturcu.backend.model.auth.TwoFactorSetupResponse;
 import org.dariusturcu.backend.model.user.User;
@@ -19,9 +21,12 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
 import java.security.SecureRandom;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.OptionalLong;
 
 @Service
 @RequiredArgsConstructor
@@ -46,19 +51,24 @@ public class TwoFactorService {
     private final TimeProvider timeProvider = new SystemTimeProvider();
     private final SecureRandom secureRandom = new SecureRandom();
 
+    // Setup replaces the secret, so it's refused while two-factor is on: otherwise it would
+    // turn two-factor off without the password-or-code proof disable requires.
     public TwoFactorSetupResponse setup(User user) {
+        if (user.isTwoFactorEnabled()) {
+            throw new ConflictException("Two-factor authentication is already on. Turn it off before setting it up again.");
+        }
         String secret = secretGenerator.generate();
         user.setTotpSecret(secret);
-        user.setTwoFactorEnabled(false);
+        user.setTotpLastUsedStep(null);
         userRepository.save(user);
         return new TwoFactorSetupResponse(secret, buildProvisioningUri(user, secret));
     }
 
     public List<String> confirm(User user, String code) {
         if (user.getTotpSecret() == null) {
-            throw new IllegalStateException("Two-factor setup has not been started");
+            throw new ConflictException("Two-factor setup has not been started");
         }
-        if (!verifyTotpCode(user.getTotpSecret(), code)) {
+        if (!verifyAndRecordTotpCode(user, code)) {
             throw new IllegalArgumentException("Invalid verification code");
         }
 
@@ -79,6 +89,7 @@ public class TwoFactorService {
         }
 
         user.setTotpSecret(null);
+        user.setTotpLastUsedStep(null);
         user.setTwoFactorEnabled(false);
         userRepository.save(user);
         backupCodeRepository.deleteByUser(user);
@@ -87,16 +98,46 @@ public class TwoFactorService {
     // Tries a TOTP code first, then falls back to an unused backup code. Used both by the
     // second step of a 2FA login and by /auth/2fa/disable's own proof-of-possession check.
     public boolean verifyLoginCode(User user, String code) {
-        return verifyTotpCode(user.getTotpSecret(), code) || verifyAndConsumeBackupCode(user, code);
+        return verifyAndRecordTotpCode(user, code) || verifyAndConsumeBackupCode(user, code);
     }
 
     public boolean verifyTotpCode(String secret, String code) {
-        if (secret == null || code == null) {
+        return matchingTotpStep(secret, code).isPresent();
+    }
+
+    // Accepts a code only for a time step later than the last one this user used, then
+    // records that step, so each code works once even though it stays valid for its window.
+    private boolean verifyAndRecordTotpCode(User user, String code) {
+        OptionalLong matchedStep = matchingTotpStep(user.getTotpSecret(), code);
+        if (matchedStep.isEmpty()) {
             return false;
         }
-        DefaultCodeVerifier verifier = new DefaultCodeVerifier(codeGenerator, timeProvider);
-        verifier.setAllowedTimePeriodDiscrepancy(ALLOWED_TIME_PERIOD_DISCREPANCY);
-        return verifier.isValidCode(secret, code);
+        Long lastUsedStep = user.getTotpLastUsedStep();
+        if (lastUsedStep != null && matchedStep.getAsLong() <= lastUsedStep) {
+            return false;
+        }
+        user.setTotpLastUsedStep(matchedStep.getAsLong());
+        userRepository.save(user);
+        return true;
+    }
+
+    // The time step a code is valid for, checking the current step and one step of clock
+    // drift either side, the same window the library's own verifier allows.
+    private OptionalLong matchingTotpStep(String secret, String code) {
+        if (secret == null || code == null) {
+            return OptionalLong.empty();
+        }
+        try {
+            long currentStep = Math.floorDiv(timeProvider.getTime(), TOTP_PERIOD_SECONDS);
+            for (long step = currentStep - ALLOWED_TIME_PERIOD_DISCREPANCY; step <= currentStep + ALLOWED_TIME_PERIOD_DISCREPANCY; step++) {
+                if (MessageDigest.isEqual(codeGenerator.generate(secret, step).getBytes(StandardCharsets.UTF_8), code.getBytes(StandardCharsets.UTF_8))) {
+                    return OptionalLong.of(step);
+                }
+            }
+        } catch (CodeGenerationException | TimeProviderException exception) {
+            return OptionalLong.empty();
+        }
+        return OptionalLong.empty();
     }
 
     public boolean verifyAndConsumeBackupCode(User user, String code) {

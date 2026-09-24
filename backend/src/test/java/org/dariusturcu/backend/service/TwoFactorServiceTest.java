@@ -2,6 +2,7 @@ package org.dariusturcu.backend.service;
 
 import dev.samstevens.totp.code.DefaultCodeGenerator;
 import dev.samstevens.totp.time.SystemTimeProvider;
+import org.dariusturcu.backend.exception.ConflictException;
 import org.dariusturcu.backend.model.TwoFactorBackupCode;
 import org.dariusturcu.backend.model.user.User;
 import org.dariusturcu.backend.repository.TwoFactorBackupCodeRepository;
@@ -26,6 +27,10 @@ import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class TwoFactorServiceTest {
+
+    private static final long TOTP_PERIOD_SECONDS = 30;
+    private static final long CURRENT_STEP = 0;
+    private static final long NEXT_STEP = 1;
 
     @Mock
     private UserRepository userRepository;
@@ -60,7 +65,7 @@ class TwoFactorServiceTest {
     @Test
     void confirmWithNoPendingSetupIsRejected() {
         assertThatThrownBy(() -> twoFactorService.confirm(user, "123456"))
-                .isInstanceOf(IllegalStateException.class);
+                .isInstanceOf(ConflictException.class);
     }
 
     @Test
@@ -154,6 +159,51 @@ class TwoFactorServiceTest {
         assertThat(firstAttempt).isTrue();
         assertThat(storedCode.isUsed()).isTrue();
         assertThat(secondAttempt).isFalse();
+    }
+
+    private String codeForStepOffset(String secret, long stepOffset) throws Exception {
+        return new DefaultCodeGenerator().generate(secret,
+                new SystemTimeProvider().getTime() / TOTP_PERIOD_SECONDS + stepOffset);
+    }
+
+    @Test
+    void setupWhileTwoFactorIsOnIsRefusedAndLeavesItOn() {
+        user.setTwoFactorEnabled(true);
+        user.setTotpSecret("SECRET");
+
+        assertThatThrownBy(() -> twoFactorService.setup(user))
+                .isInstanceOf(ConflictException.class);
+
+        assertThat(user.isTwoFactorEnabled()).isTrue();
+        assertThat(user.getTotpSecret()).isEqualTo("SECRET");
+        verify(userRepository, never()).save(any());
+    }
+
+    @Test
+    void aLoginCodeIsAcceptedOnceAndRefusedWhenReplayed() throws Exception {
+        twoFactorService.setup(user);
+        twoFactorService.confirm(user, codeForStepOffset(user.getTotpSecret(), CURRENT_STEP));
+        String nextCode = codeForStepOffset(user.getTotpSecret(), NEXT_STEP);
+
+        assertThat(twoFactorService.verifyLoginCode(user, nextCode)).isTrue();
+        assertThat(twoFactorService.verifyLoginCode(user, nextCode)).isFalse();
+    }
+
+    @Test
+    void theCodeUsedToConfirmSetupCannotBeReusedToLogIn() throws Exception {
+        twoFactorService.setup(user);
+        String confirmationCode = codeForStepOffset(user.getTotpSecret(), CURRENT_STEP);
+        twoFactorService.confirm(user, confirmationCode);
+
+        assertThat(twoFactorService.verifyLoginCode(user, confirmationCode)).isFalse();
+    }
+
+    @Test
+    void aCodeFromAnEarlierStepThanTheLastUsedOneIsRefused() throws Exception {
+        twoFactorService.setup(user);
+        twoFactorService.confirm(user, codeForStepOffset(user.getTotpSecret(), NEXT_STEP));
+
+        assertThat(twoFactorService.verifyLoginCode(user, codeForStepOffset(user.getTotpSecret(), CURRENT_STEP))).isFalse();
     }
 
     @Test

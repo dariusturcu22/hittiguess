@@ -23,4 +23,9 @@ public class GameSessionScheduler {
     public void scheduleAfter(Duration delay, Runnable effect) {
         taskScheduler.schedule(effect, Instant.now().plus(delay));
     }
+
+    // A deadline already in the past runs the effect straight away.
+    public void scheduleAt(Instant deadline, Runnable effect) {
+        taskScheduler.schedule(effect, deadline);
+    }
 }

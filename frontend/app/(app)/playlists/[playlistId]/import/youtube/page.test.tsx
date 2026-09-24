@@ -280,4 +280,36 @@ describe("ImportYoutubePage background import", () => {
 
     expect(await screen.findByText("video-3")).toBeVisible();
   });
+  async function fetchAndImport() {
+    fireEvent.change(screen.getByLabelText("YouTube playlist link"), {
+      target: { value: "https://youtube.com/playlist?list=abc" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Fetch playlist" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Import 2 songs" }));
+  }
+
+  it("shows the server's reason when the daily new-song limit refuses the import", async () => {
+    const quotaMessage = "This import has 2 songs that aren't in the catalog yet, and only 1 more can be looked up today.";
+    startImportMutate.mockImplementation((_args, options) =>
+      options?.onError?.({ response: { status: 429, data: { message: quotaMessage } } }),
+    );
+    await renderPage();
+
+    await fetchAndImport();
+
+    expect(await screen.findByText(quotaMessage)).toBeVisible();
+    expect(screen.queryByText("Importing playlist")).not.toBeInTheDocument();
+  });
+
+  it("falls back to a generic message when the import fails without an explanation", async () => {
+    startImportMutate.mockImplementation((_args, options) =>
+      options?.onError?.({ response: { status: 500, data: { message: "internal detail" } } }),
+    );
+    await renderPage();
+
+    await fetchAndImport();
+
+    expect(await screen.findByText("Import failed to start. Check the link and try again.")).toBeVisible();
+    expect(screen.queryByText("internal detail")).not.toBeInTheDocument();
+  });
 });

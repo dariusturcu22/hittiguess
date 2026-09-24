@@ -1,6 +1,7 @@
 package org.dariusturcu.backend.service;
 
 import org.dariusturcu.backend.exception.ConflictException;
+import org.dariusturcu.backend.exception.RateLimitExceededException;
 import org.dariusturcu.backend.exception.ResourceNotFoundException;
 import org.dariusturcu.backend.model.group.CreateGroupRequest;
 import org.dariusturcu.backend.model.group.DjMode;
@@ -24,6 +25,7 @@ import org.dariusturcu.backend.repository.PlaylistRepository;
 import org.dariusturcu.backend.security.UserPrincipal;
 import org.dariusturcu.backend.websocket.GroupBroadcastEvent;
 import org.dariusturcu.backend.websocket.GroupEventType;
+import org.dariusturcu.backend.websocket.GroupMemberRemovedEvent;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -53,6 +55,8 @@ import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class GroupServiceTest {
+
+    private static final String UNKNOWN_JOIN_CODE = "ZZZZ";
 
     @Mock
     private GroupRepository groupRepository;
@@ -234,7 +238,7 @@ class GroupServiceTest {
         Group group = groupWithAdmin();
         group.setStatus(GroupStatus.LOCKED);
         when(memberRepository.existsByUser(otherUser)).thenReturn(false);
-        when(groupRepository.findByJoinCode("ABCD")).thenReturn(Optional.of(group));
+        when(groupRepository.findByJoinCodeForUpdate("ABCD")).thenReturn(Optional.of(group));
         authenticateAs(otherUser);
 
         assertThatThrownBy(() -> groupService.joinGroup(new JoinGroupRequest(null, "ABCD", null, null)))
@@ -245,7 +249,7 @@ class GroupServiceTest {
     void joinGroupByInviteLinkAddsAMemberDefaultingToAccountIdentity() {
         Group group = groupWithAdmin();
         when(memberRepository.existsByUser(otherUser)).thenReturn(false);
-        when(groupRepository.findByInviteCode("invite-code")).thenReturn(Optional.of(group));
+        when(groupRepository.findByInviteCodeForUpdate("invite-code")).thenReturn(Optional.of(group));
         authenticateAs(otherUser);
 
         GroupDetailDTO result = groupService.joinGroup(new JoinGroupRequest("invite-code", null, null, null));
@@ -266,6 +270,88 @@ class GroupServiceTest {
         assertThat(result.members().stream().filter(GroupServiceTest::isAdminMember).count()).isEqualTo(1);
         assertThat(secondMember.isAdmin()).isTrue();
         assertThat(group.getMembers().getFirst().isAdmin()).isFalse();
+    }
+
+    @Test
+    void joinByCodeIsRefusedOnceTheAttemptLimitIsUsedUp() {
+        when(groupRepository.findByJoinCodeForUpdate(UNKNOWN_JOIN_CODE)).thenReturn(Optional.empty());
+        authenticateAs(otherUser);
+        JoinGroupRequest guess = new JoinGroupRequest(null, UNKNOWN_JOIN_CODE, null, null);
+
+        for (int attempt = 0; attempt < GroupService.MAX_JOIN_CODE_ATTEMPTS_PER_WINDOW; attempt++) {
+            assertThatThrownBy(() -> groupService.joinGroup(guess)).isInstanceOf(ResourceNotFoundException.class);
+        }
+
+        assertThatThrownBy(() -> groupService.joinGroup(guess)).isInstanceOf(RateLimitExceededException.class);
+        verify(groupRepository, times(GroupService.MAX_JOIN_CODE_ATTEMPTS_PER_WINDOW)).findByJoinCodeForUpdate(UNKNOWN_JOIN_CODE);
+    }
+
+    @Test
+    void removeMemberTakesTheMemberOutAndClosesTheirSockets() {
+        Group group = groupWithAdmin();
+        Member secondMember = memberOf(group, otherUser, false, Instant.now());
+        when(groupRepository.findById(10L)).thenReturn(Optional.of(group));
+
+        GroupDetailDTO result = groupService.removeMember(10L, secondMember.getId());
+
+        assertThat(result.members()).extracting(MemberDTO::userId).containsExactly(adminUser.getId());
+        assertThat(group.getRemovedUserIds()).containsExactly(otherUser.getId());
+        ArgumentCaptor<Object> events = ArgumentCaptor.forClass(Object.class);
+        verify(eventPublisher, times(2)).publishEvent(events.capture());
+        assertThat(events.getAllValues().getFirst())
+                .isInstanceOfSatisfying(GroupBroadcastEvent.class,
+                        event -> assertThat(event.type()).isEqualTo(GroupEventType.MEMBER_REMOVED));
+        assertThat(events.getAllValues().getLast())
+                .isEqualTo(new GroupMemberRemovedEvent(10L, otherUser.getUsername()));
+    }
+
+    @Test
+    void removeMemberRejectsARequesterWhoIsNotAdmin() {
+        Group group = groupWithAdmin();
+        memberOf(group, otherUser, false, Instant.now());
+        when(groupRepository.findById(10L)).thenReturn(Optional.of(group));
+        Long adminMemberId = group.getMembers().getFirst().getId();
+        authenticateAs(otherUser);
+
+        assertThatThrownBy(() -> groupService.removeMember(10L, adminMemberId))
+                .isInstanceOf(AccessDeniedException.class);
+        assertThat(group.getMembers()).hasSize(2);
+    }
+
+    @Test
+    void removeMemberRejectsTheAdminRemovingThemselves() {
+        Group group = groupWithAdmin();
+        when(groupRepository.findById(10L)).thenReturn(Optional.of(group));
+        Long adminMemberId = group.getMembers().getFirst().getId();
+
+        assertThatThrownBy(() -> groupService.removeMember(10L, adminMemberId))
+                .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    void removeMemberRejectsRemovingAnyoneWhileAGameSessionRuns() {
+        Group group = groupWithAdmin();
+        Member secondMember = memberOf(group, otherUser, false, Instant.now());
+        group.setStatus(GroupStatus.LOCKED);
+        when(groupRepository.findById(10L)).thenReturn(Optional.of(group));
+
+        assertThatThrownBy(() -> groupService.removeMember(10L, secondMember.getId()))
+                .isInstanceOf(ConflictException.class);
+        assertThat(group.getMembers()).hasSize(2);
+        verify(eventPublisher, never()).publishEvent(any());
+    }
+
+    @Test
+    void aRemovedUserCantRejoinTheGroup() {
+        Group group = groupWithAdmin();
+        group.getRemovedUserIds().add(otherUser.getId());
+        when(groupRepository.findByInviteCodeForUpdate("invite-code")).thenReturn(Optional.of(group));
+        authenticateAs(otherUser);
+
+        assertThatThrownBy(() -> groupService.joinGroup(new JoinGroupRequest("invite-code", null, null, null)))
+                .isInstanceOf(ConflictException.class)
+                .hasMessageContaining("removed");
+        assertThat(group.getMembers()).hasSize(1);
     }
 
     private static boolean isAdminMember(MemberDTO memberDTO) {
@@ -297,7 +383,7 @@ class GroupServiceTest {
     void leaveGroupRemovesMembershipForANonAdmin() {
         Group group = groupWithAdmin();
         Member secondMember = memberOf(group, otherUser, false, Instant.now());
-        when(groupRepository.findById(10L)).thenReturn(Optional.of(group));
+        when(groupRepository.findByIdForUpdate(10L)).thenReturn(Optional.of(group));
         authenticateAs(otherUser);
 
         groupService.leaveGroup(10L);
@@ -316,7 +402,7 @@ class GroupServiceTest {
         thirdUser.setUsername("third-user");
         Member earlierJoiner = memberOf(group, otherUser, false, earlier);
         memberOf(group, thirdUser, false, later);
-        when(groupRepository.findById(10L)).thenReturn(Optional.of(group));
+        when(groupRepository.findByIdForUpdate(10L)).thenReturn(Optional.of(group));
 
         groupService.leaveGroup(10L);
 
@@ -328,7 +414,7 @@ class GroupServiceTest {
     @Test
     void leaveGroupDeletesTheGroupWhenTheAdminLeavesAndNoMembersRemain() {
         Group group = groupWithAdmin();
-        when(groupRepository.findById(10L)).thenReturn(Optional.of(group));
+        when(groupRepository.findByIdForUpdate(10L)).thenReturn(Optional.of(group));
 
         groupService.leaveGroup(10L);
 
@@ -339,7 +425,7 @@ class GroupServiceTest {
     @Test
     void leaveGroupLeavesTheGroupInPlaceWhenTheAdminLeavesAloneWhileAGameSessionStillExistsForIt() {
         Group group = groupWithAdmin();
-        when(groupRepository.findById(10L)).thenReturn(Optional.of(group));
+        when(groupRepository.findByIdForUpdate(10L)).thenReturn(Optional.of(group));
         GameSession session = new GameSession();
         session.setId(20L);
         session.setGroupId(10L);
@@ -546,7 +632,7 @@ class GroupServiceTest {
     void joinGroupPublishesAMemberJoinedEvent() {
         Group group = groupWithAdmin();
         when(memberRepository.existsByUser(otherUser)).thenReturn(false);
-        when(groupRepository.findByInviteCode("invite-code")).thenReturn(Optional.of(group));
+        when(groupRepository.findByInviteCodeForUpdate("invite-code")).thenReturn(Optional.of(group));
         authenticateAs(otherUser);
 
         groupService.joinGroup(new JoinGroupRequest("invite-code", null, null, null));
@@ -561,7 +647,7 @@ class GroupServiceTest {
     void leaveGroupPublishesAMemberLeftEventForANonAdmin() {
         Group group = groupWithAdmin();
         memberOf(group, otherUser, false, Instant.now());
-        when(groupRepository.findById(10L)).thenReturn(Optional.of(group));
+        when(groupRepository.findByIdForUpdate(10L)).thenReturn(Optional.of(group));
         authenticateAs(otherUser);
 
         groupService.leaveGroup(10L);
@@ -575,7 +661,7 @@ class GroupServiceTest {
     void leaveGroupPublishesBothMemberLeftAndAdminChangedWhenTheAdminLeaves() {
         Group group = groupWithAdmin();
         memberOf(group, otherUser, false, Instant.now());
-        when(groupRepository.findById(10L)).thenReturn(Optional.of(group));
+        when(groupRepository.findByIdForUpdate(10L)).thenReturn(Optional.of(group));
 
         groupService.leaveGroup(10L);
 
@@ -589,7 +675,7 @@ class GroupServiceTest {
     @Test
     void leaveGroupPublishesNoEventWhenTheGroupIsDeleted() {
         Group group = groupWithAdmin();
-        when(groupRepository.findById(10L)).thenReturn(Optional.of(group));
+        when(groupRepository.findByIdForUpdate(10L)).thenReturn(Optional.of(group));
 
         groupService.leaveGroup(10L);
 

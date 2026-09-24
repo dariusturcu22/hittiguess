@@ -10,6 +10,8 @@ import org.dariusturcu.backend.security.oauth2.OAuth2AuthenticationSuccessHandle
 import org.dariusturcu.backend.security.oauth2.ReturnToOAuth2AuthorizationRequestResolver;
 import org.dariusturcu.backend.util.CookieUtil;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.security.oauth2.client.autoconfigure.OAuth2ClientAutoConfiguration;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
@@ -40,8 +42,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 /**
  * Proves the CSRF posture against the real SecurityConfig: state-changing API
- * calls need the cookie/header token pair, public reads need nothing, and the
- * /auth/** paths that must work pre-login skip CSRF entirely.
+ * calls need the cookie/header token pair, public reads need nothing, the /auth
+ * paths that must work pre-login skip CSRF entirely, and the /auth paths that act
+ * on an existing session still need the token.
  */
 @WebMvcTest(
         controllers = CsrfSecurityTest.ProbeController.class,
@@ -64,8 +67,13 @@ class CsrfSecurityTest {
             return "ok";
         }
 
-        @PostMapping("/auth/probe")
-        String authPost() {
+        @PostMapping("/auth/login")
+        String preLoginAuthPost() {
+            return "ok";
+        }
+
+        @PostMapping({"/auth/logout", "/auth/2fa/setup", "/auth/2fa/confirm", "/auth/2fa/disable"})
+        String sessionBoundAuthPost() {
             return "ok";
         }
     }
@@ -190,8 +198,16 @@ class CsrfSecurityTest {
     }
 
     @Test
-    void ignoredAuthPathSkipsCsrfEntirely() throws Exception {
-        mockMvc.perform(post("/auth/probe"))
+    void preLoginAuthPathSkipsCsrfEntirely() throws Exception {
+        mockMvc.perform(post("/auth/login"))
                 .andExpect(status().isOk());
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"/auth/logout", "/auth/2fa/setup", "/auth/2fa/confirm", "/auth/2fa/disable"})
+    void sessionBoundAuthPathWithoutTokenIsRejectedAsCsrf(String path) throws Exception {
+        mockMvc.perform(post(path))
+                .andExpect(status().isForbidden())
+                .andExpect(result -> assertThat(result.getResponse().getContentAsString()).contains("CSRF"));
     }
 }

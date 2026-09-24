@@ -1,8 +1,11 @@
 package org.dariusturcu.backend.session;
 
+import org.dariusturcu.backend.exception.ConflictException;
 import org.dariusturcu.backend.model.group.CreateGroupRequest;
 import org.dariusturcu.backend.model.group.DjMode;
+import org.dariusturcu.backend.model.group.Group;
 import org.dariusturcu.backend.model.group.GroupDetailDTO;
+import org.dariusturcu.backend.model.group.GroupInvitePreviewDTO;
 import org.dariusturcu.backend.model.group.JoinGroupRequest;
 import org.dariusturcu.backend.model.group.UpdateGroupSettingsRequest;
 import org.dariusturcu.backend.model.mapper.GroupMapper;
@@ -41,6 +44,8 @@ import org.dariusturcu.backend.service.PlaylistAccessService;
 import org.dariusturcu.backend.service.PlaylistExpansionService;
 import org.dariusturcu.backend.service.PendingSessionSongPool;
 import org.dariusturcu.backend.service.SessionResultsStore;
+import org.dariusturcu.backend.repository.StoredSessionResultsRepository;
+import tools.jackson.databind.json.JsonMapper;
 import org.dariusturcu.backend.difficulty.AggregateBaselinePredictor;
 import org.dariusturcu.backend.difficulty.DifficultyBand;
 import org.dariusturcu.backend.difficulty.DifficultyTunedSongSelector;
@@ -76,10 +81,12 @@ import java.util.Set;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 
 /**
  * Proves betting is concurrency-safe against a real Postgres instance and real threads,
@@ -102,6 +109,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 class GameSessionBettingConcurrencyIntegrationTest {
 
     private static final int CONCURRENT_ATTEMPTS_PER_ELIGIBLE_BETTOR = 2;
+    private static final int CONCURRENT_GROUP_JOIN_ATTEMPTS = 2;
+    private static final int CONCURRENT_LEAVE_ATTEMPTS = 2;
     private static final int CONCURRENCY_TEST_TIMEOUT_SECONDS = 10;
     // The active player starts with a single anchor card, so positions 0 and 1 are both
     // in range. The active player's own placement is locked at position 1, leaving
@@ -140,8 +149,8 @@ class GameSessionBettingConcurrencyIntegrationTest {
         }
 
         @Bean
-        SessionResultsStore sessionResultsStore() {
-            return new SessionResultsStore();
+        SessionResultsStore sessionResultsStore(StoredSessionResultsRepository storedSessionResultsRepository) {
+            return new SessionResultsStore(storedSessionResultsRepository, JsonMapper.builder().build());
         }
 
         @Bean
@@ -224,6 +233,10 @@ class GameSessionBettingConcurrencyIntegrationTest {
     @Autowired
     private GroupService groupService;
     @Autowired
+    private GroupRepository groupRepository;
+    @Autowired
+    private MemberRepository memberRepository;
+    @Autowired
     private GameSessionService gameSessionService;
     @Autowired
     private UserRepository userRepository;
@@ -278,7 +291,9 @@ class GameSessionBettingConcurrencyIntegrationTest {
         playlist.setInviteCode("betting-race-playlist-" + System.nanoTime());
         playlist.setOwner(admin);
         Playlist savedPlaylist = playlistRepository.save(playlist);
-        for (int songIndex = 0; songIndex < 10; songIndex++) {
+        // Four players times the default five-card win condition.
+        int startableSongCount = 20;
+        for (int songIndex = 0; songIndex < startableSongCount; songIndex++) {
             Song song = new Song();
             song.setTitle("Betting Race Song " + songIndex);
             song.setReleaseYear(1970 + songIndex);
@@ -356,6 +371,115 @@ class GameSessionBettingConcurrencyIntegrationTest {
         } else {
             assertThat(finalBettorTwo.getTokenCount()).isZero();
             assertThat(finalBettorOne.getTokenCount()).isEqualTo(1);
+        }
+    }
+
+    @Test
+    void groupCapacityHoldsUnderConcurrentJoins() throws Exception {
+        User admin = persistUser("group-join-race-admin-" + System.nanoTime());
+        authenticateAs(admin);
+        GroupDetailDTO createdGroup = groupService.createGroup(new CreateGroupRequest(null, null));
+
+        int membersNeededBeforeRace = Group.MAX_MEMBERS - CONCURRENT_GROUP_JOIN_ATTEMPTS;
+        for (int memberNumber = 0; memberNumber < membersNeededBeforeRace; memberNumber++) {
+            User existingMember = persistUser("group-join-race-member-" + memberNumber + "-" + System.nanoTime());
+            authenticateAs(existingMember);
+            groupService.joinGroup(new JoinGroupRequest(createdGroup.inviteCode(), null, null, null));
+        }
+
+        User firstConcurrentMember = persistUser("group-join-race-first-" + System.nanoTime());
+        User secondConcurrentMember = persistUser("group-join-race-second-" + System.nanoTime());
+        ExecutorService executorService = Executors.newFixedThreadPool(CONCURRENT_GROUP_JOIN_ATTEMPTS);
+        CountDownLatch startLatch = new CountDownLatch(1);
+
+        try {
+            Future<Boolean> firstJoin = executorService.submit(() -> joinWhenRaceStarts(
+                    firstConcurrentMember, createdGroup.inviteCode(), startLatch));
+            Future<Boolean> secondJoin = executorService.submit(() -> joinWhenRaceStarts(
+                    secondConcurrentMember, createdGroup.inviteCode(), startLatch));
+            startLatch.countDown();
+
+            int successfulJoinCount = 0;
+            for (Future<Boolean> joinAttempt : List.of(firstJoin, secondJoin)) {
+                if (joinAttempt.get(CONCURRENCY_TEST_TIMEOUT_SECONDS, TimeUnit.SECONDS)) {
+                    successfulJoinCount++;
+                }
+            }
+
+            assertThat(successfulJoinCount).isEqualTo(1);
+            assertThat(memberRepository.countByGroupId(createdGroup.id())).isEqualTo(Group.MAX_MEMBERS);
+        } finally {
+            executorService.shutdownNow();
+            SecurityContextHolder.clearContext();
+        }
+    }
+
+    @Test
+    void anAdminAndAMemberLeavingAtTheSameMomentBothSucceed() throws Exception {
+        User admin = persistUser("leave-race-admin-" + System.nanoTime());
+        User member = persistUser("leave-race-member-" + System.nanoTime());
+        authenticateAs(admin);
+        GroupDetailDTO createdGroup = groupService.createGroup(new CreateGroupRequest(null, null));
+        authenticateAs(member);
+        groupService.joinGroup(new JoinGroupRequest(createdGroup.inviteCode(), null, null, null));
+        SecurityContextHolder.clearContext();
+
+        ExecutorService executorService = Executors.newFixedThreadPool(CONCURRENT_LEAVE_ATTEMPTS);
+        CountDownLatch startLatch = new CountDownLatch(1);
+        try {
+            List<Future<?>> leaves = List.of(
+                    executorService.submit(() -> leaveWhenRaceStarts(admin, createdGroup.id(), startLatch)),
+                    executorService.submit(() -> leaveWhenRaceStarts(member, createdGroup.id(), startLatch)));
+            startLatch.countDown();
+
+            for (Future<?> leave : leaves) {
+                assertThatCode(() -> leave.get(CONCURRENCY_TEST_TIMEOUT_SECONDS, TimeUnit.SECONDS))
+                        .doesNotThrowAnyException();
+            }
+            assertThat(memberRepository.countByGroupId(createdGroup.id())).isZero();
+        } finally {
+            executorService.shutdownNow();
+        }
+    }
+
+    private void leaveWhenRaceStarts(User user, Long groupId, CountDownLatch startLatch) {
+        try {
+            startLatch.await();
+            authenticateAs(user);
+            groupService.leaveGroup(groupId);
+        } catch (InterruptedException exception) {
+            Thread.currentThread().interrupt();
+            throw new IllegalStateException("Concurrent leave was interrupted", exception);
+        } finally {
+            SecurityContextHolder.clearContext();
+        }
+    }
+
+    @Test
+    void theInvitePreviewStillReadsAGroupOutsideAnyWriteTransaction() {
+        User admin = persistUser("invite-preview-admin-" + System.nanoTime());
+        authenticateAs(admin);
+        GroupDetailDTO createdGroup = groupService.createGroup(new CreateGroupRequest(null, null));
+        SecurityContextHolder.clearContext();
+
+        GroupInvitePreviewDTO preview = groupService.getInvitePreview(createdGroup.inviteCode());
+
+        assertThat(preview.memberCount()).isEqualTo(1);
+    }
+
+    private boolean joinWhenRaceStarts(User user, String inviteCode, CountDownLatch startLatch) {
+        try {
+            startLatch.await();
+            authenticateAs(user);
+            groupService.joinGroup(new JoinGroupRequest(inviteCode, null, null, null));
+            return true;
+        } catch (ConflictException exception) {
+            return false;
+        } catch (InterruptedException exception) {
+            Thread.currentThread().interrupt();
+            throw new IllegalStateException("Concurrent join attempt was interrupted", exception);
+        } finally {
+            SecurityContextHolder.clearContext();
         }
     }
 

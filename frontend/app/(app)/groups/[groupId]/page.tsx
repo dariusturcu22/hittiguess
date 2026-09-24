@@ -1,6 +1,6 @@
 "use client";
 
-import { use, useCallback, useEffect, useMemo, useState, Suspense } from "react";
+import { use, useCallback, useEffect, useMemo, useRef, useState, Suspense } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 import {
@@ -12,6 +12,7 @@ import {
   MessageCircle,
   Play,
   Settings,
+  UserX,
 } from "lucide-react";
 
 import {
@@ -19,6 +20,7 @@ import {
   getGetActiveMembershipQueryKey,
   useGetGroup,
   useLeaveGroup,
+  useRemoveMember,
   useStartGameSession,
   useUpdateGroupSettings,
 } from "@/hooks/generated/group-management/group-management";
@@ -107,10 +109,12 @@ function LobbyMember({
   member,
   index,
   isCurrentUser,
+  onRemove,
 }: {
   member: MemberDTO;
   index: number;
   isCurrentUser: boolean;
+  onRemove?: (member: MemberDTO) => void;
 }) {
   const colorClass = MEMBER_COLORS[index % MEMBER_COLORS.length];
   const orbitPosition = ORBIT_POSITIONS[index % ORBIT_POSITIONS.length];
@@ -128,6 +132,16 @@ function LobbyMember({
         </div>
         {member.isAdmin ? (
           <Crown className="absolute -right-2 -top-2 size-6 fill-warning text-warning drop-shadow-sm sm:size-7" />
+        ) : null}
+        {onRemove ? (
+          <button
+            type="button"
+            onClick={() => onRemove(member)}
+            aria-label={`Remove ${member.displayName || "Player"}`}
+            className="absolute -left-2 -top-2 flex size-7 items-center justify-center rounded-full border-2 border-background bg-destructive text-white shadow-sm transition-transform hover:scale-110"
+          >
+            <UserX className="size-3.5" />
+          </button>
         ) : null}
       </div>
       <span className="mt-2 max-w-[112px] truncate font-semibold text-sm text-foreground sm:mt-3 sm:text-[15px]">
@@ -155,18 +169,25 @@ function LobbyLoadingState() {
   );
 }
 
+// Runs only when the search params change. The callback is read through a ref, so a
+// caller whose callback changes identity every render can't re-apply the same link.
 function PlaylistPreselectCapture({ onCapture }: { onCapture: (playlistId: number | null) => void }) {
   const searchParams = useSearchParams();
+  const onCaptureReference = useRef(onCapture);
+
+  useEffect(() => {
+    onCaptureReference.current = onCapture;
+  });
 
   useEffect(() => {
     const rawPlaylistId = searchParams.get("playlist");
     if (rawPlaylistId === null) {
-      onCapture(null);
+      onCaptureReference.current(null);
       return;
     }
     const parsedPlaylistId = Number(rawPlaylistId);
-    onCapture(Number.isInteger(parsedPlaylistId) && parsedPlaylistId > 0 ? parsedPlaylistId : null);
-  }, [searchParams, onCapture]);
+    onCaptureReference.current(Number.isInteger(parsedPlaylistId) && parsedPlaylistId > 0 ? parsedPlaylistId : null);
+  }, [searchParams]);
 
   return null;
 }
@@ -199,6 +220,8 @@ export default function GroupLobbyPage({ params }: PageProps) {
   const generateSet = useGenerateDifficultySet();
   const startWithSongs = useStartSessionWithSongs();
   const leaveGroup = useLeaveGroup();
+  const removeMember = useRemoveMember();
+  const [memberPendingRemoval, setMemberPendingRemoval] = useState<MemberDTO | null>(null);
   const updateSettings = useUpdateGroupSettings();
   const activeSessionQuery = useGetActiveSessionForGroup(groupId, {
     query: { enabled: groupQuery.data?.status === "LOCKED", retry: false },
@@ -387,6 +410,21 @@ export default function GroupLobbyPage({ params }: PageProps) {
     );
   }
 
+  function handleConfirmRemoval() {
+    const memberId = memberPendingRemoval?.id;
+    setMemberPendingRemoval(null);
+    if (memberId === undefined) {
+      return;
+    }
+    removeMember.mutate(
+      { groupId, memberId },
+      {
+        onSuccess: refreshGroup,
+        onError: (error) => toast.error(mutationErrorMessage(error)),
+      },
+    );
+  }
+
   function openSettings() {
     setSelectedDjMode(groupQuery.data?.djMode ?? "ROTATING");
     setSelectedFixedDjMemberId(groupQuery.data?.fixedDjMemberId ?? undefined);
@@ -470,7 +508,7 @@ export default function GroupLobbyPage({ params }: PageProps) {
   }
 
   return (
-    <main className="flex h-full min-h-[720px] flex-col px-6 py-8 sm:px-14 sm:py-9">
+    <main className="flex h-full flex-col px-6 py-8 sm:px-14 sm:py-9">
       <Suspense fallback={null}>
         <PlaylistPreselectCapture onCapture={applyPlaylistPreselect} />
       </Suspense>
@@ -566,7 +604,9 @@ export default function GroupLobbyPage({ params }: PageProps) {
         )}
       </header>
 
-      <section className="relative flex min-h-0 flex-1 items-center justify-center overflow-y-auto py-10">
+      {/* The stage keeps a minimum height and scrolls inside the section, so on a short or zoomed window the footer actions stay on screen. */}
+      <section className="flex min-h-0 flex-1 overflow-y-auto py-10">
+        <div className="relative flex min-h-[480px] w-full items-center justify-center">
         <div className="z-10 text-center">
           <p className="mb-3 font-semibold text-[11px] uppercase tracking-[0.25em] text-muted-foreground">
             Enter code to join
@@ -590,8 +630,28 @@ export default function GroupLobbyPage({ params }: PageProps) {
             member={member}
             index={index}
             isCurrentUser={member.userId === currentUser?.id}
+            onRemove={isCurrentUserAdmin && member.userId !== currentUser?.id ? setMemberPendingRemoval : undefined}
           />
         ))}
+        <AlertDialog
+          open={memberPendingRemoval !== null}
+          onOpenChange={(isOpen) => { if (!isOpen) setMemberPendingRemoval(null); }}
+        >
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Remove {memberPendingRemoval?.displayName || "this player"}?</AlertDialogTitle>
+              <AlertDialogDescription>
+                They leave the lobby right away and can&apos;t rejoin this group.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction variant="destructive" onClick={handleConfirmRemoval}>
+                Remove
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
         {isSettingsOpen ? (
           <>
             <button type="button" aria-label="Close settings" onClick={() => setIsSettingsOpen(false)} className="fixed inset-0 z-10 cursor-default" />
@@ -695,6 +755,7 @@ export default function GroupLobbyPage({ params }: PageProps) {
             </section>
           </>
         ) : null}
+        </div>
       </section>
 
       <div className="relative shrink-0">

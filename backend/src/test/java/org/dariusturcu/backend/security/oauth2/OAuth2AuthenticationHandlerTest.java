@@ -131,6 +131,20 @@ class OAuth2AuthenticationHandlerTest {
     }
 
     @Test
+    void successDropsBackslashAndProtocolRelativeReturnToDestinations() throws Exception {
+        for (String unsafeReturnTo : List.of("/\\evil.example.com", "//evil.example.com", "/\t/evil.example.com")) {
+            stubTokenCookies();
+            MockHttpServletResponse saveResponse = new MockHttpServletResponse();
+            MockHttpServletRequest callbackRequest = requestWithSavedAuthorizationRequest(unsafeReturnTo, saveResponse);
+            MockHttpServletResponse response = new MockHttpServletResponse();
+
+            successHandler().onAuthenticationSuccess(callbackRequest, response, googleAuthentication());
+
+            assertThat(response.getRedirectedUrl()).isEqualTo(REDIRECT_URI);
+        }
+    }
+
+    @Test
     void failureRedirectsWithAnErrorFlag() throws Exception {
         OAuth2AuthenticationFailureHandler handler = new OAuth2AuthenticationFailureHandler();
         ReflectionTestUtils.setField(handler, "redirectUri", REDIRECT_URI);

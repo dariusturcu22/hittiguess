@@ -10,6 +10,7 @@ import org.springframework.scheduling.TaskScheduler;
 import org.springframework.web.socket.config.annotation.EnableWebSocketMessageBroker;
 import org.springframework.web.socket.config.annotation.StompEndpointRegistry;
 import org.springframework.web.socket.config.annotation.WebSocketMessageBrokerConfigurer;
+import org.springframework.web.socket.config.annotation.WebSocketTransportRegistration;
 
 import java.util.List;
 
@@ -41,20 +42,31 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
     // presence flag stuck until the next clean close.
     private static final long HEARTBEAT_INTERVAL_MILLISECONDS = 10_000;
     private final StompAuthenticationChannelInterceptor stompAuthenticationChannelInterceptor;
+    private final StompSubscriptionAuthorizationInterceptor stompSubscriptionAuthorizationInterceptor;
     private final JwtCookieHandshakeInterceptor jwtCookieHandshakeInterceptor;
     private final List<String> allowedFrontendOrigins;
     private final TaskScheduler messageBrokerTaskScheduler;
+    private final UserSocketCloser userSocketCloser;
 
     public WebSocketConfig(
             StompAuthenticationChannelInterceptor stompAuthenticationChannelInterceptor,
+            StompSubscriptionAuthorizationInterceptor stompSubscriptionAuthorizationInterceptor,
             JwtCookieHandshakeInterceptor jwtCookieHandshakeInterceptor,
             @Value("${frontend.allowed-origins}") List<String> allowedFrontendOrigins,
-            @Lazy @Qualifier("messageBrokerTaskScheduler") TaskScheduler messageBrokerTaskScheduler
+            @Lazy @Qualifier("messageBrokerTaskScheduler") TaskScheduler messageBrokerTaskScheduler,
+            UserSocketCloser userSocketCloser
     ) {
         this.stompAuthenticationChannelInterceptor = stompAuthenticationChannelInterceptor;
+        this.stompSubscriptionAuthorizationInterceptor = stompSubscriptionAuthorizationInterceptor;
         this.jwtCookieHandshakeInterceptor = jwtCookieHandshakeInterceptor;
         this.allowedFrontendOrigins = allowedFrontendOrigins;
         this.messageBrokerTaskScheduler = messageBrokerTaskScheduler;
+        this.userSocketCloser = userSocketCloser;
+    }
+
+    @Override
+    public void configureWebSocketTransport(WebSocketTransportRegistration registration) {
+        registration.addDecoratorFactory(userSocketCloser);
     }
 
     @Override
@@ -74,6 +86,6 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
     @Override
     public void configureClientInboundChannel(ChannelRegistration registration) {
-        registration.interceptors(stompAuthenticationChannelInterceptor);
+        registration.interceptors(stompAuthenticationChannelInterceptor, stompSubscriptionAuthorizationInterceptor);
     }
 }

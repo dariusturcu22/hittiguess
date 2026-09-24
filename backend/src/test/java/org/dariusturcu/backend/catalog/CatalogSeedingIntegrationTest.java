@@ -1,6 +1,10 @@
 package org.dariusturcu.backend.catalog;
 
+import org.dariusturcu.backend.exception.PlaylistImportException;
+import org.dariusturcu.backend.exception.RateLimitExceededException;
 import org.dariusturcu.backend.model.ai.AiResponse;
+import org.dariusturcu.backend.model.importquota.ImportQuotaUsage;
+import org.dariusturcu.backend.model.playlist.Playlist;
 import org.dariusturcu.backend.model.ai.SongMetadataResponse;
 import org.dariusturcu.backend.model.song.AlternateYoutubeId;
 import org.dariusturcu.backend.model.song.BacklogStatusDTO;
@@ -14,13 +18,19 @@ import org.dariusturcu.backend.model.song.YoutubeIdLookupResult;
 import org.dariusturcu.backend.model.user.Role;
 import org.dariusturcu.backend.model.user.User;
 import org.dariusturcu.backend.repository.AlternateYoutubeIdRepository;
+import org.dariusturcu.backend.repository.ImportQuotaUsageRepository;
+import org.dariusturcu.backend.repository.PlaylistMembershipRepository;
+import org.dariusturcu.backend.repository.PlaylistRepository;
 import org.dariusturcu.backend.repository.PendingImportRepository;
 import org.dariusturcu.backend.repository.SongRepository;
+import org.dariusturcu.backend.repository.UserRepository;
 import org.dariusturcu.backend.security.UserPrincipal;
 import org.dariusturcu.backend.service.BulkImportService;
 import org.dariusturcu.backend.service.CatalogSeedingService;
+import org.dariusturcu.backend.service.ImportQuotaService;
 import org.dariusturcu.backend.service.MetadataPriorityCoordinator;
 import org.dariusturcu.backend.service.PendingImportProcessor;
+import org.dariusturcu.backend.service.PlaylistAccessService;
 import org.dariusturcu.backend.service.PlaylistExpansionService;
 import org.dariusturcu.backend.service.PlaylistImportService;
 import org.dariusturcu.backend.service.SongMetadataService;
@@ -41,6 +51,7 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.context.DynamicPropertyRegistry;
@@ -50,12 +61,17 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
 import java.sql.SQLException;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.stream.IntStream;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
  * Exercises the catalog-seeding backlog and the on-the-spot import path against a real
@@ -69,6 +85,14 @@ import static org.assertj.core.api.Assertions.assertThat;
 class CatalogSeedingIntegrationTest {
 
     private static final long DAILY_DRAIN_QUOTA = 3;
+    private static final String SUBMITTING_USER_USERNAME = "bulk-import-submitter";
+    private static final String SUBMITTING_USER_EMAIL = "bulk-import-submitter@integration.test";
+    private static final String PLAYLIST_OWNER_USERNAME = "playlist-owner";
+    private static final String PLAYLIST_OWNER_EMAIL = "playlist-owner@integration.test";
+    private static final String NEW_VIDEO_ID = "newVideoId1";
+    private static final String SECOND_NEW_VIDEO_ID = "newVideoId2";
+    private static final int SONGS_LEFT_IN_TODAYS_QUOTA = 1;
+    private static final int ONE_NEW_SONG = 1;
 
     @Configuration
     @EnableAutoConfiguration(exclude = OAuth2ClientAutoConfiguration.class)
@@ -112,10 +136,16 @@ class CatalogSeedingIntegrationTest {
         }
 
         @Bean
-        PlaylistImportService playlistImportService() {
-            // No test here submits a targetPlaylistId, so this service's dependencies
-            // are never actually invoked.
-            return new PlaylistImportService(null, null, null);
+        PlaylistImportService playlistImportService(PlaylistRepository playlistRepository,
+                                                    PlaylistMembershipRepository playlistMembershipRepository,
+                                                    SongRepository songRepository) {
+            return new PlaylistImportService(playlistRepository,
+                    new PlaylistAccessService(playlistMembershipRepository), songRepository);
+        }
+
+        @Bean
+        ImportQuotaService importQuotaService(ImportQuotaUsageRepository importQuotaUsageRepository) {
+            return new ImportQuotaService(importQuotaUsageRepository);
         }
 
         @Bean
@@ -136,10 +166,11 @@ class CatalogSeedingIntegrationTest {
                                             MetadataPriorityCoordinator metadataPriorityCoordinator,
                                             PlaylistExpansionService playlistExpansionService,
                                             PlaylistImportService playlistImportService,
+                                            ImportQuotaService importQuotaService,
                                             ApplicationEventPublisher applicationEventPublisher) {
             return new BulkImportService(youtubeIdLookupService, songResolutionService,
                     catalogSeedingService, metadataPriorityCoordinator, playlistExpansionService,
-                    playlistImportService, applicationEventPublisher);
+                    playlistImportService, importQuotaService, applicationEventPublisher);
         }
     }
 
@@ -199,6 +230,8 @@ class CatalogSeedingIntegrationTest {
     @Autowired
     private SongRepository songRepository;
     @Autowired
+    private UserRepository userRepository;
+    @Autowired
     private AlternateYoutubeIdRepository alternateYoutubeIdRepository;
     @Autowired
     private PendingImportRepository pendingImportRepository;
@@ -206,10 +239,17 @@ class CatalogSeedingIntegrationTest {
     private MetadataPriorityCoordinator metadataPriorityCoordinator;
     @Autowired
     private StubMetadataResolver stubMetadataResolver;
+    @Autowired
+    private ImportQuotaUsageRepository importQuotaUsageRepository;
+    @Autowired
+    private PlaylistRepository playlistRepository;
+
+    private User submittingUser;
 
     @BeforeEach
     void resetState() {
         pendingImportRepository.deleteAll();
+        importQuotaUsageRepository.deleteAll();
         alternateYoutubeIdRepository.deleteAll();
         songRepository.deleteAll();
         stubMetadataResolver.resolutionOrder.clear();
@@ -218,10 +258,15 @@ class CatalogSeedingIntegrationTest {
             metadataPriorityCoordinator.endOnTheSpotWork();
         }
 
-        User submittingUser = new User();
-        submittingUser.setUsername("bulk-import-submitter");
-        submittingUser.setEmail("bulk-import-submitter@integration.test");
-        submittingUser.setRole(Role.USER);
+        // Persisted, not transient: an on-the-spot import records the submitting user as
+        // each resolved song's addedBy, which has to reference a saved row.
+        submittingUser = userRepository.findUserByEmail(SUBMITTING_USER_EMAIL).orElseGet(() -> {
+            User newUser = new User();
+            newUser.setUsername(SUBMITTING_USER_USERNAME);
+            newUser.setEmail(SUBMITTING_USER_EMAIL);
+            newUser.setRole(Role.USER);
+            return userRepository.save(newUser);
+        });
         SecurityContextHolder.getContext().setAuthentication(
                 new UsernamePasswordAuthenticationToken(new UserPrincipal(submittingUser), null, null));
     }
@@ -318,6 +363,66 @@ class CatalogSeedingIntegrationTest {
         assertThat(resolvedThisRun).isGreaterThanOrEqualTo(1);
         assertThat(pendingImportRepository.countByStatusAndProcessedAtAfter(
                 PendingImportStatus.DONE, java.time.Instant.EPOCH)).isGreaterThanOrEqualTo(1);
+    }
+
+    @Test
+    void anImportLargerThanTheCapIsRefusedBeforeAnyLookup() {
+        List<String> oversizedSubmission = IntStream.rangeClosed(1, ImportQuotaService.MAX_SONGS_PER_IMPORT + 1)
+                .mapToObj(position -> String.format("capVideo%03d", position))
+                .toList();
+
+        assertThatThrownBy(() -> bulkImportService.importImmediately(
+                new BulkImportRequest(null, oversizedSubmission, null, null)))
+                .isInstanceOf(PlaylistImportException.class);
+        assertThat(stubMetadataResolver.resolutionOrder).isEmpty();
+    }
+
+    @Test
+    void anImportNeedingMoreNewSongsThanTodaysQuotaLeavesIsRefusedBeforeAnyLookup() {
+        ImportQuotaUsage usage = new ImportQuotaUsage();
+        usage.setUserId(submittingUser.getId());
+        usage.setUsageDate(LocalDate.now(ZoneOffset.UTC));
+        usage.setResolutionCount(ImportQuotaService.DAILY_NEW_SONG_LIMIT - SONGS_LEFT_IN_TODAYS_QUOTA);
+        importQuotaUsageRepository.save(usage);
+
+        assertThatThrownBy(() -> bulkImportService.importImmediately(
+                new BulkImportRequest(null, List.of(NEW_VIDEO_ID, SECOND_NEW_VIDEO_ID), null, null)))
+                .isInstanceOf(RateLimitExceededException.class)
+                .hasMessageContaining("only " + SONGS_LEFT_IN_TODAYS_QUOTA + " more");
+        assertThat(stubMetadataResolver.resolutionOrder).isEmpty();
+    }
+
+    @Test
+    void songsAlreadyInTheCatalogDontCountAgainstTheQuota() {
+        persistSong(NEW_VIDEO_ID);
+
+        bulkImportService.importImmediately(new BulkImportRequest(null, List.of(NEW_VIDEO_ID, SECOND_NEW_VIDEO_ID), null, null));
+
+        assertThat(importQuotaUsageRepository.findResolutionCount(submittingUser.getId(), LocalDate.now(ZoneOffset.UTC)))
+                .contains(ONE_NEW_SONG);
+    }
+
+    @Test
+    void anImportIntoAPlaylistTheUserCantWriteIsRefusedBeforeAnyLookup() {
+        User playlistOwner = userRepository.findUserByEmail(PLAYLIST_OWNER_EMAIL).orElseGet(() -> {
+            User newUser = new User();
+            newUser.setUsername(PLAYLIST_OWNER_USERNAME);
+            newUser.setEmail(PLAYLIST_OWNER_EMAIL);
+            newUser.setRole(Role.USER);
+            return userRepository.save(newUser);
+        });
+        Playlist someoneElsesPlaylist = new Playlist();
+        someoneElsesPlaylist.setName("Someone else's playlist");
+        someoneElsesPlaylist.setInviteCode(UUID.randomUUID().toString());
+        someoneElsesPlaylist.setOwner(playlistOwner);
+        Long playlistId = playlistRepository.save(someoneElsesPlaylist).getId();
+
+        assertThatThrownBy(() -> bulkImportService.importImmediately(
+                new BulkImportRequest(null, List.of(NEW_VIDEO_ID), playlistId, null)))
+                .isInstanceOf(AccessDeniedException.class);
+        assertThat(stubMetadataResolver.resolutionOrder).isEmpty();
+        assertThat(importQuotaUsageRepository.findResolutionCount(submittingUser.getId(), LocalDate.now(ZoneOffset.UTC)))
+                .isEmpty();
     }
 
     @Test

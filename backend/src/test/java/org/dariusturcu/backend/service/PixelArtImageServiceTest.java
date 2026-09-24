@@ -11,16 +11,22 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.web.server.ResponseStatusException;
+import org.springframework.security.access.AccessDeniedException;
 
 import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
+import java.io.DataOutputStream;
+import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
 import java.util.Optional;
+import java.util.zip.CRC32;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -29,6 +35,14 @@ class PixelArtImageServiceTest {
 
     private static final int PIXEL_GRID_SIZE = 32;
     private static final int OVERSIZED_GRID_SIZE = 128;
+    private static final int HUGE_DECLARED_DIMENSION = 60_000;
+    private static final byte[] PNG_SIGNATURE = {(byte) 0x89, 'P', 'N', 'G', '\r', '\n', 0x1A, '\n'};
+    private static final int IHDR_DATA_LENGTH = 13;
+    private static final byte PNG_BIT_DEPTH = 8;
+    private static final byte PNG_COLOR_TYPE_TRUECOLOR_WITH_ALPHA = 6;
+    private static final byte PNG_DEFLATE_COMPRESSION_METHOD = 0;
+    private static final byte PNG_ADAPTIVE_FILTER_METHOD = 0;
+    private static final byte PNG_NO_INTERLACE_METHOD = 0;
 
     @Mock
     private PlaylistRepository playlistRepository;
@@ -47,6 +61,37 @@ class PixelArtImageServiceTest {
             ImageIO.write(image, "png", output);
             return output.toByteArray();
         }
+    }
+
+    // A PNG whose header declares the given canvas but carries no pixel data at all, so
+    // only its declared dimensions can be read from it.
+    private static byte[] headerOnlyPng(int declaredDimension) throws Exception {
+        ByteBuffer headerData = ByteBuffer.allocate(IHDR_DATA_LENGTH)
+                .putInt(declaredDimension)
+                .putInt(declaredDimension)
+                .put(PNG_BIT_DEPTH)
+                .put(PNG_COLOR_TYPE_TRUECOLOR_WITH_ALPHA)
+                .put(PNG_DEFLATE_COMPRESSION_METHOD)
+                .put(PNG_ADAPTIVE_FILTER_METHOD)
+                .put(PNG_NO_INTERLACE_METHOD);
+        try (ByteArrayOutputStream output = new ByteArrayOutputStream();
+             DataOutputStream pngOutput = new DataOutputStream(output)) {
+            pngOutput.write(PNG_SIGNATURE);
+            writePngChunk(pngOutput, "IHDR", headerData.array());
+            writePngChunk(pngOutput, "IEND", new byte[0]);
+            return output.toByteArray();
+        }
+    }
+
+    private static void writePngChunk(DataOutputStream pngOutput, String chunkType, byte[] chunkData) throws Exception {
+        byte[] typeBytes = chunkType.getBytes(StandardCharsets.US_ASCII);
+        CRC32 checksum = new CRC32();
+        checksum.update(typeBytes);
+        checksum.update(chunkData);
+        pngOutput.writeInt(chunkData.length);
+        pngOutput.write(typeBytes);
+        pngOutput.write(chunkData);
+        pngOutput.writeInt((int) checksum.getValue());
     }
 
     private static User userWithId(Long userId) {
@@ -71,6 +116,16 @@ class PixelArtImageServiceTest {
         PixelArtImageService imageService = service();
 
         assertThatThrownBy(() -> imageService.normalizeToPixelPng(pixelPng(OVERSIZED_GRID_SIZE)))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("pixel-art size");
+    }
+
+    @Test
+    void anImageDeclaringHugeDimensionsIsRefusedFromItsHeaderBeforeDecoding() throws Exception {
+        PixelArtImageService imageService = service();
+        byte[] upload = headerOnlyPng(HUGE_DECLARED_DIMENSION);
+
+        assertThatThrownBy(() -> imageService.normalizeToPixelPng(upload))
                 .isInstanceOf(ResponseStatusException.class)
                 .hasMessageContaining("pixel-art size");
     }
@@ -110,8 +165,33 @@ class PixelArtImageServiceTest {
         playlist.setId(7L);
         when(playlistRepository.findById(7L)).thenReturn(Optional.of(playlist));
 
-        assertThatThrownBy(() -> service().readPlaylistCover(7L))
+        assertThatThrownBy(() -> service().readPlaylistCover(7L, userWithId(11L)))
                 .isInstanceOf(ResponseStatusException.class);
+    }
+
+    @Test
+    void readPlaylistCoverRefusesAUserWhoCantReadThePlaylist() throws Exception {
+        Playlist privatePlaylist = new Playlist();
+        privatePlaylist.setId(7L);
+        privatePlaylist.setCoverImage(pixelPng(PIXEL_GRID_SIZE));
+        User outsider = userWithId(12L);
+        when(playlistRepository.findById(7L)).thenReturn(Optional.of(privatePlaylist));
+        doThrow(new AccessDeniedException("You are not a member of this playlist"))
+                .when(playlistAccessService).requireRead(privatePlaylist, outsider);
+
+        assertThatThrownBy(() -> service().readPlaylistCover(7L, outsider))
+                .isInstanceOf(AccessDeniedException.class);
+    }
+
+    @Test
+    void readPlaylistCoverReturnsTheCoverToAReader() throws Exception {
+        Playlist playlist = new Playlist();
+        playlist.setId(7L);
+        byte[] cover = pixelPng(PIXEL_GRID_SIZE);
+        playlist.setCoverImage(cover);
+        when(playlistRepository.findById(7L)).thenReturn(Optional.of(playlist));
+
+        assertThat(service().readPlaylistCover(7L, userWithId(11L))).isEqualTo(cover);
     }
 
     @Test

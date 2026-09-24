@@ -69,6 +69,11 @@ public class PlaylistImportService {
         return new ImportFromPlaylistResultDTO(importedCount, skippedCount);
     }
 
+    @Transactional(readOnly = true)
+    public void requireWritableTarget(Long targetPlaylistId) {
+        playlistAccessService.requireWrite(findPlaylist(targetPlaylistId), SecurityUtils.getCurrentUser());
+    }
+
     /**
      * Links already-resolved catalog songs into a playlist, skipping any already
      * present, for a caller (such as an on-the-spot bulk import) that resolved the

@@ -3,6 +3,8 @@ package org.dariusturcu.backend.service;
 import io.jsonwebtoken.JwtException;
 import lombok.RequiredArgsConstructor;
 import org.dariusturcu.backend.exception.ConflictException;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
 import org.dariusturcu.backend.exception.EmailNotVerifiedException;
 import org.dariusturcu.backend.exception.ResourceNotFoundException;
 import org.dariusturcu.backend.model.EmailVerificationToken;
@@ -50,6 +52,7 @@ public class AuthService {
     private final AuthenticationManager authenticationManager;
     private final EmailService emailService;
     private final TwoFactorService twoFactorService;
+    private final LoginAttemptService loginAttemptService;
 
     @Value("${email.verification-token-expiration}")
     private long emailVerificationTokenExpirationMillis;
@@ -83,6 +86,10 @@ public class AuthService {
     }
 
     public LoginOutcome login(LoginRequest request) {
+        // A locked account is refused before the password is checked, so a correct guess
+        // during the lockout doesn't succeed or reveal itself.
+        userRepository.findUserByEmail(request.email()).ifPresent(loginAttemptService::requireNotLocked);
+
         try {
             authenticationManager.authenticate(
                     new UsernamePasswordAuthenticationToken(
@@ -90,11 +97,15 @@ public class AuthService {
                             request.password()
                     )
             );
-        } catch (IllegalArgumentException e) {
+        } catch (IllegalArgumentException passwordlessAccountException) {
             // BCrypt throws this for an account with no password set, a Google-only account
             // trying to log in with a password. Same response as any other wrong credentials,
             // so this doesn't become a second way to tell accounts apart.
+            recordFailedLogin(request.email());
             throw new BadCredentialsException("Invalid username or password");
+        } catch (BadCredentialsException wrongCredentialsException) {
+            recordFailedLogin(request.email());
+            throw wrongCredentialsException;
         }
 
         User user = userRepository.findUserByEmail(request.email())
@@ -108,7 +119,12 @@ public class AuthService {
             return new LoginOutcome.TwoFactorRequired(jwtUtil.generateTwoFactorPendingToken(user));
         }
 
+        loginAttemptService.resetFailures(user);
         return new LoginOutcome.Completed(issueTokens(user, Boolean.TRUE.equals(request.rememberMe())));
+    }
+
+    private void recordFailedLogin(String email) {
+        userRepository.findUserByEmail(email).map(User::getId).ifPresent(loginAttemptService::recordFailure);
     }
 
     public AuthResult verifyTwoFactor(String pendingToken, String code) {
@@ -129,10 +145,13 @@ public class AuthService {
             throw new BadCredentialsException("Two-factor authentication is not enabled for this account");
         }
 
+        loginAttemptService.requireNotLocked(user);
         if (!twoFactorService.verifyLoginCode(user, code)) {
+            loginAttemptService.recordFailure(user.getId());
             throw new BadCredentialsException("Invalid authentication code");
         }
 
+        loginAttemptService.resetFailures(user);
         return issueTokens(user, false);
     }
 
@@ -189,11 +208,11 @@ public class AuthService {
 
     public AuthResult refreshTokens(String refreshToken) {
         RefreshToken storedToken = refreshTokenRepository.findByToken(TokenHasher.hash(refreshToken))
-                .orElseThrow(() -> new RuntimeException("Invalid refresh accessToken"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid refresh token"));
 
         if (storedToken.isExpired()) {
             refreshTokenRepository.delete(storedToken);
-            throw new RuntimeException("Refresh accessToken expired, please log in again");
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Refresh token expired, please log in again");
         }
 
         User user = storedToken.getUser();

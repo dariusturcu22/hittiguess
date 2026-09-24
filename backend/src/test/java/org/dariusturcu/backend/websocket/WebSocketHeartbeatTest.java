@@ -37,9 +37,11 @@ class WebSocketHeartbeatTest {
         TaskScheduler scheduler = mock(TaskScheduler.class);
         WebSocketConfig config = new WebSocketConfig(
                 mock(StompAuthenticationChannelInterceptor.class),
+                mock(StompSubscriptionAuthorizationInterceptor.class),
                 mock(JwtCookieHandshakeInterceptor.class),
                 List.of("http://localhost:3000"),
-                scheduler);
+                scheduler,
+                mock(UserSocketCloser.class));
         ExposedRegistry registry = new ExposedRegistry();
 
         config.configureMessageBroker(registry);
