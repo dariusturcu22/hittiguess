@@ -126,3 +126,38 @@ class VideoInfoItem(BaseModel):
 
 class VideoInfoResponse(BaseModel):
     videos: list[VideoInfoItem]
+
+
+class IdentifyRequest(BaseModel):
+    youtube_url: str
+
+
+class IdentifiedSong(BaseModel):
+    title: str
+    main_artists: list[str] = []
+    featured_artists: list[str] = []
+    color: str
+
+
+class IdentifyResponse(BaseModel):
+    """The fast tier's first pass. SUCCESS carries either the identified song, which
+    still needs a year, or a verified duplicate's complete answer, which doesn't."""
+
+    status: str
+    model: str
+    identified: IdentifiedSong | None = None
+    duplicate: SongMetadataResult | None = None
+    rejection_reason: RejectionReason | None = None
+    rejection_detail: str | None = None
+
+
+class FastDateRequest(BaseModel):
+    title: str
+    main_artists: list[str]
+
+
+class FastDateResponse(BaseModel):
+    release_year: int | None
+    confidence: ConfidenceLevel
+    source: str
+    lane: str | None

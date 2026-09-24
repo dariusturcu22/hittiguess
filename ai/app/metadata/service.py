@@ -1,5 +1,6 @@
 import logging
 from concurrent.futures import ThreadPoolExecutor
+from dataclasses import dataclass
 
 from app.config import settings
 from app.dedup.embedding_client import generate_embedding
@@ -34,7 +35,9 @@ logger = logging.getLogger(__name__)
 STRUCTURED_SOURCE_WORKER_COUNT = 3
 EMPTY_SOURCE_RESULT: list = []
 
+SUCCESS_STATUS = "SUCCESS"
 REJECTED_STATUS = "REJECTED"
+ERROR_STATUS = "ERROR"
 
 # Cosine distance (0 identical, 2 opposite) below which an existing verified song counts
 # as the same song under a different submission, not just a similar one. text-embedding-3-small
@@ -248,49 +251,72 @@ def fetch_video_info(video_ids: list[str]) -> list[VideoInfoItem]:
     ]
 
 
+@dataclass(frozen=True)
+class IdentifiedSubmission:
+    title: str
+    main_artists: list[str]
+    featured_artists: list[str]
+    color: str
+
+
+def identify_submission(youtube_url: str) -> MetadataResolveResponse | IdentifiedSubmission:
+    """The first pass every submission takes, shared by the full pipeline and the fast
+    tier: the YouTube fetch, the non-music hard filter, the verified-duplicate check,
+    and the combined pre-check LLM call with its content-safety gate. Returns a final
+    response when the submission is rejected or matches a verified song, and the clean
+    title, artists, and color otherwise. Raises on an unexpected failure; callers turn
+    that into an ERROR response."""
+    youtube_data = youtube.fetch_youtube_metadata(youtube_url)
+    category_id = str(youtube_data.get("category_id", "unknown"))
+    duration_seconds = youtube_data.get("duration_seconds")
+
+    if content_safety.fails_hard_filter(category_id, duration_seconds):
+        return MetadataResolveResponse(
+            status=REJECTED_STATUS,
+            model=settings.deepinfra_model,
+            content=None,
+            rejection_reason=content_safety.RejectionReason.NOT_MUSIC,
+            rejection_detail=content_safety.NOT_MUSIC_REJECTION_DETAIL,
+        )
+
+    regex_title, regex_artist = _clean_title_and_artist(youtube_data)
+
+    duplicate_match_result = _check_for_duplicate(regex_title, regex_artist)
+    if duplicate_match_result is not None:
+        return MetadataResolveResponse(status=SUCCESS_STATUS, model=settings.deepinfra_model, content=duplicate_match_result)
+
+    precheck = _run_precheck(youtube_data)
+
+    content_safety_outcome = content_safety.evaluate_precheck(
+        precheck, str(youtube_data.get("video_title", "")), str(youtube_data.get("channel_title", ""))
+    )
+    if content_safety_outcome.rejected:
+        return MetadataResolveResponse(
+            status=REJECTED_STATUS,
+            model=settings.deepinfra_model,
+            content=None,
+            rejection_reason=content_safety_outcome.rejection_reason,
+            rejection_detail=content_safety_outcome.rejection_detail,
+        )
+
+    return IdentifiedSubmission(
+        title=precheck.title or regex_title,
+        main_artists=precheck.main_artists or ([regex_artist] if regex_artist else []),
+        featured_artists=precheck.featured_artists or [],
+        color=precheck.color,
+    )
+
+
 def resolve_metadata(youtube_url: str) -> MetadataResolveResponse:
     try:
-        youtube_data = youtube.fetch_youtube_metadata(youtube_url)
-        category_id = str(youtube_data.get("category_id", "unknown"))
-        duration_seconds = youtube_data.get("duration_seconds")
+        identified = identify_submission(youtube_url)
+        if isinstance(identified, MetadataResolveResponse):
+            return identified
 
-        if content_safety.fails_hard_filter(category_id, duration_seconds):
-            return MetadataResolveResponse(
-                status=REJECTED_STATUS,
-                model=settings.deepinfra_model,
-                content=None,
-                rejection_reason=content_safety.RejectionReason.NOT_MUSIC,
-                rejection_detail=content_safety.NOT_MUSIC_REJECTION_DETAIL,
-            )
-
-        regex_title, regex_artist = _clean_title_and_artist(youtube_data)
-
-        duplicate_match_result = _check_for_duplicate(regex_title, regex_artist)
-        if duplicate_match_result is not None:
-            return MetadataResolveResponse(
-                status="SUCCESS", model=settings.deepinfra_model, content=duplicate_match_result
-            )
-
-        precheck = _run_precheck(youtube_data)
-
-        content_safety_outcome = content_safety.evaluate_precheck(
-            precheck, str(youtube_data.get("video_title", "")), str(youtube_data.get("channel_title", ""))
+        result = _run_verification_pipeline(
+            identified.title, identified.main_artists, identified.color, identified.featured_artists
         )
-        if content_safety_outcome.rejected:
-            return MetadataResolveResponse(
-                status=REJECTED_STATUS,
-                model=settings.deepinfra_model,
-                content=None,
-                rejection_reason=content_safety_outcome.rejection_reason,
-                rejection_detail=content_safety_outcome.rejection_detail,
-            )
-
-        title = precheck.title or regex_title
-        main_artists = precheck.main_artists or ([regex_artist] if regex_artist else [])
-        featured_artists = precheck.featured_artists or []
-
-        result = _run_verification_pipeline(title, main_artists, precheck.color, featured_artists)
-        return MetadataResolveResponse(status="SUCCESS", model=settings.deepinfra_model, content=result)
+        return MetadataResolveResponse(status=SUCCESS_STATUS, model=settings.deepinfra_model, content=result)
     except Exception as pipeline_error:
         logger.warning("Metadata pipeline failed: %s", pipeline_error)
-        return MetadataResolveResponse(status="ERROR", model=settings.deepinfra_model, content=None)
+        return MetadataResolveResponse(status=ERROR_STATUS, model=settings.deepinfra_model, content=None)

@@ -1,6 +1,7 @@
 from fastapi import Depends, FastAPI
 from prometheus_fastapi_instrumentator import Instrumentator
 
+from app.metadata.fast_tier_router import router as fast_tier_router
 from app.metadata.router import router as metadata_router
 from app.observability.logging_config import configure_logging
 from app.observability.request_context import CorrelationIdMiddleware
@@ -22,6 +23,7 @@ require_internal_api_key_configured(settings.internal_service_api_key)
 app = FastAPI(title="hittiguess AI microservice", openapi_url=None, docs_url=None, redoc_url=None)
 app.add_middleware(CorrelationIdMiddleware)
 app.include_router(metadata_router)
+app.include_router(fast_tier_router)
 
 setup_tracing(app)
 # Only the Alloy scraper reads metrics, sending the same internal key the backend uses.

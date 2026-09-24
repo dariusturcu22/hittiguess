@@ -6,6 +6,10 @@ from fastapi import HTTPException, Request, status
 
 REQUEST_WINDOW_SECONDS = 60.0
 METADATA_RESOLVE_MAX_REQUESTS_PER_WINDOW = 30
+# A whole playlist import is in flight at once on the fast tier, two calls per song
+# (identify, then the year), so its cap covers several maximum-size imports a minute.
+# The per-source pacers, not this cap, keep the external services within their limits.
+FAST_TIER_MAX_REQUESTS_PER_WINDOW = 1200
 UNKNOWN_CLIENT_ADDRESS_KEY = "unknown"
 
 
@@ -41,6 +45,18 @@ class SlidingWindowRateLimiter:
 metadata_resolve_rate_limiter = SlidingWindowRateLimiter(
     METADATA_RESOLVE_MAX_REQUESTS_PER_WINDOW, REQUEST_WINDOW_SECONDS
 )
+
+
+fast_tier_rate_limiter = SlidingWindowRateLimiter(FAST_TIER_MAX_REQUESTS_PER_WINDOW, REQUEST_WINDOW_SECONDS)
+
+
+def _client_address(request: Request) -> str:
+    return request.client.host if request.client else UNKNOWN_CLIENT_ADDRESS_KEY
+
+
+def enforce_fast_tier_rate_limit(request: Request) -> None:
+    if not fast_tier_rate_limiter.allow(_client_address(request)):
+        raise HTTPException(status_code=status.HTTP_429_TOO_MANY_REQUESTS, detail="Rate limit exceeded")
 
 
 def enforce_metadata_resolve_rate_limit(request: Request) -> None:
