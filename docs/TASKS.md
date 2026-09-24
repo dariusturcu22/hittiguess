@@ -8,25 +8,6 @@ Stories 9, 10, 11, 12, 13, 39, and most of the rest of Phase 1 and Phase 2 are n
 
 "Next available task" means the earliest unchecked box under a Ready or In Progress story.
 
-## Docs: sync project documentation with current code
-
-- [x] Verify every in-scope task and story status against the current `dev` code, tests, migrations, and endpoints (controllers, services, frontend routes, and Flyway migrations through V27)
-- [x] Correct in-scope reference docs, README.md, CONTRIBUTING.md, and ai/spikes/README.md where they contradict the current implementation
-- [x] Run `python scripts/archive_completed_tasks.py` after all verified TASKS.md updates (no eligible section to archive)
-- [x] Review the documentation diff for stale claims and the repository writing rules
-
-### Open implementation gaps found in this pass
-
-- [ ] Add `POST /api/groups/{groupId}/members/{memberId}/remove`, restricted to the group admin, and close the removed member's active group sockets
-- [ ] Protect the AI service's `/metrics` route with `X-Internal-Api-Key` and disable its interactive API documentation outside development
-- [ ] Disable Swagger UI and `/v3/api-docs` outside development
-- [ ] Add the CSP, `frame-ancestors`, and `Referrer-Policy` headers in `frontend/next.config.ts`
-- [ ] Replace `next/font/google` with checked-in local font assets so frontend builds do not request Google Fonts
-- [ ] Cap each bulk or background playlist import at 200 songs and enforce a shared 500-new-songs-per-user daily limit
-- [ ] Limit group join-code attempts to 10 per 10 minutes
-- [ ] Require a session song pool of at least the player count times the configured win condition
-- [ ] Map validation failures to 400, access denial to 403, conflicts to 409, rate limits to 429, and unexpected failures to a generic 500 response
-
 ## Standing policy: all frontend work lives in story 28
 
 Every story other than story 28 is backend-only. Any frontend task a story would otherwise carry (a page, a component, a WebRTC/browser-side piece, a frontend test) is tracked under story 28's implementation phase instead, not built in that story's own batch. Story 28 is the single place all frontend lands, wired against the real backends every prior batch shipped. Frontend tasks already written inline under other stories stay listed there marked "story 28" for traceability, but they are not part of that story's own batch completion; a backend story is done when its backend code and backend tests pass.

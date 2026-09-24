@@ -96,7 +96,7 @@ Every rate-limited request the core service rejects, whichever limiter caught it
 | POST | `/metadata/resolve` | Internal only, gated by `X-Internal-Api-Key`, called by the core service's `SongMetadataService`, never exposed publicly. Independently rate-limited at 30 requests per minute per client address, evaluated before the internal-key check, since anyone holding that shared key could otherwise call it directly. See story 27 |
 | POST | `/metadata/playlist-video-ids` | Internal only, same `X-Internal-Api-Key` gate and rate limit as `/metadata/resolve`, called by the core service's `PlaylistExpansionService`. Body `{playlist_url_or_id}`, crawls the playlist through YouTube Data API's `playlistItems.list`, paginating on `nextPageToken`, and returns `{video_ids}`. A link or id that doesn't parse to a valid playlist returns 400; an upstream fetch failure on the first page returns 502. Story 40 |
 | GET | `/health` | Unauthenticated, story 38 |
-| GET | `/metrics` | Prometheus scrape format via `prometheus-fastapi-instrumentator`. This route is currently unauthenticated. |
+| GET | `/metrics` | Prometheus scrape format via `prometheus-fastapi-instrumentator`, gated by `X-Internal-Api-Key`. |
 
 ### Correlation id (story 38)
 
@@ -226,7 +226,7 @@ PlaylistImportJobItem
 
 Tracks a playlist-scoped background YouTube import (story 47) so a user can keep browsing while it resolves; the playlist detail view reads the active job to render pending songs greyed out (V24).
 
-Schema changes go through Flyway migrations in `backend/src/main/resources/db/migration/`, not Hibernate's `ddl-auto`, which is set to `validate`. Migrations on `dev` run through V27: V26 adds the playlist description and V27 adds raw video-info fields to playlist-import job items. V25 adds pixel-art playlist covers and user avatars, V24 adds playlist-import jobs, and earlier migrations define the game, group, membership, authentication, song, and catalog schema.
+Schema changes go through Flyway migrations in `backend/src/main/resources/db/migration/`, not Hibernate's `ddl-auto`, which is set to `validate`. Migrations on `dev` run through V34: V28 records accepted two-factor time steps and login failures, V29 adds betting skips, V30 adds placement deadlines, V31 and V32 persist session results, V33 records import quota usage, and V34 records removed group users. V26 adds the playlist description and V27 adds raw video-info fields to playlist-import job items.
 
 ### Planned (not yet code, target shape per ARCHITECTURE.md and TASKS.md)
 

@@ -9,7 +9,7 @@ Phase 0, Phase 1, and nearly all of Phase 2 have shipped their backend scope; th
 Three milestones sit above the remaining work below, each a different bar for who can actually use the app:
 
 - **Local**: the project owner can play it, alone or with one other person in the same house over a locally opened port, admin side included. Every backend piece Local needs has shipped, and story 28's frontend implementation now covers Batches A through F. Story 28 still has visual comparison, route smoke, and representative-state gates open at set breakpoints, along with a small number of import states. Story 38's dashboard import and uptime monitoring stay open (uptime monitoring is meaningless without a real deployment, which Local doesn't need). Story 47's design-mockup sync, its feedback-polish batch (loading states, motion, toasts), and a manual voice check also remain. Stories 22, 30, 35, 48, and 49 have all shipped in full. Local doesn't require a real deployment target, story 7 and story 8 both stay undecided until Local ships.
-- **Beta**: deployed somewhere real and played with friends and colleagues in demo matches, with the remaining story 50 two-factor frontend screens complete and stories 7 and 8 decided and executed. The open security and reliability tasks in `TASKS.md` also need resolution before a public deployment.
+- **Beta**: deployed somewhere real and played with friends and colleagues in demo matches, with the remaining story 50 two-factor frontend screens complete and stories 7 and 8 decided and executed.
 - **Finished**: the fully deployed, publicly announced version. Story 34 (first-party usage analytics) is the one piece of scope left for it, since nothing it covers blocks either Local or Beta.
 
 ## What's shipped

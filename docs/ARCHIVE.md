@@ -961,3 +961,22 @@ Tests:
 - [x] Batch 6: frontend tests for the lobby kick control and the import page showing the server's refusal message
 - [x] Batch 7: handler tests for each mapped status and the generic message, and unit tests for `returnTo` rejecting `/\` and other-origin values on both sides
 - [x] Batch 8: tests for CSV cell neutralizing, the AI key compare and empty-key startup refusal, and the atomic group cap
+
+## Docs: sync project documentation with current code
+
+- [x] Verify every in-scope task and story status against the current `dev` code, tests, migrations, and endpoints (controllers, services, frontend routes, and Flyway migrations through V27)
+- [x] Correct in-scope reference docs, README.md, CONTRIBUTING.md, and ai/spikes/README.md where they contradict the current implementation
+- [x] Run `python scripts/archive_completed_tasks.py` after all verified TASKS.md updates (no eligible section to archive)
+- [x] Review the documentation diff for stale claims and the repository writing rules
+
+### Open implementation gaps found in this pass
+
+- [x] Add `POST /api/groups/{groupId}/members/{memberId}/remove`, restricted to the group admin, and close the removed member's active group sockets (`GroupController`, `GroupService`, and `GroupMemberRemovalListener`)
+- [x] Protect the AI service's `/metrics` route with `X-Internal-Api-Key` and disable its interactive API documentation outside development (`ai/app/main.py`)
+- [x] Disable Swagger UI and `/v3/api-docs` outside development (`application-prod.properties`)
+- [x] Add the CSP, `frame-ancestors`, and `Referrer-Policy` headers in `frontend/next.config.ts`
+- [x] Replace `next/font/google` with checked-in local font assets so frontend builds do not request Google Fonts (`frontend/app/fonts` and `frontend/app/layout.tsx`)
+- [x] Cap each bulk or background playlist import at 200 songs and enforce a shared 500-new-songs-per-user daily limit (`ImportQuotaService`)
+- [x] Limit group join-code attempts to 10 per 10 minutes (`GroupService`)
+- [x] Require a session song pool of at least the player count times the configured win condition (`GameSessionService.requireEnoughSongs`)
+- [x] Map validation failures to 400, access denial to 403, conflicts to 409, rate limits to 429, and unexpected failures to a generic 500 response (`GlobalExceptionHandler`)
