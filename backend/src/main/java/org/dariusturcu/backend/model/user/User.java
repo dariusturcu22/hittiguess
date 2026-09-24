@@ -4,6 +4,8 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.time.Instant;
+
 @Entity
 @Getter
 @Setter
@@ -44,4 +46,13 @@ public class User {
 
     @Column(nullable = false)
     private boolean twoFactorEnabled = false;
+
+    // The TOTP time step of the last accepted code; a code for this step or an earlier
+    // one is refused, so a code can't be used twice within its validity window.
+    private Long totpLastUsedStep;
+
+    @Column(nullable = false)
+    private int failedLoginAttempts = 0;
+
+    private Instant loginLockedUntil;
 }
