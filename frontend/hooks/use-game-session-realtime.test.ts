@@ -44,4 +44,30 @@ describe("useGameSessionRealtime", () => {
 
     expect(onRoundEvent).toHaveBeenCalledWith({ type: "GUESS_LOCKED", sessionId: 1, payload: { activePlayerId: 4 } });
   });
+
+  it("forwards a placement preview without refetching the session", () => {
+    const onRoundEvent = vi.fn();
+    const queryClient = new QueryClient();
+    const invalidateQueries = vi.spyOn(queryClient, "invalidateQueries");
+    renderHook(() => useGameSessionRealtime(1, onRoundEvent), {
+      wrapper: ({ children }: { children: ReactNode }) => createElement(QueryClientProvider, { client: queryClient }, children),
+    });
+
+    roundMessageHandler?.({ body: JSON.stringify({ type: "PLACEMENT_PREVIEW", sessionId: 1, payload: { roundId: 3, activePlayerId: 4, position: 2 } }) });
+
+    expect(onRoundEvent).toHaveBeenCalledWith(expect.objectContaining({ type: "PLACEMENT_PREVIEW" }));
+    expect(invalidateQueries).not.toHaveBeenCalled();
+  });
+
+  it("refetches the session for every round state change", () => {
+    const queryClient = new QueryClient();
+    const invalidateQueries = vi.spyOn(queryClient, "invalidateQueries");
+    renderHook(() => useGameSessionRealtime(1), {
+      wrapper: ({ children }: { children: ReactNode }) => createElement(QueryClientProvider, { client: queryClient }, children),
+    });
+
+    roundMessageHandler?.({ body: JSON.stringify({ type: "BETTING_OPENED", sessionId: 1 }) });
+
+    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ["session", 1] });
+  });
 });
