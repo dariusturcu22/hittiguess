@@ -966,6 +966,9 @@ Batch 8, hardening (low):
 - [x] Swagger UI and `/v3/api-docs` are public in production. Disable them outside development
 - [x] The AI microservice compares the internal API key with `!=` and would accept an empty header if the key were left blank, and exposes `/metrics` and the FastAPI docs unauthenticated. Use a constant-time compare, refuse to start with an empty key, and restrict or disable those routes
 - [x] `GroupService.joinGroup` checks the 8-member cap without a lock, so concurrent joins can exceed it. Enforce the cap atomically
+- [x] The join lock was put on the shared invite and join code finders, so the read-only invite preview ran `SELECT ... FOR UPDATE` in a read-only transaction, which Postgres refuses, and the invite link page failed. Lock through finders only the join uses
+- [x] The CSP left the API origin out of `img-src`, blocking custom playlist covers and user avatars served by the API, and blocked React's development-only `eval`. Allow both
+- [ ] With `/metrics` gone from the AI service, the Alloy scrape in `observability/alloy/config.alloy` gets a 404 and AI metrics stop reaching Grafana. Expose the metrics again behind the internal key, or on a port only the scraper reaches, and update the scrape config
 
 Existing test failures:
 - [x] `frontend/app/(app)/groups/[groupId]/page.test.tsx` never finishes and pins a worker, which stalls `npm run test`
