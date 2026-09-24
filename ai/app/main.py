@@ -1,4 +1,4 @@
-from fastapi import FastAPI
+from fastapi import Depends, FastAPI
 from prometheus_fastapi_instrumentator import Instrumentator
 
 from app.metadata.router import router as metadata_router
@@ -6,6 +6,7 @@ from app.observability.logging_config import configure_logging
 from app.observability.request_context import CorrelationIdMiddleware
 from app.observability.sentry import init_sentry
 from app.observability.tracing import setup_tracing
+from app.auth import require_internal_api_key
 from app.config import settings
 
 configure_logging()
@@ -23,7 +24,8 @@ app.add_middleware(CorrelationIdMiddleware)
 app.include_router(metadata_router)
 
 setup_tracing(app)
-Instrumentator().instrument(app)
+# Only the Alloy scraper reads metrics, sending the same internal key the backend uses.
+Instrumentator().instrument(app).expose(app, dependencies=[Depends(require_internal_api_key)])
 
 
 @app.get("/health")
