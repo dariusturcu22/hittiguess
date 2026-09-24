@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
+import type { AxiosError } from "axios";
 import { ChevronDown, ExternalLink, HelpCircle } from "lucide-react";
 
 import { Input } from "@/components/shadcn/input";
@@ -26,6 +27,8 @@ import { GameCard } from "@/components/game-card";
 const YOUTUBE_ID_PATTERN = /^[a-zA-Z0-9_-]{11}$/;
 const HEX_COLOR_PATTERN = /^#[0-9a-fA-F]{6}$/;
 const MIN_RELEASE_YEAR = 1000;
+const CONFLICT_STATUS = 409;
+const SAVE_FAILED_MESSAGE = "Couldn't save changes. Try again.";
 
 const EDIT_FIELD_CLASSES =
   "border-2 border-destructive/70 bg-background focus-visible:border-destructive focus-visible:ring-destructive/20";
@@ -131,8 +134,11 @@ export function SongForm({
           });
           router.push(backPath);
         },
-        onError: () => {
-          setSubmitError("Couldn't save changes. Try again.");
+        onError: (error) => {
+          // A 409 explains why the edit can't happen directly, such as a song shared with
+          // playlists this user can't edit.
+          const response = (error as AxiosError<{ message?: string }>).response;
+          setSubmitError(response?.status === CONFLICT_STATUS && response.data?.message ? response.data.message : SAVE_FAILED_MESSAGE);
         },
       },
     );

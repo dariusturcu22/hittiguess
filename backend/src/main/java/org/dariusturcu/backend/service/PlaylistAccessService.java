@@ -40,6 +40,15 @@ public class PlaylistAccessService {
         }
     }
 
+    public boolean canWrite(Playlist playlist, User user) {
+        if (playlist.isOwnedBy(user)) {
+            return true;
+        }
+        return playlistMembershipRepository.findByPlaylistIdAndUserId(playlist.getId(), user.getId())
+                .map(PlaylistMembership::isCanWrite)
+                .orElse(false);
+    }
+
     public void requireWrite(Playlist playlist, User user) {
         if (playlist.isOwnedBy(user)) {
             return;
