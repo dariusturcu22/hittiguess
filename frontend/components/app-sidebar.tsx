@@ -15,6 +15,7 @@ import { useActiveImport } from "@/hooks/generated/playlist-import-jobs/playlist
 import {
   PLAYLIST_IMPORT_STARTED_EVENT_NAME,
   clearActiveImportJob,
+  countImportItems,
   loadActiveImportJob,
   type ActivePlaylistImportJob,
 } from "@/lib/playlist-import-job";
@@ -165,8 +166,9 @@ export function AppSidebar() {
   }, [activeImport, activeImportQuery.isError, finishedImportPlaylistId, queryClient]);
 
   const importItems = activeImportQuery.data?.items ?? [];
-  const importProcessedCount = importItems.filter((item) => item.status !== "PENDING").length;
-  const importTotalCount = importItems.length;
+  const importCounts = countImportItems(importItems);
+  const importProcessedCount = importCounts.settled;
+  const importTotalCount = importCounts.total;
   const importResolvedCount = importItems.filter((item) => item.status === "RESOLVED").length;
   const importKnownCount = importItems.filter((item) => item.status === "ALREADY_KNOWN").length;
 

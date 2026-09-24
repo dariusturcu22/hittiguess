@@ -148,10 +148,35 @@ describe("ImportYoutubePage background import", () => {
 
     expect(await screen.findByText("1 of 2 processed")).toBeVisible();
     expect(screen.getByText("Chasing Cars")).toBeVisible();
-    expect(screen.getByText("Fetching...")).toBeVisible();
+    expect(screen.getByText("Waiting")).toBeVisible();
     expect(
       screen.getByText("You can close this page. The import keeps running in the background."),
     ).toBeVisible();
+  });
+
+  it("separates songs being worked on from those still waiting", async () => {
+    activeImportState = {
+      isError: false,
+      error: null,
+      data: {
+        items: [
+          { youtubeId: "video-1", status: "IDENTIFYING", rawTitle: "first upload" },
+          { youtubeId: "video-2", status: "DATING", rawTitle: "second upload" },
+          { youtubeId: "video-3", status: "PENDING", rawTitle: "third upload" },
+          { youtubeId: "video-4", status: "RESOLVED", resolvedTitle: "Chasing Cars", resolvedArtists: "Snow Patrol", resolvedReleaseYear: 2006 },
+        ],
+      },
+    };
+    window.localStorage.setItem("hittiguess-active-playlist-import", JSON.stringify({ importJobId: "job-1", playlistId: 7 }));
+    await renderPage();
+
+    expect(await screen.findByText("Identifying the song...")).toBeVisible();
+    expect(screen.getByText("Finding the year...")).toBeVisible();
+    expect(screen.getByText("Waiting")).toBeVisible();
+    expect(screen.getByText("2 working")).toBeVisible();
+    expect(screen.getByText("1 waiting")).toBeVisible();
+    expect(screen.getByText("1 added")).toBeVisible();
+    expect(screen.getByText("1 of 4 processed")).toBeVisible();
   });
 
   it("shows the done state with a path back once every song finishes", async () => {

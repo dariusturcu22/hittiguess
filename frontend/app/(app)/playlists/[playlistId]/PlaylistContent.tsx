@@ -70,6 +70,7 @@ import {
 import { useActiveImport } from "@/hooks/generated/playlist-import-jobs/playlist-import-jobs";
 import { playlistTitleColor } from "@/lib/playlist-colors";
 import { copyText } from "@/lib/clipboard";
+import { countImportItems } from "@/lib/playlist-import-job";
 import { PhantomEmptyState } from "@/components/phantom-empty-state";
 
 const ACTIVE_IMPORT_REFRESH_MILLISECONDS = 5_000;
@@ -135,9 +136,10 @@ export default function PlaylistContent({
     ? activeImportQuery.data.items ?? []
     : [];
   const pendingImportItems = activeImportItems.filter(
-    (item) => item.status === "PENDING" || item.status === "UNRESOLVED",
+    (item) => item.status !== "RESOLVED" && item.status !== "ALREADY_KNOWN",
   );
-  const finishedImportCount = activeImportItems.filter((item) => item.status !== "PENDING").length;
+  // Each settled song is already in the playlist, so the playlist refetches as they land.
+  const finishedImportCount = countImportItems(activeImportItems).settled;
   const hadRunningImport = React.useRef(false);
   const lastFinishedImportCount = React.useRef(0);
   React.useEffect(() => {
