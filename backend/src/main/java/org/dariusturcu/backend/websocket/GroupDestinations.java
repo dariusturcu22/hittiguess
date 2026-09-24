@@ -32,6 +32,11 @@ public final class GroupDestinations {
     // GroupService's own methods, see DECISIONS.md.
     private static final String ADMIN_ACTIONS_SEGMENT = "/admin";
 
+    private static final String VOICE_SIGNAL_QUEUE_PREFIX = "/queue/groups/";
+    private static final String VOICE_SIGNAL_QUEUE_SEGMENT = "/voice-signal";
+
+    private static final Pattern GROUP_TOPIC_PATTERN =
+            Pattern.compile("^" + Pattern.quote(GROUP_TOPIC_PREFIX) + "(?<groupId>\\d+)/[^/]+$");
     private static final Pattern MEMBERSHIP_TOPIC_PATTERN =
             Pattern.compile("^" + Pattern.quote(GROUP_TOPIC_PREFIX) + "(?<groupId>\\d+)"
                     + Pattern.quote(MEMBERSHIP_SEGMENT) + "$");
@@ -67,14 +72,29 @@ public final class GroupDestinations {
         return GROUP_APP_PREFIX + groupId + VOICE_SIGNAL_SEGMENT;
     }
 
+    // Per-user queue each signal is delivered on, sent through
+    // SimpMessagingTemplate#convertAndSendToUser, so only its target member receives it.
+    // A client subscribes to it with the "/user" prefix.
+    public static String voiceSignalQueue(Long groupId) {
+        return VOICE_SIGNAL_QUEUE_PREFIX + groupId + VOICE_SIGNAL_QUEUE_SEGMENT;
+    }
+
+    public static Optional<Long> groupIdFromTopic(String destination) {
+        return groupIdMatching(GROUP_TOPIC_PATTERN, destination);
+    }
+
     // Used by GroupSessionEventListener to recognize a client's subscription to its
     // group's membership topic, the signal that registers the session in
     // GroupPresenceRegistry for later disconnect handling.
     public static Optional<Long> groupIdFromMembershipTopic(String destination) {
+        return groupIdMatching(MEMBERSHIP_TOPIC_PATTERN, destination);
+    }
+
+    private static Optional<Long> groupIdMatching(Pattern pattern, String destination) {
         if (destination == null) {
             return Optional.empty();
         }
-        Matcher matcher = MEMBERSHIP_TOPIC_PATTERN.matcher(destination);
+        Matcher matcher = pattern.matcher(destination);
         if (!matcher.matches()) {
             return Optional.empty();
         }

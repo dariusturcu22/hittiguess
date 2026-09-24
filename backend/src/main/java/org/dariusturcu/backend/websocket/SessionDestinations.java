@@ -23,6 +23,8 @@ public final class SessionDestinations {
     private static final String BET_SEGMENT = "/bet";
     private static final String SKIP_BETTING_SEGMENT = "/skip-betting";
 
+    private static final Pattern SESSION_TOPIC_PATTERN = Pattern.compile(
+            "^" + Pattern.quote(SESSION_TOPIC_PREFIX) + "(?<sessionId>\\d+)/[^/]+$");
     private static final Pattern ROUND_TOPIC_PATTERN = Pattern.compile(
             "^" + Pattern.quote(SESSION_TOPIC_PREFIX) + "(?<sessionId>\\d+)" + Pattern.quote(ROUND_SEGMENT) + "$");
 
@@ -63,11 +65,19 @@ public final class SessionDestinations {
         return SESSION_APP_PREFIX + sessionId + SKIP_BETTING_SEGMENT;
     }
 
+    public static Optional<Long> sessionIdFromTopic(String destination) {
+        return sessionIdMatching(SESSION_TOPIC_PATTERN, destination);
+    }
+
     public static Optional<Long> sessionIdFromRoundTopic(String destination) {
+        return sessionIdMatching(ROUND_TOPIC_PATTERN, destination);
+    }
+
+    private static Optional<Long> sessionIdMatching(Pattern pattern, String destination) {
         if (destination == null) {
             return Optional.empty();
         }
-        Matcher matcher = ROUND_TOPIC_PATTERN.matcher(destination);
+        Matcher matcher = pattern.matcher(destination);
         if (!matcher.matches()) {
             return Optional.empty();
         }
