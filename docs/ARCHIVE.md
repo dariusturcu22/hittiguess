@@ -1209,3 +1209,19 @@ OpenAI's own cheap tier (`gpt-5-nano`, `gpt-5-mini`) and the existing `gpt-5.1` 
 - [x] Decide whether any shortlisted LLM candidate, and this conditional-pipeline shape (patient and fast tiers both), is worth building into the real AI microservice (stories 18/40), or whether further validation is needed first. Greenlit, see `DECISIONS.md` and story 20's own task list for the narrow remaining client-infrastructure scope
 - [x] Design the report/re-verification system floated during this spike: settled in full detail since, not just the lowest-confidence-first sketch this line originally described, see story 17's five-tier priority queue and the 2026-09 "Report and confirmation resolution" `DECISIONS.md` entry
 - [x] `docs/TASKS.md`'s own story 18 section and `docs/PROJECT_STATE.md`'s story 18 row used to reference a `DECISIONS.md` "verification is a lock, not a score" entry that was explicitly retracted earlier in this project (never actually authorized). Both cleaned up, no longer point at the retracted entry; the lock concept it described is the same shape this spike later validated with real data (three-source agreement = lock), so the underlying idea held up even though that specific entry never existed
+
+## Second LAN playtest: voice, audio sharing, sidebars, and joining by code
+
+- [x] Voice and the DJ's tab audio never worked over the LAN: `getUserMedia` and `getDisplayMedia` exist only in a secure context, and the LAN playtest serves plain HTTP, so the sidebar reported "This browser can't share tab audio" and every microphone was refused. Add an HTTPS mode for LAN playtests: a dependency-free Node proxy that serves one HTTPS origin in front of both the Next dev server and the backend, with a keytool-generated certificate for the LAN address
+- [x] Say plainly when voice or audio sharing is unavailable because the page isn't served over HTTPS, instead of blaming the browser
+- [x] The DJ's audio share starts from the "Open on YouTube to play" click itself: the click asks for the capture, then opens YouTube in its own window so the picker stays visible, with no second share button
+- [x] The right sidebar widens from 76px to 100px in a call. Keep both sidebars at 76px in every state
+- [x] The right sidebar shows only in a call or on the group lobby page, not on the game page outside a call
+- [x] Voice peers never connected on the first try: a joining player announced the join before its signalling socket was subscribed, so the other members' offers were lost until the eight-second retry, and the lobby socket's presence events only refreshed the group query, not the membership the voice sidebar reads. Connect signalling before announcing the join, re-read the member list once subscribed, and refresh the membership on group presence events
+- [x] There is no way to type a join code. The sidebar's play button opens a small menu to create a lobby or join one with its four-letter code
+
+Tests:
+- [x] Unit test: the LAN proxy routes API, WebSocket, and OAuth paths to the backend and everything else to the dev server
+- [x] Component tests: the voice sidebar keeps a fixed 76px width in and out of a call, and hides on the game page outside a call; the join-code menu joins by code and opens the lobby
+- [x] Session page test: the DJ's YouTube click requests the audio share and opens the YouTube window
+- [x] Manual check on the stack: over the HTTPS proxy the page is a secure context, login and sockets work, and two players in a call connect their voice peers

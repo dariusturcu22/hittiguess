@@ -67,7 +67,7 @@ A player can use the rest of the app while a group or game session is active, cr
 
 Timeline placement is drag-and-drop: dragging a card between two existing cards animates the gap opening to make room, with no overlap, and the layout animates back into place once the card is placed. The artist/title guess box gives immediate animated feedback on submission, a correct guess animates a token dropping into the player's token count, an incorrect guess animates distinctly from a correct one.
 
-Voice chat renders as a persistent, collapsible right-hand sidebar: vertically stacked circular avatars with names underneath, a speaking indicator ring, and mute/deafen icon overlays when applicable. A join-call button appears as a trailing circle in the same list. A player leaving animates out, the remaining avatars animate into the gap. The sidebar stays available during the minimized "playing while away" state described above.
+Voice chat renders as a right-hand sidebar the same width as the left one, shown on the group lobby page and, once a player is in the call, everywhere until they leave it: vertically stacked circular avatars with names underneath, a speaking indicator ring, and mute/deafen icon overlays when applicable. A join-call button appears as a trailing circle in the same list. A player leaving animates out, the remaining avatars animate into the gap. The sidebar stays available during the minimized "playing while away" state described above.
 
 Text chat renders as a semi-transparent overlay in the bottom-left corner, toggled by a keybind or a clickable button rather than requiring a persistent input field, plain username-and-message lines, no threading.
 
@@ -77,7 +77,7 @@ Text chat renders as a semi-transparent overlay in the bottom-left corner, toggl
 - For remote sessions, that browser tab is captured through WebRTC and streamed to the other players.
 - Non-DJ players never see a YouTube embed or the YouTube app, only the game UI.
 - Reveal happens automatically once the betting window closes; nobody, DJ included, triggers it by hand.
-- Screen or system audio sharing for a remote session's WebRTC capture starts only when the DJ clicks "Open YouTube Link" and includes a warning that tab or system audio will be broadcast.
+- Screen or system audio sharing for a remote session's WebRTC capture starts from the DJ's "Open YouTube Link" click itself, with a warning beforehand that tab or system audio will be broadcast. The same click opens YouTube in its own window so the capture picker stays visible in the game window.
 - Players can voice chat and text chat with the rest of their group, available from group creation, not just during a game session. See [ARCHITECTURE.md](ARCHITECTURE.md) for how this works.
 
 ## Ads
