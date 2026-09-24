@@ -1,26 +1,18 @@
 const YOUTUBE_ANDROID_PACKAGE = "com.google.android.youtube";
-const NEW_TAB_TARGET = "_blank";
-const CURRENT_TAB_TARGET = "_self";
-const WINDOW_FEATURES = "noopener,noreferrer";
+const ANDROID_USER_AGENT_PATTERN = /Android/i;
+const URL_SCHEME_PATTERN = /^https?:\/\//;
 
-function isAndroid(userAgent: string): boolean {
-  return /Android/i.test(userAgent);
-}
+export const YOUTUBE_LINK_OUT_TARGET = "_blank";
+export const YOUTUBE_LINK_OUT_REL = "noopener noreferrer";
 
-export function openYoutubeLink(watchUrl: string): boolean {
-  let openedWindow: Window | null;
-  if (isAndroid(navigator.userAgent)) {
-    const fallbackUrl = encodeURIComponent(watchUrl);
-    openedWindow = window.open(
-      `intent://${watchUrl.replace(/^https?:\/\//, "")}#Intent;package=${YOUTUBE_ANDROID_PACKAGE};scheme=https;S.browser_fallback_url=${fallbackUrl};end`,
-      NEW_TAB_TARGET,
-      WINDOW_FEATURES,
-    );
-  } else {
-    openedWindow = window.open(watchUrl, NEW_TAB_TARGET, WINDOW_FEATURES);
+// The DJ's link-out is a real anchor rather than window.open: a clicked link is never
+// popup-blocked, and it can't fall back into navigating the game tab. Android gets an
+// intent URL so the YouTube app claims it, with the web page as the browser fallback.
+export function youtubeLinkOutHref(watchUrl: string, userAgent: string): string {
+  if (!ANDROID_USER_AGENT_PATTERN.test(userAgent)) {
+    return watchUrl;
   }
-
-  if (openedWindow) return true;
-  window.open(watchUrl, CURRENT_TAB_TARGET, WINDOW_FEATURES);
-  return false;
+  const fallbackUrl = encodeURIComponent(watchUrl);
+  const intentPath = watchUrl.replace(URL_SCHEME_PATTERN, "");
+  return `intent://${intentPath}#Intent;package=${YOUTUBE_ANDROID_PACKAGE};scheme=https;S.browser_fallback_url=${fallbackUrl};end`;
 }

@@ -7,6 +7,7 @@ let roundEventHandler: ((event: { type: string }) => void) | undefined;
 const placeCard = vi.fn(() => true);
 const submitGuess = vi.fn(() => true);
 const SESSION_PARAMS = Promise.resolve({ sessionId: "1" });
+const WATCH_URL = "https://www.youtube.com/watch?v=dQw4w9WgXcQ";
 
 const MID_GAME_SESSION = {
   id: 1,
@@ -37,7 +38,10 @@ vi.mock("next/navigation", () => ({
 }));
 
 vi.mock("@/hooks/generated/game-session/game-session", () => ({
-  useGetCurrentRoundLinkOut: () => ({ data: undefined, isLoading: false }),
+  useGetCurrentRoundLinkOut: (_sessionId: number, options: { query: { enabled: boolean } }) => ({
+    data: options.query.enabled ? { watchUrl: WATCH_URL } : undefined,
+    isLoading: false,
+  }),
   useGetSession: () => ({
     data: mockSessionData,
     isLoading: false,
@@ -146,8 +150,25 @@ describe("GameSessionPage gameplay interactions", () => {
       render(<GameSessionPage params={SESSION_PARAMS} />);
     });
 
-    expect(await screen.findByRole("button", { name: "Open on YouTube to play" })).toBeVisible();
+    const link = await screen.findByRole("link", { name: "Open on YouTube to play" });
+    expect(link).toHaveAttribute("href", WATCH_URL);
+    expect(link).toHaveAttribute("target", "_blank");
     expect(screen.queryByRole("button", { name: "Your card. Choose a timeline position." })).toBeNull();
+  });
+
+  it("asks the voice sidebar to share tab audio from the DJ's own click", async () => {
+    mockCurrentUserId = 12;
+    const shareRequests = vi.fn();
+    window.addEventListener("session-start-audio-share", shareRequests);
+    await act(async () => {
+      render(<GameSessionPage params={SESSION_PARAMS} />);
+    });
+
+    fireEvent.click(await screen.findByRole("link", { name: "Open on YouTube to play" }));
+    fireEvent.click(screen.getByRole("button", { name: "Share YouTube audio with the group" }));
+
+    expect(shareRequests).toHaveBeenCalledOnce();
+    window.removeEventListener("session-start-audio-share", shareRequests);
   });
 
   it("shows the waiting state before the first round", async () => {
@@ -175,6 +196,6 @@ describe("GameSessionPage gameplay interactions", () => {
 
     expect(await screen.findByPlaceholderText("Guess the artist")).toBeVisible();
     expect(screen.queryByRole("button", { name: "Your card. Choose a timeline position." })).toBeNull();
-    expect(screen.queryByRole("button", { name: "Open on YouTube to play" })).toBeNull();
+    expect(screen.queryByRole("link", { name: "Open on YouTube to play" })).toBeNull();
   });
 });

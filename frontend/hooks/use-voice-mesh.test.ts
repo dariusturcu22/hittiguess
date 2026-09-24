@@ -1,7 +1,7 @@
 import { act, renderHook } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
-import { useVoiceMesh } from "./use-voice-mesh";
+import { shouldSilenceDjForActivePlayer, useVoiceMesh } from "./use-voice-mesh";
 
 const getUserMedia = vi.fn(async () => ({ getAudioTracks: () => [{ enabled: true }] }));
 
@@ -67,7 +67,7 @@ describe("useVoiceMesh device selection", () => {
 
     expect(opened).toBe(false);
     expect(result.current.microphoneError).toBe(true);
-    expect(result.current.microphoneErrorMessage).toBe("Voice chat needs HTTPS or localhost.");
+    expect(result.current.microphoneErrorMessage).toBe("Voice chat needs HTTPS or localhost to use a microphone. You can still listen.");
   });
 
   it("names permission denial and missing devices distinctly", async () => {
@@ -83,12 +83,70 @@ describe("useVoiceMesh device selection", () => {
     await act(async () => {
       await result.current.startMicrophone();
     });
-    expect(result.current.microphoneErrorMessage).toBe("Microphone permission is needed.");
+    expect(result.current.microphoneErrorMessage).toBe("Microphone permission is needed to talk. You can still listen.");
 
     failingMediaDevices.getUserMedia.mockRejectedValueOnce(new DOMException("none", "NotFoundError"));
     await act(async () => {
       await result.current.startMicrophone();
     });
-    expect(result.current.microphoneErrorMessage).toBe("No microphone was found.");
+    expect(result.current.microphoneErrorMessage).toBe("No microphone was found. You can still listen.");
+  });
+});
+
+describe("shouldSilenceDjForActivePlayer", () => {
+  const ACTIVE_PLAYER_ID = 3;
+
+  it("silences the DJ for the active player from lock-in until the next round", () => {
+    for (const status of ["COUNTDOWN", "BETTING", "REVEALED", "SCORED"]) {
+      expect(shouldSilenceDjForActivePlayer({ activePlayerId: ACTIVE_PLAYER_ID, status }, ACTIVE_PLAYER_ID)).toBe(true);
+    }
+  });
+
+  it("keeps the song audible while the active player is still placing", () => {
+    expect(shouldSilenceDjForActivePlayer({ activePlayerId: ACTIVE_PLAYER_ID, status: "AWAITING_PLACEMENT" }, ACTIVE_PLAYER_ID)).toBe(false);
+  });
+
+  it("never silences the DJ for anyone other than the active player", () => {
+    expect(shouldSilenceDjForActivePlayer({ activePlayerId: ACTIVE_PLAYER_ID, status: "BETTING" }, ACTIVE_PLAYER_ID + 1)).toBe(false);
+  });
+});
+
+describe("useVoiceMesh tab audio", () => {
+  it("reports when the browser can't capture tab audio", async () => {
+    Object.defineProperty(window.navigator, "mediaDevices", {
+      value: { getUserMedia },
+      configurable: true,
+    });
+    const { result } = renderHook(() => useVoiceMesh(4, 11, [], false, {}));
+
+    let shared = true;
+    await act(async () => {
+      shared = await result.current.startTabAudio();
+    });
+
+    expect(shared).toBe(false);
+    expect(result.current.tabAudioErrorMessage).toBe("This browser can't share tab audio.");
+  });
+
+  it("asks for display media with audio straight away, excluding the game tab", async () => {
+    const getDisplayMedia = vi.fn(async () => ({
+      getAudioTracks: () => [],
+      getVideoTracks: () => [],
+      getTracks: () => [],
+    }));
+    Object.defineProperty(window.navigator, "mediaDevices", {
+      value: { getUserMedia, getDisplayMedia },
+      configurable: true,
+    });
+    const { result } = renderHook(() => useVoiceMesh(4, 11, [], false, {}));
+
+    let shared = true;
+    await act(async () => {
+      shared = await result.current.startTabAudio();
+    });
+
+    expect(getDisplayMedia).toHaveBeenCalledWith(expect.objectContaining({ audio: true, selfBrowserSurface: "exclude" }));
+    expect(shared).toBe(false);
+    expect(result.current.tabAudioErrorMessage).toBe("No audio was shared. Pick the YouTube tab and turn on tab audio.");
   });
 });
