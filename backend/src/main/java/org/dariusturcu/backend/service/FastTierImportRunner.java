@@ -17,6 +17,7 @@ import org.springframework.stereotype.Service;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.Semaphore;
 
 /**
  * Resolves a user import's new songs on the fast tier, all of them in parallel. Every
@@ -33,6 +34,7 @@ import java.util.concurrent.CountDownLatch;
 public class FastTierImportRunner {
 
     private static final String SUCCESS_STATUS = "SUCCESS";
+    private static final int FULL_PIPELINE_FALLBACK_CONCURRENCY = 1;
 
     /** Receives each song's progress, called from the worker threads as it happens. */
     public interface Listener {
@@ -51,6 +53,9 @@ public class FastTierImportRunner {
     private final MetadataPriorityCoordinator metadataPriorityCoordinator;
     private final TaskExecutor identifyExecutor;
     private final TaskExecutor datingExecutor;
+    // The full pipeline's endpoint allows 30 calls a minute across the whole backend and
+    // each call takes tens of seconds, so fallbacks run one at a time.
+    private final Semaphore fullPipelineFallbackPermit = new Semaphore(FULL_PIPELINE_FALLBACK_CONCURRENCY, true);
 
     public FastTierImportRunner(
             SongMetadataService songMetadataService,
@@ -123,6 +128,15 @@ public class FastTierImportRunner {
         }
     }
 
+    private Optional<Song> resolveThroughFullPipeline(String youtubeId, User addedBy) {
+        fullPipelineFallbackPermit.acquireUninterruptibly();
+        try {
+            return songResolutionService.resolveAndPersist(youtubeId, addedBy);
+        } finally {
+            fullPipelineFallbackPermit.release();
+        }
+    }
+
     private void date(String youtubeId, AiIdentifiedSong identified, User addedBy, Listener listener,
                       CountDownLatch settledSongs) {
         try {
@@ -133,7 +147,7 @@ public class FastTierImportRunner {
                 listener.resolved(youtubeId, song);
                 return;
             }
-            Optional<Song> patientSong = songResolutionService.resolveAndPersist(youtubeId, addedBy);
+            Optional<Song> patientSong = resolveThroughFullPipeline(youtubeId, addedBy);
             if (patientSong.isPresent()) {
                 listener.resolved(youtubeId, patientSong.get());
             } else {

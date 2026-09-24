@@ -25,6 +25,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.CyclicBarrier;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -43,6 +44,7 @@ class FastTierImportRunnerTest {
     private static final String ERROR_STATUS = "ERROR";
     private static final long WAIT_SECONDS = 5;
     private static final int FAST_TIER_YEAR = 1998;
+    private static final long FALLBACK_WORK_MILLISECONDS = 50;
     private static final String FIRST_VIDEO_ID = "firstVideo1";
     private static final String SECOND_VIDEO_ID = "secondVideo";
     private static final String THIRD_VIDEO_ID = "thirdVideo1";
@@ -213,5 +215,24 @@ class FastTierImportRunnerTest {
         runner.resolveAll(List.of(FIRST_VIDEO_ID), importingUser, listener);
 
         assertThat(listener.resolvedWith).containsEntry(FIRST_VIDEO_ID, authentication);
+    }
+
+    @Test
+    void songsFallingBackToTheFullPipelineRunOneAtATime() {
+        AtomicInteger fallbacksInFlight = new AtomicInteger();
+        AtomicInteger mostFallbacksAtOnce = new AtomicInteger();
+        when(songMetadataService.identifyByYoutubeId(anyString())).thenAnswer(invocation -> identified(invocation.getArgument(0)));
+        when(songMetadataService.dateFast(anyString(), anyList())).thenReturn(dated(null));
+        when(songResolutionService.resolveAndPersist(anyString(), any())).thenAnswer(invocation -> {
+            mostFallbacksAtOnce.accumulateAndGet(fallbacksInFlight.incrementAndGet(), Math::max);
+            Thread.sleep(FALLBACK_WORK_MILLISECONDS);
+            fallbacksInFlight.decrementAndGet();
+            return Optional.of(songWithYear(2001));
+        });
+
+        runner.resolveAll(THREE_VIDEO_IDS, importingUser, listener);
+
+        assertThat(listener.outcomes.values()).containsOnly("resolved");
+        assertThat(mostFallbacksAtOnce.get()).isEqualTo(1);
     }
 }
