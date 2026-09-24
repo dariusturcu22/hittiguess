@@ -18,7 +18,12 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
 const GROUP_CLEANUP_TIMEOUT_MILLISECONDS = 10_000;
 const PLAYLISTS_API_PATH = "/api/users/me/playlists";
 const SONG_COLOR = "a6e3a1";
-const MINIMUM_GAMEPLAY_SONG_COUNT = 3;
+const LOBBY_PLAYER_COUNT = 2;
+const WIN_CONDITION_CARD_COUNT = 5;
+// A session needs a song per card every player could win with.
+const MINIMUM_GAMEPLAY_SONG_COUNT = LOBBY_PLAYER_COUNT * WIN_CONDITION_CARD_COUNT;
+const FIRST_SONG_RELEASE_YEAR = 1990;
+const SONG_NUMBER_WIDTH = 2;
 const RESULTS_SESSION_ID = 777;
 const RESULTS_GROUP_ID = 888;
 const SESSION_API_PATH = `/api/sessions/${RESULTS_SESSION_ID}`;
@@ -28,6 +33,8 @@ const GAMEPLAY_SESSION_ID = 779;
 const GAMEPLAY_SESSION_API_PATH = `/api/sessions/${GAMEPLAY_SESSION_ID}`;
 const CURRENT_USER_API_PATH = "/api/users/me";
 const LINK_OUT_API_PATH = `/api/sessions/${GAMEPLAY_SESSION_ID}/link-out`;
+// A short window, about what a 900px-tall screen shows at 150% zoom.
+const SHORT_VIEWPORT = { width: 1280, height: 600 };
 const PLAYER_ID = 10;
 const DJ_ID = 20;
 
@@ -105,12 +112,15 @@ async function configurePlayablePlaylist(page: Page, groupId: number): Promise<v
   });
   expect(playlistResponse.ok()).toBeTruthy();
   const playlist = await playlistResponse.json() as PlaylistResponse;
-  const songs = [
-    { artist: "Batch E artist one", title: "Batch E song one", releaseYear: 1998, youtubeId: "dQw4w9WgXcQ" },
-    { artist: "Batch E artist two", title: "Batch E song two", releaseYear: 2003, youtubeId: "3JZ_D3ELwOQ" },
-    { artist: "Batch E artist three", title: "Batch E song three", releaseYear: 2009, youtubeId: "L_jWHffIx5E" },
-  ];
-  expect(songs).toHaveLength(MINIMUM_GAMEPLAY_SONG_COUNT);
+  const songs = Array.from({ length: MINIMUM_GAMEPLAY_SONG_COUNT }, (unusedEntry, songIndex) => {
+    const songNumber = String(songIndex + 1).padStart(SONG_NUMBER_WIDTH, "0");
+    return {
+      artist: `Batch E artist ${songNumber}`,
+      title: `Batch E song ${songNumber}`,
+      releaseYear: FIRST_SONG_RELEASE_YEAR + songIndex,
+      youtubeId: `batchEsng${songNumber}`,
+    };
+  });
   for (const song of songs) {
     const songResponse = await page.request.post(apiUrl(`/api/playlists/${playlist.id}/songs`), {
       data: { ...song, color: SONG_COLOR },
@@ -119,7 +129,7 @@ async function configurePlayablePlaylist(page: Page, groupId: number): Promise<v
     expect(songResponse.ok()).toBeTruthy();
   }
   const settingsResponse = await page.request.patch(apiUrl(`${GROUPS_PATH}/${groupId}/settings`), {
-    data: { playlistIds: [playlist.id], djMode: "ROTATING", winConditionCardCount: 5 },
+    data: { playlistIds: [playlist.id], djMode: "ROTATING", winConditionCardCount: WIN_CONDITION_CARD_COUNT },
     headers: await csrfHeaders(page),
   });
   expect(settingsResponse.ok()).toBeTruthy();
@@ -182,6 +192,27 @@ test("group lobby joins members, persists settings, relays chat, and starts a se
       ]);
     }
     await Promise.all([adminPage.context().close(), memberPage.context().close()]);
+  }
+});
+
+test("lobby keeps its footer actions on screen in a short or zoomed window", async ({ browser }) => {
+  const page = await login(browser, ADMIN_ACCOUNT);
+  let groupId: number | undefined;
+
+  try {
+    const group = await createGroupFromSidebar(page);
+    groupId = group.id;
+    await page.setViewportSize(SHORT_VIEWPORT);
+    await expect(page.getByRole("heading", { name: "Group Lobby" })).toBeVisible();
+
+    for (const footerAction of ["Start game", "Leave lobby"]) {
+      await expect(page.getByRole("button", { name: footerAction })).toBeInViewport({ ratio: 1 });
+    }
+  } finally {
+    if (groupId !== undefined) {
+      await leaveGroup(page, groupId);
+    }
+    await page.context().close();
   }
 });
 
