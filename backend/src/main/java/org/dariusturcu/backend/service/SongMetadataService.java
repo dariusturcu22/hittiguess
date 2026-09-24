@@ -3,9 +3,12 @@ package org.dariusturcu.backend.service;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.dariusturcu.backend.exception.RateLimitExceededException;
+import org.dariusturcu.backend.model.ai.AiFastDateResponse;
+import org.dariusturcu.backend.model.ai.AiIdentifyResponse;
 import org.dariusturcu.backend.model.ai.AiMetadataContent;
 import org.dariusturcu.backend.model.ai.AiResponse;
 import org.dariusturcu.backend.model.ai.AiServiceResolveResponse;
+import org.dariusturcu.backend.model.ai.FastDateRequest;
 import org.dariusturcu.backend.model.ai.MetadataResolveRequest;
 import org.dariusturcu.backend.model.ai.SongMetadataResponse;
 import org.dariusturcu.backend.security.util.SecurityUtils;
@@ -16,6 +19,7 @@ import org.springframework.web.client.RestClient;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -26,6 +30,8 @@ import java.util.concurrent.ConcurrentHashMap;
 public class SongMetadataService {
     private static final String YOUTUBE_WATCH_URL_PREFIX = "https://www.youtube.com/watch?v=";
     private static final Duration PREVIEW_CACHE_TTL = Duration.ofMinutes(10);
+    private static final String IDENTIFY_PATH = "/metadata/identify";
+    private static final String FAST_DATE_PATH = "/metadata/date-fast";
 
     private final RestClient aiServiceRestClient;
 
@@ -63,6 +69,30 @@ public class SongMetadataService {
     // traffic for the shared external rate-limit budget.
     public AiResponse resolveByYoutubeId(String youtubeId) {
         return resolve(YOUTUBE_WATCH_URL_PREFIX + youtubeId);
+    }
+
+    // The fast tier's first pass for one video. Empty when the AI service can't be
+    // reached or answers with nothing, which callers treat like an ERROR response.
+    public Optional<AiIdentifyResponse> identifyByYoutubeId(String youtubeId) {
+        return postToAiService(IDENTIFY_PATH, new MetadataResolveRequest(YOUTUBE_WATCH_URL_PREFIX + youtubeId), AiIdentifyResponse.class);
+    }
+
+    // The fast tier's one-lane year lookup for an identified song.
+    public Optional<AiFastDateResponse> dateFast(String title, List<String> mainArtists) {
+        return postToAiService(FAST_DATE_PATH, new FastDateRequest(title, mainArtists), AiFastDateResponse.class);
+    }
+
+    private <ResponseType> Optional<ResponseType> postToAiService(String path, Object request, Class<ResponseType> responseType) {
+        try {
+            return Optional.ofNullable(aiServiceRestClient.post()
+                    .uri(path)
+                    .body(request)
+                    .retrieve()
+                    .body(responseType));
+        } catch (Exception aiServiceCallFailure) {
+            log.warn("AI microservice call to {} failed: {}", path, aiServiceCallFailure.getMessage());
+            return Optional.empty();
+        }
     }
 
     public Optional<AiResponse> findCachedPreview(String youtubeId) {
@@ -116,7 +146,7 @@ public class SongMetadataService {
     // two must stay distinct types rather than one dual-purpose record, since
     // a single Jackson naming strategy can't be snake_case for one direction
     // and camelCase for the other.
-    private static SongMetadataResponse toSongMetadataResponse(AiMetadataContent content) {
+    static SongMetadataResponse toSongMetadataResponse(AiMetadataContent content) {
         if (content == null) {
             return null;
         }

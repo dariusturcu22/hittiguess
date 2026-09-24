@@ -36,23 +36,21 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.Instant;
-import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.Set;
 import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
 /**
  * Playlist-scoped background imports. The HTTP call only parses the submitted ids,
- * persists a RUNNING job with one PENDING item per id, and returns the job id; the
- * slow YouTube resolution runs on the import executor and lands each outcome on its
- * item row, reusing the on-the-spot lookup, resolution, linking, and progress-event
- * flow so live clients see the same per-song updates.
+ * persists a RUNNING job with one PENDING item per id, and returns the job id. The
+ * import then runs on the import executor: songs the catalog already knows are linked
+ * at once, and every new song goes through the fast tier in parallel, moving its item
+ * through IDENTIFYING and DATING and joining the playlist the moment it resolves, with
+ * the same progress events live clients already follow.
  */
 @Slf4j
 @Service
@@ -66,9 +64,7 @@ public class PlaylistImportJobService {
     private final UserRepository userRepository;
     private final PlaylistAccessService playlistAccessService;
     private final YoutubeIdLookupService youtubeIdLookupService;
-    private final SongResolutionService songResolutionService;
-    private final CatalogSeedingService catalogSeedingService;
-    private final MetadataPriorityCoordinator metadataPriorityCoordinator;
+    private final FastTierImportRunner fastTierImportRunner;
     private final PlaylistExpansionService playlistExpansionService;
     private final PlaylistImportService playlistImportService;
     private final ImportQuotaService importQuotaService;
@@ -141,48 +137,51 @@ public class PlaylistImportJobService {
                 new UsernamePasswordAuthenticationToken(principal, null, principal.getAuthorities()));
         try {
             List<PlaylistImportJobItem> items = itemRepository.findByJobIdOrderByIdAsc(jobId);
+            Map<String, Long> itemIdsByYoutubeId = items.stream()
+                    .collect(Collectors.toMap(PlaylistImportJobItem::getYoutubeId, PlaylistImportJobItem::getId,
+                            (firstItemId, repeatedItemId) -> firstItemId));
 
-            YoutubeIdLookupResult lookupResult = youtubeIdLookupService.partitionKnownAndUnknown(
-                    items.stream().map(PlaylistImportJobItem::getYoutubeId).toList());
-            Set<String> knownIdSet = new HashSet<>(lookupResult.knownYoutubeIds());
+            YoutubeIdLookupResult lookupResult = youtubeIdLookupService.partitionKnownAndUnknown(itemIdsByYoutubeId.keySet());
             Map<String, Long> knownSongIds = youtubeIdLookupService.resolveCanonicalSongIds(lookupResult.knownYoutubeIds());
-            for (PlaylistImportJobItem item : items) {
-                if (!knownIdSet.contains(item.getYoutubeId())) {
-                    continue;
-                }
-                item.setStatus(PlaylistImportJobItemStatus.ALREADY_KNOWN);
-                item.setSongId(knownSongIds.get(item.getYoutubeId()));
-                itemRepository.save(item);
-                publishProgress(submittingUsername, jobId, item.getYoutubeId(), BulkImportProgressOutcome.ALREADY_KNOWN);
+            for (Map.Entry<String, Long> knownSong : knownSongIds.entrySet()) {
+                updateItem(itemIdsByYoutubeId.get(knownSong.getKey()), PlaylistImportJobItemStatus.ALREADY_KNOWN, knownSong.getValue());
+                publishProgress(submittingUsername, jobId, knownSong.getKey(), BulkImportProgressOutcome.ALREADY_KNOWN);
             }
+            playlistImportService.addResolvedSongIds(playlistId, List.copyOf(knownSongIds.values()));
 
-            List<Long> resolvedSongIds = new ArrayList<>();
-            metadataPriorityCoordinator.beginOnTheSpotWork();
-            try {
-                for (PlaylistImportJobItem item : items) {
-                    if (item.getStatus() != PlaylistImportJobItemStatus.PENDING) {
-                        continue;
-                    }
-                    Optional<Song> resolvedSong = songResolutionService.resolveAndPersist(item.getYoutubeId(), submittingUser);
-                    if (resolvedSong.isPresent()) {
-                        item.setStatus(PlaylistImportJobItemStatus.RESOLVED);
-                        item.setSongId(resolvedSong.get().getId());
-                        resolvedSongIds.add(resolvedSong.get().getId());
-                        catalogSeedingService.reEnqueueForPatientReprocessing(item.getYoutubeId());
-                        publishProgress(submittingUsername, jobId, item.getYoutubeId(), BulkImportProgressOutcome.RESOLVED);
-                    } else {
-                        item.setStatus(PlaylistImportJobItemStatus.UNRESOLVED);
-                        publishProgress(submittingUsername, jobId, item.getYoutubeId(), BulkImportProgressOutcome.UNRESOLVED);
-                    }
-                    itemRepository.save(item);
+            List<String> newYoutubeIds = itemIdsByYoutubeId.keySet().stream()
+                    .filter(youtubeId -> !knownSongIds.containsKey(youtubeId))
+                    .toList();
+            Object playlistLinkLock = new Object();
+            fastTierImportRunner.resolveAll(newYoutubeIds, submittingUser, new FastTierImportRunner.Listener() {
+                @Override
+                public void identifying(String youtubeId) {
+                    updateItem(itemIdsByYoutubeId.get(youtubeId), PlaylistImportJobItemStatus.IDENTIFYING, null);
                 }
-            } finally {
-                metadataPriorityCoordinator.endOnTheSpotWork();
-            }
 
-            List<Long> songsToLinkIds = new ArrayList<>(knownSongIds.values());
-            songsToLinkIds.addAll(resolvedSongIds);
-            playlistImportService.addResolvedSongIds(playlistId, songsToLinkIds);
+                @Override
+                public void dating(String youtubeId) {
+                    updateItem(itemIdsByYoutubeId.get(youtubeId), PlaylistImportJobItemStatus.DATING, null);
+                }
+
+                // Each song joins the playlist the moment it resolves. Links are made one
+                // at a time so concurrent songs never rewrite the playlist's song list
+                // over each other.
+                @Override
+                public void resolved(String youtubeId, Song song) {
+                    synchronized (playlistLinkLock) {
+                        playlistImportService.addResolvedSongIds(playlistId, List.of(song.getId()));
+                    }
+                    updateItem(itemIdsByYoutubeId.get(youtubeId), PlaylistImportJobItemStatus.RESOLVED, song.getId());
+                    publishProgress(submittingUsername, jobId, youtubeId, BulkImportProgressOutcome.RESOLVED);
+                }
+
+                @Override
+                public void unresolved(String youtubeId) {
+                    updateItem(itemIdsByYoutubeId.get(youtubeId), PlaylistImportJobItemStatus.UNRESOLVED, null);
+                    publishProgress(submittingUsername, jobId, youtubeId, BulkImportProgressOutcome.UNRESOLVED);
+                }
+            });
             finishJob(jobId, PlaylistImportJobStatus.DONE);
         } catch (RuntimeException failure) {
             log.warn("Background playlist import {} failed", jobId, failure);
@@ -190,6 +189,18 @@ public class PlaylistImportJobService {
         } finally {
             SecurityContextHolder.clearContext();
         }
+    }
+
+    // Workers update their own items concurrently, so each update reads the row fresh
+    // rather than touching an entity another thread loaded.
+    private void updateItem(Long itemId, PlaylistImportJobItemStatus status, Long songId) {
+        itemRepository.findById(itemId).ifPresent(item -> {
+            item.setStatus(status);
+            if (songId != null) {
+                item.setSongId(songId);
+            }
+            itemRepository.save(item);
+        });
     }
 
     @Transactional

@@ -17,17 +17,17 @@ import org.springframework.stereotype.Service;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 /**
  * The user on-the-spot bulk-import path. It shares the batch YouTube-ID lookup with
  * the admin backlog, resolves only genuinely new IDs, and does so immediately,
  * independent of the admin backlog's schedule, even when the same ID is also sitting
- * in that backlog waiting its turn. On-the-spot work is bracketed as high priority
- * through the coordinator so the backlog drain yields the shared external rate-limit
- * budget while it runs. Every ID resolved here is also re-enqueued into the admin
- * backlog so the patient pipeline reprocesses the provisional fast-tier answer.
+ * in that backlog waiting its turn. New IDs go through the fast tier in parallel via
+ * FastTierImportRunner, which also brackets the work as high priority and queues each
+ * provisional answer for the patient recheck.
  *
  * Publishes a BulkImportProgressEvent for every submitted video id, already-known ones
  * included, so the submitting user's client can render live per-song progress against
@@ -45,9 +45,7 @@ import java.util.Set;
 public class BulkImportService {
 
     private final YoutubeIdLookupService youtubeIdLookupService;
-    private final SongResolutionService songResolutionService;
-    private final CatalogSeedingService catalogSeedingService;
-    private final MetadataPriorityCoordinator metadataPriorityCoordinator;
+    private final FastTierImportRunner fastTierImportRunner;
     private final PlaylistExpansionService playlistExpansionService;
     private final PlaylistImportService playlistImportService;
     private final ImportQuotaService importQuotaService;
@@ -71,27 +69,32 @@ public class BulkImportService {
             publishProgress(submittingUsername, request.importJobId(), alreadyKnownId, BulkImportProgressOutcome.ALREADY_KNOWN);
         }
 
-        Set<String> resolvedIds = new LinkedHashSet<>();
-        Set<String> unresolvedIds = new LinkedHashSet<>();
-        List<Song> resolvedSongs = new ArrayList<>();
+        Set<String> resolvedIds = ConcurrentHashMap.newKeySet();
+        Set<String> unresolvedIds = ConcurrentHashMap.newKeySet();
+        List<Song> resolvedSongs = new CopyOnWriteArrayList<>();
 
-        metadataPriorityCoordinator.beginOnTheSpotWork();
-        try {
-            for (String youtubeId : lookupResult.unknownYoutubeIds()) {
-                Optional<Song> resolvedSong = songResolutionService.resolveAndPersist(youtubeId, currentUser);
-                if (resolvedSong.isPresent()) {
-                    resolvedIds.add(youtubeId);
-                    resolvedSongs.add(resolvedSong.get());
-                    catalogSeedingService.reEnqueueForPatientReprocessing(youtubeId);
-                    publishProgress(submittingUsername, request.importJobId(), youtubeId, BulkImportProgressOutcome.RESOLVED);
-                } else {
-                    unresolvedIds.add(youtubeId);
-                    publishProgress(submittingUsername, request.importJobId(), youtubeId, BulkImportProgressOutcome.UNRESOLVED);
-                }
+        fastTierImportRunner.resolveAll(List.copyOf(lookupResult.unknownYoutubeIds()), currentUser, new FastTierImportRunner.Listener() {
+            @Override
+            public void identifying(String youtubeId) {
             }
-        } finally {
-            metadataPriorityCoordinator.endOnTheSpotWork();
-        }
+
+            @Override
+            public void dating(String youtubeId) {
+            }
+
+            @Override
+            public void resolved(String youtubeId, Song song) {
+                resolvedIds.add(youtubeId);
+                resolvedSongs.add(song);
+                publishProgress(submittingUsername, request.importJobId(), youtubeId, BulkImportProgressOutcome.RESOLVED);
+            }
+
+            @Override
+            public void unresolved(String youtubeId) {
+                unresolvedIds.add(youtubeId);
+                publishProgress(submittingUsername, request.importJobId(), youtubeId, BulkImportProgressOutcome.UNRESOLVED);
+            }
+        });
 
         if (request.targetPlaylistId() != null) {
             List<Song> knownSongs = youtubeIdLookupService.resolveCanonicalSongs(lookupResult.knownYoutubeIds());
@@ -100,7 +103,14 @@ public class BulkImportService {
             playlistImportService.addResolvedSongs(request.targetPlaylistId(), songsToLink);
         }
 
-        return new BulkImportResultDTO(lookupResult.knownYoutubeIds(), resolvedIds, unresolvedIds);
+        return new BulkImportResultDTO(lookupResult.knownYoutubeIds(), orderedAsSubmitted(resolvedIds, lookupResult),
+                orderedAsSubmitted(unresolvedIds, lookupResult));
+    }
+
+    private Set<String> orderedAsSubmitted(Set<String> youtubeIds, YoutubeIdLookupResult lookupResult) {
+        Set<String> ordered = new LinkedHashSet<>();
+        lookupResult.unknownYoutubeIds().stream().filter(youtubeIds::contains).forEach(ordered::add);
+        return ordered;
     }
 
     private void publishProgress(String username, String importJobId, String youtubeId, BulkImportProgressOutcome outcome) {
