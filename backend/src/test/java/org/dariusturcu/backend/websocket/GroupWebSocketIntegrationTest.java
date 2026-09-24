@@ -132,6 +132,7 @@ class GroupWebSocketIntegrationTest {
             StompSubscriptionAuthorizationInterceptor.class,
             JwtCookieHandshakeInterceptor.class,
             VoiceSignalingController.class,
+            UserSocketCloser.class,
             WebSocketConfig.class,
             GroupSessionEventListener.class,
             GroupBroadcastListener.class
