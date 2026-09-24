@@ -928,10 +928,10 @@ Batch 2, WebSocket authorization (critical):
 - [x] Subscribing to a session's round topic registers presence in `SessionPresenceRegistry` without checking the subscriber is a player in that session. Register only players
 
 Batch 3, dependencies (critical):
-- [ ] `next` 16.3.2 is inside the range of published unauthenticated remote code execution advisories (16.0.0 to 16.3.2, including the Image Optimization API). Upgrade to a patched release
-- [ ] `npm audit` also reports high-severity `sharp` (libheif) and `fast-uri` advisories and a moderate `baseline-browser-mapping` one. Upgrade them
-- [ ] `npm audit` now also reports a critical `orval` advisory (fixed in 8.37.0, which also clears the high `js-yaml` one it pulls in), high `brace-expansion` and `browserslist` advisories, moderate `@humanfs/node`, `hono`, and `qs` ones, and a low `postcss-selector-parser` one. Upgrade them, and regenerate the API hooks with the upgraded `orval` so the generated code matches it
-- [ ] The AI microservice's dependencies are unpinned `>=` ranges with no lockfile. Pin them with a lockfile so builds are reproducible and auditable
+- [x] `next` 16.3.2 is inside the range of published unauthenticated remote code execution advisories (16.0.0 to 16.3.2, including the Image Optimization API). Upgrade to a patched release
+- [x] `npm audit` also reports high-severity `sharp` (libheif) and `fast-uri` advisories and a moderate `baseline-browser-mapping` one. Upgrade them
+- [x] `npm audit` now also reports a critical `orval` advisory (fixed in 8.37.0, which also clears the high `js-yaml` one it pulls in), high `brace-expansion` and `browserslist` advisories, moderate `@humanfs/node`, `hono`, and `qs` ones, and a low `postcss-selector-parser` one. Upgrade them, and regenerate the API hooks with the upgraded `orval` so the generated code matches it
+- [x] The AI microservice's dependencies are unpinned `>=` ranges with no lockfile. Pin them with a lockfile so builds are reproducible and auditable
 
 Batch 4, game session reliability (critical and high):
 - [ ] `GameSessionService.reconnectPlayer` has no caller, so a player whose socket closes once (a reload, navigating away and back) stays `isConnected: false` with `disconnectedAt` set for good. An active player who reloads mid-turn is marked `Left` 90 seconds later while playing, and once every player has closed a socket at any point `zeroConnectedSince` sticks and the session is abandoned 10 minutes later mid-game. Call it when a player's socket subscribes to the round topic, and only mark a player disconnected once their last socket for that session closes, since each client holds several
@@ -972,7 +972,8 @@ Existing test failures:
 Tests:
 - [x] Batch 1: integration tests that a pending token is refused on REST and STOMP, that setup can't disable two-factor, that cross-site `/auth` requests without a CSRF token are refused, that a replayed code is refused, and that repeated failures lock the account temporarily
 - [x] Batch 2: integration tests that a non-member's SUBSCRIBE to group and session topics is refused and that a voice signal reaches only its target
-- [ ] Batch 3: the frontend build, lint, and unit and end-to-end suites pass on the upgraded dependencies, and `npm audit` reports no high or critical advisory
+- [x] Batch 3: the frontend build, lint, and unit and end-to-end suites pass on the upgraded dependencies, and `npm audit` reports no high or critical advisory
+- [ ] The e2e login helpers wait for the `/playlists` load event with `page.waitForURL`, and in a full local run one or two login-dependent specs (the two-player round, and sometimes core flows) time out there even though the page has already reached `/playlists`. The same spec fails the same way on `dev` before the batch 3 upgrades. Find what holds the load event open and make the login wait on the rendered page instead
 - [ ] Batch 4: service tests for reconnect on subscribe, disconnect only after the last socket, graceful completion on an empty queue, startup rescheduling, the idle placement timeout, skip-betting eligibility, once-per-round tallies, and guess result delivery
 - [ ] Batch 5: integration tests that non-members can't read results, that a shared song can't be edited through another user's playlist, and that invalid display names and avatar URLs are refused
 - [ ] Batch 6: unit tests that an oversized-dimension image is refused before decoding, and integration tests for the bulk import cap, quota, and up-front access check
