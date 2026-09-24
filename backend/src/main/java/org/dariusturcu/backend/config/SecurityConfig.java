@@ -87,8 +87,18 @@ public class SecurityConfig {
                 .csrf(csrf -> csrf
                         .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
                         .csrfTokenRequestHandler(csrfHandler)
+                        // Only the /auth endpoints reached before a session exists skip CSRF.
+                        // The ones acting on the signed-in account (2FA setup, confirm,
+                        // disable, and logout) need the token like every other mutation,
+                        // since production cookies are SameSite=None.
                         .ignoringRequestMatchers(
-                                "/auth/**",
+                                "/auth/register",
+                                "/auth/login",
+                                "/auth/2fa/verify",
+                                "/auth/verify-email",
+                                "/auth/resend-verification",
+                                "/auth/password-reset/**",
+                                "/auth/refresh",
                                 "/error",
                                 "/oauth2/**",
                                 "/login/oauth2/**"
