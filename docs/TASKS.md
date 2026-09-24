@@ -943,10 +943,10 @@ Batch 4, game session reliability (critical and high):
 - [x] Guess results are never sent back, so neither the guesser's correct/incorrect animation nor the "guessed the artist" toast from the mockups can render. Deliver each guess result to its guesser, and broadcast a correct guess without the answer
 
 Batch 5, data access and integrity (high):
-- [ ] `GET /api/sessions/groups/{groupId}/results` has no membership check, and group ids are sequential, so any logged-in user can read any group's results. Restrict it to the session's players
-- [ ] `PlaylistService.updateSong` edits the shared catalog `Song` row. Adding an existing YouTube id to any playlist links that row, so a user with write on their own playlist can change the year or title of an unverified song in every other playlist and game using it. Stop direct edits of a song linked to playlists the editor can't write, or route them through the report flow
-- [ ] `GET /api/playlists/{playlistId}/cover` is public, so a private playlist's cover is readable by anyone with its id. Apply the playlist read check, or confirm covers are meant to be public
-- [ ] Group display name and avatar URL on create and join have no length or format validation. Add bounds, and restrict avatar URLs to the schemes and hosts the app serves
+- [x] `GET /api/sessions/groups/{groupId}/results` has no membership check, and group ids are sequential, so any logged-in user can read any group's results. Restrict it to the session's players
+- [x] `PlaylistService.updateSong` edits the shared catalog `Song` row. Adding an existing YouTube id to any playlist links that row, so a user with write on their own playlist can change the year or title of an unverified song in every other playlist and game using it. Stop direct edits of a song linked to playlists the editor can't write, or route them through the report flow
+- [x] `GET /api/playlists/{playlistId}/cover` is public, so a private playlist's cover is readable by anyone with its id. Apply the playlist read check, or confirm covers are meant to be public
+- [x] Group display name and avatar URL on create and join have no length or format validation. Add bounds, and restrict avatar URLs to the schemes and hosts the app serves
 
 Batch 6, resource abuse (high):
 - [ ] `PixelArtImageService` decodes an upload in full before checking its dimensions, so a small image declaring huge dimensions can exhaust memory. Read the dimensions through an `ImageReader` before decoding
@@ -976,7 +976,7 @@ Tests:
 - [x] The frontend build fetched Google Fonts through `next/font/google`, and a change in Google's responses to CI made Turbopack fail to resolve the font files, breaking every frontend build. Serve the four font families from the repo with `next/font/local` so the build makes no font requests, and confirm a clean build and the unit suite pass
 - [ ] The e2e login helpers wait for the `/playlists` load event with `page.waitForURL`, and in a full local run one or two login-dependent specs (the two-player round, and sometimes core flows) time out there even though the page has already reached `/playlists`. The same spec fails the same way on `dev` before the batch 3 upgrades. Find what holds the load event open and make the login wait on the rendered page instead
 - [x] Batch 4: service tests for reconnect on subscribe, disconnect only after the last socket, graceful completion on an empty queue, startup rescheduling, the idle placement timeout, skip-betting eligibility, once-per-round tallies, and guess result delivery
-- [ ] Batch 5: integration tests that non-members can't read results, that a shared song can't be edited through another user's playlist, and that invalid display names and avatar URLs are refused
+- [x] Batch 5: integration tests that non-members can't read results, that a shared song can't be edited through another user's playlist, and that invalid display names and avatar URLs are refused
 - [ ] Batch 6: unit tests that an oversized-dimension image is refused before decoding, and integration tests for the bulk import cap, quota, and up-front access check
 - [ ] Batch 7: handler tests for each mapped status and the generic message, and unit tests for `returnTo` rejecting `/\` and other-origin values on both sides
 - [ ] Batch 8: tests for CSV cell neutralizing, the AI key compare and empty-key startup refusal, and the atomic group cap
