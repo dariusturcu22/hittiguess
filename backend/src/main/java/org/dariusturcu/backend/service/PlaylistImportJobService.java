@@ -71,6 +71,7 @@ public class PlaylistImportJobService {
     private final MetadataPriorityCoordinator metadataPriorityCoordinator;
     private final PlaylistExpansionService playlistExpansionService;
     private final PlaylistImportService playlistImportService;
+    private final ImportQuotaService importQuotaService;
     private final ApplicationEventPublisher applicationEventPublisher;
     @Qualifier("importJobExecutor")
     private final TaskExecutor importJobExecutor;
@@ -84,7 +85,11 @@ public class PlaylistImportJobService {
 
         List<String> parsedYoutubeIds = YoutubeLinkParser.parseAllVideoIds(
                 request.videoIdsOrLinks() == null ? List.of() : request.videoIdsOrLinks());
+        importQuotaService.requireWithinImportSize(parsedYoutubeIds.size());
         List<String> mergedYoutubeIds = playlistExpansionService.expandAndMerge(request.playlistLink(), parsedYoutubeIds);
+        importQuotaService.requireWithinImportSize(mergedYoutubeIds.size());
+        YoutubeIdLookupResult lookupResult = youtubeIdLookupService.partitionKnownAndUnknown(mergedYoutubeIds);
+        importQuotaService.reserveNewSongResolutions(currentUser.getId(), lookupResult.unknownYoutubeIds().size());
         Map<String, VideoInfoItem> videoInfoByYoutubeId = playlistExpansionService.fetchVideoInfo(mergedYoutubeIds);
 
         PlaylistImportJob job = new PlaylistImportJob();

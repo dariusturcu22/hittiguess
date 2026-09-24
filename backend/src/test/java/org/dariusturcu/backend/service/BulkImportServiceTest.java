@@ -59,6 +59,8 @@ class BulkImportServiceTest {
     @Mock
     private PlaylistImportService playlistImportService;
     @Mock
+    private ImportQuotaService importQuotaService;
+    @Mock
     private ApplicationEventPublisher applicationEventPublisher;
 
     private BulkImportService bulkImportService;
@@ -68,7 +70,7 @@ class BulkImportServiceTest {
         MetadataPriorityCoordinator metadataPriorityCoordinator = new MetadataPriorityCoordinator();
         bulkImportService = new BulkImportService(youtubeIdLookupService, songResolutionService,
                 catalogSeedingService, metadataPriorityCoordinator, playlistExpansionService, playlistImportService,
-                applicationEventPublisher);
+                importQuotaService, applicationEventPublisher);
 
         User submittingUser = new User();
         submittingUser.setUsername(SUBMITTING_USERNAME);

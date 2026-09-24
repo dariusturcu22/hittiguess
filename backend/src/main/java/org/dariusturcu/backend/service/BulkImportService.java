@@ -36,6 +36,8 @@ import java.util.Set;
  * When the request carries a targetPlaylistId, every song this call resolves or finds
  * already known is also linked into that playlist, so an import started from a specific
  * playlist's page actually lands its songs there rather than only growing the catalog.
+ * Write access to that playlist, the import size cap, and the daily new-song quota are all
+ * checked before any paid lookup runs.
  */
 @Slf4j
 @Service
@@ -48,15 +50,22 @@ public class BulkImportService {
     private final MetadataPriorityCoordinator metadataPriorityCoordinator;
     private final PlaylistExpansionService playlistExpansionService;
     private final PlaylistImportService playlistImportService;
+    private final ImportQuotaService importQuotaService;
     private final ApplicationEventPublisher applicationEventPublisher;
 
     public BulkImportResultDTO importImmediately(BulkImportRequest request) {
         User currentUser = SecurityUtils.getCurrentUser();
         String submittingUsername = currentUser.getUsername();
+        if (request.targetPlaylistId() != null) {
+            playlistImportService.requireWritableTarget(request.targetPlaylistId());
+        }
         List<String> parsedYoutubeIds = YoutubeLinkParser.parseAllVideoIds(request.videoIdsOrLinks());
+        importQuotaService.requireWithinImportSize(parsedYoutubeIds.size());
         List<String> mergedYoutubeIds = playlistExpansionService.expandAndMerge(request.playlistLink(), parsedYoutubeIds);
+        importQuotaService.requireWithinImportSize(mergedYoutubeIds.size());
 
         YoutubeIdLookupResult lookupResult = youtubeIdLookupService.partitionKnownAndUnknown(mergedYoutubeIds);
+        importQuotaService.reserveNewSongResolutions(currentUser.getId(), lookupResult.unknownYoutubeIds().size());
 
         for (String alreadyKnownId : lookupResult.knownYoutubeIds()) {
             publishProgress(submittingUsername, request.importJobId(), alreadyKnownId, BulkImportProgressOutcome.ALREADY_KNOWN);
