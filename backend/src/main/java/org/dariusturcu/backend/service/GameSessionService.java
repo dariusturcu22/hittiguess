@@ -15,6 +15,7 @@ import org.dariusturcu.backend.model.session.GeneratedSongPreviewDTO;
 import org.dariusturcu.backend.model.session.GenerateDifficultySetRequest;
 import org.dariusturcu.backend.model.session.Guess;
 import org.dariusturcu.backend.model.session.GuessResultDTO;
+import org.dariusturcu.backend.model.session.GuessStateDTO;
 import org.dariusturcu.backend.model.session.LeaderboardEntryDTO;
 import org.dariusturcu.backend.model.session.PlaceCardRequest;
 import org.dariusturcu.backend.model.session.PlacementPreviewDTO;
@@ -69,10 +70,12 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.function.ToIntFunction;
 import java.util.stream.Collectors;
 
 // Orchestrates the whole round-by-round game session lifecycle: init from the group's
@@ -89,6 +92,10 @@ public class GameSessionService {
     private static final int MINIMUM_PLAYERS = 2;
     private static final int ACTIVE_PLAYER_TURN_TIMEOUT_SECONDS = 90;
     private static final int AUTO_ABANDON_MINUTES = 10;
+    private static final int STARTING_TOKEN_COUNT = 2;
+    private static final int FIRST_GAME_ROUND_NUMBER = 1;
+    private static final int FIRST_RANK = 1;
+    private static final int MINIMUM_CORRECT_ARTISTS_FOR_TOKEN = 1;
 
     private final GameSessionRepository gameSessionRepository;
     private final PlayerRepository playerRepository;
@@ -139,6 +146,7 @@ public class GameSessionService {
         session.setDjMode(group.getDjMode());
         session.setWinConditionCardCount(group.getWinConditionCardCount());
         session.setCurrentRoundNumber(0);
+        session.setCurrentGameRoundNumber(FIRST_GAME_ROUND_NUMBER);
         session.setCreatedAt(Instant.now());
 
         int turnOrder = 0;
@@ -148,7 +156,7 @@ public class GameSessionService {
             player.setDisplayName(member.getDisplayName());
             player.setAvatarUrl(member.getAvatarUrl());
             player.setTurnOrder(turnOrder++);
-            player.setTokenCount(0);
+            player.setTokenCount(STARTING_TOKEN_COUNT);
             player.setStatus(PlayerStatus.ACTIVE);
             player.setConnected(true);
             player.setTotalArtistsGuessed(0);
@@ -401,22 +409,32 @@ public class GameSessionService {
         List<Player> byCardCountDescending = session.getPlayers().stream()
                 .sorted(Comparator.comparingInt((Player player) -> player.getTimeline().size()).reversed())
                 .toList();
-        List<PlayerResultDTO> ranking = new ArrayList<>();
-        int rank = 1;
-        for (Player player : byCardCountDescending) {
-            ranking.add(new PlayerResultDTO(player.getId(), player.getDisplayName(), player.getTimeline().size(), rank++));
-        }
-
-        List<LeaderboardEntryDTO> mostArtistsGuessed = session.getPlayers().stream()
-                .sorted(Comparator.comparingInt(Player::getTotalArtistsGuessed).reversed())
-                .map(player -> new LeaderboardEntryDTO(player.getId(), player.getDisplayName(), player.getTotalArtistsGuessed()))
-                .toList();
-        List<LeaderboardEntryDTO> mostTitlesGuessed = session.getPlayers().stream()
-                .sorted(Comparator.comparingInt(Player::getTotalTitlesGuessed).reversed())
-                .map(player -> new LeaderboardEntryDTO(player.getId(), player.getDisplayName(), player.getTotalTitlesGuessed()))
+        List<PlayerResultDTO> ranking = byCardCountDescending.stream()
+                .map(player -> new PlayerResultDTO(player.getId(), player.getDisplayName(), player.getTimeline().size(),
+                        competitionRank(byCardCountDescending, candidate -> candidate.getTimeline().size(), player)))
                 .toList();
 
-        return new SessionResultsDTO(session.getGroupId(), ranking, mostArtistsGuessed, mostTitlesGuessed);
+        return new SessionResultsDTO(session.getGroupId(), ranking,
+                leaderboard(session, Player::getTotalArtistsGuessed),
+                leaderboard(session, Player::getTotalTitlesGuessed));
+    }
+
+    private List<LeaderboardEntryDTO> leaderboard(GameSession session, ToIntFunction<Player> value) {
+        List<Player> byValueDescending = session.getPlayers().stream()
+                .sorted(Comparator.comparingInt(value).reversed())
+                .toList();
+        return byValueDescending.stream()
+                .map(player -> new LeaderboardEntryDTO(player.getId(), player.getDisplayName(), value.applyAsInt(player),
+                        competitionRank(byValueDescending, value, player)))
+                .toList();
+    }
+
+    // Players with equal values share a place, and the next distinct value skips the
+    // places they took, so two winners are both first and the next player is third.
+    private int competitionRank(List<Player> players, ToIntFunction<Player> value, Player player) {
+        int playerValue = value.applyAsInt(player);
+        long playersAhead = players.stream().filter(candidate -> value.applyAsInt(candidate) > playerValue).count();
+        return FIRST_RANK + (int) playersAhead;
     }
 
     // --- Round flow: placement, countdown, betting, reveal, scoring --------------
@@ -609,8 +627,9 @@ public class GameSessionService {
     }
 
     // Effect method applying the four scoring outcome rules from GAME_DESIGN.md, then
-    // either completing the session (win condition reached) or scheduling the next round
-    // after the reveal hold, so every client shows the revealed card before it moves on. Also the reuse point for the turn-timeout and explicit-leave paths: both set
+    // scheduling the next turn after the reveal hold, so every client shows the revealed
+    // card before it moves on. Reaching the win condition doesn't end the game here: the
+    // round plays out and advanceRound ends it once the rotation wraps. Also the reuse point for the turn-timeout and explicit-leave paths: both set
     // placementCorrect to false with no bets before calling this, which discards the
     // card exactly as a live wrong-guess-no-bets round would.
     public void scoreRoundEffect(Long roundId) {
@@ -650,20 +669,19 @@ public class GameSessionService {
 
         publishRoundEvent(SessionEventType.ROUND_SCORED, session, savedRound);
 
-        if (cardWinner != null && cardWinner.hasWon(session.getWinConditionCardCount())) {
-            completeSession(session.getId());
-            return;
-        }
-
         long remainingActivePlayers = session.getPlayers().stream()
                 .filter(candidate -> candidate.getStatus() == PlayerStatus.ACTIVE)
                 .count();
         if (remainingActivePlayers < MINIMUM_PLAYERS) {
-            // Fewer than two players left to take the active-player and DJ roles: the
-            // round can't continue and no one reached the win condition, so this is an
-            // abandonment (no results export) rather than a normal completion. See
-            // DECISIONS.md.
-            abandonSession(session.getId());
+            // Fewer than two players left to take the active-player and DJ roles, so the
+            // round can't continue. With someone already at the win condition the game
+            // completes on the current standings; otherwise it's an abandonment (no
+            // results export). See DECISIONS.md.
+            if (anyPlayerHasWon(session)) {
+                completeSession(session.getId());
+            } else {
+                abandonSession(session.getId());
+            }
         } else {
             gameSessionScheduler.scheduleAfter(RoundTiming.REVEAL_HOLD, () -> self.advanceRoundEffect(roundId));
         }
@@ -725,6 +743,10 @@ public class GameSessionService {
 
     // --- Artist/title guessing (independent of placement) -------------------------
 
+    // Artists are guessed one at a time and the title once. A correct artist counts and
+    // lets the player try another credited artist; a wrong one closes artist guessing for
+    // the round. The active player earns one token per round for the title plus at least
+    // one artist. See GAME_DESIGN.md.
     public void submitTitleArtistGuess(Long sessionId, Long userId, TitleArtistGuessRequest request) {
         GameSession session = getSession(sessionId);
         Player player = findPlayerByUserId(session, userId);
@@ -736,39 +758,52 @@ public class GameSessionService {
         if (round.getStatus() == RoundStatus.SCORED) {
             throw new ConflictException("This round has already been scored");
         }
+        boolean hasArtistGuess = isNonBlank(request.guessedArtist());
+        boolean hasTitleGuess = isNonBlank(request.guessedTitle());
+        if (!hasArtistGuess && !hasTitleGuess) {
+            throw new IllegalArgumentException("A guess needs an artist or a title");
+        }
 
-        List<String> artistNames = round.getSong().getArtists().stream().map(SongArtist::getName).toList();
-        boolean isArtistCorrect = isNonBlank(request.guessedArtist())
-                && GuessMatcher.matchesAnyArtist(request.guessedArtist(), artistNames);
-        boolean isTitleCorrect = isNonBlank(request.guessedTitle())
-                && GuessMatcher.matches(request.guessedTitle(), round.getSong().getTitle());
+        List<Guess> earlierGuessesThisRound = playerGuesses(round, player);
+        GuessStateDTO stateBefore = guessState(round, earlierGuessesThisRound, player);
+        if (hasTitleGuess && stateBefore.titleGuessed()) {
+            throw new ConflictException("The title was already guessed this round");
+        }
+        if (hasArtistGuess && stateBefore.artistGuessingClosed()) {
+            throw new ConflictException("Artist guessing is closed for this round");
+        }
+
+        List<String> artistNames = songArtistNames(round.getSong());
+        Set<String> alreadyGuessedArtists = correctlyGuessedArtists(earlierGuessesThisRound, artistNames);
+        List<String> matchingArtists = hasArtistGuess
+                ? artistNames.stream().filter(artistName -> GuessMatcher.matches(request.guessedArtist(), artistName)).toList()
+                : List.of();
+        boolean isArtistCorrect = matchingArtists.stream().anyMatch(artistName -> !alreadyGuessedArtists.contains(artistName));
+        if (!matchingArtists.isEmpty() && !isArtistCorrect) {
+            throw new ConflictException("That artist was already guessed this round");
+        }
+        boolean isTitleCorrect = hasTitleGuess && GuessMatcher.matches(request.guessedTitle(), round.getSong().getTitle());
 
         Guess guess = new Guess();
         guess.setRound(round);
         guess.setPlayer(player);
-        guess.setGuessedArtist(request.guessedArtist());
-        guess.setGuessedTitle(request.guessedTitle());
+        guess.setGuessedArtist(hasArtistGuess ? request.guessedArtist() : null);
+        guess.setGuessedTitle(hasTitleGuess ? request.guessedTitle() : null);
         guess.setArtistCorrect(isArtistCorrect);
         guess.setTitleCorrect(isTitleCorrect);
         guess.setCreatedAt(Instant.now());
 
-        // The session tallies count each round's artist and title at most once per player,
-        // however many times a correct answer is resubmitted.
-        List<Guess> earlierGuessesThisRound = round.getGuesses().stream()
-                .filter(existing -> existing.getPlayer().getId().equals(player.getId()))
-                .toList();
-        boolean isArtistNewlyCorrect = isArtistCorrect && earlierGuessesThisRound.stream().noneMatch(Guess::isArtistCorrect);
-        boolean isTitleNewlyCorrect = isTitleCorrect && earlierGuessesThisRound.stream().noneMatch(Guess::isTitleCorrect);
-        if (isArtistNewlyCorrect) {
+        if (isArtistCorrect) {
             player.setTotalArtistsGuessed(player.getTotalArtistsGuessed() + 1);
         }
-        if (isTitleNewlyCorrect) {
+        if (isTitleCorrect) {
             player.setTotalTitlesGuessed(player.getTotalTitlesGuessed() + 1);
         }
 
-        boolean isActivePlayer = round.getActivePlayer().getId().equals(player.getId());
-        boolean alreadyAwardedThisRound = earlierGuessesThisRound.stream().anyMatch(Guess::isFullyCorrect);
-        if (isActivePlayer && isArtistCorrect && isTitleCorrect && !alreadyAwardedThisRound) {
+        List<Guess> guessesAfter = new ArrayList<>(earlierGuessesThisRound);
+        guessesAfter.add(guess);
+        GuessStateDTO stateAfter = guessState(round, guessesAfter, player);
+        if (stateAfter.tokenEarned() && !stateBefore.tokenEarned()) {
             player.setTokenCount(player.getTokenCount() + 1);
         }
 
@@ -777,12 +812,72 @@ public class GameSessionService {
         playerRepository.save(player);
 
         eventPublisher.publishEvent(new GuessResultEvent(player.getUser().getUsername(), sessionId,
-                new GuessResultDTO(round.getId(), isArtistCorrect, isTitleCorrect)));
-        if (isArtistNewlyCorrect || isTitleNewlyCorrect) {
+                new GuessResultDTO(round.getId(), isArtistCorrect, isTitleCorrect, stateAfter)));
+        if (isArtistCorrect || isTitleCorrect) {
             eventPublisher.publishEvent(new SessionBroadcastEvent(SessionEventType.GUESS_CORRECT, sessionId,
                     new CorrectGuessDTO(round.getId(), player.getId(), player.getDisplayName(),
-                            isArtistNewlyCorrect, isTitleNewlyCorrect)));
+                            isArtistCorrect, isTitleCorrect)));
         }
+    }
+
+    // The current round's guessing state for one player, so a reloaded page can restore
+    // which guess fields are still open.
+    @Transactional(readOnly = true)
+    public GuessStateDTO getGuessState(Long sessionId, Long userId) {
+        GameSession session = getSession(sessionId);
+        Player player = findPlayerByUserId(session, userId);
+        Round round = requireCurrentRound(session);
+        return guessState(round, playerGuesses(round, player), player);
+    }
+
+    private List<Guess> playerGuesses(Round round, Player player) {
+        return round.getGuesses().stream()
+                .filter(existing -> existing.getPlayer().getId().equals(player.getId()))
+                .sorted(Comparator.comparing(Guess::getCreatedAt))
+                .toList();
+    }
+
+    private List<String> songArtistNames(Song song) {
+        return song.getArtists().stream()
+                .sorted(Comparator.comparingInt(SongArtist::getDisplayOrder))
+                .map(SongArtist::getName)
+                .toList();
+    }
+
+    // Each correct artist guess is credited to the first credited artist it matches that
+    // no earlier guess this round already claimed.
+    private Set<String> correctlyGuessedArtists(List<Guess> guesses, List<String> artistNames) {
+        Set<String> guessedArtists = new LinkedHashSet<>();
+        for (Guess guess : guesses) {
+            if (!guess.isArtistCorrect()) {
+                continue;
+            }
+            artistNames.stream()
+                    .filter(artistName -> !guessedArtists.contains(artistName))
+                    .filter(artistName -> GuessMatcher.matches(guess.getGuessedArtist(), artistName))
+                    .findFirst()
+                    .ifPresent(guessedArtists::add);
+        }
+        return guessedArtists;
+    }
+
+    private GuessStateDTO guessState(Round round, List<Guess> guesses, Player player) {
+        List<String> artistNames = songArtistNames(round.getSong());
+        int correctArtistCount = correctlyGuessedArtists(guesses, artistNames).size();
+        boolean hasWrongArtistGuess = guesses.stream()
+                .anyMatch(guess -> isNonBlank(guess.getGuessedArtist()) && !guess.isArtistCorrect());
+        boolean titleGuessed = guesses.stream().anyMatch(guess -> isNonBlank(guess.getGuessedTitle()));
+        boolean titleCorrect = guesses.stream().anyMatch(Guess::isTitleCorrect);
+        boolean isActivePlayer = round.getActivePlayer().getId().equals(player.getId());
+        boolean tokenEarned = isActivePlayer && titleCorrect && correctArtistCount >= MINIMUM_CORRECT_ARTISTS_FOR_TOKEN;
+        return new GuessStateDTO(
+                round.getId(),
+                artistNames.size(),
+                correctArtistCount,
+                hasWrongArtistGuess || correctArtistCount >= artistNames.size(),
+                titleGuessed,
+                titleCorrect,
+                tokenEarned);
     }
 
     private boolean isNonBlank(String value) {
@@ -799,6 +894,7 @@ public class GameSessionService {
         Round round = new Round();
         round.setSession(session);
         round.setRoundNumber(session.getCurrentRoundNumber() + 1);
+        round.setGameRoundNumber(session.getCurrentGameRoundNumber());
         round.setActivePlayer(activePlayer);
         round.setDjPlayer(djPlayer);
         round.setSong(song);
@@ -854,7 +950,30 @@ public class GameSessionService {
             nextDjPlayer = findNextEligiblePlayer(session, nextActivePlayer.getTurnOrder(), Set.of(nextActivePlayer.getId()));
         }
 
+        // A round closes once the rotation reaches a player who already had a turn in it.
+        // The game only ends there, so everyone still due a turn in the round a win
+        // happened gets it, and players tied at the end share the win.
+        boolean isRoundComplete = activePlayerIdsInCurrentRound(session).contains(nextActivePlayer.getId());
+        if (isRoundComplete) {
+            if (anyPlayerHasWon(session)) {
+                completeSession(session.getId());
+                return;
+            }
+            session.setCurrentGameRoundNumber(session.getCurrentGameRoundNumber() + 1);
+        }
+
         createRound(session, nextActivePlayer, nextDjPlayer);
+    }
+
+    private Set<Long> activePlayerIdsInCurrentRound(GameSession session) {
+        return roundRepository.findBySessionOrderByRoundNumberAsc(session).stream()
+                .filter(round -> round.getGameRoundNumber() == session.getCurrentGameRoundNumber())
+                .map(round -> round.getActivePlayer().getId())
+                .collect(Collectors.toSet());
+    }
+
+    private boolean anyPlayerHasWon(GameSession session) {
+        return session.getPlayers().stream().anyMatch(player -> player.hasWon(session.getWinConditionCardCount()));
     }
 
     private Player findNextEligiblePlayer(GameSession session, int fromTurnOrder, Set<Long> excludedPlayerIds) {
