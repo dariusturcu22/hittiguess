@@ -48,6 +48,7 @@ class _AdaptiveRateLimiter:
     def record_failure(self) -> None:
         self.consecutive_successes = 0
         self.delay_seconds = min(self.delay_seconds * BACKOFF_MULTIPLIER, MAX_DELAY_SECONDS)
+        self._pacer.hold(self.delay_seconds)
 
 
 _rate_limiter = _AdaptiveRateLimiter()

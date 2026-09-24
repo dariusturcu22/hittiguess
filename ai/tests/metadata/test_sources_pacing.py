@@ -1,6 +1,8 @@
 import threading
 import time
 
+import pytest
+
 from app.metadata.sources.pacing import RequestPacer
 
 INTERVAL_SECONDS = 0.05
@@ -39,3 +41,17 @@ def test_concurrent_callers_each_get_their_own_slot():
     assert len(gaps) == CONCURRENT_CALLER_COUNT - 1
     # A small tolerance absorbs scheduler jitter between the sleep ending and the timestamp.
     assert all(gap >= INTERVAL_SECONDS * TIMING_TOLERANCE_FRACTION for gap in gaps)
+
+
+def test_a_hold_pushes_every_later_callers_slot_back(mocker):
+    mocker.patch("app.metadata.sources.pacing.time.monotonic", return_value=100.0)
+    sleep = mocker.patch("app.metadata.sources.pacing.time.sleep")
+    pacer = RequestPacer()
+    hold_seconds = 8.0
+
+    pacer.hold(hold_seconds)
+    pacer.wait(INTERVAL_SECONDS)
+    pacer.wait(INTERVAL_SECONDS)
+
+    slept = [call.args[0] for call in sleep.call_args_list]
+    assert slept == pytest.approx([hold_seconds, hold_seconds + INTERVAL_SECONDS])

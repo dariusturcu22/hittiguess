@@ -1,4 +1,5 @@
 import httpx
+import pytest
 import respx
 
 from app.metadata.sources import musicbrainz
@@ -81,3 +82,15 @@ def test_search_returns_empty_list_on_request_failure(mocker):
     respx.get(url__regex=r"musicbrainz\.org/ws/2/release-group/").mock(return_value=httpx.Response(500))
 
     assert musicbrainz.search("Test Song", "Test Artist") == []
+
+
+def test_a_failed_call_holds_every_caller_for_the_backed_off_delay(mocker):
+    mocker.patch("app.metadata.sources.pacing.time.monotonic", return_value=100.0)
+    sleep = mocker.patch("app.metadata.sources.pacing.time.sleep")
+    limiter = musicbrainz._AdaptiveRateLimiter()
+
+    limiter.record_failure()
+    limiter.wait()
+
+    (slept_seconds,), unused_keywords = sleep.call_args
+    assert slept_seconds == pytest.approx(limiter.delay_seconds)

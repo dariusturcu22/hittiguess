@@ -21,3 +21,10 @@ class RequestPacer:
         remaining_seconds = reserved_slot - current_time
         if remaining_seconds > 0:
             time.sleep(remaining_seconds)
+
+    def hold(self, pause_seconds: float) -> None:
+        """Pushes the next free slot at least pause_seconds out, for every caller, when
+        the source signals it wants a break (a 429, a usage breach). Slots already
+        reserved before the hold aren't moved."""
+        with self._lock:
+            self._next_slot = max(self._next_slot, time.monotonic() + pause_seconds)

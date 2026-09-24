@@ -93,7 +93,7 @@ def _discogs_response(request: httpx.Request) -> httpx.Response:
 
 @respx.mock
 def test_search_combines_track_and_album_candidates(mocker):
-    mocker.patch("app.metadata.sources.discogs.time.sleep")
+    mocker.patch("app.metadata.sources.pacing.time.sleep")
     respx.get(url__regex=r"api\.discogs\.com/").mock(side_effect=_discogs_response)
 
     candidates = discogs.search("Test Song", "Test Artist", album="Test Album")
@@ -107,7 +107,7 @@ def test_search_combines_track_and_album_candidates(mocker):
 
 @respx.mock
 def test_search_skips_album_query_when_no_album_given(mocker):
-    mocker.patch("app.metadata.sources.discogs.time.sleep")
+    mocker.patch("app.metadata.sources.pacing.time.sleep")
     respx.get(url__regex=r"api\.discogs\.com/").mock(side_effect=_discogs_response)
 
     candidates = discogs.search("Test Song", "Test Artist")
@@ -117,7 +117,7 @@ def test_search_skips_album_query_when_no_album_given(mocker):
 
 @respx.mock
 def test_search_returns_empty_list_on_request_failure(mocker):
-    mocker.patch("app.metadata.sources.discogs.time.sleep")
+    mocker.patch("app.metadata.sources.pacing.time.sleep")
     respx.get(url__regex=r"api\.discogs\.com/").mock(return_value=httpx.Response(500))
 
     assert discogs.search("Test Song", "Test Artist") == []
@@ -125,7 +125,7 @@ def test_search_returns_empty_list_on_request_failure(mocker):
 
 @respx.mock
 def test_search_release_sends_authenticated_query(mocker):
-    mocker.patch("app.metadata.sources.discogs.time.sleep")
+    mocker.patch("app.metadata.sources.pacing.time.sleep")
     route = respx.get(discogs.SEARCH_URL).mock(return_value=httpx.Response(200, json={"results": []}))
 
     discogs.search_release("Test Song", "Test Artist")
@@ -153,20 +153,22 @@ def test_rate_limiter_spaces_consecutive_calls_by_the_current_delay(mocker):
     assert slept_seconds == pytest.approx(limiter.delay_seconds)
 
 
-def test_rate_limiter_slows_down_and_cools_off_when_usage_crosses_target(mocker):
-    sleep = mocker.patch("app.metadata.sources.discogs.time.sleep")
+def test_a_usage_breach_slows_down_and_holds_every_caller_for_the_cooldown(mocker):
+    mocker.patch("app.metadata.sources.pacing.time.monotonic", return_value=100.0)
+    sleep = mocker.patch("app.metadata.sources.pacing.time.sleep")
     limiter = discogs.DiscogsRateLimiter(target_utilization=0.5)
     starting_delay = limiter.delay_seconds
 
     response = httpx.Response(200, headers=_rate_limit_headers(limit=60, remaining=0))
     limiter.record_response(response)
+    limiter.wait()
 
     assert limiter.delay_seconds > starting_delay
-    sleep.assert_called_once_with(discogs.BREACH_COOLDOWN_SECONDS)
+    (slept_seconds,), unused_keywords = sleep.call_args
+    assert slept_seconds == pytest.approx(discogs.BREACH_COOLDOWN_SECONDS)
 
 
 def test_rate_limiter_eases_toward_minimum_when_usage_is_well_under_target(mocker):
-    mocker.patch("app.metadata.sources.discogs.time.sleep")
     limiter = discogs.DiscogsRateLimiter(target_utilization=0.5)
     limiter.delay_seconds = 2.0
 
@@ -178,7 +180,7 @@ def test_rate_limiter_eases_toward_minimum_when_usage_is_well_under_target(mocke
 
 
 def test_rate_limiter_holds_steady_within_the_target_band(mocker):
-    mocker.patch("app.metadata.sources.discogs.time.sleep")
+    mocker.patch("app.metadata.sources.pacing.time.sleep")
     limiter = discogs.DiscogsRateLimiter(target_utilization=0.5)
     starting_delay = limiter.delay_seconds
 
@@ -189,7 +191,7 @@ def test_rate_limiter_holds_steady_within_the_target_band(mocker):
 
 
 def test_rate_limiter_ignores_response_with_no_rate_limit_headers(mocker):
-    mocker.patch("app.metadata.sources.discogs.time.sleep")
+    mocker.patch("app.metadata.sources.pacing.time.sleep")
     limiter = discogs.DiscogsRateLimiter()
     starting_delay = limiter.delay_seconds
 
@@ -200,7 +202,7 @@ def test_rate_limiter_ignores_response_with_no_rate_limit_headers(mocker):
 
 
 def test_rate_limiter_ignores_response_with_zero_limit(mocker):
-    mocker.patch("app.metadata.sources.discogs.time.sleep")
+    mocker.patch("app.metadata.sources.pacing.time.sleep")
     limiter = discogs.DiscogsRateLimiter()
     starting_delay = limiter.delay_seconds
 

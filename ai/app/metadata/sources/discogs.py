@@ -1,5 +1,3 @@
-import time
-
 import httpx
 
 from app.config import settings
@@ -58,7 +56,7 @@ class DiscogsRateLimiter:
 
         if utilization > self.target_utilization + UTILIZATION_ADJUSTMENT_BAND:
             self.delay_seconds = min(self.delay_seconds * DELAY_INCREASE_MULTIPLIER, MAX_DELAY_SECONDS)
-            time.sleep(BREACH_COOLDOWN_SECONDS)
+            self._pacer.hold(BREACH_COOLDOWN_SECONDS)
         elif utilization < self.target_utilization - UTILIZATION_ADJUSTMENT_BAND:
             self.delay_seconds = max(self.delay_seconds * DELAY_DECREASE_MULTIPLIER, MIN_DELAY_SECONDS)
 
