@@ -232,6 +232,8 @@ class GameSessionBettingConcurrencyIntegrationTest {
     @Autowired
     private GroupRepository groupRepository;
     @Autowired
+    private MemberRepository memberRepository;
+    @Autowired
     private GameSessionService gameSessionService;
     @Autowired
     private UserRepository userRepository;
