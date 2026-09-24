@@ -9,6 +9,7 @@ import type { RoundDTOStatus } from './roundDTOStatus';
 
 export interface RoundDTO {
   id?: number;
+  turnNumber?: number;
   roundNumber?: number;
   activePlayerId?: number;
   djPlayerId?: number;
