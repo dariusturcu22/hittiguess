@@ -15,6 +15,18 @@ Stories 9, 10, 11, 12, 13, 39, and most of the rest of Phase 1 and Phase 2 are n
 - [ ] Run `python scripts/archive_completed_tasks.py` after all verified TASKS.md updates
 - [ ] Review the documentation diff for stale claims and the repository writing rules
 
+### Open implementation gaps found in this pass
+
+- [ ] Add `POST /api/groups/{groupId}/members/{memberId}/remove`, restricted to the group admin, and close the removed member's active group sockets
+- [ ] Protect the AI service's `/metrics` route with `X-Internal-Api-Key` and disable its interactive API documentation outside development
+- [ ] Disable Swagger UI and `/v3/api-docs` outside development
+- [ ] Add the CSP, `frame-ancestors`, and `Referrer-Policy` headers in `frontend/next.config.ts`
+- [ ] Replace `next/font/google` with checked-in local font assets so frontend builds do not request Google Fonts
+- [ ] Cap each bulk or background playlist import at 200 songs and enforce a shared 500-new-songs-per-user daily limit
+- [ ] Limit group join-code attempts to 10 per 10 minutes
+- [ ] Require a session song pool of at least the player count times the configured win condition
+- [ ] Map validation failures to 400, access denial to 403, conflicts to 409, rate limits to 429, and unexpected failures to a generic 500 response
+
 ## Standing policy: all frontend work lives in story 28
 
 Every story other than story 28 is backend-only. Any frontend task a story would otherwise carry (a page, a component, a WebRTC/browser-side piece, a frontend test) is tracked under story 28's implementation phase instead, not built in that story's own batch. Story 28 is the single place all frontend lands, wired against the real backends every prior batch shipped. Frontend tasks already written inline under other stories stay listed there marked "story 28" for traceability, but they are not part of that story's own batch completion; a backend story is done when its backend code and backend tests pass.
@@ -476,15 +488,15 @@ Tests:
 
 Scope review: two other mechanisms already cover a chunk of what a cache would. Story 40's batch YouTube-ID lookup catches an already-known exact ID before the pipeline runs at all, no external calls, no LLM. Story 16's pgvector similarity check catches a near-duplicate submission (different wording, same song), which a plain artist/title or YouTube-ID cache key would miss anyway since it isn't an exact-key match. What a cache layer adds on top of both: avoiding a second full pipeline run for the same exact YouTube ID submitted twice in quick succession, before story 40's alternate-ID mapping exists to catch it structurally, or during a burst where both submissions arrive before the first is persisted. That's a narrower case than the story's original framing suggested.
 
-- [ ] Decide, before building anything else here, whether this narrower case is worth its own caching layer at this project's scale (100-200 users), versus relying on story 40's batch lookup and story 16's similarity check once both exist, and accepting the rare double-run in the meantime
-- [ ] If still worth building: add a cache layer in front of `resolve_metadata`, no cache exists today, every call re-runs the full source-fetch and LLM pipeline
-- [ ] Decide cache backend: in-memory (simple, doesn't survive restarts or share across multiple AI service workers) vs. Redis/Postgres-backed
-- [ ] Set a TTL or invalidation policy, metadata for a given YouTube ID rarely changes, but upstream source data can be corrected
-- [ ] Coordinate with story 16: a pgvector similarity hit and a plain cache hit solve overlapping but different problems (near-duplicate vs. exact-repeat lookups), avoid building two redundant caching layers
+- [x] Decide whether the narrower exact-repeat case needs its own cache (dropped: story 40's batch lookup and story 16's pgvector check cover the intended value)
+- [x] Add a cache layer in front of `resolve_metadata` (dropped with the story)
+- [x] Decide cache backend (not needed because the story is dropped)
+- [x] Set a TTL or invalidation policy (not needed because the story is dropped)
+- [x] Coordinate with story 16 (superseded by the documented story-16 and story-40 behavior)
 
 Tests:
-- [ ] Unit tests for cache hit/miss behavior
-- [ ] Unit test for TTL expiration
+- [x] Unit tests for cache hit/miss behavior (not needed because the story is dropped)
+- [x] Unit test for TTL expiration (not needed because the story is dropped)
 
 ## Spike: Local/cheap LLM option for bulk metadata processing
 
@@ -802,7 +814,7 @@ Tests:
 
 ## Story 50: Auth hardening
 
-Checked against real code: `User` has no `emailVerified` field, `AuthController`/`AuthService` have no password-reset endpoints at all, and there's no TOTP secret, backup codes, or any second factor anywhere in `security/`. `docs/ARCHIVE.md`'s batch 5 entry made the frontend forgot-password form honestly say "not implemented yet" rather than silently failing; this story is what actually builds it. No email-sending capability exists anywhere in the backend (`pom.xml` has no `spring-boot-starter-mail`, no third-party email SDK). Gates Beta, not Local: friends playing with real accounts need working password recovery and a real signup verification step; the project owner playing alone or with one other person locally doesn't.
+The backend authentication slice is built: `User` carries email-verification and two-factor fields, `AuthController` exposes verification, password-reset, and two-factor endpoints, and `EmailService` sends through Resend. The forgot-password request and confirmation pages are wired to their generated hooks. The two-factor setup and second-login-step screens remain open. Gates Beta, not Local.
 
 Email provider: Resend, chosen for its free tier (3,000 emails/month) and simple REST API, matching this project's existing pattern of picking the smallest free-tier service that does the job (Grafana Cloud, Sentry). Needs a real account and API key from the project owner, the same account-creation pattern story 38 (observability) used.
 
@@ -814,7 +826,7 @@ Two-factor authentication: TOTP (an authenticator app, e.g. Google Authenticator
 - [x] Decide and enforce what an unverified account can and can't do: block login entirely until verified (the simpler rule, avoids gating every downstream endpoint individually) versus allowing login but restricting real actions; document whichever is chosen in `DECISIONS.md`
 - [x] Add a resend-verification-email endpoint, rate-limited the same way other auth endpoints are (see story 27, `RateLimitingFilter`'s existing `/auth/*` bucket)
 - [x] Add a `PasswordResetToken` entity (user, token, expiresAt, used), `POST /auth/password-reset/request` (accepts an email, always returns success regardless of whether the email exists, to avoid leaking which emails are registered, and emails a reset link/token only if it does), and `POST /auth/password-reset/confirm` (token plus new password, single-use, expires after a short window)
-- [ ] Wire the frontend's existing forgot-password form (currently an honest "not implemented" stub, see `ARCHIVE.md`) to the new request/confirm endpoints; the route is present, but this auth flow is not part of the implemented Batch A surface yet
+- [x] Wire the frontend forgot-password request and confirmation pages to the generated request/confirm hooks (`frontend/app/(auth)/forgot-password`, `frontend/app/(auth)/reset-password`)
 - [x] Add `totpSecret` (nullable, encrypted at rest or at minimum never returned by any DTO once set) and `twoFactorEnabled` (boolean, default false) to `User`
 - [x] Add `POST /auth/2fa/setup` (admin/self, authenticated): generates a TOTP secret and a provisioning URI/QR code, not yet enabled until confirmed
 - [x] Add `POST /auth/2fa/confirm`: the user submits one valid code generated from the new secret to prove they've actually added it to an authenticator app before `twoFactorEnabled` flips true
