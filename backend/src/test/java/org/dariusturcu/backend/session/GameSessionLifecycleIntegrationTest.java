@@ -364,7 +364,7 @@ class GameSessionLifecycleIntegrationTest {
         assertThat(playerRepository.findAll()).isEmpty();
         assertThat(roundRepository.findAll()).isEmpty();
 
-        Optional<SessionResultsDTO> results = resultsStore.get(groupId);
+        Optional<SessionResultsDTO> results = resultsStore.get(groupId).map(SessionResultsStore.PlayedResults::results);
         assertThat(results).isPresent();
         assertThat(results.get().cardCountRanking()).hasSize(2);
         assertThat(results.get().cardCountRanking().get(0).cardCount()).isEqualTo(minimumWinConditionCardCount);

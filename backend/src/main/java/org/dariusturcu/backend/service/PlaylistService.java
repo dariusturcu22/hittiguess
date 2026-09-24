@@ -135,6 +135,18 @@ public class PlaylistService {
         }
     }
 
+    // A song row is shared by every playlist that holds it, so a direct edit is allowed
+    // only when the editor can write all of them. Anyone else goes through a report.
+    private void checkEditorCanWriteEveryPlaylistWithSong(Song song) {
+        User editor = SecurityUtils.getCurrentUser();
+        boolean canWriteEveryPlaylist = song.getPlaylists().stream()
+                .allMatch(playlistWithSong -> playlistAccessService.canWrite(playlistWithSong, editor));
+        if (!canWriteEveryPlaylist) {
+            throw new ConflictException(
+                    "This song is also in playlists you can't edit. Report a correction instead so it can be reviewed.");
+        }
+    }
+
     private void checkTargetIsNotOwner(Playlist playlist, Long targetUserId, String action) {
         if (playlist.getOwner().getId().equals(targetUserId)) {
             throw new ConflictException("The playlist owner can't " + action);
@@ -274,6 +286,7 @@ public class PlaylistService {
 
         checkSongBelongsToPlaylist(song, playlistId);
         checkSongEditable(song);
+        checkEditorCanWriteEveryPlaylistWithSong(song);
 
         song = songMapper.updateEntity(song, request);
 

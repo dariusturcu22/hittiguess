@@ -82,6 +82,17 @@ describe("JoinGroupPage", () => {
     await waitFor(() => expect(joinMutate).toHaveBeenCalled());
   });
 
+  it("shows the server's reason when the chosen identity is refused", async () => {
+    const avatarUrlMessage = "Avatar URL must be an https Google profile image";
+    currentUserState = { data: { id: 11, username: "player" }, isLoading: false, isError: false };
+    joinMutate.mockImplementation((_args, options) => options?.onError?.({ response: { status: 400, data: { avatarUrl: avatarUrlMessage } } }));
+    await renderPage();
+
+    fireEvent.click(screen.getByRole("button", { name: "Join group" }));
+
+    expect(await screen.findByText(avatarUrlMessage)).toBeVisible();
+  });
+
   it("shows an invalid screen for a dead invite instead of the join form", async () => {
     groupPreviewState = { data: undefined, isError: true };
     await renderPage();

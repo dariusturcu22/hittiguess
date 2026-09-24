@@ -47,4 +47,16 @@ describe("SongForm validation", () => {
     expect(screen.getByText("YouTube ID must be 11 characters.")).toBeInTheDocument();
     expect(updateSong).not.toHaveBeenCalled();
   });
+
+  it("shows why a shared song can't be edited directly", () => {
+    const sharedSongMessage = "This song is also in playlists you can't edit. Report a correction instead so it can be reviewed.";
+    updateSong.mockImplementationOnce((_variables: unknown, options: { onError: (error: unknown) => void }) => {
+      options.onError({ response: { status: 409, data: { message: sharedSongMessage } } });
+    });
+    render(<QueryClientProvider client={new QueryClient()}><SongForm song={{ ...song, color: "abcdef" }} playlistId={1} backPath="/playlists/1" /></QueryClientProvider>);
+
+    fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
+
+    expect(screen.getByText(sharedSongMessage)).toBeInTheDocument();
+  });
 });

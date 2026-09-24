@@ -358,7 +358,10 @@ public class GameSessionService {
         gameSessionRepository.save(session);
 
         SessionResultsDTO results = buildResults(session);
-        resultsStore.store(session.getGroupId(), results);
+        Set<Long> playerUserIds = session.getPlayers().stream()
+                .map(player -> player.getUser().getId())
+                .collect(Collectors.toSet());
+        resultsStore.store(session.getGroupId(), results, playerUserIds);
         eventPublisher.publishEvent(new SessionBroadcastEvent(SessionEventType.SESSION_ENDED, session.getId(), results));
 
         Long groupId = session.getGroupId();

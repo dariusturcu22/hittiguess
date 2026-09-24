@@ -14,6 +14,7 @@ import tools.jackson.databind.json.JsonMapper;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.verify;
@@ -25,6 +26,8 @@ class SessionResultsStoreTest {
     private static final Long GROUP_ID = 7L;
     private static final Long WINNER_PLAYER_ID = 3L;
     private static final int WINNING_CARD_COUNT = 5;
+    private static final Long PLAYER_USER_ID = 11L;
+    private static final Long NON_PLAYER_USER_ID = 12L;
 
     @Mock
     private StoredSessionResultsRepository storedSessionResultsRepository;
@@ -39,14 +42,17 @@ class SessionResultsStoreTest {
     @Test
     void storedResultsSurviveANewStoreInstanceAsAfterARestart() {
         SessionResultsStore storeBeforeRestart = new SessionResultsStore(storedSessionResultsRepository, JsonMapper.builder().build());
-        storeBeforeRestart.store(GROUP_ID, results());
+        storeBeforeRestart.store(GROUP_ID, results(), Set.of(PLAYER_USER_ID));
         ArgumentCaptor<StoredSessionResults> savedCaptor = ArgumentCaptor.forClass(StoredSessionResults.class);
         verify(storedSessionResultsRepository).save(savedCaptor.capture());
         when(storedSessionResultsRepository.findById(GROUP_ID)).thenReturn(Optional.of(savedCaptor.getValue()));
 
         SessionResultsStore storeAfterRestart = new SessionResultsStore(storedSessionResultsRepository, JsonMapper.builder().build());
 
-        assertThat(storeAfterRestart.get(GROUP_ID)).contains(results());
+        SessionResultsStore.PlayedResults playedResults = storeAfterRestart.get(GROUP_ID).orElseThrow();
+        assertThat(playedResults.results()).isEqualTo(results());
+        assertThat(playedResults.wasPlayedBy(PLAYER_USER_ID)).isTrue();
+        assertThat(playedResults.wasPlayedBy(NON_PLAYER_USER_ID)).isFalse();
     }
 
     @Test
