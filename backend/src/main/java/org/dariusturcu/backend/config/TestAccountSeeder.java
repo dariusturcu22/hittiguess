@@ -11,9 +11,10 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
+import java.util.Optional;
 
 /**
- * Creates three reusable TEST-role accounts with known credentials on startup, so
+ * Creates three reusable test accounts with known credentials on startup, so
  * agents and contributors testing a real multiplayer round (one DJ, one active
  * player, one other player) log in as three genuinely separate accounts instead of
  * registering fresh ones per run. Idempotent per account: running this against a
@@ -26,20 +27,24 @@ import java.util.List;
  * Seeded with emailVerified already true: these accounts never go through
  * registration, so nothing would otherwise clear the unverified default and
  * story 50's login block would lock every one of them out.
+ *
+ * The first account is an ADMIN rather than TEST, so the admin pages can be exercised
+ * locally without promoting a row by hand. Its role is corrected on every startup, so a
+ * database seeded before this rule still gets the admin.
  */
 @Component
 @Profile("!" + EnvironmentGuard.PRODUCTION_PROFILE)
 public class TestAccountSeeder implements ApplicationRunner {
 
-    public record TestAccount(String username, String email, String password) {
+    public record TestAccount(String username, String email, String password, Role role) {
     }
 
     public static final TestAccount TEST_ACCOUNT_1 =
-            new TestAccount("hittiguess-test-agent-1", "test-agent-1@hittiguess.local", "HittiguessTestAgent1!2026");
+            new TestAccount("hittiguess-test-agent-1", "test-agent-1@hittiguess.local", "HittiguessTestAgent1!2026", Role.ADMIN);
     public static final TestAccount TEST_ACCOUNT_2 =
-            new TestAccount("hittiguess-test-agent-2", "test-agent-2@hittiguess.local", "HittiguessTestAgent2!2026");
+            new TestAccount("hittiguess-test-agent-2", "test-agent-2@hittiguess.local", "HittiguessTestAgent2!2026", Role.TEST);
     public static final TestAccount TEST_ACCOUNT_3 =
-            new TestAccount("hittiguess-test-agent-3", "test-agent-3@hittiguess.local", "HittiguessTestAgent3!2026");
+            new TestAccount("hittiguess-test-agent-3", "test-agent-3@hittiguess.local", "HittiguessTestAgent3!2026", Role.TEST);
 
     public static final List<TestAccount> TEST_ACCOUNTS = List.of(TEST_ACCOUNT_1, TEST_ACCOUNT_2, TEST_ACCOUNT_3);
 
@@ -63,7 +68,12 @@ public class TestAccountSeeder implements ApplicationRunner {
     }
 
     private void seedTestAccount(TestAccount testAccount) {
-        if (userRepository.existsUserByEmail(testAccount.email())) {
+        Optional<User> existingUser = userRepository.findUserByEmail(testAccount.email());
+        if (existingUser.isPresent()) {
+            if (existingUser.get().getRole() != testAccount.role()) {
+                existingUser.get().setRole(testAccount.role());
+                userRepository.save(existingUser.get());
+            }
             return;
         }
 
@@ -72,7 +82,7 @@ public class TestAccountSeeder implements ApplicationRunner {
         user.setEmail(testAccount.email());
         user.setPassword(passwordEncoder.encode(testAccount.password()));
         user.setAuthProvider(AuthProvider.LOCAL);
-        user.setRole(Role.TEST);
+        user.setRole(testAccount.role());
         user.setEmailVerified(true);
         userRepository.save(user);
     }
