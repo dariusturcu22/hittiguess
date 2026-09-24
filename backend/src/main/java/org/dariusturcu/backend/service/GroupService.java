@@ -1,6 +1,7 @@
 package org.dariusturcu.backend.service;
 
 import org.dariusturcu.backend.exception.ConflictException;
+import org.dariusturcu.backend.exception.RateLimitExceededException;
 import org.dariusturcu.backend.exception.ResourceNotFoundException;
 import org.dariusturcu.backend.exception.ResourceType;
 import org.dariusturcu.backend.model.group.CreateGroupRequest;
@@ -15,6 +16,7 @@ import org.dariusturcu.backend.model.group.UpdateGroupSettingsRequest;
 import org.dariusturcu.backend.model.mapper.GroupMapper;
 import org.dariusturcu.backend.model.playlist.Playlist;
 import org.dariusturcu.backend.model.user.User;
+import org.dariusturcu.backend.ratelimit.RateLimiterRegistry;
 import org.dariusturcu.backend.repository.GameSessionRepository;
 import org.dariusturcu.backend.repository.GroupRepository;
 import org.dariusturcu.backend.repository.MemberRepository;
@@ -22,6 +24,7 @@ import org.dariusturcu.backend.repository.PlaylistRepository;
 import org.dariusturcu.backend.security.util.SecurityUtils;
 import org.dariusturcu.backend.websocket.GroupBroadcastEvent;
 import org.dariusturcu.backend.websocket.GroupEventType;
+import org.dariusturcu.backend.websocket.GroupMemberRemovedEvent;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
@@ -50,6 +53,8 @@ public class GroupService {
     private static final String JOIN_CODE_ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
     private static final int JOIN_CODE_LENGTH = 4;
     private static final int MAX_JOIN_CODE_GENERATION_ATTEMPTS = 10;
+    static final int MAX_JOIN_CODE_ATTEMPTS_PER_WINDOW = 10;
+    static final Duration JOIN_CODE_ATTEMPT_WINDOW = Duration.ofMinutes(10);
 
     private static final DjMode DEFAULT_DJ_MODE = DjMode.FIXED;
     private static final int MIN_WIN_CONDITION_CARD_COUNT = 5;
@@ -66,6 +71,9 @@ public class GroupService {
     private final PlaylistAccessService playlistAccessService;
 
     private final SecureRandom secureRandom = new SecureRandom();
+    // Join codes are short enough to guess, so each user gets a few tries per window.
+    private final RateLimiterRegistry joinCodeAttemptLimiter =
+            new RateLimiterRegistry(MAX_JOIN_CODE_ATTEMPTS_PER_WINDOW, JOIN_CODE_ATTEMPT_WINDOW);
 
     public GroupDetailDTO createGroup(CreateGroupRequest request) {
         User creator = SecurityUtils.getCurrentUser();
@@ -97,6 +105,9 @@ public class GroupService {
         if (hasInviteCode == hasJoinCode) {
             throw new IllegalArgumentException("Provide exactly one of inviteCode or joinCode");
         }
+        if (hasJoinCode && !joinCodeAttemptLimiter.tryConsume(String.valueOf(user.getId()))) {
+            throw new RateLimitExceededException("Too many join code attempts. Wait a few minutes and try again.");
+        }
 
         Group group = hasInviteCode
                 ? groupRepository.findByInviteCode(request.inviteCode())
@@ -106,6 +117,9 @@ public class GroupService {
                         .orElseThrow(() -> new ResourceNotFoundException(
                                 "Join code {" + request.joinCode() + "} not found"));
 
+        if (group.getRemovedUserIds().contains(user.getId())) {
+            throw new ConflictException("You were removed from this group");
+        }
         if (group.getStatus() != GroupStatus.OPEN) {
             throw new ConflictException("This group has already started a game session");
         }
@@ -310,6 +324,36 @@ public class GroupService {
         Group savedGroup = groupRepository.save(group);
         GroupDetailDTO result = groupMapper.toDetailDTO(savedGroup);
         eventPublisher.publishEvent(new GroupBroadcastEvent(GroupEventType.ADMIN_CHANGED, result));
+        return result;
+    }
+
+    // Removes another member and keeps them out of the group for good. Their open sockets
+    // are closed once this commits, so every group subscription they had has to pass the
+    // membership check again, which it no longer can.
+    public GroupDetailDTO removeMember(Long groupId, Long memberId) {
+        Group group = findGroup(groupId);
+        Member admin = requireAdmin(group, SecurityUtils.getCurrentUser());
+
+        if (admin.getId().equals(memberId)) {
+            throw new IllegalArgumentException("Leave the group instead of removing yourself");
+        }
+        if (group.getStatus() != GroupStatus.OPEN) {
+            throw new ConflictException("Members can't be removed while a game session is running");
+        }
+
+        Member target = group.getMembers().stream()
+                .filter(candidate -> candidate.getId().equals(memberId))
+                .findFirst()
+                .orElseThrow(() -> new ResourceNotFoundException(ResourceType.MEMBER, memberId));
+        User removedUser = target.getUser();
+
+        group.removeMember(target);
+        group.getRemovedUserIds().add(removedUser.getId());
+
+        Group savedGroup = groupRepository.save(group);
+        GroupDetailDTO result = groupMapper.toDetailDTO(savedGroup);
+        eventPublisher.publishEvent(new GroupBroadcastEvent(GroupEventType.MEMBER_REMOVED, result));
+        eventPublisher.publishEvent(new GroupMemberRemovedEvent(groupId, removedUser.getUsername()));
         return result;
     }
 

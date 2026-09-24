@@ -19,6 +19,7 @@ let lobbySearchParams = new URLSearchParams();
 
 const updateSettingsMutate = vi.fn();
 const leaveMutate = vi.fn();
+const removeMemberMutate = vi.fn();
 let lobbyMembers = [
   { id: 1, userId: 11, displayName: "Admin", isAdmin: true, isConnected: true },
   { id: 2, userId: 12, displayName: "Sam", isAdmin: false, isConnected: true },
@@ -52,6 +53,7 @@ vi.mock("@/hooks/generated/group-management/group-management", () => ({
     isError: false,
   }),
   useLeaveGroup: () => ({ mutate: leaveMutate, isPending: false }),
+  useRemoveMember: () => ({ mutate: removeMemberMutate, isPending: false }),
   useStartGameSession: () => ({ mutate: startSessionMutate, isPending: false }),
   useUpdateGroupSettings: () => ({ mutate: updateSettingsMutate, isPending: false }),
   useGenerateDifficultySet: () => ({ mutate: generateMutate, isPending: false }),
@@ -100,6 +102,7 @@ describe("GroupLobbyPage start options", () => {
     startSessionMutate.mockReset();
     updateSettingsMutate.mockReset();
     leaveMutate.mockReset();
+    removeMemberMutate.mockReset();
     lobbySearchParams = new URLSearchParams();
     lobbyMembers = [
       { id: 1, userId: 11, displayName: "Admin", isAdmin: true, isConnected: true },
@@ -326,5 +329,42 @@ describe("GroupLobbyPage start options", () => {
     fireEvent.click(screen.getByRole("button", { name: "Start game" }));
 
     await waitFor(() => expect(toastMocks.error).toHaveBeenCalled());
+  });
+  it("lets the admin remove another member after confirming", async () => {
+    await renderPage();
+
+    expect(screen.queryByRole("button", { name: "Remove Admin" })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Remove Sam" }));
+
+    expect(await screen.findByText("Remove Sam?")).toBeVisible();
+    expect(removeMemberMutate).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole("button", { name: "Remove" }));
+
+    expect(removeMemberMutate).toHaveBeenCalledWith({ groupId: 1, memberId: 2 }, expect.anything());
+  });
+
+  it("toasts the server's reason when removing a member fails", async () => {
+    removeMemberMutate.mockImplementation((_args, options) =>
+      options?.onError?.({ response: { data: { message: "Members can't be removed while a game session is running" } } }),
+    );
+    await renderPage();
+
+    fireEvent.click(screen.getByRole("button", { name: "Remove Sam" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Remove" }));
+
+    await waitFor(() =>
+      expect(toastMocks.error).toHaveBeenCalledWith("Members can't be removed while a game session is running"),
+    );
+  });
+
+  it("shows no remove controls to a member who isn't the admin", async () => {
+    lobbyMembers = [
+      { id: 1, userId: 11, displayName: "Admin", isAdmin: false, isConnected: true },
+      { id: 2, userId: 12, displayName: "Sam", isAdmin: true, isConnected: true },
+    ];
+    await renderPage();
+
+    expect(screen.queryByRole("button", { name: /^Remove / })).not.toBeInTheDocument();
   });
 });

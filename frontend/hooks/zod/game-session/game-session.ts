@@ -26,7 +26,7 @@ export const GetCurrentRoundLinkOutParams = zod.object({
 export const GetCurrentRoundLinkOutResponse = zod.unknown()
 
 /**
- * @summary Get the most recently completed session's results export for a group
+ * @summary Get the most recently completed session's results export for a group, must have played in it
  */
 export const GetResultsParams = zod.object({
   "groupId": zod.int()

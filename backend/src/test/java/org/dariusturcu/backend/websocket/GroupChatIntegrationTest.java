@@ -101,6 +101,7 @@ class GroupChatIntegrationTest {
             StompAuthenticationChannelInterceptor.class,
             StompSubscriptionAuthorizationInterceptor.class,
             JwtCookieHandshakeInterceptor.class,
+            UserSocketCloser.class,
             WebSocketConfig.class,
             GroupSessionEventListener.class,
             GroupBroadcastListener.class,

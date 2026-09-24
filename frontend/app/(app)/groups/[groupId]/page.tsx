@@ -12,6 +12,7 @@ import {
   MessageCircle,
   Play,
   Settings,
+  UserX,
 } from "lucide-react";
 
 import {
@@ -19,6 +20,7 @@ import {
   getGetActiveMembershipQueryKey,
   useGetGroup,
   useLeaveGroup,
+  useRemoveMember,
   useStartGameSession,
   useUpdateGroupSettings,
 } from "@/hooks/generated/group-management/group-management";
@@ -107,10 +109,12 @@ function LobbyMember({
   member,
   index,
   isCurrentUser,
+  onRemove,
 }: {
   member: MemberDTO;
   index: number;
   isCurrentUser: boolean;
+  onRemove?: (member: MemberDTO) => void;
 }) {
   const colorClass = MEMBER_COLORS[index % MEMBER_COLORS.length];
   const orbitPosition = ORBIT_POSITIONS[index % ORBIT_POSITIONS.length];
@@ -128,6 +132,16 @@ function LobbyMember({
         </div>
         {member.isAdmin ? (
           <Crown className="absolute -right-2 -top-2 size-6 fill-warning text-warning drop-shadow-sm sm:size-7" />
+        ) : null}
+        {onRemove ? (
+          <button
+            type="button"
+            onClick={() => onRemove(member)}
+            aria-label={`Remove ${member.displayName || "Player"}`}
+            className="absolute -left-2 -top-2 flex size-7 items-center justify-center rounded-full border-2 border-background bg-destructive text-white shadow-sm transition-transform hover:scale-110"
+          >
+            <UserX className="size-3.5" />
+          </button>
         ) : null}
       </div>
       <span className="mt-2 max-w-[112px] truncate font-semibold text-sm text-foreground sm:mt-3 sm:text-[15px]">
@@ -206,6 +220,8 @@ export default function GroupLobbyPage({ params }: PageProps) {
   const generateSet = useGenerateDifficultySet();
   const startWithSongs = useStartSessionWithSongs();
   const leaveGroup = useLeaveGroup();
+  const removeMember = useRemoveMember();
+  const [memberPendingRemoval, setMemberPendingRemoval] = useState<MemberDTO | null>(null);
   const updateSettings = useUpdateGroupSettings();
   const activeSessionQuery = useGetActiveSessionForGroup(groupId, {
     query: { enabled: groupQuery.data?.status === "LOCKED", retry: false },
@@ -389,6 +405,21 @@ export default function GroupLobbyPage({ params }: PageProps) {
       { groupId },
       {
         onSuccess: () => { refreshActiveMembership(); router.push("/playlists"); },
+        onError: (error) => toast.error(mutationErrorMessage(error)),
+      },
+    );
+  }
+
+  function handleConfirmRemoval() {
+    const memberId = memberPendingRemoval?.id;
+    setMemberPendingRemoval(null);
+    if (memberId === undefined) {
+      return;
+    }
+    removeMember.mutate(
+      { groupId, memberId },
+      {
+        onSuccess: refreshGroup,
         onError: (error) => toast.error(mutationErrorMessage(error)),
       },
     );
@@ -597,8 +628,28 @@ export default function GroupLobbyPage({ params }: PageProps) {
             member={member}
             index={index}
             isCurrentUser={member.userId === currentUser?.id}
+            onRemove={isCurrentUserAdmin && member.userId !== currentUser?.id ? setMemberPendingRemoval : undefined}
           />
         ))}
+        <AlertDialog
+          open={memberPendingRemoval !== null}
+          onOpenChange={(isOpen) => { if (!isOpen) setMemberPendingRemoval(null); }}
+        >
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Remove {memberPendingRemoval?.displayName || "this player"}?</AlertDialogTitle>
+              <AlertDialogDescription>
+                They leave the lobby right away and can&apos;t rejoin this group.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction variant="destructive" onClick={handleConfirmRemoval}>
+                Remove
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
         {isSettingsOpen ? (
           <>
             <button type="button" aria-label="Close settings" onClick={() => setIsSettingsOpen(false)} className="fixed inset-0 z-10 cursor-default" />

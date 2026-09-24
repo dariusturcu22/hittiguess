@@ -66,6 +66,12 @@ public class Group {
     // has passed, covering both timers through the same column.
     private Instant expiresAt;
 
+    // Users the admin removed. They can't rejoin this group.
+    @ElementCollection
+    @CollectionTable(name = "group_removed_users", joinColumns = @JoinColumn(name = "group_id"))
+    @Column(name = "user_id")
+    private Set<Long> removedUserIds = new HashSet<>();
+
     @OneToMany(mappedBy = "group", cascade = CascadeType.ALL, orphanRemoval = true)
     @BatchSize(size = 20)
     private List<Member> members = new ArrayList<>();

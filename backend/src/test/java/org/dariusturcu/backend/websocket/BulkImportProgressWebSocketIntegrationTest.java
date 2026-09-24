@@ -88,6 +88,7 @@ class BulkImportProgressWebSocketIntegrationTest {
             StompAuthenticationChannelInterceptor.class,
             StompSubscriptionAuthorizationInterceptor.class,
             JwtCookieHandshakeInterceptor.class,
+            UserSocketCloser.class,
             WebSocketConfig.class,
             BulkImportProgressListener.class
     })

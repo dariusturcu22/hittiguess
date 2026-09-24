@@ -7,6 +7,7 @@ package org.dariusturcu.backend.websocket;
 public enum GroupEventType {
     MEMBER_JOINED,
     MEMBER_LEFT,
+    MEMBER_REMOVED,
     MEMBER_CONNECTION_CHANGED,
     ADMIN_CHANGED,
     SETTINGS_CHANGED,

@@ -17,7 +17,7 @@ export const UploadOwnAvatarBody = zod.object({
 export const UploadOwnAvatarResponse = zod.unknown()
 
 /**
- * @summary Read a playlist's custom cover, if it has one
+ * @summary Read a playlist's custom cover, if it has one, must be able to read the playlist
  */
 export const ReadPlaylistCoverParams = zod.object({
   "playlistId": zod.int()

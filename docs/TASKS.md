@@ -949,9 +949,11 @@ Batch 5, data access and integrity (high):
 - [x] Group display name and avatar URL on create and join have no length or format validation. Add bounds, and restrict avatar URLs to the schemes and hosts the app serves
 
 Batch 6, resource abuse (high):
-- [ ] `PixelArtImageService` decodes an upload in full before checking its dimensions, so a small image declaring huge dimensions can exhaust memory. Read the dimensions through an `ImageReader` before decoding
-- [ ] `POST /api/bulk-import` takes an unbounded list of ids plus an expanded playlist and resolves every unknown one synchronously through paid OpenAI and YouTube calls, and checks write access on the target playlist only after that work. Cap the batch size, add a per-user daily quota, and check target access first
-- [ ] The group join code is four letters with no join-attempt limit beyond the general request limit, and groups have no kick, so strangers can guess into open lobbies and can't be removed. Add a join-attempt limit and an admin kick
+- [x] `PixelArtImageService` decodes an upload in full before checking its dimensions, so a small image declaring huge dimensions can exhaust memory. Read the dimensions through an `ImageReader` before decoding
+- [x] `POST /api/bulk-import` takes an unbounded list of ids plus an expanded playlist and resolves every unknown one synchronously through paid OpenAI and YouTube calls, and checks write access on the target playlist only after that work. Cap the batch size, add a per-user daily quota, and check target access first
+- [x] The background playlist import (`POST /api/playlists/{playlistId}/import-jobs`) resolves the same way through the same paid calls with no cap or quota, so the cap and quota also apply there, shared with the bulk import through one per-user daily count
+- [x] The group join code is four letters with no join-attempt limit beyond the general request limit, and groups have no kick, so strangers can guess into open lobbies and can't be removed. Add a join-attempt limit and an admin kick
+- [x] A removed member keeps receiving group topic messages on subscriptions made before the kick, and could rejoin with the same code. Close the removed user's sockets so every group subscription has to be authorized again, and refuse a removed user's rejoin for the life of the group. The lobby gets a remove control for the admin, and the removed member's page falls back to the group unavailable state
 
 Batch 7, error handling and redirects (high and medium):
 - [ ] `GlobalExceptionHandler` maps every `RuntimeException` to 400 with its raw message, so Spring's `AccessDeniedException` returns 400 instead of 403, `ResponseStatusException` loses its status, and internal messages (database constraint names, PDF failures) reach clients. Map the specific exceptions to their statuses and return a generic message for everything else
@@ -977,6 +979,9 @@ Tests:
 - [ ] The e2e login helpers wait for the `/playlists` load event with `page.waitForURL`, and in a full local run one or two login-dependent specs (the two-player round, and sometimes core flows) time out there even though the page has already reached `/playlists`. The same spec fails the same way on `dev` before the batch 3 upgrades. Find what holds the load event open and make the login wait on the rendered page instead
 - [x] Batch 4: service tests for reconnect on subscribe, disconnect only after the last socket, graceful completion on an empty queue, startup rescheduling, the idle placement timeout, skip-betting eligibility, once-per-round tallies, and guess result delivery
 - [x] Batch 5: integration tests that non-members can't read results, that a shared song can't be edited through another user's playlist, and that invalid display names and avatar URLs are refused
-- [ ] Batch 6: unit tests that an oversized-dimension image is refused before decoding, and integration tests for the bulk import cap, quota, and up-front access check
+- [x] Batch 6: unit tests that an oversized-dimension image is refused before decoding, and integration tests for the bulk import cap, quota, and up-front access check
+- [x] Batch 6: service tests for the background playlist import cap and quota, the join-attempt limit, the admin kick (admin only, not while a session runs, the kicked user can't rejoin), and closing a kicked user's sockets
+- [x] The batch 5 display name pattern uses Java's `\p{Cntrl}`, which the OpenAPI spec publishes unchanged and the generated zod schema compiles as a JavaScript `u` regex, which throws on load. Use `\p{Cc}`, valid in both, and regenerate the client
+- [x] Batch 6: frontend tests for the lobby kick control and the import page showing the server's refusal message
 - [ ] Batch 7: handler tests for each mapped status and the generic message, and unit tests for `returnTo` rejecting `/\` and other-origin values on both sides
 - [ ] Batch 8: tests for CSV cell neutralizing, the AI key compare and empty-key startup refusal, and the atomic group cap

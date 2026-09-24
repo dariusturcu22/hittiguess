@@ -146,6 +146,15 @@ public class GroupController {
         return ResponseEntity.ok(group);
     }
 
+    @Operation(summary = "Remove another member from the group for good, admin only, not during a game session")
+    @PostMapping("/{groupId}/members/{memberId}/remove")
+    public ResponseEntity<GroupDetailDTO> removeMember(
+            @PathVariable Long groupId,
+            @PathVariable Long memberId) {
+        GroupDetailDTO group = groupService.removeMember(groupId, memberId);
+        return ResponseEntity.ok(group);
+    }
+
     @Operation(summary = "Join the group's voice room")
     @PostMapping("/{groupId}/voice/join")
     public ResponseEntity<Void> joinVoice(
