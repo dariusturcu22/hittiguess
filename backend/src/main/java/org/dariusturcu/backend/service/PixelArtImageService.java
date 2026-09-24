@@ -45,11 +45,15 @@ public class PixelArtImageService {
     }
 
     @Transactional(readOnly = true)
-    public byte[] readPlaylistCover(Long playlistId) {
-        return playlistRepository.findById(playlistId)
-                .map(Playlist::getCoverImage)
-                .filter(image -> image.length > 0)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Playlist has no custom cover"));
+    public byte[] readPlaylistCover(Long playlistId, User currentUser) {
+        Playlist playlist = playlistRepository.findById(playlistId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Playlist not found"));
+        playlistAccessService.requireRead(playlist, currentUser);
+        byte[] coverImage = playlist.getCoverImage();
+        if (coverImage == null || coverImage.length == 0) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Playlist has no custom cover");
+        }
+        return coverImage;
     }
 
     public void storeUserAvatar(Long userId, byte[] upload) {
