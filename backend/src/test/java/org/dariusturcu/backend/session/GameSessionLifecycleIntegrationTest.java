@@ -102,6 +102,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class GameSessionLifecycleIntegrationTest {
 
     private static final int MAX_ROUNDS_BEFORE_GIVING_UP = 30;
+    private static final int DEFAULT_WIN_CONDITION_CARD_COUNT = 5;
 
     static class ImmediateTaskScheduler implements TaskScheduler {
         @Override
@@ -464,7 +465,8 @@ class GameSessionLifecycleIntegrationTest {
         playlist.setInviteCode(label + "-playlist-" + System.nanoTime());
         playlist.setOwner(admin);
         Playlist savedPlaylist = playlistRepository.save(playlist);
-        for (int songIndex = 0; songIndex < 10; songIndex++) {
+        int startableSongCount = playerCount * DEFAULT_WIN_CONDITION_CARD_COUNT;
+        for (int songIndex = 0; songIndex < startableSongCount; songIndex++) {
             persistSong(savedPlaylist, admin, 1960 + songIndex, label + " Song " + songIndex);
         }
 

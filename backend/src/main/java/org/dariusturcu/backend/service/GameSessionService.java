@@ -126,9 +126,7 @@ public class GameSessionService {
         List<Song> songPool = pendingPool.take(groupId)
                 .map(this::resolvePoolSongs)
                 .orElseGet(() -> defaultSongPool(group));
-        if (songPool.size() < connectedMembers.size() + 1) {
-            throw new ConflictException("Not enough songs across the group's playlists to start a session");
-        }
+        requireEnoughSongs(songPool.size(), connectedMembers.size(), group.getWinConditionCardCount());
 
         GameSession session = new GameSession();
         session.setGroupId(groupId);
@@ -244,9 +242,7 @@ public class GameSessionService {
             throw new ConflictException("Not enough connected members to start a session");
         }
         List<Song> resolvedPool = resolvePoolSongs(songIds);
-        if (resolvedPool.size() < connectedMembers.size() + 1) {
-            throw new ConflictException("Not enough songs to start a session for this group");
-        }
+        requireEnoughSongs(resolvedPool.size(), connectedMembers.size(), group.getWinConditionCardCount());
 
         pendingPool.stage(group.getId(), songIds);
         try {
@@ -285,6 +281,16 @@ public class GameSessionService {
                 .map(SongArtist::getName)
                 .toList();
         return new GeneratedSongPreviewDTO(song.getId(), song.getTitle(), artistNames, song.getReleaseYear());
+    }
+
+    // One starting card per player, plus enough rounds for every player to take a turn
+    // toward the win condition, so a game with good placements can actually be won.
+    private void requireEnoughSongs(int songCount, int playerCount, int winConditionCardCount) {
+        int requiredSongCount = playerCount * winConditionCardCount;
+        if (songCount < requiredSongCount) {
+            throw new ConflictException("Not enough songs to start: this group needs at least " + requiredSongCount
+                    + ", one starting card per player plus enough rounds to reach the win condition");
+        }
     }
 
     private Group findGroup(Long groupId) {
@@ -805,6 +811,12 @@ public class GameSessionService {
     // See DECISIONS.md for the fixed-DJ-never-plays and rotating-DJ-is-next-up rules this
     // implements, resolving an ambiguity GAME_DESIGN.md left unspecified.
     private void advanceRound(GameSession session, Round finishedRound) {
+        if (session.getSongQueue().isEmpty()) {
+            // Out of songs before anyone reached the win condition: the game ends on the
+            // current standings instead of stalling on the reveal.
+            completeSession(session.getId());
+            return;
+        }
         int previousActiveTurnOrder = finishedRound.getActivePlayer().getTurnOrder();
 
         Player nextActivePlayer;

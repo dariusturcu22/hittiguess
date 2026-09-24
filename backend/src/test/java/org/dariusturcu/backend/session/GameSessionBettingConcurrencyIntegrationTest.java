@@ -278,7 +278,9 @@ class GameSessionBettingConcurrencyIntegrationTest {
         playlist.setInviteCode("betting-race-playlist-" + System.nanoTime());
         playlist.setOwner(admin);
         Playlist savedPlaylist = playlistRepository.save(playlist);
-        for (int songIndex = 0; songIndex < 10; songIndex++) {
+        // Four players times the default five-card win condition.
+        int startableSongCount = 20;
+        for (int songIndex = 0; songIndex < startableSongCount; songIndex++) {
             Song song = new Song();
             song.setTitle("Betting Race Song " + songIndex);
             song.setReleaseYear(1970 + songIndex);
