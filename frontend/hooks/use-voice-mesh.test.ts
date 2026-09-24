@@ -73,7 +73,7 @@ describe("useVoiceMesh device selection", () => {
 
     expect(opened).toBe(false);
     expect(result.current.microphoneError).toBe(true);
-    expect(result.current.microphoneErrorMessage).toBe("Voice chat needs HTTPS or localhost to use a microphone. You can still listen.");
+    expect(result.current.microphoneErrorMessage).toBe("Talking needs the game open over HTTPS. You can still listen.");
   });
 
   it("names permission denial and missing devices distinctly", async () => {
@@ -123,6 +123,7 @@ describe("useVoiceMesh tab audio", () => {
       value: { getUserMedia },
       configurable: true,
     });
+    vi.stubGlobal("isSecureContext", true);
     const { result } = renderHook(() => useVoiceMesh(4, 11, [], false, {}));
 
     let shared = true;
@@ -132,6 +133,23 @@ describe("useVoiceMesh tab audio", () => {
 
     expect(shared).toBe(false);
     expect(result.current.tabAudioErrorMessage).toBe("This browser can't share tab audio.");
+    vi.unstubAllGlobals();
+  });
+
+  it("blames the plain-HTTP address rather than the browser on an insecure origin", async () => {
+    Object.defineProperty(window.navigator, "mediaDevices", {
+      value: { getUserMedia },
+      configurable: true,
+    });
+    vi.stubGlobal("isSecureContext", false);
+    const { result } = renderHook(() => useVoiceMesh(4, 11, [], false, {}));
+
+    await act(async () => {
+      await result.current.startTabAudio();
+    });
+
+    expect(result.current.tabAudioErrorMessage).toBe("Sharing audio needs the game open over HTTPS.");
+    vi.unstubAllGlobals();
   });
 
   it("asks for display media with audio straight away, excluding the game tab", async () => {
