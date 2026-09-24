@@ -124,6 +124,7 @@ class GameSessionServiceTest {
     // Two players times the fixture group's five-card win condition.
     private static final int STARTABLE_POOL_SIZE = 10;
     private static final long FIRST_CATALOG_SONG_ID = 11L;
+    private static final java.time.Duration AUTO_ABANDON_DELAY = java.time.Duration.ofMinutes(10);
 
     // Built in setUp(), not as a field initializer: SessionMapper needs the betRepository
     // mock, which Mockito injects only after this instance's fields are constructed.
@@ -925,6 +926,68 @@ class GameSessionServiceTest {
 
         assertThat(round.getStatus()).isEqualTo(RoundStatus.COUNTDOWN);
         assertThat(round.getPlacedPosition()).isZero();
+    }
+
+    // --- Recovery after a restart ---------------------------------------------------
+
+    @Test
+    void recoveryMarksEveryPlayerDisconnectedAndArmsTheAutoAbandonTimer() {
+        GameSession session = session(DjMode.ROTATING, 10);
+        Player playerA = player(session, 1L, 0, PlayerStatus.ACTIVE);
+        Player playerB = player(session, 2L, 1, PlayerStatus.ACTIVE);
+        Round round = round(session, 10L, 1, playerA, playerB, song(200, "Round Song", 2000));
+        round.setPlacementEndsAt(Instant.now().plus(RoundTiming.PLACEMENT_WINDOW));
+
+        gameSessionService.recoverSession(session.getId());
+
+        assertThat(session.getPlayers()).noneMatch(Player::isConnected);
+        assertThat(session.getZeroConnectedSince()).isNotNull();
+        verify(gameSessionScheduler).scheduleAt(eq(session.getZeroConnectedSince().plus(AUTO_ABANDON_DELAY)), any());
+    }
+
+    @Test
+    void recoveryReschedulesAnOpenBettingWindowAtItsStoredDeadline() {
+        GameSession session = session(DjMode.ROTATING, 10);
+        Player active = player(session, 1L, 0, PlayerStatus.ACTIVE);
+        Player dj = player(session, 2L, 1, PlayerStatus.ACTIVE);
+        Round round = round(session, 10L, 1, active, dj, song(200, "Round Song", 2000));
+        round.setStatus(RoundStatus.BETTING);
+        Instant bettingWindowEndsAt = Instant.now().plus(RoundTiming.BETTING_WINDOW);
+        round.setBettingWindowEndsAt(bettingWindowEndsAt);
+
+        gameSessionService.recoverSession(session.getId());
+
+        verify(gameSessionScheduler).scheduleAt(eq(bettingWindowEndsAt), any());
+    }
+
+    @Test
+    void recoveryResumesTheRevealHoldOfAScoredRound() {
+        GameSession session = session(DjMode.ROTATING, 10);
+        Player playerA = player(session, 1L, 0, PlayerStatus.ACTIVE);
+        Player playerB = player(session, 2L, 1, PlayerStatus.ACTIVE);
+        Round round = round(session, 10L, 1, playerA, playerB, song(200, "Round Song", 2000));
+        round.setStatus(RoundStatus.SCORED);
+        Instant scoredAt = Instant.now();
+        round.setScoredAt(scoredAt);
+
+        gameSessionService.recoverSession(session.getId());
+
+        org.mockito.ArgumentCaptor<Runnable> effects = org.mockito.ArgumentCaptor.forClass(Runnable.class);
+        verify(gameSessionScheduler).scheduleAt(eq(scoredAt.plus(RoundTiming.REVEAL_HOLD)), effects.capture());
+        effects.getValue().run();
+        assertThat(savedRoundNumbers()).contains(2);
+    }
+
+    @Test
+    void recoveryCoversEveryInProgressSession() {
+        GameSession session = session(DjMode.ROTATING, 10);
+        player(session, 1L, 0, PlayerStatus.ACTIVE);
+        player(session, 2L, 1, PlayerStatus.ACTIVE);
+        when(gameSessionRepository.findByStatus(SessionStatus.IN_PROGRESS)).thenReturn(List.of(session));
+
+        gameSessionService.recoverInProgressSessions();
+
+        assertThat(session.getPlayers()).noneMatch(Player::isConnected);
     }
 
     // --- Artist and title tallies ------------------------------------------------------
