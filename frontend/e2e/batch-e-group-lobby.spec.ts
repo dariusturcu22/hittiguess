@@ -12,7 +12,6 @@ const MEMBER_DISPLAY_NAME = "Batch E lobby member";
 const CHAT_MESSAGE = "Batch E realtime chat check";
 const LIVE_CONNECTION_TEXT = "Live";
 const LOGIN_PATH = "/login";
-const PLAYLISTS_PATH = "/playlists";
 const GROUPS_PATH = "/api/groups";
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
 const GROUP_CLEANUP_TIMEOUT_MILLISECONDS = 10_000;

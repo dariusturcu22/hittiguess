@@ -10,7 +10,6 @@ const MEMBER_ACCOUNT = {
 };
 const MEMBER_DISPLAY_NAME = "Story 47 round member";
 const LOGIN_PATH = "/login";
-const PLAYLISTS_PATH = "/playlists";
 const GROUPS_PATH = "/api/groups";
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
 const GROUP_CLEANUP_TIMEOUT_MILLISECONDS = 10_000;
