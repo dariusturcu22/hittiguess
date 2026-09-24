@@ -16,6 +16,7 @@ import org.dariusturcu.backend.model.user.User;
 import org.dariusturcu.backend.repository.AlternateYoutubeIdRepository;
 import org.dariusturcu.backend.repository.PendingImportRepository;
 import org.dariusturcu.backend.repository.SongRepository;
+import org.dariusturcu.backend.repository.UserRepository;
 import org.dariusturcu.backend.security.UserPrincipal;
 import org.dariusturcu.backend.service.BulkImportService;
 import org.dariusturcu.backend.service.CatalogSeedingService;
@@ -69,6 +70,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 class CatalogSeedingIntegrationTest {
 
     private static final long DAILY_DRAIN_QUOTA = 3;
+    private static final String SUBMITTING_USER_USERNAME = "bulk-import-submitter";
+    private static final String SUBMITTING_USER_EMAIL = "bulk-import-submitter@integration.test";
 
     @Configuration
     @EnableAutoConfiguration(exclude = OAuth2ClientAutoConfiguration.class)
@@ -199,6 +202,8 @@ class CatalogSeedingIntegrationTest {
     @Autowired
     private SongRepository songRepository;
     @Autowired
+    private UserRepository userRepository;
+    @Autowired
     private AlternateYoutubeIdRepository alternateYoutubeIdRepository;
     @Autowired
     private PendingImportRepository pendingImportRepository;
@@ -218,10 +223,15 @@ class CatalogSeedingIntegrationTest {
             metadataPriorityCoordinator.endOnTheSpotWork();
         }
 
-        User submittingUser = new User();
-        submittingUser.setUsername("bulk-import-submitter");
-        submittingUser.setEmail("bulk-import-submitter@integration.test");
-        submittingUser.setRole(Role.USER);
+        // Persisted, not transient: an on-the-spot import records the submitting user as
+        // each resolved song's addedBy, which has to reference a saved row.
+        User submittingUser = userRepository.findUserByEmail(SUBMITTING_USER_EMAIL).orElseGet(() -> {
+            User newUser = new User();
+            newUser.setUsername(SUBMITTING_USER_USERNAME);
+            newUser.setEmail(SUBMITTING_USER_EMAIL);
+            newUser.setRole(Role.USER);
+            return userRepository.save(newUser);
+        });
         SecurityContextHolder.getContext().setAuthentication(
                 new UsernamePasswordAuthenticationToken(new UserPrincipal(submittingUser), null, null));
     }
