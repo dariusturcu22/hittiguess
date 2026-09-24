@@ -42,7 +42,7 @@ public class ReturnToOAuth2AuthorizationRequestResolver implements OAuth2Authori
     }
 
     static String safeReturnToPath(String value) {
-        if (value == null || !value.startsWith("/") || value.startsWith("//")) {
+        if (value == null || !value.startsWith("/") || value.startsWith("//") || value.contains("\\")) {
             return null;
         }
         return value;

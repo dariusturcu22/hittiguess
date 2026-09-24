@@ -105,7 +105,7 @@ public class OAuth2AuthenticationSuccessHandler extends SimpleUrlAuthenticationS
     }
 
     private static String safeReturnToPath(String value) {
-        if (value == null || !value.startsWith("/") || value.startsWith("//")) {
+        if (value == null || !value.startsWith("/") || value.startsWith("//") || value.contains("\\")) {
             return null;
         }
         return value;
