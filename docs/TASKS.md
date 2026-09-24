@@ -689,3 +689,18 @@ Tests:
 
 Tests:
 - [x] Stack overflow, Radix settings selects, group button rules, floating chat variant, plus screenshot verification of settings and chat
+
+## Second LAN playtest: voice, audio sharing, sidebars, and joining by code
+
+- [ ] Voice and the DJ's tab audio never worked over the LAN: `getUserMedia` and `getDisplayMedia` exist only in a secure context, and the LAN playtest serves plain HTTP, so the sidebar reported "This browser can't share tab audio" and every microphone was refused. Add an HTTPS mode for LAN playtests: a dependency-free Node proxy that serves one HTTPS origin in front of both the Next dev server and the backend, with a keytool-generated certificate for the LAN address
+- [ ] Say plainly when voice or audio sharing is unavailable because the page isn't served over HTTPS, instead of blaming the browser
+- [ ] The DJ's audio share starts from the "Open on YouTube to play" click itself: the click asks for the capture, then opens YouTube in its own window so the picker stays visible, with no second share button
+- [ ] The right sidebar widens from 76px to 100px in a call. Keep both sidebars at 76px in every state
+- [ ] The right sidebar shows only in a call or on the group lobby page, not on the game page outside a call
+- [ ] There is no way to type a join code. The sidebar's play button opens a small menu to create a lobby or join one with its four-letter code
+
+Tests:
+- [ ] Unit test: the LAN proxy routes API, WebSocket, and OAuth paths to the backend and everything else to the dev server
+- [ ] Component tests: the voice sidebar keeps a fixed 76px width in and out of a call, and hides on the game page outside a call; the join-code menu joins by code and opens the lobby
+- [ ] Session page test: the DJ's YouTube click requests the audio share and opens the YouTube window
+- [ ] Manual check on the stack: over the HTTPS proxy the page is a secure context, login and sockets work, and two players in a call connect their voice peers
