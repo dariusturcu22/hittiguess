@@ -2,7 +2,7 @@
 
 ## Test accounts
 
-The core service seeds three reusable accounts with a `TEST` role on every startup outside Production, so a multiplayer round (one DJ, one active player, one other player) can be tested with three genuinely separate logged-in sessions instead of one account reused across tabs.
+The core service seeds three reusable accounts on every startup outside Production, so a multiplayer round (one DJ, one active player, one other player) can be tested with three genuinely separate logged-in sessions instead of one account reused across tabs. Account 1 is an `ADMIN`, so it also opens the admin pages (catalog backlog, report queue); accounts 2 and 3 have the `TEST` role.
 
 Credentials:
 
@@ -10,7 +10,7 @@ Credentials:
 - `test-agent-2@hittiguess.local` / `HittiguessTestAgent2!2026`
 - `test-agent-3@hittiguess.local` / `HittiguessTestAgent3!2026`
 
-The seed mechanism is idempotent per account. Running the application again with an account already present does nothing for that one, it never creates a duplicate or errors.
+The seed mechanism is idempotent per account. Running the application again with an account already present never creates a duplicate or errors; it only corrects the account's role if it differs, which is how an account 1 seeded before it became the admin gets promoted.
 
 This account never exists in Production. The seeder itself is disabled by a Spring profile condition when `APP_ENV` is `prod`, and a separate startup check fails the application if a `TEST`-role row is ever found while running against Production, regardless of how it got there.
 

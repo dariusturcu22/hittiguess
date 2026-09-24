@@ -78,7 +78,8 @@ Every rate-limited request the core service rejects, whichever limiter caught it
 | GET | `/api/sessions/{sessionId}/link-out` | `GameSessionController`, the current round's YouTube watch URL for the round's DJ only, refused after reveal, story 9 |
 | GET | `/api/sessions/groups/{groupId}/results` | `GameSessionController`, a completed session's downloadable results export, story 10 |
 | POST | `/api/admin/catalog-seeding/enqueue` | `AdminCatalogSeedingController`, admin only via `AdminAccessGuard`, body is `AdminCatalogSeedingRequest` (`playlistLink`, `youtubeIds`, both nullable), expands a submitted playlist link through the AI microservice and merges it with any submitted IDs or links before enqueueing whatever the catalog does not already have, story 40 |
-| GET | `/api/admin/catalog-seeding/status` | `AdminCatalogSeedingController`, admin only, the backlog view (pending, done, failed counts), story 40 |
+| GET | `/api/admin/catalog-seeding/status` | `AdminCatalogSeedingController`, admin only, the backlog view (pending, done, failed counts), plus the newest rechecks of provisional answers with their provisional and patient years and whether a drain is running, story 40 |
+| POST | `/api/admin/catalog-seeding/drain` | `AdminCatalogSeedingController`, admin only, starts a backlog drain in the background instead of waiting for the daily sweep; 409 while a drain is already running |
 | POST | `/api/bulk-import` | `BulkImportController`, any authenticated user, immediate on-the-spot resolution of `BulkImportRequest` (`playlistLink`, `videoIdsOrLinks`), a submitted playlist link is expanded through the AI microservice and merged with any submitted IDs or links, never shares the admin backlog's queue, story 40 |
 | GET | `/api/ground-truth/songs` | `GroundTruthController`, public, paged verified `(artist, title, releaseYear)` triples with no YouTube-sourced fields, general rate limit applies, story 35 |
 | POST | `/api/songs/{songId}/reports` | `SongReportController`, any authenticated user reports a song's metadata with a message, suggested correct year, and sources, one report per user per song, story 17 |
@@ -94,6 +95,8 @@ Every rate-limited request the core service rejects, whichever limiter caught it
 | Method | Path | Notes |
 |---|---|---|
 | POST | `/metadata/resolve` | Internal only, gated by `X-Internal-Api-Key`, called by the core service's `SongMetadataService`, never exposed publicly. Independently rate-limited at 30 requests per minute per client address, evaluated before the internal-key check, since anyone holding that shared key could otherwise call it directly. See story 27 |
+| POST | `/metadata/identify` | Internal only, same internal-key gate, with its own fast-tier rate limit (1200 requests per minute per client address). The fast tier's first pass for one video: YouTube fetch, non-music hard filter, verified-duplicate check, and the combined pre-check LLM call with content safety. Returns the identified title, artists, and color, or a verified duplicate's full answer, or a rejection |
+| POST | `/metadata/date-fast` | Internal only, same gate and fast-tier rate limit. Body `{title, main_artists}`; looks up a provisional year on one lane, MusicBrainz or Wikipedia plus LLM extraction, whichever frees up first, falling back to the other lane when the first finds nothing |
 | POST | `/metadata/playlist-video-ids` | Internal only, same `X-Internal-Api-Key` gate and rate limit as `/metadata/resolve`, called by the core service's `PlaylistExpansionService`. Body `{playlist_url_or_id}`, crawls the playlist through YouTube Data API's `playlistItems.list`, paginating on `nextPageToken`, and returns `{video_ids}`. A link or id that doesn't parse to a valid playlist returns 400; an upstream fetch failure on the first page returns 502. Story 40 |
 | GET | `/health` | Unauthenticated, story 38 |
 | GET | `/metrics` | Prometheus scrape format via `prometheus-fastapi-instrumentator`, gated by `X-Internal-Api-Key`. |
@@ -224,9 +227,9 @@ PlaylistImportJobItem
   └── job: PlaylistImportJob  (@ManyToOne, owns the FK)
 ```
 
-Tracks a playlist-scoped background YouTube import (story 47) so a user can keep browsing while it resolves; the playlist detail view reads the active job to render pending songs greyed out (V24).
+Tracks a playlist-scoped background YouTube import (story 47) so a user can keep browsing while it resolves; the playlist detail view reads the active job to render pending songs greyed out (V24). Each item moves from `PENDING` (waiting for a free slot) through `IDENTIFYING` and `DATING` (its two fast-tier stages) to `RESOLVED`, `ALREADY_KNOWN`, or `UNRESOLVED`, and a resolved song joins the playlist the moment it settles.
 
-Schema changes go through Flyway migrations in `backend/src/main/resources/db/migration/`, not Hibernate's `ddl-auto`, which is set to `validate`. Migrations on `dev` run through V34: V28 records accepted two-factor time steps and login failures, V29 adds betting skips, V30 adds placement deadlines, V31 and V32 persist session results, V33 records import quota usage, and V34 records removed group users. V26 adds the playlist description and V27 adds raw video-info fields to playlist-import job items.
+Schema changes go through Flyway migrations in `backend/src/main/resources/db/migration/`, not Hibernate's `ddl-auto`, which is set to `validate`. Migrations on `dev` run through V36: V28 records accepted two-factor time steps and login failures, V29 adds betting skips, V30 adds placement deadlines, V31 and V32 persist session results, V33 records import quota usage, V34 records removed group users, V35 adds full-pass round numbers, and V36 adds a backlog row's origin and its provisional and patient years. V26 adds the playlist description and V27 adds raw video-info fields to playlist-import job items.
 
 ### Planned (not yet code, target shape per ARCHITECTURE.md and TASKS.md)
 
@@ -293,4 +296,4 @@ stateDiagram-v2
     done --> [*]
 ```
 
-A `PendingImport` row can also be created indirectly: the on-the-spot fast tier resolves a song provisionally, then re-enqueues it here at low priority so the patient pipeline re-verifies it properly afterward.
+A `PendingImport` row can also be created indirectly, as a recheck: a user import resolves a song on the fast tier (origin `FAST_TIER_RECHECK`), or a user adds a song by hand (origin `USER_ADD_RECHECK`), and the row is queued at low priority with that provisional year so the patient pipeline re-verifies it afterward. The drain records the patient year on the row (V36), and the admin backlog shows both years side by side. Admin seeds carry origin `ADMIN_SEED`.
