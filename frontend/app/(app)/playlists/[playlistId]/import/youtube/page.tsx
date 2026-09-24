@@ -9,6 +9,7 @@ import { useActiveImport, useStartImport } from "@/hooks/generated/playlist-impo
 import { useGetPlaylist } from "@/hooks/generated/playlist-management/playlist-management";
 import type { PlaylistImportJobItemDTO } from "@/hooks/models/playlistImportJobItemDTO";
 import { useRouter } from "next/navigation";
+import type { AxiosError } from "axios";
 import { toast } from "sonner";
 import { useBulkImportRealtime } from "@/hooks/use-bulk-import-realtime";
 import { loadActiveImportJob, saveActiveImportJob } from "@/lib/playlist-import-job";
@@ -21,6 +22,9 @@ interface PageProps {
 const YOUTUBE_INPUT_PLACEHOLDER = "https://youtube.com/playlist?list=...";
 const ACTIVE_IMPORT_REFRESH_MILLISECONDS = 5_000;
 const NOT_FOUND_STATUS = 404;
+const BAD_REQUEST_STATUS = 400;
+const TOO_MANY_REQUESTS_STATUS = 429;
+const IMPORT_START_FAILED_MESSAGE = "Import failed to start. Check the link and try again.";
 
 function isJobGoneError(error: unknown): boolean {
   if (typeof error === "object" && error !== null && "response" in error) {
@@ -28,6 +32,14 @@ function isJobGoneError(error: unknown): boolean {
     return response?.status === NOT_FOUND_STATUS;
   }
   return false;
+}
+
+// The size cap and the daily new-song limit come back as 400 and 429 with a message
+// saying what to do, so those are shown as they are.
+function importStartErrorMessage(error: unknown): string {
+  const response = (error as AxiosError<{ message?: string }>).response;
+  const isExplainedRefusal = response?.status === BAD_REQUEST_STATUS || response?.status === TOO_MANY_REQUESTS_STATUS;
+  return isExplainedRefusal && response?.data?.message ? response.data.message : IMPORT_START_FAILED_MESSAGE;
 }
 
 function ImportItemRow({ item }: { item: PlaylistImportJobItemDTO }) {
@@ -115,6 +127,7 @@ export default function ImportYoutubePage({ params }: PageProps) {
 
   const [playlistLink, setPlaylistLink] = React.useState("");
   const [expandedVideoIds, setExpandedVideoIds] = React.useState<string[] | null>(null);
+  const [importStartError, setImportStartError] = React.useState("");
   const [isImportStarted, setIsImportStarted] = React.useState(() => {
     const storedJob = loadActiveImportJob();
     return storedJob !== null && storedJob.playlistId === playlistId;
@@ -155,6 +168,7 @@ export default function ImportYoutubePage({ params }: PageProps) {
       return;
     }
     reset();
+    setImportStartError("");
     startImportMutation.mutate(
       { playlistId, data: { videoIdsOrLinks: expandedVideoIds } },
       {
@@ -165,7 +179,11 @@ export default function ImportYoutubePage({ params }: PageProps) {
           }
           setIsImportStarted(true);
         },
-        onError: () => toast.error("Import failed to start. Check the link and try again."),
+        onError: (error) => {
+          const message = importStartErrorMessage(error);
+          setImportStartError(message);
+          toast.error(message);
+        },
       },
     );
   }
@@ -314,9 +332,9 @@ export default function ImportYoutubePage({ params }: PageProps) {
           </div>
         ) : null}
 
-        {startImportMutation.isError && !isImportStarted ? (
+        {importStartError && !isImportStarted ? (
           <p className="mt-4 text-[12px] text-destructive text-center">
-            Import failed to start. Check the link and try again.
+            {importStartError}
           </p>
         ) : null}
           </>
