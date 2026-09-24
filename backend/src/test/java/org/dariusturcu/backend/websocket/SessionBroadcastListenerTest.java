@@ -1,5 +1,6 @@
 package org.dariusturcu.backend.websocket;
 
+import org.dariusturcu.backend.model.session.GuessResultDTO;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
@@ -63,5 +64,16 @@ class SessionBroadcastListenerTest {
         context.publishEvent(new SessionBroadcastEvent(SessionEventType.PLACEMENT_PREVIEW, SESSION_ID, "preview"));
 
         verify(messagingTemplate).convertAndSend(eq(SessionDestinations.roundTopic(SESSION_ID)), anyString());
+    }
+
+    @Test
+    void aGuessResultIsSentOnlyToTheGuessersOwnQueue() {
+        String guesserUsername = "guesser";
+        long roundId = 3L;
+
+        context.publishEvent(new GuessResultEvent(guesserUsername, SESSION_ID, new GuessResultDTO(roundId, true, false)));
+
+        verify(messagingTemplate).convertAndSendToUser(eq(guesserUsername), eq(SessionDestinations.guessResultQueue(SESSION_ID)), anyString());
+        verify(messagingTemplate, never()).convertAndSend(anyString(), anyString());
     }
 }

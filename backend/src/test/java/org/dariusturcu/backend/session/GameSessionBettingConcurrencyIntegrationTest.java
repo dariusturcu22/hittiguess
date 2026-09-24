@@ -41,6 +41,8 @@ import org.dariusturcu.backend.service.PlaylistAccessService;
 import org.dariusturcu.backend.service.PlaylistExpansionService;
 import org.dariusturcu.backend.service.PendingSessionSongPool;
 import org.dariusturcu.backend.service.SessionResultsStore;
+import org.dariusturcu.backend.repository.StoredSessionResultsRepository;
+import tools.jackson.databind.json.JsonMapper;
 import org.dariusturcu.backend.difficulty.AggregateBaselinePredictor;
 import org.dariusturcu.backend.difficulty.DifficultyBand;
 import org.dariusturcu.backend.difficulty.DifficultyTunedSongSelector;
@@ -140,8 +142,8 @@ class GameSessionBettingConcurrencyIntegrationTest {
         }
 
         @Bean
-        SessionResultsStore sessionResultsStore() {
-            return new SessionResultsStore();
+        SessionResultsStore sessionResultsStore(StoredSessionResultsRepository storedSessionResultsRepository) {
+            return new SessionResultsStore(storedSessionResultsRepository, JsonMapper.builder().build());
         }
 
         @Bean
@@ -278,7 +280,9 @@ class GameSessionBettingConcurrencyIntegrationTest {
         playlist.setInviteCode("betting-race-playlist-" + System.nanoTime());
         playlist.setOwner(admin);
         Playlist savedPlaylist = playlistRepository.save(playlist);
-        for (int songIndex = 0; songIndex < 10; songIndex++) {
+        // Four players times the default five-card win condition.
+        int startableSongCount = 20;
+        for (int songIndex = 0; songIndex < startableSongCount; songIndex++) {
             Song song = new Song();
             song.setTitle("Betting Race Song " + songIndex);
             song.setReleaseYear(1970 + songIndex);

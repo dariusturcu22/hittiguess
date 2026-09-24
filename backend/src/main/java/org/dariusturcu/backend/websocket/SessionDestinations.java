@@ -22,6 +22,8 @@ public final class SessionDestinations {
     private static final String GUESS_SEGMENT = "/guess";
     private static final String BET_SEGMENT = "/bet";
     private static final String SKIP_BETTING_SEGMENT = "/skip-betting";
+    private static final String SESSION_QUEUE_PREFIX = "/queue/sessions/";
+    private static final String GUESS_RESULT_SEGMENT = "/guess-result";
 
     private static final Pattern SESSION_TOPIC_PATTERN = Pattern.compile(
             "^" + Pattern.quote(SESSION_TOPIC_PREFIX) + "(?<sessionId>\\d+)/[^/]+$");
@@ -43,6 +45,12 @@ public final class SessionDestinations {
     // every round event to receive it.
     public static String endedTopic(Long sessionId) {
         return SESSION_TOPIC_PREFIX + sessionId + ENDED_SEGMENT;
+    }
+
+    // Per-user queue each guess's result is sent to through
+    // SimpMessagingTemplate#convertAndSendToUser. A client subscribes with the "/user" prefix.
+    public static String guessResultQueue(Long sessionId) {
+        return SESSION_QUEUE_PREFIX + sessionId + GUESS_RESULT_SEGMENT;
     }
 
     public static String previewDestination(Long sessionId) {

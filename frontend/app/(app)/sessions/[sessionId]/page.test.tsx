@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import GameSessionPage from "./page";
 
 let roundEventHandler: ((event: { type: string; payload?: Record<string, unknown> }) => void) | undefined;
+let guessResultHandler: ((result: { roundId?: number; artistCorrect?: boolean; titleCorrect?: boolean }) => void) | undefined;
 const placeCard = vi.fn(() => true);
 const previewPlacement = vi.fn(() => true);
 const submitGuess = vi.fn(() => true);
@@ -85,8 +86,14 @@ vi.mock("@/lib/lock-in-sound", () => ({
 
 vi.mock("@/hooks/use-game-session-realtime", () => ({
   PLACEMENT_PREVIEW_EVENT: "PLACEMENT_PREVIEW",
-  useGameSessionRealtime: (_sessionId: number, handler: (event: { type: string }) => void) => {
+  GUESS_CORRECT_EVENT: "GUESS_CORRECT",
+  useGameSessionRealtime: (
+    _sessionId: number,
+    handler: (event: { type: string }) => void,
+    onGuessResult: (result: { roundId?: number; artistCorrect?: boolean; titleCorrect?: boolean }) => void,
+  ) => {
     roundEventHandler = handler;
+    guessResultHandler = onGuessResult;
     return {
       connectionState: "connected",
       placeCard,
@@ -115,6 +122,7 @@ describe("GameSessionPage", () => {
     submitGuess.mockClear();
     skipBetting.mockClear();
     roundEventHandler = undefined;
+    guessResultHandler = undefined;
     mockSessionData = MID_GAME_SESSION;
     mockCurrentUserId = ACTIVE_USER_ID;
     window.sessionStorage.clear();
@@ -170,7 +178,41 @@ describe("GameSessionPage", () => {
     fireEvent.click(screen.getByRole("button", { name: "Submit guess the title" }));
 
     expect(submitGuess).toHaveBeenCalledWith("Beatles", "Yesterday");
-    expect(screen.getByText("Guess sent. Keep listening for the result.")).toBeVisible();
+    expect(screen.getByText("Checking your guess…")).toBeVisible();
+  });
+
+  it("tells the guesser which part of their guess was right", async () => {
+    await renderPage();
+
+    act(() => {
+      guessResultHandler?.({ roundId: 30, artistCorrect: true, titleCorrect: false });
+    });
+    expect(screen.getByText("You got the artist.")).toBeVisible();
+
+    act(() => {
+      guessResultHandler?.({ roundId: 30, artistCorrect: false, titleCorrect: false });
+    });
+    expect(screen.getByText("Not quite. Try again.")).toBeVisible();
+  });
+
+  it("announces another player's correct guess without the answer", async () => {
+    await renderPage();
+
+    act(() => {
+      roundEventHandler?.({ type: "GUESS_CORRECT", payload: { roundId: 30, playerId: 9, displayName: "Jo", artistGuessed: true, titleGuessed: false } });
+    });
+
+    expect(screen.getByRole("status")).toHaveTextContent("Jo guessed the artist");
+  });
+
+  it("doesn't announce the viewer's own correct guess as a toast", async () => {
+    await renderPage();
+
+    act(() => {
+      roundEventHandler?.({ type: "GUESS_CORRECT", payload: { roundId: 30, playerId: 7, displayName: "Alex", artistGuessed: true, titleGuessed: true } });
+    });
+
+    expect(screen.queryByText("Alex guessed the artist and the title")).toBeNull();
   });
 
   it("shows the DJ the song card and a real YouTube link", async () => {
@@ -231,6 +273,22 @@ describe("GameSessionPage", () => {
     expect(screen.getByText("Drag a token into a gap you think is right")).toBeVisible();
     fireEvent.click(screen.getByRole("button", { name: "Skip betting" }));
     expect(skipBetting).toHaveBeenCalledOnce();
+  });
+
+  it("replaces the skip action with a waiting note once the viewer has skipped", async () => {
+    mockSessionData = withRound({ status: "BETTING", placedPosition: 1, bettingSkippedPlayerIds: [9], bettingWindowEndsAt: new Date(Date.now() + BETTING_WINDOW_REMAINING_MILLISECONDS).toISOString() });
+    mockCurrentUserId = SPECTATOR_USER_ID;
+    await renderPage();
+
+    expect(screen.getByText("Skipped. Waiting for the others.")).toBeVisible();
+    expect(screen.queryByRole("button", { name: "Skip betting" })).toBeNull();
+  });
+
+  it("doesn't offer the active player a skip action", async () => {
+    mockSessionData = withRound({ status: "BETTING", placedPosition: 1, bettingWindowEndsAt: new Date(Date.now() + BETTING_WINDOW_REMAINING_MILLISECONDS).toISOString() });
+    await renderPage();
+
+    expect(screen.queryByRole("button", { name: "Skip betting" })).toBeNull();
   });
 
   it("shows placed bets as coins on the timeline", async () => {

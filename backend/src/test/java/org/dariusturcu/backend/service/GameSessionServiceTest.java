@@ -13,7 +13,11 @@ import org.dariusturcu.backend.model.session.PlacementPreviewDTO;
 import org.dariusturcu.backend.model.session.Player;
 import org.dariusturcu.backend.model.session.PlayerCard;
 import org.dariusturcu.backend.model.session.PlayerStatus;
+import org.dariusturcu.backend.model.session.CorrectGuessDTO;
+import org.dariusturcu.backend.model.session.GuessResultDTO;
+import org.dariusturcu.backend.websocket.GuessResultEvent;
 import org.dariusturcu.backend.model.session.Round;
+import org.dariusturcu.backend.model.session.SessionResultsDTO;
 import org.dariusturcu.backend.model.session.RoundStatus;
 import org.dariusturcu.backend.model.session.RoundTiming;
 import org.dariusturcu.backend.model.session.SessionStatus;
@@ -39,6 +43,7 @@ import org.dariusturcu.backend.repository.PlayerRepository;
 import org.dariusturcu.backend.repository.PlaylistRepository;
 import org.dariusturcu.backend.repository.RoundRepository;
 import org.dariusturcu.backend.repository.SongRepository;
+import org.dariusturcu.backend.repository.StoredSessionResultsRepository;
 import org.dariusturcu.backend.scheduling.GameSessionScheduler;
 import org.dariusturcu.backend.security.UserPrincipal;
 import org.dariusturcu.backend.websocket.SessionBroadcastEvent;
@@ -58,6 +63,8 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.web.server.ResponseStatusException;
+
+import tools.jackson.databind.json.JsonMapper;
 
 import java.time.Instant;
 import java.util.ArrayList;
@@ -112,7 +119,9 @@ class GameSessionServiceTest {
     @Mock
     private ApplicationEventPublisher eventPublisher;
 
-    private final SessionResultsStore resultsStore = new SessionResultsStore();
+    @Mock
+    private StoredSessionResultsRepository storedSessionResultsRepository;
+    private SessionResultsStore resultsStore;
     private final PendingSessionSongPool pendingPool = new PendingSessionSongPool();
 
     private static final Long GROUP_ID = 10L;
@@ -120,6 +129,10 @@ class GameSessionServiceTest {
     private static final Long OTHER_ID = 2L;
     private static final Long CUSTOM_PLAYLIST_ID = 21L;
     private static final String PASTED_PLAYLIST_LINK = "https://youtube.com/playlist?list=abc123";
+    // Two players times the fixture group's five-card win condition.
+    private static final int STARTABLE_POOL_SIZE = 10;
+    private static final long FIRST_CATALOG_SONG_ID = 11L;
+    private static final java.time.Duration AUTO_ABANDON_DELAY = java.time.Duration.ofMinutes(10);
 
     // Built in setUp(), not as a field initializer: SessionMapper needs the betRepository
     // mock, which Mockito injects only after this instance's fields are constructed.
@@ -130,6 +143,7 @@ class GameSessionServiceTest {
     @BeforeEach
     void setUp() {
         sessionMapper = new SessionMapper(betRepository);
+        resultsStore = new SessionResultsStore(storedSessionResultsRepository, JsonMapper.builder().build());
         gameSessionService = new GameSessionService(
                 gameSessionRepository, playerRepository, roundRepository, guessRepository, betRepository,
                 groupRepository, songRepository, playlistRepository, groupService, playlistAccessService,
@@ -177,6 +191,7 @@ class GameSessionServiceTest {
         player.setSession(session);
         User user = new User();
         user.setId(id);
+        user.setUsername("user-" + id);
         player.setUser(user);
         player.setDisplayName("player-" + id);
         player.setTurnOrder(turnOrder);
@@ -851,6 +866,307 @@ class GameSessionServiceTest {
         assertThat(savedRoundNumbers()).doesNotContain(3);
     }
 
+    @Test
+    void advancingWithNoSongLeftCompletesTheSessionOnTheCurrentStandings() {
+        GameSession session = session(DjMode.ROTATING, 10);
+        session.getSongQueue().clear();
+        Player playerA = player(session, 1L, 0, PlayerStatus.ACTIVE);
+        Player playerB = player(session, 2L, 1, PlayerStatus.ACTIVE);
+        anchorCard(playerA, song(100, "Anchor A", 1990));
+        anchorCard(playerA, song(101, "Anchor A Two", 1995));
+        anchorCard(playerB, song(102, "Anchor B", 1990));
+        Round round = round(session, 10L, 1, playerA, playerB, song(200, "Round Song", 2000));
+        round.setStatus(RoundStatus.SCORED);
+
+        gameSessionService.advanceRoundEffect(round.getId());
+
+        assertThat(session.getStatus()).isEqualTo(SessionStatus.COMPLETED);
+        assertThat(savedRoundNumbers()).doesNotContain(2);
+        SessionResultsDTO results = resultsStore.get(session.getGroupId()).orElseThrow();
+        assertThat(results.cardCountRanking().getFirst().playerId()).isEqualTo(playerA.getId());
+        verify(groupService).recordGameSessionEnded(session.getGroupId());
+    }
+
+    // --- Idle placement timeout -----------------------------------------------------
+
+    @Test
+    void startingARoundSetsAPlacementDeadlineAndSchedulesItsTimeout() {
+        GameSession session = session(DjMode.ROTATING, 10);
+        Player playerA = player(session, 1L, 0, PlayerStatus.ACTIVE);
+        Player playerB = player(session, 2L, 1, PlayerStatus.ACTIVE);
+        Round round = round(session, 10L, 1, playerA, playerB, song(200, "Round Song", 2000));
+        round.setStatus(RoundStatus.SCORED);
+        Instant beforeAdvance = Instant.now();
+
+        gameSessionService.advanceRoundEffect(round.getId());
+
+        org.mockito.ArgumentCaptor<Round> captor = org.mockito.ArgumentCaptor.forClass(Round.class);
+        verify(roundRepository, org.mockito.Mockito.atLeastOnce()).save(captor.capture());
+        Round nextRound = captor.getAllValues().getLast();
+        assertThat(nextRound.getPlacementEndsAt()).isAfterOrEqualTo(beforeAdvance.plus(RoundTiming.PLACEMENT_WINDOW));
+        verify(gameSessionScheduler).scheduleAfter(eq(RoundTiming.PLACEMENT_WINDOW), any());
+    }
+
+    @Test
+    void anIdleActivePlayersCardIsDiscardedWithoutMarkingThemLeft() {
+        GameSession session = session(DjMode.ROTATING, 10);
+        Player active = player(session, 1L, 0, PlayerStatus.ACTIVE);
+        Player dj = player(session, 2L, 1, PlayerStatus.ACTIVE);
+        anchorCard(active, song(100, "Anchor", 1990));
+        Round round = round(session, 10L, 1, active, dj, song(200, "Round Song", 2000));
+        round.setPlacementEndsAt(Instant.now().minus(RoundTiming.LOCK_IN_COUNTDOWN));
+
+        gameSessionService.placementTimeoutEffect(round.getId());
+
+        assertThat(round.getStatus()).isEqualTo(RoundStatus.SCORED);
+        assertThat(round.getPlacementCorrect()).isFalse();
+        assertThat(active.getTimeline()).hasSize(1);
+        assertThat(active.getStatus()).isEqualTo(PlayerStatus.ACTIVE);
+    }
+
+    @Test
+    void thePlacementTimeoutIsANoOpBeforeItsDeadline() {
+        GameSession session = session(DjMode.ROTATING, 10);
+        Player active = player(session, 1L, 0, PlayerStatus.ACTIVE);
+        Player dj = player(session, 2L, 1, PlayerStatus.ACTIVE);
+        Round round = round(session, 10L, 1, active, dj, song(200, "Round Song", 2000));
+        round.setPlacementEndsAt(Instant.now().plus(RoundTiming.PLACEMENT_WINDOW));
+
+        gameSessionService.placementTimeoutEffect(round.getId());
+
+        assertThat(round.getStatus()).isEqualTo(RoundStatus.AWAITING_PLACEMENT);
+    }
+
+    @Test
+    void thePlacementTimeoutIsANoOpOnceTheCardIsLockedIn() {
+        GameSession session = session(DjMode.ROTATING, 10);
+        Player active = player(session, 1L, 0, PlayerStatus.ACTIVE);
+        Player dj = player(session, 2L, 1, PlayerStatus.ACTIVE);
+        Round round = round(session, 10L, 1, active, dj, song(200, "Round Song", 2000));
+        round.setStatus(RoundStatus.COUNTDOWN);
+        round.setPlacedPosition(0);
+
+        gameSessionService.placementTimeoutEffect(round.getId());
+
+        assertThat(round.getStatus()).isEqualTo(RoundStatus.COUNTDOWN);
+        assertThat(round.getPlacedPosition()).isZero();
+    }
+
+    // --- Recovery after a restart ---------------------------------------------------
+
+    @Test
+    void recoveryMarksEveryPlayerDisconnectedAndArmsTheAutoAbandonTimer() {
+        GameSession session = session(DjMode.ROTATING, 10);
+        Player playerA = player(session, 1L, 0, PlayerStatus.ACTIVE);
+        Player playerB = player(session, 2L, 1, PlayerStatus.ACTIVE);
+        Round round = round(session, 10L, 1, playerA, playerB, song(200, "Round Song", 2000));
+        round.setPlacementEndsAt(Instant.now().plus(RoundTiming.PLACEMENT_WINDOW));
+
+        gameSessionService.recoverSession(session.getId());
+
+        assertThat(session.getPlayers()).noneMatch(Player::isConnected);
+        assertThat(session.getZeroConnectedSince()).isNotNull();
+        verify(gameSessionScheduler).scheduleAt(eq(session.getZeroConnectedSince().plus(AUTO_ABANDON_DELAY)), any());
+    }
+
+    @Test
+    void recoveryReschedulesAnOpenBettingWindowAtItsStoredDeadline() {
+        GameSession session = session(DjMode.ROTATING, 10);
+        Player active = player(session, 1L, 0, PlayerStatus.ACTIVE);
+        Player dj = player(session, 2L, 1, PlayerStatus.ACTIVE);
+        Round round = round(session, 10L, 1, active, dj, song(200, "Round Song", 2000));
+        round.setStatus(RoundStatus.BETTING);
+        Instant bettingWindowEndsAt = Instant.now().plus(RoundTiming.BETTING_WINDOW);
+        round.setBettingWindowEndsAt(bettingWindowEndsAt);
+
+        gameSessionService.recoverSession(session.getId());
+
+        verify(gameSessionScheduler).scheduleAt(eq(bettingWindowEndsAt), any());
+    }
+
+    @Test
+    void recoveryResumesTheRevealHoldOfAScoredRound() {
+        GameSession session = session(DjMode.ROTATING, 10);
+        Player playerA = player(session, 1L, 0, PlayerStatus.ACTIVE);
+        Player playerB = player(session, 2L, 1, PlayerStatus.ACTIVE);
+        Round round = round(session, 10L, 1, playerA, playerB, song(200, "Round Song", 2000));
+        round.setStatus(RoundStatus.SCORED);
+        Instant scoredAt = Instant.now();
+        round.setScoredAt(scoredAt);
+
+        gameSessionService.recoverSession(session.getId());
+
+        org.mockito.ArgumentCaptor<Runnable> effects = org.mockito.ArgumentCaptor.forClass(Runnable.class);
+        verify(gameSessionScheduler).scheduleAt(eq(scoredAt.plus(RoundTiming.REVEAL_HOLD)), effects.capture());
+        effects.getValue().run();
+        assertThat(savedRoundNumbers()).contains(2);
+    }
+
+    @Test
+    void recoveryCoversEveryInProgressSession() {
+        GameSession session = session(DjMode.ROTATING, 10);
+        player(session, 1L, 0, PlayerStatus.ACTIVE);
+        player(session, 2L, 1, PlayerStatus.ACTIVE);
+        when(gameSessionRepository.findByStatus(SessionStatus.IN_PROGRESS)).thenReturn(List.of(session));
+
+        gameSessionService.recoverInProgressSessions();
+
+        assertThat(session.getPlayers()).noneMatch(Player::isConnected);
+    }
+
+    // --- Artist and title tallies ------------------------------------------------------
+
+    @Test
+    void resubmittingACorrectGuessCountsTheArtistAndTitleOnlyOncePerRound() {
+        GameSession session = session(DjMode.ROTATING, 10);
+        Player active = player(session, 1L, 0, PlayerStatus.ACTIVE);
+        Player dj = player(session, 2L, 1, PlayerStatus.ACTIVE);
+        Player bystander = player(session, 3L, 2, PlayerStatus.ACTIVE);
+        Song roundSong = song(200, "Bohemian Rhapsody", 1975, artist("Queen", ArtistRole.MAIN, 0));
+        round(session, 10L, 1, active, dj, roundSong);
+
+        int submissionCount = 3;
+        for (int submission = 0; submission < submissionCount; submission++) {
+            gameSessionService.submitTitleArtistGuess(session.getId(), bystander.getUser().getId(),
+                    new TitleArtistGuessRequest("Queen", "Bohemian Rhapsody"));
+        }
+
+        assertThat(bystander.getTotalArtistsGuessed()).isEqualTo(1);
+        assertThat(bystander.getTotalTitlesGuessed()).isEqualTo(1);
+    }
+
+    @Test
+    void anArtistGuessedEarlierStillLetsALaterCorrectTitleCount() {
+        GameSession session = session(DjMode.ROTATING, 10);
+        Player active = player(session, 1L, 0, PlayerStatus.ACTIVE);
+        Player dj = player(session, 2L, 1, PlayerStatus.ACTIVE);
+        Player bystander = player(session, 3L, 2, PlayerStatus.ACTIVE);
+        Song roundSong = song(200, "Bohemian Rhapsody", 1975, artist("Queen", ArtistRole.MAIN, 0));
+        round(session, 10L, 1, active, dj, roundSong);
+
+        gameSessionService.submitTitleArtistGuess(session.getId(), bystander.getUser().getId(),
+                new TitleArtistGuessRequest("Queen", "Wrong Title"));
+        gameSessionService.submitTitleArtistGuess(session.getId(), bystander.getUser().getId(),
+                new TitleArtistGuessRequest("Queen", "Bohemian Rhapsody"));
+
+        assertThat(bystander.getTotalArtistsGuessed()).isEqualTo(1);
+        assertThat(bystander.getTotalTitlesGuessed()).isEqualTo(1);
+    }
+
+    // --- Guess results ----------------------------------------------------------------
+
+    @Test
+    void aGuessResultGoesOnlyToTheGuessersOwnQueue() {
+        GameSession session = session(DjMode.ROTATING, 10);
+        Player active = player(session, 1L, 0, PlayerStatus.ACTIVE);
+        Player dj = player(session, 2L, 1, PlayerStatus.ACTIVE);
+        Player bystander = player(session, 3L, 2, PlayerStatus.ACTIVE);
+        Song roundSong = song(200, "Bohemian Rhapsody", 1975, artist("Queen", ArtistRole.MAIN, 0));
+        Round round = round(session, 10L, 1, active, dj, roundSong);
+
+        gameSessionService.submitTitleArtistGuess(session.getId(), bystander.getUser().getId(),
+                new TitleArtistGuessRequest("Queen", "Wrong Title"));
+
+        verify(eventPublisher).publishEvent(new GuessResultEvent(bystander.getUser().getUsername(), session.getId(),
+                new GuessResultDTO(round.getId(), true, false)));
+    }
+
+    @Test
+    void aNewlyCorrectGuessIsBroadcastWithoutTheAnswerAndOnlyOnce() {
+        GameSession session = session(DjMode.ROTATING, 10);
+        Player active = player(session, 1L, 0, PlayerStatus.ACTIVE);
+        Player dj = player(session, 2L, 1, PlayerStatus.ACTIVE);
+        Player bystander = player(session, 3L, 2, PlayerStatus.ACTIVE);
+        Song roundSong = song(200, "Bohemian Rhapsody", 1975, artist("Queen", ArtistRole.MAIN, 0));
+        Round round = round(session, 10L, 1, active, dj, roundSong);
+
+        gameSessionService.submitTitleArtistGuess(session.getId(), bystander.getUser().getId(),
+                new TitleArtistGuessRequest("Queen", ""));
+        gameSessionService.submitTitleArtistGuess(session.getId(), bystander.getUser().getId(),
+                new TitleArtistGuessRequest("Queen", ""));
+
+        verify(eventPublisher).publishEvent(new SessionBroadcastEvent(SessionEventType.GUESS_CORRECT, session.getId(),
+                new CorrectGuessDTO(round.getId(), bystander.getId(), bystander.getDisplayName(), true, false)));
+    }
+
+    @Test
+    void aWrongGuessIsNotBroadcast() {
+        GameSession session = session(DjMode.ROTATING, 10);
+        Player active = player(session, 1L, 0, PlayerStatus.ACTIVE);
+        Player dj = player(session, 2L, 1, PlayerStatus.ACTIVE);
+        Player bystander = player(session, 3L, 2, PlayerStatus.ACTIVE);
+        Song roundSong = song(200, "Bohemian Rhapsody", 1975, artist("Queen", ArtistRole.MAIN, 0));
+        round(session, 10L, 1, active, dj, roundSong);
+
+        gameSessionService.submitTitleArtistGuess(session.getId(), bystander.getUser().getId(),
+                new TitleArtistGuessRequest("ABBA", "Dancing Queen"));
+
+        verify(eventPublisher, never()).publishEvent(any(SessionBroadcastEvent.class));
+    }
+
+    // --- Skipping the betting window -------------------------------------------------
+
+    private Round openBettingRound(GameSession session, Player active, Player dj) {
+        anchorCard(active, song(100, "Active Anchor", 1990));
+        Round round = round(session, 10L, 1, active, dj, song(200, "Round Song", 2000));
+        round.setStatus(RoundStatus.BETTING);
+        round.setPlacedPosition(1);
+        round.setPlacementCorrect(true);
+        return round;
+    }
+
+    @Test
+    void theActivePlayerAndTheDjCannotSkipBetting() {
+        GameSession session = session(DjMode.ROTATING, 10);
+        Player active = player(session, 1L, 0, PlayerStatus.ACTIVE);
+        Player dj = player(session, 2L, 1, PlayerStatus.ACTIVE);
+        Player bettor = player(session, 3L, 2, PlayerStatus.ACTIVE);
+        bettor.setTokenCount(1);
+        Round round = openBettingRound(session, active, dj);
+
+        assertThatThrownBy(() -> gameSessionService.skipBetting(session.getId(), active.getUser().getId()))
+                .isInstanceOf(AccessDeniedException.class);
+        assertThatThrownBy(() -> gameSessionService.skipBetting(session.getId(), dj.getUser().getId()))
+                .isInstanceOf(AccessDeniedException.class);
+        assertThat(round.getStatus()).isEqualTo(RoundStatus.BETTING);
+    }
+
+    @Test
+    void oneBettorSkippingKeepsTheWindowOpenForAnotherTokenHolder() {
+        GameSession session = session(DjMode.ROTATING, 10);
+        Player active = player(session, 1L, 0, PlayerStatus.ACTIVE);
+        Player dj = player(session, 2L, 1, PlayerStatus.ACTIVE);
+        Player firstBettor = player(session, 3L, 2, PlayerStatus.ACTIVE);
+        Player secondBettor = player(session, 4L, 3, PlayerStatus.ACTIVE);
+        firstBettor.setTokenCount(1);
+        secondBettor.setTokenCount(1);
+        Round round = openBettingRound(session, active, dj);
+
+        gameSessionService.skipBetting(session.getId(), firstBettor.getUser().getId());
+
+        assertThat(round.getStatus()).isEqualTo(RoundStatus.BETTING);
+        assertThat(round.getBettingSkippedPlayerIds()).containsExactly(firstBettor.getId());
+    }
+
+    @Test
+    void theWindowClosesOnceEveryTokenHolderHasSkipped() {
+        GameSession session = session(DjMode.ROTATING, 10);
+        Player active = player(session, 1L, 0, PlayerStatus.ACTIVE);
+        Player dj = player(session, 2L, 1, PlayerStatus.ACTIVE);
+        Player firstBettor = player(session, 3L, 2, PlayerStatus.ACTIVE);
+        Player secondBettor = player(session, 4L, 3, PlayerStatus.ACTIVE);
+        Player bettorWithoutAToken = player(session, 5L, 4, PlayerStatus.ACTIVE);
+        firstBettor.setTokenCount(1);
+        secondBettor.setTokenCount(1);
+        Round round = openBettingRound(session, active, dj);
+
+        gameSessionService.skipBetting(session.getId(), firstBettor.getUser().getId());
+        gameSessionService.skipBetting(session.getId(), secondBettor.getUser().getId());
+
+        assertThat(bettorWithoutAToken.getTokenCount()).isZero();
+        assertThat(round.getStatus()).isEqualTo(RoundStatus.SCORED);
+    }
+
     private List<Integer> savedRoundNumbers() {
         org.mockito.ArgumentCaptor<Round> captor = org.mockito.ArgumentCaptor.forClass(Round.class);
         verify(roundRepository, org.mockito.Mockito.atLeast(0)).save(captor.capture());
@@ -908,6 +1224,15 @@ class GameSessionServiceTest {
         return group;
     }
 
+    private List<Long> catalogPool(int songCount) {
+        List<Long> songIds = new ArrayList<>();
+        for (long songId = FIRST_CATALOG_SONG_ID; songId < FIRST_CATALOG_SONG_ID + songCount; songId++) {
+            catalogSong(songId, "video-" + songId);
+            songIds.add(songId);
+        }
+        return songIds;
+    }
+
     private Song catalogSong(long id, String youtubeId) {
         Song song = song(id, "Song " + id, 2000, artist("Artist " + id, ArtistRole.MAIN, 0));
         song.setYoutubeId(youtubeId);
@@ -958,14 +1283,12 @@ class GameSessionServiceTest {
     void startSessionWithSongsStagesThePoolAndDelegatesLocking() {
         Group group = groupWithTwoConnectedMembers();
         when(groupRepository.findById(GROUP_ID)).thenReturn(Optional.of(group));
-        catalogSong(11L, "video-11");
-        catalogSong(12L, "video-12");
-        catalogSong(13L, "video-13");
+        List<Long> songIds = catalogPool(STARTABLE_POOL_SIZE);
 
-        gameSessionService.startSessionWithSongs(GROUP_ID, new StartSessionWithSongsRequest(List.of(11L, 12L, 13L)));
+        gameSessionService.startSessionWithSongs(GROUP_ID, new StartSessionWithSongsRequest(songIds));
 
         verify(groupService).startGameSession(GROUP_ID);
-        assertThat(pendingPool.take(GROUP_ID)).contains(List.of(11L, 12L, 13L));
+        assertThat(pendingPool.take(GROUP_ID)).contains(songIds);
     }
 
     @Test
@@ -983,11 +1306,10 @@ class GameSessionServiceTest {
     void startSessionWithSongsRejectsAShortPool() {
         Group group = groupWithTwoConnectedMembers();
         when(groupRepository.findById(GROUP_ID)).thenReturn(Optional.of(group));
-        catalogSong(11L, "video-11");
-        catalogSong(12L, "video-12");
+        List<Long> oneSongShort = catalogPool(STARTABLE_POOL_SIZE - 1);
 
         assertThatThrownBy(() -> gameSessionService.startSessionWithSongs(
-                        GROUP_ID, new StartSessionWithSongsRequest(List.of(11L, 12L))))
+                        GROUP_ID, new StartSessionWithSongsRequest(oneSongShort)))
                 .isInstanceOf(ConflictException.class);
         assertThat(pendingPool.take(GROUP_ID)).isEmpty();
     }
@@ -1007,13 +1329,11 @@ class GameSessionServiceTest {
     void startSessionWithSongsDiscardsThePoolWhenLockingFails() {
         Group group = groupWithTwoConnectedMembers();
         when(groupRepository.findById(GROUP_ID)).thenReturn(Optional.of(group));
-        catalogSong(11L, "video-11");
-        catalogSong(12L, "video-12");
-        catalogSong(13L, "video-13");
+        List<Long> songIds = catalogPool(STARTABLE_POOL_SIZE);
         doThrow(new ConflictException("Group already locked")).when(groupService).startGameSession(GROUP_ID);
 
         assertThatThrownBy(() -> gameSessionService.startSessionWithSongs(
-                        GROUP_ID, new StartSessionWithSongsRequest(List.of(11L, 12L, 13L))))
+                        GROUP_ID, new StartSessionWithSongsRequest(songIds)))
                 .isInstanceOf(ConflictException.class);
         assertThat(pendingPool.take(GROUP_ID)).isEmpty();
     }
@@ -1029,10 +1349,7 @@ class GameSessionServiceTest {
                 .orElseThrow();
         group.setFixedDjMemberId(otherMemberId);
         when(groupRepository.findById(GROUP_ID)).thenReturn(Optional.of(group));
-        catalogSong(11L, "video-11");
-        catalogSong(12L, "video-12");
-        catalogSong(13L, "video-13");
-        pendingPool.stage(GROUP_ID, List.of(11L, 12L, 13L));
+        pendingPool.stage(GROUP_ID, catalogPool(STARTABLE_POOL_SIZE));
 
         GameSession session = gameSessionService.startSession(GROUP_ID);
 
@@ -1049,10 +1366,7 @@ class GameSessionServiceTest {
         Group group = groupWithTwoConnectedMembers();
         group.setDjMode(DjMode.FIXED);
         when(groupRepository.findById(GROUP_ID)).thenReturn(Optional.of(group));
-        catalogSong(11L, "video-11");
-        catalogSong(12L, "video-12");
-        catalogSong(13L, "video-13");
-        pendingPool.stage(GROUP_ID, List.of(11L, 12L, 13L));
+        pendingPool.stage(GROUP_ID, catalogPool(STARTABLE_POOL_SIZE));
 
         GameSession session = gameSessionService.startSession(GROUP_ID);
 
@@ -1067,16 +1381,14 @@ class GameSessionServiceTest {
     void startSessionUsesAStagedPoolInsteadOfGroupPlaylists() {
         Group group = groupWithTwoConnectedMembers();
         when(groupRepository.findById(GROUP_ID)).thenReturn(Optional.of(group));
-        catalogSong(11L, "video-11");
-        catalogSong(12L, "video-12");
-        catalogSong(13L, "video-13");
-        pendingPool.stage(GROUP_ID, List.of(11L, 12L, 13L));
+        pendingPool.stage(GROUP_ID, catalogPool(STARTABLE_POOL_SIZE));
 
         GameSession session = gameSessionService.startSession(GROUP_ID);
 
         assertThat(session.getPlayers()).hasSize(2);
         assertThat(session.getPlayers().get(0).getTimeline()).hasSize(1);
-        assertThat(session.getSongQueue()).isEmpty();
+        // Two anchor cards and the first round's song come off the staged pool.
+        assertThat(session.getSongQueue()).hasSize(STARTABLE_POOL_SIZE - 3);
         assertThat(session.getCurrentRoundNumber()).isEqualTo(1);
     }
 
@@ -1085,16 +1397,15 @@ class GameSessionServiceTest {
         Group group = groupWithTwoConnectedMembers();
         when(groupRepository.findById(GROUP_ID)).thenReturn(Optional.of(group));
         Playlist playlist = new Playlist();
-        playlist.getSongs().add(catalogSong(11L, "video-11"));
-        playlist.getSongs().add(catalogSong(12L, "video-12"));
-        playlist.getSongs().add(catalogSong(13L, "video-13"));
+        List<Long> songIds = catalogPool(STARTABLE_POOL_SIZE);
+        songIds.forEach(songId -> playlist.getSongs().add(songsById.get(songId)));
         when(playlistRepository.findById(CUSTOM_PLAYLIST_ID)).thenReturn(Optional.of(playlist));
 
         gameSessionService.startCustomSession(GROUP_ID, new StartCustomSessionRequest(CUSTOM_PLAYLIST_ID, null));
 
         verify(playlistAccessService).requireRead(eq(playlist), any(User.class));
         verify(groupService).startGameSession(GROUP_ID);
-        assertThat(pendingPool.take(GROUP_ID)).contains(List.of(11L, 12L, 13L));
+        assertThat(pendingPool.take(GROUP_ID)).contains(songIds);
     }
 
     @Test
@@ -1124,19 +1435,19 @@ class GameSessionServiceTest {
         Group group = groupWithTwoConnectedMembers();
         when(groupRepository.findById(GROUP_ID)).thenReturn(Optional.of(group));
         lenient().when(songRepository.findByYoutubeId(anyString())).thenReturn(List.of());
-        catalogSong(11L, "video-11");
-        catalogSong(12L, "video-12");
-        catalogSong(13L, "video-13");
-        when(songRepository.findByYoutubeId("video-11")).thenReturn(List.of(songsById.get(11L)));
-        when(songRepository.findByYoutubeId("video-12")).thenReturn(List.of(songsById.get(12L)));
-        when(songRepository.findByYoutubeId("video-13")).thenReturn(List.of(songsById.get(13L)));
-        when(playlistExpansionService.expandPlaylist(PASTED_PLAYLIST_LINK))
-                .thenReturn(List.of("video-11", "video-12", "unknown-video", "video-13"));
+        List<Long> songIds = catalogPool(STARTABLE_POOL_SIZE);
+        List<String> pastedVideoIds = new ArrayList<>();
+        for (Long songId : songIds) {
+            when(songRepository.findByYoutubeId("video-" + songId)).thenReturn(List.of(songsById.get(songId)));
+            pastedVideoIds.add("video-" + songId);
+        }
+        pastedVideoIds.add("unknown-video");
+        when(playlistExpansionService.expandPlaylist(PASTED_PLAYLIST_LINK)).thenReturn(pastedVideoIds);
 
         gameSessionService.startCustomSession(GROUP_ID, new StartCustomSessionRequest(null, PASTED_PLAYLIST_LINK));
 
         verify(groupService).startGameSession(GROUP_ID);
-        assertThat(pendingPool.take(GROUP_ID)).contains(List.of(11L, 12L, 13L));
+        assertThat(pendingPool.take(GROUP_ID)).contains(songIds);
     }
 
     @Test
