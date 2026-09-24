@@ -981,6 +981,7 @@ Tests:
 - [x] Batch 5: integration tests that non-members can't read results, that a shared song can't be edited through another user's playlist, and that invalid display names and avatar URLs are refused
 - [ ] Batch 6: unit tests that an oversized-dimension image is refused before decoding, and integration tests for the bulk import cap, quota, and up-front access check
 - [ ] Batch 6: service tests for the background playlist import cap and quota, the join-attempt limit, the admin kick (admin only, not while a session runs, the kicked user can't rejoin), and closing a kicked user's sockets
+- [ ] The batch 5 display name pattern uses Java's `\p{Cntrl}`, which the OpenAPI spec publishes unchanged and the generated zod schema compiles as a JavaScript `u` regex, which throws on load. Use `\p{Cc}`, valid in both, and regenerate the client
 - [ ] Batch 6: frontend tests for the lobby kick control and the import page showing the server's refusal message
 - [ ] Batch 7: handler tests for each mapped status and the generic message, and unit tests for `returnTo` rejecting `/\` and other-origin values on both sides
 - [ ] Batch 8: tests for CSV cell neutralizing, the AI key compare and empty-key startup refusal, and the atomic group cap
