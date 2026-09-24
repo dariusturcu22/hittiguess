@@ -128,6 +128,16 @@ describe("EditPlaylistPage", () => {
     expect(routerPush).toHaveBeenCalledWith("/playlists/7");
   });
 
+  it("discards edits and returns to the detail page on cancel", async () => {
+    await renderPage();
+
+    fireEvent.change(screen.getByLabelText("Name"), { target: { value: "Renamed mix" } });
+    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+
+    expect(updatePlaylistMutate).not.toHaveBeenCalled();
+    expect(routerPush).toHaveBeenCalledWith("/playlists/7");
+  });
+
   it("hydrates the description field from the loaded playlist", async () => {
     await renderPage();
 
