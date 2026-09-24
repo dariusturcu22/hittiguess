@@ -222,7 +222,8 @@ public class GroupService {
     }
 
     public void leaveGroup(Long groupId) {
-        Group group = findGroup(groupId);
+        Group group = groupRepository.findByIdForUpdate(groupId)
+                .orElseThrow(() -> new ResourceNotFoundException(ResourceType.GROUP, groupId));
         Member member = requireMembership(group, SecurityUtils.getCurrentUser());
         boolean wasAdmin = member.isAdmin();
 
