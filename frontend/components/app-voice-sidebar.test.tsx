@@ -41,10 +41,15 @@ vi.mock("@/hooks/use-game-session-realtime", () => ({
   useGameSessionRealtime: () => undefined,
 }));
 
+const voiceMeshState = vi.hoisted(() => ({ holdSignalling: false }));
+
 vi.mock("@/hooks/use-voice-mesh", () => ({
   shouldSilenceDjForActivePlayer: (round: { activePlayerId?: number; status?: string } | undefined, playerId: number | undefined) =>
     round?.activePlayerId === playerId && round?.status === "COUNTDOWN",
-  useVoiceMesh: () => ({
+  useVoiceMesh: (_groupId: number, _userId: number | undefined, _members: unknown[], isSignalling: boolean) => ({
+    // The signalling socket connects as soon as the sidebar asks for it, unless a test
+    // holds it back to check the join waits for it.
+    isSignalConnected: isSignalling && !voiceMeshState.holdSignalling,
     startMicrophone,
     startTabAudio,
     stopTabAudio: vi.fn(),
@@ -68,6 +73,7 @@ vi.mock("@tanstack/react-query", () => ({
 describe("AppVoiceSidebar", () => {
   beforeEach(() => {
     inVoice = true;
+    voiceMeshState.holdSignalling = false;
     currentPathname = "/groups/4";
     window.localStorage.clear();
     sessionData = undefined;
@@ -108,7 +114,7 @@ describe("AppVoiceSidebar", () => {
     fireEvent.click(screen.getByRole("button", { name: "Join call" }));
 
     await waitFor(() => expect(startMicrophone).toHaveBeenCalledOnce());
-    expect(joinVoice).toHaveBeenCalledWith({ groupId: 4 }, expect.anything());
+    await waitFor(() => expect(joinVoice).toHaveBeenCalledWith({ groupId: 4 }, expect.anything()));
   });
 
   it("hides the sidebar outside a call except on the lobby page", () => {
@@ -137,6 +143,20 @@ describe("AppVoiceSidebar", () => {
     expect(screen.queryByRole("button", { name: /ollapse|Expand/ })).toBeNull();
   });
 
+  it("announces the join only once its signalling socket is connected", async () => {
+    inVoice = false;
+    voiceMeshState.holdSignalling = true;
+    const { rerender } = render(<AppVoiceSidebar />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Join call" }));
+    await waitFor(() => expect(startMicrophone).toHaveBeenCalledOnce());
+    expect(joinVoice).not.toHaveBeenCalled();
+
+    voiceMeshState.holdSignalling = false;
+    rerender(<AppVoiceSidebar />);
+    await waitFor(() => expect(joinVoice).toHaveBeenCalledWith({ groupId: 4 }, expect.anything()));
+  });
+
   it("still joins the call as a listener when the microphone can't start", async () => {
     inVoice = false;
     startMicrophone.mockResolvedValue(false);
@@ -147,12 +167,23 @@ describe("AppVoiceSidebar", () => {
     await waitFor(() => expect(joinVoice).toHaveBeenCalledWith({ groupId: 4 }, expect.anything()));
   });
 
-  it("offers the join rail on the game page outside a call", () => {
+  it("stays hidden on the game page outside a call", () => {
     inVoice = false;
     currentPathname = "/sessions/9";
     render(<AppVoiceSidebar />);
 
-    expect(screen.getByRole("button", { name: "Join call" })).toBeVisible();
+    expect(screen.queryByRole("complementary", { name: "Voice sidebar" })).toBeNull();
+  });
+
+  it("keeps the same 76px width as the left sidebar in and out of a call", () => {
+    inVoice = false;
+    const { unmount } = render(<AppVoiceSidebar />);
+    expect(screen.getByRole("complementary", { name: "Voice sidebar" })).toHaveClass("w-[76px]");
+    unmount();
+
+    inVoice = true;
+    render(<AppVoiceSidebar />);
+    expect(screen.getByRole("complementary", { name: "Voice sidebar" })).toHaveClass("w-[76px]");
   });
 
   it("shares the DJ's tab audio on request and joins the call for a DJ outside it", async () => {

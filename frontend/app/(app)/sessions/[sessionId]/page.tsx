@@ -1,6 +1,6 @@
 "use client";
 
-import { use, useCallback, useEffect, useRef, useState, type KeyboardEvent, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
+import { use, useCallback, useEffect, useRef, useState, type KeyboardEvent, type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowDown, ArrowRight, Bell, Check, ExternalLink, Loader2, Lock, MessageCircle, Music2, TriangleAlert, UserRound, Volume2, VolumeX, X } from "lucide-react";
 
@@ -16,7 +16,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useAudioLevels } from "@/hooks/use-audio-levels";
 import { useGroupRealtime } from "@/hooks/use-group-realtime";
 import { requestDjTabAudioShare, useIsTabAudioShared } from "@/hooks/use-local-audio-stream";
-import { YOUTUBE_LINK_OUT_REL, YOUTUBE_LINK_OUT_TARGET, youtubeLinkOutHref } from "@/lib/youtube-link-out";
+import { YOUTUBE_LINK_OUT_REL, YOUTUBE_LINK_OUT_TARGET, canShareTabAudio, openYoutubeWindow, youtubeLinkOutHref } from "@/lib/youtube-link-out";
 import { playLockInSound } from "@/lib/lock-in-sound";
 import {
   AWAITING_PLACEMENT_STATUS,
@@ -203,6 +203,7 @@ export default function GameSessionPage({ params }: PageProps) {
   const guessState = guessStateQuery.data?.roundId === currentRound?.id ? guessStateQuery.data : undefined;
   const linkOutQuery = useGetCurrentRoundLinkOut(sessionId, { query: { enabled: isDj && !isRoundRevealed(roundStatus), retry: false } });
   const isTabAudioShared = useIsTabAudioShared();
+  const isSharingTabAudioSupported = typeof navigator !== "undefined" && canShareTabAudio(navigator.userAgent);
   const audioLevels = useAudioLevels();
 
   const [trackedRoundId, setTrackedRoundId] = useState<number | undefined>(undefined);
@@ -450,6 +451,16 @@ export default function GameSessionPage({ params }: PageProps) {
     setBetDrag({ pointerX: event.clientX, pointerY: event.clientY, hoverGap: stagedBetGap });
   }
 
+  // One click does both: the audio-share request goes first, while the click still
+  // counts as a user gesture, then YouTube opens in its own window so the picker stays
+  // visible in this one.
+  function openLinkOut(event: ReactMouseEvent<HTMLAnchorElement>, watchUrl: string) {
+    setIsLinkOutOpen(true);
+    if (!isSharingTabAudioSupported) return;
+    requestDjTabAudioShare();
+    if (openYoutubeWindow(watchUrl)) event.preventDefault();
+  }
+
   function lockIn() {
     if (droppedGap === null) return;
     if (realtime.placeCard(droppedGap)) {
@@ -563,16 +574,19 @@ export default function GameSessionPage({ params }: PageProps) {
     </div>;
   } else if (isAwaitingPlacement && isDj) {
     const linkOut = linkOutQuery.data;
+    const watchUrl = linkOut?.watchUrl;
     aboveTimeline = <div className="flex w-max max-w-[calc(100vw-48px)] flex-col items-center gap-6 sm:flex-row sm:items-center sm:gap-8">
       <SongCard artist={linkOut?.artist} title={linkOut?.title} year={linkOut?.releaseYear} color={linkOut?.color} className="shadow-[6px_6px_0_var(--shadow-color)]" />
       <div className="flex max-w-[360px] flex-col items-center gap-3 text-center sm:items-start sm:text-left">
-        {linkOut?.watchUrl
-          ? <a href={youtubeLinkOutHref(linkOut.watchUrl, navigator.userAgent)} target={YOUTUBE_LINK_OUT_TARGET} rel={YOUTUBE_LINK_OUT_REL} onClick={() => setIsLinkOutOpen(true)} className="inline-flex items-center gap-2.5 rounded-full bg-primary px-6 py-3 font-display text-[13px] text-primary-foreground shadow-[3px_3px_0_var(--shadow-color)] transition-transform hover:-translate-y-0.5">Open on YouTube to play<ExternalLink className="size-4" /></a>
+        {watchUrl
+          ? <a href={youtubeLinkOutHref(watchUrl, navigator.userAgent)} target={YOUTUBE_LINK_OUT_TARGET} rel={YOUTUBE_LINK_OUT_REL} onClick={(event) => openLinkOut(event, watchUrl)} className="inline-flex items-center gap-2.5 rounded-full bg-primary px-6 py-3 font-display text-[13px] text-primary-foreground shadow-[3px_3px_0_var(--shadow-color)] transition-transform hover:-translate-y-0.5">Open on YouTube to play<ExternalLink className="size-4" /></a>
           : <span className="inline-flex items-center gap-2.5 rounded-full bg-primary px-6 py-3 font-display text-[13px] text-primary-foreground opacity-55">Open on YouTube to play<ExternalLink className="size-4" /></span>}
         <p className="text-xs leading-relaxed text-muted-foreground">Play it out loud. Everyone else finds out what it is when the card gets revealed.</p>
-        {isLinkOutOpen
-          ? <button type="button" onClick={requestDjTabAudioShare} disabled={isTabAudioShared} className="inline-flex items-center gap-2 rounded-full border-2 border-warning bg-warning/10 px-3.5 py-1.5 text-[11px] font-bold text-warning transition-colors enabled:hover:bg-warning/20 disabled:opacity-80"><Volume2 className="size-3.5" />{isTabAudioShared ? "Sharing YouTube audio with the group" : "Share YouTube audio with the group"}</button>
-          : <div className="inline-flex items-center gap-2 rounded-full border-2 border-warning bg-warning/10 px-3.5 py-1.5 text-[11px] font-bold text-warning"><TriangleAlert className="size-3.5" />Shares your tab or system audio with the group.</div>}
+        {isTabAudioShared
+          ? <div className="inline-flex items-center gap-2 rounded-full border-2 border-warning bg-warning/10 px-3.5 py-1.5 text-[11px] font-bold text-warning"><Volume2 className="size-3.5" />Sharing YouTube audio with the group</div>
+          : isLinkOutOpen && isSharingTabAudioSupported
+            ? <button type="button" onClick={requestDjTabAudioShare} className="inline-flex items-center gap-2 rounded-full border-2 border-warning bg-warning/10 px-3.5 py-1.5 text-[11px] font-bold text-warning transition-colors hover:bg-warning/20"><Volume2 className="size-3.5" />Pick the YouTube window to share its audio</button>
+            : <div className="inline-flex items-center gap-2 rounded-full border-2 border-warning bg-warning/10 px-3.5 py-1.5 text-[11px] font-bold text-warning"><TriangleAlert className="size-3.5" />{isSharingTabAudioSupported ? "Opening it shares your tab or system audio with the group." : "Play it out loud for the room."}</div>}
       </div>
     </div>;
   } else if (roundStatus === COUNTDOWN_STATUS) {

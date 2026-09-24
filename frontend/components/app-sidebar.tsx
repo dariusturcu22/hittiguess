@@ -9,7 +9,8 @@ import { Moon, Sun } from "lucide-react";
 
 import { LogoBars } from "@/components/logo";
 import { NavUser } from "@/components/nav-user";
-import { getGetActiveMembershipQueryKey, useCreateGroup, useGetActiveMembership } from "@/hooks/generated/group-management/group-management";
+import { getGetActiveMembershipQueryKey, useCreateGroup, useGetActiveMembership, useJoinGroup } from "@/hooks/generated/group-management/group-management";
+import { LobbyLauncher, joinCodeErrorMessage } from "@/components/lobby-launcher";
 import { getGetPlaylistQueryKey } from "@/hooks/generated/playlist-management/playlist-management";
 import { useActiveImport } from "@/hooks/generated/playlist-import-jobs/playlist-import-jobs";
 import {
@@ -119,6 +120,9 @@ export function AppSidebar() {
     query: { retry: false },
   });
   const createGroup = useCreateGroup();
+  const joinGroup = useJoinGroup();
+  const [isLobbyMenuOpen, setIsLobbyMenuOpen] = React.useState(false);
+  const [joinError, setJoinError] = React.useState("");
   const activeImportQuery = useActiveImport(activeImport?.playlistId ?? 0, {
     query: {
       enabled: activeImport !== null,
@@ -132,14 +136,28 @@ export function AppSidebar() {
       router.push(`/groups/${activeGroup.id}`);
       return;
     }
+    setJoinError("");
+    setIsLobbyMenuOpen((isOpen) => !isOpen);
+  }
 
-    createGroup.mutate(
-      { data: {} },
+  function enterLobby(groupId: number | undefined) {
+    setIsLobbyMenuOpen(false);
+    if (groupId === undefined) return;
+    void queryClient.invalidateQueries({ queryKey: getGetActiveMembershipQueryKey() });
+    router.push(`/groups/${groupId}`);
+  }
+
+  function createLobby() {
+    createGroup.mutate({ data: {} }, { onSuccess: (group) => enterLobby(group.id) });
+  }
+
+  function joinLobbyByCode(joinCode: string) {
+    setJoinError("");
+    joinGroup.mutate(
+      { data: { joinCode } },
       {
-        onSuccess: (group) => {
-          void queryClient.invalidateQueries({ queryKey: getGetActiveMembershipQueryKey() });
-          router.push(`/groups/${group.id}`);
-        },
+        onSuccess: (group) => enterLobby(group.id),
+        onError: (error) => setJoinError(joinCodeErrorMessage(error)),
       },
     );
   }
@@ -184,15 +202,27 @@ export function AppSidebar() {
 
       <div className={RAIL_DIVIDER_CLASSES} />
 
-      <button
-        type="button"
-        onClick={openGameLobby}
-        disabled={createGroup.isPending}
-        className={`${RAIL_ICON_BASE_CLASSES} ${RAIL_ICON_INTERACTIVE_CLASSES}`}
-        title={activeGroup ? "Open group lobby" : "Create group lobby"}
-      >
-        <PlayIcon />
-      </button>
+      <div className="relative">
+        <button
+          type="button"
+          onClick={openGameLobby}
+          aria-expanded={activeGroup ? undefined : isLobbyMenuOpen}
+          className={`${RAIL_ICON_BASE_CLASSES} ${RAIL_ICON_INTERACTIVE_CLASSES}`}
+          title={activeGroup ? "Open group lobby" : "Start or join a lobby"}
+        >
+          <PlayIcon />
+        </button>
+        {isLobbyMenuOpen && !activeGroup ? (
+          <LobbyLauncher
+            isCreating={createGroup.isPending}
+            isJoining={joinGroup.isPending}
+            joinError={joinError}
+            onCreate={createLobby}
+            onJoin={joinLobbyByCode}
+            onClose={() => setIsLobbyMenuOpen(false)}
+          />
+        ) : null}
+      </div>
 
       <div className={RAIL_DIVIDER_CLASSES} />
 

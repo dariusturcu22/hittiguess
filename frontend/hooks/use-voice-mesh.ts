@@ -22,11 +22,12 @@ const SEND_AND_RECEIVE = "sendrecv";
 const NOT_ALLOWED_ERROR_NAME = "NotAllowedError";
 const NOT_FOUND_ERROR_NAME = "NotFoundError";
 const OVERCONSTRAINED_ERROR_NAME = "OverconstrainedError";
-const INSECURE_CONTEXT_MESSAGE = "Voice chat needs HTTPS or localhost to use a microphone. You can still listen.";
+const INSECURE_CONTEXT_MESSAGE = "Talking needs the game open over HTTPS. You can still listen.";
 const MICROPHONE_PERMISSION_MESSAGE = "Microphone permission is needed to talk. You can still listen.";
 const MICROPHONE_NOT_FOUND_MESSAGE = "No microphone was found. You can still listen.";
 const MICROPHONE_START_FAILED_MESSAGE = "Could not start the microphone. You can still listen.";
 const TAB_AUDIO_UNSUPPORTED_MESSAGE = "This browser can't share tab audio.";
+const TAB_AUDIO_INSECURE_CONTEXT_MESSAGE = "Sharing audio needs the game open over HTTPS.";
 const TAB_AUDIO_MISSING_MESSAGE = "No audio was shared. Pick the YouTube tab and turn on tab audio.";
 const TAB_AUDIO_FAILED_MESSAGE = "Couldn't share tab audio.";
 
@@ -279,6 +280,9 @@ export function useVoiceMesh(groupId: number, currentUserId: number | undefined,
           if (!signal.type || !signal.senderUserId || !signal.payload) return;
           void handleSignalReference.current(signal as VoiceSignal).catch(() => {});
         });
+        // Anyone who joined while this client was still connecting was announced before
+        // the subscription above existed, so the member list is re-read once subscribed.
+        onPresenceChangeReference.current?.();
         setIsSignalConnected(true);
       },
       onWebSocketClose: () => setIsSignalConnected(false),
@@ -357,7 +361,9 @@ export function useVoiceMesh(groupId: number, currentUserId: number | undefined,
   // so nothing is awaited before it.
   const startTabAudio = useCallback(async () => {
     if (typeof navigator === "undefined" || !navigator.mediaDevices?.getDisplayMedia) {
-      setTabAudioErrorMessage(TAB_AUDIO_UNSUPPORTED_MESSAGE);
+      // Browsers hide screen capture entirely on an insecure origin, which is what a
+      // plain-HTTP LAN address is, so that case gets its own explanation.
+      setTabAudioErrorMessage(typeof window !== "undefined" && !window.isSecureContext ? TAB_AUDIO_INSECURE_CONTEXT_MESSAGE : TAB_AUDIO_UNSUPPORTED_MESSAGE);
       return false;
     }
     const constraints: DisplayAudioConstraints = { video: true, audio: true, selfBrowserSurface: "exclude", systemAudio: "include" };
@@ -438,6 +444,7 @@ export function useVoiceMesh(groupId: number, currentUserId: number | undefined,
     tabAudioError: tabAudioErrorMessage !== null,
     tabAudioErrorMessage,
     isSharingTabAudio,
+    isSignalConnected,
     startMicrophone,
     startTabAudio,
     stopTabAudio,

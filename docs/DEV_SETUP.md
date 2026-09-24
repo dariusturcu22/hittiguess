@@ -51,3 +51,23 @@ To let other devices on the same network play against this machine:
    subnet; one-sided silence indicates TURN is required.
 7. Afterward, delete playtest accounts, playlists, groups, and sessions
    from the dev database.
+
+### Voice and the DJ's audio need HTTPS
+
+Browsers only allow the microphone, tab-audio capture, and the Clipboard API
+on a secure origin, and a plain `http://<address>:3000` page isn't one. Over
+plain HTTP, voice is listen-only and the DJ can't share YouTube audio. For a
+playtest with voice, put both services behind one HTTPS origin:
+
+1. Backend `.env`: set `FRONTEND_URL` to `https://<address>:3443` and add
+   `https://<address>:3443` to `FRONTEND_ALLOWED_ORIGINS`. Restart the
+   backend.
+2. Frontend `.env.local`: set `NEXT_PUBLIC_API_URL` to
+   `https://<address>:3443`. Restart the dev server.
+3. Run `node scripts/lan-https-proxy.mjs <address>` from the repository
+   root, next to the running backend and dev server. The first run creates
+   a self-signed certificate for the address with the JDK's `keytool` in
+   `.lan-https/` (gitignored); it's regenerated when the address changes.
+4. Everyone opens `https://<address>:3443` and accepts the certificate
+   warning once. API calls and sockets go through the same origin, so there
+   is no second warning. Allow Node.js through the firewall for port 3443.
