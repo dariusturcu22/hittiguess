@@ -96,7 +96,7 @@ Every rate-limited request the core service rejects, whichever limiter caught it
 | POST | `/metadata/resolve` | Internal only, gated by `X-Internal-Api-Key`, called by the core service's `SongMetadataService`, never exposed publicly. Independently rate-limited at 30 requests per minute per client address, evaluated before the internal-key check, since anyone holding that shared key could otherwise call it directly. See story 27 |
 | POST | `/metadata/playlist-video-ids` | Internal only, same `X-Internal-Api-Key` gate and rate limit as `/metadata/resolve`, called by the core service's `PlaylistExpansionService`. Body `{playlist_url_or_id}`, crawls the playlist through YouTube Data API's `playlistItems.list`, paginating on `nextPageToken`, and returns `{video_ids}`. A link or id that doesn't parse to a valid playlist returns 400; an upstream fetch failure on the first page returns 502. Story 40 |
 | GET | `/health` | Unauthenticated, story 38 |
-| GET | `/metrics` | Prometheus scrape format via `prometheus-fastapi-instrumentator`, story 38 |
+| GET | `/metrics` | Prometheus scrape format via `prometheus-fastapi-instrumentator`. This route is currently unauthenticated. |
 
 ### Correlation id (story 38)
 
@@ -226,7 +226,7 @@ PlaylistImportJobItem
 
 Tracks a playlist-scoped background YouTube import (story 47) so a user can keep browsing while it resolves; the playlist detail view reads the active job to render pending songs greyed out (V24).
 
-Schema changes now go through Flyway migrations (`backend/src/main/resources/db/migration/`), not Hibernate's `ddl-auto` (moved to `validate`); `spring-boot-flyway` is a required dependency alongside the third-party `flyway-core`/`flyway-database-postgresql` libraries for Spring Boot's own autoconfiguration to actually run it. Migrations on `dev` run through V25 (`V25__add_pixel_art_images`, story 47, adds `cover_image`/`avatar_image`; `V24__add_playlist_import_jobs`, story 47; `V23__add_group_fixed_dj_member`, story 47; `V22__add_refresh_token_remember_me`; `V21__add_song_wikidata_sitelinks_count`, story 30; `V20__replace_song_gradient_colors_with_one_color`, story 47; `V19__add_two_factor_authentication` and `V18__add_email_verification_and_password_reset`, story 50; `V17__replace_bet_position_with_bets_table` and `V16__add_bet_position`, story 10; `V15__add_public_playlists_and_saved_playlists`, story 30; `V14__add_chat_messages`, story 13; `V13__add_song_reports_and_confirmations`, story 17; `V12__add_alternate_youtube_ids_and_pending_imports`, story 40).
+Schema changes go through Flyway migrations in `backend/src/main/resources/db/migration/`, not Hibernate's `ddl-auto`, which is set to `validate`. Migrations on `dev` run through V27: V26 adds the playlist description and V27 adds raw video-info fields to playlist-import job items. V25 adds pixel-art playlist covers and user avatars, V24 adds playlist-import jobs, and earlier migrations define the game, group, membership, authentication, song, and catalog schema.
 
 ### Planned (not yet code, target shape per ARCHITECTURE.md and TASKS.md)
 

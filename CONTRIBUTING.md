@@ -23,6 +23,8 @@ cp frontend/.env.example frontend/.env.local
 
 See "Secrets and API keys" below for what values each of these actually needs.
 
+The core service seeds reusable local test accounts outside Production. See [docs/DEV_SETUP.md](docs/DEV_SETUP.md#test-accounts) for their credentials and the end-to-end test setup.
+
 `ai/.env.example` lists every environment variable the AI microservice's codebase reads, including ones tied to sources and providers that are not part of the current pipeline (Discogs, DeepInfra, Wikidata/Wikipedia bot logins, various spike-only providers). You do not need values for any of those to run the app locally; leave them blank.
 
 Once both `.env` files are filled in, `make dev` starts everything: the local Postgres container, the core service, the AI microservice, and the frontend, all together. Stop it with Ctrl+C.

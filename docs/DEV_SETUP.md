@@ -14,7 +14,7 @@ The seed mechanism is idempotent per account. Running the application again with
 
 This account never exists in Production. The seeder itself is disabled by a Spring profile condition when `APP_ENV` is `prod`, and a separate startup check fails the application if a `TEST`-role row is ever found while running against Production, regardless of how it got there.
 
-This section belongs in `CONTRIBUTING.md` once story 36's open-source-readiness branch merges. Until then it lives here.
+`CONTRIBUTING.md` links to this setup guide for the local-stack commands and test-account details.
 
 ## Running the Playwright end-to-end suite
 
