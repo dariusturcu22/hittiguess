@@ -910,3 +910,70 @@ Tests:
 
 Tests:
 - [x] Stack overflow, Radix settings selects, group button rules, floating chat variant, plus screenshot verification of settings and chat
+
+## Security and bug audit (2026-09)
+
+A full-app audit of the core service, the AI microservice, and the frontend, against `dev` plus the open gameplay fix branches. The two two-factor findings are confirmed against a running stack; the rest are confirmed by reading the code unless marked unverified. Batches are ordered by severity; each is its own `fix/*` branch.
+
+Batch 1, authentication (critical):
+- [ ] The two-factor pending token issued after a correct password is accepted as a full access token: `JwtUtil.validateToken` checks only the subject and expiry, and neither `JwtAuthenticationFilter` nor `StompAuthenticationChannelInterceptor` rejects the `two_factor_pending` token type. A password alone reaches every authenticated REST endpoint and WebSocket. Reject any token carrying a non-access token type everywhere a real access token is expected
+- [ ] `POST /auth/2fa/setup` sets `twoFactorEnabled` to false on an account that already has two-factor on, with no password or code, which bypasses the password-or-code rule on `/auth/2fa/disable`. Refuse setup while two-factor is enabled, or require the same proof `disable` does
+- [ ] `/auth/**` is exempt from CSRF while production cookies are `SameSite=None`, so the cookie-authenticated `/auth/2fa/setup`, `/auth/2fa/confirm`, `/auth/2fa/disable`, and `/auth/logout` accept cross-site requests. Require the CSRF token on every `/auth` endpoint that acts on an existing session
+- [ ] Two-factor codes can be replayed within their time step. Record the last accepted time step per user and reject a repeat
+- [ ] Login and two-factor verification are limited per IP only. Add a per-account failure limit with a cool-down
+
+Batch 2, WebSocket authorization (critical):
+- [ ] STOMP authenticates only CONNECT; SUBSCRIBE is never authorized, so any logged-in user can subscribe to another group's chat, voice, settings, and membership topics and another session's round and ended topics by id. Authorize every SUBSCRIBE against group membership or session player membership
+- [ ] `VoiceSignalingController` relays every offer, answer, and ICE candidate (which carry players' IP addresses) to the whole group voice topic and relies on the client to filter by target. Deliver each signal only to its target member through a user destination
+- [ ] Subscribing to a session's round topic registers presence in `SessionPresenceRegistry` without checking the subscriber is a player in that session. Register only players
+
+Batch 3, dependencies (critical):
+- [ ] `next` 16.3.2 is inside the range of published unauthenticated remote code execution advisories (16.0.0 to 16.3.2, including the Image Optimization API). Upgrade to a patched release
+- [ ] `npm audit` also reports high-severity `sharp` (libheif) and `fast-uri` advisories and a moderate `baseline-browser-mapping` one. Upgrade them
+- [ ] The AI microservice's dependencies are unpinned `>=` ranges with no lockfile. Pin them with a lockfile so builds are reproducible and auditable
+
+Batch 4, game session reliability (critical and high):
+- [ ] `GameSessionService.reconnectPlayer` has no caller, so a player whose socket closes once (a reload, navigating away and back) stays `isConnected: false` with `disconnectedAt` set for good. An active player who reloads mid-turn is marked `Left` 90 seconds later while playing, and once every player has closed a socket at any point `zeroConnectedSince` sticks and the session is abandoned 10 minutes later mid-game. Call it when a player's socket subscribes to the round topic, and only mark a player disconnected once their last socket for that session closes, since each client holds several
+- [ ] A session starts with as few songs as players plus one, and when the queue empties `popNextSongId` throws inside the scheduled round advance: the session is never completed or abandoned and every client stays on the reveal. End the session with the current standings when no song remains, and raise the start threshold so a typical game can reach the win condition
+- [ ] Round timers, group lifecycle timers, player presence, and session results are held only in memory, and nothing recovers them on startup. A restart strands in-flight rounds in `COUNTDOWN`, `BETTING`, or `SCORED` and loses results. Reschedule pending round and group effects from persisted state on startup
+- [ ] An active player who stays connected but never places a card holds the round forever; the turn timeout only starts on disconnect. Add an idle placement timeout
+- [ ] `skipBetting` accepts any player, including the active player and the DJ, so one player can end everyone else's betting window. Limit it to eligible bettors, and decide whether it takes every eligible bettor or one
+- [ ] Every repeated correct artist or title submission increments the session-long leaderboard tallies again. Count each artist and title at most once per player per round
+- [ ] Guess results are never sent back, so neither the guesser's correct/incorrect animation nor the "guessed the artist" toast from the mockups can render. Deliver each guess result to its guesser, and broadcast a correct guess without the answer
+
+Batch 5, data access and integrity (high):
+- [ ] `GET /api/sessions/groups/{groupId}/results` has no membership check, and group ids are sequential, so any logged-in user can read any group's results. Restrict it to the session's players
+- [ ] `PlaylistService.updateSong` edits the shared catalog `Song` row. Adding an existing YouTube id to any playlist links that row, so a user with write on their own playlist can change the year or title of an unverified song in every other playlist and game using it. Stop direct edits of a song linked to playlists the editor can't write, or route them through the report flow
+- [ ] `GET /api/playlists/{playlistId}/cover` is public, so a private playlist's cover is readable by anyone with its id. Apply the playlist read check, or confirm covers are meant to be public
+- [ ] Group display name and avatar URL on create and join have no length or format validation. Add bounds, and restrict avatar URLs to the schemes and hosts the app serves
+
+Batch 6, resource abuse (high):
+- [ ] `PixelArtImageService` decodes an upload in full before checking its dimensions, so a small image declaring huge dimensions can exhaust memory. Read the dimensions through an `ImageReader` before decoding
+- [ ] `POST /api/bulk-import` takes an unbounded list of ids plus an expanded playlist and resolves every unknown one synchronously through paid OpenAI and YouTube calls, and checks write access on the target playlist only after that work. Cap the batch size, add a per-user daily quota, and check target access first
+- [ ] The group join code is four letters with no join-attempt limit beyond the general request limit, and groups have no kick, so strangers can guess into open lobbies and can't be removed. Add a join-attempt limit and an admin kick
+
+Batch 7, error handling and redirects (high and medium):
+- [ ] `GlobalExceptionHandler` maps every `RuntimeException` to 400 with its raw message, so Spring's `AccessDeniedException` returns 400 instead of 403, `ResponseStatusException` loses its status, and internal messages (database constraint names, PDF failures) reach clients. Map the specific exceptions to their statuses and return a generic message for everything else
+- [ ] The `returnTo` checks in `ReturnToOAuth2AuthorizationRequestResolver`, `OAuth2AuthenticationSuccessHandler`, and `frontend/lib/return-to.ts` reject `//` but accept `/\`, which browsers treat the same way, so a crafted login link can likely redirect off-site after sign-in (unverified). Reject backslashes and any value that resolves to another origin
+- [ ] Without a Resend key, verification and password-reset links are written to the application log, so anyone with log access can take over an account. Refuse to start in production without an email key, and never log the link
+
+Batch 8, hardening (low):
+- [ ] The frontend sends no Content-Security-Policy, `frame-ancestors`, or `Referrer-Policy`. Add them in `next.config.ts`
+- [ ] The results CSV export writes display names without neutralizing leading `=`, `+`, `-`, or `@`, so a name can run as a spreadsheet formula. Prefix such cells
+- [ ] Swagger UI and `/v3/api-docs` are public in production. Disable them outside development
+- [ ] The AI microservice compares the internal API key with `!=` and would accept an empty header if the key were left blank, and exposes `/metrics` and the FastAPI docs unauthenticated. Use a constant-time compare, refuse to start with an empty key, and restrict or disable those routes
+- [ ] `GroupService.joinGroup` checks the 8-member cap without a lock, so concurrent joins can exceed it. Enforce the cap atomically
+
+Existing test failures:
+- [ ] `frontend/app/(app)/groups/[groupId]/page.test.tsx` never finishes and pins a worker, which stalls `npm run test`
+- [ ] `CatalogSeedingIntegrationTest` fails two cases on `dev` with a `TransientPropertyValueException` (a `Song` referencing an unsaved `User`)
+
+Tests:
+- [ ] Batch 1: integration tests that a pending token is refused on REST and STOMP, that setup can't disable two-factor, that cross-site `/auth` requests without a CSRF token are refused, that a replayed code is refused, and that repeated failures lock the account temporarily
+- [ ] Batch 2: integration tests that a non-member's SUBSCRIBE to group and session topics is refused and that a voice signal reaches only its target
+- [ ] Batch 3: the frontend build, lint, and unit and end-to-end suites pass on the upgraded dependencies, and `npm audit` reports no high or critical advisory
+- [ ] Batch 4: service tests for reconnect on subscribe, disconnect only after the last socket, graceful completion on an empty queue, startup rescheduling, the idle placement timeout, skip-betting eligibility, once-per-round tallies, and guess result delivery
+- [ ] Batch 5: integration tests that non-members can't read results, that a shared song can't be edited through another user's playlist, and that invalid display names and avatar URLs are refused
+- [ ] Batch 6: unit tests that an oversized-dimension image is refused before decoding, and integration tests for the bulk import cap, quota, and up-front access check
+- [ ] Batch 7: handler tests for each mapped status and the generic message, and unit tests for `returnTo` rejecting `/\` and other-origin values on both sides
+- [ ] Batch 8: tests for CSV cell neutralizing, the AI key compare and empty-key startup refusal, and the atomic group cap
