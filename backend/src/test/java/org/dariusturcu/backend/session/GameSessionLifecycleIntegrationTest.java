@@ -1,5 +1,11 @@
 package org.dariusturcu.backend.session;
 
+import org.dariusturcu.backend.websocket.GroupEventType;
+import org.dariusturcu.backend.websocket.GroupBroadcastEvent;
+import org.dariusturcu.backend.websocket.SessionEventType;
+import org.dariusturcu.backend.websocket.SessionBroadcastEvent;
+import org.springframework.test.context.event.RecordApplicationEvents;
+import org.springframework.test.context.event.ApplicationEvents;
 import org.dariusturcu.backend.model.group.CreateGroupRequest;
 import org.dariusturcu.backend.model.group.DjMode;
 import org.dariusturcu.backend.model.group.Group;
@@ -101,7 +107,11 @@ import static org.assertj.core.api.Assertions.assertThat;
 @Testcontainers
 @SpringBootTest(classes = GameSessionLifecycleIntegrationTest.JpaTestConfig.class)
 @Transactional
+@RecordApplicationEvents
 class GameSessionLifecycleIntegrationTest {
+
+    @Autowired
+    private ApplicationEvents applicationEvents;
 
     private static final int MAX_ROUNDS_BEFORE_GIVING_UP = 30;
     private static final int DEFAULT_WIN_CONDITION_CARD_COUNT = 5;
@@ -368,13 +378,26 @@ class GameSessionLifecycleIntegrationTest {
         assertThat(results).isPresent();
         assertThat(results.get().cardCountRanking()).hasSize(2);
         assertThat(results.get().cardCountRanking().get(0).cardCount()).isEqualTo(minimumWinConditionCardCount);
-        assertThat(results.get().cardCountRanking().get(0).rank()).isEqualTo(1);
+        // Both players place correctly every turn, so both reach the win condition in the
+        // same round; the round plays out and they share first place.
+        assertThat(results.get().cardCountRanking()).allSatisfy(ranked -> {
+            assertThat(ranked.cardCount()).isEqualTo(minimumWinConditionCardCount);
+            assertThat(ranked.rank()).isEqualTo(1);
+        });
         assertThat(results.get().mostArtistsGuessed()).hasSize(2);
         assertThat(results.get().mostTitlesGuessed()).hasSize(2);
 
         Group groupAfter = groupRepository.findById(groupId).orElseThrow();
         assertThat(groupAfter.getStatus()).isEqualTo(GroupStatus.OPEN);
         assertThat(groupAfter.getExpiresAt()).isAfter(Instant.now());
+
+        assertThat(applicationEvents.stream(SessionBroadcastEvent.class)
+                .filter(event -> event.type() == SessionEventType.SESSION_ENDED))
+                .singleElement()
+                .satisfies(event -> assertThat(((SessionResultsDTO) event.payload()).groupId()).isEqualTo(groupId));
+        assertThat(applicationEvents.stream(GroupBroadcastEvent.class)
+                .filter(event -> event.type() == GroupEventType.GAME_SESSION_ENDED))
+                .hasSize(1);
     }
 
     @Test
