@@ -12,13 +12,19 @@ import java.util.List;
 import java.util.Optional;
 
 public interface GroupRepository extends JpaRepository<Group, Long> {
+    Optional<Group> findByInviteCode(String inviteCode);
+
+    Optional<Group> findByJoinCode(String joinCode);
+
+    // Joins lock the group row so concurrent joins check the member cap one at a time. Only
+    // for a read-write transaction: Postgres refuses a row lock in a read-only one.
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select group from Group group where group.inviteCode = :inviteCode")
-    Optional<Group> findByInviteCode(String inviteCode);
+    Optional<Group> findByInviteCodeForUpdate(String inviteCode);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select group from Group group where group.joinCode = :joinCode")
-    Optional<Group> findByJoinCode(String joinCode);
+    Optional<Group> findByJoinCodeForUpdate(String joinCode);
 
     boolean existsByJoinCode(String joinCode);
 

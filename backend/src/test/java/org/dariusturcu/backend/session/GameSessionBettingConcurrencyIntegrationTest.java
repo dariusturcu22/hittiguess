@@ -5,6 +5,7 @@ import org.dariusturcu.backend.model.group.CreateGroupRequest;
 import org.dariusturcu.backend.model.group.DjMode;
 import org.dariusturcu.backend.model.group.Group;
 import org.dariusturcu.backend.model.group.GroupDetailDTO;
+import org.dariusturcu.backend.model.group.GroupInvitePreviewDTO;
 import org.dariusturcu.backend.model.group.JoinGroupRequest;
 import org.dariusturcu.backend.model.group.UpdateGroupSettingsRequest;
 import org.dariusturcu.backend.model.mapper.GroupMapper;
@@ -409,6 +410,18 @@ class GameSessionBettingConcurrencyIntegrationTest {
             executorService.shutdownNow();
             SecurityContextHolder.clearContext();
         }
+    }
+
+    @Test
+    void theInvitePreviewStillReadsAGroupOutsideAnyWriteTransaction() {
+        User admin = persistUser("invite-preview-admin-" + System.nanoTime());
+        authenticateAs(admin);
+        GroupDetailDTO createdGroup = groupService.createGroup(new CreateGroupRequest(null, null));
+        SecurityContextHolder.clearContext();
+
+        GroupInvitePreviewDTO preview = groupService.getInvitePreview(createdGroup.inviteCode());
+
+        assertThat(preview.memberCount()).isEqualTo(1);
     }
 
     private boolean joinWhenRaceStarts(User user, String inviteCode, CountDownLatch startLatch) {
