@@ -9,10 +9,12 @@ import org.dariusturcu.backend.model.group.GroupDetailDTO;
 import org.dariusturcu.backend.model.group.Member;
 import org.dariusturcu.backend.model.mapper.SessionMapper;
 import org.dariusturcu.backend.model.session.Bet;
+import org.dariusturcu.backend.model.session.CorrectGuessDTO;
 import org.dariusturcu.backend.model.session.GameSession;
 import org.dariusturcu.backend.model.session.GeneratedSongPreviewDTO;
 import org.dariusturcu.backend.model.session.GenerateDifficultySetRequest;
 import org.dariusturcu.backend.model.session.Guess;
+import org.dariusturcu.backend.model.session.GuessResultDTO;
 import org.dariusturcu.backend.model.session.LeaderboardEntryDTO;
 import org.dariusturcu.backend.model.session.PlaceCardRequest;
 import org.dariusturcu.backend.model.session.PlacementPreviewDTO;
@@ -47,6 +49,7 @@ import org.dariusturcu.backend.scheduling.GameSessionScheduler;
 import org.dariusturcu.backend.security.util.SecurityUtils;
 import org.dariusturcu.backend.util.GuessMatcher;
 import org.dariusturcu.backend.util.YoutubeLinkParser;
+import org.dariusturcu.backend.websocket.GuessResultEvent;
 import org.dariusturcu.backend.websocket.SessionBroadcastEvent;
 import org.dariusturcu.backend.websocket.SessionEventType;
 
@@ -769,6 +772,14 @@ public class GameSessionService {
         round.getGuesses().add(guess);
         guessRepository.save(guess);
         playerRepository.save(player);
+
+        eventPublisher.publishEvent(new GuessResultEvent(player.getUser().getUsername(), sessionId,
+                new GuessResultDTO(round.getId(), isArtistCorrect, isTitleCorrect)));
+        if (isArtistNewlyCorrect || isTitleNewlyCorrect) {
+            eventPublisher.publishEvent(new SessionBroadcastEvent(SessionEventType.GUESS_CORRECT, sessionId,
+                    new CorrectGuessDTO(round.getId(), player.getId(), player.getDisplayName(),
+                            isArtistNewlyCorrect, isTitleNewlyCorrect)));
+        }
     }
 
     private boolean isNonBlank(String value) {

@@ -13,6 +13,9 @@ import org.dariusturcu.backend.model.session.PlacementPreviewDTO;
 import org.dariusturcu.backend.model.session.Player;
 import org.dariusturcu.backend.model.session.PlayerCard;
 import org.dariusturcu.backend.model.session.PlayerStatus;
+import org.dariusturcu.backend.model.session.CorrectGuessDTO;
+import org.dariusturcu.backend.model.session.GuessResultDTO;
+import org.dariusturcu.backend.websocket.GuessResultEvent;
 import org.dariusturcu.backend.model.session.Round;
 import org.dariusturcu.backend.model.session.SessionResultsDTO;
 import org.dariusturcu.backend.model.session.RoundStatus;
@@ -188,6 +191,7 @@ class GameSessionServiceTest {
         player.setSession(session);
         User user = new User();
         user.setId(id);
+        user.setUsername("user-" + id);
         player.setUser(user);
         player.setDisplayName("player-" + id);
         player.setTurnOrder(turnOrder);
@@ -1047,6 +1051,57 @@ class GameSessionServiceTest {
 
         assertThat(bystander.getTotalArtistsGuessed()).isEqualTo(1);
         assertThat(bystander.getTotalTitlesGuessed()).isEqualTo(1);
+    }
+
+    // --- Guess results ----------------------------------------------------------------
+
+    @Test
+    void aGuessResultGoesOnlyToTheGuessersOwnQueue() {
+        GameSession session = session(DjMode.ROTATING, 10);
+        Player active = player(session, 1L, 0, PlayerStatus.ACTIVE);
+        Player dj = player(session, 2L, 1, PlayerStatus.ACTIVE);
+        Player bystander = player(session, 3L, 2, PlayerStatus.ACTIVE);
+        Song roundSong = song(200, "Bohemian Rhapsody", 1975, artist("Queen", ArtistRole.MAIN, 0));
+        Round round = round(session, 10L, 1, active, dj, roundSong);
+
+        gameSessionService.submitTitleArtistGuess(session.getId(), bystander.getUser().getId(),
+                new TitleArtistGuessRequest("Queen", "Wrong Title"));
+
+        verify(eventPublisher).publishEvent(new GuessResultEvent(bystander.getUser().getUsername(), session.getId(),
+                new GuessResultDTO(round.getId(), true, false)));
+    }
+
+    @Test
+    void aNewlyCorrectGuessIsBroadcastWithoutTheAnswerAndOnlyOnce() {
+        GameSession session = session(DjMode.ROTATING, 10);
+        Player active = player(session, 1L, 0, PlayerStatus.ACTIVE);
+        Player dj = player(session, 2L, 1, PlayerStatus.ACTIVE);
+        Player bystander = player(session, 3L, 2, PlayerStatus.ACTIVE);
+        Song roundSong = song(200, "Bohemian Rhapsody", 1975, artist("Queen", ArtistRole.MAIN, 0));
+        Round round = round(session, 10L, 1, active, dj, roundSong);
+
+        gameSessionService.submitTitleArtistGuess(session.getId(), bystander.getUser().getId(),
+                new TitleArtistGuessRequest("Queen", ""));
+        gameSessionService.submitTitleArtistGuess(session.getId(), bystander.getUser().getId(),
+                new TitleArtistGuessRequest("Queen", ""));
+
+        verify(eventPublisher).publishEvent(new SessionBroadcastEvent(SessionEventType.GUESS_CORRECT, session.getId(),
+                new CorrectGuessDTO(round.getId(), bystander.getId(), bystander.getDisplayName(), true, false)));
+    }
+
+    @Test
+    void aWrongGuessIsNotBroadcast() {
+        GameSession session = session(DjMode.ROTATING, 10);
+        Player active = player(session, 1L, 0, PlayerStatus.ACTIVE);
+        Player dj = player(session, 2L, 1, PlayerStatus.ACTIVE);
+        Player bystander = player(session, 3L, 2, PlayerStatus.ACTIVE);
+        Song roundSong = song(200, "Bohemian Rhapsody", 1975, artist("Queen", ArtistRole.MAIN, 0));
+        round(session, 10L, 1, active, dj, roundSong);
+
+        gameSessionService.submitTitleArtistGuess(session.getId(), bystander.getUser().getId(),
+                new TitleArtistGuessRequest("ABBA", "Dancing Queen"));
+
+        verify(eventPublisher, never()).publishEvent(any(SessionBroadcastEvent.class));
     }
 
     // --- Skipping the betting window -------------------------------------------------
