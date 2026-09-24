@@ -2,6 +2,7 @@ package org.dariusturcu.backend.service;
 
 import org.dariusturcu.backend.exception.ConflictException;
 import org.dariusturcu.backend.exception.EmailNotVerifiedException;
+import org.dariusturcu.backend.exception.RateLimitExceededException;
 import org.dariusturcu.backend.exception.ResourceNotFoundException;
 import org.dariusturcu.backend.model.EmailVerificationToken;
 import org.dariusturcu.backend.model.PasswordResetToken;
@@ -39,6 +40,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -64,6 +66,8 @@ class AuthServiceTest {
     private EmailService emailService;
     @Mock
     private TwoFactorService twoFactorService;
+    @Mock
+    private LoginAttemptService loginAttemptService;
 
     private final PasswordEncoder passwordEncoder = new BCryptPasswordEncoder(4);
 
@@ -73,7 +77,7 @@ class AuthServiceTest {
     void setUp() {
         authService = new AuthService(userRepository, refreshTokenRepository, emailVerificationTokenRepository,
                 passwordResetTokenRepository, passwordEncoder, jwtUtil, authenticationManager,
-                emailService, twoFactorService);
+                emailService, twoFactorService, loginAttemptService);
         ReflectionTestUtils.setField(authService, "emailVerificationTokenExpirationMillis", TOKEN_EXPIRATION_MILLIS);
         ReflectionTestUtils.setField(authService, "passwordResetTokenExpirationMillis", TOKEN_EXPIRATION_MILLIS);
         ReflectionTestUtils.setField(authService, "frontendUrl", "http://localhost:3000");
@@ -248,6 +252,84 @@ class AuthServiceTest {
         AuthResult result = authService.verifyTwoFactor("pending-token", "123456");
 
         assertThat(result.accessToken()).isEqualTo("access-token");
+        verify(loginAttemptService).resetFailures(user);
+    }
+
+    @Test
+    void loginForALockedAccountIsRefusedBeforeThePasswordIsChecked() {
+        User user = buildUser(true, false);
+        when(userRepository.findUserByEmail("player@example.com")).thenReturn(Optional.of(user));
+        doThrow(new RateLimitExceededException("locked")).when(loginAttemptService).requireNotLocked(user);
+
+        assertThatThrownBy(() -> authService.login(new LoginRequest("player@example.com", "password123", false)))
+                .isInstanceOf(RateLimitExceededException.class);
+
+        verify(authenticationManager, never()).authenticate(any());
+    }
+
+    @Test
+    void loginWithAWrongPasswordRecordsAFailedAttempt() {
+        User user = buildUser(true, false);
+        when(userRepository.findUserByEmail("player@example.com")).thenReturn(Optional.of(user));
+        when(authenticationManager.authenticate(any())).thenThrow(new BadCredentialsException("Bad credentials"));
+
+        assertThatThrownBy(() -> authService.login(new LoginRequest("player@example.com", "wrong-password", false)))
+                .isInstanceOf(BadCredentialsException.class);
+
+        verify(loginAttemptService).recordFailure(1L);
+        verify(loginAttemptService, never()).resetFailures(any());
+    }
+
+    @Test
+    void aCompletedLoginResetsTheFailedAttempts() {
+        User user = buildUser(true, false);
+        when(userRepository.findUserByEmail("player@example.com")).thenReturn(Optional.of(user));
+        when(jwtUtil.generateToken(user)).thenReturn("access-token");
+        when(jwtUtil.generateRefreshToken()).thenReturn("refresh-token");
+        when(jwtUtil.getRefreshExpirationSeconds()).thenReturn(604800L);
+
+        authService.login(new LoginRequest("player@example.com", "password123", false));
+
+        verify(loginAttemptService).resetFailures(user);
+    }
+
+    @Test
+    void aCorrectPasswordOnATwoFactorAccountDoesNotResetTheFailedAttempts() {
+        User user = buildUser(true, true);
+        when(userRepository.findUserByEmail("player@example.com")).thenReturn(Optional.of(user));
+        when(jwtUtil.generateTwoFactorPendingToken(user)).thenReturn("pending-token");
+
+        authService.login(new LoginRequest("player@example.com", "password123", false));
+
+        verify(loginAttemptService, never()).resetFailures(any());
+    }
+
+    @Test
+    void aWrongTwoFactorCodeRecordsAFailedAttempt() {
+        User user = buildUser(true, true);
+        when(jwtUtil.isTwoFactorPendingToken("pending-token")).thenReturn(true);
+        when(jwtUtil.extractUserId("pending-token")).thenReturn(1L);
+        when(userRepository.findById(1L)).thenReturn(Optional.of(user));
+        when(twoFactorService.verifyLoginCode(user, "000000")).thenReturn(false);
+
+        assertThatThrownBy(() -> authService.verifyTwoFactor("pending-token", "000000"))
+                .isInstanceOf(BadCredentialsException.class);
+
+        verify(loginAttemptService).recordFailure(1L);
+    }
+
+    @Test
+    void verifyTwoFactorForALockedAccountIsRefusedBeforeTheCodeIsChecked() {
+        User user = buildUser(true, true);
+        when(jwtUtil.isTwoFactorPendingToken("pending-token")).thenReturn(true);
+        when(jwtUtil.extractUserId("pending-token")).thenReturn(1L);
+        when(userRepository.findById(1L)).thenReturn(Optional.of(user));
+        doThrow(new RateLimitExceededException("locked")).when(loginAttemptService).requireNotLocked(user);
+
+        assertThatThrownBy(() -> authService.verifyTwoFactor("pending-token", "123456"))
+                .isInstanceOf(RateLimitExceededException.class);
+
+        verify(twoFactorService, never()).verifyLoginCode(any(), anyString());
     }
 
     @Test

@@ -10,6 +10,7 @@ import org.dariusturcu.backend.security.CustomUserDetailsService;
 import org.dariusturcu.backend.security.util.JwtUtil;
 import org.dariusturcu.backend.service.AuthService;
 import org.dariusturcu.backend.service.EmailService;
+import org.dariusturcu.backend.service.LoginAttemptService;
 import org.dariusturcu.backend.service.TwoFactorService;
 import org.dariusturcu.backend.util.CookieUtil;
 import org.flywaydb.core.Flyway;
@@ -101,15 +102,21 @@ class AuthRateLimitIntegrationTest {
         }
 
         @Bean
+        LoginAttemptService loginAttemptService(UserRepository userRepository) {
+            return new LoginAttemptService(userRepository);
+        }
+
+        @Bean
         AuthService authService(UserRepository userRepository, RefreshTokenRepository refreshTokenRepository,
                                  EmailVerificationTokenRepository emailVerificationTokenRepository,
                                  PasswordResetTokenRepository passwordResetTokenRepository,
                                  PasswordEncoder passwordEncoder, JwtUtil jwtUtil,
                                  AuthenticationManager authenticationManager,
-                                 EmailService emailService, TwoFactorService twoFactorService) {
+                                 EmailService emailService, TwoFactorService twoFactorService,
+                                 LoginAttemptService loginAttemptService) {
             return new AuthService(userRepository, refreshTokenRepository, emailVerificationTokenRepository,
                     passwordResetTokenRepository, passwordEncoder, jwtUtil, authenticationManager,
-                    emailService, twoFactorService);
+                    emailService, twoFactorService, loginAttemptService);
         }
 
         @Bean
