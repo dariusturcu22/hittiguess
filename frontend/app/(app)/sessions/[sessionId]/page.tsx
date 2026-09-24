@@ -9,7 +9,7 @@ import { useGetGroup } from "@/hooks/generated/group-management/group-management
 import { useGetCurrentUser } from "@/hooks/generated/user-management/user-management";
 import type { PlayerCardDTO } from "@/hooks/models/playerCardDTO";
 import type { PlayerDTO } from "@/hooks/models/playerDTO";
-import { PLACEMENT_PREVIEW_EVENT, useGameSessionRealtime, type SessionRoundEvent } from "@/hooks/use-game-session-realtime";
+import { GUESS_CORRECT_EVENT, PLACEMENT_PREVIEW_EVENT, useGameSessionRealtime, type GuessResult, type SessionRoundEvent } from "@/hooks/use-game-session-realtime";
 import { useAudioLevels } from "@/hooks/use-audio-levels";
 import { useGroupRealtime } from "@/hooks/use-group-realtime";
 import { requestDjTabAudioShare, useIsTabAudioShared } from "@/hooks/use-local-audio-stream";
@@ -42,6 +42,7 @@ const FIRST_ROUND_NUMBER = 1;
 const ROUND_INTRO_SECONDS = 3;
 const ROUND_INTRO_SEEN_KEY_PREFIX = "hittiguess-round-intro-seen-";
 const TURN_NOTICE_DURATION_MILLISECONDS = 4_000;
+const CORRECT_GUESS_TOAST_DURATION_MILLISECONDS = 4_000;
 const CLOCK_TICK_MILLISECONDS = 250;
 const DROP_ZONE_VERTICAL_REACH_PIXELS = 140;
 const EDGE_SCROLL_ZONE_PIXELS = 72;
@@ -61,6 +62,26 @@ const ROUND_STARTED_EVENT = "ROUND_STARTED";
 const NEXT_ROUND_EVENT = "NEXT_ROUND";
 
 interface PageProps { params: Promise<{ sessionId: string }>; }
+
+interface CorrectGuessToast {
+  playerId?: number;
+  displayName?: string;
+  artistGuessed?: boolean;
+  titleGuessed?: boolean;
+}
+
+function guessResultMessage(result: GuessResult): string {
+  if (result.artistCorrect && result.titleCorrect) return "You got the artist and the title!";
+  if (result.artistCorrect) return "You got the artist.";
+  if (result.titleCorrect) return "You got the title.";
+  return "Not quite. Try again.";
+}
+
+function correctGuessHeadline(toast: CorrectGuessToast): string {
+  const name = toast.displayName ?? "A player";
+  if (toast.artistGuessed && toast.titleGuessed) return `${name} guessed the artist and the title`;
+  return toast.artistGuessed ? `${name} guessed the artist` : `${name} guessed the title`;
+}
 
 interface PointerDrag {
   pointerX: number;
@@ -183,6 +204,9 @@ export default function GameSessionPage({ params }: PageProps) {
   const [feedbackMessage, setFeedbackMessage] = useState("");
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [isTurnNoticeVisible, setIsTurnNoticeVisible] = useState(false);
+  const [correctGuessToast, setCorrectGuessToast] = useState<CorrectGuessToast | null>(null);
+  const [isGuessResultCorrect, setIsGuessResultCorrect] = useState<boolean | null>(null);
+  const currentPlayerIdReference = useRef<number | undefined>(undefined);
   const [isIntroDismissed, setIsIntroDismissed] = useState(() => typeof window !== "undefined" && readIntroSeen(sessionId));
   const [now, setNow] = useState(() => Date.now());
   const trackReference = useRef<HTMLDivElement>(null);
@@ -198,23 +222,42 @@ export default function GameSessionPage({ params }: PageProps) {
     setPreviewGap(null);
     setIsLinkOutOpen(false);
     setFeedbackMessage("");
+    setIsGuessResultCorrect(null);
   }
+
+  useEffect(() => {
+    currentPlayerIdReference.current = currentPlayer?.id;
+  });
 
   const handleRoundEvent = useCallback((event: SessionRoundEvent) => {
     if (event.type === PLACEMENT_PREVIEW_EVENT) {
       setPreviewGap({ roundId: event.payload?.roundId, position: event.payload?.position ?? null });
       return;
     }
+    if (event.type === GUESS_CORRECT_EVENT) {
+      if (event.payload?.playerId !== currentPlayerIdReference.current) setCorrectGuessToast(event.payload ?? null);
+      return;
+    }
     if (event.type === NEXT_ROUND_EVENT || event.type === ROUND_STARTED_EVENT) {
       setIsTurnNoticeVisible(true);
     }
   }, []);
-  const realtime = useGameSessionRealtime(sessionId, handleRoundEvent);
+  const handleGuessResult = useCallback((result: GuessResult) => {
+    setIsGuessResultCorrect(Boolean(result.artistCorrect || result.titleCorrect));
+    setFeedbackMessage(guessResultMessage(result));
+  }, []);
+  const realtime = useGameSessionRealtime(sessionId, handleRoundEvent, handleGuessResult);
   const { placeBet, previewPlacement } = realtime;
 
   useEffect(() => {
     if (session?.status === COMPLETED_SESSION_STATUS) router.replace(`/sessions/${sessionId}/results`);
   }, [router, session?.status, sessionId]);
+
+  useEffect(() => {
+    if (!correctGuessToast) return;
+    const timeout = window.setTimeout(() => setCorrectGuessToast(null), CORRECT_GUESS_TOAST_DURATION_MILLISECONDS);
+    return () => window.clearTimeout(timeout);
+  }, [correctGuessToast]);
 
   useEffect(() => {
     if (!isTurnNoticeVisible) return;
@@ -241,6 +284,9 @@ export default function GameSessionPage({ params }: PageProps) {
   const myBet = bets.find((bet) => bet.playerId === currentPlayer?.id);
   const takenBetPositions = bets.flatMap((bet) => (bet.position === undefined ? [] : [bet.position]));
   const tokenCount = currentPlayer?.tokenCount ?? 0;
+  const hasSkippedBetting = currentPlayer?.id !== undefined && (currentRound?.bettingSkippedPlayerIds ?? []).includes(currentPlayer.id);
+  // Only a player who could still bet can skip: the window closes once every token holder has bet or skipped.
+  const canSkipBetting = !isActivePlayer && !isDj && !myBet && tokenCount > 0 && !hasSkippedBetting;
   const isAwaitingPlacement = roundStatus === AWAITING_PLACEMENT_STATUS;
   const canStakeBet = role === "spectator" && tokenCount > 0 && !myBet && (roundStatus === COUNTDOWN_STATUS || roundStatus === BETTING_STATUS);
   const activePlacementGap = placementDrag ? placementDrag.hoverGap : droppedGap;
@@ -387,7 +433,8 @@ export default function GameSessionPage({ params }: PageProps) {
     if (realtime.submitGuess(artistGuess, titleGuess)) {
       setArtistGuess("");
       setTitleGuess("");
-      setFeedbackMessage("Guess sent. Keep listening for the result.");
+      setIsGuessResultCorrect(null);
+      setFeedbackMessage("Checking your guess…");
     } else {
       setFeedbackMessage("The game connection is not ready. Try again in a moment.");
     }
@@ -504,7 +551,8 @@ export default function GameSessionPage({ params }: PageProps) {
     aboveTimeline = <div className="flex flex-col items-center gap-1.5">
       <span className="gameplay-timer-blink font-display text-[28px] text-destructive">{formatClock(secondsUntil(currentRound?.bettingWindowEndsAt, now))}</span>
       <span className="text-[11px] font-bold uppercase tracking-[2px] text-muted-foreground">Betting closes</span>
-      <button type="button" onClick={skipBetting} className="mt-1 rounded-full border-2 border-border bg-card px-3.5 py-1 text-[11px] font-semibold text-card-foreground transition-colors hover:border-primary">Skip betting</button>
+      {hasSkippedBetting ? <span className="mt-1 text-[11px] text-muted-foreground">Skipped. Waiting for the others.</span> : null}
+      {canSkipBetting ? <button type="button" onClick={skipBetting} className="mt-1 rounded-full border-2 border-border bg-card px-3.5 py-1 text-[11px] font-semibold text-card-foreground transition-colors hover:border-primary">Skip betting</button> : null}
     </div>;
   } else if (isRevealed && currentRound?.nextRoundStartsAt) {
     aboveTimeline = <div className="flex flex-col items-center gap-3.5">
@@ -545,6 +593,12 @@ export default function GameSessionPage({ params }: PageProps) {
       <span className="shrink-0 text-xs text-muted-foreground">Round {roundNumber}</span>
     </div> : null}
 
+    {correctGuessToast ? <div role="status" className="absolute right-6 top-24 z-30 flex items-center gap-2.5 rounded-2xl border-2 border-border bg-card px-4 py-2.5 shadow-[4px_4px_0_var(--shadow-color)] animate-in fade-in-0 slide-in-from-right-4 sm:right-14">
+      <PlayerAvatar name={correctGuessToast.displayName} colorIndex={Math.max(0, players.findIndex((player) => player.id === correctGuessToast.playerId))} />
+      <span className="text-xs font-bold text-card-foreground">{correctGuessHeadline(correctGuessToast)}</span>
+      <Check className="size-4 text-green" strokeWidth={3} />
+    </div> : null}
+
     <header className="flex shrink-0 items-start justify-between gap-4">
       <div className="min-w-0">
         <h1 className="font-display text-[26px] text-foreground [text-shadow:3px_3px_0_var(--text-shadow-on-page)] sm:text-[32px]">Round {roundNumber}</h1>
@@ -570,7 +624,7 @@ export default function GameSessionPage({ params }: PageProps) {
       {aboveTimeline ? <div className="absolute bottom-[calc(50%+132px)] left-1/2 flex -translate-x-1/2 justify-center">{aboveTimeline}</div> : null}
       {caption ? <p className="absolute left-1/2 top-[calc(50%+98px)] w-max max-w-[calc(100%-16px)] -translate-x-1/2 text-center text-xs text-muted-foreground">{caption}</p> : null}
       {belowTimeline ? <div className="absolute left-1/2 top-[calc(50%+148px)] flex w-full -translate-x-1/2 justify-center px-3">{belowTimeline}</div> : null}
-      <p className="absolute bottom-0 left-1/2 w-max max-w-full -translate-x-1/2 text-center text-xs text-muted-foreground" aria-live="polite">{feedbackMessage}</p>
+      <p className={`absolute bottom-0 left-1/2 w-max max-w-full -translate-x-1/2 text-center text-xs ${isGuessResultCorrect === true ? "font-semibold text-green" : isGuessResultCorrect === false ? "text-destructive" : "text-muted-foreground"}`} aria-live="polite">{feedbackMessage}</p>
     </section>
 
     {isChatOpen ? <GroupChatOverlay groupId={session.groupId ?? 0} connectionState={groupRealtime.connectionState} sendChat={groupRealtime.sendChat} onClose={() => setIsChatOpen(false)} /> : null}
