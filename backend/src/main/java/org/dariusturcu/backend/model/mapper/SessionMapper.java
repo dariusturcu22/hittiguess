@@ -68,6 +68,7 @@ public class SessionMapper {
                 isRevealedOrLater ? round.getSong().getTitle() : null,
                 isRevealedOrLater ? round.getSong().getReleaseYear() : null,
                 isRevealedOrLater ? round.getSong().getColor() : null,
+                round.getStatus() == RoundStatus.AWAITING_PLACEMENT ? round.getPlacementEndsAt() : null,
                 plusOrNull(round.getLockedInAt(), RoundTiming.LOCK_IN_COUNTDOWN),
                 round.getBettingWindowEndsAt(),
                 round.getStatus() == RoundStatus.SCORED ? plusOrNull(round.getScoredAt(), RoundTiming.REVEAL_HOLD) : null);

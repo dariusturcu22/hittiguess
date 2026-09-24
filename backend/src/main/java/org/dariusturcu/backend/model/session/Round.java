@@ -46,6 +46,8 @@ public class Round {
     @Column(nullable = false)
     private RoundStatus status;
 
+    private Instant placementEndsAt;
+
     // Null until the active player locks in a placement.
     private Integer placedPosition;
     private Boolean placementCorrect;

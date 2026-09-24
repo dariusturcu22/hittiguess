@@ -22,6 +22,7 @@ public record RoundDTO(
         String revealedTitle,
         Integer revealedYear,
         String revealedColor,
+        Instant placementEndsAt,
         Instant countdownEndsAt,
         Instant bettingWindowEndsAt,
         Instant nextRoundStartsAt) {

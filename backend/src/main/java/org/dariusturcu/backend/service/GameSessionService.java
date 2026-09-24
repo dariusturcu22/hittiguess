@@ -787,6 +787,7 @@ public class GameSessionService {
         round.setDjPlayer(djPlayer);
         round.setSong(song);
         round.setStatus(RoundStatus.AWAITING_PLACEMENT);
+        round.setPlacementEndsAt(Instant.now().plus(RoundTiming.PLACEMENT_WINDOW));
         Round savedRound = roundRepository.save(round);
 
         session.setCurrentRoundNumber(savedRound.getRoundNumber());
@@ -796,6 +797,8 @@ public class GameSessionService {
         if (savedRound.getRoundNumber() > 1) {
             publishRoundEvent(SessionEventType.NEXT_ROUND, session, savedRound);
         }
+        gameSessionScheduler.scheduleAfter(RoundTiming.PLACEMENT_WINDOW,
+                () -> self.placementTimeoutEffect(savedRound.getId()));
     }
 
     private Long popNextSongId(GameSession session) {
@@ -919,6 +922,22 @@ public class GameSessionService {
             roundRepository.save(currentRound);
             self.scoreRoundEffect(currentRound.getId());
         }
+    }
+
+    // Effect method for the idle placement timer. The active player is still connected, so
+    // unlike the turn timeout they aren't marked Left: the card is discarded exactly as a
+    // wrong placement with no bets would be, and the game moves on. A no-op once the round
+    // has locked in or been scored.
+    public void placementTimeoutEffect(Long roundId) {
+        Round round = roundRepository.findById(roundId).orElse(null);
+        if (round == null || round.getStatus() != RoundStatus.AWAITING_PLACEMENT
+                || round.getSession().getStatus() != SessionStatus.IN_PROGRESS) {
+            return;
+        }
+        round.setPlacementCorrect(false);
+        round.setPlacedPosition(null);
+        roundRepository.save(round);
+        self.scoreRoundEffect(roundId);
     }
 
     // Effect method for the active-player turn-timeout timer. A no-op if the player

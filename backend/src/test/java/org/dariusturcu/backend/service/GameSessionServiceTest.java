@@ -876,6 +876,57 @@ class GameSessionServiceTest {
         verify(groupService).recordGameSessionEnded(session.getGroupId());
     }
 
+    // --- Idle placement timeout -----------------------------------------------------
+
+    @Test
+    void startingARoundSetsAPlacementDeadlineAndSchedulesItsTimeout() {
+        GameSession session = session(DjMode.ROTATING, 10);
+        Player playerA = player(session, 1L, 0, PlayerStatus.ACTIVE);
+        Player playerB = player(session, 2L, 1, PlayerStatus.ACTIVE);
+        Round round = round(session, 10L, 1, playerA, playerB, song(200, "Round Song", 2000));
+        round.setStatus(RoundStatus.SCORED);
+        Instant beforeAdvance = Instant.now();
+
+        gameSessionService.advanceRoundEffect(round.getId());
+
+        org.mockito.ArgumentCaptor<Round> captor = org.mockito.ArgumentCaptor.forClass(Round.class);
+        verify(roundRepository, org.mockito.Mockito.atLeastOnce()).save(captor.capture());
+        Round nextRound = captor.getAllValues().getLast();
+        assertThat(nextRound.getPlacementEndsAt()).isAfterOrEqualTo(beforeAdvance.plus(RoundTiming.PLACEMENT_WINDOW));
+        verify(gameSessionScheduler).scheduleAfter(eq(RoundTiming.PLACEMENT_WINDOW), any());
+    }
+
+    @Test
+    void anIdleActivePlayersCardIsDiscardedWithoutMarkingThemLeft() {
+        GameSession session = session(DjMode.ROTATING, 10);
+        Player active = player(session, 1L, 0, PlayerStatus.ACTIVE);
+        Player dj = player(session, 2L, 1, PlayerStatus.ACTIVE);
+        anchorCard(active, song(100, "Anchor", 1990));
+        Round round = round(session, 10L, 1, active, dj, song(200, "Round Song", 2000));
+
+        gameSessionService.placementTimeoutEffect(round.getId());
+
+        assertThat(round.getStatus()).isEqualTo(RoundStatus.SCORED);
+        assertThat(round.getPlacementCorrect()).isFalse();
+        assertThat(active.getTimeline()).hasSize(1);
+        assertThat(active.getStatus()).isEqualTo(PlayerStatus.ACTIVE);
+    }
+
+    @Test
+    void thePlacementTimeoutIsANoOpOnceTheCardIsLockedIn() {
+        GameSession session = session(DjMode.ROTATING, 10);
+        Player active = player(session, 1L, 0, PlayerStatus.ACTIVE);
+        Player dj = player(session, 2L, 1, PlayerStatus.ACTIVE);
+        Round round = round(session, 10L, 1, active, dj, song(200, "Round Song", 2000));
+        round.setStatus(RoundStatus.COUNTDOWN);
+        round.setPlacedPosition(0);
+
+        gameSessionService.placementTimeoutEffect(round.getId());
+
+        assertThat(round.getStatus()).isEqualTo(RoundStatus.COUNTDOWN);
+        assertThat(round.getPlacedPosition()).isZero();
+    }
+
     // --- Artist and title tallies ------------------------------------------------------
 
     @Test
