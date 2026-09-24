@@ -76,6 +76,7 @@ Every rate-limited request the core service rejects, whichever limiter caught it
 | GET | `/api/groups/{groupId}/voice/turn-credentials` | `GroupController`, member only, the ICE server list a client feeds `RTCPeerConnection`, STUN always, Cloudflare TURN only when a key is configured, story 12 |
 | GET | `/api/sessions/{sessionId}` | `GameSessionController`, story 10 |
 | GET | `/api/sessions/{sessionId}/link-out` | `GameSessionController`, the current round's YouTube watch URL for the round's DJ only, refused after reveal, story 9 |
+| GET | `/api/sessions/{sessionId}/guess-state` | `GameSessionController`, the calling player's artist and title guessing state for the current turn: artists credited, artists guessed, whether artist guessing or the title is closed, and whether the turn's token was earned |
 | GET | `/api/sessions/groups/{groupId}/results` | `GameSessionController`, a completed session's downloadable results export, story 10 |
 | POST | `/api/admin/catalog-seeding/enqueue` | `AdminCatalogSeedingController`, admin only via `AdminAccessGuard`, body is `AdminCatalogSeedingRequest` (`playlistLink`, `youtubeIds`, both nullable), expands a submitted playlist link through the AI microservice and merges it with any submitted IDs or links before enqueueing whatever the catalog does not already have, story 40 |
 | GET | `/api/admin/catalog-seeding/status` | `AdminCatalogSeedingController`, admin only, the backlog view (pending, done, failed counts), story 40 |

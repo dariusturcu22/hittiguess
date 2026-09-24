@@ -243,11 +243,14 @@ export default function GroupLobbyPage({ params }: PageProps) {
     .map((playlist) => playlist.name)
     .join(", ");
 
+  // The session query keeps its last result cached after the game ends, so only a
+  // group that is still locked counts as being in a game.
+  const isGroupInGame = groupQuery.data?.status === "LOCKED";
   useEffect(() => {
-    if (activeSessionQuery.data?.id) {
+    if (isGroupInGame && activeSessionQuery.data?.id) {
       router.replace(`/sessions/${activeSessionQuery.data.id}`);
     }
-  }, [activeSessionQuery.data?.id, router]);
+  }, [activeSessionQuery.data?.id, isGroupInGame, router]);
 
   function refreshGroup() {
     queryClient.invalidateQueries({ queryKey: getGetGroupQueryKey(groupId) });

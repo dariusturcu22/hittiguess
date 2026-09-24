@@ -52,6 +52,7 @@ public class SessionMapper {
         return new RoundDTO(
                 round.getId(),
                 round.getRoundNumber(),
+                round.getGameRoundNumber(),
                 round.getActivePlayer().getId(),
                 round.getDjPlayer().getId(),
                 round.getStatus(),
@@ -92,7 +93,7 @@ public class SessionMapper {
                 session.getStatus(),
                 session.getDjMode(),
                 session.getWinConditionCardCount(),
-                session.getCurrentRoundNumber(),
+                session.getCurrentGameRoundNumber(),
                 session.getPlayers().stream().map(this::toPlayerDTO).toList(),
                 currentRound != null ? toRoundDTO(currentRound) : null);
     }

@@ -21,6 +21,7 @@ import type {
 
 import type {
   GameSessionDTO,
+  GuessStateDTO,
   RoundLinkOutDTO,
   SessionResultsDTO
 } from '../../models';
@@ -220,6 +221,98 @@ export function useGetCurrentRoundLinkOut<TData = Awaited<ReturnType<typeof getC
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
   const queryOptions = getGetCurrentRoundLinkOutQueryOptions(sessionId,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+/**
+ * @summary Get the current round's artist and title guessing state for the calling player
+ */
+export const getGuessState = (
+    sessionId: number,
+ options?: SecondParameter<typeof customInstance>,signal?: AbortSignal
+) => {
+
+
+      return customInstance<GuessStateDTO>(
+      {url: `/api/sessions/${sessionId}/guess-state`, method: 'GET', signal
+    },
+      options);
+    }
+
+
+
+
+export const getGetGuessStateQueryKey = (sessionId: number,) => {
+    return [
+    `/api/sessions/${sessionId}/guess-state`
+    ] as const;
+    }
+
+
+export const getGetGuessStateQueryOptions = <TData = Awaited<ReturnType<typeof getGuessState>>, TError = unknown>(sessionId: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getGuessState>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetGuessStateQueryKey(sessionId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getGuessState>>> = ({ signal }) => getGuessState(sessionId, requestOptions, signal);
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: sessionId !== null && sessionId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getGuessState>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetGuessStateQueryResult = NonNullable<Awaited<ReturnType<typeof getGuessState>>>
+export type GetGuessStateQueryError = unknown
+
+
+export function useGetGuessState<TData = Awaited<ReturnType<typeof getGuessState>>, TError = unknown>(
+ sessionId: number, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getGuessState>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getGuessState>>,
+          TError,
+          Awaited<ReturnType<typeof getGuessState>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetGuessState<TData = Awaited<ReturnType<typeof getGuessState>>, TError = unknown>(
+ sessionId: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getGuessState>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getGuessState>>,
+          TError,
+          Awaited<ReturnType<typeof getGuessState>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetGuessState<TData = Awaited<ReturnType<typeof getGuessState>>, TError = unknown>(
+ sessionId: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getGuessState>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary Get the current round's artist and title guessing state for the calling player
+ */
+
+export function useGetGuessState<TData = Awaited<ReturnType<typeof getGuessState>>, TError = unknown>(
+ sessionId: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getGuessState>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetGuessStateQueryOptions(sessionId,options)
 
   const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 

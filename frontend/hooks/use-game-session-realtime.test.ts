@@ -6,9 +6,18 @@ import { createElement, type ReactNode } from "react";
 import { useGameSessionRealtime } from "./use-game-session-realtime";
 
 let roundMessageHandler: ((message: { body: string }) => void) | undefined;
+let endedMessageHandler: ((message: { body: string }) => void) | undefined;
 
 vi.mock("@/hooks/generated/game-session/game-session", () => ({
   getGetSessionQueryKey: (sessionId: number) => ["session", sessionId],
+  getGetGuessStateQueryKey: (sessionId: number) => ["guess-state", sessionId],
+  getGetActiveSessionForGroupQueryKey: (groupId: number) => [`/api/sessions/groups/${groupId}/active`],
+  getGetResultsQueryKey: (groupId: number) => [`/api/sessions/groups/${groupId}/results`],
+}));
+
+vi.mock("@/hooks/generated/group-management/group-management", () => ({
+  getGetActiveMembershipQueryKey: () => ["active-membership"],
+  getGetGroupQueryKey: (groupId: number) => ["group", groupId],
 }));
 
 vi.mock("@stomp/stompjs", () => ({
@@ -20,6 +29,9 @@ vi.mock("@stomp/stompjs", () => ({
       if (destination.endsWith("/round")) {
         roundMessageHandler = callback;
       }
+      if (destination.endsWith("/ended")) {
+        endedMessageHandler = callback;
+      }
     }
     get connected() { return true; }
     publish() {}
@@ -28,6 +40,7 @@ vi.mock("@stomp/stompjs", () => ({
 
 afterEach(() => {
   roundMessageHandler = undefined;
+  endedMessageHandler = undefined;
   vi.restoreAllMocks();
 });
 
@@ -69,5 +82,22 @@ describe("useGameSessionRealtime", () => {
     roundMessageHandler?.({ body: JSON.stringify({ type: "BETTING_OPENED", sessionId: 1 }) });
 
     expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ["session", 1] });
+  });
+
+  it("hands the ended event's group to the page and clears the dead session's cached lookups", () => {
+    const queryClient = new QueryClient();
+    queryClient.setQueryData(["/api/sessions/groups/4/active"], { id: 1 });
+    const invalidateQueries = vi.spyOn(queryClient, "invalidateQueries");
+    const onSessionEnded = vi.fn();
+    renderHook(() => useGameSessionRealtime(1, undefined, undefined, onSessionEnded), {
+      wrapper: ({ children }: { children: ReactNode }) => createElement(QueryClientProvider, { client: queryClient }, children),
+    });
+
+    endedMessageHandler?.({ body: JSON.stringify({ type: "SESSION_ENDED", sessionId: 1, payload: { groupId: 4 } }) });
+
+    expect(onSessionEnded).toHaveBeenCalledWith({ groupId: 4 });
+    expect(queryClient.getQueryData(["/api/sessions/groups/4/active"])).toBeUndefined();
+    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ["group", 4] });
+    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ["active-membership"] });
   });
 });

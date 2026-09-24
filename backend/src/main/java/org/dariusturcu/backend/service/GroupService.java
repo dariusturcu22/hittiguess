@@ -218,7 +218,9 @@ public class GroupService {
         group.setExpiresAt(Instant.now().plus(BETWEEN_SESSION_WINDOW));
 
         Group savedGroup = groupRepository.save(group);
-        return groupMapper.toDetailDTO(savedGroup, null);
+        GroupDetailDTO result = groupMapper.toDetailDTO(savedGroup, null);
+        eventPublisher.publishEvent(new GroupBroadcastEvent(GroupEventType.GAME_SESSION_ENDED, result));
+        return result;
     }
 
     public void leaveGroup(Long groupId) {

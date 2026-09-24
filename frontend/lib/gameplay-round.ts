@@ -121,3 +121,10 @@ export function fractionRemaining(deadline: string | undefined, totalMillisecond
   if (!deadline) return 0;
   return Math.min(1, Math.max(0, (Date.parse(deadline) - now) / totalMilliseconds));
 }
+
+// The session is purged once it ends, so the results screen takes its group from the URL.
+export const RESULTS_GROUP_SEARCH_PARAM = "group";
+
+export function resultsPath(sessionId: number, groupId: number): string {
+  return `/sessions/${sessionId}/results?${RESULTS_GROUP_SEARCH_PARAM}=${groupId}`;
+}

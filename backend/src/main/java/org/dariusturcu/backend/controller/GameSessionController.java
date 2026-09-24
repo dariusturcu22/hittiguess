@@ -5,6 +5,7 @@ import org.dariusturcu.backend.model.mapper.SessionMapper;
 import org.dariusturcu.backend.model.session.GameSession;
 import org.dariusturcu.backend.model.session.GameSessionDTO;
 import org.dariusturcu.backend.model.session.RoundLinkOutDTO;
+import org.dariusturcu.backend.model.session.GuessStateDTO;
 import org.dariusturcu.backend.model.session.SessionResultsDTO;
 import org.dariusturcu.backend.security.util.SecurityUtils;
 import org.dariusturcu.backend.service.GameSessionService;
@@ -62,6 +63,12 @@ public class GameSessionController {
     public ResponseEntity<RoundLinkOutDTO> getCurrentRoundLinkOut(@PathVariable Long sessionId) {
         Long currentUserId = SecurityUtils.getCurrentUserId();
         return ResponseEntity.ok(gameSessionService.getCurrentRoundLinkOut(sessionId, currentUserId));
+    }
+
+    @Operation(summary = "Get the current round's artist and title guessing state for the calling player")
+    @GetMapping("/{sessionId}/guess-state")
+    public ResponseEntity<GuessStateDTO> getGuessState(@PathVariable Long sessionId) {
+        return ResponseEntity.ok(gameSessionService.getGuessState(sessionId, SecurityUtils.getCurrentUserId()));
     }
 
     private void requirePlayerMembership(GameSession session) {

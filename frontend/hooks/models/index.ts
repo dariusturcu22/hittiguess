@@ -44,6 +44,7 @@ export * from './groupDetailDTODjMode';
 export * from './groupDetailDTOStatus';
 export * from './groupInvitePreviewDTO';
 export * from './groupInvitePreviewMemberDTO';
+export * from './guessStateDTO';
 export * from './iceServer';
 export * from './importFromPlaylistRequest';
 export * from './importFromPlaylistResultDTO';

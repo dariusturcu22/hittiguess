@@ -2,7 +2,7 @@
 
 ## Core concept
 
-Players listen to a song and try to place it correctly on their personal chronological timeline. The player who completes their timeline first wins.
+Players listen to a song and try to place it correctly on their personal chronological timeline. The game ends at the end of the round in which someone completes their timeline, and every player tied on the most cards wins.
 
 ## Groups
 
@@ -18,7 +18,7 @@ A group doesn't last forever: it's deleted if the admin doesn't start a game ses
 
 ## Setup
 
-- Each player starts with one card on their timeline, as a starting anchor.
+- Each player starts with one card on their timeline, as a starting anchor, and two tokens.
 - A playlist, or a combination of playlists, is selected by the group's admin.
 - Each group has a DJ setting: fixed, meaning one person stays DJ all game, or rotating, meaning the role passes each round. Set by the admin before the game session starts, changeable anytime up to then.
 - The admin sets how many cards a player needs to win: minimum 5 always, maximum 20 for a 2-3 player group, maximum 15 for a 4-8 player group.
@@ -30,7 +30,10 @@ The DJ and the active player, whoever's turn it is, are separate roles.
 - DJ: opens the real YouTube page or app and plays the song there. Holds no in-app controls beyond the "Open YouTube Link" action; playback, pausing, and closing the tab happen on YouTube itself. The round flow starts when the active player locks a placement, with no separate DJ trigger. The DJ does not guess or earn tokens.
 - Active player: the player whose turn it is. Listens to the song and places their guess on their own timeline.
 
-## Each round
+## Each turn
+
+A round is one full pass through the players: every player in the active-player rotation takes one turn, and the round number only advances once the rotation comes back around. Each turn runs as follows.
+
 
 1. The DJ plays the song, on the real YouTube page for remote sessions, or the real YouTube app for in-person sessions.
 2. The active player places a guess: before, after, or between the cards already on their timeline. The guess is locked in, with a sound effect on lock-in.
@@ -43,15 +46,15 @@ The DJ and the active player, whoever's turn it is, are separate roles.
    - If the active player's placement was wrong, the gap that's objectively correct for the revealed release year is checked against every accepted bet on the active player's timeline. Since bets can never share a gap, at most one bettor can be sitting on the correct one.
    - If a bettor is sitting on the correct gap, they win the card, not the active player. It's inserted into that winning bettor's OWN timeline, computed automatically at wherever it objectively belongs there, not at the gap they bet on. Every other bettor loses their spent token.
    - If the active player's placement was wrong and no bet sits on the correct gap, whether because no one bet there or no one bet at all, the card is discarded. A winning bettor only ever receives the card, never a bonus token.
-8. Next round: once scoring resolves, the active player role passes to the next player automatically, no manual step from anyone. The DJ role stays fixed or rotates, per the group setting.
+8. Next turn: once scoring resolves, the active player role passes to the next player automatically, no manual step from anyone. The DJ role stays fixed or rotates, per the group setting.
 
 ## Earning tokens
 
-At any point during their turn, independent of their timeline placement, the active player can submit a guess for the song's artist and title in a box available for the whole turn. A fully correct guess, both artist and title, earns a token, spendable on a future round's bet. Typo tolerance is decided: normalize both the guess and the canonical answer (lowercase, strip punctuation, strip diacritics, collapse whitespace) and compare with Damerau-Levenshtein edit distance, a flat budget of 1 regardless of title length, see [DECISIONS.md](DECISIONS.md).
+While the card is being placed, independent of their timeline placement, the active player can guess the song's title and artists in two fields that stay on screen next to the lock-in button. The title gets one guess. Artists are guessed one at a time: a correct artist locks in and the player may try another credited artist, a wrong artist ends artist guessing for that turn, and an artist already guessed can't be guessed again. The title plus at least one artist earns a token, at most one per turn, spendable on a future bet. Other players (not the DJ) can guess under the same rules for the leaderboards, without earning tokens. Typo tolerance is decided: normalize both the guess and the canonical answer (lowercase, strip punctuation, strip diacritics, collapse whitespace) and compare with Damerau-Levenshtein edit distance, a flat budget of 1 regardless of title length, see [DECISIONS.md](DECISIONS.md).
 
 ## Winning
 
-The first player to correctly build a timeline of the required length wins. Required length is the win-condition card count the admin set before starting, see Setup.
+Reaching the required timeline length doesn't end the game on the spot: the current round plays out so every player still due a turn in it gets one, and the game ends at the end of that round. Every player with the most cards at that point wins, sharing first place. Required length is the win-condition card count the admin set before starting, see Setup. The results rank players by cards, artists guessed, and titles guessed, with equal values sharing a place.
 
 ## Reconnecting and leaving
 

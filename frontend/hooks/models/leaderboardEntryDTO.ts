@@ -9,4 +9,5 @@ export interface LeaderboardEntryDTO {
   playerId?: number;
   displayName?: string;
   value?: number;
+  rank?: number;
 }
