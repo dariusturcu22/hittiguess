@@ -11,8 +11,12 @@ from app.config import settings
 configure_logging()
 init_sentry()
 
-if not settings.internal_service_api_key.strip():
-    raise RuntimeError("INTERNAL_SERVICE_API_KEY must be configured")
+def require_internal_api_key_configured(internal_api_key: str) -> None:
+    if not internal_api_key.strip():
+        raise RuntimeError("INTERNAL_SERVICE_API_KEY must be configured")
+
+
+require_internal_api_key_configured(settings.internal_service_api_key)
 
 app = FastAPI(title="hittiguess AI microservice", openapi_url=None, docs_url=None, redoc_url=None)
 app.add_middleware(CorrelationIdMiddleware)
