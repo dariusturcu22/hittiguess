@@ -2,9 +2,9 @@ package org.dariusturcu.backend.websocket;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.context.event.EventListener;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.event.TransactionalEventListener;
 import tools.jackson.databind.ObjectMapper;
 
 // Forwards every GroupBroadcastEvent GroupService publishes onto the matching STOMP
@@ -26,7 +26,10 @@ public class GroupBroadcastListener {
     private final SimpMessagingTemplate messagingTemplate;
     private final ObjectMapper objectMapper;
 
-    @EventListener
+    // After commit, not immediately: every client refetches state as soon as an event
+    // arrives, and a broadcast sent mid-transaction lets that refetch read the state
+    // from before the change. Publishers outside a transaction still broadcast at once.
+    @TransactionalEventListener(fallbackExecution = true)
     public void onGroupBroadcastEvent(GroupBroadcastEvent event) {
         Long groupId = event.group().id();
         String destination = resolveDestination(event.type(), groupId);

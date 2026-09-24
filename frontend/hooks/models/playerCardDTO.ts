@@ -7,7 +7,9 @@
 
 export interface PlayerCardDTO {
   songId?: number;
+  artist?: string;
   title?: string;
   releaseYear?: number;
+  color?: string;
   position?: number;
 }

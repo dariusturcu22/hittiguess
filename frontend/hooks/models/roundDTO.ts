@@ -19,4 +19,8 @@ export interface RoundDTO {
   revealedArtist?: string;
   revealedTitle?: string;
   revealedYear?: number;
+  revealedColor?: string;
+  countdownEndsAt?: string;
+  bettingWindowEndsAt?: string;
+  nextRoundStartsAt?: string;
 }
