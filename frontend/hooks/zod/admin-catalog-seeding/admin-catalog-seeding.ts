@@ -18,7 +18,12 @@ export const EnqueueBody = zod.object({
 export const EnqueueResponse = zod.unknown()
 
 /**
- * @summary Backlog status, admin only: pending count, processed today, quota remaining
+ * @summary Start draining the backlog now instead of waiting for the daily sweep, admin only; 409 when a drain is already running
+ */
+export const DrainNowResponse = zod.unknown()
+
+/**
+ * @summary Backlog status, admin only: pending count, processed today, quota remaining, and recent rechecks of provisional answers
  */
 export const BacklogStatusResponse = zod.unknown()
 

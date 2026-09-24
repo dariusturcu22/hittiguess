@@ -5,6 +5,7 @@
  * OpenAPI spec version: v0
  */
 import type { BacklogQueueItemDTO } from './backlogQueueItemDTO';
+import type { PatientRecheckDTO } from './patientRecheckDTO';
 
 export interface BacklogStatusDTO {
   pendingCount?: number;
@@ -12,4 +13,6 @@ export interface BacklogStatusDTO {
   dailyDrainQuota?: number;
   quotaRemainingToday?: number;
   queueItems?: BacklogQueueItemDTO[];
+  recentRechecks?: PatientRecheckDTO[];
+  draining?: boolean;
 }
