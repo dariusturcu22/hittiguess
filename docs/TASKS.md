@@ -8,6 +8,13 @@ Stories 9, 10, 11, 12, 13, 39, and most of the rest of Phase 1 and Phase 2 are n
 
 "Next available task" means the earliest unchecked box under a Ready or In Progress story.
 
+## Docs: sync project documentation with current code
+
+- [ ] Verify every in-scope task and story status against the current `dev` code, tests, migrations, and endpoints
+- [ ] Correct in-scope reference docs, README.md, CONTRIBUTING.md, and ai/spikes/README.md where they contradict the current implementation
+- [ ] Run `python scripts/archive_completed_tasks.py` after all verified TASKS.md updates
+- [ ] Review the documentation diff for stale claims and the repository writing rules
+
 ## Standing policy: all frontend work lives in story 28
 
 Every story other than story 28 is backend-only. Any frontend task a story would otherwise carry (a page, a component, a WebRTC/browser-side piece, a frontend test) is tracked under story 28's implementation phase instead, not built in that story's own batch. Story 28 is the single place all frontend lands, wired against the real backends every prior batch shipped. Frontend tasks already written inline under other stories stay listed there marked "story 28" for traceability, but they are not part of that story's own batch completion; a backend story is done when its backend code and backend tests pass.
