@@ -21,11 +21,11 @@ import {
 } from "@/components/ui/form";
 
 import { useLogin } from "@/hooks/generated/authentication-management/authentication-management";
-import { loginBody } from "@/hooks/zod/authentication-management/authentication-management";
+import { LoginBody } from "@/hooks/zod/authentication-management/authentication-management";
 import { safeReturnToPath } from "@/lib/return-to";
 import { useRouter, useSearchParams } from "next/navigation";
 
-const LoginFormSchema = loginBody;
+const LoginFormSchema = LoginBody;
 
 type LoginFormValues = z.infer<typeof LoginFormSchema>;
 
