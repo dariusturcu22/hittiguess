@@ -16,6 +16,7 @@ import org.dariusturcu.backend.model.playlist.SavedPlaylist;
 import org.dariusturcu.backend.model.playlist.UpdateMembershipGrantsRequest;
 import org.dariusturcu.backend.model.playlist.UpdatePlaylistRequest;
 import org.dariusturcu.backend.model.song.CreateSongRequest;
+import org.dariusturcu.backend.model.song.PendingImportOrigin;
 import org.dariusturcu.backend.model.song.Song;
 import org.dariusturcu.backend.model.song.SongDTO;
 import org.dariusturcu.backend.model.song.UpdateSongRequest;
@@ -235,7 +236,7 @@ public class PlaylistService {
         Song savedSong = songRepository.save(newSong);
         playlist.addSong(savedSong);
         playlistRepository.save(playlist);
-        catalogSeedingService.reEnqueueForPatientReprocessing(request.youtubeId());
+        catalogSeedingService.enqueuePatientRecheck(request.youtubeId(), PendingImportOrigin.USER_ADD_RECHECK, savedSong.getReleaseYear());
 
         return songMapper.toDTO(savedSong);
     }
