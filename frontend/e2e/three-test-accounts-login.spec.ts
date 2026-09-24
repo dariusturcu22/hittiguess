@@ -24,7 +24,7 @@ async function loginAsTestAccount(
   await page.getByLabel("Password", { exact: true }).fill(account.password);
   await page.getByRole("button", { name: "Log in" }).click();
 
-  await page.waitForURL("/playlists");
+  await expect(page.getByRole("heading", { name: "Your playlists" })).toBeVisible();
 
   return page;
 }
