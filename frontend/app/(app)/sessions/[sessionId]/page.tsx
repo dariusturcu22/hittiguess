@@ -4,12 +4,15 @@ import { use, useCallback, useEffect, useRef, useState, type KeyboardEvent, type
 import { useRouter } from "next/navigation";
 import { ArrowDown, ArrowRight, Bell, Check, ExternalLink, Loader2, Lock, MessageCircle, Music2, TriangleAlert, UserRound, Volume2, VolumeX, X } from "lucide-react";
 
-import { useGetCurrentRoundLinkOut, useGetSession } from "@/hooks/generated/game-session/game-session";
-import { useGetGroup } from "@/hooks/generated/group-management/group-management";
+import Link from "next/link";
+
+import { getGetGuessStateQueryKey, useGetCurrentRoundLinkOut, useGetGuessState, useGetSession } from "@/hooks/generated/game-session/game-session";
+import { useGetActiveMembership, useGetGroup } from "@/hooks/generated/group-management/group-management";
 import { useGetCurrentUser } from "@/hooks/generated/user-management/user-management";
 import type { PlayerCardDTO } from "@/hooks/models/playerCardDTO";
 import type { PlayerDTO } from "@/hooks/models/playerDTO";
-import { GUESS_CORRECT_EVENT, PLACEMENT_PREVIEW_EVENT, useGameSessionRealtime, type GuessResult, type SessionRoundEvent } from "@/hooks/use-game-session-realtime";
+import { GUESS_CORRECT_EVENT, PLACEMENT_PREVIEW_EVENT, useGameSessionRealtime, type GuessResult, type SessionEnded, type SessionRoundEvent } from "@/hooks/use-game-session-realtime";
+import { useQueryClient } from "@tanstack/react-query";
 import { useAudioLevels } from "@/hooks/use-audio-levels";
 import { useGroupRealtime } from "@/hooks/use-group-realtime";
 import { requestDjTabAudioShare, useIsTabAudioShared } from "@/hooks/use-local-audio-stream";
@@ -30,6 +33,7 @@ import {
   SCORED_STATUS,
   isRoundRevealed,
   predictNextTurn,
+  resultsPath,
   secondsUntil,
 } from "@/lib/gameplay-round";
 import { GroupChatOverlay } from "@/components/group-chat-overlay";
@@ -39,6 +43,7 @@ import { RoundIntro } from "@/components/gameplay/round-intro";
 
 const COMPLETED_SESSION_STATUS = "COMPLETED";
 const FIRST_ROUND_NUMBER = 1;
+const FIRST_TURN_NUMBER = 1;
 const ROUND_INTRO_SECONDS = 3;
 const ROUND_INTRO_SEEN_KEY_PREFIX = "hittiguess-round-intro-seen-";
 const TURN_NOTICE_DURATION_MILLISECONDS = 4_000;
@@ -70,11 +75,15 @@ interface CorrectGuessToast {
   titleGuessed?: boolean;
 }
 
-function guessResultMessage(result: GuessResult): string {
-  if (result.artistCorrect && result.titleCorrect) return "You got the artist and the title!";
-  if (result.artistCorrect) return "You got the artist.";
-  if (result.titleCorrect) return "You got the title.";
-  return "Not quite. Try again.";
+function guessResultMessage(result: GuessResult, guessedArtist: boolean): string {
+  const state = result.state;
+  if (state?.tokenEarned && (result.artistCorrect || result.titleCorrect)) return "Title and artist in. You earned a token!";
+  if (guessedArtist) {
+    if (!result.artistCorrect) return "Wrong artist. No more artist guesses this round.";
+    const remainingArtists = (state?.artistCount ?? 0) - (state?.correctArtistCount ?? 0);
+    return remainingArtists > 0 ? `You got an artist. ${remainingArtists} more credited.` : "You got the artist.";
+  }
+  return result.titleCorrect ? "You got the title." : "Wrong title. The title is closed for this round.";
 }
 
 function correctGuessHeadline(toast: CorrectGuessToast): string {
@@ -178,6 +187,8 @@ export default function GameSessionPage({ params }: PageProps) {
   const router = useRouter();
   const sessionQuery = useGetSession(sessionId, { query: { retry: false } });
   const currentUserQuery = useGetCurrentUser();
+  const queryClient = useQueryClient();
+  const activeMembershipQuery = useGetActiveMembership({ query: { retry: false } });
   const session = sessionQuery.data;
   const groupRealtime = useGroupRealtime(session?.groupId ?? 0);
   const groupQuery = useGetGroup(session?.groupId ?? 0, { query: { enabled: Boolean(session?.groupId), retry: false } });
@@ -188,6 +199,8 @@ export default function GameSessionPage({ params }: PageProps) {
   const isDj = currentPlayer?.id !== undefined && currentPlayer.id === currentRound?.djPlayerId;
   const isActivePlayer = currentPlayer?.id !== undefined && currentPlayer.id === currentRound?.activePlayerId;
   const role: Role = isActivePlayer ? "active" : isDj ? "dj" : "spectator";
+  const guessStateQuery = useGetGuessState(sessionId, { query: { enabled: Boolean(currentRound) && !isDj, retry: false } });
+  const guessState = guessStateQuery.data?.roundId === currentRound?.id ? guessStateQuery.data : undefined;
   const linkOutQuery = useGetCurrentRoundLinkOut(sessionId, { query: { enabled: isDj && !isRoundRevealed(roundStatus), retry: false } });
   const isTabAudioShared = useIsTabAudioShared();
   const audioLevels = useAudioLevels();
@@ -211,6 +224,11 @@ export default function GameSessionPage({ params }: PageProps) {
   const trackReference = useRef<HTMLDivElement>(null);
   const submittedStagedBetRoundReference = useRef<number | undefined>(undefined);
   const lastPreviewReference = useRef<number | null | undefined>(undefined);
+  const lastArtistGuessReference = useRef(false);
+  const knownGroupIdReference = useRef<number | undefined>(undefined);
+  useEffect(() => {
+    if (session?.groupId) knownGroupIdReference.current = session.groupId;
+  }, [session?.groupId]);
 
   if (trackedRoundId !== currentRound?.id) {
     setTrackedRoundId(currentRound?.id);
@@ -239,14 +257,29 @@ export default function GameSessionPage({ params }: PageProps) {
   }, []);
   const handleGuessResult = useCallback((result: GuessResult) => {
     setIsGuessResultCorrect(Boolean(result.artistCorrect || result.titleCorrect));
-    setFeedbackMessage(guessResultMessage(result));
-  }, []);
-  const realtime = useGameSessionRealtime(sessionId, handleRoundEvent, handleGuessResult);
+    setFeedbackMessage(guessResultMessage(result, lastArtistGuessReference.current));
+    if (result.state) queryClient.setQueryData(getGetGuessStateQueryKey(sessionId), result.state);
+  }, [queryClient, sessionId]);
+  // Every client moves on together the moment the game ends: to the results when it
+  // completed, back to the lobby when it was abandoned with no results.
+  const handleSessionEnded = useCallback((ended: SessionEnded) => {
+    const groupId = ended.groupId ?? knownGroupIdReference.current;
+    if (groupId === undefined) {
+      router.replace("/playlists");
+      return;
+    }
+    router.replace(ended.groupId !== undefined ? resultsPath(sessionId, groupId) : `/groups/${groupId}`);
+  }, [router, sessionId]);
+  const realtime = useGameSessionRealtime(sessionId, handleRoundEvent, handleGuessResult, handleSessionEnded);
   const { placeBet, previewPlacement } = realtime;
 
+  // A session that ended while this page wasn't listening is already purged, so a failed
+  // load with a known group means the game is over: its results are the place to go.
+  const fallbackGroupId = session?.groupId ?? activeMembershipQuery.data?.id;
+  const hasEnded = session?.status === COMPLETED_SESSION_STATUS || (sessionQuery.isError && fallbackGroupId !== undefined);
   useEffect(() => {
-    if (session?.status === COMPLETED_SESSION_STATUS) router.replace(`/sessions/${sessionId}/results`);
-  }, [router, session?.status, sessionId]);
+    if (hasEnded && fallbackGroupId !== undefined) router.replace(resultsPath(sessionId, fallbackGroupId));
+  }, [fallbackGroupId, hasEnded, router, sessionId]);
 
   useEffect(() => {
     if (!correctGuessToast) return;
@@ -366,9 +399,13 @@ export default function GameSessionPage({ params }: PageProps) {
 
   if (!Number.isInteger(sessionId) || sessionId <= 0) return <main className="p-10 text-destructive">This game session link is invalid.</main>;
   if (sessionQuery.isLoading) return <main className="flex h-full min-h-[720px] items-center justify-center"><Loader2 className="size-8 animate-spin text-primary" aria-label="Loading game session" /></main>;
-  if (sessionQuery.isError || !session) return <main className="p-10 text-destructive">This game session is unavailable.</main>;
+  if (sessionQuery.isError || !session) return <main className="flex h-full flex-col items-center justify-center gap-4 p-10 text-center">
+    <p className="text-sm text-muted-foreground">This game has ended.</p>
+    <Link href={activeMembershipQuery.data?.id ? `/groups/${activeMembershipQuery.data.id}` : "/playlists"} className="rounded-full bg-primary px-5 py-2.5 font-display text-xs text-primary-foreground">{activeMembershipQuery.data?.id ? "Back to lobby" : "Back to playlists"}</Link>
+  </main>;
 
   const roundNumber = currentRound?.roundNumber ?? session.currentRoundNumber ?? FIRST_ROUND_NUMBER;
+  const turnNumber = currentRound?.turnNumber ?? FIRST_TURN_NUMBER;
   const winConditionCardCount = session.winConditionCardCount ?? 0;
   const isLocked = isPlacementLocked(roundStatus);
   const isRevealed = isRoundRevealed(roundStatus);
@@ -378,7 +415,7 @@ export default function GameSessionPage({ params }: PageProps) {
   const playlistName = playlists.length === 1 ? playlists.at(0)?.name : playlists.length > 1 ? `${playlists.length} playlists` : "Auto-generated set";
   const playlistColor = playlists.at(0)?.color;
   const songCount = playlists.reduce((total, playlist) => total + playlist.songCount, 0);
-  const showsIntro = !isIntroDismissed && roundNumber === FIRST_ROUND_NUMBER && isAwaitingPlacement;
+  const showsIntro = !isIntroDismissed && turnNumber === FIRST_TURN_NUMBER && isAwaitingPlacement;
   const turnNoticePlayer = isTurnNoticeVisible ? activePlayer : undefined;
   const winningBet = isRevealed && !currentRound?.placementCorrect
     ? bets.find((bet) => bet.position !== undefined && isGapCorrectForYear(cards, bet.position, currentRound?.revealedYear))
@@ -423,11 +460,13 @@ export default function GameSessionPage({ params }: PageProps) {
     }
   }
 
-  function submitGuess() {
-    if (!artistGuess.trim() && !titleGuess.trim()) return;
-    if (realtime.submitGuess(artistGuess, titleGuess)) {
-      setArtistGuess("");
-      setTitleGuess("");
+  function submitGuess(field: "artist" | "title") {
+    const value = field === "artist" ? artistGuess : titleGuess;
+    if (!value.trim()) return;
+    const isSent = field === "artist" ? realtime.submitGuess(value, "") : realtime.submitGuess("", value);
+    if (isSent) {
+      lastArtistGuessReference.current = field === "artist";
+      if (field === "artist") setArtistGuess(""); else setTitleGuess("");
       setIsGuessResultCorrect(null);
       setFeedbackMessage("Checking your guess…");
     } else {
@@ -562,16 +601,26 @@ export default function GameSessionPage({ params }: PageProps) {
   }
 
   // --- Element below the timeline -----------------------------------------------------
+  const isArtistGuessClosed = Boolean(guessState?.artistGuessingClosed);
+  const isTitleGuessClosed = Boolean(guessState?.titleGuessed);
+  const artistPlaceholder = isArtistGuessClosed
+    ? `Artists: ${guessState?.correctArtistCount ?? 0} of ${guessState?.artistCount ?? 0}`
+    : (guessState?.correctArtistCount ?? 0) > 0 ? "Guess another artist" : "Guess the artist";
+  const titlePlaceholder = isTitleGuessClosed ? (guessState?.titleCorrect ? "Title guessed" : "Title missed") : "Guess the title";
+  const guessFields = <div className="flex w-full flex-col gap-3 sm:flex-row sm:justify-center sm:gap-5">
+    <GuessPill icon={<UserRound className="size-4 shrink-0" />} placeholder={artistPlaceholder} label="Guess the artist" value={artistGuess} onChange={setArtistGuess} onSubmit={() => submitGuess("artist")} isClosed={isArtistGuessClosed} />
+    <GuessPill icon={<Music2 className="size-4 shrink-0" />} placeholder={titlePlaceholder} label="Guess the title" value={titleGuess} onChange={setTitleGuess} onSubmit={() => submitGuess("title")} isClosed={isTitleGuessClosed} />
+  </div>;
   let belowTimeline: ReactNode = null;
   if (isAwaitingPlacement && isActivePlayer && droppedGap !== null && !placementDrag) {
-    belowTimeline = <button type="button" onClick={lockIn} className="inline-flex items-center gap-2.5 rounded-full bg-primary px-6 py-3 font-display text-[13px] text-primary-foreground shadow-[3px_3px_0_var(--shadow-color)] transition-transform hover:-translate-y-0.5"><Lock className="size-4" strokeWidth={2.5} />Lock in answer</button>;
+    belowTimeline = <div className="flex w-full max-w-[560px] flex-col items-center gap-4">
+      <button type="button" onClick={lockIn} className="inline-flex items-center gap-2.5 rounded-full bg-primary px-6 py-3 font-display text-[13px] text-primary-foreground shadow-[3px_3px_0_var(--shadow-color)] transition-transform hover:-translate-y-0.5"><Lock className="size-4" strokeWidth={2.5} />Lock in answer</button>
+      {guessFields}
+    </div>;
   } else if (isAwaitingPlacement && !isDj) {
     belowTimeline = <div className="flex w-full max-w-[560px] flex-col items-center gap-3">
-      <div className="flex w-full flex-col gap-3 sm:flex-row sm:gap-5">
-        <GuessPill icon={<UserRound className="size-4 shrink-0" />} placeholder="Guess the artist" value={artistGuess} onChange={setArtistGuess} onSubmit={submitGuess} />
-        <GuessPill icon={<Music2 className="size-4 shrink-0" />} placeholder="Guess the title" value={titleGuess} onChange={setTitleGuess} onSubmit={submitGuess} />
-      </div>
-      <p className="text-center text-[11.5px] text-muted-foreground">{isActivePlayer ? "Anyone can guess, anytime. Songs can credit more than one artist, so try them one at a time." : "Anyone can guess, anytime, no matter whose turn it is."}</p>
+      {guessFields}
+      <p className="text-center text-[11.5px] text-muted-foreground">{isActivePlayer ? "One title guess. Artists one at a time: a wrong artist ends artist guessing. The title plus one artist earns a token." : "Anyone can guess, anytime, no matter whose turn it is."}</p>
     </div>;
   } else if (isRevealed) {
     belowTimeline = <p className="flex items-center gap-2 text-xs text-muted-foreground"><Lock className="size-3.5" />Round closed. Next card is dealt in a moment.</p>;
@@ -647,10 +696,10 @@ export default function GameSessionPage({ params }: PageProps) {
   </main>;
 }
 
-function GuessPill({ icon, placeholder, value, onChange, onSubmit }: { icon: ReactNode; placeholder: string; value: string; onChange: (value: string) => void; onSubmit: () => void }) {
-  return <label className="flex h-[52px] w-full min-w-0 items-center gap-2.5 rounded-full border-2 border-border bg-card pl-4 pr-1.5 text-muted-foreground shadow-[3px_3px_0_var(--shadow-color)] sm:w-[260px]">
+function GuessPill({ icon, placeholder, label, value, onChange, onSubmit, isClosed }: { icon: ReactNode; placeholder: string; label: string; value: string; onChange: (value: string) => void; onSubmit: () => void; isClosed: boolean }) {
+  return <label className={`flex h-[52px] w-full min-w-0 items-center gap-2.5 rounded-full border-2 border-border bg-card pl-4 pr-1.5 text-muted-foreground shadow-[3px_3px_0_var(--shadow-color)] sm:w-[260px] ${isClosed ? "opacity-60" : ""}`}>
     {icon}
-    <input value={value} onChange={(event) => onChange(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") onSubmit(); }} placeholder={placeholder} className="min-w-0 flex-1 bg-transparent text-sm text-card-foreground outline-none placeholder:text-muted-foreground" />
-    <button type="button" onClick={onSubmit} disabled={!value.trim()} aria-label={`Submit ${placeholder.toLowerCase()}`} className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground transition-transform enabled:hover:scale-105 disabled:opacity-45"><ArrowRight className="size-4" strokeWidth={2.5} /></button>
+    <input aria-label={label} value={isClosed ? "" : value} disabled={isClosed} onChange={(event) => onChange(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") onSubmit(); }} placeholder={placeholder} className="min-w-0 flex-1 bg-transparent text-sm text-card-foreground outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed" />
+    <button type="button" onClick={onSubmit} disabled={isClosed || !value.trim()} aria-label={`Submit ${label.toLowerCase()}`} className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground transition-transform enabled:hover:scale-105 disabled:opacity-45">{isClosed ? <Lock className="size-4" strokeWidth={2.5} /> : <ArrowRight className="size-4" strokeWidth={2.5} />}</button>
   </label>;
 }
