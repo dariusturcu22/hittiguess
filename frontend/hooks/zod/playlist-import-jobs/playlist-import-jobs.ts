@@ -22,6 +22,16 @@ export const StartImportBody = zod.object({
 export const StartImportResponse = zod.unknown()
 
 /**
+ * @summary Read one import job of the playlist, running or finished, with per-video results
+ */
+export const ImportJobParams = zod.object({
+  "playlistId": zod.int(),
+  "importJobId": zod.string()
+})
+
+export const ImportJobResponse = zod.unknown()
+
+/**
  * @summary Read the playlist's running import with per-video progress, if any
  */
 export const ActiveImportParams = zod.object({

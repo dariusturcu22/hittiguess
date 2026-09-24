@@ -1,6 +1,7 @@
 package org.dariusturcu.backend.repository;
 
 import org.dariusturcu.backend.model.song.PendingImport;
+import org.dariusturcu.backend.model.song.PendingImportOrigin;
 import org.dariusturcu.backend.model.song.PendingImportStatus;
 import org.springframework.data.domain.Limit;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -20,6 +21,8 @@ public interface PendingImportRepository extends JpaRepository<PendingImport, Lo
     long countByStatusAndProcessedAtAfter(PendingImportStatus status, Instant threshold);
 
     List<PendingImport> findTop7ByOrderByEnqueuedAtDesc();
+
+    List<PendingImport> findTop50ByOriginInOrderByEnqueuedAtDesc(Collection<PendingImportOrigin> origins);
 
     @Query("""
             select pendingImport.youtubeId

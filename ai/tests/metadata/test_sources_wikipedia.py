@@ -58,7 +58,7 @@ def _wikipedia_response(request: httpx.Request) -> httpx.Response:
 
 @respx.mock
 def test_search_returns_track_and_album_entries(mocker):
-    mocker.patch("app.metadata.sources.wikipedia.time.sleep")
+    mocker.patch("app.metadata.sources.pacing.time.sleep")
     respx.get("https://en.wikipedia.org/w/api.php").mock(side_effect=_wikipedia_response)
 
     entries = wikipedia.search("Test Song", "Test Artist", album="Test Album")
@@ -71,7 +71,7 @@ def test_search_returns_track_and_album_entries(mocker):
 
 @respx.mock
 def test_search_skips_album_query_when_no_album_given(mocker):
-    mocker.patch("app.metadata.sources.wikipedia.time.sleep")
+    mocker.patch("app.metadata.sources.pacing.time.sleep")
     respx.get("https://en.wikipedia.org/w/api.php").mock(side_effect=_wikipedia_response)
 
     entries = wikipedia.search("Test Song", "Test Artist")
@@ -81,7 +81,7 @@ def test_search_skips_album_query_when_no_album_given(mocker):
 
 @respx.mock
 def test_search_returns_empty_list_when_no_match(mocker):
-    mocker.patch("app.metadata.sources.wikipedia.time.sleep")
+    mocker.patch("app.metadata.sources.pacing.time.sleep")
     respx.get("https://en.wikipedia.org/w/api.php").mock(return_value=httpx.Response(200, json={"query": {"search": []}}))
 
     assert wikipedia.search("Test Song", "Test Artist") == []
@@ -89,7 +89,7 @@ def test_search_returns_empty_list_when_no_match(mocker):
 
 @respx.mock
 def test_search_returns_empty_list_on_request_failure(mocker):
-    mocker.patch("app.metadata.sources.wikipedia.time.sleep")
+    mocker.patch("app.metadata.sources.pacing.time.sleep")
     respx.get("https://en.wikipedia.org/w/api.php").mock(return_value=httpx.Response(500))
 
     assert wikipedia.search("Test Song", "Test Artist") == []

@@ -35,3 +35,30 @@ export function saveActiveImportJob(job: ActivePlaylistImportJob) {
 export function clearActiveImportJob() {
   window.localStorage.removeItem(ACTIVE_IMPORT_STORAGE_KEY);
 }
+
+const SETTLED_ITEM_STATUSES = new Set(["RESOLVED", "ALREADY_KNOWN", "UNRESOLVED"]);
+const WORKING_ITEM_STATUSES = new Set(["IDENTIFYING", "DATING"]);
+const ADDED_ITEM_STATUSES = new Set(["RESOLVED", "ALREADY_KNOWN"]);
+
+export interface ImportItemCounts {
+  total: number;
+  settled: number;
+  working: number;
+  waiting: number;
+  added: number;
+  unmatched: number;
+}
+
+// Where an import's songs stand: waiting for a free slot, being worked on (identified,
+// then dated), or settled as added or unmatched.
+export function countImportItems(items: { status?: string }[]): ImportItemCounts {
+  const statusOf = (item: { status?: string }) => item.status ?? "PENDING";
+  return {
+    total: items.length,
+    settled: items.filter((item) => SETTLED_ITEM_STATUSES.has(statusOf(item))).length,
+    working: items.filter((item) => WORKING_ITEM_STATUSES.has(statusOf(item))).length,
+    waiting: items.filter((item) => statusOf(item) === "PENDING").length,
+    added: items.filter((item) => ADDED_ITEM_STATUSES.has(statusOf(item))).length,
+    unmatched: items.filter((item) => statusOf(item) === "UNRESOLVED").length,
+  };
+}

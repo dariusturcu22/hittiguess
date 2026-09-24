@@ -97,7 +97,7 @@ def _wikidata_response(request: httpx.Request) -> httpx.Response:
 
 @respx.mock
 def test_search_returns_track_and_album_candidates_via_part_of(mocker):
-    mocker.patch("app.metadata.sources.wikidata.time.sleep")
+    mocker.patch("app.metadata.sources.pacing.time.sleep")
     respx.get("https://www.wikidata.org/w/api.php").mock(side_effect=_wikidata_response)
 
     candidates = wikidata.search("Test Song", "Test Artist")
@@ -112,7 +112,7 @@ def test_search_returns_track_and_album_candidates_via_part_of(mocker):
 
 @respx.mock
 def test_search_returns_empty_list_when_no_match(mocker):
-    mocker.patch("app.metadata.sources.wikidata.time.sleep")
+    mocker.patch("app.metadata.sources.pacing.time.sleep")
     respx.get("https://www.wikidata.org/w/api.php").mock(return_value=httpx.Response(200, json={"search": []}))
 
     assert wikidata.search("Test Song", "Test Artist") == []
@@ -120,7 +120,7 @@ def test_search_returns_empty_list_when_no_match(mocker):
 
 @respx.mock
 def test_search_returns_empty_list_on_request_failure(mocker):
-    mocker.patch("app.metadata.sources.wikidata.time.sleep")
+    mocker.patch("app.metadata.sources.pacing.time.sleep")
     respx.get("https://www.wikidata.org/w/api.php").mock(return_value=httpx.Response(500))
 
     assert wikidata.search("Test Song", "Test Artist") == []
@@ -128,7 +128,7 @@ def test_search_returns_empty_list_on_request_failure(mocker):
 
 @respx.mock
 def test_get_sitelinks_count_counts_linked_language_editions(mocker):
-    mocker.patch("app.metadata.sources.wikidata.time.sleep")
+    mocker.patch("app.metadata.sources.pacing.time.sleep")
     respx.get("https://www.wikidata.org/w/api.php").mock(
         return_value=httpx.Response(200, json={"entities": {"Q1": {"sitelinks": {"enwiki": {}, "rowiki": {}, "dewiki": {}}}}})
     )
@@ -138,7 +138,7 @@ def test_get_sitelinks_count_counts_linked_language_editions(mocker):
 
 @respx.mock
 def test_get_sitelinks_count_returns_none_when_the_entity_is_missing(mocker):
-    mocker.patch("app.metadata.sources.wikidata.time.sleep")
+    mocker.patch("app.metadata.sources.pacing.time.sleep")
     respx.get("https://www.wikidata.org/w/api.php").mock(return_value=httpx.Response(200, json={"entities": {}}))
 
     assert wikidata.get_sitelinks_count("Q1") is None
@@ -146,7 +146,7 @@ def test_get_sitelinks_count_returns_none_when_the_entity_is_missing(mocker):
 
 @respx.mock
 def test_get_sitelinks_count_returns_none_on_request_failure(mocker):
-    mocker.patch("app.metadata.sources.wikidata.time.sleep")
+    mocker.patch("app.metadata.sources.pacing.time.sleep")
     respx.get("https://www.wikidata.org/w/api.php").mock(return_value=httpx.Response(500))
 
     assert wikidata.get_sitelinks_count("Q1") is None

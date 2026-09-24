@@ -3,6 +3,7 @@ package org.dariusturcu.backend.controller;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
+import org.dariusturcu.backend.exception.ConflictException;
 import org.dariusturcu.backend.model.song.AdminCatalogSeedingRequest;
 import org.dariusturcu.backend.model.song.BacklogStatusDTO;
 import org.dariusturcu.backend.model.song.EnqueueResultDTO;
@@ -32,7 +33,19 @@ public class AdminCatalogSeedingController {
         return ResponseEntity.ok(catalogSeedingService.enqueue(request));
     }
 
-    @Operation(summary = "Backlog status, admin only: pending count, processed today, quota remaining")
+    @Operation(summary = "Start draining the backlog now instead of waiting for the daily sweep, admin only; "
+            + "409 when a drain is already running")
+    @PostMapping("/drain")
+    public ResponseEntity<BacklogStatusDTO> drainNow() {
+        adminAccessGuard.requireAdmin();
+        if (!catalogSeedingService.startDrainNow()) {
+            throw new ConflictException("The backlog is already being drained");
+        }
+        return ResponseEntity.accepted().body(catalogSeedingService.backlogStatus());
+    }
+
+    @Operation(summary = "Backlog status, admin only: pending count, processed today, quota remaining, "
+            + "and recent rechecks of provisional answers")
     @GetMapping("/status")
     public ResponseEntity<BacklogStatusDTO> backlogStatus() {
         adminAccessGuard.requireAdmin();

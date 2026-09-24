@@ -3,11 +3,13 @@ package org.dariusturcu.backend.service;
 import lombok.RequiredArgsConstructor;
 import org.dariusturcu.backend.model.song.PendingImport;
 import org.dariusturcu.backend.model.song.PendingImportStatus;
+import org.dariusturcu.backend.model.song.Song;
 import org.dariusturcu.backend.repository.PendingImportRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
+import java.util.Optional;
 
 /**
  * Processes one pending import in its own transaction, so the drain commits each
@@ -31,11 +33,12 @@ public class PendingImportProcessor {
         pendingImport.setStatus(PendingImportStatus.PROCESSING);
         pendingImportRepository.save(pendingImport);
 
-        boolean resolved = songResolutionService.resolveAndPersist(pendingImport.getYoutubeId(), null).isPresent();
+        Optional<Song> resolvedSong = songResolutionService.resolveAndPersist(pendingImport.getYoutubeId(), null);
 
         pendingImport.setProcessedAt(Instant.now());
-        if (resolved) {
+        if (resolvedSong.isPresent()) {
             pendingImport.setStatus(PendingImportStatus.DONE);
+            pendingImport.setPatientYear(resolvedSong.get().getReleaseYear());
         } else {
             pendingImport.setStatus(PendingImportStatus.FAILED);
             pendingImport.setFailureReason(NO_RESOLUTION_FAILURE_REASON);

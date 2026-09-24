@@ -13,6 +13,7 @@ import org.dariusturcu.backend.model.playlist.SavedPlaylist;
 import org.dariusturcu.backend.model.playlist.UpdateMembershipGrantsRequest;
 import org.dariusturcu.backend.model.playlist.UpdatePlaylistRequest;
 import org.dariusturcu.backend.model.song.CreateSongRequest;
+import org.dariusturcu.backend.model.song.PendingImportOrigin;
 import org.dariusturcu.backend.model.song.Song;
 import org.dariusturcu.backend.model.song.UpdateSongRequest;
 import org.dariusturcu.backend.model.song.VerificationStatus;
@@ -48,6 +49,7 @@ import java.util.Set;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
@@ -248,7 +250,7 @@ class PlaylistServiceTest {
         playlistService.createSong(PLAYLIST_ID, request);
 
         verify(songRepository, never()).save(any());
-        verify(catalogSeedingService, never()).reEnqueueForPatientReprocessing(any());
+        verify(catalogSeedingService, never()).enqueuePatientRecheck(any(), any(), any());
         verify(playlistRepository).save(playlist);
         assertThat(playlist.getSongs()).contains(existingSong);
     }
@@ -265,7 +267,7 @@ class PlaylistServiceTest {
 
         verify(songRepository, never()).save(any());
         verify(playlistRepository, never()).save(any());
-        verify(catalogSeedingService, never()).reEnqueueForPatientReprocessing(any());
+        verify(catalogSeedingService, never()).enqueuePatientRecheck(any(), any(), any());
     }
 
     @Test
@@ -280,7 +282,7 @@ class PlaylistServiceTest {
 
         playlistService.createSong(PLAYLIST_ID, request);
 
-        verify(catalogSeedingService).reEnqueueForPatientReprocessing(request.youtubeId());
+        verify(catalogSeedingService).enqueuePatientRecheck(eq(request.youtubeId()), eq(PendingImportOrigin.USER_ADD_RECHECK), any());
         verify(playlistRepository).save(playlist);
         assertThat(playlist.getSongs()).contains(newSong);
     }

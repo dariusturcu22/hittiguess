@@ -10,6 +10,8 @@ export type PlaylistImportJobItemDTOStatus = typeof PlaylistImportJobItemDTOStat
 
 export const PlaylistImportJobItemDTOStatus = {
   PENDING: 'PENDING',
+  IDENTIFYING: 'IDENTIFYING',
+  DATING: 'DATING',
   ALREADY_KNOWN: 'ALREADY_KNOWN',
   RESOLVED: 'RESOLVED',
   UNRESOLVED: 'UNRESOLVED',

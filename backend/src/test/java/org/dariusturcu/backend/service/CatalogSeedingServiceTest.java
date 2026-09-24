@@ -7,11 +7,13 @@ import org.dariusturcu.backend.model.song.PendingImport;
 import org.dariusturcu.backend.model.song.PendingImportStatus;
 import org.dariusturcu.backend.model.song.YoutubeIdLookupResult;
 import org.dariusturcu.backend.repository.PendingImportRepository;
+import org.dariusturcu.backend.repository.SongRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.core.task.SyncTaskExecutor;
 
 import java.util.List;
 import java.util.Set;
@@ -40,13 +42,16 @@ class CatalogSeedingServiceTest {
     private PendingImportProcessor pendingImportProcessor;
     @Mock
     private PlaylistExpansionService playlistExpansionService;
+    @Mock
+    private SongRepository songRepository;
 
     private CatalogSeedingService catalogSeedingService;
 
     @BeforeEach
     void setUp() {
         catalogSeedingService = new CatalogSeedingService(pendingImportRepository, youtubeIdLookupService,
-                pendingImportProcessor, new MetadataPriorityCoordinator(), playlistExpansionService, DAILY_DRAIN_QUOTA);
+                pendingImportProcessor, new MetadataPriorityCoordinator(), playlistExpansionService, songRepository,
+                new SyncTaskExecutor(), DAILY_DRAIN_QUOTA);
     }
 
     @Test

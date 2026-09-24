@@ -21,14 +21,19 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 
+import java.util.HashMap;
 import java.util.List;
-import java.util.Optional;
+import java.util.Map;
 import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.groups.Tuple.tuple;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -51,9 +56,7 @@ class BulkImportServiceTest {
     @Mock
     private YoutubeIdLookupService youtubeIdLookupService;
     @Mock
-    private SongResolutionService songResolutionService;
-    @Mock
-    private CatalogSeedingService catalogSeedingService;
+    private FastTierImportRunner fastTierImportRunner;
     @Mock
     private PlaylistExpansionService playlistExpansionService;
     @Mock
@@ -64,13 +67,27 @@ class BulkImportServiceTest {
     private ApplicationEventPublisher applicationEventPublisher;
 
     private BulkImportService bulkImportService;
+    // What the fast-tier runner reports for each new id: a song when it resolves, null
+    // when it doesn't.
+    private final Map<String, Song> fastTierOutcomes = new HashMap<>();
 
     @BeforeEach
     void setUp() {
-        MetadataPriorityCoordinator metadataPriorityCoordinator = new MetadataPriorityCoordinator();
-        bulkImportService = new BulkImportService(youtubeIdLookupService, songResolutionService,
-                catalogSeedingService, metadataPriorityCoordinator, playlistExpansionService, playlistImportService,
-                importQuotaService, applicationEventPublisher);
+        bulkImportService = new BulkImportService(youtubeIdLookupService, fastTierImportRunner,
+                playlistExpansionService, playlistImportService, importQuotaService, applicationEventPublisher);
+        lenient().doAnswer(invocation -> {
+            List<String> youtubeIds = invocation.getArgument(0);
+            FastTierImportRunner.Listener listener = invocation.getArgument(2);
+            for (String youtubeId : youtubeIds) {
+                Song song = fastTierOutcomes.get(youtubeId);
+                if (song == null) {
+                    listener.unresolved(youtubeId);
+                } else {
+                    listener.resolved(youtubeId, song);
+                }
+            }
+            return null;
+        }).when(fastTierImportRunner).resolveAll(anyList(), any(User.class), any(FastTierImportRunner.Listener.class));
 
         User submittingUser = new User();
         submittingUser.setUsername(SUBMITTING_USERNAME);
@@ -90,8 +107,8 @@ class BulkImportServiceTest {
                 .thenReturn(List.of(EXPANDED_VIDEO_ID, EXTRA_VIDEO_ID));
         when(youtubeIdLookupService.partitionKnownAndUnknown(List.of(EXPANDED_VIDEO_ID, EXTRA_VIDEO_ID)))
                 .thenReturn(new YoutubeIdLookupResult(Set.of(), Set.of(EXPANDED_VIDEO_ID, EXTRA_VIDEO_ID)));
-        when(songResolutionService.resolveAndPersist(eq(EXPANDED_VIDEO_ID), org.mockito.ArgumentMatchers.any(User.class))).thenReturn(Optional.of(mock(Song.class)));
-        when(songResolutionService.resolveAndPersist(eq(EXTRA_VIDEO_ID), org.mockito.ArgumentMatchers.any(User.class))).thenReturn(Optional.of(mock(Song.class)));
+        fastTierOutcomes.put(EXPANDED_VIDEO_ID, mock(Song.class));
+        fastTierOutcomes.put(EXTRA_VIDEO_ID, mock(Song.class));
 
         BulkImportResultDTO result = bulkImportService.importImmediately(
                 new BulkImportRequest("playlist-link", List.of(EXTRA_VIDEO_ID), null, null));
@@ -100,16 +117,15 @@ class BulkImportServiceTest {
     }
 
     @Test
-    void resolvedIdsAreReEnqueuedForPatientReprocessing() {
-        when(playlistExpansionService.expandAndMerge(null, List.of(PLAIN_VIDEO_ID)))
-                .thenReturn(List.of(PLAIN_VIDEO_ID));
-        when(youtubeIdLookupService.partitionKnownAndUnknown(List.of(PLAIN_VIDEO_ID)))
-                .thenReturn(new YoutubeIdLookupResult(Set.of(), Set.of(PLAIN_VIDEO_ID)));
-        when(songResolutionService.resolveAndPersist(eq(PLAIN_VIDEO_ID), org.mockito.ArgumentMatchers.any(User.class))).thenReturn(Optional.of(mock(Song.class)));
+    void onlyTheNewIdsGoThroughTheFastTier() {
+        List<String> submittedIds = List.of(ALREADY_KNOWN_VIDEO_ID, PLAIN_VIDEO_ID);
+        when(playlistExpansionService.expandAndMerge(null, submittedIds)).thenReturn(submittedIds);
+        when(youtubeIdLookupService.partitionKnownAndUnknown(submittedIds))
+                .thenReturn(new YoutubeIdLookupResult(Set.of(ALREADY_KNOWN_VIDEO_ID), Set.of(PLAIN_VIDEO_ID)));
 
-        bulkImportService.importImmediately(new BulkImportRequest(null, List.of(PLAIN_VIDEO_ID), null, null));
+        bulkImportService.importImmediately(new BulkImportRequest(null, submittedIds, null, null));
 
-        verify(catalogSeedingService).reEnqueueForPatientReprocessing(PLAIN_VIDEO_ID);
+        verify(fastTierImportRunner).resolveAll(eq(List.of(PLAIN_VIDEO_ID)), any(User.class), any(FastTierImportRunner.Listener.class));
     }
 
     @Test
@@ -118,8 +134,7 @@ class BulkImportServiceTest {
         when(playlistExpansionService.expandAndMerge(null, submittedIds)).thenReturn(submittedIds);
         when(youtubeIdLookupService.partitionKnownAndUnknown(submittedIds)).thenReturn(new YoutubeIdLookupResult(
                 Set.of(ALREADY_KNOWN_VIDEO_ID), Set.of(RESOLVES_VIDEO_ID, UNRESOLVED_VIDEO_ID)));
-        when(songResolutionService.resolveAndPersist(eq(RESOLVES_VIDEO_ID), org.mockito.ArgumentMatchers.any(User.class))).thenReturn(Optional.of(mock(Song.class)));
-        when(songResolutionService.resolveAndPersist(eq(UNRESOLVED_VIDEO_ID), org.mockito.ArgumentMatchers.any(User.class))).thenReturn(Optional.empty());
+        fastTierOutcomes.put(RESOLVES_VIDEO_ID, mock(Song.class));
 
         bulkImportService.importImmediately(new BulkImportRequest(null, submittedIds, null, "job-123"));
 
@@ -152,7 +167,7 @@ class BulkImportServiceTest {
         when(playlistExpansionService.expandAndMerge(null, List.of(PLAIN_VIDEO_ID))).thenReturn(List.of(PLAIN_VIDEO_ID));
         when(youtubeIdLookupService.partitionKnownAndUnknown(List.of(PLAIN_VIDEO_ID)))
                 .thenReturn(new YoutubeIdLookupResult(Set.of(), Set.of(PLAIN_VIDEO_ID)));
-        when(songResolutionService.resolveAndPersist(eq(PLAIN_VIDEO_ID), org.mockito.ArgumentMatchers.any(User.class))).thenReturn(Optional.of(mock(Song.class)));
+        fastTierOutcomes.put(PLAIN_VIDEO_ID, mock(Song.class));
 
         bulkImportService.importImmediately(new BulkImportRequest(null, List.of(PLAIN_VIDEO_ID), null, null));
 
@@ -171,7 +186,7 @@ class BulkImportServiceTest {
                 new YoutubeIdLookupResult(Set.of(ALREADY_KNOWN_VIDEO_ID), Set.of(RESOLVES_VIDEO_ID)));
         when(youtubeIdLookupService.resolveCanonicalSongs(Set.of(ALREADY_KNOWN_VIDEO_ID)))
                 .thenReturn(List.of(alreadyKnownSong));
-        when(songResolutionService.resolveAndPersist(eq(RESOLVES_VIDEO_ID), org.mockito.ArgumentMatchers.any(User.class))).thenReturn(Optional.of(resolvedSong));
+        fastTierOutcomes.put(RESOLVES_VIDEO_ID, resolvedSong);
 
         bulkImportService.importImmediately(new BulkImportRequest(null, submittedIds, targetPlaylistId, null));
 

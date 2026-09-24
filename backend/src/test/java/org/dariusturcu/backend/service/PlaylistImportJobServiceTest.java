@@ -43,6 +43,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -74,11 +75,7 @@ class PlaylistImportJobServiceTest {
     @Mock
     private YoutubeIdLookupService youtubeIdLookupService;
     @Mock
-    private SongResolutionService songResolutionService;
-    @Mock
-    private CatalogSeedingService catalogSeedingService;
-    @Mock
-    private MetadataPriorityCoordinator metadataPriorityCoordinator;
+    private FastTierImportRunner fastTierImportRunner;
     @Mock
     private PlaylistExpansionService playlistExpansionService;
     @Mock
@@ -91,8 +88,7 @@ class PlaylistImportJobServiceTest {
     private PlaylistImportJobService service() {
         return new PlaylistImportJobService(
                 jobRepository, itemRepository, playlistRepository, songRepository, userRepository,
-                playlistAccessService, youtubeIdLookupService, songResolutionService,
-                catalogSeedingService, metadataPriorityCoordinator, playlistExpansionService,
+                playlistAccessService, youtubeIdLookupService, fastTierImportRunner, playlistExpansionService,
                 playlistImportService, importQuotaService, applicationEventPublisher, new SyncTaskExecutor());
     }
 
@@ -111,7 +107,7 @@ class PlaylistImportJobServiceTest {
     }
 
     @Test
-    void startImportPersistsItemsAndResolvesThemOffThread() {
+    void startImportLinksKnownSongsAtOnceAndEachNewSongTheMomentItResolves() {
         Playlist playlist = new Playlist();
         playlist.setId(PLAYLIST_ID);
         when(playlistRepository.findById(PLAYLIST_ID)).thenReturn(Optional.of(playlist));
@@ -123,16 +119,34 @@ class PlaylistImportJobServiceTest {
                 .thenReturn(new YoutubeIdLookupResult(Set.of("video-1"), Set.of("video-2")));
         Song resolvedSong = songWithId(102L);
         when(youtubeIdLookupService.resolveCanonicalSongIds(any())).thenReturn(Map.of("video-1", 101L));
-        when(songResolutionService.resolveAndPersist(eq("video-2"), any(User.class))).thenReturn(Optional.of(resolvedSong));
+        List<PlaylistImportJobItemStatus> newSongStatusHistory = new ArrayList<>();
+        doAnswer(invocation -> {
+            List<String> youtubeIds = invocation.getArgument(0);
+            FastTierImportRunner.Listener listener = invocation.getArgument(2);
+            assertThat(youtubeIds).containsExactly("video-2");
+            listener.identifying("video-2");
+            listener.dating("video-2");
+            verify(playlistImportService, never()).addResolvedSongIds(PLAYLIST_ID, List.of(102L));
+            listener.resolved("video-2", resolvedSong);
+            verify(playlistImportService).addResolvedSongIds(PLAYLIST_ID, List.of(102L));
+            return null;
+        }).when(fastTierImportRunner).resolveAll(any(), any(User.class), any(FastTierImportRunner.Listener.class));
 
         List<PlaylistImportJobItem> savedItems = new ArrayList<>();
         when(itemRepository.save(any(PlaylistImportJobItem.class))).thenAnswer(invocation -> {
             PlaylistImportJobItem item = invocation.getArgument(0);
             if (!savedItems.contains(item)) {
+                item.setId((long) savedItems.size() + 1);
                 savedItems.add(item);
+            }
+            if ("video-2".equals(item.getYoutubeId())) {
+                newSongStatusHistory.add(item.getStatus());
             }
             return item;
         });
+        when(itemRepository.findById(any())).thenAnswer(invocation -> savedItems.stream()
+                .filter(item -> item.getId().equals(invocation.getArgument(0)))
+                .findFirst());
         when(itemRepository.findByJobIdOrderByIdAsc(any())).thenAnswer(invocation -> List.copyOf(savedItems));
         PlaylistImportJob storedJob = new PlaylistImportJob();
         when(jobRepository.findById(any())).thenReturn(Optional.of(storedJob));
@@ -161,7 +175,12 @@ class PlaylistImportJobServiceTest {
         assertThat(progressEvents.getAllValues())
                 .extracting(BulkImportProgressEvent::youtubeId)
                 .containsExactlyInAnyOrder("video-1", "video-2");
-        verify(playlistImportService).addResolvedSongIds(PLAYLIST_ID, List.of(101L, 102L));
+        verify(playlistImportService).addResolvedSongIds(PLAYLIST_ID, List.of(101L));
+        assertThat(newSongStatusHistory).containsExactly(
+                PlaylistImportJobItemStatus.PENDING,
+                PlaylistImportJobItemStatus.IDENTIFYING,
+                PlaylistImportJobItemStatus.DATING,
+                PlaylistImportJobItemStatus.RESOLVED);
     }
 
     @Test
@@ -185,7 +204,7 @@ class PlaylistImportJobServiceTest {
         }
 
         verify(jobRepository, never()).save(any());
-        verifyNoInteractions(songResolutionService);
+        verifyNoInteractions(fastTierImportRunner);
     }
 
     @Test
@@ -284,5 +303,41 @@ class PlaylistImportJobServiceTest {
                 .thenReturn(List.of());
 
         assertThat(service().findActiveImport(PLAYLIST_ID)).isEmpty();
+    }
+
+    @Test
+    void aFinishedJobIsReadableByIdWithReadAccess() {
+        PlaylistImportJob finishedJob = new PlaylistImportJob();
+        finishedJob.setId("job-2");
+        Playlist playlist = new Playlist();
+        playlist.setId(PLAYLIST_ID);
+        finishedJob.setPlaylist(playlist);
+        finishedJob.setStatus(PlaylistImportJobStatus.DONE);
+        when(jobRepository.findById("job-2")).thenReturn(Optional.of(finishedJob));
+        when(itemRepository.findByJobIdOrderByIdAsc("job-2")).thenReturn(List.of());
+
+        PlaylistImportJobDTO job;
+        try (MockedStatic<SecurityUtils> security = Mockito.mockStatic(SecurityUtils.class)) {
+            User reader = submittingUser();
+            security.when(SecurityUtils::getCurrentUser).thenReturn(reader);
+            job = service().findImport(PLAYLIST_ID, "job-2");
+            verify(playlistAccessService).requireRead(playlist, reader);
+        }
+
+        assertThat(job.status()).isEqualTo(PlaylistImportJobStatus.DONE);
+    }
+
+    @Test
+    void aJobIsNotReadableThroughAnotherPlaylist() {
+        PlaylistImportJob otherPlaylistsJob = new PlaylistImportJob();
+        otherPlaylistsJob.setId("job-3");
+        Playlist otherPlaylist = new Playlist();
+        otherPlaylist.setId(PLAYLIST_ID + 1);
+        otherPlaylistsJob.setPlaylist(otherPlaylist);
+        when(jobRepository.findById("job-3")).thenReturn(Optional.of(otherPlaylistsJob));
+
+        assertThatThrownBy(() -> service().findImport(PLAYLIST_ID, "job-3"))
+                .isInstanceOf(org.springframework.web.server.ResponseStatusException.class);
+        verifyNoInteractions(playlistAccessService);
     }
 }

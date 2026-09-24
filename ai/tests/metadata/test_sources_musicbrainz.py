@@ -1,4 +1,5 @@
 import httpx
+import pytest
 import respx
 
 from app.metadata.sources import musicbrainz
@@ -54,7 +55,7 @@ def _mock_release_group_response(request: httpx.Request) -> httpx.Response:
 
 @respx.mock
 def test_search_combines_track_and_album_candidates(mocker):
-    mocker.patch("app.metadata.sources.musicbrainz.time.sleep")
+    mocker.patch("app.metadata.sources.pacing.time.sleep")
     respx.get(url__regex=r"musicbrainz\.org/ws/2/release-group/").mock(side_effect=_mock_release_group_response)
 
     candidates = musicbrainz.search("Test Song", "Test Artist", album="Test Album")
@@ -67,7 +68,7 @@ def test_search_combines_track_and_album_candidates(mocker):
 
 @respx.mock
 def test_search_skips_album_query_when_no_album_given(mocker):
-    mocker.patch("app.metadata.sources.musicbrainz.time.sleep")
+    mocker.patch("app.metadata.sources.pacing.time.sleep")
     respx.get(url__regex=r"musicbrainz\.org/ws/2/release-group/").mock(side_effect=_mock_release_group_response)
 
     candidates = musicbrainz.search("Test Song", "Test Artist")
@@ -77,7 +78,19 @@ def test_search_skips_album_query_when_no_album_given(mocker):
 
 @respx.mock
 def test_search_returns_empty_list_on_request_failure(mocker):
-    mocker.patch("app.metadata.sources.musicbrainz.time.sleep")
+    mocker.patch("app.metadata.sources.pacing.time.sleep")
     respx.get(url__regex=r"musicbrainz\.org/ws/2/release-group/").mock(return_value=httpx.Response(500))
 
     assert musicbrainz.search("Test Song", "Test Artist") == []
+
+
+def test_a_failed_call_holds_every_caller_for_the_backed_off_delay(mocker):
+    mocker.patch("app.metadata.sources.pacing.time.monotonic", return_value=100.0)
+    sleep = mocker.patch("app.metadata.sources.pacing.time.sleep")
+    limiter = musicbrainz._AdaptiveRateLimiter()
+
+    limiter.record_failure()
+    limiter.wait()
+
+    (slept_seconds,), unused_keywords = sleep.call_args
+    assert slept_seconds == pytest.approx(limiter.delay_seconds)

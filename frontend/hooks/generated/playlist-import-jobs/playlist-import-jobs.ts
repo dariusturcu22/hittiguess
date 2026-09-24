@@ -120,6 +120,105 @@ export const useStartImport = <TError = unknown,
       return useMutation(getStartImportMutationOptions(options), queryClient);
     }
     /**
+ * @summary Read one import job of the playlist, running or finished, with per-video results
+ */
+export const importJob = (
+    playlistId: number,
+    importJobId: string,
+ options?: SecondParameter<typeof customInstance>,signal?: AbortSignal
+) => {
+
+
+      return customInstance<PlaylistImportJobDTO>(
+      {url: `/api/playlists/${playlistId}/import-jobs/${importJobId}`, method: 'GET', signal
+    },
+      options);
+    }
+
+
+
+
+export const getImportJobQueryKey = (playlistId: number,
+    importJobId: string,) => {
+    return [
+    `/api/playlists/${playlistId}/import-jobs/${importJobId}`
+    ] as const;
+    }
+
+
+export const getImportJobQueryOptions = <TData = Awaited<ReturnType<typeof importJob>>, TError = unknown>(playlistId: number,
+    importJobId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof importJob>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getImportJobQueryKey(playlistId,importJobId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof importJob>>> = ({ signal }) => importJob(playlistId,importJobId, requestOptions, signal);
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: playlistId !== null && playlistId !== undefined && importJobId !== null && importJobId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof importJob>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type ImportJobQueryResult = NonNullable<Awaited<ReturnType<typeof importJob>>>
+export type ImportJobQueryError = unknown
+
+
+export function useImportJob<TData = Awaited<ReturnType<typeof importJob>>, TError = unknown>(
+ playlistId: number,
+    importJobId: string, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof importJob>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof importJob>>,
+          TError,
+          Awaited<ReturnType<typeof importJob>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useImportJob<TData = Awaited<ReturnType<typeof importJob>>, TError = unknown>(
+ playlistId: number,
+    importJobId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof importJob>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof importJob>>,
+          TError,
+          Awaited<ReturnType<typeof importJob>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useImportJob<TData = Awaited<ReturnType<typeof importJob>>, TError = unknown>(
+ playlistId: number,
+    importJobId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof importJob>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary Read one import job of the playlist, running or finished, with per-video results
+ */
+
+export function useImportJob<TData = Awaited<ReturnType<typeof importJob>>, TError = unknown>(
+ playlistId: number,
+    importJobId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof importJob>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getImportJobQueryOptions(playlistId,importJobId,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+/**
  * @summary Read the playlist's running import with per-video progress, if any
  */
 export const activeImport = (

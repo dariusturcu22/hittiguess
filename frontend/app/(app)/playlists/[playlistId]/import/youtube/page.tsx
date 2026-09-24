@@ -2,17 +2,17 @@
 
 import React, { use } from "react";
 import Link from "next/link";
-import { AlertTriangle, Check, LoaderCircle, Music, Search, Video } from "lucide-react";
+import { AlertTriangle, Check, Clock3, LoaderCircle, Music, Search, Video } from "lucide-react";
 
 import { useExpandPlaylist } from "@/hooks/generated/bulk-import/bulk-import";
-import { useActiveImport, useStartImport } from "@/hooks/generated/playlist-import-jobs/playlist-import-jobs";
+import { useActiveImport, useImportJob, useStartImport } from "@/hooks/generated/playlist-import-jobs/playlist-import-jobs";
 import { useGetPlaylist } from "@/hooks/generated/playlist-management/playlist-management";
 import type { PlaylistImportJobItemDTO } from "@/hooks/models/playlistImportJobItemDTO";
 import { useRouter } from "next/navigation";
 import type { AxiosError } from "axios";
 import { toast } from "sonner";
 import { useBulkImportRealtime } from "@/hooks/use-bulk-import-realtime";
-import { loadActiveImportJob, saveActiveImportJob } from "@/lib/playlist-import-job";
+import { countImportItems, loadActiveImportJob, saveActiveImportJob } from "@/lib/playlist-import-job";
 import { playlistTitleColor } from "@/lib/playlist-colors";
 
 interface PageProps {
@@ -20,7 +20,13 @@ interface PageProps {
 }
 
 const YOUTUBE_INPUT_PLACEHOLDER = "https://youtube.com/playlist?list=...";
+// Every API call counts toward the core service's per-user limit of 60 a minute, and
+// the sidebar polls the same import alongside this page, so this stays at five seconds.
 const ACTIVE_IMPORT_REFRESH_MILLISECONDS = 5_000;
+const WORKING_STAGE_LABELS: Record<string, string> = {
+  IDENTIFYING: "Identifying the song...",
+  DATING: "Finding the year...",
+};
 const NOT_FOUND_STATUS = 404;
 const BAD_REQUEST_STATUS = 400;
 const TOO_MANY_REQUESTS_STATUS = 429;
@@ -93,13 +99,18 @@ function ImportItemRow({ item }: { item: PlaylistImportJobItemDTO }) {
     );
   }
 
+  const workingStageLabel = item.status ? WORKING_STAGE_LABELS[item.status] : undefined;
+  const isWorking = workingStageLabel !== undefined;
+
   return (
-    <div className="flex items-center gap-3.5 border-b-2 border-background px-5 py-3 last:border-b-0">
-      <span className="flex size-10 shrink-0 items-center justify-center rounded-[10px] border-2 border-dashed border-secondary bg-background">
-        <LoaderCircle className="size-[18px] animate-spin text-muted-foreground" />
+    <div className={`flex items-center gap-3.5 border-b-2 border-background px-5 py-3 last:border-b-0 ${isWorking ? "bg-primary/5" : ""}`}>
+      <span className={`flex size-10 shrink-0 items-center justify-center rounded-[10px] border-2 border-dashed bg-background ${isWorking ? "border-primary" : "border-secondary"}`}>
+        {isWorking
+          ? <LoaderCircle className="size-[18px] animate-spin text-primary" />
+          : <Clock3 className="size-[18px] text-muted-foreground/60" />}
       </span>
       <span className="min-w-0 flex-1">
-        <span className="block truncate text-sm italic text-muted-foreground">
+        <span className={`block truncate text-sm italic ${isWorking ? "text-card-foreground" : "text-muted-foreground/70"}`}>
           {item.rawTitle ?? item.youtubeId}
         </span>
         {item.rawChannelTitle ? (
@@ -108,12 +119,15 @@ function ImportItemRow({ item }: { item: PlaylistImportJobItemDTO }) {
           </span>
         ) : null}
       </span>
-      <span className="flex shrink-0 items-center gap-1.5 whitespace-nowrap text-xs text-muted-foreground">
-        <LoaderCircle className="size-3 animate-spin" />
-        Fetching...
+      <span className={`flex shrink-0 items-center gap-1.5 whitespace-nowrap text-xs ${isWorking ? "font-semibold text-primary" : "text-muted-foreground/70"}`}>
+        {workingStageLabel ?? "Waiting"}
       </span>
     </div>
   );
+}
+
+function CountChip({ label, count, className }: { label: string; count: number; className: string }) {
+  return <span className={`rounded-full px-2.5 py-1 text-[11px] font-bold ${className}`}>{count} {label}</span>;
 }
 
 export default function ImportYoutubePage({ params }: PageProps) {
@@ -128,10 +142,11 @@ export default function ImportYoutubePage({ params }: PageProps) {
   const [playlistLink, setPlaylistLink] = React.useState("");
   const [expandedVideoIds, setExpandedVideoIds] = React.useState<string[] | null>(null);
   const [importStartError, setImportStartError] = React.useState("");
-  const [isImportStarted, setIsImportStarted] = React.useState(() => {
+  const [importJobId, setImportJobId] = React.useState<string | undefined>(() => {
     const storedJob = loadActiveImportJob();
-    return storedJob !== null && storedJob.playlistId === playlistId;
+    return storedJob !== null && storedJob.playlistId === playlistId ? storedJob.importJobId : undefined;
   });
+  const [isImportStarted, setIsImportStarted] = React.useState(() => importJobId !== undefined);
   const activeImportQuery = useActiveImport(playlistId, {
     query: {
       retry: false,
@@ -139,14 +154,20 @@ export default function ImportYoutubePage({ params }: PageProps) {
       enabled: isImportStarted,
     },
   });
-  const importItems = activeImportQuery.data
-    ? (activeImportQuery.data.items ?? [])
-    : [];
-  const processedImportCount = importItems.filter((item) => item.status !== "PENDING").length;
-  const addedImportCount = importItems.filter(
-    (item) => item.status === "RESOLVED" || item.status === "ALREADY_KNOWN",
-  ).length;
   const isJobGone = activeImportQuery.isError && isJobGoneError(activeImportQuery.error);
+  // Once the job finishes it stops being the active import, often between two polls
+  // now that songs resolve in parallel, so its final results are read by id.
+  const finishedImportQuery = useImportJob(playlistId, importJobId ?? "", {
+    query: { enabled: isJobGone && importJobId !== undefined, retry: false },
+  });
+  const importItems = isJobGone && finishedImportQuery.data
+    ? (finishedImportQuery.data.items ?? [])
+    : activeImportQuery.data
+      ? (activeImportQuery.data.items ?? [])
+      : [];
+  const importCounts = countImportItems(importItems);
+  const processedImportCount = importCounts.settled;
+  const addedImportCount = importCounts.added;
   const isConnectionStale = activeImportQuery.isError && !isJobGone;
   const isImportFinished = isImportStarted
     && (isJobGone || (importItems.length > 0 && processedImportCount === importItems.length));
@@ -176,6 +197,7 @@ export default function ImportYoutubePage({ params }: PageProps) {
           const startedJobId = response.importJobId;
           if (startedJobId) {
             saveActiveImportJob({ importJobId: startedJobId, playlistId });
+            setImportJobId(startedJobId);
           }
           setIsImportStarted(true);
         },
@@ -210,7 +232,7 @@ export default function ImportYoutubePage({ params }: PageProps) {
               Import from YouTube
             </h1>
             <p className="text-[13px] text-muted-foreground text-center mb-7 leading-[1.5]">
-              Paste a playlist link. We&apos;ll list every song and fetch details for each one.
+              Paste a playlist link. Every song is looked up at once, and each one lands in the playlist as soon as it&apos;s ready.
             </p>
           </>
         )}
@@ -232,6 +254,14 @@ export default function ImportYoutubePage({ params }: PageProps) {
                     : `${processedImportCount} of ${importItems.length} processed`}
               </span>
             </div>
+            {importItems.length > 0 ? (
+              <div className="mt-3 flex flex-wrap gap-2" aria-label="Import progress by stage">
+                <CountChip label="working" count={importCounts.working} className="bg-primary/15 text-primary" />
+                <CountChip label="waiting" count={importCounts.waiting} className="bg-secondary text-muted-foreground" />
+                <CountChip label="added" count={importCounts.added} className="bg-green/15 text-green" />
+                {importCounts.unmatched > 0 ? <CountChip label="no match" count={importCounts.unmatched} className="bg-destructive/15 text-destructive" /> : null}
+              </div>
+            ) : null}
             {isConnectionStale && !isImportFinished ? (
               <p className="mt-2 text-[12px] text-warning">Connection hiccup. Retrying...</p>
             ) : null}

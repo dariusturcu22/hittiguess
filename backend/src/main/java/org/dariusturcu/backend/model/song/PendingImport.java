@@ -7,10 +7,11 @@ import lombok.Setter;
 import java.time.Instant;
 
 /**
- * A YouTube ID the admin submitted for eventual catalog seeding, not yet resolved.
- * The scheduled backlog drain picks up PENDING rows, moves them through PROCESSING,
- * and lands each on DONE or FAILED. Distinct from the user on-the-spot path, which
- * never enqueues here and resolves immediately.
+ * A YouTube ID waiting for the patient metadata pipeline: an admin catalog seed, or the
+ * recheck of a song a user path already saved with a provisional answer. The scheduled
+ * backlog drain picks up PENDING rows, moves them through PROCESSING, and lands each on
+ * DONE or FAILED. A recheck keeps the provisional year, and the drain records the
+ * patient tier's year beside it.
  */
 @Entity
 @Getter
@@ -35,4 +36,12 @@ public class PendingImport {
     private Instant processedAt;
 
     private String failureReason;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private PendingImportOrigin origin = PendingImportOrigin.ADMIN_SEED;
+
+    private Integer provisionalYear;
+
+    private Integer patientYear;
 }

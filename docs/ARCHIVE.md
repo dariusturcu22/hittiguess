@@ -1253,3 +1253,52 @@ Tests:
 - [x] Component tests: the voice sidebar keeps a fixed 76px width in and out of a call, and hides on the game page outside a call; the join-code menu joins by code and opens the lobby
 - [x] Session page test: the DJ's YouTube click requests the audio share and opens the YouTube window
 - [x] Manual check on the stack: over the HTTPS proxy the page is a secure context, login and sockets work, and two players in a call connect their voice peers
+
+## Fast-tier parallel playlist import
+
+Chore, no story: owner decision after the second playtest. Every user YouTube import, whatever its size, goes through the fast tier from the 2026-09 two-tier decision, in parallel, and every fast answer is rechecked by the patient tier in the admin backlog. Before this, every user import ran the full patient pipeline one song at a time, the fast tier existed only as a spike simulation, and each song then ran the same patient pipeline a second time from the backlog.
+
+AI service:
+- [x] Make every source's pacing safe under concurrent requests: one shared pacer per source hands out the next request slot under a lock, so parallel songs queue for MusicBrainz, Discogs, Wikidata, and Wikipedia instead of all sleeping and firing together
+- [x] `POST /metadata/identify`: the first AI pass for one video (YouTube fetch, non-music hard filter, verified-duplicate check, the combined pre-check LLM call and content safety), returning the clean title, artists, and color, or a verified duplicate's full answer
+- [x] `POST /metadata/date-fast`: the fast tier's year lookup, one source per song on whichever lane (MusicBrainz, or Wikipedia plus LLM extraction) frees up soonest given its in-flight work, falling back to the other lane when the first finds nothing; answers are UNVERIFIED with the lane named in the source
+- [x] The two fast endpoints get their own rate limit sized for a whole playlist in flight, separate from the full pipeline's
+
+Backend:
+- [x] A fast-tier import runner: every new song's identify call is dispatched in parallel, and each song moves on to its year lookup the moment its own identify finishes, never waiting on another song; both stages run on bounded pools
+- [x] The background playlist import links each song into the playlist the moment it resolves, instead of once the whole import finishes
+- [x] Job items report IDENTIFYING and DATING while they are actively being worked, so waiting items stay PENDING
+- [x] The on-the-spot bulk import uses the same runner
+- [x] Each fast answer is queued for the patient recheck with its fast-tier year, marked as a fast-tier recheck; the patient run records its own year on the queue row
+- [x] Admin backlog status lists recent fast-tier rechecks with the fast and patient years side by side, and the admin can run the drain now instead of waiting for the daily sweep
+- [x] Test account 1 is seeded as an ADMIN, including an existing row
+
+Frontend:
+- [x] The import progress screen separates songs being worked on (identifying, finding the year) from those waiting, with counts for each, and shows each resolved song as soon as it lands
+- [x] The admin backlog page shows the fast-tier rechecks with fast and patient years, highlights a changed year, and has a run-now button
+
+Tests:
+- [x] pytest: the pacer spaces concurrent callers; lane choice prefers the lane that frees up first and falls back when a lane finds nothing; identify returns a duplicate's answer and a rejection; the fast endpoints' rate limit
+- [x] Unit tests: the runner starts every identify before any song finishes and dates each song as soon as its own identify returns; a failed identify marks only that song unresolved; each resolved song is linked immediately and queued for the recheck with its fast year
+- [x] Unit tests: the patient run records its year on a recheck row; the seeder makes account 1 an admin
+- [x] Integration test: a background import against a stubbed AI service links songs as they resolve and ends DONE with every item settled
+- [x] Frontend tests: the progress screen's working and waiting states; the admin rechecks table and run-now button
+
+## Fast-tier import: rate-limit enforcement review
+
+- [x] The import page polled every two seconds, which with the sidebar's own import polling brings a single user close to the core service's 60-requests-per-minute general limit. Poll every five seconds again
+- [x] The runner's full-pipeline fallback could send several `/metadata/resolve` calls at once and trip that endpoint's 30-per-minute limit. Run the fallback one song at a time
+- [x] The backend relied on the AI service's 429 to keep fast-tier calls under that endpoint's per-minute cap. Pace the backend's fast-tier calls to the same cap
+- [x] A Discogs breach cooldown and a MusicBrainz back-off only paused the thread that hit them, while other threads kept calling. Hold the shared pacer so every caller waits
+
+Tests:
+- [x] pytest: a hold pushes every later caller's slot back; a Discogs breach holds the pacer; a MusicBrainz retry holds it for the new delay
+- [x] Unit tests: at most one fallback runs at a time; fast-tier calls from many threads are spaced by the cap's interval
+
+## Fast-tier import: final results on the import screen
+
+- [x] A parallel import often finishes between two five-second polls, and a finished job stops being the playlist's active import, so the import screen froze on the last mid-import counts (16 of 40 added for a 40-song import that fully resolved). Add a read of one import job by id, with a read-access check, and have the screen show the finished job's results from it
+
+Tests:
+- [x] Unit tests: a finished job reads by id with read access; a job can't be read through another playlist
+- [x] Page test: a job that finished between polls shows its final counts
