@@ -304,4 +304,40 @@ class PlaylistImportJobServiceTest {
 
         assertThat(service().findActiveImport(PLAYLIST_ID)).isEmpty();
     }
+
+    @Test
+    void aFinishedJobIsReadableByIdWithReadAccess() {
+        PlaylistImportJob finishedJob = new PlaylistImportJob();
+        finishedJob.setId("job-2");
+        Playlist playlist = new Playlist();
+        playlist.setId(PLAYLIST_ID);
+        finishedJob.setPlaylist(playlist);
+        finishedJob.setStatus(PlaylistImportJobStatus.DONE);
+        when(jobRepository.findById("job-2")).thenReturn(Optional.of(finishedJob));
+        when(itemRepository.findByJobIdOrderByIdAsc("job-2")).thenReturn(List.of());
+
+        PlaylistImportJobDTO job;
+        try (MockedStatic<SecurityUtils> security = Mockito.mockStatic(SecurityUtils.class)) {
+            User reader = submittingUser();
+            security.when(SecurityUtils::getCurrentUser).thenReturn(reader);
+            job = service().findImport(PLAYLIST_ID, "job-2");
+            verify(playlistAccessService).requireRead(playlist, reader);
+        }
+
+        assertThat(job.status()).isEqualTo(PlaylistImportJobStatus.DONE);
+    }
+
+    @Test
+    void aJobIsNotReadableThroughAnotherPlaylist() {
+        PlaylistImportJob otherPlaylistsJob = new PlaylistImportJob();
+        otherPlaylistsJob.setId("job-3");
+        Playlist otherPlaylist = new Playlist();
+        otherPlaylist.setId(PLAYLIST_ID + 1);
+        otherPlaylistsJob.setPlaylist(otherPlaylist);
+        when(jobRepository.findById("job-3")).thenReturn(Optional.of(otherPlaylistsJob));
+
+        assertThatThrownBy(() -> service().findImport(PLAYLIST_ID, "job-3"))
+                .isInstanceOf(org.springframework.web.server.ResponseStatusException.class);
+        verifyNoInteractions(playlistAccessService);
+    }
 }

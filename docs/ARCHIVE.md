@@ -1294,3 +1294,11 @@ Tests:
 Tests:
 - [x] pytest: a hold pushes every later caller's slot back; a Discogs breach holds the pacer; a MusicBrainz retry holds it for the new delay
 - [x] Unit tests: at most one fallback runs at a time; fast-tier calls from many threads are spaced by the cap's interval
+
+## Fast-tier import: final results on the import screen
+
+- [x] A parallel import often finishes between two five-second polls, and a finished job stops being the playlist's active import, so the import screen froze on the last mid-import counts (16 of 40 added for a 40-song import that fully resolved). Add a read of one import job by id, with a read-access check, and have the screen show the finished job's results from it
+
+Tests:
+- [x] Unit tests: a finished job reads by id with read access; a job can't be read through another playlist
+- [x] Page test: a job that finished between polls shows its final counts

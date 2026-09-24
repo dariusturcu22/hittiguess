@@ -126,6 +126,17 @@ public class PlaylistImportJobService {
         return Optional.of(toDTO(runningJobs.get(0)));
     }
 
+    // A finished job stops being the playlist's active import, so the import screen reads
+    // its final results through this instead. Needs read access to the playlist.
+    @Transactional(readOnly = true)
+    public PlaylistImportJobDTO findImport(Long playlistId, String importJobId) {
+        PlaylistImportJob job = jobRepository.findById(importJobId)
+                .filter(candidate -> candidate.getPlaylist().getId().equals(playlistId))
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Import job not found"));
+        playlistAccessService.requireRead(job.getPlaylist(), SecurityUtils.getCurrentUser());
+        return toDTO(job);
+    }
+
     void runImport(String jobId, Long playlistId, Long submittingUserId, String submittingUsername) {
         User submittingUser = userRepository.findById(submittingUserId).orElse(null);
         if (submittingUser == null) {

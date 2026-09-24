@@ -5,7 +5,7 @@ import Link from "next/link";
 import { AlertTriangle, Check, Clock3, LoaderCircle, Music, Search, Video } from "lucide-react";
 
 import { useExpandPlaylist } from "@/hooks/generated/bulk-import/bulk-import";
-import { useActiveImport, useStartImport } from "@/hooks/generated/playlist-import-jobs/playlist-import-jobs";
+import { useActiveImport, useImportJob, useStartImport } from "@/hooks/generated/playlist-import-jobs/playlist-import-jobs";
 import { useGetPlaylist } from "@/hooks/generated/playlist-management/playlist-management";
 import type { PlaylistImportJobItemDTO } from "@/hooks/models/playlistImportJobItemDTO";
 import { useRouter } from "next/navigation";
@@ -142,10 +142,11 @@ export default function ImportYoutubePage({ params }: PageProps) {
   const [playlistLink, setPlaylistLink] = React.useState("");
   const [expandedVideoIds, setExpandedVideoIds] = React.useState<string[] | null>(null);
   const [importStartError, setImportStartError] = React.useState("");
-  const [isImportStarted, setIsImportStarted] = React.useState(() => {
+  const [importJobId, setImportJobId] = React.useState<string | undefined>(() => {
     const storedJob = loadActiveImportJob();
-    return storedJob !== null && storedJob.playlistId === playlistId;
+    return storedJob !== null && storedJob.playlistId === playlistId ? storedJob.importJobId : undefined;
   });
+  const [isImportStarted, setIsImportStarted] = React.useState(() => importJobId !== undefined);
   const activeImportQuery = useActiveImport(playlistId, {
     query: {
       retry: false,
@@ -153,13 +154,20 @@ export default function ImportYoutubePage({ params }: PageProps) {
       enabled: isImportStarted,
     },
   });
-  const importItems = activeImportQuery.data
-    ? (activeImportQuery.data.items ?? [])
-    : [];
+  const isJobGone = activeImportQuery.isError && isJobGoneError(activeImportQuery.error);
+  // Once the job finishes it stops being the active import, often between two polls
+  // now that songs resolve in parallel, so its final results are read by id.
+  const finishedImportQuery = useImportJob(playlistId, importJobId ?? "", {
+    query: { enabled: isJobGone && importJobId !== undefined, retry: false },
+  });
+  const importItems = isJobGone && finishedImportQuery.data
+    ? (finishedImportQuery.data.items ?? [])
+    : activeImportQuery.data
+      ? (activeImportQuery.data.items ?? [])
+      : [];
   const importCounts = countImportItems(importItems);
   const processedImportCount = importCounts.settled;
   const addedImportCount = importCounts.added;
-  const isJobGone = activeImportQuery.isError && isJobGoneError(activeImportQuery.error);
   const isConnectionStale = activeImportQuery.isError && !isJobGone;
   const isImportFinished = isImportStarted
     && (isJobGone || (importItems.length > 0 && processedImportCount === importItems.length));
@@ -189,6 +197,7 @@ export default function ImportYoutubePage({ params }: PageProps) {
           const startedJobId = response.importJobId;
           if (startedJobId) {
             saveActiveImportJob({ importJobId: startedJobId, playlistId });
+            setImportJobId(startedJobId);
           }
           setIsImportStarted(true);
         },

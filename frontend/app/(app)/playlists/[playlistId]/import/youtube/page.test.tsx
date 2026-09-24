@@ -15,6 +15,9 @@ vi.mock("@/hooks/generated/bulk-import/bulk-import", () => ({
 
 vi.mock("@/hooks/generated/playlist-import-jobs/playlist-import-jobs", () => ({
   useStartImport: () => ({ mutate: startImportMutate, isPending: false, isError: false }),
+  useImportJob: (_playlistId: number, importJobId: string, options: { query: { enabled: boolean } }) => ({
+    data: options.query.enabled ? finishedImportState.current[importJobId] : undefined,
+  }),
   useActiveImport: (_playlistId: number, options: unknown) => {
     activeImportOptions.current = options;
     return activeImportState;
@@ -22,6 +25,7 @@ vi.mock("@/hooks/generated/playlist-import-jobs/playlist-import-jobs", () => ({
 }));
 
 const activeImportOptions = vi.hoisted(() => ({ current: undefined as unknown }));
+const finishedImportState = vi.hoisted(() => ({ current: {} as Record<string, unknown> }));
 
 vi.mock("@/hooks/generated/playlist-management/playlist-management", () => ({
   useGetPlaylist: () => ({ data: { name: "Late Night Coding Mix" } }),
@@ -222,6 +226,25 @@ describe("ImportYoutubePage background import", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "View playlist" }));
     expect(routerPush).toHaveBeenCalledWith("/playlists/7");
+  });
+
+  it("reads the final results by job id when the import finishes between polls", async () => {
+    activeImportState = { isError: true, error: notFoundError() };
+    finishedImportState.current = {
+      "job-1": {
+        status: "DONE",
+        items: [
+          { youtubeId: "video-1", status: "RESOLVED", resolvedTitle: "Chasing Cars", resolvedArtists: "Snow Patrol", resolvedReleaseYear: 2006 },
+          { youtubeId: "video-2", status: "RESOLVED", resolvedTitle: "Run", resolvedArtists: "Snow Patrol", resolvedReleaseYear: 2003 },
+        ],
+      },
+    };
+    window.localStorage.setItem("hittiguess-active-playlist-import", JSON.stringify({ importJobId: "job-1", playlistId: 7 }));
+    await renderPage();
+
+    expect(await screen.findByText("2 of 2 added")).toBeVisible();
+    expect(screen.getByText("Run")).toBeVisible();
+    finishedImportState.current = {};
   });
 
   it("resumes the progress view from a stored job without starting over", async () => {
