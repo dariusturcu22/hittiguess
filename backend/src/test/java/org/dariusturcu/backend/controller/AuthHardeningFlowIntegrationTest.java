@@ -78,6 +78,7 @@ class AuthHardeningFlowIntegrationTest {
     private static final Pattern TOKEN_QUERY_PARAM_PATTERN = Pattern.compile("token=([^&\\s\"<]+)");
     private static final long TOTP_PERIOD_SECONDS = 30;
     private static final int FAILED_ATTEMPTS_BEFORE_LOCKOUT = 5;
+    private static final String WRONG_TWO_FACTOR_CODE = "000000";
 
     @Configuration
     @EnableAutoConfiguration(exclude = OAuth2ClientAutoConfiguration.class)
@@ -378,7 +379,7 @@ class AuthHardeningFlowIntegrationTest {
 
         mockMvc.perform(post("/auth/2fa/verify")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(verifyRequestBody(pendingToken, "000000")))
+                        .content(verifyRequestBody(pendingToken, WRONG_TWO_FACTOR_CODE)))
                 .andExpect(status().isUnauthorized());
 
         mockMvc.perform(post("/auth/2fa/verify")
@@ -455,7 +456,7 @@ class AuthHardeningFlowIntegrationTest {
         for (int attempt = 0; attempt < FAILED_ATTEMPTS_BEFORE_LOCKOUT; attempt++) {
             mockMvc.perform(post("/auth/2fa/verify")
                             .contentType(MediaType.APPLICATION_JSON)
-                            .content(verifyRequestBody(pendingToken, "000000")))
+                            .content(verifyRequestBody(pendingToken, WRONG_TWO_FACTOR_CODE)))
                     .andExpect(status().isUnauthorized());
         }
 

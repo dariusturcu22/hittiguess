@@ -29,6 +29,8 @@ import static org.mockito.Mockito.when;
 class TwoFactorServiceTest {
 
     private static final long TOTP_PERIOD_SECONDS = 30;
+    private static final long CURRENT_STEP = 0;
+    private static final long NEXT_STEP = 1;
 
     @Mock
     private UserRepository userRepository;
@@ -180,8 +182,8 @@ class TwoFactorServiceTest {
     @Test
     void aLoginCodeIsAcceptedOnceAndRefusedWhenReplayed() throws Exception {
         twoFactorService.setup(user);
-        twoFactorService.confirm(user, codeForStepOffset(user.getTotpSecret(), 0));
-        String nextCode = codeForStepOffset(user.getTotpSecret(), 1);
+        twoFactorService.confirm(user, codeForStepOffset(user.getTotpSecret(), CURRENT_STEP));
+        String nextCode = codeForStepOffset(user.getTotpSecret(), NEXT_STEP);
 
         assertThat(twoFactorService.verifyLoginCode(user, nextCode)).isTrue();
         assertThat(twoFactorService.verifyLoginCode(user, nextCode)).isFalse();
@@ -190,7 +192,7 @@ class TwoFactorServiceTest {
     @Test
     void theCodeUsedToConfirmSetupCannotBeReusedToLogIn() throws Exception {
         twoFactorService.setup(user);
-        String confirmationCode = codeForStepOffset(user.getTotpSecret(), 0);
+        String confirmationCode = codeForStepOffset(user.getTotpSecret(), CURRENT_STEP);
         twoFactorService.confirm(user, confirmationCode);
 
         assertThat(twoFactorService.verifyLoginCode(user, confirmationCode)).isFalse();
@@ -199,9 +201,9 @@ class TwoFactorServiceTest {
     @Test
     void aCodeFromAnEarlierStepThanTheLastUsedOneIsRefused() throws Exception {
         twoFactorService.setup(user);
-        twoFactorService.confirm(user, codeForStepOffset(user.getTotpSecret(), 1));
+        twoFactorService.confirm(user, codeForStepOffset(user.getTotpSecret(), NEXT_STEP));
 
-        assertThat(twoFactorService.verifyLoginCode(user, codeForStepOffset(user.getTotpSecret(), 0))).isFalse();
+        assertThat(twoFactorService.verifyLoginCode(user, codeForStepOffset(user.getTotpSecret(), CURRENT_STEP))).isFalse();
     }
 
     @Test

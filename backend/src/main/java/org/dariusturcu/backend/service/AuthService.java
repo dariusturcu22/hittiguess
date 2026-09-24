@@ -95,15 +95,15 @@ public class AuthService {
                             request.password()
                     )
             );
-        } catch (IllegalArgumentException e) {
+        } catch (IllegalArgumentException passwordlessAccountException) {
             // BCrypt throws this for an account with no password set, a Google-only account
             // trying to log in with a password. Same response as any other wrong credentials,
             // so this doesn't become a second way to tell accounts apart.
             recordFailedLogin(request.email());
             throw new BadCredentialsException("Invalid username or password");
-        } catch (BadCredentialsException e) {
+        } catch (BadCredentialsException wrongCredentialsException) {
             recordFailedLogin(request.email());
-            throw e;
+            throw wrongCredentialsException;
         }
 
         User user = userRepository.findUserByEmail(request.email())

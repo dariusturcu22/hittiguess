@@ -21,6 +21,8 @@ import static org.mockito.Mockito.when;
 class LoginAttemptServiceTest {
 
     private static final long USER_ID = 1L;
+    private static final long LOCK_REMAINING_SECONDS = 60;
+    private static final long LOCK_EXPIRED_SECONDS_AGO = 1;
 
     @Mock
     private UserRepository userRepository;
@@ -42,7 +44,7 @@ class LoginAttemptServiceTest {
 
     @Test
     void anAccountLockedUntilALaterTimeIsRefused() {
-        user.setLoginLockedUntil(Instant.now().plusSeconds(60));
+        user.setLoginLockedUntil(Instant.now().plusSeconds(LOCK_REMAINING_SECONDS));
 
         assertThatThrownBy(() -> loginAttemptService.requireNotLocked(user))
                 .isInstanceOf(RateLimitExceededException.class);
@@ -50,7 +52,7 @@ class LoginAttemptServiceTest {
 
     @Test
     void anExpiredLockNoLongerRefuses() {
-        user.setLoginLockedUntil(Instant.now().minusSeconds(1));
+        user.setLoginLockedUntil(Instant.now().minusSeconds(LOCK_EXPIRED_SECONDS_AGO));
 
         assertThatCode(() -> loginAttemptService.requireNotLocked(user)).doesNotThrowAnyException();
     }
@@ -86,7 +88,7 @@ class LoginAttemptServiceTest {
     @Test
     void resetClearsTheCountAndTheLock() {
         user.setFailedLoginAttempts(LoginAttemptService.MAX_FAILED_ATTEMPTS - 1);
-        user.setLoginLockedUntil(Instant.now().plusSeconds(60));
+        user.setLoginLockedUntil(Instant.now().plusSeconds(LOCK_REMAINING_SECONDS));
 
         loginAttemptService.resetFailures(user);
 
