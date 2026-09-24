@@ -41,7 +41,7 @@ A working multiplayer game where:
 
 ## Built to a professional standard, not just a working one
 
-Every external dependency, official APIs only, licenses respected, no reverse-engineered or unofficial access. That standard extends to the product itself: a real privacy policy and terms of service, GDPR compliance, and production-grade observability (error tracking, monitoring) rather than a game that happens to run. None of this is scoped into stories yet; it's a standard the project is held to as stories get defined, not a checklist bolted on at the end.
+Every external dependency uses official APIs and respects licenses. The product includes privacy and terms pages, GDPR controls, and production-focused observability through stories 37 and 38. Deployment monitoring remains open until a production deployment exists.
 
 ## Groups are the lobby, game sessions are the round
 

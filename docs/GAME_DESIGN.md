@@ -27,14 +27,14 @@ A group doesn't last forever: it's deleted if the admin doesn't start a game ses
 
 The DJ and the active player, whoever's turn it is, are separate roles.
 
-- DJ: opens the real YouTube page or app and plays the song there. Holds no in-app controls beyond that single "Open YouTube Link" action; playback, pausing, and closing the tab all happen on YouTube itself, and the round's flow (the betting countdown, the reveal, advancing to the next player) runs on its own once the DJ has started the song, with no separate DJ trigger for any of it. Does not guess and does not earn tokens.
+- DJ: opens the real YouTube page or app and plays the song there. Holds no in-app controls beyond the "Open YouTube Link" action; playback, pausing, and closing the tab happen on YouTube itself. The round flow starts when the active player locks a placement, with no separate DJ trigger. The DJ does not guess or earn tokens.
 - Active player: the player whose turn it is. Listens to the song and places their guess on their own timeline.
 
 ## Each round
 
 1. The DJ plays the song, on the real YouTube page for remote sessions, or the real YouTube app for in-person sessions.
 2. The active player places a guess: before, after, or between the cards already on their timeline. The guess is locked in, with a sound effect on lock-in.
-3. The active player's audio stream cuts off immediately on lock-in, regardless of what's still playing on the DJ's end.
+3. The active player's remote-audio stream cuts off on lock-in, regardless of what is still playing on the DJ's end.
 4. A 3-5 second countdown follows lock-in, giving other players a moment to get ready to bet.
 5. A 15-second betting window opens: every player holding a token may bet, at the same time as each other, on a different gap in the ACTIVE PLAYER's own timeline than the one the active player just locked their own guess into, one bet per interval rather than one bet per round. A round can end up with zero, one, or several accepted bets, each at a distinct gap, since two bettors can never occupy the same gap and a bettor can never occupy the active player's own gap. A player still can't bet twice in the same round. If no player holds a token, this window is skipped entirely. A skip-betting button lets the group end the window early if no one wants to bet. Placing a bet is concurrency-safe: for any given gap, only the first successful bet on it is accepted, and a losing attempt doesn't cost the player their token.
 6. Once the betting window closes, the song reveals automatically: artist, title, and year. Nobody triggers it manually, DJ included.
@@ -77,7 +77,7 @@ Text chat renders as a semi-transparent overlay in the bottom-left corner, toggl
 - For remote sessions, that browser tab is captured through WebRTC and streamed to the other players.
 - Non-DJ players never see a YouTube embed or the YouTube app, only the game UI.
 - Reveal happens automatically once the betting window closes; nobody, DJ included, triggers it by hand.
-- Screen or system audio sharing for a remote session's WebRTC capture only starts when the DJ clicks "Open YouTube Link," paired with an explicit UI warning that doing so broadcasts their tab or system audio to the rest of the group.
+- Screen or system audio sharing for a remote session's WebRTC capture starts only when the DJ clicks "Open YouTube Link" and includes a warning that tab or system audio will be broadcast.
 - Players can voice chat and text chat with the rest of their group, available from group creation, not just during a game session. See [ARCHITECTURE.md](ARCHITECTURE.md) for how this works.
 
 ## Ads

@@ -30,11 +30,11 @@ Authenticated, playlist-access-gated. Data: a single `SongDTO`'s full fields, pl
 
 ### Add song (`/playlists/[playlistId]/songs/add`)
 
-Authenticated, playlist-access-gated. Fields: YouTube link or ID, with a "get details" action that calls the metadata pipeline and pre-fills artist/title/release year/gradient colors/tag/country for the submitter to review and adjust before saving. States: idle, fetching, fetched-and-editable, error (a failed fetch surfaces a real error, not a silent no-op, `ARCHIVE.md`'s story-6 frontend fix). Story 28's design pass makes this a two-path screen: searching the existing catalog and queuing several matches at once (anticipating story 14, not built yet) as the primary path, with this link-and-fetch flow kept as a secondary "add a new song" path for tracks not already in the database.
+Authenticated, playlist-access-gated. Fields: YouTube link or ID, with a "get details" action that calls the metadata pipeline and pre-fills artist, title, release year, color, genre, and country for review and adjustment before saving. States: idle, fetching, fetched-and-editable, and error. Story 28 uses a two-path screen: searching the existing catalog and queuing several matches at once as the primary path, with link-and-fetch as the secondary path for tracks not already in the database.
 
 ### Join by invite (`/playlists/join/[inviteCode]`)
 
-Authenticated. Today: no content beyond a brief in-progress state; on success, redirects into the newly-joined playlist. On failure, shows a real error rather than getting stuck (`ARCHIVE.md`'s QA-pass fix for the stuck-forever bug this route used to have). Once story 46 ships, this becomes a real preview screen first: the playlist's cover, name, song count, and a stacked-avatar preview of its members, plus an identity step (per-playlist display name and avatar, defaulting to the account's own, editable before joining) above the join action. A banned user's join attempt shows a real rejection instead of succeeding.
+Authenticated. The route previews the playlist before joining, including its cover, name, song count, member preview, and a per-playlist display-name and avatar step. On success it redirects into the joined playlist. On failure it shows an error. A banned user is refused.
 
 ## Planned playlist screens (not yet built)
 
