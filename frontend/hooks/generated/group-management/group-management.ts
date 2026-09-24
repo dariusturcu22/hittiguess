@@ -590,6 +590,72 @@ export const useReconnect = <TError = unknown,
       return useMutation(getReconnectMutationOptions(options), queryClient);
     }
     /**
+ * @summary Remove another member from the group for good, admin only, not during a game session
+ */
+export const removeMember = (
+    groupId: number,
+    memberId: number,
+ options?: SecondParameter<typeof customInstance>,signal?: AbortSignal
+) => {
+
+
+      return customInstance<GroupDetailDTO>(
+      {url: `/api/groups/${groupId}/members/${memberId}/remove`, method: 'POST', signal
+    },
+      options);
+    }
+
+
+
+
+export const getRemoveMemberMutationKey = () => ['removeMember'] as const;
+
+export const getRemoveMemberMutationOptions = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof removeMember>>, TError,RemoveMemberMutationVariables, TContext>, request?: SecondParameter<typeof customInstance>}
+): UseMutationOptions<Awaited<ReturnType<typeof removeMember>>, TError,RemoveMemberMutationVariables, TContext> => {
+
+const mutationKey = getRemoveMemberMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof removeMember>>, RemoveMemberMutationVariables> = (props) => {
+          const {groupId,memberId} = props ?? {};
+
+          return  removeMember(groupId,memberId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RemoveMemberMutationResult = NonNullable<Awaited<ReturnType<typeof removeMember>>>
+
+    export type RemoveMemberMutationError = unknown
+    export type RemoveMemberMutationVariables = {groupId: number;memberId: number}
+
+    /**
+ * @summary Remove another member from the group for good, admin only, not during a game session
+ */
+export const useRemoveMember = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof removeMember>>, TError,RemoveMemberMutationVariables, TContext>, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof removeMember>>,
+        TError,
+        RemoveMemberMutationVariables,
+        TContext
+      > => {
+      return useMutation(getRemoveMemberMutationOptions(options), queryClient);
+    }
+    /**
  * @summary Promote another member to admin, admin only
  */
 export const promoteMember1 = (

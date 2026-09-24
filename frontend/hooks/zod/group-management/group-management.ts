@@ -10,9 +10,21 @@ import * as zod from 'zod';
 /**
  * @summary Create a group, the creator becomes its admin
  */
+export const createGroupBodyDisplayNameMin = 0;
+export const createGroupBodyDisplayNameMax = 30;
+
+
+export const createGroupBodyDisplayNameRegExp = new RegExp('[^\\p{Cc}]*\\S[^\\p{Cc}]*', 'u');
+export const createGroupBodyAvatarUrlMin = 0;
+export const createGroupBodyAvatarUrlMax = 1024;
+
+
+export const createGroupBodyAvatarUrlRegExp = new RegExp('https://[a-z0-9-]+\\.googleusercontent\\.com/\\S*');
+
+
 export const CreateGroupBody = zod.object({
-  "displayName": zod.string().optional(),
-  "avatarUrl": zod.string().optional()
+  "displayName": zod.string().min(createGroupBodyDisplayNameMin).max(createGroupBodyDisplayNameMax).regex(createGroupBodyDisplayNameRegExp).optional(),
+  "avatarUrl": zod.string().min(createGroupBodyAvatarUrlMin).max(createGroupBodyAvatarUrlMax).regex(createGroupBodyAvatarUrlRegExp).optional()
 })
 
 export const CreateGroupResponse = zod.unknown()
@@ -95,6 +107,16 @@ export const ReconnectParams = zod.object({
 export const ReconnectResponse = zod.unknown()
 
 /**
+ * @summary Remove another member from the group for good, admin only, not during a game session
+ */
+export const RemoveMemberParams = zod.object({
+  "groupId": zod.int(),
+  "memberId": zod.int()
+})
+
+export const RemoveMemberResponse = zod.unknown()
+
+/**
  * @summary Promote another member to admin, admin only
  */
 export const PromoteMember1Params = zod.object({
@@ -125,11 +147,23 @@ export const DisconnectResponse = zod.unknown()
 /**
  * @summary Join a group via invite link or join code
  */
+export const joinGroupBodyDisplayNameMin = 0;
+export const joinGroupBodyDisplayNameMax = 30;
+
+
+export const joinGroupBodyDisplayNameRegExp = new RegExp('[^\\p{Cc}]*\\S[^\\p{Cc}]*', 'u');
+export const joinGroupBodyAvatarUrlMin = 0;
+export const joinGroupBodyAvatarUrlMax = 1024;
+
+
+export const joinGroupBodyAvatarUrlRegExp = new RegExp('https://[a-z0-9-]+\\.googleusercontent\\.com/\\S*');
+
+
 export const JoinGroupBody = zod.object({
   "inviteCode": zod.string().optional(),
   "joinCode": zod.string().optional(),
-  "displayName": zod.string().optional(),
-  "avatarUrl": zod.string().optional()
+  "displayName": zod.string().min(joinGroupBodyDisplayNameMin).max(joinGroupBodyDisplayNameMax).regex(joinGroupBodyDisplayNameRegExp).optional(),
+  "avatarUrl": zod.string().min(joinGroupBodyAvatarUrlMin).max(joinGroupBodyAvatarUrlMax).regex(joinGroupBodyAvatarUrlRegExp).optional()
 })
 
 export const JoinGroupResponse = zod.unknown()

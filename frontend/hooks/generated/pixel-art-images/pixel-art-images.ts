@@ -122,7 +122,7 @@ export const useUploadOwnAvatar = <TError = unknown,
       return useMutation(getUploadOwnAvatarMutationOptions(options), queryClient);
     }
     /**
- * @summary Read a playlist's custom cover, if it has one
+ * @summary Read a playlist's custom cover, if it has one, must be able to read the playlist
  */
 export const readPlaylistCover = (
     playlistId: number,
@@ -194,7 +194,7 @@ export function useReadPlaylistCover<TData = Awaited<ReturnType<typeof readPlayl
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 /**
- * @summary Read a playlist's custom cover, if it has one
+ * @summary Read a playlist's custom cover, if it has one, must be able to read the playlist
  */
 
 export function useReadPlaylistCover<TData = Awaited<ReturnType<typeof readPlaylistCover>>, TError = unknown>(

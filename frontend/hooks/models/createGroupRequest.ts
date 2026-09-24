@@ -6,6 +6,16 @@
  */
 
 export interface CreateGroupRequest {
+  /**
+     * @minLength 0
+     * @maxLength 30
+     * @pattern [^\p{Cc}]*\S[^\p{Cc}]*
+     */
   displayName?: string;
+  /**
+     * @minLength 0
+     * @maxLength 1024
+     * @pattern https://[a-z0-9-]+\.googleusercontent\.com/\S*
+     */
   avatarUrl?: string;
 }

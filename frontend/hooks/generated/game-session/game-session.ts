@@ -232,7 +232,7 @@ export function useGetCurrentRoundLinkOut<TData = Awaited<ReturnType<typeof getC
 
 
 /**
- * @summary Get the most recently completed session's results export for a group
+ * @summary Get the most recently completed session's results export for a group, must have played in it
  */
 export const getResults = (
     groupId: number,
@@ -303,7 +303,7 @@ export function useGetResults<TData = Awaited<ReturnType<typeof getResults>>, TE
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 /**
- * @summary Get the most recently completed session's results export for a group
+ * @summary Get the most recently completed session's results export for a group, must have played in it
  */
 
 export function useGetResults<TData = Awaited<ReturnType<typeof getResults>>, TError = unknown>(
