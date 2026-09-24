@@ -24,8 +24,12 @@ let lobbyMembers = [
   { id: 2, userId: 12, displayName: "Sam", isAdmin: false, isConnected: true },
 ];
 
+// One router for the whole file: next/navigation's useRouter returns a stable instance,
+// and a fresh object per render would change every callback that depends on it.
+const routerMock = vi.hoisted(() => ({ replace: vi.fn(), push: vi.fn() }));
+
 vi.mock("next/navigation", () => ({
-  useRouter: () => ({ replace: vi.fn(), push: vi.fn() }),
+  useRouter: () => routerMock,
   usePathname: () => "/groups/1",
   useSearchParams: () => lobbySearchParams,
 }));

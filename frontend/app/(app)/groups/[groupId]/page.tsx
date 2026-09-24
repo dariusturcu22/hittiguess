@@ -1,6 +1,6 @@
 "use client";
 
-import { use, useCallback, useEffect, useMemo, useState, Suspense } from "react";
+import { use, useCallback, useEffect, useMemo, useRef, useState, Suspense } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 import {
@@ -155,18 +155,25 @@ function LobbyLoadingState() {
   );
 }
 
+// Runs only when the search params change. The callback is read through a ref, so a
+// caller whose callback changes identity every render can't re-apply the same link.
 function PlaylistPreselectCapture({ onCapture }: { onCapture: (playlistId: number | null) => void }) {
   const searchParams = useSearchParams();
+  const onCaptureReference = useRef(onCapture);
+
+  useEffect(() => {
+    onCaptureReference.current = onCapture;
+  });
 
   useEffect(() => {
     const rawPlaylistId = searchParams.get("playlist");
     if (rawPlaylistId === null) {
-      onCapture(null);
+      onCaptureReference.current(null);
       return;
     }
     const parsedPlaylistId = Number(rawPlaylistId);
-    onCapture(Number.isInteger(parsedPlaylistId) && parsedPlaylistId > 0 ? parsedPlaylistId : null);
-  }, [searchParams, onCapture]);
+    onCaptureReference.current(Number.isInteger(parsedPlaylistId) && parsedPlaylistId > 0 ? parsedPlaylistId : null);
+  }, [searchParams]);
 
   return null;
 }
