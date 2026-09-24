@@ -882,8 +882,9 @@ class GameSessionServiceTest {
 
         assertThat(session.getStatus()).isEqualTo(SessionStatus.COMPLETED);
         assertThat(savedRoundNumbers()).doesNotContain(2);
-        SessionResultsDTO results = resultsStore.get(session.getGroupId()).orElseThrow();
-        assertThat(results.cardCountRanking().getFirst().playerId()).isEqualTo(playerA.getId());
+        SessionResultsStore.PlayedResults playedResults = resultsStore.get(session.getGroupId()).orElseThrow();
+        assertThat(playedResults.results().cardCountRanking().getFirst().playerId()).isEqualTo(playerA.getId());
+        assertThat(playedResults.playerUserIds()).containsExactlyInAnyOrder(playerA.getUser().getId(), playerB.getUser().getId());
         verify(groupService).recordGameSessionEnded(session.getGroupId());
     }
 

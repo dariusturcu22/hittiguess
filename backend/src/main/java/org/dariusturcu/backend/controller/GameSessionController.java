@@ -46,12 +46,15 @@ public class GameSessionController {
         return ResponseEntity.ok(sessionMapper.toSessionDTO(session, gameSessionService.getCurrentRoundOrNull(session)));
     }
 
-    @Operation(summary = "Get the most recently completed session's results export for a group")
+    @Operation(summary = "Get the most recently completed session's results export for a group, must have played in it")
     @GetMapping("/groups/{groupId}/results")
     public ResponseEntity<SessionResultsDTO> getResults(@PathVariable Long groupId) {
-        return resultsStore.get(groupId)
-                .map(ResponseEntity::ok)
+        SessionResultsStore.PlayedResults playedResults = resultsStore.get(groupId)
                 .orElseThrow(() -> new ResourceNotFoundException("No completed session results found for group {id=" + groupId + "}"));
+        if (!playedResults.wasPlayedBy(SecurityUtils.getCurrentUserId())) {
+            throw new AccessDeniedException("You didn't play in this group's last session");
+        }
+        return ResponseEntity.ok(playedResults.results());
     }
 
     @Operation(summary = "Get the current round's YouTube link-out, must be the round's DJ")
