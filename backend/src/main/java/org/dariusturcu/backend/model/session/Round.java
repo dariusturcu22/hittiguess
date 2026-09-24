@@ -27,8 +27,14 @@ public class Round {
     @JoinColumn(name = "session_id", nullable = false)
     private GameSession session;
 
+    // Each row is one player's turn: roundNumber orders the turns across the whole
+    // session, and gameRoundNumber is the full pass through the players it belongs to,
+    // the round players see.
     @Column(name = "round_number", nullable = false)
     private int roundNumber;
+
+    @Column(name = "game_round_number", nullable = false)
+    private int gameRoundNumber;
 
     @ManyToOne
     @JoinColumn(name = "active_player_id", nullable = false)

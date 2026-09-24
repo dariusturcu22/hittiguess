@@ -6,10 +6,10 @@ import lombok.Setter;
 
 import java.time.Instant;
 
-// One artist/title guess submission. Every player but the round's DJ may submit one for
-// the whole turn; only the active player's fully-correct guess (isArtistCorrect and
-// isTitleCorrect both true) awards a token, but every guess, active or not, feeds the
-// two session-long tallies on Player.
+// One artist or title guess submission. Every player but the round's DJ may guess
+// during the turn, under the one-title, artists-one-at-a-time rules in
+// GameSessionService; every correct guess, active player or not, feeds the two
+// session-long tallies on Player.
 @Entity
 @Getter
 @Setter
@@ -39,8 +39,4 @@ public class Guess {
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
-
-    public boolean isFullyCorrect() {
-        return artistCorrect && titleCorrect;
-    }
 }

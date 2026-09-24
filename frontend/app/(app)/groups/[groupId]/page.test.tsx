@@ -28,6 +28,7 @@ let lobbyMembers = [
 // One router for the whole file: next/navigation's useRouter returns a stable instance,
 // and a fresh object per render would change every callback that depends on it.
 const routerMock = vi.hoisted(() => ({ replace: vi.fn(), push: vi.fn() }));
+const lobbyState = vi.hoisted(() => ({ status: "OPEN", cachedSessionId: undefined as number | undefined }));
 
 vi.mock("next/navigation", () => ({
   useRouter: () => routerMock,
@@ -41,7 +42,7 @@ vi.mock("@/hooks/generated/group-management/group-management", () => ({
   useGetGroup: () => ({
     data: {
       id: 1,
-      status: "OPEN",
+      status: lobbyState.status,
       djMode: "ROTATING",
       winConditionCardCount: 5,
       joinCode: "ABCD",
@@ -68,7 +69,7 @@ vi.mock("@/hooks/generated/user-management/user-management", () => ({
 }));
 
 vi.mock("@/hooks/generated/game-session/game-session", () => ({
-  useGetActiveSessionForGroup: () => ({ data: undefined }),
+  useGetActiveSessionForGroup: () => ({ data: lobbyState.cachedSessionId === undefined ? undefined : { id: lobbyState.cachedSessionId } }),
 }));
 
 vi.mock("@/hooks/use-group-realtime", () => ({
@@ -97,6 +98,9 @@ async function renderPage() {
 
 describe("GroupLobbyPage start options", () => {
   beforeEach(() => {
+    lobbyState.status = "OPEN";
+    lobbyState.cachedSessionId = undefined;
+    routerMock.replace.mockClear();
     generateMutate.mockReset();
     startWithSongsMutate.mockReset();
     startSessionMutate.mockReset();
@@ -113,6 +117,21 @@ describe("GroupLobbyPage start options", () => {
     updateSettingsMutate.mockImplementation((_args, options) => options?.onSuccess?.({}));
     toastMocks.success.mockReset();
     toastMocks.error.mockReset();
+  });
+
+  it("stays in the reopened lobby when a finished game's session is still cached", async () => {
+    lobbyState.cachedSessionId = 44;
+    await renderPage();
+
+    expect(routerMock.replace).not.toHaveBeenCalledWith("/sessions/44");
+  });
+
+  it("joins the game in progress while the group is locked", async () => {
+    lobbyState.status = "LOCKED";
+    lobbyState.cachedSessionId = 44;
+    await renderPage();
+
+    expect(routerMock.replace).toHaveBeenCalledWith("/sessions/44");
   });
 
   it("generates a difficulty set for review and confirms it into a start", async () => {

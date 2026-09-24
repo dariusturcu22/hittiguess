@@ -47,6 +47,11 @@ public class GameSession {
     @Column(name = "current_round_number", nullable = false)
     private int currentRoundNumber;
 
+    // The full pass through the players the current turn belongs to. Advances whenever
+    // the active-player rotation wraps back around.
+    @Column(name = "current_game_round_number", nullable = false)
+    private int currentGameRoundNumber;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 
