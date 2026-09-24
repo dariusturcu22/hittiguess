@@ -689,21 +689,3 @@ Tests:
 
 Tests:
 - [x] Stack overflow, Radix settings selects, group button rules, floating chat variant, plus screenshot verification of settings and chat
-
-## Second LAN playtest: gameplay rules and the end of a game
-
-Chore, no story: findings from the second multi-device playtest. The rule changes are owner decisions recorded in `GAME_DESIGN.md` and `DECISIONS.md`.
-
-- [ ] Finishing a game strands every player on "This game session is unavailable": the session rows are purged on completion, the session page's refetch 404s before it ever sees `COMPLETED`, and the lobby's cached active session keeps redirecting back to the dead session. Route every client to the results screen off the `SESSION_ENDED` event (which carries the group id), give the results page the group id through the URL instead of the purged session, broadcast a group event when the session ends so lobbies refetch, and stop the lobby from redirecting on a cached session once the group is open again
-- [ ] A round is a full pass through the players, not a single turn. Number turns and rounds separately; the round counter advances when the active-player rotation wraps
-- [ ] Reaching the win condition no longer ends the game on the spot: the current round plays out, and the game ends at the end of the round in which anyone reached it
-- [ ] Rankings share places on ties (competition ranking) for cards, artists guessed, and titles guessed, and the results screen shows every tied winner
-- [ ] Players start with two tokens
-- [ ] A token is earned for the title plus at least one artist, not every artist
-- [ ] Each round allows one title guess and artist guesses one at a time: a correct artist locks in and lets the player try another credited artist, a wrong artist ends artist guessing for that round, and repeating an artist already guessed is rejected
-- [ ] The guess fields stay on screen after the active player drops the card, next to the lock-in button, and disable themselves once their guessing is closed. Guess state survives a reload through a per-player guess-state endpoint
-
-Tests:
-- [ ] Unit tests: round counter wraps with the rotation, fixed-DJ and rotating; the game continues after a mid-round win and completes at the round's end; tied ranks; two starting tokens; token for title plus one artist; one title guess; wrong artist closes artist guessing; repeated artist rejected; guess state
-- [ ] Integration test: the ended event carries the group id and the lobby is open again afterwards
-- [ ] Frontend tests: results page reads the group from the URL and renders tied ranks; session page routes to results on the ended event; guess fields render alongside the lock-in button and disable when closed
