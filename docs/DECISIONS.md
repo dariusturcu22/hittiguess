@@ -1059,3 +1059,9 @@ Why: explicit refusals are user-facing state that the frontend already shows. In
 Decision: the frontend sends a CSP that permits the API origin and matching WebSocket origin, YouTube thumbnails, Google avatars, self-hosted fonts, browser media blobs, and Next inline scripts, plus `unsafe-eval` in development only, which React needs there. Production disables Springdoc. The AI service rejects an empty internal key at startup, uses a constant-time comparison, and exposes neither docs nor metrics. CSV formula prefixes are escaped with an apostrophe. Group joins lock the matching group row pessimistically before capacity is checked, through dedicated finders so read-only lookups such as the invite preview never take the lock.
 
 Why: each CSP origin corresponds to a current runtime dependency. The group lock serializes joins on the only row whose member count establishes capacity. Documentation and metrics are not public endpoints for the AI service.
+
+## 2026-09 | AI service metrics are served behind the internal key
+
+Decision: the AI service exposes `/metrics` again, guarded by the same `X-Internal-Api-Key` check as its other routes. The Alloy scrape sends that header from `INTERNAL_SERVICE_API_KEY`, which it already loads from `backend/.env`. This supersedes the part of the batch 8 entry that disabled the metrics route.
+
+Why: disabling the route stopped AI metrics from reaching Grafana. The key restricts the route to the scraper without a separate credential or port to manage.
