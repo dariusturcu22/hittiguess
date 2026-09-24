@@ -3,6 +3,7 @@ package org.dariusturcu.backend.service;
 import org.dariusturcu.backend.exception.PlaylistImportException;
 import org.dariusturcu.backend.exception.RateLimitExceededException;
 import org.dariusturcu.backend.repository.ImportQuotaUsageRepository;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -22,6 +23,7 @@ public class ImportQuotaService {
     private final ImportQuotaUsageRepository importQuotaUsageRepository;
     private final Clock clock;
 
+    @Autowired
     public ImportQuotaService(ImportQuotaUsageRepository importQuotaUsageRepository) {
         this(importQuotaUsageRepository, Clock.systemUTC());
     }
