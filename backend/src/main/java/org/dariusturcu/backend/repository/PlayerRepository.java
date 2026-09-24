@@ -12,6 +12,8 @@ import java.util.List;
 public interface PlayerRepository extends JpaRepository<Player, Long> {
     List<Player> findBySessionOrderByTurnOrderAsc(GameSession session);
 
+    boolean existsBySessionIdAndUserId(Long sessionId, Long userId);
+
     // Deducts exactly one token, guarded so a token count can never go negative even
     // under a race; used the moment a bet is accepted (see BetRepository.insertBet),
     // never refunded regardless of how the round resolves.

@@ -2,6 +2,7 @@ package org.dariusturcu.backend.websocket;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.dariusturcu.backend.repository.PlayerRepository;
 import org.dariusturcu.backend.security.UserPrincipal;
 import org.dariusturcu.backend.service.GameSessionService;
 import org.springframework.context.event.EventListener;
@@ -15,9 +16,9 @@ import java.security.Principal;
 import java.util.Optional;
 
 // The in-session-player half of disconnect handling story 11 deferred: registers a
-// socket session against its game session on subscribe to the round topic, and uses that
-// registration to flip the right Player's isConnected flag false (and, if that player was
-// mid-turn, start their 90-second turn-timeout clock) on disconnect. Mirrors
+// player's socket session against its game session on subscribe to the round topic, and
+// uses that registration to flip the right Player's isConnected flag false (and, if that
+// player was mid-turn, start their 90-second turn-timeout clock) on disconnect. Mirrors
 // GroupSessionEventListener exactly, one level down at the session/Player layer instead
 // of the group/Member layer.
 @Component
@@ -27,11 +28,14 @@ public class SessionSessionEventListener {
 
     private final SessionPresenceRegistry presenceRegistry;
     private final GameSessionService gameSessionService;
+    private final PlayerRepository playerRepository;
 
     @EventListener
     public void handleSubscribe(SessionSubscribeEvent event) {
         StompHeaderAccessor accessor = StompHeaderAccessor.wrap(event.getMessage());
+        Optional<Long> userId = extractUserId(event.getUser());
         SessionDestinations.sessionIdFromRoundTopic(accessor.getDestination())
+                .filter(sessionId -> userId.isPresent() && playerRepository.existsBySessionIdAndUserId(sessionId, userId.get()))
                 .ifPresent(sessionId -> presenceRegistry.register(accessor.getSessionId(), sessionId));
     }
 
@@ -39,7 +43,7 @@ public class SessionSessionEventListener {
     public void handleDisconnect(SessionDisconnectEvent event) {
         String stompSessionId = event.getSessionId();
         presenceRegistry.sessionIdFor(stompSessionId).ifPresent(sessionId ->
-                extractUserId(event).ifPresent(userId -> disconnectQuietly(sessionId, userId)));
+                extractUserId(event.getUser()).ifPresent(userId -> disconnectQuietly(sessionId, userId)));
         presenceRegistry.remove(stompSessionId);
     }
 
@@ -53,8 +57,7 @@ public class SessionSessionEventListener {
         }
     }
 
-    private Optional<Long> extractUserId(SessionDisconnectEvent event) {
-        Principal principal = event.getUser();
+    private Optional<Long> extractUserId(Principal principal) {
         if (principal instanceof Authentication authentication
                 && authentication.getPrincipal() instanceof UserPrincipal userPrincipal) {
             return Optional.of(userPrincipal.getUser().getId());

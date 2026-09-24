@@ -1,7 +1,9 @@
 package org.dariusturcu.backend.controller;
 
+import org.dariusturcu.backend.model.user.User;
 import org.dariusturcu.backend.model.voice.VoiceSignalMessage;
 import org.dariusturcu.backend.model.voice.VoiceSignalRequest;
+import org.dariusturcu.backend.repository.UserRepository;
 import org.dariusturcu.backend.security.UserPrincipal;
 import org.dariusturcu.backend.service.GroupService;
 import org.dariusturcu.backend.websocket.GroupDestinations;
@@ -22,11 +24,11 @@ import jakarta.validation.Valid;
 import java.security.Principal;
 
 // Relays one WebRTC signaling step (an SDP offer, an SDP answer, or an ICE candidate)
-// from one group member to the rest of the group's voice topic, tagged with the sender
-// and the intended recipient so the mesh routes it client-side. The counterpart to
-// GameActionController for the voice room: the same STOMP action pattern, the same
-// principal-to-user-id resolution, gated on group membership rather than open to any
-// authenticated socket.
+// from one group member to its target member only, on that member's own per-user voice
+// signal queue. Signals carry network addresses, so no other member receives them. The
+// counterpart to GameActionController for the voice room: the same STOMP action
+// pattern, the same principal-to-user-id resolution, gated on both ends being members of
+// the group rather than open to any authenticated socket.
 //
 // Serializes to JSON with the application's own ObjectMapper before handing the string
 // to SimpMessagingTemplate, matching GroupBroadcastListener: the simple broker registers
@@ -39,6 +41,7 @@ import java.security.Principal;
 public class VoiceSignalingController {
 
     private final GroupService groupService;
+    private final UserRepository userRepository;
     private final SimpMessagingTemplate messagingTemplate;
     private final ObjectMapper objectMapper;
 
@@ -50,11 +53,17 @@ public class VoiceSignalingController {
         if (!groupService.isGroupMember(groupId, senderUserId)) {
             throw new AccessDeniedException("You are not a member of this group");
         }
+        if (!groupService.isGroupMember(groupId, request.targetMemberUserId())) {
+            throw new AccessDeniedException("The signal's target is not a member of this group");
+        }
+        String targetUsername = userRepository.findById(request.targetMemberUserId())
+                .map(User::getUsername)
+                .orElseThrow(() -> new AccessDeniedException("The signal's target does not exist"));
 
         VoiceSignalMessage relayed = new VoiceSignalMessage(
                 request.type(), senderUserId, request.targetMemberUserId(), request.payload());
-        messagingTemplate.convertAndSend(
-                GroupDestinations.voiceTopic(groupId), objectMapper.writeValueAsString(relayed));
+        messagingTemplate.convertAndSendToUser(
+                targetUsername, GroupDestinations.voiceSignalQueue(groupId), objectMapper.writeValueAsString(relayed));
     }
 
     private Long resolveUserId(Principal principal) {

@@ -41,17 +41,20 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
     // presence flag stuck until the next clean close.
     private static final long HEARTBEAT_INTERVAL_MILLISECONDS = 10_000;
     private final StompAuthenticationChannelInterceptor stompAuthenticationChannelInterceptor;
+    private final StompSubscriptionAuthorizationInterceptor stompSubscriptionAuthorizationInterceptor;
     private final JwtCookieHandshakeInterceptor jwtCookieHandshakeInterceptor;
     private final List<String> allowedFrontendOrigins;
     private final TaskScheduler messageBrokerTaskScheduler;
 
     public WebSocketConfig(
             StompAuthenticationChannelInterceptor stompAuthenticationChannelInterceptor,
+            StompSubscriptionAuthorizationInterceptor stompSubscriptionAuthorizationInterceptor,
             JwtCookieHandshakeInterceptor jwtCookieHandshakeInterceptor,
             @Value("${frontend.allowed-origins}") List<String> allowedFrontendOrigins,
             @Lazy @Qualifier("messageBrokerTaskScheduler") TaskScheduler messageBrokerTaskScheduler
     ) {
         this.stompAuthenticationChannelInterceptor = stompAuthenticationChannelInterceptor;
+        this.stompSubscriptionAuthorizationInterceptor = stompSubscriptionAuthorizationInterceptor;
         this.jwtCookieHandshakeInterceptor = jwtCookieHandshakeInterceptor;
         this.allowedFrontendOrigins = allowedFrontendOrigins;
         this.messageBrokerTaskScheduler = messageBrokerTaskScheduler;
@@ -74,6 +77,6 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
     @Override
     public void configureClientInboundChannel(ChannelRegistration registration) {
-        registration.interceptors(stompAuthenticationChannelInterceptor);
+        registration.interceptors(stompAuthenticationChannelInterceptor, stompSubscriptionAuthorizationInterceptor);
     }
 }

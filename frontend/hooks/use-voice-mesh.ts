@@ -10,6 +10,7 @@ import { publishLocalAudioStream, publishTabAudioSharing } from "./use-local-aud
 const WEBSOCKET_PATH = "/ws";
 const VOICE_TOPIC_PREFIX = "/topic/groups";
 const VOICE_SIGNAL_PREFIX = "/app/groups";
+const VOICE_SIGNAL_QUEUE_PREFIX = "/user/queue/groups";
 const RECONNECT_DELAY_MILLISECONDS = 3_000;
 const PEER_CONNECT_TIMEOUT_MILLISECONDS = 8_000;
 const OFFER_SIGNAL = "OFFER";
@@ -267,15 +268,15 @@ export function useVoiceMesh(groupId: number, currentUserId: number | undefined,
       brokerURL: websocketUrl(),
       reconnectDelay: RECONNECT_DELAY_MILLISECONDS,
       onConnect: () => {
+        // Someone joined or left: the member list drives who this player offers to,
+        // so it has to refresh before a later joiner can be reached.
         client.subscribe(`${VOICE_TOPIC_PREFIX}/${groupId}/voice`, (message) => {
+          const event = JSON.parse(message.body) as { type?: string };
+          if (event.type === VOICE_PRESENCE_CHANGED_EVENT) onPresenceChangeReference.current?.();
+        });
+        client.subscribe(`${VOICE_SIGNAL_QUEUE_PREFIX}/${groupId}/voice-signal`, (message) => {
           const signal = JSON.parse(message.body) as Partial<VoiceSignal>;
-          // Someone joined or left: the member list drives who this player offers to,
-          // so it has to refresh before a later joiner can be reached.
-          if (signal.type === VOICE_PRESENCE_CHANGED_EVENT) {
-            onPresenceChangeReference.current?.();
-            return;
-          }
-          if (!signal.type || signal.targetMemberUserId !== currentUserId || !signal.senderUserId || !signal.payload) return;
+          if (!signal.type || !signal.senderUserId || !signal.payload) return;
           void handleSignalReference.current(signal as VoiceSignal).catch(() => {});
         });
         setIsSignalConnected(true);

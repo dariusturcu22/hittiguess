@@ -923,9 +923,9 @@ Batch 1, authentication (critical):
 - [x] Login and two-factor verification are limited per IP only. Add a per-account failure limit with a cool-down
 
 Batch 2, WebSocket authorization (critical):
-- [ ] STOMP authenticates only CONNECT; SUBSCRIBE is never authorized, so any logged-in user can subscribe to another group's chat, voice, settings, and membership topics and another session's round and ended topics by id. Authorize every SUBSCRIBE against group membership or session player membership
-- [ ] `VoiceSignalingController` relays every offer, answer, and ICE candidate (which carry players' IP addresses) to the whole group voice topic and relies on the client to filter by target. Deliver each signal only to its target member through a user destination
-- [ ] Subscribing to a session's round topic registers presence in `SessionPresenceRegistry` without checking the subscriber is a player in that session. Register only players
+- [x] STOMP authenticates only CONNECT; SUBSCRIBE is never authorized, so any logged-in user can subscribe to another group's chat, voice, settings, and membership topics and another session's round and ended topics by id. Authorize every SUBSCRIBE against group membership or session player membership
+- [x] `VoiceSignalingController` relays every offer, answer, and ICE candidate (which carry players' IP addresses) to the whole group voice topic and relies on the client to filter by target. Deliver each signal only to its target member through a user destination
+- [x] Subscribing to a session's round topic registers presence in `SessionPresenceRegistry` without checking the subscriber is a player in that session. Register only players
 
 Batch 3, dependencies (critical):
 - [ ] `next` 16.3.2 is inside the range of published unauthenticated remote code execution advisories (16.0.0 to 16.3.2, including the Image Optimization API). Upgrade to a patched release
@@ -970,7 +970,7 @@ Existing test failures:
 
 Tests:
 - [x] Batch 1: integration tests that a pending token is refused on REST and STOMP, that setup can't disable two-factor, that cross-site `/auth` requests without a CSRF token are refused, that a replayed code is refused, and that repeated failures lock the account temporarily
-- [ ] Batch 2: integration tests that a non-member's SUBSCRIBE to group and session topics is refused and that a voice signal reaches only its target
+- [x] Batch 2: integration tests that a non-member's SUBSCRIBE to group and session topics is refused and that a voice signal reaches only its target
 - [ ] Batch 3: the frontend build, lint, and unit and end-to-end suites pass on the upgraded dependencies, and `npm audit` reports no high or critical advisory
 - [ ] Batch 4: service tests for reconnect on subscribe, disconnect only after the last socket, graceful completion on an empty queue, startup rescheduling, the idle placement timeout, skip-betting eligibility, once-per-round tallies, and guess result delivery
 - [ ] Batch 5: integration tests that non-members can't read results, that a shared song can't be edited through another user's playlist, and that invalid display names and avatar URLs are refused
