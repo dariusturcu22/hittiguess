@@ -10,4 +10,8 @@ export interface RoundLinkOutDTO {
   roundNumber?: number;
   youtubeId?: string;
   watchUrl?: string;
+  artist?: string;
+  title?: string;
+  releaseYear?: number;
+  color?: string;
 }

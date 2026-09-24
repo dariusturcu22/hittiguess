@@ -1,10 +1,14 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { requestDjTabAudioShare } from "@/hooks/use-local-audio-stream";
 import { AppVoiceSidebar } from "./app-voice-sidebar";
 
 const joinVoice = vi.fn();
 const startMicrophone = vi.fn(async () => true);
+const startTabAudio = vi.fn(async () => true);
+const setSilencedUserIds = vi.fn();
+let sessionData: unknown = undefined;
 const toggleMute = vi.fn();
 const toggleDeafen = vi.fn();
 let inVoice = true;
@@ -25,8 +29,8 @@ vi.mock("@/hooks/generated/group-management/group-management", () => ({
 }));
 
 vi.mock("@/hooks/generated/game-session/game-session", () => ({
-  useGetActiveSessionForGroup: () => ({ data: undefined }),
-  useGetSession: () => ({ data: undefined }),
+  useGetActiveSessionForGroup: () => ({ data: sessionData ? { id: 9 } : undefined }),
+  useGetSession: () => ({ data: sessionData }),
 }));
 
 vi.mock("@/hooks/generated/user-management/user-management", () => ({
@@ -38,10 +42,14 @@ vi.mock("@/hooks/use-game-session-realtime", () => ({
 }));
 
 vi.mock("@/hooks/use-voice-mesh", () => ({
-  shouldCutoffAudioStream: () => false,
+  shouldSilenceDjForActivePlayer: (round: { activePlayerId?: number; status?: string } | undefined, playerId: number | undefined) =>
+    round?.activePlayerId === playerId && round?.status === "COUNTDOWN",
   useVoiceMesh: () => ({
     startMicrophone,
-    stopMicrophone: vi.fn(),
+    startTabAudio,
+    stopTabAudio: vi.fn(),
+    stopVoice: vi.fn(),
+    setSilencedUserIds,
     toggleMute,
     toggleDeafen,
     isMuted: false,
@@ -62,8 +70,12 @@ describe("AppVoiceSidebar", () => {
     inVoice = true;
     currentPathname = "/groups/4";
     window.localStorage.clear();
+    sessionData = undefined;
     joinVoice.mockClear();
     startMicrophone.mockClear();
+    startMicrophone.mockResolvedValue(true);
+    startTabAudio.mockClear();
+    setSilencedUserIds.mockClear();
     toggleMute.mockClear();
     toggleDeafen.mockClear();
   });
@@ -123,5 +135,44 @@ describe("AppVoiceSidebar", () => {
 
     expect(screen.getByRole("button", { name: "Leave voice" })).toBeVisible();
     expect(screen.queryByRole("button", { name: /ollapse|Expand/ })).toBeNull();
+  });
+
+  it("still joins the call as a listener when the microphone can't start", async () => {
+    inVoice = false;
+    startMicrophone.mockResolvedValue(false);
+    render(<AppVoiceSidebar />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Join call" }));
+
+    await waitFor(() => expect(joinVoice).toHaveBeenCalledWith({ groupId: 4 }, expect.anything()));
+  });
+
+  it("offers the join rail on the game page outside a call", () => {
+    inVoice = false;
+    currentPathname = "/sessions/9";
+    render(<AppVoiceSidebar />);
+
+    expect(screen.getByRole("button", { name: "Join call" })).toBeVisible();
+  });
+
+  it("shares the DJ's tab audio on request and joins the call for a DJ outside it", async () => {
+    inVoice = false;
+    currentPathname = "/sessions/9";
+    render(<AppVoiceSidebar />);
+
+    act(() => requestDjTabAudioShare());
+
+    expect(startTabAudio).toHaveBeenCalledOnce();
+    await waitFor(() => expect(joinVoice).toHaveBeenCalledWith({ groupId: 4 }, expect.anything()));
+  });
+
+  it("silences only the DJ for the active player once the guess locks in", () => {
+    sessionData = {
+      players: [{ id: 1, userId: 11 }, { id: 2, userId: 22 }],
+      currentRound: { activePlayerId: 1, djPlayerId: 2, status: "COUNTDOWN" },
+    };
+    render(<AppVoiceSidebar />);
+
+    expect(setSilencedUserIds).toHaveBeenLastCalledWith([22]);
   });
 });

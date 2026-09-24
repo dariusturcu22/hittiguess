@@ -17,6 +17,7 @@ public final class SessionDestinations {
 
     private static final String ROUND_SEGMENT = "/round";
     private static final String ENDED_SEGMENT = "/ended";
+    private static final String PREVIEW_SEGMENT = "/preview";
     private static final String PLACE_SEGMENT = "/place";
     private static final String GUESS_SEGMENT = "/guess";
     private static final String BET_SEGMENT = "/bet";
@@ -28,7 +29,7 @@ public final class SessionDestinations {
     private SessionDestinations() {
     }
 
-    // Round started, guess locked, bet placed, reveal triggered, round scored, and next
+    // Placement preview, round started, guess locked, betting opened, bet placed, reveal triggered, round scored, and next
     // round all broadcast here; SessionEventType distinguishes them within the payload.
     public static String roundTopic(Long sessionId) {
         return SESSION_TOPIC_PREFIX + sessionId + ROUND_SEGMENT;
@@ -40,6 +41,10 @@ public final class SessionDestinations {
     // every round event to receive it.
     public static String endedTopic(Long sessionId) {
         return SESSION_TOPIC_PREFIX + sessionId + ENDED_SEGMENT;
+    }
+
+    public static String previewDestination(Long sessionId) {
+        return SESSION_APP_PREFIX + sessionId + PREVIEW_SEGMENT;
     }
 
     public static String placeDestination(Long sessionId) {

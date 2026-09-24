@@ -15,6 +15,7 @@ import org.dariusturcu.backend.model.session.GenerateDifficultySetRequest;
 import org.dariusturcu.backend.model.session.Guess;
 import org.dariusturcu.backend.model.session.LeaderboardEntryDTO;
 import org.dariusturcu.backend.model.session.PlaceCardRequest;
+import org.dariusturcu.backend.model.session.PlacementPreviewDTO;
 import org.dariusturcu.backend.model.session.Player;
 import org.dariusturcu.backend.model.session.PlayerCard;
 import org.dariusturcu.backend.model.session.PlayerResultDTO;
@@ -22,6 +23,7 @@ import org.dariusturcu.backend.model.session.PlayerStatus;
 import org.dariusturcu.backend.model.session.Round;
 import org.dariusturcu.backend.model.session.RoundStatus;
 import org.dariusturcu.backend.model.session.RoundLinkOutDTO;
+import org.dariusturcu.backend.model.session.RoundTiming;
 import org.dariusturcu.backend.model.session.SessionResultsDTO;
 import org.dariusturcu.backend.model.session.SessionStatus;
 import org.dariusturcu.backend.model.session.StartCustomSessionRequest;
@@ -80,8 +82,6 @@ import java.util.stream.Collectors;
 public class GameSessionService {
 
     private static final int MINIMUM_PLAYERS = 2;
-    private static final int LOCK_IN_COUNTDOWN_SECONDS = 4;
-    private static final int BETTING_WINDOW_SECONDS = 15;
     private static final int ACTIVE_PLAYER_TURN_TIMEOUT_SECONDS = 90;
     private static final int AUTO_ABANDON_MINUTES = 10;
 
@@ -407,6 +407,28 @@ public class GameSessionService {
 
     // --- Round flow: placement, countdown, betting, reveal, scoring --------------
 
+    // Relays where the active player's card currently sits so spectators can watch the
+    // placement live. Silently ignored once the round has locked in, since a preview
+    // racing the lock-in is harmless and not worth an error on the sender's socket.
+    @Transactional(readOnly = true)
+    public void previewPlacement(Long sessionId, Long userId, Integer position) {
+        GameSession session = getSession(sessionId);
+        Player player = findPlayerByUserId(session, userId);
+        Round round = requireCurrentRound(session);
+
+        if (!round.getActivePlayer().getId().equals(player.getId())) {
+            throw new AccessDeniedException("Only the active player can preview a placement this round");
+        }
+        if (round.getStatus() != RoundStatus.AWAITING_PLACEMENT) {
+            return;
+        }
+        if (position != null && (position < 0 || position > player.getTimeline().size())) {
+            throw new IllegalArgumentException("Placement position is out of range for this player's timeline");
+        }
+        eventPublisher.publishEvent(new SessionBroadcastEvent(SessionEventType.PLACEMENT_PREVIEW, sessionId,
+                new PlacementPreviewDTO(round.getId(), player.getId(), position)));
+    }
+
     public void lockInPlacement(Long sessionId, Long userId, PlaceCardRequest request) {
         GameSession session = getSession(sessionId);
         Player player = findPlayerByUserId(session, userId);
@@ -427,7 +449,7 @@ public class GameSessionService {
         Round savedRound = roundRepository.save(round);
 
         publishRoundEvent(SessionEventType.GUESS_LOCKED, session, savedRound);
-        gameSessionScheduler.scheduleAfter(Duration.ofSeconds(LOCK_IN_COUNTDOWN_SECONDS),
+        gameSessionScheduler.scheduleAfter(RoundTiming.LOCK_IN_COUNTDOWN,
                 () -> self.startBettingWindowEffect(savedRound.getId()));
     }
 
@@ -446,10 +468,11 @@ public class GameSessionService {
             return;
         }
 
-        round.setBettingWindowEndsAt(Instant.now().plusSeconds(BETTING_WINDOW_SECONDS));
+        round.setBettingWindowEndsAt(Instant.now().plus(RoundTiming.BETTING_WINDOW));
         round.setStatus(RoundStatus.BETTING);
-        roundRepository.save(round);
-        gameSessionScheduler.scheduleAfter(Duration.ofSeconds(BETTING_WINDOW_SECONDS), () -> self.revealEffect(roundId));
+        Round savedRound = roundRepository.save(round);
+        publishRoundEvent(SessionEventType.BETTING_OPENED, savedRound.getSession(), savedRound);
+        gameSessionScheduler.scheduleAfter(RoundTiming.BETTING_WINDOW, () -> self.revealEffect(roundId));
     }
 
     public boolean placeBet(Long sessionId, Long userId, int position) {
@@ -521,7 +544,11 @@ public class GameSessionService {
                 round.getId(),
                 round.getRoundNumber(),
                 song.getYoutubeId(),
-                YoutubeLinkParser.buildWatchUrl(song.getYoutubeId()));
+                YoutubeLinkParser.buildWatchUrl(song.getYoutubeId()),
+                sessionMapper.artistNames(song),
+                song.getTitle(),
+                song.getReleaseYear(),
+                song.getColor());
     }
 
     // Effect method for the betting-window-close timer, and called directly whenever the
@@ -541,8 +568,8 @@ public class GameSessionService {
     }
 
     // Effect method applying the four scoring outcome rules from GAME_DESIGN.md, then
-    // either completing the session (win condition reached) or advancing to the next
-    // round. Also the reuse point for the turn-timeout and explicit-leave paths: both set
+    // either completing the session (win condition reached) or scheduling the next round
+    // after the reveal hold, so every client shows the revealed card before it moves on. Also the reuse point for the turn-timeout and explicit-leave paths: both set
     // placementCorrect to false with no bets before calling this, which discards the
     // card exactly as a live wrong-guess-no-bets round would.
     public void scoreRoundEffect(Long roundId) {
@@ -597,8 +624,29 @@ public class GameSessionService {
             // DECISIONS.md.
             abandonSession(session.getId());
         } else {
-            advanceRound(session, savedRound);
+            gameSessionScheduler.scheduleAfter(RoundTiming.REVEAL_HOLD, () -> self.advanceRoundEffect(roundId));
         }
+    }
+
+    // Effect method for the reveal-hold timer. A no-op unless the scored round is still the
+    // session's latest one and the session is still in progress, so a session that ended
+    // or already moved on during the hold is left alone.
+    public void advanceRoundEffect(Long roundId) {
+        Round round = roundRepository.findById(roundId).orElse(null);
+        if (round == null || round.getStatus() != RoundStatus.SCORED) {
+            return;
+        }
+        GameSession session = round.getSession();
+        if (session.getStatus() != SessionStatus.IN_PROGRESS) {
+            return;
+        }
+        boolean isLatestRound = roundRepository.findTopBySessionOrderByRoundNumberDesc(session)
+                .map(latestRound -> latestRound.getId().equals(round.getId()))
+                .orElse(false);
+        if (!isLatestRound) {
+            return;
+        }
+        advanceRound(session, round);
     }
 
     private boolean isPlacementCorrect(Player player, int position, int newSongReleaseYear) {

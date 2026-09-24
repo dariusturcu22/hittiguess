@@ -2,6 +2,7 @@ package org.dariusturcu.backend.controller;
 
 import org.dariusturcu.backend.model.session.PlaceBetRequest;
 import org.dariusturcu.backend.model.session.PlaceCardRequest;
+import org.dariusturcu.backend.model.session.PlacementPreviewRequest;
 import org.dariusturcu.backend.model.session.TitleArtistGuessRequest;
 import org.dariusturcu.backend.security.UserPrincipal;
 import org.dariusturcu.backend.service.GameSessionService;
@@ -18,12 +19,17 @@ import java.security.Principal;
 
 // The client-to-server action channel for a game session, the STOMP counterpart to
 // GroupController's REST actions. Mirrors SessionDestinations' /app/sessions/{sessionId}/
-// destinations exactly: place, guess, bet, skip-betting.
+// destinations exactly: preview, place, guess, bet, skip-betting.
 @Controller
 @RequiredArgsConstructor
 public class GameActionController {
 
     private final GameSessionService gameSessionService;
+
+    @MessageMapping("/sessions/{sessionId}/preview")
+    public void previewPlacement(@DestinationVariable Long sessionId, @Payload PlacementPreviewRequest request, Principal principal) {
+        gameSessionService.previewPlacement(sessionId, resolveUserId(principal), request.position());
+    }
 
     @MessageMapping("/sessions/{sessionId}/place")
     public void placeCard(@DestinationVariable Long sessionId, @Payload PlaceCardRequest request, Principal principal) {
