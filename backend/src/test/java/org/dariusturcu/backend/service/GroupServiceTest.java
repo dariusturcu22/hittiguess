@@ -383,7 +383,7 @@ class GroupServiceTest {
     void leaveGroupRemovesMembershipForANonAdmin() {
         Group group = groupWithAdmin();
         Member secondMember = memberOf(group, otherUser, false, Instant.now());
-        when(groupRepository.findById(10L)).thenReturn(Optional.of(group));
+        when(groupRepository.findByIdForUpdate(10L)).thenReturn(Optional.of(group));
         authenticateAs(otherUser);
 
         groupService.leaveGroup(10L);
@@ -402,7 +402,7 @@ class GroupServiceTest {
         thirdUser.setUsername("third-user");
         Member earlierJoiner = memberOf(group, otherUser, false, earlier);
         memberOf(group, thirdUser, false, later);
-        when(groupRepository.findById(10L)).thenReturn(Optional.of(group));
+        when(groupRepository.findByIdForUpdate(10L)).thenReturn(Optional.of(group));
 
         groupService.leaveGroup(10L);
 
@@ -414,7 +414,7 @@ class GroupServiceTest {
     @Test
     void leaveGroupDeletesTheGroupWhenTheAdminLeavesAndNoMembersRemain() {
         Group group = groupWithAdmin();
-        when(groupRepository.findById(10L)).thenReturn(Optional.of(group));
+        when(groupRepository.findByIdForUpdate(10L)).thenReturn(Optional.of(group));
 
         groupService.leaveGroup(10L);
 
@@ -425,7 +425,7 @@ class GroupServiceTest {
     @Test
     void leaveGroupLeavesTheGroupInPlaceWhenTheAdminLeavesAloneWhileAGameSessionStillExistsForIt() {
         Group group = groupWithAdmin();
-        when(groupRepository.findById(10L)).thenReturn(Optional.of(group));
+        when(groupRepository.findByIdForUpdate(10L)).thenReturn(Optional.of(group));
         GameSession session = new GameSession();
         session.setId(20L);
         session.setGroupId(10L);
@@ -647,7 +647,7 @@ class GroupServiceTest {
     void leaveGroupPublishesAMemberLeftEventForANonAdmin() {
         Group group = groupWithAdmin();
         memberOf(group, otherUser, false, Instant.now());
-        when(groupRepository.findById(10L)).thenReturn(Optional.of(group));
+        when(groupRepository.findByIdForUpdate(10L)).thenReturn(Optional.of(group));
         authenticateAs(otherUser);
 
         groupService.leaveGroup(10L);
@@ -661,7 +661,7 @@ class GroupServiceTest {
     void leaveGroupPublishesBothMemberLeftAndAdminChangedWhenTheAdminLeaves() {
         Group group = groupWithAdmin();
         memberOf(group, otherUser, false, Instant.now());
-        when(groupRepository.findById(10L)).thenReturn(Optional.of(group));
+        when(groupRepository.findByIdForUpdate(10L)).thenReturn(Optional.of(group));
 
         groupService.leaveGroup(10L);
 
@@ -675,7 +675,7 @@ class GroupServiceTest {
     @Test
     void leaveGroupPublishesNoEventWhenTheGroupIsDeleted() {
         Group group = groupWithAdmin();
-        when(groupRepository.findById(10L)).thenReturn(Optional.of(group));
+        when(groupRepository.findByIdForUpdate(10L)).thenReturn(Optional.of(group));
 
         groupService.leaveGroup(10L);
 

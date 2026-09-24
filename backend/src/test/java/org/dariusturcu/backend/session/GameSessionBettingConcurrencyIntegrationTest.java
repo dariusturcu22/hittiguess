@@ -86,6 +86,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 
 /**
  * Proves betting is concurrency-safe against a real Postgres instance and real threads,
@@ -109,6 +110,7 @@ class GameSessionBettingConcurrencyIntegrationTest {
 
     private static final int CONCURRENT_ATTEMPTS_PER_ELIGIBLE_BETTOR = 2;
     private static final int CONCURRENT_GROUP_JOIN_ATTEMPTS = 2;
+    private static final int CONCURRENT_LEAVE_ATTEMPTS = 2;
     private static final int CONCURRENCY_TEST_TIMEOUT_SECONDS = 10;
     // The active player starts with a single anchor card, so positions 0 and 1 are both
     // in range. The active player's own placement is locked at position 1, leaving
@@ -408,6 +410,47 @@ class GameSessionBettingConcurrencyIntegrationTest {
             assertThat(memberRepository.countByGroupId(createdGroup.id())).isEqualTo(Group.MAX_MEMBERS);
         } finally {
             executorService.shutdownNow();
+            SecurityContextHolder.clearContext();
+        }
+    }
+
+    @Test
+    void anAdminAndAMemberLeavingAtTheSameMomentBothSucceed() throws Exception {
+        User admin = persistUser("leave-race-admin-" + System.nanoTime());
+        User member = persistUser("leave-race-member-" + System.nanoTime());
+        authenticateAs(admin);
+        GroupDetailDTO createdGroup = groupService.createGroup(new CreateGroupRequest(null, null));
+        authenticateAs(member);
+        groupService.joinGroup(new JoinGroupRequest(createdGroup.inviteCode(), null, null, null));
+        SecurityContextHolder.clearContext();
+
+        ExecutorService executorService = Executors.newFixedThreadPool(CONCURRENT_LEAVE_ATTEMPTS);
+        CountDownLatch startLatch = new CountDownLatch(1);
+        try {
+            List<Future<?>> leaves = List.of(
+                    executorService.submit(() -> leaveWhenRaceStarts(admin, createdGroup.id(), startLatch)),
+                    executorService.submit(() -> leaveWhenRaceStarts(member, createdGroup.id(), startLatch)));
+            startLatch.countDown();
+
+            for (Future<?> leave : leaves) {
+                assertThatCode(() -> leave.get(CONCURRENCY_TEST_TIMEOUT_SECONDS, TimeUnit.SECONDS))
+                        .doesNotThrowAnyException();
+            }
+            assertThat(memberRepository.countByGroupId(createdGroup.id())).isZero();
+        } finally {
+            executorService.shutdownNow();
+        }
+    }
+
+    private void leaveWhenRaceStarts(User user, Long groupId, CountDownLatch startLatch) {
+        try {
+            startLatch.await();
+            authenticateAs(user);
+            groupService.leaveGroup(groupId);
+        } catch (InterruptedException exception) {
+            Thread.currentThread().interrupt();
+            throw new IllegalStateException("Concurrent leave was interrupted", exception);
+        } finally {
             SecurityContextHolder.clearContext();
         }
     }

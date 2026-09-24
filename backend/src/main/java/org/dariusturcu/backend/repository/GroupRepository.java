@@ -26,6 +26,12 @@ public interface GroupRepository extends JpaRepository<Group, Long> {
     @Query("select group from Group group where group.joinCode = :joinCode")
     Optional<Group> findByJoinCodeForUpdate(String joinCode);
 
+    // Leaves lock the group row too, so two members leaving at once can't each act on a
+    // member the other just removed.
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select group from Group group where group.id = :groupId")
+    Optional<Group> findByIdForUpdate(Long groupId);
+
     boolean existsByJoinCode(String joinCode);
 
     List<Group> findByExpiresAtBefore(Instant instant);

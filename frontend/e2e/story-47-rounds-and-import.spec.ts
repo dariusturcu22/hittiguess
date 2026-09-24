@@ -10,7 +10,6 @@ const MEMBER_ACCOUNT = {
 };
 const MEMBER_DISPLAY_NAME = "Story 47 round member";
 const LOGIN_PATH = "/login";
-const PLAYLISTS_PATH = "/playlists";
 const GROUPS_PATH = "/api/groups";
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
 const GROUP_CLEANUP_TIMEOUT_MILLISECONDS = 10_000;
@@ -22,6 +21,12 @@ const IMPORT_DONE_POLL_INTERVAL_MILLISECONDS = 5_000;
 const IMPORT_DONE_TIMEOUT_MILLISECONDS = 240_000;
 const IMPORT_GONE_WAIT_TIMEOUT_MILLISECONDS = 15_000;
 const KNOWN_VIDEO_ID = "dQw4w9WgXcQ";
+const LOBBY_PLAYER_COUNT = 2;
+const WIN_CONDITION_CARD_COUNT = 5;
+// A session needs a song per card every player could win with.
+const MINIMUM_GAMEPLAY_SONG_COUNT = LOBBY_PLAYER_COUNT * WIN_CONDITION_CARD_COUNT;
+const FILLER_SONG_FIRST_RELEASE_YEAR = 1980;
+const SONG_NUMBER_WIDTH = 2;
 
 interface TestAccount {
   email: string;
@@ -127,6 +132,16 @@ async function seedPlayablePlaylist(page: Page): Promise<number> {
     { artist: "Story 47 artist four", title: "Story 47 song four", releaseYear: 2005, youtubeId: "jNQXAC9IVRw" },
     { artist: "Story 47 artist five", title: "Story 47 song five", releaseYear: 2012, youtubeId: "9bZkp7q19f0" },
   ];
+  const fillerSongs = Array.from({ length: MINIMUM_GAMEPLAY_SONG_COUNT - songs.length }, (unusedEntry, fillerIndex) => {
+    const songNumber = String(fillerIndex + 1).padStart(SONG_NUMBER_WIDTH, "0");
+    return {
+      artist: `Story 47 filler artist ${songNumber}`,
+      title: `Story 47 filler song ${songNumber}`,
+      releaseYear: FILLER_SONG_FIRST_RELEASE_YEAR + fillerIndex,
+      youtubeId: `story47fl${songNumber}`,
+    };
+  });
+  songs.push(...fillerSongs);
   for (const song of songs) {
     const songResponse = await page.request.post(apiUrl(`/api/playlists/${playlist.id}/songs`), {
       data: { ...song, color: SONG_COLOR },
@@ -139,7 +154,7 @@ async function seedPlayablePlaylist(page: Page): Promise<number> {
 
 async function configurePlaylist(page: Page, groupId: number, playlistId: number): Promise<void> {
   const settingsResponse = await page.request.patch(apiUrl(`${GROUPS_PATH}/${groupId}/settings`), {
-    data: { playlistIds: [playlistId], djMode: "ROTATING", winConditionCardCount: 5 },
+    data: { playlistIds: [playlistId], djMode: "ROTATING", winConditionCardCount: WIN_CONDITION_CARD_COUNT },
     headers: await csrfHeaders(page),
   });
   expect(settingsResponse.ok()).toBeTruthy();
@@ -257,7 +272,7 @@ test("two players complete a full round to the reveal", async ({ browser }) => {
   }
 });
 
-test("playlist detail shows greyed pending songs while a job runs", async ({ browser }) => {
+test("playlist detail links to the import progress while a job runs", async ({ browser }) => {
   const page = await login(browser, ADMIN_ACCOUNT);
 
   try {
@@ -287,7 +302,10 @@ test("playlist detail shows greyed pending songs while a job runs", async ({ bro
     await page.goto(`/playlists/${playlist.id}`);
 
     await expect(page.getByText("Importing 2 songs in the background...")).toBeVisible();
-    await expect(page.getByTitle("Resolving song details...")).toBeVisible();
+    // The unresolved item counts as finished, only the pending one is still running.
+    const progressLink = page.getByTitle("1 of 2 songs imported so far.");
+    await expect(progressLink).toBeVisible();
+    await expect(progressLink).toHaveAttribute("href", `/playlists/${playlist.id}/import/youtube`);
     await expect(page.getByTitle("Import in progress")).toBeVisible();
 
     await page.unroute(`**/api/playlists/${playlist.id}/import-jobs/active`);

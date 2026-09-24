@@ -508,7 +508,7 @@ export default function GroupLobbyPage({ params }: PageProps) {
   }
 
   return (
-    <main className="flex h-full min-h-[720px] flex-col px-6 py-8 sm:px-14 sm:py-9">
+    <main className="flex h-full flex-col px-6 py-8 sm:px-14 sm:py-9">
       <Suspense fallback={null}>
         <PlaylistPreselectCapture onCapture={applyPlaylistPreselect} />
       </Suspense>
@@ -604,7 +604,9 @@ export default function GroupLobbyPage({ params }: PageProps) {
         )}
       </header>
 
-      <section className="relative flex min-h-0 flex-1 items-center justify-center overflow-y-auto py-10">
+      {/* The stage keeps a minimum height and scrolls inside the section, so on a short or zoomed window the footer actions stay on screen. */}
+      <section className="flex min-h-0 flex-1 overflow-y-auto py-10">
+        <div className="relative flex min-h-[480px] w-full items-center justify-center">
         <div className="z-10 text-center">
           <p className="mb-3 font-semibold text-[11px] uppercase tracking-[0.25em] text-muted-foreground">
             Enter code to join
@@ -753,6 +755,7 @@ export default function GroupLobbyPage({ params }: PageProps) {
             </section>
           </>
         ) : null}
+        </div>
       </section>
 
       <div className="relative shrink-0">
