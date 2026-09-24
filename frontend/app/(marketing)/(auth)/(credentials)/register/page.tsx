@@ -19,11 +19,11 @@ import {
 } from "@/components/ui/form";
 
 import { useRegister } from "@/hooks/generated/authentication-management/authentication-management";
-import { registerBody } from "@/hooks/zod/authentication-management/authentication-management";
+import { RegisterBody } from "@/hooks/zod/authentication-management/authentication-management";
 import { safeReturnToPath } from "@/lib/return-to";
 import { useRouter, useSearchParams } from "next/navigation";
 
-const RegisterFormSchema = registerBody
+const RegisterFormSchema = RegisterBody
   .extend({
     confirmPassword: z.string(),
   })

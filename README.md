@@ -12,7 +12,7 @@ Start with [AGENTS.md](AGENTS.md). It links out to the product vision, game desi
 
 ### Everything at once
 
-Copy `backend/.env.example` to `backend/.env`, `ai/.env.example` to `ai/.env`, and `frontend/.env.example` to `frontend/.env.local`, filling in real values, then set up the AI service's virtualenv (`cd ai && python -m venv .venv` and install its requirements) and run `npm install` in `frontend/`. After that, one command starts Postgres, the backend, the AI service, and the frontend together:
+Copy `backend/.env.example` to `backend/.env`, `ai/.env.example` to `ai/.env`, and `frontend/.env.example` to `frontend/.env.local`, filling in real values, then set up the AI service's virtualenv from its lockfile (`cd ai && uv sync --locked --extra dev`) and run `npm install` in `frontend/`. After that, one command starts Postgres, the backend, the AI service, and the frontend together:
 
 ```bash
 make dev
@@ -52,12 +52,11 @@ AI service:
 
 ```bash
 cd ai
-python -m venv .venv
-.venv/Scripts/pip install -e .   # .venv/bin/pip on macOS/Linux
-.venv/Scripts/python -m uvicorn app.main:app --reload
+uv sync --locked --extra dev
+uv run uvicorn app.main:app --reload
 ```
 
-Copy `ai/.env.example` to `ai/.env` and fill in real values.
+Dependencies install from `ai/uv.lock`, which pins every package. After changing a range in `ai/pyproject.toml`, run `uv lock` and commit the updated lockfile. Copy `ai/.env.example` to `ai/.env` and fill in real values.
 
 Frontend:
 

@@ -10,6 +10,7 @@ export default defineConfig({
       target: "hooks/generated",
       schemas: "hooks/models",
       client: "react-query",
+      httpClient: "axios",
       mock: false,
       override: {
         mutator: {
