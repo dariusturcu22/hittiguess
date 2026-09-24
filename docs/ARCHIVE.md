@@ -1302,3 +1302,10 @@ Tests:
 Tests:
 - [x] Unit tests: a finished job reads by id with read access; a job can't be read through another playlist
 - [x] Page test: a job that finished between polls shows its final counts
+
+## Active playlist import requires read access
+
+- [x] `GET /api/playlists/{playlistId}/import-jobs/active` returns a playlist's running import, with every video's title and outcome, to any logged-in user who knows the playlist id. Require read access to the playlist, the same check the finished-job read already makes
+
+Tests:
+- [x] Unit tests: the active import is refused without read access and returned with it
