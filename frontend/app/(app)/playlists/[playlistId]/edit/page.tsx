@@ -289,9 +289,10 @@ export default function EditPlaylistPage({ params }: PageProps) {
     );
   }
 
-  function resetName() {
+  function cancelEdits() {
     setNameDraft(playlist?.name ?? "");
     setDescriptionDraft(playlist?.description ?? "");
+    router.push(`/playlists/${playlistId}`);
   }
 
   async function deletePlaylist() {
@@ -539,7 +540,7 @@ export default function EditPlaylistPage({ params }: PageProps) {
           <div className="grid grid-cols-2 gap-3 mb-5">
             <button
               type="button"
-              onClick={resetName}
+              onClick={cancelEdits}
               className="px-5 py-3 rounded-full border-2 border-secondary text-[12px] font-semibold text-muted-foreground order-2"
             >
               Cancel
