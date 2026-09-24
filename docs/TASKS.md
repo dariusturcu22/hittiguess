@@ -10,10 +10,10 @@ Stories 9, 10, 11, 12, 13, 39, and most of the rest of Phase 1 and Phase 2 are n
 
 ## Docs: sync project documentation with current code
 
-- [ ] Verify every in-scope task and story status against the current `dev` code, tests, migrations, and endpoints
-- [ ] Correct in-scope reference docs, README.md, CONTRIBUTING.md, and ai/spikes/README.md where they contradict the current implementation
-- [ ] Run `python scripts/archive_completed_tasks.py` after all verified TASKS.md updates
-- [ ] Review the documentation diff for stale claims and the repository writing rules
+- [x] Verify every in-scope task and story status against the current `dev` code, tests, migrations, and endpoints (controllers, services, frontend routes, and Flyway migrations through V27)
+- [x] Correct in-scope reference docs, README.md, CONTRIBUTING.md, and ai/spikes/README.md where they contradict the current implementation
+- [x] Run `python scripts/archive_completed_tasks.py` after all verified TASKS.md updates (no eligible section to archive)
+- [x] Review the documentation diff for stale claims and the repository writing rules
 
 ### Open implementation gaps found in this pass
 
