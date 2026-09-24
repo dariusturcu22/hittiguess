@@ -110,10 +110,10 @@ public class GroupService {
         }
 
         Group group = hasInviteCode
-                ? groupRepository.findByInviteCode(request.inviteCode())
+                ? groupRepository.findByInviteCodeForUpdate(request.inviteCode())
                         .orElseThrow(() -> new ResourceNotFoundException(
                                 "Invite code {" + request.inviteCode() + "} not found"))
-                : groupRepository.findByJoinCode(request.joinCode().toUpperCase())
+                : groupRepository.findByJoinCodeForUpdate(request.joinCode().toUpperCase())
                         .orElseThrow(() -> new ResourceNotFoundException(
                                 "Join code {" + request.joinCode() + "} not found"));
 

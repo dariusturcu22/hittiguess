@@ -66,3 +66,16 @@ def test_rejects_an_invalid_internal_api_key():
         )
 
     assert response.status_code == UNAUTHORIZED_STATUS_CODE
+
+
+def test_compares_internal_api_keys_with_the_standard_constant_time_helper():
+    with patch("app.auth.hmac.compare_digest", return_value=False) as compare_digest:
+        with TestClient(app) as client:
+            response = client.post(
+                VIDEO_INFO_ENDPOINT,
+                json={"video_ids": ["video-one"]},
+                headers={INTERNAL_API_KEY_HEADER: settings.internal_service_api_key},
+            )
+
+    assert response.status_code == UNAUTHORIZED_STATUS_CODE
+    compare_digest.assert_called_once_with(settings.internal_service_api_key, settings.internal_service_api_key)

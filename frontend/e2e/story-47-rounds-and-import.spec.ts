@@ -70,7 +70,7 @@ async function login(browser: Browser, account: TestAccount): Promise<Page> {
   await page.getByLabel("Email").fill(account.email);
   await page.getByLabel("Password", { exact: true }).fill(account.password);
   await page.getByRole("button", { name: "Log in" }).click();
-  await page.waitForURL(PLAYLISTS_PATH);
+  await expect(page.getByRole("heading", { name: "Your playlists" })).toBeVisible();
 
   return page;
 }

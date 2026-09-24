@@ -963,11 +963,14 @@ Batch 7, error handling and redirects (high and medium):
 - [x] `returnTo` also accepts tabs and newlines, which browsers strip, so `/\t/host` becomes `//host`. Reject control characters on both sides
 
 Batch 8, hardening (low):
-- [ ] The frontend sends no Content-Security-Policy, `frame-ancestors`, or `Referrer-Policy`. Add them in `next.config.ts`
-- [ ] The results CSV export writes display names without neutralizing leading `=`, `+`, `-`, or `@`, so a name can run as a spreadsheet formula. Prefix such cells
-- [ ] Swagger UI and `/v3/api-docs` are public in production. Disable them outside development
-- [ ] The AI microservice compares the internal API key with `!=` and would accept an empty header if the key were left blank, and exposes `/metrics` and the FastAPI docs unauthenticated. Use a constant-time compare, refuse to start with an empty key, and restrict or disable those routes
-- [ ] `GroupService.joinGroup` checks the 8-member cap without a lock, so concurrent joins can exceed it. Enforce the cap atomically
+- [x] The frontend sends no Content-Security-Policy, `frame-ancestors`, or `Referrer-Policy`. Add them in `next.config.ts`
+- [x] The results CSV export writes display names without neutralizing leading `=`, `+`, `-`, or `@`, so a name can run as a spreadsheet formula. Prefix such cells
+- [x] Swagger UI and `/v3/api-docs` are public in production. Disable them outside development
+- [x] The AI microservice compares the internal API key with `!=` and would accept an empty header if the key were left blank, and exposes `/metrics` and the FastAPI docs unauthenticated. Use a constant-time compare, refuse to start with an empty key, and restrict or disable those routes
+- [x] `GroupService.joinGroup` checks the 8-member cap without a lock, so concurrent joins can exceed it. Enforce the cap atomically
+- [x] The join lock was put on the shared invite and join code finders, so the read-only invite preview ran `SELECT ... FOR UPDATE` in a read-only transaction, which Postgres refuses, and the invite link page failed. Lock through finders only the join uses
+- [x] The CSP left the API origin out of `img-src`, blocking custom playlist covers and user avatars served by the API, and blocked React's development-only `eval`. Allow both
+- [ ] With `/metrics` gone from the AI service, the Alloy scrape in `observability/alloy/config.alloy` gets a 404 and AI metrics stop reaching Grafana. Expose the metrics again behind the internal key, or on a port only the scraper reaches, and update the scrape config
 
 Existing test failures:
 - [x] `frontend/app/(app)/groups/[groupId]/page.test.tsx` never finishes and pins a worker, which stalls `npm run test`
@@ -978,7 +981,7 @@ Tests:
 - [x] Batch 2: integration tests that a non-member's SUBSCRIBE to group and session topics is refused and that a voice signal reaches only its target
 - [x] Batch 3: the frontend build, lint, and unit and end-to-end suites pass on the upgraded dependencies, and `npm audit` reports no high or critical advisory
 - [x] The frontend build fetched Google Fonts through `next/font/google`, and a change in Google's responses to CI made Turbopack fail to resolve the font files, breaking every frontend build. Serve the four font families from the repo with `next/font/local` so the build makes no font requests, and confirm a clean build and the unit suite pass
-- [ ] The e2e login helpers wait for the `/playlists` load event with `page.waitForURL`, and in a full local run one or two login-dependent specs (the two-player round, and sometimes core flows) time out there even though the page has already reached `/playlists`. The same spec fails the same way on `dev` before the batch 3 upgrades. Find what holds the load event open and make the login wait on the rendered page instead
+- [x] The e2e login helpers wait for the `/playlists` load event with `page.waitForURL`, and in a full local run one or two login-dependent specs (the two-player round, and sometimes core flows) time out there even though the page has already reached `/playlists`. The same spec fails the same way on `dev` before the batch 3 upgrades. Find what holds the load event open and make the login wait on the rendered page instead
 - [x] Batch 4: service tests for reconnect on subscribe, disconnect only after the last socket, graceful completion on an empty queue, startup rescheduling, the idle placement timeout, skip-betting eligibility, once-per-round tallies, and guess result delivery
 - [x] Batch 5: integration tests that non-members can't read results, that a shared song can't be edited through another user's playlist, and that invalid display names and avatar URLs are refused
 - [x] Batch 6: unit tests that an oversized-dimension image is refused before decoding, and integration tests for the bulk import cap, quota, and up-front access check
@@ -986,4 +989,4 @@ Tests:
 - [x] The batch 5 display name pattern uses Java's `\p{Cntrl}`, which the OpenAPI spec publishes unchanged and the generated zod schema compiles as a JavaScript `u` regex, which throws on load. Use `\p{Cc}`, valid in both, and regenerate the client
 - [x] Batch 6: frontend tests for the lobby kick control and the import page showing the server's refusal message
 - [x] Batch 7: handler tests for each mapped status and the generic message, and unit tests for `returnTo` rejecting `/\` and other-origin values on both sides
-- [ ] Batch 8: tests for CSV cell neutralizing, the AI key compare and empty-key startup refusal, and the atomic group cap
+- [x] Batch 8: tests for CSV cell neutralizing, the AI key compare and empty-key startup refusal, and the atomic group cap

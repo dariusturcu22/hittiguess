@@ -238,7 +238,7 @@ class GroupServiceTest {
         Group group = groupWithAdmin();
         group.setStatus(GroupStatus.LOCKED);
         when(memberRepository.existsByUser(otherUser)).thenReturn(false);
-        when(groupRepository.findByJoinCode("ABCD")).thenReturn(Optional.of(group));
+        when(groupRepository.findByJoinCodeForUpdate("ABCD")).thenReturn(Optional.of(group));
         authenticateAs(otherUser);
 
         assertThatThrownBy(() -> groupService.joinGroup(new JoinGroupRequest(null, "ABCD", null, null)))
@@ -249,7 +249,7 @@ class GroupServiceTest {
     void joinGroupByInviteLinkAddsAMemberDefaultingToAccountIdentity() {
         Group group = groupWithAdmin();
         when(memberRepository.existsByUser(otherUser)).thenReturn(false);
-        when(groupRepository.findByInviteCode("invite-code")).thenReturn(Optional.of(group));
+        when(groupRepository.findByInviteCodeForUpdate("invite-code")).thenReturn(Optional.of(group));
         authenticateAs(otherUser);
 
         GroupDetailDTO result = groupService.joinGroup(new JoinGroupRequest("invite-code", null, null, null));
@@ -274,7 +274,7 @@ class GroupServiceTest {
 
     @Test
     void joinByCodeIsRefusedOnceTheAttemptLimitIsUsedUp() {
-        when(groupRepository.findByJoinCode(UNKNOWN_JOIN_CODE)).thenReturn(Optional.empty());
+        when(groupRepository.findByJoinCodeForUpdate(UNKNOWN_JOIN_CODE)).thenReturn(Optional.empty());
         authenticateAs(otherUser);
         JoinGroupRequest guess = new JoinGroupRequest(null, UNKNOWN_JOIN_CODE, null, null);
 
@@ -283,7 +283,7 @@ class GroupServiceTest {
         }
 
         assertThatThrownBy(() -> groupService.joinGroup(guess)).isInstanceOf(RateLimitExceededException.class);
-        verify(groupRepository, times(GroupService.MAX_JOIN_CODE_ATTEMPTS_PER_WINDOW)).findByJoinCode(UNKNOWN_JOIN_CODE);
+        verify(groupRepository, times(GroupService.MAX_JOIN_CODE_ATTEMPTS_PER_WINDOW)).findByJoinCodeForUpdate(UNKNOWN_JOIN_CODE);
     }
 
     @Test
@@ -345,7 +345,7 @@ class GroupServiceTest {
     void aRemovedUserCantRejoinTheGroup() {
         Group group = groupWithAdmin();
         group.getRemovedUserIds().add(otherUser.getId());
-        when(groupRepository.findByInviteCode("invite-code")).thenReturn(Optional.of(group));
+        when(groupRepository.findByInviteCodeForUpdate("invite-code")).thenReturn(Optional.of(group));
         authenticateAs(otherUser);
 
         assertThatThrownBy(() -> groupService.joinGroup(new JoinGroupRequest("invite-code", null, null, null)))
@@ -632,7 +632,7 @@ class GroupServiceTest {
     void joinGroupPublishesAMemberJoinedEvent() {
         Group group = groupWithAdmin();
         when(memberRepository.existsByUser(otherUser)).thenReturn(false);
-        when(groupRepository.findByInviteCode("invite-code")).thenReturn(Optional.of(group));
+        when(groupRepository.findByInviteCodeForUpdate("invite-code")).thenReturn(Optional.of(group));
         authenticateAs(otherUser);
 
         groupService.joinGroup(new JoinGroupRequest("invite-code", null, null, null));
