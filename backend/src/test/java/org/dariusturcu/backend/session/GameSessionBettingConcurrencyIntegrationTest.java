@@ -41,6 +41,8 @@ import org.dariusturcu.backend.service.PlaylistAccessService;
 import org.dariusturcu.backend.service.PlaylistExpansionService;
 import org.dariusturcu.backend.service.PendingSessionSongPool;
 import org.dariusturcu.backend.service.SessionResultsStore;
+import org.dariusturcu.backend.repository.StoredSessionResultsRepository;
+import tools.jackson.databind.json.JsonMapper;
 import org.dariusturcu.backend.difficulty.AggregateBaselinePredictor;
 import org.dariusturcu.backend.difficulty.DifficultyBand;
 import org.dariusturcu.backend.difficulty.DifficultyTunedSongSelector;
@@ -140,8 +142,8 @@ class GameSessionBettingConcurrencyIntegrationTest {
         }
 
         @Bean
-        SessionResultsStore sessionResultsStore() {
-            return new SessionResultsStore();
+        SessionResultsStore sessionResultsStore(StoredSessionResultsRepository storedSessionResultsRepository) {
+            return new SessionResultsStore(storedSessionResultsRepository, JsonMapper.builder().build());
         }
 
         @Bean
