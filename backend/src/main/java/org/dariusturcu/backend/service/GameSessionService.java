@@ -929,11 +929,14 @@ public class GameSessionService {
     // Effect method for the idle placement timer. The active player is still connected, so
     // unlike the turn timeout they aren't marked Left: the card is discarded exactly as a
     // wrong placement with no bets would be, and the game moves on. A no-op once the round
-    // has locked in or been scored.
+    // has locked in or been scored, or while the round's stored deadline hasn't passed.
     public void placementTimeoutEffect(Long roundId) {
         Round round = roundRepository.findById(roundId).orElse(null);
         if (round == null || round.getStatus() != RoundStatus.AWAITING_PLACEMENT
                 || round.getSession().getStatus() != SessionStatus.IN_PROGRESS) {
+            return;
+        }
+        if (round.getPlacementEndsAt() != null && Instant.now().isBefore(round.getPlacementEndsAt())) {
             return;
         }
         round.setPlacementCorrect(false);

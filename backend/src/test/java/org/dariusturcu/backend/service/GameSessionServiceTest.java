@@ -40,6 +40,7 @@ import org.dariusturcu.backend.repository.PlayerRepository;
 import org.dariusturcu.backend.repository.PlaylistRepository;
 import org.dariusturcu.backend.repository.RoundRepository;
 import org.dariusturcu.backend.repository.SongRepository;
+import org.dariusturcu.backend.repository.StoredSessionResultsRepository;
 import org.dariusturcu.backend.scheduling.GameSessionScheduler;
 import org.dariusturcu.backend.security.UserPrincipal;
 import org.dariusturcu.backend.websocket.SessionBroadcastEvent;
@@ -59,6 +60,8 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.web.server.ResponseStatusException;
+
+import tools.jackson.databind.json.JsonMapper;
 
 import java.time.Instant;
 import java.util.ArrayList;
@@ -113,7 +116,9 @@ class GameSessionServiceTest {
     @Mock
     private ApplicationEventPublisher eventPublisher;
 
-    private final SessionResultsStore resultsStore = new SessionResultsStore();
+    @Mock
+    private StoredSessionResultsRepository storedSessionResultsRepository;
+    private SessionResultsStore resultsStore;
     private final PendingSessionSongPool pendingPool = new PendingSessionSongPool();
 
     private static final Long GROUP_ID = 10L;
@@ -135,6 +140,7 @@ class GameSessionServiceTest {
     @BeforeEach
     void setUp() {
         sessionMapper = new SessionMapper(betRepository);
+        resultsStore = new SessionResultsStore(storedSessionResultsRepository, JsonMapper.builder().build());
         gameSessionService = new GameSessionService(
                 gameSessionRepository, playerRepository, roundRepository, guessRepository, betRepository,
                 groupRepository, songRepository, playlistRepository, groupService, playlistAccessService,
@@ -904,6 +910,7 @@ class GameSessionServiceTest {
         Player dj = player(session, 2L, 1, PlayerStatus.ACTIVE);
         anchorCard(active, song(100, "Anchor", 1990));
         Round round = round(session, 10L, 1, active, dj, song(200, "Round Song", 2000));
+        round.setPlacementEndsAt(Instant.now().minus(RoundTiming.LOCK_IN_COUNTDOWN));
 
         gameSessionService.placementTimeoutEffect(round.getId());
 
@@ -911,6 +918,19 @@ class GameSessionServiceTest {
         assertThat(round.getPlacementCorrect()).isFalse();
         assertThat(active.getTimeline()).hasSize(1);
         assertThat(active.getStatus()).isEqualTo(PlayerStatus.ACTIVE);
+    }
+
+    @Test
+    void thePlacementTimeoutIsANoOpBeforeItsDeadline() {
+        GameSession session = session(DjMode.ROTATING, 10);
+        Player active = player(session, 1L, 0, PlayerStatus.ACTIVE);
+        Player dj = player(session, 2L, 1, PlayerStatus.ACTIVE);
+        Round round = round(session, 10L, 1, active, dj, song(200, "Round Song", 2000));
+        round.setPlacementEndsAt(Instant.now().plus(RoundTiming.PLACEMENT_WINDOW));
+
+        gameSessionService.placementTimeoutEffect(round.getId());
+
+        assertThat(round.getStatus()).isEqualTo(RoundStatus.AWAITING_PLACEMENT);
     }
 
     @Test
