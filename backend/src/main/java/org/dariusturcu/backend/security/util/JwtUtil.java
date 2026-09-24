@@ -19,8 +19,8 @@ import java.util.function.Function;
 @Component
 public class JwtUtil {
     // Marks a token issued mid-login for a twoFactorEnabled account: narrowly scoped to
-    // /auth/2fa/verify, and rejected by name if presented anywhere a real access token is
-    // expected, since JwtAuthenticationFilter never inspects this claim itself.
+    // /auth/2fa/verify. validateToken refuses any token carrying this claim, so it never
+    // authenticates a request anywhere a real access token is expected.
     private static final String TOKEN_TYPE_CLAIM = "tokenType";
     private static final String TWO_FACTOR_PENDING_TOKEN_TYPE = "two_factor_pending";
 
@@ -108,7 +108,13 @@ public class JwtUtil {
                 .compact();
     }
 
+    // Only a real access token authenticates a request. Access tokens carry no token-type
+    // claim, so any token that does (the two-factor pending token) is refused here, which
+    // covers both the HTTP filter and the STOMP CONNECT check.
     public Boolean validateToken(String token, UserDetails userDetails) {
+        if (extractClaim(token, claims -> claims.get(TOKEN_TYPE_CLAIM, String.class)) != null) {
+            return false;
+        }
         final String email = extractEmail(token);
         if (userDetails instanceof UserPrincipal principal) {
             return email.equals(principal.getUser().getEmail()) && !isTokenExpired(token);

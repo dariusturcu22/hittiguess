@@ -50,6 +50,7 @@ public class AuthService {
     private final AuthenticationManager authenticationManager;
     private final EmailService emailService;
     private final TwoFactorService twoFactorService;
+    private final LoginAttemptService loginAttemptService;
 
     @Value("${email.verification-token-expiration}")
     private long emailVerificationTokenExpirationMillis;
@@ -83,6 +84,10 @@ public class AuthService {
     }
 
     public LoginOutcome login(LoginRequest request) {
+        // A locked account is refused before the password is checked, so a correct guess
+        // during the lockout doesn't succeed or reveal itself.
+        userRepository.findUserByEmail(request.email()).ifPresent(loginAttemptService::requireNotLocked);
+
         try {
             authenticationManager.authenticate(
                     new UsernamePasswordAuthenticationToken(
@@ -90,11 +95,15 @@ public class AuthService {
                             request.password()
                     )
             );
-        } catch (IllegalArgumentException e) {
+        } catch (IllegalArgumentException passwordlessAccountException) {
             // BCrypt throws this for an account with no password set, a Google-only account
             // trying to log in with a password. Same response as any other wrong credentials,
             // so this doesn't become a second way to tell accounts apart.
+            recordFailedLogin(request.email());
             throw new BadCredentialsException("Invalid username or password");
+        } catch (BadCredentialsException wrongCredentialsException) {
+            recordFailedLogin(request.email());
+            throw wrongCredentialsException;
         }
 
         User user = userRepository.findUserByEmail(request.email())
@@ -108,7 +117,12 @@ public class AuthService {
             return new LoginOutcome.TwoFactorRequired(jwtUtil.generateTwoFactorPendingToken(user));
         }
 
+        loginAttemptService.resetFailures(user);
         return new LoginOutcome.Completed(issueTokens(user, Boolean.TRUE.equals(request.rememberMe())));
+    }
+
+    private void recordFailedLogin(String email) {
+        userRepository.findUserByEmail(email).map(User::getId).ifPresent(loginAttemptService::recordFailure);
     }
 
     public AuthResult verifyTwoFactor(String pendingToken, String code) {
@@ -129,10 +143,13 @@ public class AuthService {
             throw new BadCredentialsException("Two-factor authentication is not enabled for this account");
         }
 
+        loginAttemptService.requireNotLocked(user);
         if (!twoFactorService.verifyLoginCode(user, code)) {
+            loginAttemptService.recordFailure(user.getId());
             throw new BadCredentialsException("Invalid authentication code");
         }
 
+        loginAttemptService.resetFailures(user);
         return issueTokens(user, false);
     }
 

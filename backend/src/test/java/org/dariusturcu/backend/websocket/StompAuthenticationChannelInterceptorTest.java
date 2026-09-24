@@ -47,6 +47,7 @@ class StompAuthenticationChannelInterceptorTest {
         ReflectionTestUtils.setField(jwtUtil, "secret", "test-handshake-secret-test-handshake-secret");
         ReflectionTestUtils.setField(jwtUtil, "expiration", 900000L);
         ReflectionTestUtils.setField(jwtUtil, "refreshExpiration", 604800000L);
+        ReflectionTestUtils.setField(jwtUtil, "twoFactorPendingExpiration", 300000L);
 
         interceptor = new StompAuthenticationChannelInterceptor(jwtUtil, userDetailsService);
     }
@@ -158,6 +159,26 @@ class StompAuthenticationChannelInterceptorTest {
         when(userDetailsService.loadUserByUsername(USER_EMAIL)).thenReturn(new UserPrincipal(differentAccountState));
 
         assertThatThrownBy(() -> interceptor.preSend(connectMessageWithAuthorization("Bearer " + token), channel))
+                .isInstanceOf(MessagingException.class);
+    }
+
+    @Test
+    void aTwoFactorPendingTokenIsRejected() {
+        User user = userWithEmail(USER_EMAIL);
+        when(userDetailsService.loadUserByUsername(USER_EMAIL)).thenReturn(new UserPrincipal(user));
+        String pendingToken = jwtUtil.generateTwoFactorPendingToken(user);
+
+        assertThatThrownBy(() -> interceptor.preSend(connectMessageWithAuthorization("Bearer " + pendingToken), channel))
+                .isInstanceOf(MessagingException.class);
+    }
+
+    @Test
+    void aTwoFactorPendingTokenFromTheHandshakeCookieIsRejected() {
+        User user = userWithEmail(USER_EMAIL);
+        when(userDetailsService.loadUserByUsername(USER_EMAIL)).thenReturn(new UserPrincipal(user));
+        String pendingToken = jwtUtil.generateTwoFactorPendingToken(user);
+
+        assertThatThrownBy(() -> interceptor.preSend(connectMessageWithCookieToken(pendingToken), channel))
                 .isInstanceOf(MessagingException.class);
     }
 
