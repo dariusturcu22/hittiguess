@@ -4,6 +4,7 @@ import httpx
 
 from app.config import settings
 from app.metadata.sources.http_retry import get_with_backoff
+from app.metadata.sources.pacing import RequestPacer
 from app.metadata.sources.util import METADATA_SOURCE_USER_AGENT
 from app.observability.error_reporting import report_source_failure
 
@@ -39,9 +40,10 @@ class DiscogsRateLimiter:
         self.starting_delay_seconds = 60 / (DISCOGS_DOCUMENTED_LIMIT_PER_MINUTE * target_utilization)
         self.delay_seconds = self.starting_delay_seconds
         self.last_observed_utilization: float | None = None
+        self._pacer = RequestPacer()
 
     def wait(self) -> None:
-        time.sleep(self.delay_seconds)
+        self._pacer.wait(self.delay_seconds)
 
     def record_response(self, response: httpx.Response) -> None:
         limit = response.headers.get("X-Discogs-Ratelimit")

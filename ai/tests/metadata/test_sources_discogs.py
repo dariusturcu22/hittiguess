@@ -1,4 +1,5 @@
 import httpx
+import pytest
 import respx
 
 from app.metadata.sources import discogs
@@ -139,13 +140,17 @@ def _rate_limit_headers(limit: int, remaining: int) -> dict[str, str]:
     return {"X-Discogs-Ratelimit": str(limit), "X-Discogs-Ratelimit-Remaining": str(remaining)}
 
 
-def test_rate_limiter_wait_sleeps_for_current_delay(mocker):
-    sleep = mocker.patch("app.metadata.sources.discogs.time.sleep")
+def test_rate_limiter_spaces_consecutive_calls_by_the_current_delay(mocker):
+    mocker.patch("app.metadata.sources.pacing.time.monotonic", return_value=100.0)
+    sleep = mocker.patch("app.metadata.sources.pacing.time.sleep")
     limiter = discogs.DiscogsRateLimiter()
 
     limiter.wait()
+    limiter.wait()
 
-    sleep.assert_called_once_with(limiter.delay_seconds)
+    sleep.assert_called_once()
+    (slept_seconds,), unused_keywords = sleep.call_args
+    assert slept_seconds == pytest.approx(limiter.delay_seconds)
 
 
 def test_rate_limiter_slows_down_and_cools_off_when_usage_crosses_target(mocker):

@@ -1,7 +1,7 @@
-import time
 from urllib.parse import quote
 
 from app.metadata.sources.http_retry import get_with_backoff
+from app.metadata.sources.pacing import RequestPacer
 from app.metadata.sources.util import METADATA_SOURCE_USER_AGENT, escape_lucene
 from app.observability.error_reporting import report_source_failure
 
@@ -34,9 +34,10 @@ class _AdaptiveRateLimiter:
         self.baseline_delay_seconds = baseline_delay_seconds
         self.delay_seconds = baseline_delay_seconds
         self.consecutive_successes = 0
+        self._pacer = RequestPacer()
 
     def wait(self) -> None:
-        time.sleep(self.delay_seconds)
+        self._pacer.wait(self.delay_seconds)
 
     def record_success(self) -> None:
         self.consecutive_successes += 1

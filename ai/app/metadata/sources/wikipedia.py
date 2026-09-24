@@ -1,10 +1,10 @@
-import time
 from functools import lru_cache
 
 import httpx
 
 from app.config import settings
 from app.metadata.sources.http_retry import get_with_backoff
+from app.metadata.sources.pacing import RequestPacer
 from app.metadata.sources.mediawiki_auth import build_authenticated_client
 from app.metadata.sources.util import METADATA_SOURCE_USER_AGENT
 from app.observability.error_reporting import report_source_failure
@@ -36,8 +36,11 @@ def _delay_seconds() -> float:
     return 60 / (limit_per_minute * RATE_LIMIT_TARGET_UTILIZATION)
 
 
+_pacer = RequestPacer()
+
+
 def _get(params: dict) -> dict:
-    time.sleep(_delay_seconds())
+    _pacer.wait(_delay_seconds())
     response = get_with_backoff(
         API_URL,
         params=params,
