@@ -90,7 +90,8 @@ async function leaveActiveGroup(page: Page): Promise<void> {
 
 async function createGroupFromSidebar(page: Page): Promise<GroupResponse> {
   await leaveActiveGroup(page);
-  await page.getByTitle("Create group lobby").click();
+  await page.getByTitle("Start or join a lobby").click();
+  await page.getByRole("button", { name: "Create a lobby" }).click();
   await page.waitForURL(/\/groups\/\d+/);
   const response = await page.request.get(apiUrl(`${GROUPS_PATH}/active`));
   expect(response.ok(), `${response.status()} ${await response.text()}`).toBeTruthy();

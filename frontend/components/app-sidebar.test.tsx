@@ -30,6 +30,8 @@ vi.mock("next/navigation", () => ({
 }));
 
 const routerPush = vi.hoisted(() => vi.fn());
+const createGroupMutate = vi.hoisted(() => vi.fn());
+const joinGroupMutate = vi.hoisted(() => vi.fn());
 
 vi.mock("next-themes", () => ({
   useTheme: () => ({ resolvedTheme: "light", setTheme: vi.fn() }),
@@ -45,7 +47,8 @@ vi.mock("@tanstack/react-query", async (importOriginal) => {
 
 vi.mock("@/hooks/generated/group-management/group-management", () => ({
   getGetActiveMembershipQueryKey: () => ["active-membership"],
-  useCreateGroup: () => ({ mutate: vi.fn(), isPending: false }),
+  useCreateGroup: () => ({ mutate: createGroupMutate, isPending: false }),
+  useJoinGroup: () => ({ mutate: joinGroupMutate, isPending: false }),
   useGetActiveMembership: () => ({ data: activeMembership }),
 }));
 
@@ -184,5 +187,50 @@ describe("AppSidebar group button", () => {
     const { container } = renderSidebar();
 
     expect(container.querySelector('a[href="/groups/4"]')?.className).toContain("bg-primary/10");
+  });
+});
+
+describe("AppSidebar lobby menu", () => {
+  beforeEach(() => {
+    currentPathname = "/playlists";
+    activeMembership = undefined;
+    routerPush.mockReset();
+    createGroupMutate.mockReset();
+    joinGroupMutate.mockReset();
+  });
+
+  it("joins a lobby by its code and opens it", () => {
+    joinGroupMutate.mockImplementation((_variables, options) => options?.onSuccess?.({ id: 12 }));
+    renderSidebar();
+
+    fireEvent.click(screen.getByTitle("Start or join a lobby"));
+    fireEvent.change(screen.getByRole("textbox", { name: "Lobby code" }), { target: { value: "ab-cd9" } });
+    expect(screen.getByRole("textbox", { name: "Lobby code" })).toHaveValue("ABCD");
+    fireEvent.click(screen.getByRole("button", { name: "Join lobby" }));
+
+    expect(joinGroupMutate).toHaveBeenCalledWith({ data: { joinCode: "ABCD" } }, expect.anything());
+    expect(routerPush).toHaveBeenCalledWith("/groups/12");
+  });
+
+  it("explains an unknown code", () => {
+    joinGroupMutate.mockImplementation((_variables, options) => options?.onError?.({ response: { status: 404 } }));
+    renderSidebar();
+
+    fireEvent.click(screen.getByTitle("Start or join a lobby"));
+    fireEvent.change(screen.getByRole("textbox", { name: "Lobby code" }), { target: { value: "WXYZ" } });
+    fireEvent.click(screen.getByRole("button", { name: "Join lobby" }));
+
+    expect(screen.getByRole("alert")).toHaveTextContent("No lobby uses that code.");
+    expect(routerPush).not.toHaveBeenCalled();
+  });
+
+  it("still creates a new lobby from the same menu", () => {
+    createGroupMutate.mockImplementation((_variables, options) => options?.onSuccess?.({ id: 5 }));
+    renderSidebar();
+
+    fireEvent.click(screen.getByTitle("Start or join a lobby"));
+    fireEvent.click(screen.getByRole("button", { name: "Create a lobby" }));
+
+    expect(routerPush).toHaveBeenCalledWith("/groups/5");
   });
 });

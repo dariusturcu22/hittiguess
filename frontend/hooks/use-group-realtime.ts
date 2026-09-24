@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Client } from "@stomp/stompjs";
 import { useQueryClient } from "@tanstack/react-query";
 
-import { getGetGroupQueryKey } from "@/hooks/generated/group-management/group-management";
+import { getGetActiveMembershipQueryKey, getGetGroupQueryKey } from "@/hooks/generated/group-management/group-management";
 import { getGetHistoryQueryKey } from "@/hooks/generated/group-chat/group-chat";
 
 const WEBSOCKET_PATH = "/ws";
@@ -41,6 +41,9 @@ export function useGroupRealtime(groupId: number) {
         GROUP_TOPICS.forEach((topic) => {
           client.subscribe(`${GROUP_TOPIC_PREFIX}/${groupId}/${topic}`, () => {
             void queryClient.invalidateQueries({ queryKey: getGetGroupQueryKey(groupId) });
+            // The voice sidebar and the shell read the group through the active
+            // membership, so membership and voice changes refresh it too.
+            if (topic !== "chat") void queryClient.invalidateQueries({ queryKey: getGetActiveMembershipQueryKey() });
             if (topic === "chat") void queryClient.invalidateQueries({ queryKey: getGetHistoryQueryKey(groupId) });
           });
         });
