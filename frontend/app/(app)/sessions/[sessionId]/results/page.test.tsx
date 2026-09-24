@@ -3,7 +3,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { ReactNode } from "react";
 import { describe, expect, it, vi } from "vitest";
 
-import SessionResultsPage from "./page";
+import SessionResultsPage, { csvCell } from "./page";
 
 const RESULTS_PARAMS = Promise.resolve({ sessionId: "9" });
 
@@ -40,6 +40,14 @@ function renderPage() {
 }
 
 describe("SessionResultsPage download options", () => {
+  it("neutralizes spreadsheet formula prefixes in CSV cells", () => {
+    expect(csvCell("=SUM(A1:A2)")).toBe("\"'=SUM(A1:A2)\"");
+    expect(csvCell("+1")).toBe("\"'+1\"");
+    expect(csvCell("-1")).toBe("\"'-1\"");
+    expect(csvCell("@value")).toBe("\"'@value\"");
+    expect(csvCell("Alex")).toBe("\"Alex\"");
+  });
+
   it("offers PDF, text, and CSV actions", async () => {
     await act(async () => {
       renderPage();
