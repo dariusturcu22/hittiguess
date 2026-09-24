@@ -132,7 +132,7 @@ class OAuth2AuthenticationHandlerTest {
 
     @Test
     void successDropsBackslashAndProtocolRelativeReturnToDestinations() throws Exception {
-        for (String unsafeReturnTo : List.of("/\\evil.example.com", "//evil.example.com")) {
+        for (String unsafeReturnTo : List.of("/\\evil.example.com", "//evil.example.com", "/\t/evil.example.com")) {
             stubTokenCookies();
             MockHttpServletResponse saveResponse = new MockHttpServletResponse();
             MockHttpServletRequest callbackRequest = requestWithSavedAuthorizationRequest(unsafeReturnTo, saveResponse);

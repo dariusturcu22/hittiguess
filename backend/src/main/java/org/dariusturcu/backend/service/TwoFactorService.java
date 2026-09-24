@@ -66,7 +66,7 @@ public class TwoFactorService {
 
     public List<String> confirm(User user, String code) {
         if (user.getTotpSecret() == null) {
-            throw new IllegalStateException("Two-factor setup has not been started");
+            throw new ConflictException("Two-factor setup has not been started");
         }
         if (!verifyAndRecordTotpCode(user, code)) {
             throw new IllegalArgumentException("Invalid verification code");

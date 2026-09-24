@@ -24,6 +24,14 @@ class GlobalExceptionHandlerTest {
     }
 
     @Test
+    void anInvalidRequestKeepsItsBadRequestStatusAndMessage() {
+        var response = exceptionHandler.handleIllegalArgument(new IllegalArgumentException(EXPLAINED_REFUSAL_MESSAGE));
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(response.getBody().message()).isEqualTo(EXPLAINED_REFUSAL_MESSAGE);
+    }
+
+    @Test
     void responseStatusExceptionKeepsItsStatusAndMessage() {
         var response = exceptionHandler.handleResponseStatus(
                 new ResponseStatusException(HttpStatus.CONFLICT, EXPLAINED_REFUSAL_MESSAGE));
