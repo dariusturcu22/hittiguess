@@ -1017,3 +1017,9 @@ Why: the joined string collapsed roles the game needs apart, and a name containi
 Decision: the unauthenticated group invite preview maps members to a lean shape with display name, avatar, and admin flag. User ids, presence, voice state, and join time stay behind membership.
 
 Why: the preview needs no auth by design, so everything it returns is public to anyone holding a code. The full member DTO was built for logged-in members, not for that audience.
+
+## 2026-09 | STOMP subscriptions are authorized, and voice signals go to one user
+
+Decision: every STOMP SUBSCRIBE passes through `StompSubscriptionAuthorizationInterceptor`. A `/topic/groups/{groupId}/...` topic needs group membership, a `/topic/sessions/{sessionId}/...` topic needs a player in that session, and a `/user/...` destination is always allowed because Spring resolves it to the subscriber's own session. Anything else is refused, including a direct subscription to a resolved per-user `/queue` destination. `VoiceSignalingController` now delivers each signal only to its target member on `/user/queue/groups/{groupId}/voice-signal` through `convertAndSendToUser`, and refuses a target outside the group. The group voice topic keeps carrying voice presence only. This supersedes the fan-out part of the story 12 entry above.
+
+Why: authenticating CONNECT alone let any signed-in user subscribe to another group's chat, voice, settings, and membership topics, or another session's round topic, by guessing an id. Signals carry players' network addresses, so broadcasting them to the whole group exposed every member's addresses to every other member. The broker's user-destination support was already configured for bulk import progress, so the reason the entry above gave for fanning out no longer holds.
