@@ -738,16 +738,22 @@ public class GameSessionService {
         guess.setTitleCorrect(isTitleCorrect);
         guess.setCreatedAt(Instant.now());
 
-        if (isArtistCorrect) {
+        // The session tallies count each round's artist and title at most once per player,
+        // however many times a correct answer is resubmitted.
+        List<Guess> earlierGuessesThisRound = round.getGuesses().stream()
+                .filter(existing -> existing.getPlayer().getId().equals(player.getId()))
+                .toList();
+        boolean isArtistNewlyCorrect = isArtistCorrect && earlierGuessesThisRound.stream().noneMatch(Guess::isArtistCorrect);
+        boolean isTitleNewlyCorrect = isTitleCorrect && earlierGuessesThisRound.stream().noneMatch(Guess::isTitleCorrect);
+        if (isArtistNewlyCorrect) {
             player.setTotalArtistsGuessed(player.getTotalArtistsGuessed() + 1);
         }
-        if (isTitleCorrect) {
+        if (isTitleNewlyCorrect) {
             player.setTotalTitlesGuessed(player.getTotalTitlesGuessed() + 1);
         }
 
         boolean isActivePlayer = round.getActivePlayer().getId().equals(player.getId());
-        boolean alreadyAwardedThisRound = round.getGuesses().stream()
-                .anyMatch(existing -> existing.getPlayer().getId().equals(player.getId()) && existing.isFullyCorrect());
+        boolean alreadyAwardedThisRound = earlierGuessesThisRound.stream().anyMatch(Guess::isFullyCorrect);
         if (isActivePlayer && isArtistCorrect && isTitleCorrect && !alreadyAwardedThisRound) {
             player.setTokenCount(player.getTokenCount() + 1);
         }
