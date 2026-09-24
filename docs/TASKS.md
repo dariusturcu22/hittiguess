@@ -984,4 +984,4 @@ Tests:
 - [x] The batch 5 display name pattern uses Java's `\p{Cntrl}`, which the OpenAPI spec publishes unchanged and the generated zod schema compiles as a JavaScript `u` regex, which throws on load. Use `\p{Cc}`, valid in both, and regenerate the client
 - [x] Batch 6: frontend tests for the lobby kick control and the import page showing the server's refusal message
 - [ ] Batch 7: handler tests for each mapped status and the generic message, and unit tests for `returnTo` rejecting `/\` and other-origin values on both sides
-- [ ] Batch 8: tests for CSV cell neutralizing, the AI key compare and empty-key startup refusal, and the atomic group cap
+- [x] Batch 8: tests for CSV cell neutralizing, the AI key compare and empty-key startup refusal, and the atomic group cap

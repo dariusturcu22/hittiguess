@@ -1,7 +1,9 @@
 package org.dariusturcu.backend.session;
 
+import org.dariusturcu.backend.exception.ConflictException;
 import org.dariusturcu.backend.model.group.CreateGroupRequest;
 import org.dariusturcu.backend.model.group.DjMode;
+import org.dariusturcu.backend.model.group.Group;
 import org.dariusturcu.backend.model.group.GroupDetailDTO;
 import org.dariusturcu.backend.model.group.JoinGroupRequest;
 import org.dariusturcu.backend.model.group.UpdateGroupSettingsRequest;
@@ -78,6 +80,7 @@ import java.util.Set;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -104,6 +107,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class GameSessionBettingConcurrencyIntegrationTest {
 
     private static final int CONCURRENT_ATTEMPTS_PER_ELIGIBLE_BETTOR = 2;
+    private static final int CONCURRENT_GROUP_JOIN_ATTEMPTS = 2;
     private static final int CONCURRENCY_TEST_TIMEOUT_SECONDS = 10;
     // The active player starts with a single anchor card, so positions 0 and 1 are both
     // in range. The active player's own placement is locked at position 1, leaving
@@ -225,6 +229,8 @@ class GameSessionBettingConcurrencyIntegrationTest {
 
     @Autowired
     private GroupService groupService;
+    @Autowired
+    private GroupRepository groupRepository;
     @Autowired
     private GameSessionService gameSessionService;
     @Autowired
@@ -360,6 +366,62 @@ class GameSessionBettingConcurrencyIntegrationTest {
         } else {
             assertThat(finalBettorTwo.getTokenCount()).isZero();
             assertThat(finalBettorOne.getTokenCount()).isEqualTo(1);
+        }
+    }
+
+    @Test
+    void groupCapacityHoldsUnderConcurrentJoins() throws Exception {
+        User admin = persistUser("group-join-race-admin-" + System.nanoTime());
+        authenticateAs(admin);
+        GroupDetailDTO createdGroup = groupService.createGroup(new CreateGroupRequest(null, null));
+
+        int membersNeededBeforeRace = Group.MAX_MEMBERS - CONCURRENT_GROUP_JOIN_ATTEMPTS;
+        for (int memberNumber = 0; memberNumber < membersNeededBeforeRace; memberNumber++) {
+            User existingMember = persistUser("group-join-race-member-" + memberNumber + "-" + System.nanoTime());
+            authenticateAs(existingMember);
+            groupService.joinGroup(new JoinGroupRequest(createdGroup.inviteCode(), null, null, null));
+        }
+
+        User firstConcurrentMember = persistUser("group-join-race-first-" + System.nanoTime());
+        User secondConcurrentMember = persistUser("group-join-race-second-" + System.nanoTime());
+        ExecutorService executorService = Executors.newFixedThreadPool(CONCURRENT_GROUP_JOIN_ATTEMPTS);
+        CountDownLatch startLatch = new CountDownLatch(1);
+
+        try {
+            Future<Boolean> firstJoin = executorService.submit(() -> joinWhenRaceStarts(
+                    firstConcurrentMember, createdGroup.inviteCode(), startLatch));
+            Future<Boolean> secondJoin = executorService.submit(() -> joinWhenRaceStarts(
+                    secondConcurrentMember, createdGroup.inviteCode(), startLatch));
+            startLatch.countDown();
+
+            int successfulJoinCount = 0;
+            for (Future<Boolean> joinAttempt : List.of(firstJoin, secondJoin)) {
+                if (joinAttempt.get(CONCURRENCY_TEST_TIMEOUT_SECONDS, TimeUnit.SECONDS)) {
+                    successfulJoinCount++;
+                }
+            }
+
+            assertThat(successfulJoinCount).isEqualTo(1);
+            assertThat(memberRepository.countByGroupId(createdGroup.id())).isEqualTo(Group.MAX_MEMBERS);
+        } finally {
+            executorService.shutdownNow();
+            SecurityContextHolder.clearContext();
+        }
+    }
+
+    private boolean joinWhenRaceStarts(User user, String inviteCode, CountDownLatch startLatch) {
+        try {
+            startLatch.await();
+            authenticateAs(user);
+            groupService.joinGroup(new JoinGroupRequest(inviteCode, null, null, null));
+            return true;
+        } catch (ConflictException exception) {
+            return false;
+        } catch (InterruptedException exception) {
+            Thread.currentThread().interrupt();
+            throw new IllegalStateException("Concurrent join attempt was interrupted", exception);
+        } finally {
+            SecurityContextHolder.clearContext();
         }
     }
 
