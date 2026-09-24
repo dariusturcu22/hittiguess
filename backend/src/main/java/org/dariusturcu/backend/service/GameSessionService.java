@@ -886,6 +886,9 @@ public class GameSessionService {
     public void reconnectPlayer(Long sessionId, Long userId) {
         GameSession session = getSession(sessionId);
         Player player = findPlayerByUserId(session, userId);
+        if (player.isConnected() && player.getDisconnectedAt() == null && session.getZeroConnectedSince() == null) {
+            return;
+        }
 
         player.setConnected(true);
         player.setDisconnectedAt(null);
