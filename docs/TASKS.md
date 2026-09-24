@@ -965,8 +965,8 @@ Batch 8, hardening (low):
 - [ ] `GroupService.joinGroup` checks the 8-member cap without a lock, so concurrent joins can exceed it. Enforce the cap atomically
 
 Existing test failures:
-- [ ] `frontend/app/(app)/groups/[groupId]/page.test.tsx` never finishes and pins a worker, which stalls `npm run test`
-- [ ] `CatalogSeedingIntegrationTest` fails two cases on `dev` with a `TransientPropertyValueException` (a `Song` referencing an unsaved `User`)
+- [x] `frontend/app/(app)/groups/[groupId]/page.test.tsx` never finishes and pins a worker, which stalls `npm run test`
+- [x] `CatalogSeedingIntegrationTest` fails two cases on `dev` with a `TransientPropertyValueException` (a `Song` referencing an unsaved `User`)
 
 Tests:
 - [ ] Batch 1: integration tests that a pending token is refused on REST and STOMP, that setup can't disable two-factor, that cross-site `/auth` requests without a CSRF token are refused, that a replayed code is refused, and that repeated failures lock the account temporarily
