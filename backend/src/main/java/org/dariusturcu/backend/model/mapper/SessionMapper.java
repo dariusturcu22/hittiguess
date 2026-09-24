@@ -19,6 +19,7 @@ import org.springframework.stereotype.Component;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.util.List;
 
 @Component
 @RequiredArgsConstructor
@@ -62,6 +63,7 @@ public class SessionMapper {
                 betRepository.findByRoundId(round.getId()).stream()
                         .map(bet -> new BetDTO(bet.getPlayer().getId(), bet.getPosition()))
                         .toList(),
+                List.copyOf(round.getBettingSkippedPlayerIds()),
                 isRevealedOrLater ? artistNames(round.getSong()) : null,
                 isRevealedOrLater ? round.getSong().getTitle() : null,
                 isRevealedOrLater ? round.getSong().getReleaseYear() : null,

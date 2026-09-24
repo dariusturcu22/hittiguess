@@ -506,15 +506,42 @@ public class GameSessionService {
         }
         playerRepository.deductToken(player.getId());
 
-        publishRoundEvent(SessionEventType.BET_PLACED, session, round);
+        // The token deduction clears the persistence context, so the round is read again.
+        Round roundAfterBet = getRound(round.getId());
+        publishRoundEvent(SessionEventType.BET_PLACED, session, roundAfterBet);
+        closeBettingIfEveryoneDecided(roundAfterBet);
         return true;
     }
 
+    // Only a player who could still bet this round can skip. The window closes early once
+    // every eligible bettor holding a token has bet or skipped, so one player can't end
+    // it for everyone else.
     public void skipBetting(Long sessionId, Long userId) {
         GameSession session = getSession(sessionId);
-        findPlayerByUserId(session, userId);
+        Player player = findPlayerByUserId(session, userId);
         Round round = requireCurrentRound(session);
         if (round.getStatus() != RoundStatus.BETTING) {
+            return;
+        }
+        boolean isEligible = eligibleBettors(round).stream().anyMatch(bettor -> bettor.getId().equals(player.getId()));
+        if (!isEligible) {
+            throw new AccessDeniedException("Only a player who can still bet this round can skip betting");
+        }
+        if (!round.getBettingSkippedPlayerIds().add(player.getId())) {
+            return;
+        }
+        Round savedRound = roundRepository.save(round);
+        publishRoundEvent(SessionEventType.BETTING_SKIP_VOTED, session, savedRound);
+        closeBettingIfEveryoneDecided(savedRound);
+    }
+
+    private void closeBettingIfEveryoneDecided(Round round) {
+        if (round.getStatus() != RoundStatus.BETTING) {
+            return;
+        }
+        boolean anyTokenHolderUndecided = eligibleBettors(round).stream()
+                .anyMatch(bettor -> bettor.getTokenCount() > 0 && !round.getBettingSkippedPlayerIds().contains(bettor.getId()));
+        if (anyTokenHolderUndecided) {
             return;
         }
         round.setStatus(RoundStatus.REVEALED);

@@ -9,6 +9,7 @@ public enum SessionEventType {
     GUESS_LOCKED,
     BETTING_OPENED,
     BET_PLACED,
+    BETTING_SKIP_VOTED,
     REVEAL_TRIGGERED,
     ROUND_SCORED,
     NEXT_ROUND,

@@ -17,6 +17,7 @@ public record RoundDTO(
         Integer placedPosition,
         Boolean placementCorrect,
         List<BetDTO> bets,
+        List<Long> bettingSkippedPlayerIds,
         String revealedArtist,
         String revealedTitle,
         Integer revealedYear,
