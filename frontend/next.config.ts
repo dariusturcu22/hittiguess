@@ -14,9 +14,10 @@ const apiWebSocketUrl = new URL(apiUrl);
 apiWebSocketUrl.protocol = apiUrl.protocol === "https:" ? "wss:" : "ws:";
 const contentSecurityPolicy = [
   "default-src 'self'",
-  "script-src 'self' 'unsafe-inline'",
+  // React uses eval in development only, to rebuild call stacks for its debugging tools.
+  `script-src 'self' 'unsafe-inline'${process.env.NODE_ENV === "development" ? " 'unsafe-eval'" : ""}`,
   "style-src 'self' 'unsafe-inline'",
-  "img-src 'self' data: blob: https://i.ytimg.com https://*.googleusercontent.com",
+  `img-src 'self' data: blob: ${apiUrl.origin} https://i.ytimg.com https://*.googleusercontent.com`,
   `connect-src 'self' ${apiUrl.origin} ${apiWebSocketUrl.origin}`,
   "font-src 'self'",
   "media-src 'self' blob:",
