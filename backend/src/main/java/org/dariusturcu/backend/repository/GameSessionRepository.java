@@ -11,5 +11,7 @@ import java.util.Optional;
 public interface GameSessionRepository extends JpaRepository<GameSession, Long> {
     Optional<GameSession> findByGroupId(Long groupId);
 
+    List<GameSession> findByStatus(SessionStatus status);
+
     List<GameSession> findByStatusAndZeroConnectedSinceBefore(SessionStatus status, Instant instant);
 }

@@ -51,6 +51,7 @@ import org.dariusturcu.backend.websocket.SessionBroadcastEvent;
 import org.dariusturcu.backend.websocket.SessionEventType;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.annotation.Lazy;
@@ -78,6 +79,7 @@ import java.util.stream.Collectors;
 // choices this class implements.
 @Service
 @RequiredArgsConstructor
+@Slf4j
 @Transactional
 public class GameSessionService {
 
@@ -963,6 +965,66 @@ public class GameSessionService {
         currentRound.setPlacedPosition(null);
         roundRepository.save(currentRound);
         self.scoreRoundEffect(currentRound.getId());
+    }
+
+    // --- Recovery after a restart ------------------------------------------------
+
+    // Round timers and socket presence live only in memory, so after a restart every
+    // in-progress session gets its current round's timer rescheduled from the round's
+    // stored timestamps, and every player starts out disconnected until one of their
+    // sockets subscribes again. The auto-abandon timer covers a session nobody returns to.
+    public void recoverInProgressSessions() {
+        for (GameSession session : gameSessionRepository.findByStatus(SessionStatus.IN_PROGRESS)) {
+            try {
+                self.recoverSession(session.getId());
+            } catch (RuntimeException exception) {
+                log.warn("Recovery skipped for session {}: {}", session.getId(), exception.getMessage());
+            }
+        }
+    }
+
+    public void recoverSession(Long sessionId) {
+        GameSession session = getSession(sessionId);
+        Instant recoveredAt = Instant.now();
+        for (Player player : session.getPlayers()) {
+            if (player.isConnected()) {
+                player.setConnected(false);
+                player.setDisconnectedAt(recoveredAt);
+                playerRepository.save(player);
+            }
+        }
+        if (session.getZeroConnectedSince() == null) {
+            session.setZeroConnectedSince(recoveredAt);
+            gameSessionRepository.save(session);
+        }
+        gameSessionScheduler.scheduleAt(session.getZeroConnectedSince().plus(Duration.ofMinutes(AUTO_ABANDON_MINUTES)),
+                () -> self.checkAutoAbandonEffect(sessionId));
+
+        Round round = getCurrentRound(session);
+        if (round != null) {
+            rescheduleRoundTimer(round, recoveredAt);
+        }
+    }
+
+    private void rescheduleRoundTimer(Round round, Instant recoveredAt) {
+        Long roundId = round.getId();
+        switch (round.getStatus()) {
+            case AWAITING_PLACEMENT -> {
+                Instant placementEndsAt = round.getPlacementEndsAt() != null
+                        ? round.getPlacementEndsAt()
+                        : recoveredAt.plus(RoundTiming.PLACEMENT_WINDOW);
+                gameSessionScheduler.scheduleAt(placementEndsAt, () -> self.placementTimeoutEffect(roundId));
+                Long activePlayerId = round.getActivePlayer().getId();
+                gameSessionScheduler.scheduleAfter(Duration.ofSeconds(ACTIVE_PLAYER_TURN_TIMEOUT_SECONDS),
+                        () -> self.turnTimeoutEffect(activePlayerId));
+            }
+            case COUNTDOWN -> gameSessionScheduler.scheduleAt(round.getLockedInAt().plus(RoundTiming.LOCK_IN_COUNTDOWN),
+                    () -> self.startBettingWindowEffect(roundId));
+            case BETTING -> gameSessionScheduler.scheduleAt(round.getBettingWindowEndsAt(), () -> self.revealEffect(roundId));
+            case REVEALED -> gameSessionScheduler.scheduleAt(recoveredAt, () -> self.revealEffect(roundId));
+            case SCORED -> gameSessionScheduler.scheduleAt(round.getScoredAt().plus(RoundTiming.REVEAL_HOLD),
+                    () -> self.advanceRoundEffect(roundId));
+        }
     }
 
     // --- Lookup helpers -------------------------------------------------------
