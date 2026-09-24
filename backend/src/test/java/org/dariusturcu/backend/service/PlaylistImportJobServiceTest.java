@@ -32,6 +32,7 @@ import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.core.task.SyncTaskExecutor;
+import org.springframework.security.access.AccessDeniedException;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -98,6 +99,17 @@ class PlaylistImportJobServiceTest {
         user.setUsername(SUBMITTING_USERNAME);
         user.setRole(Role.USER);
         return user;
+    }
+
+    // Reads the active import as a user the access service lets through.
+    private Optional<PlaylistImportJobDTO> findActiveImportAsReader() {
+        Playlist playlist = new Playlist();
+        playlist.setId(PLAYLIST_ID);
+        when(playlistRepository.findById(PLAYLIST_ID)).thenReturn(Optional.of(playlist));
+        try (MockedStatic<SecurityUtils> security = Mockito.mockStatic(SecurityUtils.class)) {
+            security.when(SecurityUtils::getCurrentUser).thenReturn(submittingUser());
+            return service().findActiveImport(PLAYLIST_ID);
+        }
     }
 
     private Song songWithId(Long songId) {
@@ -240,7 +252,7 @@ class PlaylistImportJobServiceTest {
                 .thenReturn(List.of(runningJob));
         when(itemRepository.findByJobIdOrderByIdAsc("job-1")).thenReturn(List.of());
 
-        Optional<PlaylistImportJobDTO> activeImport = service().findActiveImport(PLAYLIST_ID);
+        Optional<PlaylistImportJobDTO> activeImport = findActiveImportAsReader();
 
         assertThat(activeImport).isPresent();
         assertThat(activeImport.get().id()).isEqualTo("job-1");
@@ -282,7 +294,7 @@ class PlaylistImportJobServiceTest {
         resolvedSong.getArtists().add(mainArtist);
         when(songRepository.findAllById(List.of(101L))).thenReturn(List.of(resolvedSong));
 
-        Optional<PlaylistImportJobDTO> activeImport = service().findActiveImport(PLAYLIST_ID);
+        Optional<PlaylistImportJobDTO> activeImport = findActiveImportAsReader();
 
         assertThat(activeImport).isPresent();
         var items = activeImport.get().items();
@@ -302,7 +314,7 @@ class PlaylistImportJobServiceTest {
         when(jobRepository.findByPlaylistIdAndStatusOrderByCreatedAtDesc(PLAYLIST_ID, PlaylistImportJobStatus.RUNNING))
                 .thenReturn(List.of());
 
-        assertThat(service().findActiveImport(PLAYLIST_ID)).isEmpty();
+        assertThat(findActiveImportAsReader()).isEmpty();
     }
 
     @Test
@@ -339,5 +351,24 @@ class PlaylistImportJobServiceTest {
         assertThatThrownBy(() -> service().findImport(PLAYLIST_ID, "job-3"))
                 .isInstanceOf(org.springframework.web.server.ResponseStatusException.class);
         verifyNoInteractions(playlistAccessService);
+    }
+
+    @Test
+    void theActiveImportIsRefusedWithoutReadAccessBeforeAnyJobIsLookedUp() {
+        Playlist privatePlaylist = new Playlist();
+        privatePlaylist.setId(PLAYLIST_ID);
+        User outsider = submittingUser();
+        when(playlistRepository.findById(PLAYLIST_ID)).thenReturn(Optional.of(privatePlaylist));
+        doThrow(new AccessDeniedException("No read access"))
+                .when(playlistAccessService).requireRead(privatePlaylist, outsider);
+
+        try (MockedStatic<SecurityUtils> security = Mockito.mockStatic(SecurityUtils.class)) {
+            security.when(SecurityUtils::getCurrentUser).thenReturn(outsider);
+            PlaylistImportJobService importJobService = service();
+
+            assertThatThrownBy(() -> importJobService.findActiveImport(PLAYLIST_ID))
+                    .isInstanceOf(AccessDeniedException.class);
+        }
+        verifyNoInteractions(jobRepository);
     }
 }

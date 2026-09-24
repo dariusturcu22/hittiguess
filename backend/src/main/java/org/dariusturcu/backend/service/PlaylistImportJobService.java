@@ -117,13 +117,15 @@ public class PlaylistImportJobService {
     }
 
     @Transactional(readOnly = true)
+    // Checked before looking for a job, so a playlist the caller can't read gives the
+    // same refusal whether or not an import is running on it.
     public Optional<PlaylistImportJobDTO> findActiveImport(Long playlistId) {
+        Playlist playlist = playlistRepository.findById(playlistId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Playlist not found"));
+        playlistAccessService.requireRead(playlist, SecurityUtils.getCurrentUser());
         List<PlaylistImportJob> runningJobs =
                 jobRepository.findByPlaylistIdAndStatusOrderByCreatedAtDesc(playlistId, PlaylistImportJobStatus.RUNNING);
-        if (runningJobs.isEmpty()) {
-            return Optional.empty();
-        }
-        return Optional.of(toDTO(runningJobs.get(0)));
+        return runningJobs.stream().findFirst().map(this::toDTO);
     }
 
     // A finished job stops being the playlist's active import, so the import screen reads
