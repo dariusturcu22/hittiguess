@@ -4,7 +4,11 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import GameSessionPage from "./page";
 
 let roundEventHandler: ((event: { type: string; payload?: Record<string, unknown> }) => void) | undefined;
-let guessResultHandler: ((result: { roundId?: number; artistCorrect?: boolean; titleCorrect?: boolean }) => void) | undefined;
+type MockGuessResult = { roundId?: number; artistCorrect?: boolean; titleCorrect?: boolean; state?: Record<string, unknown> };
+let guessResultHandler: ((result: MockGuessResult) => void) | undefined;
+let sessionEndedHandler: ((ended: { groupId?: number }) => void) | undefined;
+let mockGuessState: Record<string, unknown> | undefined;
+const routerReplace = vi.fn();
 const placeCard = vi.fn(() => true);
 const previewPlacement = vi.fn(() => true);
 const submitGuess = vi.fn(() => true);
@@ -35,6 +39,7 @@ const MID_GAME_SESSION = {
   ],
   currentRound: {
     id: 30,
+    turnNumber: 7,
     roundNumber: 3,
     status: "AWAITING_PLACEMENT",
     activePlayerId: 7,
@@ -53,7 +58,15 @@ function withRound(round: Record<string, unknown>): MockGameSession {
 }
 
 vi.mock("next/navigation", () => ({
-  useRouter: () => ({ replace: vi.fn() }),
+  useRouter: () => ({ replace: routerReplace }),
+}));
+
+vi.mock("next/link", () => ({
+  default: ({ children, href }: { children: React.ReactNode; href: string }) => <a href={href}>{children}</a>,
+}));
+
+vi.mock("@tanstack/react-query", () => ({
+  useQueryClient: () => ({ setQueryData: vi.fn() }),
 }));
 
 vi.mock("@/hooks/generated/game-session/game-session", () => ({
@@ -66,9 +79,12 @@ vi.mock("@/hooks/generated/game-session/game-session", () => ({
     isLoading: false,
     isError: !mockSessionData,
   }),
+  useGetGuessState: () => ({ data: mockGuessState }),
+  getGetGuessStateQueryKey: (sessionId: number) => [`/api/sessions/${sessionId}/guess-state`],
 }));
 
 vi.mock("@/hooks/generated/group-management/group-management", () => ({
+  useGetActiveMembership: () => ({ data: { id: 2 } }),
   useGetGroup: () => ({ data: { playlists: [{ id: 5, name: "Midnight Radio", color: "cba6f7", songCount: 32, previewYoutubeIds: [] }] } }),
 }));
 
@@ -90,10 +106,12 @@ vi.mock("@/hooks/use-game-session-realtime", () => ({
   useGameSessionRealtime: (
     _sessionId: number,
     handler: (event: { type: string }) => void,
-    onGuessResult: (result: { roundId?: number; artistCorrect?: boolean; titleCorrect?: boolean }) => void,
+    onGuessResult: (result: MockGuessResult) => void,
+    onSessionEnded: (ended: { groupId?: number }) => void,
   ) => {
     roundEventHandler = handler;
     guessResultHandler = onGuessResult;
+    sessionEndedHandler = onSessionEnded;
     return {
       connectionState: "connected",
       placeCard,
@@ -123,6 +141,9 @@ describe("GameSessionPage", () => {
     skipBetting.mockClear();
     roundEventHandler = undefined;
     guessResultHandler = undefined;
+    sessionEndedHandler = undefined;
+    mockGuessState = undefined;
+    routerReplace.mockClear();
     mockSessionData = MID_GAME_SESSION;
     mockCurrentUserId = ACTIVE_USER_ID;
     window.sessionStorage.clear();
@@ -159,6 +180,16 @@ describe("GameSessionPage", () => {
     expect(placeCard).toHaveBeenCalledWith(1);
   });
 
+  it("keeps the guess fields next to the lock-in button once the card is dropped", async () => {
+    await renderPage();
+
+    fireEvent.keyDown(screen.getByRole("button", { name: "Your card. Choose a timeline position." }), { key: "Enter" });
+
+    expect(await screen.findByRole("button", { name: "Lock in answer" })).toBeVisible();
+    expect(screen.getByRole("textbox", { name: "Guess the artist" })).toBeVisible();
+    expect(screen.getByRole("textbox", { name: "Guess the title" })).toBeVisible();
+  });
+
   it("shows the turn banner for the active player when a round starts", async () => {
     await renderPage();
 
@@ -170,29 +201,72 @@ describe("GameSessionPage", () => {
     expect(screen.getByRole("status")).toHaveTextContent("Round 3");
   });
 
-  it("submits the artist and title together with feedback", async () => {
+  it("submits the artist and the title separately with feedback", async () => {
     await renderPage();
 
-    fireEvent.change(screen.getByPlaceholderText("Guess the artist"), { target: { value: "Beatles" } });
-    fireEvent.change(screen.getByPlaceholderText("Guess the title"), { target: { value: "Yesterday" } });
-    fireEvent.click(screen.getByRole("button", { name: "Submit guess the title" }));
+    fireEvent.change(screen.getByRole("textbox", { name: "Guess the artist" }), { target: { value: "Beatles" } });
+    fireEvent.click(screen.getByRole("button", { name: "Submit guess the artist" }));
+    expect(submitGuess).toHaveBeenLastCalledWith("Beatles", "");
 
-    expect(submitGuess).toHaveBeenCalledWith("Beatles", "Yesterday");
+    fireEvent.change(screen.getByRole("textbox", { name: "Guess the title" }), { target: { value: "Yesterday" } });
+    fireEvent.click(screen.getByRole("button", { name: "Submit guess the title" }));
+    expect(submitGuess).toHaveBeenLastCalledWith("", "Yesterday");
     expect(screen.getByText("Checking your guess…")).toBeVisible();
   });
 
-  it("tells the guesser which part of their guess was right", async () => {
+  it("tells the guesser how their artist guess went", async () => {
+    await renderPage();
+
+    fireEvent.change(screen.getByRole("textbox", { name: "Guess the artist" }), { target: { value: "Queen" } });
+    fireEvent.click(screen.getByRole("button", { name: "Submit guess the artist" }));
+    act(() => {
+      guessResultHandler?.({ roundId: 30, artistCorrect: true, titleCorrect: false, state: { roundId: 30, artistCount: 2, correctArtistCount: 1 } });
+    });
+    expect(screen.getByText("You got an artist. 1 more credited.")).toBeVisible();
+
+    fireEvent.change(screen.getByRole("textbox", { name: "Guess the artist" }), { target: { value: "Freddie" } });
+    fireEvent.click(screen.getByRole("button", { name: "Submit guess the artist" }));
+    act(() => {
+      guessResultHandler?.({ roundId: 30, artistCorrect: false, titleCorrect: false, state: { roundId: 30, artistCount: 2, correctArtistCount: 1, artistGuessingClosed: true } });
+    });
+    expect(screen.getByText("Wrong artist. No more artist guesses this round.")).toBeVisible();
+  });
+
+  it("disables the guess fields whose guessing is closed for the round", async () => {
+    mockGuessState = { roundId: 30, artistCount: 1, correctArtistCount: 0, artistGuessingClosed: true, titleGuessed: true, titleCorrect: true };
+    await renderPage();
+
+    expect(screen.getByRole("textbox", { name: "Guess the artist" })).toBeDisabled();
+    expect(screen.getByRole("textbox", { name: "Guess the title" })).toBeDisabled();
+    expect(screen.getByPlaceholderText("Title guessed")).toBeVisible();
+  });
+
+  it("moves to the results screen with the group id when the game ends", async () => {
     await renderPage();
 
     act(() => {
-      guessResultHandler?.({ roundId: 30, artistCorrect: true, titleCorrect: false });
+      sessionEndedHandler?.({ groupId: 2 });
     });
-    expect(screen.getByText("You got the artist.")).toBeVisible();
+
+    expect(routerReplace).toHaveBeenCalledWith("/sessions/1/results?group=2");
+  });
+
+  it("goes back to the lobby when an ended session was abandoned", async () => {
+    await renderPage();
 
     act(() => {
-      guessResultHandler?.({ roundId: 30, artistCorrect: false, titleCorrect: false });
+      sessionEndedHandler?.({});
     });
-    expect(screen.getByText("Not quite. Try again.")).toBeVisible();
+
+    expect(routerReplace).toHaveBeenCalledWith("/groups/2");
+  });
+
+  it("sends a player whose session is already gone to the group's results", async () => {
+    mockSessionData = null;
+    await renderPage();
+
+    expect(routerReplace).toHaveBeenCalledWith("/sessions/1/results?group=2");
+    expect(screen.getByRole("link", { name: "Back to lobby" })).toHaveAttribute("href", "/groups/2");
   });
 
   it("announces another player's correct guess without the answer", async () => {
@@ -324,11 +398,19 @@ describe("GameSessionPage", () => {
   });
 
   it("opens the first round with the round intro", async () => {
-    mockSessionData = { ...withRound({ roundNumber: 1 }), currentRoundNumber: 1 };
+    mockSessionData = { ...withRound({ roundNumber: 1, turnNumber: 1 }), currentRoundNumber: 1 };
     await renderPage();
 
     expect(screen.getByText("First DJ")).toBeVisible();
     expect(screen.getByText("First turn")).toBeVisible();
+  });
+
+  it("doesn't replay the intro on later turns of the first round", async () => {
+    mockSessionData = { ...withRound({ roundNumber: 1, turnNumber: 2 }), currentRoundNumber: 1 };
+    await renderPage();
+
+    expect(screen.queryByText("First DJ")).toBeNull();
+    expect(screen.getByRole("heading", { name: "Round 1" })).toBeVisible();
   });
 
   it("shows the waiting state before the first round", async () => {

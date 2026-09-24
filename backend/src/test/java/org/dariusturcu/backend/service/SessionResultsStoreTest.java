@@ -35,8 +35,8 @@ class SessionResultsStoreTest {
     private SessionResultsDTO results() {
         return new SessionResultsDTO(GROUP_ID,
                 List.of(new PlayerResultDTO(WINNER_PLAYER_ID, "Winner", WINNING_CARD_COUNT, 1)),
-                List.of(new LeaderboardEntryDTO(WINNER_PLAYER_ID, "Winner", 2)),
-                List.of(new LeaderboardEntryDTO(WINNER_PLAYER_ID, "Winner", 1)));
+                List.of(new LeaderboardEntryDTO(WINNER_PLAYER_ID, "Winner", 2, 1)),
+                List.of(new LeaderboardEntryDTO(WINNER_PLAYER_ID, "Winner", 1, 1)));
     }
 
     @Test

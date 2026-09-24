@@ -1,6 +1,7 @@
 package org.dariusturcu.backend.websocket;
 
 import org.dariusturcu.backend.model.session.GuessResultDTO;
+import org.dariusturcu.backend.model.session.GuessStateDTO;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
@@ -71,7 +72,8 @@ class SessionBroadcastListenerTest {
         String guesserUsername = "guesser";
         long roundId = 3L;
 
-        context.publishEvent(new GuessResultEvent(guesserUsername, SESSION_ID, new GuessResultDTO(roundId, true, false)));
+        context.publishEvent(new GuessResultEvent(guesserUsername, SESSION_ID, new GuessResultDTO(roundId, true, false,
+                new GuessStateDTO(roundId, 1, 1, true, false, false, false))));
 
         verify(messagingTemplate).convertAndSendToUser(eq(guesserUsername), eq(SessionDestinations.guessResultQueue(SESSION_ID)), anyString());
         verify(messagingTemplate, never()).convertAndSend(anyString(), anyString());

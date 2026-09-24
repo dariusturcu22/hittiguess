@@ -15,6 +15,9 @@ import org.dariusturcu.backend.model.session.PlayerCard;
 import org.dariusturcu.backend.model.session.PlayerStatus;
 import org.dariusturcu.backend.model.session.CorrectGuessDTO;
 import org.dariusturcu.backend.model.session.GuessResultDTO;
+import org.dariusturcu.backend.model.session.GuessStateDTO;
+import org.dariusturcu.backend.model.session.LeaderboardEntryDTO;
+import org.dariusturcu.backend.model.session.PlayerResultDTO;
 import org.dariusturcu.backend.websocket.GuessResultEvent;
 import org.dariusturcu.backend.model.session.Round;
 import org.dariusturcu.backend.model.session.SessionResultsDTO;
@@ -300,7 +303,7 @@ class GameSessionServiceTest {
         assertThat(active.getTimeline()).hasSize(2);
         assertThat(bettor.getTimeline()).hasSize(1);
         assertThat(bettor.getTokenCount()).isZero();
-        verify(groupService).recordGameSessionEnded(session.getGroupId());
+        verify(groupService, never()).recordGameSessionEnded(anyLong());
     }
 
     @Test
@@ -326,7 +329,7 @@ class GameSessionServiceTest {
         assertThat(bettor.getTimeline()).hasSize(2);
         // Computed automatically on the bettor's OWN timeline, not the gap they bet on.
         assertThat(bettor.getTimeline().get(1).getReleaseYear()).isEqualTo(2000);
-        verify(groupService).recordGameSessionEnded(session.getGroupId());
+        verify(groupService, never()).recordGameSessionEnded(anyLong());
     }
 
     @Test
@@ -888,6 +891,122 @@ class GameSessionServiceTest {
         verify(groupService).recordGameSessionEnded(session.getGroupId());
     }
 
+    // --- Rounds as full passes and the end-of-round win ------------------------------
+
+    // Three rotating-DJ players with the listed turns already played in game round one;
+    // the last listed turn is the one just scored.
+    private Round scoredTurnAfter(GameSession session, List<Player> activePlayersSoFar, Player dj) {
+        session.setCurrentGameRoundNumber(1);
+        List<Round> turns = new ArrayList<>();
+        long roundId = 10L;
+        for (Player activePlayer : activePlayersSoFar) {
+            Round turn = round(session, roundId, (int) (roundId - 9L), activePlayer, dj, song(200 + roundId, "Turn Song " + roundId, 2000));
+            turn.setGameRoundNumber(1);
+            turn.setStatus(RoundStatus.SCORED);
+            turns.add(turn);
+            roundId++;
+        }
+        lenient().when(roundRepository.findBySessionOrderByRoundNumberAsc(session)).thenReturn(turns);
+        return turns.getLast();
+    }
+
+    private List<Round> savedRounds() {
+        org.mockito.ArgumentCaptor<Round> captor = org.mockito.ArgumentCaptor.forClass(Round.class);
+        verify(roundRepository, org.mockito.Mockito.atLeastOnce()).save(captor.capture());
+        return captor.getAllValues();
+    }
+
+    @Test
+    void theRoundCounterStaysPutUntilEveryPlayerHasHadATurn() {
+        GameSession session = session(DjMode.ROTATING, 10);
+        Player playerA = player(session, 1L, 0, PlayerStatus.ACTIVE);
+        Player playerB = player(session, 2L, 1, PlayerStatus.ACTIVE);
+        player(session, 3L, 2, PlayerStatus.ACTIVE);
+        Round finishedTurn = scoredTurnAfter(session, List.of(playerA), playerB);
+
+        gameSessionService.advanceRoundEffect(finishedTurn.getId());
+
+        Round nextTurn = savedRounds().getLast();
+        assertThat(nextTurn.getActivePlayer()).isEqualTo(playerB);
+        assertThat(nextTurn.getGameRoundNumber()).isEqualTo(1);
+        assertThat(session.getCurrentGameRoundNumber()).isEqualTo(1);
+    }
+
+    @Test
+    void theRoundCounterAdvancesOnceTheRotationComesBackAround() {
+        GameSession session = session(DjMode.ROTATING, 10);
+        Player playerA = player(session, 1L, 0, PlayerStatus.ACTIVE);
+        Player playerB = player(session, 2L, 1, PlayerStatus.ACTIVE);
+        Player playerC = player(session, 3L, 2, PlayerStatus.ACTIVE);
+        Round finishedTurn = scoredTurnAfter(session, List.of(playerA, playerB, playerC), playerA);
+
+        gameSessionService.advanceRoundEffect(finishedTurn.getId());
+
+        Round nextTurn = savedRounds().getLast();
+        assertThat(nextTurn.getActivePlayer()).isEqualTo(playerA);
+        assertThat(nextTurn.getGameRoundNumber()).isEqualTo(2);
+    }
+
+    @Test
+    void aFixedDjSittingMidOrderDoesNotSplitTheRound() {
+        GameSession session = session(DjMode.FIXED, 10);
+        Player playerA = player(session, 1L, 0, PlayerStatus.ACTIVE);
+        Player fixedDj = player(session, 2L, 1, PlayerStatus.ACTIVE);
+        Player playerC = player(session, 3L, 2, PlayerStatus.ACTIVE);
+        session.setFixedDjPlayerId(fixedDj.getId());
+        when(playerRepository.findById(fixedDj.getId())).thenReturn(Optional.of(fixedDj));
+        Round finishedTurn = scoredTurnAfter(session, List.of(playerC), fixedDj);
+
+        gameSessionService.advanceRoundEffect(finishedTurn.getId());
+
+        Round nextTurn = savedRounds().getLast();
+        assertThat(nextTurn.getActivePlayer()).isEqualTo(playerA);
+        assertThat(nextTurn.getGameRoundNumber()).isEqualTo(1);
+    }
+
+    @Test
+    void reachingTheWinConditionMidRoundLetsTheRestOfTheRoundPlay() {
+        GameSession session = session(DjMode.ROTATING, 2);
+        Player playerA = player(session, 1L, 0, PlayerStatus.ACTIVE);
+        Player playerB = player(session, 2L, 1, PlayerStatus.ACTIVE);
+        player(session, 3L, 2, PlayerStatus.ACTIVE);
+        anchorCard(playerA, song(100, "Anchor A", 1990));
+        anchorCard(playerA, song(101, "Anchor A Two", 1995));
+        Round finishedTurn = scoredTurnAfter(session, List.of(playerA), playerB);
+
+        gameSessionService.advanceRoundEffect(finishedTurn.getId());
+
+        assertThat(session.getStatus()).isEqualTo(SessionStatus.IN_PROGRESS);
+        assertThat(savedRounds().getLast().getActivePlayer()).isEqualTo(playerB);
+        verify(groupService, never()).recordGameSessionEnded(anyLong());
+    }
+
+    @Test
+    void theGameEndsAtTheEndOfTheRoundAndTiedPlayersShareFirstPlace() {
+        GameSession session = session(DjMode.ROTATING, 2);
+        Player playerA = player(session, 1L, 0, PlayerStatus.ACTIVE);
+        Player playerB = player(session, 2L, 1, PlayerStatus.ACTIVE);
+        Player playerC = player(session, 3L, 2, PlayerStatus.ACTIVE);
+        anchorCard(playerA, song(100, "Anchor A", 1990));
+        anchorCard(playerA, song(101, "Anchor A Two", 1995));
+        anchorCard(playerB, song(102, "Anchor B", 1990));
+        anchorCard(playerB, song(103, "Anchor B Two", 1995));
+        anchorCard(playerC, song(104, "Anchor C", 1990));
+        playerA.setTotalTitlesGuessed(3);
+        playerB.setTotalTitlesGuessed(3);
+        playerC.setTotalTitlesGuessed(1);
+        Round finishedTurn = scoredTurnAfter(session, List.of(playerA, playerB, playerC), playerA);
+
+        gameSessionService.advanceRoundEffect(finishedTurn.getId());
+
+        assertThat(session.getStatus()).isEqualTo(SessionStatus.COMPLETED);
+        verify(groupService).recordGameSessionEnded(session.getGroupId());
+        SessionResultsDTO results = resultsStore.get(session.getGroupId()).orElseThrow().results();
+        assertThat(results.cardCountRanking()).extracting(PlayerResultDTO::rank).containsExactly(1, 1, 3);
+        assertThat(results.mostTitlesGuessed()).extracting(LeaderboardEntryDTO::rank).containsExactly(1, 1, 3);
+        assertThat(results.mostArtistsGuessed()).extracting(LeaderboardEntryDTO::rank).containsExactly(1, 1, 1);
+    }
+
     // --- Idle placement timeout -----------------------------------------------------
 
     @Test
@@ -1018,7 +1137,7 @@ class GameSessionServiceTest {
     // --- Artist and title tallies ------------------------------------------------------
 
     @Test
-    void resubmittingACorrectGuessCountsTheArtistAndTitleOnlyOncePerRound() {
+    void theTitleCanOnlyBeGuessedOncePerRound() {
         GameSession session = session(DjMode.ROTATING, 10);
         Player active = player(session, 1L, 0, PlayerStatus.ACTIVE);
         Player dj = player(session, 2L, 1, PlayerStatus.ACTIVE);
@@ -1026,18 +1145,102 @@ class GameSessionServiceTest {
         Song roundSong = song(200, "Bohemian Rhapsody", 1975, artist("Queen", ArtistRole.MAIN, 0));
         round(session, 10L, 1, active, dj, roundSong);
 
-        int submissionCount = 3;
-        for (int submission = 0; submission < submissionCount; submission++) {
-            gameSessionService.submitTitleArtistGuess(session.getId(), bystander.getUser().getId(),
-                    new TitleArtistGuessRequest("Queen", "Bohemian Rhapsody"));
-        }
+        gameSessionService.submitTitleArtistGuess(session.getId(), bystander.getUser().getId(),
+                new TitleArtistGuessRequest(null, "Wrong Title"));
+
+        assertThatThrownBy(() -> gameSessionService.submitTitleArtistGuess(session.getId(), bystander.getUser().getId(),
+                new TitleArtistGuessRequest(null, "Bohemian Rhapsody")))
+                .isInstanceOf(ConflictException.class);
+        assertThat(bystander.getTotalTitlesGuessed()).isZero();
+    }
+
+    @Test
+    void anArtistAndTheTitleGuessedSeparatelyBothCount() {
+        GameSession session = session(DjMode.ROTATING, 10);
+        Player active = player(session, 1L, 0, PlayerStatus.ACTIVE);
+        Player dj = player(session, 2L, 1, PlayerStatus.ACTIVE);
+        Player bystander = player(session, 3L, 2, PlayerStatus.ACTIVE);
+        Song roundSong = song(200, "Bohemian Rhapsody", 1975, artist("Queen", ArtistRole.MAIN, 0));
+        round(session, 10L, 1, active, dj, roundSong);
+
+        gameSessionService.submitTitleArtistGuess(session.getId(), bystander.getUser().getId(),
+                new TitleArtistGuessRequest("Queen", null));
+        gameSessionService.submitTitleArtistGuess(session.getId(), bystander.getUser().getId(),
+                new TitleArtistGuessRequest(null, "Bohemian Rhapsody"));
 
         assertThat(bystander.getTotalArtistsGuessed()).isEqualTo(1);
         assertThat(bystander.getTotalTitlesGuessed()).isEqualTo(1);
     }
 
     @Test
-    void anArtistGuessedEarlierStillLetsALaterCorrectTitleCount() {
+    void eachCorrectArtistCountsAndAWrongOneClosesArtistGuessing() {
+        GameSession session = session(DjMode.ROTATING, 10);
+        Player active = player(session, 1L, 0, PlayerStatus.ACTIVE);
+        Player dj = player(session, 2L, 1, PlayerStatus.ACTIVE);
+        Player bystander = player(session, 3L, 2, PlayerStatus.ACTIVE);
+        Song roundSong = song(200, "Under Pressure", 1981,
+                artist("Queen", ArtistRole.MAIN, 0), artist("David Bowie", ArtistRole.MAIN, 1), artist("Annie Lennox", ArtistRole.FEATURED, 2));
+        round(session, 10L, 1, active, dj, roundSong);
+
+        gameSessionService.submitTitleArtistGuess(session.getId(), bystander.getUser().getId(),
+                new TitleArtistGuessRequest("David Bowie", null));
+        gameSessionService.submitTitleArtistGuess(session.getId(), bystander.getUser().getId(),
+                new TitleArtistGuessRequest("Freddie Mercury", null));
+
+        assertThatThrownBy(() -> gameSessionService.submitTitleArtistGuess(session.getId(), bystander.getUser().getId(),
+                new TitleArtistGuessRequest("Queen", null)))
+                .isInstanceOf(ConflictException.class);
+        assertThat(bystander.getTotalArtistsGuessed()).isEqualTo(1);
+        GuessStateDTO state = gameSessionService.getGuessState(session.getId(), bystander.getUser().getId());
+        assertThat(state.artistCount()).isEqualTo(3);
+        assertThat(state.correctArtistCount()).isEqualTo(1);
+        assertThat(state.artistGuessingClosed()).isTrue();
+    }
+
+    @Test
+    void repeatingAnArtistAlreadyGuessedIsRejectedWithoutClosingArtistGuessing() {
+        GameSession session = session(DjMode.ROTATING, 10);
+        Player active = player(session, 1L, 0, PlayerStatus.ACTIVE);
+        Player dj = player(session, 2L, 1, PlayerStatus.ACTIVE);
+        Player bystander = player(session, 3L, 2, PlayerStatus.ACTIVE);
+        Song roundSong = song(200, "Under Pressure", 1981,
+                artist("Queen", ArtistRole.MAIN, 0), artist("David Bowie", ArtistRole.MAIN, 1));
+        round(session, 10L, 1, active, dj, roundSong);
+
+        gameSessionService.submitTitleArtistGuess(session.getId(), bystander.getUser().getId(),
+                new TitleArtistGuessRequest("Queen", null));
+        assertThatThrownBy(() -> gameSessionService.submitTitleArtistGuess(session.getId(), bystander.getUser().getId(),
+                new TitleArtistGuessRequest("queen", null)))
+                .isInstanceOf(ConflictException.class);
+        gameSessionService.submitTitleArtistGuess(session.getId(), bystander.getUser().getId(),
+                new TitleArtistGuessRequest("David Bowie", null));
+
+        assertThat(bystander.getTotalArtistsGuessed()).isEqualTo(2);
+        assertThat(gameSessionService.getGuessState(session.getId(), bystander.getUser().getId()).artistGuessingClosed()).isTrue();
+    }
+
+    @Test
+    void theActivePlayerEarnsOneTokenForTheTitlePlusOneOfSeveralArtists() {
+        GameSession session = session(DjMode.ROTATING, 10);
+        Player active = player(session, 1L, 0, PlayerStatus.ACTIVE);
+        Player dj = player(session, 2L, 1, PlayerStatus.ACTIVE);
+        Song roundSong = song(200, "Under Pressure", 1981,
+                artist("Queen", ArtistRole.MAIN, 0), artist("David Bowie", ArtistRole.MAIN, 1));
+        round(session, 10L, 1, active, dj, roundSong);
+
+        gameSessionService.submitTitleArtistGuess(session.getId(), active.getUser().getId(),
+                new TitleArtistGuessRequest(null, "Under Pressure"));
+        assertThat(active.getTokenCount()).isZero();
+        gameSessionService.submitTitleArtistGuess(session.getId(), active.getUser().getId(),
+                new TitleArtistGuessRequest("Queen", null));
+        gameSessionService.submitTitleArtistGuess(session.getId(), active.getUser().getId(),
+                new TitleArtistGuessRequest("David Bowie", null));
+
+        assertThat(active.getTokenCount()).isEqualTo(1);
+    }
+
+    @Test
+    void aBystanderNeverEarnsATokenFromGuessing() {
         GameSession session = session(DjMode.ROTATING, 10);
         Player active = player(session, 1L, 0, PlayerStatus.ACTIVE);
         Player dj = player(session, 2L, 1, PlayerStatus.ACTIVE);
@@ -1046,12 +1249,9 @@ class GameSessionServiceTest {
         round(session, 10L, 1, active, dj, roundSong);
 
         gameSessionService.submitTitleArtistGuess(session.getId(), bystander.getUser().getId(),
-                new TitleArtistGuessRequest("Queen", "Wrong Title"));
-        gameSessionService.submitTitleArtistGuess(session.getId(), bystander.getUser().getId(),
                 new TitleArtistGuessRequest("Queen", "Bohemian Rhapsody"));
 
-        assertThat(bystander.getTotalArtistsGuessed()).isEqualTo(1);
-        assertThat(bystander.getTotalTitlesGuessed()).isEqualTo(1);
+        assertThat(bystander.getTokenCount()).isZero();
     }
 
     // --- Guess results ----------------------------------------------------------------
@@ -1068,12 +1268,13 @@ class GameSessionServiceTest {
         gameSessionService.submitTitleArtistGuess(session.getId(), bystander.getUser().getId(),
                 new TitleArtistGuessRequest("Queen", "Wrong Title"));
 
+        GuessStateDTO expectedState = new GuessStateDTO(round.getId(), 1, 1, true, true, false, false);
         verify(eventPublisher).publishEvent(new GuessResultEvent(bystander.getUser().getUsername(), session.getId(),
-                new GuessResultDTO(round.getId(), true, false)));
+                new GuessResultDTO(round.getId(), true, false, expectedState)));
     }
 
     @Test
-    void aNewlyCorrectGuessIsBroadcastWithoutTheAnswerAndOnlyOnce() {
+    void aNewlyCorrectGuessIsBroadcastWithoutTheAnswer() {
         GameSession session = session(DjMode.ROTATING, 10);
         Player active = player(session, 1L, 0, PlayerStatus.ACTIVE);
         Player dj = player(session, 2L, 1, PlayerStatus.ACTIVE);
@@ -1081,8 +1282,6 @@ class GameSessionServiceTest {
         Song roundSong = song(200, "Bohemian Rhapsody", 1975, artist("Queen", ArtistRole.MAIN, 0));
         Round round = round(session, 10L, 1, active, dj, roundSong);
 
-        gameSessionService.submitTitleArtistGuess(session.getId(), bystander.getUser().getId(),
-                new TitleArtistGuessRequest("Queen", ""));
         gameSessionService.submitTitleArtistGuess(session.getId(), bystander.getUser().getId(),
                 new TitleArtistGuessRequest("Queen", ""));
 
@@ -1391,6 +1590,8 @@ class GameSessionServiceTest {
         // Two anchor cards and the first round's song come off the staged pool.
         assertThat(session.getSongQueue()).hasSize(STARTABLE_POOL_SIZE - 3);
         assertThat(session.getCurrentRoundNumber()).isEqualTo(1);
+        assertThat(session.getCurrentGameRoundNumber()).isEqualTo(1);
+        assertThat(session.getPlayers()).allSatisfy(player -> assertThat(player.getTokenCount()).isEqualTo(2));
     }
 
     @Test

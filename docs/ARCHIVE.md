@@ -1210,6 +1210,34 @@ OpenAI's own cheap tier (`gpt-5-nano`, `gpt-5-mini`) and the existing `gpt-5.1` 
 - [x] Design the report/re-verification system floated during this spike: settled in full detail since, not just the lowest-confidence-first sketch this line originally described, see story 17's five-tier priority queue and the 2026-09 "Report and confirmation resolution" `DECISIONS.md` entry
 - [x] `docs/TASKS.md`'s own story 18 section and `docs/PROJECT_STATE.md`'s story 18 row used to reference a `DECISIONS.md` "verification is a lock, not a score" entry that was explicitly retracted earlier in this project (never actually authorized). Both cleaned up, no longer point at the retracted entry; the lock concept it described is the same shape this spike later validated with real data (three-source agreement = lock), so the underlying idea held up even though that specific entry never existed
 
+## Second LAN playtest: playlist copy and edit cancel
+
+- [x] Copying the invite link or invite code from the playlist page's dropdown silently fails over plain-HTTP LAN: the legacy copy fallback appends its textarea to `document.body`, outside the open menu's focus trap, so the selection is pulled away before the copy runs. Mount the textarea inside the focused element's container and focus it before selecting
+- [x] The edit-playlist Cancel button only resets the drafts and stays on the page. Discard the drafts and go back to the playlist detail
+
+Tests:
+- [x] Unit test: the copy fallback mounts inside the active element's dialog or menu and copies the selected text
+- [x] Page test: Cancel on the edit page navigates to the playlist detail without saving
+
+## Second LAN playtest: gameplay rules and the end of a game
+
+Chore, no story: findings from the second multi-device playtest. The rule changes are owner decisions recorded in `GAME_DESIGN.md` and `DECISIONS.md`.
+
+- [x] Finishing a game strands every player on "This game session is unavailable": the session rows are purged on completion, the session page's refetch 404s before it ever sees `COMPLETED`, and the lobby's cached active session keeps redirecting back to the dead session. Route every client to the results screen off the `SESSION_ENDED` event (which carries the group id), give the results page the group id through the URL instead of the purged session, broadcast a group event when the session ends so lobbies refetch, and stop the lobby from redirecting on a cached session once the group is open again
+- [x] A round is a full pass through the players, not a single turn. Number turns and rounds separately; the round counter advances when the active-player rotation wraps
+- [x] Reaching the win condition no longer ends the game on the spot: the current round plays out, and the game ends at the end of the round in which anyone reached it
+- [x] Rankings share places on ties (competition ranking) for cards, artists guessed, and titles guessed, and the results screen shows every tied winner
+- [x] Players start with two tokens
+- [x] A token is earned for the title plus at least one artist, not every artist
+- [x] Each round allows one title guess and artist guesses one at a time: a correct artist locks in and lets the player try another credited artist, a wrong artist ends artist guessing for that round, and repeating an artist already guessed is rejected
+- [x] The guess fields stay on screen after the active player drops the card, next to the lock-in button, and disable themselves once their guessing is closed. Guess state survives a reload through a per-player guess-state endpoint
+
+Tests:
+- [x] Unit tests: round counter wraps with the rotation, fixed-DJ and rotating; the game continues after a mid-round win and completes at the round's end; tied ranks; two starting tokens; token for title plus one artist; one title guess; wrong artist closes artist guessing; repeated artist rejected; guess state
+- [x] Integration test: the ended event carries the group id and the lobby is open again afterwards
+- [x] e2e: a full two-player game ends on the results screen for both players, and the lobby stays reachable afterwards
+- [x] Frontend tests: results page reads the group from the URL and renders tied ranks; session page routes to results on the ended event; guess fields render alongside the lock-in button and disable when closed
+
 ## Second LAN playtest: voice, audio sharing, sidebars, and joining by code
 
 - [x] Voice and the DJ's tab audio never worked over the LAN: `getUserMedia` and `getDisplayMedia` exist only in a secure context, and the LAN playtest serves plain HTTP, so the sidebar reported "This browser can't share tab audio" and every microphone was refused. Add an HTTPS mode for LAN playtests: a dependency-free Node proxy that serves one HTTPS origin in front of both the Next dev server and the backend, with a keytool-generated certificate for the LAN address

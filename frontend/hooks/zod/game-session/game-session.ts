@@ -26,6 +26,15 @@ export const GetCurrentRoundLinkOutParams = zod.object({
 export const GetCurrentRoundLinkOutResponse = zod.unknown()
 
 /**
+ * @summary Get the current round's artist and title guessing state for the calling player
+ */
+export const GetGuessStateParams = zod.object({
+  "sessionId": zod.int()
+})
+
+export const GetGuessStateResponse = zod.unknown()
+
+/**
  * @summary Get the most recently completed session's results export for a group, must have played in it
  */
 export const GetResultsParams = zod.object({
