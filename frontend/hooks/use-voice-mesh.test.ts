@@ -9,8 +9,14 @@ vi.mock("@/hooks/generated/group-management/group-management", () => ({
   useGetVoiceTurnCredentials: () => ({ data: undefined }),
 }));
 
+const stompSubscribe = vi.fn();
+let stompClientOptions: { onConnect?: () => void } | undefined;
+
 vi.mock("@stomp/stompjs", () => ({
-  Client: vi.fn(() => ({ activate: vi.fn(), deactivate: vi.fn() })),
+  Client: vi.fn(function createClient(options: { onConnect?: () => void }) {
+    stompClientOptions = options;
+    return { activate: vi.fn(), deactivate: vi.fn(), subscribe: stompSubscribe };
+  }),
 }));
 
 describe("useVoiceMesh device selection", () => {
@@ -148,5 +154,26 @@ describe("useVoiceMesh tab audio", () => {
     expect(getDisplayMedia).toHaveBeenCalledWith(expect.objectContaining({ audio: true, selfBrowserSurface: "exclude" }));
     expect(shared).toBe(false);
     expect(result.current.tabAudioErrorMessage).toBe("No audio was shared. Pick the YouTube tab and turn on tab audio.");
+  });
+});
+
+describe("useVoiceMesh signaling", () => {
+  const GROUP_ID = 4;
+  const CURRENT_USER_ID = 11;
+
+  it("receives signals on its own user queue and presence on the group voice topic", () => {
+    stompSubscribe.mockClear();
+    stompClientOptions = undefined;
+    renderHook(() => useVoiceMesh(GROUP_ID, CURRENT_USER_ID, [], true, {}));
+
+    act(() => {
+      stompClientOptions?.onConnect?.();
+    });
+
+    const subscribedDestinations = stompSubscribe.mock.calls.map(([destination]) => destination);
+    expect(subscribedDestinations).toEqual([
+      `/topic/groups/${GROUP_ID}/voice`,
+      `/user/queue/groups/${GROUP_ID}/voice-signal`,
+    ]);
   });
 });
