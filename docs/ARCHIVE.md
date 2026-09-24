@@ -1239,3 +1239,14 @@ Tests:
 - [x] Unit tests: the patient run records its year on a recheck row; the seeder makes account 1 an admin
 - [x] Integration test: a background import against a stubbed AI service links songs as they resolve and ends DONE with every item settled
 - [x] Frontend tests: the progress screen's working and waiting states; the admin rechecks table and run-now button
+
+## Fast-tier import: rate-limit enforcement review
+
+- [x] The import page polled every two seconds, which with the sidebar's own import polling brings a single user close to the core service's 60-requests-per-minute general limit. Poll every five seconds again
+- [x] The runner's full-pipeline fallback could send several `/metadata/resolve` calls at once and trip that endpoint's 30-per-minute limit. Run the fallback one song at a time
+- [x] The backend relied on the AI service's 429 to keep fast-tier calls under that endpoint's per-minute cap. Pace the backend's fast-tier calls to the same cap
+- [x] A Discogs breach cooldown and a MusicBrainz back-off only paused the thread that hit them, while other threads kept calling. Hold the shared pacer so every caller waits
+
+Tests:
+- [x] pytest: a hold pushes every later caller's slot back; a Discogs breach holds the pacer; a MusicBrainz retry holds it for the new delay
+- [x] Unit tests: at most one fallback runs at a time; fast-tier calls from many threads are spaced by the cap's interval

@@ -689,14 +689,3 @@ Tests:
 
 Tests:
 - [x] Stack overflow, Radix settings selects, group button rules, floating chat variant, plus screenshot verification of settings and chat
-
-## Fast-tier import: rate-limit enforcement review
-
-- [ ] The import page polled every two seconds, which with the sidebar's own import polling brings a single user close to the core service's 60-requests-per-minute general limit. Poll every five seconds again
-- [ ] The runner's full-pipeline fallback could send several `/metadata/resolve` calls at once and trip that endpoint's 30-per-minute limit. Run the fallback one song at a time
-- [ ] The backend relied on the AI service's 429 to keep fast-tier calls under that endpoint's per-minute cap. Pace the backend's fast-tier calls to the same cap
-- [ ] A Discogs breach cooldown and a MusicBrainz back-off only paused the thread that hit them, while other threads kept calling. Hold the shared pacer so every caller waits
-
-Tests:
-- [ ] pytest: a hold pushes every later caller's slot back; a Discogs breach holds the pacer; a MusicBrainz retry holds it for the new delay
-- [ ] Unit tests: at most one fallback runs at a time; fast-tier calls from many threads are spaced by the cap's interval
