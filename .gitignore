@@ -48,4 +48,4 @@ mobile/*.apk
 
 # --- OS Specific ---
 .DS_Store
-Thumbs.db
+Thumbs.db.lan-https/
