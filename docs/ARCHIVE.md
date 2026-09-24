@@ -1209,3 +1209,12 @@ OpenAI's own cheap tier (`gpt-5-nano`, `gpt-5-mini`) and the existing `gpt-5.1` 
 - [x] Decide whether any shortlisted LLM candidate, and this conditional-pipeline shape (patient and fast tiers both), is worth building into the real AI microservice (stories 18/40), or whether further validation is needed first. Greenlit, see `DECISIONS.md` and story 20's own task list for the narrow remaining client-infrastructure scope
 - [x] Design the report/re-verification system floated during this spike: settled in full detail since, not just the lowest-confidence-first sketch this line originally described, see story 17's five-tier priority queue and the 2026-09 "Report and confirmation resolution" `DECISIONS.md` entry
 - [x] `docs/TASKS.md`'s own story 18 section and `docs/PROJECT_STATE.md`'s story 18 row used to reference a `DECISIONS.md` "verification is a lock, not a score" entry that was explicitly retracted earlier in this project (never actually authorized). Both cleaned up, no longer point at the retracted entry; the lock concept it described is the same shape this spike later validated with real data (three-source agreement = lock), so the underlying idea held up even though that specific entry never existed
+
+## Second LAN playtest: playlist copy and edit cancel
+
+- [x] Copying the invite link or invite code from the playlist page's dropdown silently fails over plain-HTTP LAN: the legacy copy fallback appends its textarea to `document.body`, outside the open menu's focus trap, so the selection is pulled away before the copy runs. Mount the textarea inside the focused element's container and focus it before selecting
+- [x] The edit-playlist Cancel button only resets the drafts and stays on the page. Discard the drafts and go back to the playlist detail
+
+Tests:
+- [x] Unit test: the copy fallback mounts inside the active element's dialog or menu and copies the selected text
+- [x] Page test: Cancel on the edit page navigates to the playlist detail without saving
