@@ -17,7 +17,11 @@ import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
+import java.io.DataOutputStream;
+import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
 import java.util.Optional;
+import java.util.zip.CRC32;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -31,6 +35,14 @@ class PixelArtImageServiceTest {
 
     private static final int PIXEL_GRID_SIZE = 32;
     private static final int OVERSIZED_GRID_SIZE = 128;
+    private static final int HUGE_DECLARED_DIMENSION = 60_000;
+    private static final byte[] PNG_SIGNATURE = {(byte) 0x89, 'P', 'N', 'G', '\r', '\n', 0x1A, '\n'};
+    private static final int IHDR_DATA_LENGTH = 13;
+    private static final byte PNG_BIT_DEPTH = 8;
+    private static final byte PNG_COLOR_TYPE_TRUECOLOR_WITH_ALPHA = 6;
+    private static final byte PNG_DEFLATE_COMPRESSION_METHOD = 0;
+    private static final byte PNG_ADAPTIVE_FILTER_METHOD = 0;
+    private static final byte PNG_NO_INTERLACE_METHOD = 0;
 
     @Mock
     private PlaylistRepository playlistRepository;
@@ -49,6 +61,37 @@ class PixelArtImageServiceTest {
             ImageIO.write(image, "png", output);
             return output.toByteArray();
         }
+    }
+
+    // A PNG whose header declares the given canvas but carries no pixel data at all, so
+    // only its declared dimensions can be read from it.
+    private static byte[] headerOnlyPng(int declaredDimension) throws Exception {
+        ByteBuffer headerData = ByteBuffer.allocate(IHDR_DATA_LENGTH)
+                .putInt(declaredDimension)
+                .putInt(declaredDimension)
+                .put(PNG_BIT_DEPTH)
+                .put(PNG_COLOR_TYPE_TRUECOLOR_WITH_ALPHA)
+                .put(PNG_DEFLATE_COMPRESSION_METHOD)
+                .put(PNG_ADAPTIVE_FILTER_METHOD)
+                .put(PNG_NO_INTERLACE_METHOD);
+        try (ByteArrayOutputStream output = new ByteArrayOutputStream();
+             DataOutputStream pngOutput = new DataOutputStream(output)) {
+            pngOutput.write(PNG_SIGNATURE);
+            writePngChunk(pngOutput, "IHDR", headerData.array());
+            writePngChunk(pngOutput, "IEND", new byte[0]);
+            return output.toByteArray();
+        }
+    }
+
+    private static void writePngChunk(DataOutputStream pngOutput, String chunkType, byte[] chunkData) throws Exception {
+        byte[] typeBytes = chunkType.getBytes(StandardCharsets.US_ASCII);
+        CRC32 checksum = new CRC32();
+        checksum.update(typeBytes);
+        checksum.update(chunkData);
+        pngOutput.writeInt(chunkData.length);
+        pngOutput.write(typeBytes);
+        pngOutput.write(chunkData);
+        pngOutput.writeInt((int) checksum.getValue());
     }
 
     private static User userWithId(Long userId) {
@@ -73,6 +116,16 @@ class PixelArtImageServiceTest {
         PixelArtImageService imageService = service();
 
         assertThatThrownBy(() -> imageService.normalizeToPixelPng(pixelPng(OVERSIZED_GRID_SIZE)))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("pixel-art size");
+    }
+
+    @Test
+    void anImageDeclaringHugeDimensionsIsRefusedFromItsHeaderBeforeDecoding() throws Exception {
+        PixelArtImageService imageService = service();
+        byte[] upload = headerOnlyPng(HUGE_DECLARED_DIMENSION);
+
+        assertThatThrownBy(() -> imageService.normalizeToPixelPng(upload))
                 .isInstanceOf(ResponseStatusException.class)
                 .hasMessageContaining("pixel-art size");
     }
