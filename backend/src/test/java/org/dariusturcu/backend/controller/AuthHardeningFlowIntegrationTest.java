@@ -14,6 +14,7 @@ import org.dariusturcu.backend.security.JwtAuthenticationFilter;
 import org.dariusturcu.backend.security.util.JwtUtil;
 import org.dariusturcu.backend.service.AuthService;
 import org.dariusturcu.backend.service.EmailService;
+import org.dariusturcu.backend.service.LoginAttemptService;
 import org.dariusturcu.backend.service.TwoFactorService;
 import org.dariusturcu.backend.util.CookieUtil;
 import org.flywaydb.core.Flyway;
@@ -75,6 +76,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class AuthHardeningFlowIntegrationTest {
 
     private static final Pattern TOKEN_QUERY_PARAM_PATTERN = Pattern.compile("token=([^&\\s\"<]+)");
+    private static final long TOTP_PERIOD_SECONDS = 30;
+    private static final int FAILED_ATTEMPTS_BEFORE_LOCKOUT = 5;
 
     @Configuration
     @EnableAutoConfiguration(exclude = OAuth2ClientAutoConfiguration.class)
@@ -97,15 +100,21 @@ class AuthHardeningFlowIntegrationTest {
         }
 
         @Bean
+        LoginAttemptService loginAttemptService(UserRepository userRepository) {
+            return new LoginAttemptService(userRepository);
+        }
+
+        @Bean
         AuthService authService(UserRepository userRepository, RefreshTokenRepository refreshTokenRepository,
                                  EmailVerificationTokenRepository emailVerificationTokenRepository,
                                  PasswordResetTokenRepository passwordResetTokenRepository,
                                  PasswordEncoder passwordEncoder, JwtUtil jwtUtil,
                                  AuthenticationManager authenticationManager,
-                                 EmailService emailService, TwoFactorService twoFactorService) {
+                                 EmailService emailService, TwoFactorService twoFactorService,
+                                 LoginAttemptService loginAttemptService) {
             return new AuthService(userRepository, refreshTokenRepository, emailVerificationTokenRepository,
                     passwordResetTokenRepository, passwordEncoder, jwtUtil, authenticationManager,
-                    emailService, twoFactorService);
+                    emailService, twoFactorService, loginAttemptService);
         }
 
         @Bean
@@ -178,6 +187,8 @@ class AuthHardeningFlowIntegrationTest {
 
     @Autowired
     private EmailService emailService;
+
+    private String lastRegisteredEmail;
 
     // emailService is a singleton mock shared across every test method through the cached
     // Spring context; resetting it between tests keeps one test's sent emails from being
@@ -298,11 +309,19 @@ class AuthHardeningFlowIntegrationTest {
         verify(emailService, org.mockito.Mockito.never()).sendPasswordResetEmail(anyString(), anyString());
     }
 
-    @Test
-    void theTwoStepLoginRequiresACorrectSecondFactorBeforeIssuingRealTokens() throws Exception {
-        String email = uniqueEmail("two-factor-flow");
-        String username = "twofactor" + (System.nanoTime() % 1_000_000L);
+    // A code for the step after the current one: still inside the accepted drift window,
+    // and later than any step this test already used, so replay protection accepts it.
+    private String nextStepCode(String secret) throws Exception {
+        return new DefaultCodeGenerator().generate(secret, new SystemTimeProvider().getTime() / TOTP_PERIOD_SECONDS + 1);
+    }
 
+    private String currentStepCode(String secret) throws Exception {
+        return new DefaultCodeGenerator().generate(secret, new SystemTimeProvider().getTime() / TOTP_PERIOD_SECONDS);
+    }
+
+    private Cookie registerVerifyAndLogIn(String label) throws Exception {
+        String email = uniqueEmail(label);
+        String username = label.replace("-", "") + (System.nanoTime() % 1_000_000L);
         mockMvc.perform(post("/auth/register")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(registerRequestBody(username, email)));
@@ -319,37 +338,130 @@ class AuthHardeningFlowIntegrationTest {
                 .andReturn();
         Cookie accessTokenCookie = loginResult.getResponse().getCookie("access_token");
         assertThat(accessTokenCookie).isNotNull();
+        lastRegisteredEmail = email;
+        return accessTokenCookie;
+    }
 
+    // Turns two-factor on for the signed-in account and returns its TOTP secret.
+    private String enableTwoFactor(Cookie accessTokenCookie) throws Exception {
         MvcResult setupResult = mockMvc.perform(post("/auth/2fa/setup").cookie(accessTokenCookie))
                 .andExpect(status().isOk())
                 .andReturn();
         String secret = JsonPath.read(setupResult.getResponse().getContentAsString(), "$.secret");
-        String validCode = new DefaultCodeGenerator().generate(secret, new SystemTimeProvider().getTime() / 30);
-
         mockMvc.perform(post("/auth/2fa/confirm")
                         .cookie(accessTokenCookie)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"code\":\"%s\"}".formatted(validCode)))
+                        .content("{\"code\":\"%s\"}".formatted(currentStepCode(secret))))
                 .andExpect(status().isOk());
+        return secret;
+    }
 
-        MvcResult secondLoginResult = mockMvc.perform(post("/auth/login")
+    private String loginForPendingToken(String email) throws Exception {
+        MvcResult loginResult = mockMvc.perform(post("/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(loginRequestBody(email, "password123")))
                 .andExpect(status().isOk())
                 .andExpect(cookie().doesNotExist("access_token"))
                 .andReturn();
-        String pendingToken = JsonPath.read(secondLoginResult.getResponse().getContentAsString(), "$.pendingToken");
+        return JsonPath.read(loginResult.getResponse().getContentAsString(), "$.pendingToken");
+    }
+
+    private String verifyRequestBody(String pendingToken, String code) {
+        return "{\"pendingToken\":\"%s\",\"code\":\"%s\"}".formatted(pendingToken, code);
+    }
+
+    @Test
+    void theTwoStepLoginRequiresACorrectSecondFactorBeforeIssuingRealTokens() throws Exception {
+        Cookie accessTokenCookie = registerVerifyAndLogIn("two-factor-flow");
+        String secret = enableTwoFactor(accessTokenCookie);
+        String pendingToken = loginForPendingToken(lastRegisteredEmail);
 
         mockMvc.perform(post("/auth/2fa/verify")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"pendingToken\":\"%s\",\"code\":\"000000\"}".formatted(pendingToken)))
+                        .content(verifyRequestBody(pendingToken, "000000")))
                 .andExpect(status().isUnauthorized());
 
-        String secondValidCode = new DefaultCodeGenerator().generate(secret, new SystemTimeProvider().getTime() / 30);
         mockMvc.perform(post("/auth/2fa/verify")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"pendingToken\":\"%s\",\"code\":\"%s\"}".formatted(pendingToken, secondValidCode)))
+                        .content(verifyRequestBody(pendingToken, nextStepCode(secret))))
                 .andExpect(status().isOk())
                 .andExpect(cookie().exists("access_token"));
+    }
+
+    @Test
+    void thePendingTokenIsRefusedAsAnAccessToken() throws Exception {
+        Cookie accessTokenCookie = registerVerifyAndLogIn("pending-token");
+        enableTwoFactor(accessTokenCookie);
+        String pendingToken = loginForPendingToken(lastRegisteredEmail);
+
+        mockMvc.perform(post("/auth/2fa/setup").cookie(new Cookie("access_token", pendingToken)))
+                .andExpect(status().is4xxClientError());
+        mockMvc.perform(post("/auth/2fa/setup").header("Authorization", "Bearer " + pendingToken))
+                .andExpect(status().is4xxClientError());
+    }
+
+    @Test
+    void setupIsRefusedWhileTwoFactorIsOnSoItCannotTurnItOff() throws Exception {
+        Cookie accessTokenCookie = registerVerifyAndLogIn("setup-while-on");
+        enableTwoFactor(accessTokenCookie);
+
+        mockMvc.perform(post("/auth/2fa/setup").cookie(accessTokenCookie))
+                .andExpect(status().isConflict());
+
+        loginForPendingToken(lastRegisteredEmail);
+    }
+
+    @Test
+    void aTwoFactorCodeCannotBeReplayed() throws Exception {
+        Cookie accessTokenCookie = registerVerifyAndLogIn("replay");
+        String secret = enableTwoFactor(accessTokenCookie);
+        String code = nextStepCode(secret);
+
+        mockMvc.perform(post("/auth/2fa/verify")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(verifyRequestBody(loginForPendingToken(lastRegisteredEmail), code)))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(post("/auth/2fa/verify")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(verifyRequestBody(loginForPendingToken(lastRegisteredEmail), code)))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void repeatedWrongPasswordsLockTheAccountEvenForTheRightPassword() throws Exception {
+        registerVerifyAndLogIn("lockout");
+        String email = lastRegisteredEmail;
+
+        for (int attempt = 0; attempt < FAILED_ATTEMPTS_BEFORE_LOCKOUT; attempt++) {
+            mockMvc.perform(post("/auth/login")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(loginRequestBody(email, "wrong-password")))
+                    .andExpect(status().isUnauthorized());
+        }
+
+        mockMvc.perform(post("/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(loginRequestBody(email, "password123")))
+                .andExpect(status().isTooManyRequests());
+    }
+
+    @Test
+    void repeatedWrongTwoFactorCodesLockTheAccount() throws Exception {
+        Cookie accessTokenCookie = registerVerifyAndLogIn("code-lockout");
+        String secret = enableTwoFactor(accessTokenCookie);
+        String pendingToken = loginForPendingToken(lastRegisteredEmail);
+
+        for (int attempt = 0; attempt < FAILED_ATTEMPTS_BEFORE_LOCKOUT; attempt++) {
+            mockMvc.perform(post("/auth/2fa/verify")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(verifyRequestBody(pendingToken, "000000")))
+                    .andExpect(status().isUnauthorized());
+        }
+
+        mockMvc.perform(post("/auth/2fa/verify")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(verifyRequestBody(pendingToken, nextStepCode(secret))))
+                .andExpect(status().isTooManyRequests());
     }
 }

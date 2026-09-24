@@ -916,11 +916,11 @@ Tests:
 A full-app audit of the core service, the AI microservice, and the frontend, against `dev` plus the open gameplay fix branches. The two two-factor findings are confirmed against a running stack; the rest are confirmed by reading the code unless marked unverified. Batches are ordered by severity; each is its own `fix/*` branch.
 
 Batch 1, authentication (critical):
-- [ ] The two-factor pending token issued after a correct password is accepted as a full access token: `JwtUtil.validateToken` checks only the subject and expiry, and neither `JwtAuthenticationFilter` nor `StompAuthenticationChannelInterceptor` rejects the `two_factor_pending` token type. A password alone reaches every authenticated REST endpoint and WebSocket. Reject any token carrying a non-access token type everywhere a real access token is expected
-- [ ] `POST /auth/2fa/setup` sets `twoFactorEnabled` to false on an account that already has two-factor on, with no password or code, which bypasses the password-or-code rule on `/auth/2fa/disable`. Refuse setup while two-factor is enabled, or require the same proof `disable` does
-- [ ] `/auth/**` is exempt from CSRF while production cookies are `SameSite=None`, so the cookie-authenticated `/auth/2fa/setup`, `/auth/2fa/confirm`, `/auth/2fa/disable`, and `/auth/logout` accept cross-site requests. Require the CSRF token on every `/auth` endpoint that acts on an existing session
-- [ ] Two-factor codes can be replayed within their time step. Record the last accepted time step per user and reject a repeat
-- [ ] Login and two-factor verification are limited per IP only. Add a per-account failure limit with a cool-down
+- [x] The two-factor pending token issued after a correct password is accepted as a full access token: `JwtUtil.validateToken` checks only the subject and expiry, and neither `JwtAuthenticationFilter` nor `StompAuthenticationChannelInterceptor` rejects the `two_factor_pending` token type. A password alone reaches every authenticated REST endpoint and WebSocket. Reject any token carrying a non-access token type everywhere a real access token is expected
+- [x] `POST /auth/2fa/setup` sets `twoFactorEnabled` to false on an account that already has two-factor on, with no password or code, which bypasses the password-or-code rule on `/auth/2fa/disable`. Refuse setup while two-factor is enabled, or require the same proof `disable` does
+- [x] `/auth/**` is exempt from CSRF while production cookies are `SameSite=None`, so the cookie-authenticated `/auth/2fa/setup`, `/auth/2fa/confirm`, `/auth/2fa/disable`, and `/auth/logout` accept cross-site requests. Require the CSRF token on every `/auth` endpoint that acts on an existing session
+- [x] Two-factor codes can be replayed within their time step. Record the last accepted time step per user and reject a repeat
+- [x] Login and two-factor verification are limited per IP only. Add a per-account failure limit with a cool-down
 
 Batch 2, WebSocket authorization (critical):
 - [ ] STOMP authenticates only CONNECT; SUBSCRIBE is never authorized, so any logged-in user can subscribe to another group's chat, voice, settings, and membership topics and another session's round and ended topics by id. Authorize every SUBSCRIBE against group membership or session player membership
@@ -969,7 +969,7 @@ Existing test failures:
 - [x] `CatalogSeedingIntegrationTest` fails two cases on `dev` with a `TransientPropertyValueException` (a `Song` referencing an unsaved `User`)
 
 Tests:
-- [ ] Batch 1: integration tests that a pending token is refused on REST and STOMP, that setup can't disable two-factor, that cross-site `/auth` requests without a CSRF token are refused, that a replayed code is refused, and that repeated failures lock the account temporarily
+- [x] Batch 1: integration tests that a pending token is refused on REST and STOMP, that setup can't disable two-factor, that cross-site `/auth` requests without a CSRF token are refused, that a replayed code is refused, and that repeated failures lock the account temporarily
 - [ ] Batch 2: integration tests that a non-member's SUBSCRIBE to group and session topics is refused and that a voice signal reaches only its target
 - [ ] Batch 3: the frontend build, lint, and unit and end-to-end suites pass on the upgraded dependencies, and `npm audit` reports no high or critical advisory
 - [ ] Batch 4: service tests for reconnect on subscribe, disconnect only after the last socket, graceful completion on an empty queue, startup rescheduling, the idle placement timeout, skip-betting eligibility, once-per-round tallies, and guess result delivery
