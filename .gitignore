@@ -48,4 +48,7 @@ mobile/*.apk
 
 # --- OS Specific ---
 .DS_Store
-Thumbs.db.lan-https/
+Thumbs.db
+
+# --- LAN playtest HTTPS certificate (scripts/lan-https-proxy.mjs) ---
+.lan-https/
