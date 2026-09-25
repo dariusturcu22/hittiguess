@@ -254,8 +254,7 @@ export default function PlaylistContent({
 
   const handleCopyCode = async () => {
     if (!playlist) return;
-    const inviteLink = `${window.location.origin}/playlists/join/${playlist.inviteCode}`;
-    const copied = await copyText(buildInviteMessage(playlist.name, playlist.inviteCode, inviteLink));
+    const copied = await copyText(playlist.inviteCode);
     if (!copied) {
       toast.error("Couldn't copy the code. Try again.");
       return;
@@ -540,28 +539,27 @@ export default function PlaylistContent({
                 placeholder="Search songs..."
                 value={searchQuery}
                 onChange={(event) => setSearchQuery(event.target.value)}
-                className="h-9 w-[180px] rounded-full pl-9 sm:w-[220px]"
+                className="h-9 w-[260px] rounded-full pl-9 sm:w-[340px]"
               />
             </div>
           ) : null}
-          <Button
-            variant="outline"
-            size="sm"
-            title="Import playlist"
-            className="gap-1.5"
-            asChild
-          >
-            <Link href={`/playlists/${playlistId}/import`}>
-              <ListMusic className="size-3.5" />
-              Import playlist
-            </Link>
-          </Button>
-          <Button size="sm" className="gap-1.5" asChild>
-            <Link href={`/playlists/${playlistId}/songs/add`}>
-              <Plus className="size-3" />
-              Add song
-            </Link>
-          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button size="sm" className="cursor-pointer gap-1.5">
+                <Plus className="size-3" />
+                Add song
+                <ChevronDown className="size-3" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem asChild>
+                <Link href={`/playlists/${playlistId}/songs/add`}><Plus className="size-3.5" />Add a new song</Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link href={`/playlists/${playlistId}/import`}><ListMusic className="size-3.5" />Import playlist</Link>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
 

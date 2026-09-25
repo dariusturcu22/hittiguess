@@ -10,6 +10,7 @@ let endedMessageHandler: ((message: { body: string }) => void) | undefined;
 
 vi.mock("@/hooks/generated/game-session/game-session", () => ({
   getGetSessionQueryKey: (sessionId: number) => ["session", sessionId],
+  getGetCurrentRoundLinkOutQueryKey: (sessionId: number) => ["round-link-out", sessionId],
   getGetGuessStateQueryKey: (sessionId: number) => ["guess-state", sessionId],
   getGetActiveSessionForGroupQueryKey: (groupId: number) => [`/api/sessions/groups/${groupId}/active`],
   getGetResultsQueryKey: (groupId: number) => [`/api/sessions/groups/${groupId}/results`],
@@ -82,6 +83,7 @@ describe("useGameSessionRealtime", () => {
     roundMessageHandler?.({ body: JSON.stringify({ type: "BETTING_OPENED", sessionId: 1 }) });
 
     expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ["session", 1] });
+    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ["round-link-out", 1] });
   });
 
   it("hands the ended event's group to the page and clears the dead session's cached lookups", () => {

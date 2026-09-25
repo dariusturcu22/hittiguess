@@ -138,7 +138,7 @@ describe("GroupLobbyPage start options", () => {
     await renderPage();
 
     fireEvent.click(screen.getByRole("button", { name: "Choose playlists" }));
-    fireEvent.click(screen.getByRole("button", { name: "Generate" }));
+    fireEvent.click(screen.getByRole("button", { name: "Confirm" }));
 
     expect(generateMutate).toHaveBeenCalledWith(
       { groupId: 1, data: { tier: "MEDIUM", targetCardCount: 30 } },
@@ -160,7 +160,7 @@ describe("GroupLobbyPage start options", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Choose playlists" }));
     fireEvent.click(screen.getByRole("button", { name: "Hard" }));
-    fireEvent.click(screen.getByRole("button", { name: "Generate" }));
+    fireEvent.click(screen.getByRole("button", { name: "Confirm" }));
 
     expect(generateMutate).toHaveBeenCalledWith(
       { groupId: 1, data: { tier: "HARD", targetCardCount: 30 } },
@@ -178,11 +178,11 @@ describe("GroupLobbyPage start options", () => {
     expect(screen.getByText("No playlists selected")).toBeVisible();
 
     fireEvent.click(screen.getByRole("button", { name: /Party mix/ }));
-    expect(screen.getByText("Chosen: Party mix")).toBeVisible();
+    expect(screen.getByText("Chosen: Party mix (9 songs)")).toBeVisible();
 
     fireEvent.click(screen.getByRole("button", { name: "Back" }));
 
-    expect(screen.getByRole("button", { name: "Generate" })).toBeVisible();
+    expect(screen.getByRole("button", { name: "Confirm" })).toBeVisible();
   });
 
   it("confirms a custom multi-playlist selection without starting", async () => {
@@ -231,7 +231,7 @@ describe("GroupLobbyPage start options", () => {
     lobbySearchParams = new URLSearchParams("playlist=21");
     await renderPage();
 
-    expect(screen.getByText("Chosen: Party mix")).toBeVisible();
+    expect(screen.getByText("Chosen: Party mix (9 songs)")).toBeVisible();
 
     fireEvent.click(screen.getByRole("button", { name: "Confirm" }));
 
@@ -294,10 +294,10 @@ describe("GroupLobbyPage start options", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Choose playlists" }));
     expect(screen.queryByText("Cards to win")).toBeNull();
-    expect(screen.getByRole("button", { name: "Generate" })).toBeVisible();
+    expect(screen.getByRole("button", { name: "Confirm" })).toBeVisible();
 
     fireEvent.click(screen.getByRole("button", { name: "Settings" }));
-    expect(screen.queryByRole("button", { name: "Generate" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Confirm" })).toBeNull();
     expect(screen.getByText("Cards to win")).toBeVisible();
 
     fireEvent.click(screen.getByRole("button", { name: "Chat" }));

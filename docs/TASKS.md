@@ -596,6 +596,45 @@ Tests:
 - [x] Unit test confirming no DTO or API response ever includes `totpSecret` or an unused backup code in plain form after initial generation
 - [x] Wire the frontend's existing forgot-password form to the new request/confirm endpoints (already wired: the request page calls `useRequestPasswordReset`, the confirm page calls `useConfirmPasswordReset` with a mismatch guard, both covered by colocated tests)
 
+## Release playtest fixes
+
+Checked against the current frontend and backend after the final pre-deployment
+playtest. This batch fixes the reported gameplay, lobby, playlist, and audio
+readiness defects. The browser's secure-context rule is not an application bug:
+localhost is allowed, but a plain-HTTP LAN origin cannot access microphone or
+tab-capture APIs. Deployment and secure local testing must use HTTPS.
+
+- [ ] Make lobby member identity stable across realtime refreshes: render real avatars,
+  assign initials avatars from a stable member identifier, preserve member order, and
+  show four more name characters before truncation
+- [ ] Keep the admin crown attached to the actual admin while lobby state refreshes
+- [ ] Replace the tier popup's Generate flow with the requested Confirm flow, show
+  Easy, Medium, Hard, and Custom on one row with icons and a divider before Custom
+- [ ] Sum all selected playlist song counts in the lobby selector and selected-playlist chip
+- [ ] Make Chat, Settings, and playlist selection mutually exclusive, dismissible by an
+  outside click, consistently positioned, and visibly clickable
+- [ ] Fix playlist detail actions: move import into the add-song path, widen search,
+  use pointer cursors, and make import discoverable
+- [ ] Restore Join playlist as the Joined-library end tile
+- [ ] Replace playlist UUID invite codes with short unique letter codes and copy only the
+  requested link or code
+- [ ] Synchronize gameplay round state after a reconnect and eliminate stale DJ link-out
+  and card state after a round advances
+- [ ] Drive every visual countdown from server deadlines, including the round intro
+- [ ] Surface actionable audio diagnostics for HTTP LAN origins and unsupported tab-audio
+  browsers without weakening the real-YouTube playback rule
+- [ ] Verify TURN credential minting returns a TURN server when Cloudflare configuration
+  is present, while retaining the STUN-only fallback on failure
+
+Tests:
+
+- [ ] Frontend unit tests for stable lobby identity, popup interaction, selected-song
+  totals, playlist actions, and deadline-based countdowns
+- [ ] Backend unit and integration tests for short playlist invite codes and TURN
+  credential responses
+- [ ] Two-client browser coverage for round advancement, DJ link-out freshness, voice,
+  and tab-audio capture over HTTPS
+
 ## LAN playtest readiness
 
 Chore, no story: opening the local stack to other devices on the LAN for

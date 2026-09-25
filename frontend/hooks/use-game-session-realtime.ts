@@ -4,8 +4,10 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Client } from "@stomp/stompjs";
 import { useQueryClient } from "@tanstack/react-query";
 
-import { getGetActiveSessionForGroupQueryKey, getGetGuessStateQueryKey, getGetResultsQueryKey, getGetSessionQueryKey } from "@/hooks/generated/game-session/game-session";
+import { getGetActiveSessionForGroupQueryKey, getGetCurrentRoundLinkOutQueryKey, getGetGuessStateQueryKey, getGetResultsQueryKey, getGetSessionQueryKey } from "@/hooks/generated/game-session/game-session";
 import { getGetActiveMembershipQueryKey, getGetGroupQueryKey } from "@/hooks/generated/group-management/group-management";
+import type { GameSessionDTO } from "@/hooks/models/gameSessionDTO";
+import type { RoundDTO } from "@/hooks/models/roundDTO";
 
 const WEBSOCKET_PATH = "/ws";
 const SESSION_ROUND_TOPIC = "/topic/sessions";
@@ -29,15 +31,7 @@ type ConnectionState = "connecting" | "connected" | "disconnected" | "error";
 export interface SessionRoundEvent {
   type: string;
   sessionId: number;
-  payload?: {
-    activePlayerId?: number;
-    roundId?: number;
-    position?: number | null;
-    playerId?: number;
-    displayName?: string;
-    artistGuessed?: boolean;
-    titleGuessed?: boolean;
-  };
+  payload?: RoundDTO & { position?: number | null; playerId?: number; displayName?: string; artistGuessed?: boolean; titleGuessed?: boolean; roundId?: number };
 }
 
 export interface GuessState {
@@ -118,8 +112,18 @@ export function useGameSessionRealtime(
           // A placement preview only mirrors the active player's drag; the round itself
           // hasn't changed, so there's nothing to refetch.
           if (roundEvent?.type !== PLACEMENT_PREVIEW_EVENT) {
+            if (roundEvent?.payload && roundEvent.type !== GUESS_CORRECT_EVENT) {
+              queryClient.setQueryData<GameSessionDTO>(getGetSessionQueryKey(sessionId), (session) => session
+                ? {
+                    ...session,
+                    currentRound: roundEvent.payload,
+                    currentRoundNumber: roundEvent.payload.roundNumber ?? session.currentRoundNumber,
+                  }
+                : session);
+            }
             void queryClient.invalidateQueries({ queryKey: getGetSessionQueryKey(sessionId) });
             void queryClient.invalidateQueries({ queryKey: getGetGuessStateQueryKey(sessionId) });
+            void queryClient.invalidateQueries({ queryKey: getGetCurrentRoundLinkOutQueryKey(sessionId) });
           }
         });
         client.subscribe(`${SESSION_USER_QUEUE}/${sessionId}/guess-result`, (message) => {

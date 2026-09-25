@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { Compass } from "lucide-react";
+import { Compass, LogIn } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 
@@ -177,6 +177,13 @@ function NewPlaylistCard({
   );
 }
 
+function JoinPlaylistCard({ onClick }: { onClick: () => void }) {
+  return <button type="button" onClick={onClick} className="flex aspect-square cursor-pointer flex-col items-center justify-center gap-3 self-start rounded-2xl border-[3px] border-dashed border-border">
+    <div className="flex h-11 w-11 items-center justify-center rounded-full border-2 border-border"><LogIn className="size-5 text-muted-foreground" /></div>
+    <div className="font-display text-sm text-muted-foreground">Join playlist</div>
+  </button>;
+}
+
 export default function PlaylistsPage() {
   const userPlaylistsQuery = useGetUserPlaylists();
   const savedPlaylistsQuery = useGetSavedPlaylists();
@@ -304,8 +311,8 @@ export default function PlaylistsPage() {
             {visiblePlaylists.map((playlist) => (
               <PlaylistCard key={playlist.id} playlist={playlist} />
             ))}
-            {libraryTab === "saved" ? (
-              <ExploreLinkCard />
+            {libraryTab === "saved" ? <ExploreLinkCard /> : libraryTab === "joined" ? (
+              <JoinPlaylistCard onClick={() => setIsJoinOpen(true)} />
             ) : (
               <NewPlaylistCard
                 onClick={handleCreatePlaylist}
