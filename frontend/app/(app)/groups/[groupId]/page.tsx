@@ -7,11 +7,13 @@ import {
   Check,
   Clipboard,
   Crown,
+  Gauge,
   Loader2,
   LogOut,
   MessageCircle,
   Play,
   Settings,
+  SlidersHorizontal,
   UserX,
 } from "lucide-react";
 
@@ -570,6 +572,7 @@ export default function GroupLobbyPage({ params }: PageProps) {
                         aria-pressed={playlistSource === "tier" && selectedTier === tier}
                         className={`cursor-pointer rounded-full px-4 py-2 font-display text-xs ${playlistSource === "tier" && selectedTier === tier ? "bg-accent text-accent-foreground" : "border-2 border-border text-muted-foreground"}`}
                       >
+                        <Gauge className={`mr-1 inline size-3.5 ${tier === "EASY" ? "text-green" : tier === "HARD" ? "text-destructive" : "text-warning"}`} />
                         {tier.charAt(0) + tier.slice(1).toLowerCase()}
                       </button>
                     ))}
@@ -580,6 +583,7 @@ export default function GroupLobbyPage({ params }: PageProps) {
                       aria-pressed={playlistSource === "custom"}
                       className={`cursor-pointer rounded-full px-4 py-2 font-display text-xs ${playlistSource === "custom" ? "bg-accent text-accent-foreground" : "border-2 border-border text-muted-foreground"}`}
                     >
+                      <SlidersHorizontal className="mr-1 inline size-3.5" />
                       Custom
                     </button>
                   </div>
