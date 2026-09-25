@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Client } from "@stomp/stompjs";
 import { useQueryClient } from "@tanstack/react-query";
 
-import { getGetActiveSessionForGroupQueryKey, getGetGuessStateQueryKey, getGetResultsQueryKey, getGetSessionQueryKey } from "@/hooks/generated/game-session/game-session";
+import { getGetActiveSessionForGroupQueryKey, getGetCurrentRoundLinkOutQueryKey, getGetGuessStateQueryKey, getGetResultsQueryKey, getGetSessionQueryKey } from "@/hooks/generated/game-session/game-session";
 import { getGetActiveMembershipQueryKey, getGetGroupQueryKey } from "@/hooks/generated/group-management/group-management";
 
 const WEBSOCKET_PATH = "/ws";
@@ -120,6 +120,7 @@ export function useGameSessionRealtime(
           if (roundEvent?.type !== PLACEMENT_PREVIEW_EVENT) {
             void queryClient.invalidateQueries({ queryKey: getGetSessionQueryKey(sessionId) });
             void queryClient.invalidateQueries({ queryKey: getGetGuessStateQueryKey(sessionId) });
+            void queryClient.invalidateQueries({ queryKey: getGetCurrentRoundLinkOutQueryKey(sessionId) });
           }
         });
         client.subscribe(`${SESSION_USER_QUEUE}/${sessionId}/guess-result`, (message) => {

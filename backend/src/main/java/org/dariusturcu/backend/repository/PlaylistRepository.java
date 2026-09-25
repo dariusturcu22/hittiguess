@@ -16,5 +16,7 @@ public interface PlaylistRepository extends JpaRepository<Playlist, Long> {
     void deleteGroupPlaylistLinks(@Param("playlistId") Long playlistId);
     Optional<Playlist> findPlaylistByInviteCode(String inviteCode);
 
+    boolean existsByInviteCode(String inviteCode);
+
     List<Playlist> findByIsPublicTrue();
 }

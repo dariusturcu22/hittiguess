@@ -45,6 +45,8 @@ const COMPLETED_SESSION_STATUS = "COMPLETED";
 const FIRST_ROUND_NUMBER = 1;
 const FIRST_TURN_NUMBER = 1;
 const ROUND_INTRO_SECONDS = 3;
+const ROUND_INTRO_MILLISECONDS = ROUND_INTRO_SECONDS * 1_000;
+const PLACEMENT_WINDOW_MILLISECONDS = 3 * 60 * 1_000;
 const ROUND_INTRO_SEEN_KEY_PREFIX = "hittiguess-round-intro-seen-";
 const TURN_NOTICE_DURATION_MILLISECONDS = 4_000;
 const CORRECT_GUESS_TOAST_DURATION_MILLISECONDS = 4_000;
@@ -417,6 +419,9 @@ export default function GameSessionPage({ params }: PageProps) {
   const playlistColor = playlists.at(0)?.color;
   const songCount = playlists.reduce((total, playlist) => total + playlist.songCount, 0);
   const showsIntro = !isIntroDismissed && turnNumber === FIRST_TURN_NUMBER && isAwaitingPlacement;
+  const introEndsAt = currentRound?.placementEndsAt
+    ? new Date(Date.parse(currentRound.placementEndsAt) - PLACEMENT_WINDOW_MILLISECONDS + ROUND_INTRO_MILLISECONDS).toISOString()
+    : undefined;
   const turnNoticePlayer = isTurnNoticeVisible ? activePlayer : undefined;
   const winningBet = isRevealed && !currentRound?.placementCorrect
     ? bets.find((bet) => bet.position !== undefined && isGapCorrectForYear(cards, bet.position, currentRound?.revealedYear))
@@ -645,7 +650,7 @@ export default function GameSessionPage({ params }: PageProps) {
   const isSittingOut = isActivePlayer && (roundStatus === COUNTDOWN_STATUS || roundStatus === BETTING_STATUS);
 
   return <main className="relative flex min-h-full flex-col overflow-hidden px-6 pb-8 pt-8 sm:px-14 sm:pb-10 sm:pt-9">
-    {showsIntro ? <RoundIntro winConditionCardCount={winConditionCardCount} roundNumber={roundNumber} countdownSeconds={ROUND_INTRO_SECONDS} dj={{ name: djPlayer?.displayName, colorIndex: colorIndexOf(djPlayer) }} activePlayer={{ name: activePlayer?.displayName, colorIndex: colorIndexOf(activePlayer) }} onFinished={dismissIntro} /> : null}
+    {showsIntro ? <RoundIntro winConditionCardCount={winConditionCardCount} roundNumber={roundNumber} countdownSeconds={ROUND_INTRO_SECONDS} endsAt={introEndsAt} dj={{ name: djPlayer?.displayName, colorIndex: colorIndexOf(djPlayer) }} activePlayer={{ name: activePlayer?.displayName, colorIndex: colorIndexOf(activePlayer) }} onFinished={dismissIntro} /> : null}
     {turnNoticePlayer && !showsIntro ? <div role="status" className="absolute left-1/2 top-6 z-30 flex w-[min(520px,calc(100%-32px))] -translate-x-1/2 items-center justify-between gap-4 rounded-full border-[3px] border-primary bg-card px-7 py-4 shadow-[6px_6px_0_var(--shadow-color)] animate-in fade-in-0 slide-in-from-top-2">
       <span className="flex min-w-0 items-center gap-3"><Bell className="size-6 shrink-0 text-primary" /><span className="truncate text-base font-bold text-primary">{turnNoticePlayer.id === currentPlayer?.id ? "Your turn: get ready" : `${turnNoticePlayer.displayName ?? "A player"}'s turn: get ready`}</span></span>
       <span className="shrink-0 text-xs text-muted-foreground">Round {roundNumber}</span>

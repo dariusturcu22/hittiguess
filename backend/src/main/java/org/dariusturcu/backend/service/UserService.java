@@ -33,12 +33,16 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Instant;
 import java.util.Comparator;
 import java.util.List;
-import java.util.UUID;
+import java.security.SecureRandom;
 
 @Service
 @RequiredArgsConstructor
 @Transactional
 public class UserService {
+    private static final int PLAYLIST_INVITE_CODE_LENGTH = 8;
+    private static final int MAX_INVITE_CODE_GENERATION_ATTEMPTS = 16;
+    private static final String PLAYLIST_INVITE_CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ";
+
     private final UserRepository userRepository;
     private final PlaylistRepository playlistRepository;
     private final UserMapper userMapper;
@@ -47,6 +51,7 @@ public class UserService {
     private final PlaylistBanRepository playlistBanRepository;
     private final SongRepository songRepository;
     private final SavedPlaylistRepository savedPlaylistRepository;
+    private final SecureRandom secureRandom = new SecureRandom();
 
     private List<PlaylistSummaryDTO> getPlaylistSummaries(Long userId) {
         return playlistMembershipRepository.findByUserId(userId).stream()
@@ -122,7 +127,7 @@ public class UserService {
         Playlist playlist = new Playlist();
         playlist.setName("New playlist");
         playlist.setColor("cba6f7");
-        playlist.setInviteCode(UUID.randomUUID().toString());
+        playlist.setInviteCode(generatePlaylistInviteCode());
         playlist.setOwner(user);
 
         PlaylistMembership ownerMembership = new PlaylistMembership();
@@ -138,6 +143,25 @@ public class UserService {
         Playlist savedPlaylist = playlistRepository.save(playlist);
 
         return playlistMapper.toDetailDTO(savedPlaylist);
+    }
+
+    private String generatePlaylistInviteCode() {
+        for (int attempt = 0; attempt < MAX_INVITE_CODE_GENERATION_ATTEMPTS; attempt++) {
+            String candidate = randomPlaylistInviteCode();
+            if (!playlistRepository.existsByInviteCode(candidate)) {
+                return candidate;
+            }
+        }
+        throw new IllegalStateException("Could not generate a unique playlist invite code");
+    }
+
+    private String randomPlaylistInviteCode() {
+        StringBuilder code = new StringBuilder(PLAYLIST_INVITE_CODE_LENGTH);
+        for (int position = 0; position < PLAYLIST_INVITE_CODE_LENGTH; position++) {
+            int alphabetIndex = secureRandom.nextInt(PLAYLIST_INVITE_CODE_ALPHABET.length());
+            code.append(PLAYLIST_INVITE_CODE_ALPHABET.charAt(alphabetIndex));
+        }
+        return code.toString();
     }
 
     @Transactional(readOnly = true)

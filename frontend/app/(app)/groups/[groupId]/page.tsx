@@ -87,6 +87,19 @@ const MINIMUM_TARGET_CARD_COUNT = 1;
 const DIFFICULTY_CARD_HEADROOM_MULTIPLIER = 3;
 const DIFFICULTY_TIERS: GenerateDifficultySetRequestTier[] = ["EASY", "MEDIUM", "HARD"];
 
+function stableMemberNumber(member: MemberDTO): number {
+  return member.userId ?? member.id ?? 0;
+}
+
+function stableMemberIndex(member: MemberDTO, collectionLength: number): number {
+  return Math.abs(stableMemberNumber(member)) % collectionLength;
+}
+
+function compareLobbyMembers(firstMember: MemberDTO, secondMember: MemberDTO): number {
+  const joinedAtComparison = (firstMember.joinedAt ?? "").localeCompare(secondMember.joinedAt ?? "");
+  return joinedAtComparison === 0 ? stableMemberNumber(firstMember) - stableMemberNumber(secondMember) : joinedAtComparison;
+}
+
 function mutationErrorMessage(error: unknown): string {
   if (typeof error === "object" && error !== null && "response" in error) {
     const response = (error as { response?: { data?: { message?: string } } }).response;
@@ -107,29 +120,25 @@ function memberInitial(member: MemberDTO): string {
 
 function LobbyMember({
   member,
-  index,
   isCurrentUser,
   onRemove,
 }: {
   member: MemberDTO;
-  index: number;
   isCurrentUser: boolean;
   onRemove?: (member: MemberDTO) => void;
 }) {
-  const colorClass = MEMBER_COLORS[index % MEMBER_COLORS.length];
-  const orbitPosition = ORBIT_POSITIONS[index % ORBIT_POSITIONS.length];
-  const floatDelay = `${(index % LOBBY_FLOAT_STAGGER_CYCLE) * -LOBBY_FLOAT_STAGGER_SECONDS}s`;
+  const colorClass = MEMBER_COLORS[stableMemberIndex(member, MEMBER_COLORS.length)];
+  const orbitPosition = ORBIT_POSITIONS[stableMemberIndex(member, ORBIT_POSITIONS.length)];
+  const floatDelay = `${stableMemberIndex(member, LOBBY_FLOAT_STAGGER_CYCLE) * -LOBBY_FLOAT_STAGGER_SECONDS}s`;
 
   return (
     <div className={`absolute ${orbitPosition} lobby-float flex flex-col items-center`} style={{ animationDelay: floatDelay }}>
       <div className="relative">
-        <div
-          className={`avatar-initial flex size-[76px] items-center justify-center rounded-full font-display text-2xl shadow-[0_0_0_3px_var(--background),0_0_0_8px_var(--green)] sm:size-[108px] sm:text-[34px] ${colorClass} ${
-            member.isConnected ? "" : "opacity-50 grayscale"
-          }`}
-        >
-          {memberInitial(member)}
-        </div>
+        {member.avatarUrl ? <img src={member.avatarUrl} alt={`${member.displayName || "Player"} avatar`} className={`size-[76px] rounded-full object-cover shadow-[0_0_0_3px_var(--background),0_0_0_8px_var(--green)] sm:size-[108px] ${member.isConnected ? "" : "opacity-50 grayscale"}`} /> : (
+          <div className={`avatar-initial flex size-[76px] items-center justify-center rounded-full font-display text-2xl shadow-[0_0_0_3px_var(--background),0_0_0_8px_var(--green)] sm:size-[108px] sm:text-[34px] ${colorClass} ${member.isConnected ? "" : "opacity-50 grayscale"}`}>
+            {memberInitial(member)}
+          </div>
+        )}
         {member.isAdmin ? (
           <Crown className="absolute -right-2 -top-2 size-6 fill-warning text-warning drop-shadow-sm sm:size-7" />
         ) : null}
@@ -144,7 +153,7 @@ function LobbyMember({
           </button>
         ) : null}
       </div>
-      <span className="mt-2 max-w-[112px] truncate font-semibold text-sm text-foreground sm:mt-3 sm:text-[15px]">
+      <span className="mt-2 max-w-[148px] truncate font-semibold text-sm text-foreground sm:mt-3 sm:text-[15px]">
         {member.displayName || "Player"}
         {isCurrentUser ? " (you)" : ""}
       </span>
@@ -227,7 +236,10 @@ export default function GroupLobbyPage({ params }: PageProps) {
     query: { enabled: groupQuery.data?.status === "LOCKED", retry: false },
   });
 
-  const members = useMemo(() => groupQuery.data?.members ?? [], [groupQuery.data?.members]);
+  const members = useMemo(
+    () => [...(groupQuery.data?.members ?? [])].sort(compareLobbyMembers),
+    [groupQuery.data?.members],
+  );
   const currentMember = members.find((member) => member.userId === currentUser?.id);
   const isCurrentUserAdmin = Boolean(currentMember?.isAdmin);
   const isCurrentUserLoading = currentUser === undefined;
@@ -238,10 +250,16 @@ export default function GroupLobbyPage({ params }: PageProps) {
     : groupPlaylists.length === 1
       ? (featuredPlaylist?.name ?? "No playlist selected")
       : `${groupPlaylists.length} playlists`;
-  const selectedPlaylistNames = (playlistsQuery.data ?? [])
-    .filter((playlist) => selectedPlaylistIds.includes(playlist.id))
-    .map((playlist) => playlist.name)
-    .join(", ");
+  const selectedPlaylists = (playlistsQuery.data ?? []).filter((playlist) => selectedPlaylistIds.includes(playlist.id));
+  const selectedPlaylistNames = selectedPlaylists.map((playlist) => playlist.name).join(", ");
+  const selectedPlaylistSongCount = selectedPlaylists.reduce(
+    (totalSongCount, playlist) => totalSongCount + (playlist.songCount ?? 0),
+    0,
+  );
+  const groupPlaylistSongCount = groupPlaylists.reduce(
+    (totalSongCount, playlist) => totalSongCount + (playlist.songCount ?? 0),
+    0,
+  );
 
   // The session query keeps its last result cached after the game ends, so only a
   // group that is still locked counts as being in a game.
@@ -536,14 +554,14 @@ export default function GroupLobbyPage({ params }: PageProps) {
                 {playlistChipLabel}
               </span>
               {featuredPlaylist ? (
-                <span className="text-xs text-muted-foreground">{featuredPlaylist.songCount} songs</span>
+                <span className="text-xs text-muted-foreground">{groupPlaylistSongCount} songs</span>
               ) : null}
             </button>
             {isTierPopupOpen ? (
               <>
                 <button type="button" aria-label="Close start options" onClick={closeTierPopup} className="fixed inset-0 z-10 cursor-default" />
                 <section aria-label="Start options" className="absolute right-0 top-full z-20 mt-2 w-[320px] rounded-[18px] border-[3px] border-border bg-card p-5 shadow-[6px_6px_0_rgba(0,0,0,0.35)]">
-                  <div className="mb-4 flex flex-wrap gap-2">
+                  <div className="mb-4 flex flex-wrap items-center gap-2">
                     {DIFFICULTY_TIERS.map((tier) => (
                       <button
                         key={tier}
@@ -555,6 +573,7 @@ export default function GroupLobbyPage({ params }: PageProps) {
                         {tier.charAt(0) + tier.slice(1).toLowerCase()}
                       </button>
                     ))}
+                    <span aria-hidden="true" className="mx-1 h-7 w-px bg-border" />
                     <button
                       type="button"
                       onClick={openCustomPicker}
@@ -566,7 +585,7 @@ export default function GroupLobbyPage({ params }: PageProps) {
                   </div>
                   <div className="flex items-center gap-3">
                     <button type="button" onClick={handleGenerateSet} disabled={generateSet.isPending} className="rounded-full bg-primary px-4 py-2 font-display text-xs text-primary-foreground disabled:opacity-60">
-                      {generateSet.isPending ? "Generating" : "Generate"}
+                      {generateSet.isPending ? "Preparing" : "Confirm"}
                     </button>
                   </div>
                   {reviewedSongs ? (
@@ -601,7 +620,7 @@ export default function GroupLobbyPage({ params }: PageProps) {
               {playlistChipLabel}
             </span>
             {featuredPlaylist ? (
-              <span className="text-xs text-muted-foreground">{featuredPlaylist.songCount} songs</span>
+              <span className="text-xs text-muted-foreground">{groupPlaylistSongCount} songs</span>
             ) : null}
           </div>
         )}
@@ -627,11 +646,10 @@ export default function GroupLobbyPage({ params }: PageProps) {
           </button>
         </div>
 
-        {members.map((member, index) => (
+        {members.map((member) => (
           <LobbyMember
-            key={member.id ?? `${member.displayName}-${index}`}
+            key={member.id ?? stableMemberNumber(member)}
             member={member}
-            index={index}
             isCurrentUser={member.userId === currentUser?.id}
             onRemove={isCurrentUserAdmin && member.userId !== currentUser?.id ? setMemberPendingRemoval : undefined}
           />
@@ -713,7 +731,7 @@ export default function GroupLobbyPage({ params }: PageProps) {
                 <button type="button" onClick={closeCustomPicker} className="text-muted-foreground hover:text-card-foreground">Close</button>
               </div>
               <p className="mb-3 text-[13px] text-muted-foreground">
-                {selectedPlaylistIds.length === 0 ? "No playlists selected" : `Chosen: ${selectedPlaylistNames}`}
+                {selectedPlaylistIds.length === 0 ? "No playlists selected" : `Chosen: ${selectedPlaylistNames} (${selectedPlaylistSongCount} songs)`}
               </p>
               <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
                 {playlistsQuery.data?.map((playlist) => {

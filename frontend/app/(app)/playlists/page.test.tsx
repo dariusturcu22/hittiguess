@@ -128,13 +128,13 @@ describe("PlaylistsPage library tabs", () => {
     expect(screen.getByText("Saved mix")).toBeVisible();
   });
 
-  it("shows no join tile on the Joined tab", () => {
+  it("shows a join tile on the Joined tab", () => {
     renderPage();
 
     fireEvent.click(screen.getByRole("button", { name: "Joined" }));
 
     expect(screen.queryByLabelText("Invite code or link")).toBeNull();
-    expect(screen.getByRole("button", { name: /New playlist/ })).toBeVisible();
+    expect(screen.getByRole("button", { name: "Join playlist" })).toBeVisible();
   });
 
   it("shows the explore tile instead of new playlist on the Saved tab", () => {

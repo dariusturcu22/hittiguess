@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import { PlayerAvatar } from "./game-pieces";
 
@@ -9,11 +9,13 @@ const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
 const RING_VIEWBOX_SIZE = 130;
 const RING_CENTER = RING_VIEWBOX_SIZE / 2;
 const TICK_MILLISECONDS = 1_000;
+const MILLISECONDS_PER_SECOND = 1_000;
 
 interface RoundIntroProps {
   winConditionCardCount: number;
   roundNumber: number;
   countdownSeconds: number;
+  endsAt?: string;
   dj?: { name?: string; colorIndex: number };
   activePlayer?: { name?: string; colorIndex: number };
   onFinished: () => void;
@@ -21,17 +23,20 @@ interface RoundIntroProps {
 
 // The first-round opener: who DJs and who plays first, over a ring that drains at a
 // steady pace before the game screen takes over.
-export function RoundIntro({ winConditionCardCount, roundNumber, countdownSeconds, dj, activePlayer, onFinished }: RoundIntroProps) {
-  const [secondsLeft, setSecondsLeft] = useState(countdownSeconds);
+export function RoundIntro({ winConditionCardCount, roundNumber, countdownSeconds, endsAt, dj, activePlayer, onFinished }: RoundIntroProps) {
+  const remainingSeconds = useCallback(() => endsAt
+    ? Math.max(0, Math.ceil((Date.parse(endsAt) - Date.now()) / MILLISECONDS_PER_SECOND))
+    : countdownSeconds, [countdownSeconds, endsAt]);
+  const [secondsLeft, setSecondsLeft] = useState(remainingSeconds);
 
   useEffect(() => {
     if (secondsLeft <= 0) {
       onFinished();
       return;
     }
-    const timeout = window.setTimeout(() => setSecondsLeft((seconds) => seconds - 1), TICK_MILLISECONDS);
+    const timeout = window.setTimeout(() => setSecondsLeft(remainingSeconds()), TICK_MILLISECONDS);
     return () => window.clearTimeout(timeout);
-  }, [onFinished, secondsLeft]);
+  }, [onFinished, remainingSeconds, secondsLeft]);
 
   return <div role="status" aria-live="polite" className="absolute inset-0 z-40 flex flex-col items-center justify-center gap-8 bg-background bg-dotted px-6 text-center">
     <div className="flex flex-col items-center gap-3">
