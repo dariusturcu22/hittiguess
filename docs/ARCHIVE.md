@@ -1309,3 +1309,9 @@ Tests:
 
 Tests:
 - [x] Unit tests: the active import is refused without read access and returned with it
+
+## CI failures after release playtest fixes
+
+- [x] Assign the playlist invite-code migration the next unused Flyway version.
+- [x] Preserve round payload type narrowing inside the session cache callback.
+- [x] Validate backend migrations and frontend production compilation, then confirm PR checks pass.
