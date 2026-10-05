@@ -34,8 +34,8 @@ Story 28 now contains the implemented frontend surface for those backend stories
 Starts once everything above has actually shipped, not merely reached `Ready`.
 
 - Story 50: Auth hardening, email verification, real password reset, and TOTP two-factor authentication, all needed before real accounts and real friends are involved
-- Story 7: Hosting migration off Fly.io, target platform decided and executed
-- Story 8: Database migration off Supabase, whether to migrate at all and to what platform, decided and executed
+- Story 7: Azure Container Apps beta hosting off Fly.io, cost controls, production validation, and Hetzner migration readiness executed
+- Story 8: Two new Supabase beta projects provisioned and validated for transactional and analytics data
 - Deploy the app for real, invite friends and colleagues for demo matches, confirm everything works correctly before calling it Beta
 
 ## Finished

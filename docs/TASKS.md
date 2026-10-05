@@ -596,6 +596,53 @@ Tests:
 - [x] Unit test confirming no DTO or API response ever includes `totpSecret` or an unused backup code in plain form after initial generation
 - [x] Wire the frontend's existing forgot-password form to the new request/confirm endpoints (already wired: the request page calls `useRequestPasswordReset`, the confirm page calls `useConfirmPasswordReset` with a mismatch guard, both covered by colocated tests)
 
+## Story 7: Beta hosting on Azure Container Apps
+
+Decision confirmed for Beta: Vercel continues to host the frontend. Azure Container Apps Consumption hosts the Spring core and FastAPI AI services in one EU environment. Azure provides the initial public deployment and cloud-platform experience. The backend moves to a fixed-price Hetzner server only when sustained Azure cost exceeds the whole-deployment ceiling. The frontend and Supabase projects do not move in that migration.
+
+The current realtime architecture is deliberately single-replica. Spring's simple STOMP broker, socket presence registries, pending generation pools, and session-results cache are process-local. Scale at this stage means bounded admission of games on one tested core replica, not horizontal replication.
+
+- [ ] Create the dedicated Azure subscription, EU resource group, tags, and Consumption-only Container Apps environment with no VNet, private endpoint, dedicated workload profile, Azure Database, Container Registry, or Azure log-ingestion resource
+- [ ] Create subscription and resource-group monthly budgets, cost anomaly alerts, and an Action Group that notifies at $5 and $10 and shuts down both apps at $12 to preserve a buffer below the $20 whole-deployment ceiling
+- [ ] Create production container definitions for the Spring core and FastAPI AI service, with explicit CPU and memory limits validated under load before the values are committed
+- [ ] Configure the Spring core Container App with external HTTPS and WebSocket ingress, a managed Azure domain before any custom domain, `minReplicas: 0`, `maxReplicas: 1`, and single active revision routing
+- [ ] Configure the FastAPI Container App with internal-only ingress, `minReplicas: 0`, `maxReplicas: 1`, and the core app's internal service-discovery URL
+- [ ] Build commit-SHA-tagged backend images in GitHub Actions, publish them to GitHub Container Registry, and deploy them through Azure OpenID Connect federation without a long-lived Azure credential
+- [ ] Configure Container Apps secrets for database connections, authentication, OAuth, email, YouTube, OpenAI, DeepInfra, Cloudflare TURN, Grafana, and Sentry; no secret may enter a repository file, image layer, or workflow log
+- [ ] Configure production Spring settings: `APP_ENV=prod`, frontend URL and allowed origins, secure cookies, OAuth redirect URI, production API URL, and internal AI-service URL
+- [ ] Configure Vercel production environment variables with the Azure core HTTPS URL and verify the derived WebSocket URL is WSS
+- [ ] Adapt Grafana Alloy's local Docker scrape configuration to the deployed environment, import the existing Grafana dashboard, configure production uptime monitoring against the public core health endpoint, and keep Sentry enabled
+- [ ] Add a configurable active-game admission limit derived from a production-like load test, with a clear busy response when the tested capacity is reached
+- [ ] Document the Hetzner migration runbook: provision one fixed-price EU server, deploy the same two images plus reverse proxy, move the backend DNS record, validate, then delete Azure resources
+
+Tests and validation:
+
+- [ ] Container build test: both production images start and expose their health endpoints with injected test-safe configuration
+- [ ] Deployment smoke test: production-like Azure revision accepts HTTPS API traffic, WSS STOMP connection, internal core-to-AI request, and returns healthy status from both services
+- [ ] Load test: measure core CPU, memory, WebSocket stability, and game-action latency across the expected peak concurrent games before setting app resource limits and the admission limit
+- [ ] Cost-control test: verify each Azure budget alert and the $12 shutdown workflow against a non-production test resource group
+- [ ] Manual production test: two devices complete login, playlist import, a game, voice chat, DJ tab-audio sharing, reconnect, and results over HTTPS
+- [ ] Migration rehearsal: deploy the same images to an isolated Hetzner server and verify DNS cutover and rollback before Azure sustained-use migration is needed
+
+## Story 8: Beta Supabase database provisioning
+
+Decision confirmed for Beta: Supabase remains the database provider. New production projects replace the existing development data source. The transactional project carries the core schema and pgvector extension. The analytics project carries the independent event-store schema. This is not a migration to another database vendor.
+
+- [ ] Create the `hittiguess-beta-core` Supabase project in the EU region closest to the Azure environment
+- [ ] Create the `hittiguess-beta-analytics` Supabase project in the same region
+- [ ] Set production database credentials and TLS connection URLs for the Spring core and AI service, keeping the AI service limited to the transactional database
+- [ ] Run the core Flyway history against the new transactional project and verify the pgvector extension, schema, indexes, and migration history
+- [ ] Run the analytics Flyway history against the analytics project and verify its independent history and `analytics_events` table
+- [ ] Decide and perform a controlled catalog-only data import if existing real songs should enter Beta; local test accounts, development credentials, and test-only data do not transfer
+- [ ] Configure Supabase Free-plan usage and project-pause notifications, document a backup export procedure, and keep paid-plan Spend Cap enabled if an upgrade is later approved
+- [ ] Verify all production services use only their intended database URLs and no browser client receives database credentials
+
+Tests and validation:
+
+- [ ] Fresh-database integration test: the transactional Flyway history provisions a working schema with pgvector and the analytics history provisions independently
+- [ ] Production-like connection test: Spring and FastAPI connect through their injected Supabase TLS URLs, while the AI service cannot reach analytics data
+- [ ] Backup and restore rehearsal: export each Supabase project and restore into isolated temporary projects without schema or data loss
+
 ## Release playtest fixes
 
 Checked against the current frontend and backend after the final pre-deployment

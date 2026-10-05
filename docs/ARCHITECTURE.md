@@ -149,12 +149,12 @@ Bulk import mechanism: built, story 40. Two separate paths, an admin-only patien
 
 ## Deployment
 
-Deployment platform is deliberately undecided until the app is close to feature-complete locally, see [PROJECT_STATE.md](PROJECT_STATE.md)'s open questions.
+Beta runs the frontend on Vercel and both backend containers in one Azure Container Apps Consumption environment. The Spring core has external HTTPS and WebSocket ingress. The FastAPI AI service has internal-only ingress and is reached through the environment's service discovery. Both apps scale from zero, but the Spring core is capped at one replica until the STOMP broker, presence registries, and session caches move out of process.
 
-- Core service and AI microservice: containerized, deployed together, same environment. Target platform not yet chosen.
-- Database: currently Supabase-hosted Postgres. Whether to migrate at all, and to what platform, is undecided; pgvector needs to be enabled wherever it ends up.
-- Frontend: Next.js on Vercel, unchanged.
-- Migrating away from Fly.io for backend hosting. See [PROJECT_STATE.md](PROJECT_STATE.md) for current status.
+- Database: two new Supabase projects remain the beta data host. The transactional Postgres+pgvector project is shared by the core and AI services. A separate analytics Postgres project holds only append-heavy event data.
+- Frontend: Next.js on Vercel.
+- Cost guardrails: Consumption plan only, no Azure Database for PostgreSQL, virtual network, private endpoint, Container Registry, dedicated workload profile, or Azure log ingestion. Azure budget alerts trigger a shutdown workflow before the whole-deployment cost ceiling is reached.
+- Migration path: sustained Azure cost above the project's ceiling moves the two backend containers and reverse proxy to one fixed-price Hetzner server. Vercel and both Supabase projects stay unchanged.
 
 ## Data flow: adding a song
 

@@ -113,11 +113,12 @@ export function useGameSessionRealtime(
           // hasn't changed, so there's nothing to refetch.
           if (roundEvent?.type !== PLACEMENT_PREVIEW_EVENT) {
             if (roundEvent?.payload && roundEvent.type !== GUESS_CORRECT_EVENT) {
+              const roundPayload = roundEvent.payload;
               queryClient.setQueryData<GameSessionDTO>(getGetSessionQueryKey(sessionId), (session) => session
                 ? {
                     ...session,
-                    currentRound: roundEvent.payload,
-                    currentRoundNumber: roundEvent.payload.roundNumber ?? session.currentRoundNumber,
+                    currentRound: roundPayload,
+                    currentRoundNumber: roundPayload.roundNumber ?? session.currentRoundNumber,
                   }
                 : session);
             }
