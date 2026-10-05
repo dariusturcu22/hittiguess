@@ -596,6 +596,12 @@ Tests:
 - [x] Unit test confirming no DTO or API response ever includes `totpSecret` or an unused backup code in plain form after initial generation
 - [x] Wire the frontend's existing forgot-password form to the new request/confirm endpoints (already wired: the request page calls `useRequestPasswordReset`, the confirm page calls `useConfirmPasswordReset` with a mismatch guard, both covered by colocated tests)
 
+## CI failures after release playtest fixes
+
+- [ ] Assign the playlist invite-code migration the next unused Flyway version.
+- [ ] Preserve round payload type narrowing inside the session cache callback.
+- [ ] Validate backend migrations and frontend production compilation, then confirm PR checks pass.
+
 ## Story 7: Beta hosting on Azure Container Apps
 
 Decision confirmed for Beta: Vercel continues to host the frontend. Azure Container Apps Consumption hosts the Spring core and FastAPI AI services in one EU environment. Azure provides the initial public deployment and cloud-platform experience. The backend moves to a fixed-price Hetzner server only when sustained Azure cost exceeds the whole-deployment ceiling. The frontend and Supabase projects do not move in that migration.
