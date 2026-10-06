@@ -311,7 +311,7 @@ Tests:
 
 ## Story 7: Beta hosting on Azure Container Apps
 
-Decision confirmed for Beta: Vercel continues to host the frontend. Azure Container Apps Consumption hosts the Spring core and FastAPI AI services in one EU environment. Azure provides the initial public deployment and cloud-platform experience. The backend moves to a fixed-price Hetzner server only when sustained Azure cost exceeds the whole-deployment ceiling. The frontend and Supabase projects do not move in that migration.
+Decision confirmed for Beta: Vercel continues to host the frontend. Azure Container Apps Consumption hosts the Spring core and FastAPI AI services in one EU environment. Azure provides the initial public deployment and cloud-platform experience. The backend moves to a fixed-price Hetzner server only when sustained Azure cost exceeds the whole-deployment ceiling. The frontend and Neon projects do not move in that migration.
 
 The current realtime architecture is deliberately single-replica. Spring's simple STOMP broker, socket presence registries, pending generation pools, and session-results cache are process-local. Scale at this stage means bounded admission of games on one tested core replica, not horizontal replication.
 
@@ -337,24 +337,27 @@ Tests and validation:
 - [ ] Manual production test: two devices complete login, playlist import, a game, voice chat, DJ tab-audio sharing, reconnect, and results over HTTPS
 - [ ] Migration rehearsal: deploy the same images to an isolated Hetzner server and verify DNS cutover and rollback before Azure sustained-use migration is needed
 
-## Story 8: Beta Supabase database provisioning
+## Story 8: Beta Neon database provisioning
 
-Decision confirmed for Beta: Supabase remains the database provider. New production projects replace the existing development data source. The transactional project carries the core schema and pgvector extension. The analytics project carries the independent event-store schema. This is not a migration to another database vendor.
+Decision confirmed for Beta: Neon hosts both databases, replacing the earlier Supabase plan. New production projects replace the existing development data source. The transactional project carries the core schema and pgvector extension. The analytics project carries the independent event-store schema. The Free plan's automatic suspend and wake-up replaces Supabase's manual restore after a week of inactivity.
 
-- [ ] Create the `hittiguess-beta-core` Supabase project in the EU region closest to the Azure environment
-- [ ] Create the `hittiguess-beta-analytics` Supabase project in the same region
+- [ ] Create the `hittiguess-beta-core` Neon project in the EU region closest to the Azure environment, with the `vector` extension enabled
+- [ ] Create the `hittiguess-beta-analytics` Neon project in the same region
 - [ ] Set production database credentials and TLS connection URLs for the Spring core and AI service, keeping the AI service limited to the transactional database
 - [ ] Run the core Flyway history against the new transactional project and verify the pgvector extension, schema, indexes, and migration history
 - [ ] Run the analytics Flyway history against the analytics project and verify its independent history and `analytics_events` table
 - [ ] Decide and perform a controlled catalog-only data import if existing real songs should enter Beta; local test accounts, development credentials, and test-only data do not transfer
-- [ ] Configure Supabase Free-plan usage and project-pause notifications, document a backup export procedure, and keep paid-plan Spend Cap enabled if an upgrade is later approved
+- [ ] Configure Neon Free-plan storage and compute usage notifications, document a `pg_dump` backup export procedure, and keep the spending limit enabled if an upgrade is later approved
+- [ ] Configure the Spring connection pool (`spring.datasource.hikari.max-lifetime` and keepalive) so connections are retired before Neon's five-minute suspend closes them, and verify the first request after an idle suspend succeeds
+- [ ] Update the privacy policy's database host once the Neon projects hold production data
 - [ ] Verify all production services use only their intended database URLs and no browser client receives database credentials
 
 Tests and validation:
 
 - [ ] Fresh-database integration test: the transactional Flyway history provisions a working schema with pgvector and the analytics history provisions independently
-- [ ] Production-like connection test: Spring and FastAPI connect through their injected Supabase TLS URLs, while the AI service cannot reach analytics data
-- [ ] Backup and restore rehearsal: export each Supabase project and restore into isolated temporary projects without schema or data loss
+- [ ] Production-like connection test: Spring and FastAPI connect through their injected Neon TLS URLs, while the AI service cannot reach analytics data
+- [ ] Idle-suspend test: after Neon suspends the compute, the first core request succeeds without a connection error and returns within a few seconds
+- [ ] Backup and restore rehearsal: export each Neon project and restore into isolated temporary projects without schema or data loss
 
 ## Release playtest acceptance and remaining tests
 

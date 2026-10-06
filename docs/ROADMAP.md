@@ -5,7 +5,7 @@ This file orders remaining work. [TASKS.md](TASKS.md) owns the requirements and 
 ## Readiness tiers
 
 - **Local**: the owner can complete a game with another local player, including the admin surface, voice, and DJ audio. Stories 28 and 47 retain visual, interaction, test, and mockup-review follow-ups. Release-playtest reconnect and test requirements and final LAN acceptance remain open in TASKS.md.
-- **Beta**: real accounts can play a deployed app. Story 50's remaining two-factor frontend work and stories 7 and 8's provisioning and validation must be complete. Azure Container Apps, Vercel, and separate transactional and analytics Supabase projects are the selected deployment plan; Hetzner is the cost-control fallback.
+- **Beta**: real accounts can play a deployed app. Story 50's remaining two-factor frontend work and stories 7 and 8's provisioning and validation must be complete. Azure Container Apps, Vercel, and separate transactional and analytics Neon projects are the selected deployment plan; Hetzner is the cost-control fallback.
 - **Finished**: the deployed app is ready for public announcement with story 34's first-party analytics and its dependent consent notice complete.
 
 ## Local: review and validate
@@ -30,7 +30,7 @@ The documentation audit's design conflicts remain pending owner review. A visual
 
 1. Story 50: complete two-factor setup and the second login step in the frontend, with the required tests.
 2. Story 7: provision Azure Container Apps, cost controls, production configuration, image delivery, load/admission validation, and the Hetzner migration runbook/rehearsal.
-3. Story 8: provision and validate the transactional and analytics Supabase projects, migrations, backups, and connection boundaries.
+3. Story 8: provision and validate the transactional and analytics Neon projects, migrations, backups, and connection boundaries.
 4. Story 38: import the dashboard into the live environment, add production uptime monitoring once a deployment exists, and retain the real observability-delivery test requirement.
 5. Complete production device-level game, reconnect, voice, DJ audio, import, and results acceptance before inviting friends for Beta matches.
 
