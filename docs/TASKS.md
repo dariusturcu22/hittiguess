@@ -317,7 +317,10 @@ The current realtime architecture is deliberately single-replica. Spring's simpl
 
 - [ ] Create the dedicated Azure subscription, EU resource group, tags, and Consumption-only Container Apps environment with no VNet, private endpoint, dedicated workload profile, Azure Database, Container Registry, or Azure log-ingestion resource
 - [ ] Create subscription and resource-group monthly budgets, cost anomaly alerts, and an Action Group that notifies at $5 and $10 and shuts down both apps at $12 to preserve a buffer below the $20 whole-deployment ceiling
-- [ ] Create production container definitions for the Spring core and FastAPI AI service, with explicit CPU and memory limits validated under load before the values are committed
+- [x] Build the Spring core production image: multi-stage Dockerfile with a cached dependency layer, a non-root user, and container-aware heap sizing; `application-prod.properties` enables graceful shutdown and health probes, and `/actuator/health/**` is public for platform probes
+- [ ] Create the FastAPI AI service container definition (no Dockerfile exists yet)
+- [ ] Set explicit CPU and memory limits for both services, validated under load before the values are committed
+- [ ] Serve the core API from a subdomain of hittiguess.com and set the auth cookies' `Domain` to the shared parent. `session_hint` is set by the backend, and the frontend's `proxy.ts` can only read it when the cookie is sent to the frontend's own host, which a separate `azurecontainerapps.io` API host never does
 - [ ] Configure the Spring core Container App with external HTTPS and WebSocket ingress, a managed Azure domain before any custom domain, `minReplicas: 0`, `maxReplicas: 1`, and single active revision routing
 - [ ] Configure the FastAPI Container App with internal-only ingress, `minReplicas: 0`, `maxReplicas: 1`, and the core app's internal service-discovery URL
 - [ ] Build commit-SHA-tagged backend images in GitHub Actions, publish them to GitHub Container Registry, and deploy them through Azure OpenID Connect federation without a long-lived Azure credential
@@ -330,7 +333,8 @@ The current realtime architecture is deliberately single-replica. Spring's simpl
 
 Tests and validation:
 
-- [ ] Container build test: both production images start and expose their health endpoints with injected test-safe configuration
+- [x] Core image smoke test: `scripts/smoke-test-core-image.sh` builds the image, starts it with production settings against throwaway Postgres containers, and checks the Flyway migrations, the vector extension, the non-root user, and the three health probes
+- [ ] AI service image smoke test, once its Dockerfile exists
 - [ ] Deployment smoke test: production-like Azure revision accepts HTTPS API traffic, WSS STOMP connection, internal core-to-AI request, and returns healthy status from both services
 - [ ] Load test: measure core CPU, memory, WebSocket stability, and game-action latency across the expected peak concurrent games before setting app resource limits and the admission limit
 - [ ] Cost-control test: verify each Azure budget alert and the $12 shutdown workflow against a non-production test resource group
@@ -348,7 +352,7 @@ Decision confirmed: Neon hosts both production databases, replacing the earlier 
 - [ ] Run the analytics Flyway history against the analytics project and verify its independent history and `analytics_events` table
 - [ ] Decide and perform a controlled catalog-only data import if existing real songs should enter Beta; local test accounts, development credentials, and test-only data do not transfer
 - [ ] Configure Neon Free-plan storage and compute usage notifications, document a `pg_dump` backup export procedure, and keep the spending limit enabled if an upgrade is later approved
-- [ ] Configure the Spring connection pool (`spring.datasource.hikari.max-lifetime` and keepalive) so connections are retired before Neon's five-minute suspend closes them, and verify the first request after an idle suspend succeeds
+- [ ] Verify the Spring connection pools survive Neon's five-minute idle suspend: the group-expiry sweeper queries every minute while the container runs, so connections should stay live, and the container scales to zero with the database; confirm with a real idle period and add pool settings (`max-lifetime`, keepalive) only if the first request after a suspend fails
 - [ ] Update the privacy policy's database host once the Neon projects hold production data
 - [ ] Verify all production services use only their intended database URLs and no browser client receives database credentials
 
