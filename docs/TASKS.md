@@ -388,3 +388,17 @@ Tests:
 Completed local-network setup and fix batches are in [ARCHIVE.md](ARCHIVE.md). Archived playtests do not replace this final full-game-plus-voice acceptance check.
 
 - [ ] Manual multi-device playtest: full game plus voice, recorded here once played
+
+## Closed-beta frontend showcase
+
+The frontend is deployed alone on Vercel at hittiguess.com while the backend, database, and AI service are not deployed. `NEXT_PUBLIC_CLOSED_BETA=true` limits visitors to the landing page and a closed-beta screen that links to the legacy app. A server-side `BETA_ACCESS_PASSWORD` unlocks the full frontend for beta testers through a signed cookie. The flag set to false restores the normal behavior.
+
+- [x] Add the flag, the access-code check, and the signed `beta_access` cookie (`lib/beta-access.ts`, `app/api/beta-access/route.ts`)
+- [x] Redirect every route except `/`, `/closed-beta`, and the access-code endpoint to `/closed-beta` for visitors without the cookie (`proxy.ts`)
+- [x] Skip the landing page's current-user request for visitors without access
+- [x] Add the closed-beta screen with the legacy app link, a back-to-home link, and the access-code field
+- [ ] Create the separate Vercel project (root `frontend`, production branch `dev`), set both environment variables, and attach hittiguess.com
+
+Tests:
+
+- [x] Unit tests for the proxy redirect rules, cookie validation, and flag-off behavior (`proxy.closed-beta.test.ts`)
