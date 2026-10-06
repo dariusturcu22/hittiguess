@@ -17,6 +17,8 @@ public class CookieUtil {
     @Value("${app.env}")
     private String appEnv;
 
+    @Value("${app.cookie-domain:}")
+    private String cookieDomain = "";
 
     public ResponseCookie createCookie(
             String token,
@@ -25,13 +27,16 @@ public class CookieUtil {
             String path
     ) {
         boolean isProduction = appEnv.equals("prod");
-        return ResponseCookie.from(name, token)
+        ResponseCookie.ResponseCookieBuilder cookie = ResponseCookie.from(name, token)
                 .httpOnly(true)
                 .secure(isProduction)
                 .sameSite(isProduction ? "None" : "Strict")
                 .path(path)
-                .maxAge(maxAgeSeconds)
-                .build();
+                .maxAge(maxAgeSeconds);
+        if (!cookieDomain.isBlank()) {
+            cookie.domain(cookieDomain);
+        }
+        return cookie.build();
     }
 
     public ResponseCookie createAccessTokenCookie(String token, long maxAgeSeconds) {

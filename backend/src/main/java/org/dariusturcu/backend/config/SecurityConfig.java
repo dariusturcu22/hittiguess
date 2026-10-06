@@ -124,6 +124,7 @@ public class SecurityConfig {
                                 "/api/groups/invites/*/preview",
                                 "/api/users/*/avatar",
                                 "/api/ground-truth/**",
+                                "/actuator/health/**",
                                 "/error"
                         ).permitAll()
                         .anyRequest().authenticated()
