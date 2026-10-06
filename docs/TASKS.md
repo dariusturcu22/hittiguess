@@ -410,6 +410,20 @@ Tests:
 
 - [x] Unit tests for the proxy redirect rules, cookie validation, and flag-off behavior (`proxy.closed-beta.test.ts`)
 
+## AI service production image
+
+The FastAPI service needs a container image for the production deployment. Neon accepts only TLS connections, and the service's direct Postgres connection had no TLS support, so the connection code reads `sslmode` from `DATABASE_URL`.
+
+- [x] Add `ai/Dockerfile`: a build stage that installs the locked dependencies with uv, and a slim runtime stage that runs as a non-root user and serves on port 8000, plus `ai/.dockerignore`
+- [x] Enable TLS in `app/dedup/database.py` when `DATABASE_URL` carries `sslmode=require`, `verify-ca`, or `verify-full`
+- [ ] Set explicit CPU and memory limits for the AI container, validated under load (open under story 7)
+
+Tests:
+
+- [x] Unit tests for the connection parameters: no TLS for a plain URL or `disable`, `allow`, and `prefer`; TLS for `require`, `verify-ca`, and `verify-full`
+- [x] AI image smoke test: `scripts/smoke-test-ai-image.sh` builds the image, starts it against a throwaway pgvector Postgres, and checks `/health`, the internal-key protection on `/metrics`, the non-root user, and the database connection
+- [ ] Connect the AI service to the real Neon core project over TLS once it exists, using the injected `DATABASE_URL`
+
 ## Auth cookie domain for production
 
 The frontend runs on hittiguess.com and the core API will run on a sibling subdomain. The backend sets `session_hint`, which the frontend's `proxy.ts` reads, so every auth cookie needs a shared parent domain to reach both hosts. `COOKIE_DOMAIN` sets it; unset, cookies stay host-only as in development.
