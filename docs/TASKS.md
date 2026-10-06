@@ -436,3 +436,18 @@ Tests:
 
 - [x] Unit tests for `CookieUtil`: host-only without a domain, the configured domain on all three auth cookies, deletion using the same domain, and the other cookie attributes unchanged
 - [ ] Manual production test: log in on hittiguess.com and confirm `proxy.ts` sees `session_hint` on a protected route
+
+## Backend deploy workflow
+
+`.github/workflows/deploy-backend.yml` runs on pushes to `dev` that touch `backend/`, `ai/`, or the workflow itself, and on manual dispatch. It runs both image smoke tests, publishes the core and AI images to GitHub Container Registry tagged with the commit SHA and `latest`, and updates the two Container Apps to the new SHA. The deploy job is skipped until the `AZURE_CLIENT_ID` repository variable exists, so the workflow can merge before Azure is wired up.
+
+- [x] Add the workflow with the smoke-test, publish, and deploy jobs; the deploy job uses OpenID Connect through `azure/login` and the `production` environment, with no stored Azure credential
+- [ ] Create the Azure app registration with a federated credential for the `production` environment of this repository and the Contributor role on `hittiguess-rg`, then set the `AZURE_CLIENT_ID`, `AZURE_TENANT_ID`, and `AZURE_SUBSCRIPTION_ID` repository variables
+- [ ] Make the two published GHCR packages public after the first publish so Container Apps can pull them without a registry credential
+- [ ] Create the `hittiguess-core` and `hittiguess-ai` Container Apps, which the deploy job updates but does not create
+- [ ] Optionally add required reviewers to the `production` environment so a deploy waits for approval
+
+Tests:
+
+- [x] The workflow passes `actionlint`
+- [ ] First end-to-end run: smoke tests pass, both images appear in GHCR, and the deploy job moves each Container App to the new SHA
