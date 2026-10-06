@@ -405,3 +405,16 @@ The frontend is deployed alone on Vercel at hittiguess.com while the backend, da
 Tests:
 
 - [x] Unit tests for the proxy redirect rules, cookie validation, and flag-off behavior (`proxy.closed-beta.test.ts`)
+
+## Auth cookie domain for production
+
+The frontend runs on hittiguess.com and the core API will run on a sibling subdomain. The backend sets `session_hint`, which the frontend's `proxy.ts` reads, so every auth cookie needs a shared parent domain to reach both hosts. `COOKIE_DOMAIN` sets it; unset, cookies stay host-only as in development.
+
+- [x] Add `app.cookie-domain` (from `COOKIE_DOMAIN`) and apply it to every cookie `CookieUtil` creates, including deletions so a browser removes the same cookie
+- [ ] Create the core API's custom domain (for example `api.hittiguess.com`) on the Azure Container App and set `COOKIE_DOMAIN=hittiguess.com` in its production configuration
+- [ ] Add the API subdomain to the frontend's `NEXT_PUBLIC_API_URL` in Vercel and to the Content-Security-Policy through that variable
+
+Tests:
+
+- [x] Unit tests for `CookieUtil`: host-only without a domain, the configured domain on all three auth cookies, deletion using the same domain, and the other cookie attributes unchanged
+- [ ] Manual production test: log in on hittiguess.com and confirm `proxy.ts` sees `session_hint` on a protected route
