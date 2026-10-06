@@ -451,3 +451,20 @@ Tests:
 
 - [x] The workflow passes `actionlint`
 - [ ] First end-to-end run: smoke tests pass, both images appear in GHCR, and the deploy job moves each Container App to the new SHA
+
+## Container Apps creation
+
+`scripts/azure/create-container-apps.ps1` creates the `hittiguess-ai` app (internal ingress, port 8000) and the `hittiguess-core` app (external ingress, port 8080) in `hittiguess-rg`, each at 0 to 1 replicas, from the public GHCR images. It prompts for every secret with hidden input, generates the JWT signing secret and the internal service key locally, stores everything as Container Apps secrets, and prints no secret. Initial limits are 0.5 vCPU and 1 GiB for the AI app and 1 vCPU and 2 GiB for the core app, provisional until the load test.
+
+- [x] Add the creation script with Neon connection-string parsing that rejects pooled hosts, and secret-safe character validation
+- [ ] Create the Google OAuth client for the hittiguess account with the redirect URI `https://api.hittiguess.com/login/oauth2/code/google`, a new YouTube Data API key, and a Resend account with an API key
+- [ ] Verify the hittiguess.com sending domain in Resend and set `EMAIL_FROM_ADDRESS` to an address on it; the shared `onboarding@resend.dev` sender only delivers to the Resend account owner
+- [ ] Run the script, then confirm `/actuator/health/readiness` on the core app's Azure address answers 200
+- [ ] Add HTTP liveness and readiness probes to both apps, which `az containerapp create` cannot set
+- [ ] Add `api.hittiguess.com` to the core app with a managed certificate and set `NEXT_PUBLIC_API_URL` in Vercel
+- [ ] Set the `AZURE_CLIENT_ID`, `AZURE_TENANT_ID`, and `AZURE_SUBSCRIPTION_ID` repository variables once both apps exist
+
+Tests:
+
+- [x] The script parses, and its connection-string and secret helpers are checked against valid, pooled, malformed, and unsafe inputs
+- [ ] Deployment smoke test: HTTPS API traffic, a WSS STOMP connection, and a core-to-AI request succeed on the deployed apps
