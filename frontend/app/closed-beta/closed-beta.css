@@ -1,0 +1,18 @@
+.closed-beta-page { min-height: 100vh; display: flex; flex-direction: column; padding: 24px 64px; background: var(--background); background-image: radial-gradient(circle,rgba(76,79,105,.22) 1.5px,transparent 1.5px); background-size: 22px 22px; }
+.dark .closed-beta-page { background-image: radial-gradient(circle,rgba(108,112,134,.3) 1.5px,transparent 1.5px); }
+.closed-beta-header { display: flex; align-items: center; justify-content: space-between; }
+.closed-beta-brand { display: flex; align-items: center; gap: 14px; }
+.closed-beta-brand > span { font-family: var(--font-baloo-2), sans-serif; font-weight: 800; font-size: 24px; }
+.closed-beta-brand > div { gap: 4px; height: 26px; }
+.closed-beta-brand > div > span { width: 6px !important; }
+.closed-beta-card { margin: auto; width: 520px; max-width: 100%; display: flex; flex-direction: column; align-items: center; gap: 24px; padding: 40px 36px; text-align: center; background: var(--background); border: 5px solid var(--border-strong); border-radius: 26px; box-shadow: 8px 8px 0 var(--shadow-color); }
+.closed-beta-card h1 { font-family: var(--font-bungee), sans-serif; font-size: 40px; line-height: 1.05; color: var(--marketing-accent); text-shadow: 4px 4px 0 var(--text-shadow-on-page); }
+.closed-beta-card > p { font-size: 17px; line-height: 1.6; color: var(--muted-foreground); }
+.closed-beta-page .closed-beta-action { height: auto; padding: 16px 32px; font-size: 15px; box-shadow: 6px 6px 0 var(--shadow-color); }
+.closed-beta-back { color: var(--marketing-accent); text-decoration: underline; text-underline-offset: 3px; font-size: 14px; }
+.closed-beta-access { width: 100%; display: flex; flex-direction: column; gap: 8px; padding-top: 24px; border-top: 2px dashed var(--border-strong); }
+.closed-beta-access label { font-size: 13px; color: var(--muted-foreground); }
+.closed-beta-access > div { display: flex; gap: 8px; }
+.closed-beta-access input { flex: 1; min-width: 0; height: 36px; padding: 0 12px; border: 2px solid var(--border-strong); border-radius: 8px; background: var(--background); color: inherit; }
+.closed-beta-access [role="alert"] { font-size: 13px; color: var(--destructive); }
+@media (max-width: 640px) { .closed-beta-page { padding: 20px 16px; } .closed-beta-card { padding: 28px 20px; } .closed-beta-card h1 { font-size: 30px; } }

@@ -1,5 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 
+import {
+  BETA_ACCESS_API_PATH,
+  BETA_ACCESS_COOKIE,
+  CLOSED_BETA_ENABLED,
+  CLOSED_BETA_PATH,
+  hasBetaAccess,
+} from "@/lib/beta-access";
+
 const PUBLIC_ROUTES = [
   "/login",
   "/register",
@@ -13,8 +21,16 @@ const PUBLIC_ROUTES = [
 // login prompt, so they stay reachable without a session.
 const PUBLIC_JOIN_PREFIXES = ["/playlists/join/", "/groups/join/"];
 
+const CLOSED_BETA_OPEN_PATHS = ["/", CLOSED_BETA_PATH, BETA_ACCESS_API_PATH];
+
 export default function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
+
+  if (CLOSED_BETA_ENABLED && !hasBetaAccess(request.cookies.get(BETA_ACCESS_COOKIE)?.value)) {
+    return CLOSED_BETA_OPEN_PATHS.includes(pathname)
+      ? NextResponse.next()
+      : NextResponse.redirect(new URL(CLOSED_BETA_PATH, request.url));
+  }
 
   const isPublic =
     pathname === "/" ||
