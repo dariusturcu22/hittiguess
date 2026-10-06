@@ -9,7 +9,7 @@
 - Backend, core: Spring Boot (Java). Auth, playlist/song CRUD, game session, WebSocket/STOMP. Owns the database schema.
 - Backend, AI microservice: Python + FastAPI. Metadata pipeline, LLM synthesis, embeddings. Calls OpenAI directly.
 - Frontend: Next.js (TypeScript), deployed on Vercel.
-- Database: PostgreSQL + pgvector. Currently hosted on Supabase; migration target undecided, see docs/PROJECT_STATE.md.
+- Database: PostgreSQL + pgvector. Development data is on Supabase; production runs on two Neon projects, see docs/DECISIONS.md.
 - Hosting, backend: currently Fly.io, migrating away; target platform undecided, see docs/PROJECT_STATE.md.
 - Mobile: Flutter, deprioritized.
 
