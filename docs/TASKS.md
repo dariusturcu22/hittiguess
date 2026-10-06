@@ -337,12 +337,12 @@ Tests and validation:
 - [ ] Manual production test: two devices complete login, playlist import, a game, voice chat, DJ tab-audio sharing, reconnect, and results over HTTPS
 - [ ] Migration rehearsal: deploy the same images to an isolated Hetzner server and verify DNS cutover and rollback before Azure sustained-use migration is needed
 
-## Story 8: Beta Neon database provisioning
+## Story 8: Production Neon database provisioning
 
-Decision confirmed for Beta: Neon hosts both databases, replacing the earlier Supabase plan. New production projects replace the existing development data source. The transactional project carries the core schema and pgvector extension. The analytics project carries the independent event-store schema. The Free plan's automatic suspend and wake-up replaces Supabase's manual restore after a week of inactivity.
+Decision confirmed: Neon hosts both production databases, replacing the earlier Supabase plan. The app has one production deployment, and its closed-beta access gate is a phase of that deployment, not a separate environment. New production projects replace the existing development data source. The transactional project carries the core schema and pgvector extension. The analytics project carries the independent event-store schema. The Free plan's automatic suspend and wake-up replaces Supabase's manual restore after a week of inactivity.
 
-- [ ] Create the `hittiguess-beta-core` Neon project in the EU region closest to the Azure environment, with the `vector` extension enabled
-- [ ] Create the `hittiguess-beta-analytics` Neon project in the same region
+- [ ] Create the `hittiguess-core` Neon project in the EU region closest to the Azure environment, with the `vector` extension enabled
+- [ ] Create the `hittiguess-analytics` Neon project in the same region
 - [ ] Set production database credentials and TLS connection URLs for the Spring core and AI service, keeping the AI service limited to the transactional database
 - [ ] Run the core Flyway history against the new transactional project and verify the pgvector extension, schema, indexes, and migration history
 - [ ] Run the analytics Flyway history against the analytics project and verify its independent history and `analytics_events` table

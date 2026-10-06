@@ -8,7 +8,7 @@
 | Backend, AI microservice | Python + FastAPI | Metadata pipeline, LLM synthesis, embeddings. Calls OpenAI directly. |
 | Frontend | Next.js (TypeScript) | Dashboard, playlist/song management, game UI. Deployed on Vercel. |
 | Mobile | Flutter | Deprioritized. |
-| Database | PostgreSQL + pgvector | Development host: Supabase. Beta host: Neon, see [DECISIONS.md](DECISIONS.md). |
+| Database | PostgreSQL + pgvector | Development host: Supabase. Production host: Neon, see [DECISIONS.md](DECISIONS.md). |
 | Auth | OAuth2 + JWT | Refresh tokens, owned by the core service. |
 | Realtime | Spring STOMP/WebSocket | Game session sync, voice signaling, and text chat, core service. |
 | AI/LLM | OpenAI API | Called directly from the AI microservice, structured output through Pydantic. |
@@ -151,7 +151,7 @@ Bulk import mechanism: built, story 40. Two separate paths, an admin-only patien
 
 Beta runs the frontend on Vercel and both backend containers in one Azure Container Apps Consumption environment. The Spring core has external HTTPS and WebSocket ingress. The FastAPI AI service has internal-only ingress and is reached through the environment's service discovery. Both apps scale from zero, but the Spring core is capped at one replica until the STOMP broker, presence registries, and session caches move out of process.
 
-- Database: two new Neon projects are the beta data host. Neon suspends idle compute after five minutes and wakes it on the next query, so the Spring connection pool retires idle connections before Neon closes them. The transactional Postgres+pgvector project is shared by the core and AI services. A separate analytics Postgres project holds only append-heavy event data.
+- Database: two new Neon projects are the production data host. Neon suspends idle compute after five minutes and wakes it on the next query, so the Spring connection pool retires idle connections before Neon closes them. The transactional Postgres+pgvector project is shared by the core and AI services. A separate analytics Postgres project holds only append-heavy event data.
 - Frontend: Next.js on Vercel.
 - Cost guardrails: Consumption plan only, no Azure Database for PostgreSQL, virtual network, private endpoint, Container Registry, dedicated workload profile, or Azure log ingestion. Azure budget alerts trigger a shutdown workflow before the whole-deployment cost ceiling is reached.
 - Migration path: sustained Azure cost above the project's ceiling moves the two backend containers and reverse proxy to one fixed-price Hetzner server. Vercel and both Neon projects stay unchanged.
