@@ -44,6 +44,7 @@ import java.util.stream.Collectors;
 @Service
 public class CatalogSeedingService {
 
+    private static final String ENQUEUE_LOCK_KEY = "pending-import-enqueue";
     private static final Set<PendingImportStatus> ACTIVE_BACKLOG_STATUSES =
             Set.of(PendingImportStatus.PENDING, PendingImportStatus.PROCESSING);
     private static final Set<PendingImportOrigin> RECHECK_ORIGINS =
@@ -95,6 +96,8 @@ public class CatalogSeedingService {
 
     @Transactional
     public EnqueueResultDTO enqueue(Collection<String> submittedYoutubeIds) {
+        // Overlapping submissions would otherwise each see nothing queued and each queue every ID.
+        songRepository.acquireTransactionLock(ENQUEUE_LOCK_KEY);
         YoutubeIdLookupResult lookupResult = youtubeIdLookupService.partitionKnownAndUnknown(submittedYoutubeIds);
         Set<String> alreadyKnownIds = lookupResult.knownYoutubeIds();
         Set<String> candidateIds = lookupResult.unknownYoutubeIds();
