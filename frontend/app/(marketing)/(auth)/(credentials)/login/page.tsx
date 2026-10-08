@@ -20,9 +20,9 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 
-import { useLogin } from "@/hooks/generated/authentication-management/authentication-management";
+import { useLogin, useResendVerification } from "@/hooks/generated/authentication-management/authentication-management";
 import { LoginBody } from "@/hooks/zod/authentication-management/authentication-management";
-import { loginErrorMessage } from "@/lib/login-error";
+import { isEmailNotVerifiedError, loginErrorMessage, resendVerificationErrorMessage } from "@/lib/login-error";
 import { safeReturnToPath } from "@/lib/return-to";
 import { useRouter, useSearchParams } from "next/navigation";
 
@@ -58,14 +58,27 @@ function ReturnToCapture({ onCapture }: { onCapture: (returnTo: string | null) =
 export default function LoginPage() {
   const router = useRouter();
   const [returnTo, setReturnTo] = useState<string | null>(null);
+  const [unverifiedEmail, setUnverifiedEmail] = useState<string | null>(null);
 
   const { mutate, isPending } = useLogin({
     mutation: {
       onSuccess: () => {
         router.push(returnTo ?? "/playlists");
       },
-      onError: (error) => {
+      onError: (error, variables) => {
+        setUnverifiedEmail(isEmailNotVerifiedError(error) ? variables.data.email : null);
         toast.error(loginErrorMessage(error));
+      },
+    },
+  });
+
+  const { mutate: resendVerification, isPending: isResending } = useResendVerification({
+    mutation: {
+      onSuccess: () => {
+        toast.success("If that account still needs verifying, a new link is on its way.");
+      },
+      onError: (error) => {
+        toast.error(resendVerificationErrorMessage(error));
       },
     },
   });
@@ -80,6 +93,7 @@ export default function LoginPage() {
   });
 
   function onSubmit(values: LoginFormValues) {
+    setUnverifiedEmail(null);
     mutate({
       data: {
         email: values.email,
@@ -182,6 +196,21 @@ export default function LoginPage() {
             <Button type="submit" className="auth-submit w-full" disabled={isPending}>
               {isPending ? "Signing in..." : "Log in"}
             </Button>
+
+            {unverifiedEmail ? (
+              <div className="text-center text-[13px] text-muted-foreground" role="status">
+                <p>Your email isn&apos;t verified yet.</p>
+                <Button
+                  type="button"
+                  variant="link"
+                  className="h-auto p-0 text-[13px]"
+                  disabled={isResending}
+                  onClick={() => resendVerification({ data: { email: unverifiedEmail } })}
+                >
+                  {isResending ? "Sending..." : "Resend verification email"}
+                </Button>
+              </div>
+            ) : null}
           </div>
         </form>
       </Form>

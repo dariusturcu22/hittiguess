@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
 
-import { INVALID_LOGIN_MESSAGE, loginErrorMessage } from "./login-error";
+import {
+  INVALID_LOGIN_MESSAGE,
+  RESEND_FAILED_MESSAGE,
+  isEmailNotVerifiedError,
+  loginErrorMessage,
+  resendVerificationErrorMessage,
+} from "./login-error";
 
 const UNAUTHORIZED_STATUS = 401;
 const FORBIDDEN_STATUS = 403;
@@ -37,5 +43,29 @@ describe("loginErrorMessage", () => {
   it("falls back to the generic message when there is no response at all", () => {
     expect(loginErrorMessage(new Error("Network Error"))).toBe(INVALID_LOGIN_MESSAGE);
     expect(loginErrorMessage(undefined)).toBe(INVALID_LOGIN_MESSAGE);
+  });
+});
+
+describe("isEmailNotVerifiedError", () => {
+  it("recognises the unverified-account refusal", () => {
+    expect(isEmailNotVerifiedError(failedResponse(FORBIDDEN_STATUS, NOT_VERIFIED_MESSAGE))).toBe(true);
+  });
+
+  it("ignores other refusals, other statuses, and failures without a response", () => {
+    expect(isEmailNotVerifiedError(failedResponse(FORBIDDEN_STATUS, "Access denied"))).toBe(false);
+    expect(isEmailNotVerifiedError(failedResponse(UNAUTHORIZED_STATUS, NOT_VERIFIED_MESSAGE))).toBe(false);
+    expect(isEmailNotVerifiedError(failedResponse(FORBIDDEN_STATUS))).toBe(false);
+    expect(isEmailNotVerifiedError(new Error("Network Error"))).toBe(false);
+  });
+});
+
+describe("resendVerificationErrorMessage", () => {
+  it("shows the server's reason when resending is rate limited", () => {
+    expect(resendVerificationErrorMessage(failedResponse(TOO_MANY_REQUESTS_STATUS, LOCKED_MESSAGE))).toBe(LOCKED_MESSAGE);
+  });
+
+  it("uses a plain retry message for every other failure", () => {
+    expect(resendVerificationErrorMessage(failedResponse(SERVER_ERROR_STATUS, "Internal detail"))).toBe(RESEND_FAILED_MESSAGE);
+    expect(resendVerificationErrorMessage(new Error("Network Error"))).toBe(RESEND_FAILED_MESSAGE);
   });
 });
