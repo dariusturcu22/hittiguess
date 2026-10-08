@@ -1,14 +1,17 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import LoginPage from "./page";
 
-const { toastError } = vi.hoisted(() => ({ toastError: vi.fn() }));
+const { toastError, toastSuccess } = vi.hoisted(() => ({ toastError: vi.fn(), toastSuccess: vi.fn() }));
+const resendMutate = vi.fn();
 const loginMutate = vi.fn();
 const loginPush = vi.fn();
 let loginSearchParams = new URLSearchParams();
-let loginMutationCallbacks: { onSuccess?: (data: unknown) => void; onError?: (error: unknown) => void } = {};
+type LoginErrorHandler = (error: unknown, variables: { data: { email: string } }) => void;
+let loginMutationCallbacks: { onSuccess?: (data: unknown) => void; onError?: LoginErrorHandler } = {};
+let resendMutationCallbacks: { onSuccess?: () => void; onError?: (error: unknown) => void } = {};
 
 vi.mock("next/link", () => ({
   default: ({ children, href }: { children: ReactNode; href: string }) => <a href={href}>{children}</a>,
@@ -18,21 +21,28 @@ vi.mock("next/navigation", () => ({
   useSearchParams: () => loginSearchParams,
 }));
 vi.mock("@/hooks/generated/authentication-management/authentication-management", () => ({
-  useLogin: (options?: { mutation?: { onSuccess?: (data: unknown) => void; onError?: (error: unknown) => void } }) => {
+  useLogin: (options?: { mutation?: { onSuccess?: (data: unknown) => void; onError?: LoginErrorHandler } }) => {
     loginMutationCallbacks = options?.mutation ?? {};
     return { mutate: loginMutate, isPending: false };
   },
+  useResendVerification: (options?: { mutation?: { onSuccess?: () => void; onError?: (error: unknown) => void } }) => {
+    resendMutationCallbacks = options?.mutation ?? {};
+    return { mutate: resendMutate, isPending: false };
+  },
 }));
 
-vi.mock("sonner", () => ({ toast: { error: toastError } }));
+vi.mock("sonner", () => ({ toast: { error: toastError, success: toastSuccess } }));
 
 const FORBIDDEN_STATUS = 403;
 const UNAUTHORIZED_STATUS = 401;
 const NOT_VERIFIED_MESSAGE = "Email not verified, check your inbox for a verification link";
+const LOGIN_VARIABLES = { data: { email: "player@example.com" } };
 
 describe("LoginPage", () => {
   beforeEach(() => {
     toastError.mockReset();
+    toastSuccess.mockReset();
+    resendMutate.mockReset();
     loginMutate.mockReset();
     loginPush.mockReset();
     loginSearchParams = new URLSearchParams();
@@ -105,13 +115,43 @@ describe("LoginPage", () => {
 
   it("tells an unverified account why it cannot log in", () => {
     render(<LoginPage />);
-    loginMutationCallbacks.onError?.({ response: { status: FORBIDDEN_STATUS, data: { message: NOT_VERIFIED_MESSAGE } } });
+    loginMutationCallbacks.onError?.({ response: { status: FORBIDDEN_STATUS, data: { message: NOT_VERIFIED_MESSAGE } } }, LOGIN_VARIABLES);
     expect(toastError).toHaveBeenCalledWith(NOT_VERIFIED_MESSAGE);
   });
 
   it("keeps the generic message for wrong credentials", () => {
     render(<LoginPage />);
-    loginMutationCallbacks.onError?.({ response: { status: UNAUTHORIZED_STATUS, data: { message: "Invalid username or password" } } });
+    loginMutationCallbacks.onError?.({ response: { status: UNAUTHORIZED_STATUS, data: { message: "Invalid username or password" } } }, LOGIN_VARIABLES);
     expect(toastError).toHaveBeenCalledWith("Invalid email or password.");
+  });
+
+  it("offers to resend the verification email for an unverified account", () => {
+    render(<LoginPage />);
+    act(() => loginMutationCallbacks.onError?.({ response: { status: FORBIDDEN_STATUS, data: { message: NOT_VERIFIED_MESSAGE } } }, LOGIN_VARIABLES));
+    fireEvent.click(screen.getByRole("button", { name: "Resend verification email" }));
+    expect(resendMutate).toHaveBeenCalledWith({ data: { email: "player@example.com" } });
+  });
+
+  it("does not offer a resend for wrong credentials", () => {
+    render(<LoginPage />);
+    act(() => loginMutationCallbacks.onError?.({ response: { status: UNAUTHORIZED_STATUS, data: { message: "Invalid username or password" } } }, LOGIN_VARIABLES));
+    expect(screen.queryByRole("button", { name: "Resend verification email" })).toBeNull();
+  });
+
+  it("hides the resend option again when the next login attempt starts", async () => {
+    render(<LoginPage />);
+    act(() => loginMutationCallbacks.onError?.({ response: { status: FORBIDDEN_STATUS, data: { message: NOT_VERIFIED_MESSAGE } } }, LOGIN_VARIABLES));
+    fireEvent.change(screen.getByLabelText("Email"), { target: { value: "player@example.com" } });
+    fireEvent.change(document.querySelector('input[type="password"]')!, { target: { value: "CorrectHorseBatteryStaple1!" } });
+    fireEvent.click(screen.getByRole("button", { name: "Log in" }));
+    await waitFor(() => expect(screen.queryByRole("button", { name: "Resend verification email" })).toBeNull());
+  });
+
+  it("confirms a resend and reports a failed one", () => {
+    render(<LoginPage />);
+    act(() => resendMutationCallbacks.onSuccess?.());
+    expect(toastSuccess).toHaveBeenCalled();
+    act(() => resendMutationCallbacks.onError?.(new Error("Network Error")));
+    expect(toastError).toHaveBeenCalledWith("Couldn't send the email. Try again in a moment.");
   });
 });

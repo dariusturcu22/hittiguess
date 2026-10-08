@@ -474,15 +474,3 @@ Tests:
 
 - [x] The script parses, and its connection-string and secret helpers are checked against valid, pooled, malformed, and unsafe inputs
 - [ ] Deployment smoke test: HTTPS API traffic, a WSS STOMP connection, and a core-to-AI request succeed on the deployed apps
-
-## Login error reasons
-
-The login page showed "Invalid email or password." for every failed login, including an unverified account and a locked-out account, so a user could not tell why a correct password failed.
-
-- [x] Show the server's message on a 403 (email not verified) and a 429 (account locked or rate limited), and keep the generic message for wrong credentials and any other failure (`lib/login-error.ts`, `login/page.tsx`)
-- [ ] Offer to resend the verification email from the login page when the account is unverified
-
-Tests:
-
-- [x] Unit tests for the error message selection: wrong credentials, unverified, locked, a refusal with no readable reason, an unexpected server error, and no response
-- [x] Login page tests: an unverified account shows the server's reason and wrong credentials keep the generic message
