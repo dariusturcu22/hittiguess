@@ -315,18 +315,21 @@ Decision confirmed for Beta: Vercel continues to host the frontend. Azure Contai
 
 The current realtime architecture is deliberately single-replica. Spring's simple STOMP broker, socket presence registries, pending generation pools, and session-results cache are process-local. Scale at this stage means bounded admission of games on one tested core replica, not horizontal replication.
 
-- [ ] Create the dedicated Azure subscription, EU resource group, tags, and Consumption-only Container Apps environment with no VNet, private endpoint, dedicated workload profile, Azure Database, Container Registry, or Azure log-ingestion resource
-- [ ] Create subscription and resource-group monthly budgets, cost anomaly alerts, and an Action Group that notifies at $5 and $10 and shuts down both apps at $12 to preserve a buffer below the $20 whole-deployment ceiling
+- [x] Create the Azure subscription, the `hittiguess-rg` resource group in Germany West Central with tags, and the Consumption-only `hittiguess-env` Container Apps environment with no VNet, private endpoint, dedicated workload profile, Azure Database, or Container Registry
+- [ ] Review the Log Analytics workspace that Container Apps created automatically in `hittiguess-rg` against the no-log-ingestion rule: switch the environment off it or cap its ingestion and retention
+- [x] Create the `hittiguess-monthly` subscription budget of $20 with email alerts at $5, $10, $12, and $20 actual spend and at $20 forecast spend
+- [ ] Add cost anomaly alerts, a resource-group budget, and an Action Group that shuts down both apps at $12 to preserve a buffer below the $20 whole-deployment ceiling
 - [x] Build the Spring core production image: multi-stage Dockerfile with a cached dependency layer, a non-root user, and container-aware heap sizing; `application-prod.properties` enables graceful shutdown and health probes, and `/actuator/health/**` is public for platform probes
-- [ ] Create the FastAPI AI service container definition (no Dockerfile exists yet)
+- [x] Create the FastAPI AI service container definition (`ai/Dockerfile`)
 - [ ] Set explicit CPU and memory limits for both services, validated under load before the values are committed
-- [ ] Serve the core API from a subdomain of hittiguess.com and set the auth cookies' `Domain` to the shared parent. `session_hint` is set by the backend, and the frontend's `proxy.ts` can only read it when the cookie is sent to the frontend's own host, which a separate `azurecontainerapps.io` API host never does
-- [ ] Configure the Spring core Container App with external HTTPS and WebSocket ingress, a managed Azure domain before any custom domain, `minReplicas: 0`, `maxReplicas: 1`, and single active revision routing
-- [ ] Configure the FastAPI Container App with internal-only ingress, `minReplicas: 0`, `maxReplicas: 1`, and the core app's internal service-discovery URL
-- [ ] Build commit-SHA-tagged backend images in GitHub Actions, publish them to GitHub Container Registry, and deploy them through Azure OpenID Connect federation without a long-lived Azure credential
-- [ ] Configure Container Apps secrets for database connections, authentication, OAuth, email, YouTube, OpenAI, DeepInfra, Cloudflare TURN, Grafana, and Sentry; no secret may enter a repository file, image layer, or workflow log
-- [ ] Configure production Spring settings: `APP_ENV=prod`, frontend URL and allowed origins, secure cookies, OAuth redirect URI, production API URL, and internal AI-service URL
-- [ ] Configure Vercel production environment variables with the Azure core HTTPS URL and verify the derived WebSocket URL is WSS
+- [x] Serve the core API from `api.hittiguess.com` with a managed certificate and set the auth cookies' `Domain` to `hittiguess.com`, so the frontend's `proxy.ts` can read the `session_hint` cookie the backend sets
+- [x] Configure the Spring core Container App with external HTTPS and WebSocket ingress, `minReplicas: 0`, `maxReplicas: 1`, and single active revision routing; WebSocket traffic is not yet exercised against it
+- [x] Configure the FastAPI Container App with internal-only ingress, `minReplicas: 0`, `maxReplicas: 1`, and the core app's internal service-discovery URL
+- [x] Build commit-SHA-tagged backend images in GitHub Actions, publish them to GitHub Container Registry, and deploy them through Azure OpenID Connect federation without a long-lived Azure credential
+- [x] Configure Container Apps secrets for the database connections, authentication, OAuth, email, YouTube, OpenAI, DeepInfra, and Discogs values; none entered a repository file, image layer, or workflow log
+- [ ] Configure Container Apps secrets for Cloudflare TURN, Grafana, and Sentry
+- [x] Configure production Spring settings: `APP_ENV=prod`, frontend URL and allowed origins, secure cookies, the cookie domain, and the internal AI-service URL
+- [x] Configure `NEXT_PUBLIC_API_URL` in Vercel with `https://api.hittiguess.com`; the Content-Security-Policy on the deployed frontend allows `https` and `wss` for that origin
 - [ ] Adapt Grafana Alloy's local Docker scrape configuration to the deployed environment, import the existing Grafana dashboard, configure production uptime monitoring against the public core health endpoint, and keep Sentry enabled
 - [ ] Add a configurable active-game admission limit derived from a production-like load test, with a clear busy response when the tested capacity is reached
 - [ ] Document the Hetzner migration runbook: provision one fixed-price EU server, deploy the same two images plus reverse proxy, move the backend DNS record, validate, then delete Azure resources
@@ -345,11 +348,11 @@ Tests and validation:
 
 Decision confirmed: Neon hosts both production databases, replacing the earlier Supabase plan. The app has one production deployment, and its closed-beta access gate is a phase of that deployment, not a separate environment. New production projects replace the existing development data source. The transactional project carries the core schema and pgvector extension. The analytics project carries the independent event-store schema. The Free plan's automatic suspend and wake-up replaces Supabase's manual restore after a week of inactivity.
 
-- [ ] Create the `hittiguess-core` Neon project in the EU region closest to the Azure environment, with the `vector` extension enabled
-- [ ] Create the `hittiguess-analytics` Neon project in the same region
-- [ ] Set production database credentials and TLS connection URLs for the Spring core and AI service, keeping the AI service limited to the transactional database
-- [ ] Run the core Flyway history against the new transactional project and verify the pgvector extension, schema, indexes, and migration history
-- [ ] Run the analytics Flyway history against the analytics project and verify its independent history and `analytics_events` table
+- [x] Create the `hittiguess-core` Neon project in an EU region with the `vector` extension enabled
+- [x] Create the `hittiguess-analytics` Neon project in the same region
+- [x] Set production database credentials and TLS connection URLs as Container Apps secrets for the Spring core and AI service, with the AI service limited to the transactional database
+- [ ] Verify the core Flyway history on the new transactional project: the migrations ran on the core app's first start and the public ground-truth endpoint reads the database, but the extension, indexes, and migration history count are not yet inspected directly
+- [ ] Verify the analytics Flyway history: the migration ran on the core app's first start; its independent history and `analytics_events` table are not yet inspected directly
 - [ ] Decide and perform a controlled catalog-only data import if existing real songs should enter Beta; local test accounts, development credentials, and test-only data do not transfer
 - [ ] Configure Neon Free-plan storage and compute usage notifications, document a `pg_dump` backup export procedure, and keep the spending limit enabled if an upgrade is later approved
 - [ ] Verify the Spring connection pools survive Neon's five-minute idle suspend: the group-expiry sweeper queries every minute while the container runs, so connections should stay live, and the container scales to zero with the database; confirm with a real idle period and add pool settings (`max-lifetime`, keepalive) only if the first request after a suspend fails
@@ -429,8 +432,8 @@ Tests:
 The frontend runs on hittiguess.com and the core API will run on a sibling subdomain. The backend sets `session_hint`, which the frontend's `proxy.ts` reads, so every auth cookie needs a shared parent domain to reach both hosts. `COOKIE_DOMAIN` sets it; unset, cookies stay host-only as in development.
 
 - [x] Add `app.cookie-domain` (from `COOKIE_DOMAIN`) and apply it to every cookie `CookieUtil` creates, including deletions so a browser removes the same cookie
-- [ ] Create the core API's custom domain (for example `api.hittiguess.com`) on the Azure Container App and set `COOKIE_DOMAIN=hittiguess.com` in its production configuration
-- [ ] Add the API subdomain to the frontend's `NEXT_PUBLIC_API_URL` in Vercel and to the Content-Security-Policy through that variable
+- [x] Create the core API's custom domain `api.hittiguess.com` on the Azure Container App and set `COOKIE_DOMAIN=hittiguess.com` in its production configuration
+- [x] Add the API subdomain to the frontend's `NEXT_PUBLIC_API_URL` in Vercel and to the Content-Security-Policy through that variable
 
 Tests:
 
@@ -442,27 +445,28 @@ Tests:
 `.github/workflows/deploy-backend.yml` runs on pushes to `dev` that touch `backend/`, `ai/`, or the workflow itself, and on manual dispatch. It runs both image smoke tests, publishes the core and AI images to GitHub Container Registry tagged with the commit SHA and `latest`, and updates the two Container Apps to the new SHA. The deploy job is skipped until the `AZURE_CLIENT_ID` repository variable exists, so the workflow can merge before Azure is wired up.
 
 - [x] Add the workflow with the smoke-test, publish, and deploy jobs; the deploy job uses OpenID Connect through `azure/login` and the `production` environment, with no stored Azure credential
-- [ ] Create the Azure app registration with a federated credential for the `production` environment of this repository and the Contributor role on `hittiguess-rg`, then set the `AZURE_CLIENT_ID`, `AZURE_TENANT_ID`, and `AZURE_SUBSCRIPTION_ID` repository variables
-- [ ] Make the two published GHCR packages public after the first publish so Container Apps can pull them without a registry credential
-- [ ] Create the `hittiguess-core` and `hittiguess-ai` Container Apps, which the deploy job updates but does not create
+- [x] Create the `hittiguess-github-deploy` Azure app registration with a federated credential for the `production` environment and the Contributor role on `hittiguess-rg`, and set the `AZURE_CLIENT_ID`, `AZURE_TENANT_ID`, and `AZURE_SUBSCRIPTION_ID` repository variables; the credential subject uses GitHub's immutable form with the owner and repository IDs (`repo:dariusturcu22@39344694/hittiguess@1156579634:environment:production`), which the repository's OIDC settings require
+- [x] Make the two published GHCR packages public so Container Apps can pull them without a registry credential
+- [x] Create the `hittiguess-core` and `hittiguess-ai` Container Apps, which the deploy job updates but does not create
 - [ ] Optionally add required reviewers to the `production` environment so a deploy waits for approval
 
 Tests:
 
 - [x] The workflow passes `actionlint`
-- [ ] First end-to-end run: smoke tests pass, both images appear in GHCR, and the deploy job moves each Container App to the new SHA
+- [x] First end-to-end run: smoke tests pass, both images appear in GHCR, and the deploy job moves each Container App to the new SHA
 
 ## Container Apps creation
 
 `scripts/azure/create-container-apps.ps1` creates the `hittiguess-ai` app (internal ingress, port 8000) and the `hittiguess-core` app (external ingress, port 8080) in `hittiguess-rg`, each at 0 to 1 replicas, from the public GHCR images. It prompts for every secret with hidden input, generates the JWT signing secret and the internal service key locally, stores everything as Container Apps secrets, and prints no secret. Initial limits are 0.5 vCPU and 1 GiB for the AI app and 1 vCPU and 2 GiB for the core app, provisional until the load test.
 
 - [x] Add the creation script with Neon connection-string parsing that rejects pooled hosts, and secret-safe character validation
-- [ ] Create the Google OAuth client for the hittiguess account with the redirect URI `https://api.hittiguess.com/login/oauth2/code/google`, a new YouTube Data API key, and a Resend account with an API key
+- [x] Create the Google OAuth client for the hittiguess account, a new YouTube Data API key, and a Resend API key, stored as Container Apps secrets
+- [ ] Confirm a real Google login completes: the OAuth client's redirect URI is `https://api.hittiguess.com/login/oauth2/code/google`
 - [ ] Verify the hittiguess.com sending domain in Resend and set `EMAIL_FROM_ADDRESS` to an address on it; the shared `onboarding@resend.dev` sender only delivers to the Resend account owner
-- [ ] Run the script, then confirm `/actuator/health/readiness` on the core app's Azure address answers 200
+- [x] Run the script, then confirm `/actuator/health/readiness` on the core app answers 200
 - [ ] Add HTTP liveness and readiness probes to both apps, which `az containerapp create` cannot set
-- [ ] Add `api.hittiguess.com` to the core app with a managed certificate and set `NEXT_PUBLIC_API_URL` in Vercel
-- [ ] Set the `AZURE_CLIENT_ID`, `AZURE_TENANT_ID`, and `AZURE_SUBSCRIPTION_ID` repository variables once both apps exist
+- [x] Add `api.hittiguess.com` to the core app with a managed certificate and set `NEXT_PUBLIC_API_URL` in Vercel
+- [x] Set the `AZURE_CLIENT_ID`, `AZURE_TENANT_ID`, and `AZURE_SUBSCRIPTION_ID` repository variables once both apps exist
 
 Tests:
 
