@@ -54,6 +54,9 @@ public class SecurityConfig {
     private final ObjectMapper objectMapper;
     private final List<String> allowedFrontendOrigins;
 
+    @Value("${app.cookie-domain:}")
+    private String cookieDomain = "";
+
     public SecurityConfig(
             JwtAuthenticationFilter jwtAuthenticationFilter,
             RateLimitingFilter rateLimitingFilter,
@@ -78,6 +81,16 @@ public class SecurityConfig {
         this.allowedFrontendOrigins = allowedFrontendOrigins;
     }
 
+    // The frontend reads this cookie from document.cookie to echo it as a header, so on a
+    // sibling subdomain it must carry the shared parent domain, or the browser hides it.
+    CookieCsrfTokenRepository csrfTokenRepository() {
+        CookieCsrfTokenRepository csrfTokenRepository = CookieCsrfTokenRepository.withHttpOnlyFalse();
+        if (!cookieDomain.isBlank()) {
+            csrfTokenRepository.setCookieCustomizer(cookie -> cookie.domain(cookieDomain));
+        }
+        return csrfTokenRepository;
+    }
+
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         CsrfTokenRequestAttributeHandler csrfHandler = new CsrfTokenRequestAttributeHandler();
@@ -85,7 +98,7 @@ public class SecurityConfig {
 
         return http
                 .csrf(csrf -> csrf
-                        .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
+                        .csrfTokenRepository(csrfTokenRepository())
                         .csrfTokenRequestHandler(csrfHandler)
                         // Only the /auth endpoints reached before a session exists skip CSRF.
                         // The ones acting on the signed-in account (2FA setup, confirm,
