@@ -434,10 +434,12 @@ The frontend runs on hittiguess.com and the core API will run on a sibling subdo
 - [x] Add `app.cookie-domain` (from `COOKIE_DOMAIN`) and apply it to every cookie `CookieUtil` creates, including deletions so a browser removes the same cookie
 - [x] Create the core API's custom domain `api.hittiguess.com` on the Azure Container App and set `COOKIE_DOMAIN=hittiguess.com` in its production configuration
 - [x] Add the API subdomain to the frontend's `NEXT_PUBLIC_API_URL` in Vercel and to the Content-Security-Policy through that variable
+- [x] Give the `XSRF-TOKEN` CSRF cookie the shared parent domain when `COOKIE_DOMAIN` is set; the frontend reads it from `document.cookie` to send the `X-XSRF-TOKEN` header, and a host-only cookie on the API subdomain is hidden from it, so every state-changing request such as logout failed with 403
 
 Tests:
 
 - [x] Unit tests for `CookieUtil`: host-only without a domain, the configured domain on all three auth cookies, deletion using the same domain, and the other cookie attributes unchanged
+- [x] Unit tests for the CSRF cookie: host-only without a domain, the shared parent domain and a script-readable cookie with one
 - [ ] Manual production test: log in on hittiguess.com and confirm `proxy.ts` sees `session_hint` on a protected route
 
 ## Backend deploy workflow
