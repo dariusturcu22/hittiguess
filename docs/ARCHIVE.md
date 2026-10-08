@@ -1856,3 +1856,16 @@ The deferred analytics consent notice is tracked under story 34 in TASKS.md.
 - [x] Trim completed roadmap history and resolved project-state questions while preserving references
 - [x] Reconcile the implementation-backed release-playtest items without closing live acceptance gates
 - [x] Validate checkbox preservation, archive eligibility, links, and the scoped documentation diff
+
+## Login error reasons
+
+The login page showed "Invalid email or password." for every failed login, including an unverified account and a locked-out account, so a user could not tell why a correct password failed.
+
+- [x] Show the server's message on a 403 (email not verified) and a 429 (account locked or rate limited), and keep the generic message for wrong credentials and any other failure (`lib/login-error.ts`, `login/page.tsx`)
+- [x] Offer to resend the verification email from the login page when the account is unverified, with a confirmation that does not reveal whether the account exists and the server's message when resending is rate limited
+
+Tests:
+
+- [x] Unit tests for the error message selection: wrong credentials, unverified, locked, a refusal with no readable reason, an unexpected server error, and no response
+- [x] Login page tests: an unverified account shows the server's reason and wrong credentials keep the generic message
+- [x] Login page tests: the resend option appears only for an unverified account, calls the resend request with that email, clears on the next attempt, and reports success and failure
