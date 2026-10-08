@@ -40,6 +40,7 @@ $PooledHostMarker = "-pooler"
 $DefaultPostgresPort = 5432
 $SafeValuePattern = '^[A-Za-z0-9_.~=+/:@?-]+$'
 $SafePasswordPattern = '^[A-Za-z0-9_.~-]+$'
+$SafeNamePattern = '^[A-Za-z0-9_.-]+$'
 $NotFoundPattern = 'ResourceNotFound|ResourceGroupNotFound|was not found|could not be found|does not exist'
 
 function Get-AzureCli {
@@ -76,13 +77,13 @@ function Test-ContainerAppExists {
 }
 
 function Read-SecretText {
-    param([string]$Prompt)
+    param([string]$Prompt, [switch]$AnyCharacters)
     $secure = Read-Host -Prompt $Prompt -AsSecureString
     $pointer = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($secure)
     try { $text = [Runtime.InteropServices.Marshal]::PtrToStringBSTR($pointer) }
     finally { [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($pointer) }
     if ([string]::IsNullOrWhiteSpace($text)) { throw "$Prompt was empty." }
-    if ($text -notmatch $SafeValuePattern) {
+    if (-not $AnyCharacters -and $text -notmatch $SafeValuePattern) {
         throw "$Prompt contains characters this script does not pass to the Azure CLI. Regenerate it or set it in the Azure portal."
     }
     return $text.Trim()
@@ -113,6 +114,9 @@ function ConvertFrom-NeonUrl {
     }
     $port = if ($uri.Port -gt 0) { $uri.Port } else { $DefaultPostgresPort }
     $database = $uri.AbsolutePath.TrimStart("/")
+    foreach ($part in @($uri.Host, $username, $database)) {
+        if ($part -notmatch $SafeNamePattern) { throw "$Label has a host, user, or database name with unexpected characters." }
+    }
     return [pscustomobject]@{
         JdbcUrl  = "jdbc:postgresql://$($uri.Host):$port/${database}?sslmode=require"
         Url      = "postgresql://${username}:${password}@$($uri.Host):$port/${database}?sslmode=require"
@@ -153,8 +157,8 @@ foreach ($appName in @($AiAppName, $CoreAppName)) {
 }
 
 Write-Host "`nPaste each value when prompted. Input is hidden."
-$coreDatabase = ConvertFrom-NeonUrl (Read-SecretText "Neon DIRECT connection string for hittiguess-core") "The core connection string"
-$analyticsDatabase = ConvertFrom-NeonUrl (Read-SecretText "Neon DIRECT connection string for hittiguess-analytics") "The analytics connection string"
+$coreDatabase = ConvertFrom-NeonUrl (Read-SecretText "Neon DIRECT connection string for hittiguess-core" -AnyCharacters) "The core connection string"
+$analyticsDatabase = ConvertFrom-NeonUrl (Read-SecretText "Neon DIRECT connection string for hittiguess-analytics" -AnyCharacters) "The analytics connection string"
 $openAiKey = Read-SecretText "OpenAI API key"
 $deepInfraKey = Read-SecretText "DeepInfra API key"
 $youTubeKey = Read-SecretText "YouTube Data API key"
