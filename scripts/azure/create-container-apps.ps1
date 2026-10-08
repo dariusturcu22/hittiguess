@@ -40,6 +40,7 @@ $PooledHostMarker = "-pooler"
 $DefaultPostgresPort = 5432
 $SafeValuePattern = '^[A-Za-z0-9_.~=+/:@?-]+$'
 $SafePasswordPattern = '^[A-Za-z0-9_.~-]+$'
+$NotFoundPattern = 'ResourceNotFound|ResourceGroupNotFound|was not found|could not be found|does not exist'
 
 function Get-AzureCli {
     $command = Get-Command az.cmd -ErrorAction SilentlyContinue
@@ -47,6 +48,31 @@ function Get-AzureCli {
     $installed = "C:\Program Files\Microsoft SDKs\Azure\CLI2\wbin\az.cmd"
     if (Test-Path $installed) { return $installed }
     throw "The Azure CLI was not found. Install it with: winget install -e --id Microsoft.AzureCLI"
+}
+
+function Invoke-AzureCapture {
+    param([string]$AzureCli, [string[]]$Arguments)
+    $errorFile = [IO.Path]::GetTempFileName()
+    $previousPreference = $ErrorActionPreference
+    $ErrorActionPreference = "Continue"
+    try {
+        $output = & $AzureCli @Arguments --only-show-errors 2>$errorFile
+        $exitCode = $LASTEXITCODE
+        $errorText = (Get-Content -Raw -Path $errorFile -ErrorAction SilentlyContinue)
+        return [pscustomobject]@{ ExitCode = $exitCode; Output = (($output | Out-String).Trim()); Error = "$errorText".Trim() }
+    }
+    finally {
+        $ErrorActionPreference = $previousPreference
+        Remove-Item -Path $errorFile -ErrorAction SilentlyContinue
+    }
+}
+
+function Test-ContainerAppExists {
+    param([string]$AzureCli, [string]$Name, [string]$ResourceGroupName)
+    $result = Invoke-AzureCapture $AzureCli @("containerapp", "show", "--name", $Name, "--resource-group", $ResourceGroupName, "--query", "name", "-o", "tsv")
+    if ($result.ExitCode -eq 0) { return $true }
+    if ($result.Error -match $NotFoundPattern) { return $false }
+    throw "Could not check whether $Name exists: $($result.Error)"
 }
 
 function Read-SecretText {
@@ -101,19 +127,29 @@ if ($MyInvocation.InvocationName -eq ".") { return }
 $az = Get-AzureCli
 
 function Invoke-Az {
-    & $az @args --only-show-errors
-    if ($LASTEXITCODE -ne 0) { throw "az $($args[0..1] -join ' ') failed." }
+    $previousPreference = $ErrorActionPreference
+    $ErrorActionPreference = "Continue"
+    try {
+        & $az @args --only-show-errors
+        if ($LASTEXITCODE -ne 0) { throw "az $($args[0..1] -join ' ') failed." }
+    }
+    finally { $ErrorActionPreference = $previousPreference }
 }
 
-$subscriptionName = & $az account show --query name -o tsv 2>$null
-if ($LASTEXITCODE -ne 0) { throw "Not signed in. Run: az login" }
-Write-Host "Subscription: $subscriptionName"
+$account = Invoke-AzureCapture $az @("account", "show", "--query", "name", "-o", "tsv")
+if ($account.ExitCode -ne 0) { throw "Not signed in. Run: az login" }
+$session = Invoke-AzureCapture $az @("group", "show", "--name", $ResourceGroup, "--query", "name", "-o", "tsv")
+if ($session.ExitCode -ne 0) {
+    throw "Azure rejected the request, usually an expired login. Run 'az login', then run this script again. Details: $($session.Error)"
+}
+Write-Host "Subscription: $($account.Output)"
 Write-Host "Resource group: $ResourceGroup, environment: $EnvironmentName"
 if ((Read-Host "Create the two Container Apps here? (y/N)") -ne "y") { return }
 
 foreach ($appName in @($AiAppName, $CoreAppName)) {
-    & $az containerapp show --name $appName --resource-group $ResourceGroup --query name -o tsv 2>$null | Out-Null
-    if ($LASTEXITCODE -eq 0) { throw "$appName already exists. This script only creates; update it with 'az containerapp update'." }
+    if (Test-ContainerAppExists $az $appName $ResourceGroup) {
+        throw "$appName already exists. This script only creates; update it with 'az containerapp update'."
+    }
 }
 
 Write-Host "`nPaste each value when prompted. Input is hidden."
@@ -144,8 +180,9 @@ Invoke-Az containerapp create --name $AiAppName --resource-group $ResourceGroup 
         "INTERNAL_SERVICE_API_KEY=secretref:internal-service-api-key" "DATABASE_URL=secretref:database-url" `
     -o none
 
-$aiHost = & $az containerapp show --name $AiAppName --resource-group $ResourceGroup --query properties.configuration.ingress.fqdn -o tsv
-if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($aiHost)) { throw "Could not read the AI app's internal address." }
+$aiAddress = Invoke-AzureCapture $az @("containerapp", "show", "--name", $AiAppName, "--resource-group", $ResourceGroup, "--query", "properties.configuration.ingress.fqdn", "-o", "tsv")
+$aiHost = $aiAddress.Output
+if ($aiAddress.ExitCode -ne 0 -or [string]::IsNullOrWhiteSpace($aiHost)) { throw "Could not read the AI app's internal address." }
 
 Write-Host "Creating $CoreAppName (external HTTPS and WebSocket ingress)..."
 Invoke-Az containerapp create --name $CoreAppName --resource-group $ResourceGroup --environment $EnvironmentName `
@@ -167,7 +204,7 @@ Invoke-Az containerapp create --name $CoreAppName --resource-group $ResourceGrou
         "RESEND_API_KEY=secretref:resend-api-key" `
     -o none
 
-$coreHost = & $az containerapp show --name $CoreAppName --resource-group $ResourceGroup --query properties.configuration.ingress.fqdn -o tsv
+$coreHost = (Invoke-AzureCapture $az @("containerapp", "show", "--name", $CoreAppName, "--resource-group", $ResourceGroup, "--query", "properties.configuration.ingress.fqdn", "-o", "tsv")).Output
 Write-Host "`nDone. Secrets were stored in Container Apps and not printed."
 Write-Host "Core app address: https://$coreHost"
 Write-Host "AI app address (internal only): https://$aiHost"
