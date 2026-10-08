@@ -22,6 +22,7 @@ import {
 
 import { useLogin } from "@/hooks/generated/authentication-management/authentication-management";
 import { LoginBody } from "@/hooks/zod/authentication-management/authentication-management";
+import { loginErrorMessage } from "@/lib/login-error";
 import { safeReturnToPath } from "@/lib/return-to";
 import { useRouter, useSearchParams } from "next/navigation";
 
@@ -63,8 +64,8 @@ export default function LoginPage() {
       onSuccess: () => {
         router.push(returnTo ?? "/playlists");
       },
-      onError: () => {
-        toast.error("Invalid email or password.");
+      onError: (error) => {
+        toast.error(loginErrorMessage(error));
       },
     },
   });
