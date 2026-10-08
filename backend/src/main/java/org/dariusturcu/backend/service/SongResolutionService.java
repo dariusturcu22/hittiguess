@@ -34,6 +34,7 @@ public class SongResolutionService {
 
     private static final String SUCCESS_STATUS = "SUCCESS";
     private static final int MAIN_ARTIST_DISPLAY_ORDER_START = 0;
+    private static final String SONG_LOCK_KEY_PREFIX = "song-youtube-id:";
     private static final String FAST_TIER_REASONING =
             "Provisional fast-tier answer from one source, queued for the patient pipeline to recheck.";
 
@@ -75,6 +76,9 @@ public class SongResolutionService {
     }
 
     private Song persistResolvedSong(String youtubeId, SongMetadataResponse metadata, User addedBy) {
+        // Two resolutions of one video (the backlog drain and an on-the-spot import) would
+        // otherwise both find no row and each insert one, since the column has no unique key.
+        songRepository.acquireTransactionLock(SONG_LOCK_KEY_PREFIX + youtubeId);
         List<Song> existingSongs = songRepository.findByYoutubeId(youtubeId);
         Song song = existingSongs.isEmpty() ? new Song() : existingSongs.get(0);
 

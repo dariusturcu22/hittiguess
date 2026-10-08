@@ -474,3 +474,16 @@ Tests:
 
 - [x] The script parses, and its connection-string and secret helpers are checked against valid, pooled, malformed, and unsafe inputs
 - [ ] Deployment smoke test: HTTPS API traffic, a WSS STOMP connection, and a core-to-AI request succeed on the deployed apps
+
+## Catalog seeding concurrency
+
+Neither `songs.youtube_id` nor the pending-imports table has a uniqueness rule, and both the song save and the enqueue checked for an existing row before inserting. Simultaneous work on one video therefore created duplicates: six overlapping enqueues of the same 25 videos queued 150 rows, and six simultaneous resolutions of one video saved six song rows. Each song already commits when its own backlog item finishes, so the rest of a playlist never holds it back.
+
+- [x] Serialize saves of one YouTube ID and enqueue calls with a Postgres advisory lock held to the end of the transaction (`SongRepository.acquireTransactionLock`, used by `SongResolutionService` and `CatalogSeedingService`), which also holds across replicas
+- [ ] Add a unique index on `songs(youtube_id)` and a partial unique index on active `pending_imports` rows once any existing duplicate rows have been merged, so the database enforces what the lock currently guarantees
+
+Tests:
+
+- [x] Integration test: a song is visible in the database while the next item of the same backlog is still being resolved
+- [x] Integration test: six simultaneous resolutions of one video leave one song row
+- [x] Integration test: six overlapping enqueues of the same videos queue each video once

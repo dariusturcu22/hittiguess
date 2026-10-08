@@ -15,6 +15,11 @@ public interface SongRepository extends JpaRepository<Song, Long> {
 
     List<Song> findByYoutubeId(String youtubeId);
 
+    // Holds a Postgres advisory lock until the surrounding transaction ends, so work keyed on
+    // the same string runs one transaction at a time, here and across replicas.
+    @Query(value = "select 1 from (select pg_advisory_xact_lock(hashtext(:lockKey))) as acquired", nativeQuery = true)
+    int acquireTransactionLock(@Param("lockKey") String lockKey);
+
     List<Song> findByYoutubeIdIn(Collection<String> youtubeIds);
 
     List<Song> findByVerificationStatus(VerificationStatus verificationStatus);
