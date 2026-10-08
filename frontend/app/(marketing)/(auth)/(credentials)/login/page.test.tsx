@@ -4,10 +4,11 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import LoginPage from "./page";
 
+const { toastError } = vi.hoisted(() => ({ toastError: vi.fn() }));
 const loginMutate = vi.fn();
 const loginPush = vi.fn();
 let loginSearchParams = new URLSearchParams();
-let loginMutationCallbacks: { onSuccess?: (data: unknown) => void } = {};
+let loginMutationCallbacks: { onSuccess?: (data: unknown) => void; onError?: (error: unknown) => void } = {};
 
 vi.mock("next/link", () => ({
   default: ({ children, href }: { children: ReactNode; href: string }) => <a href={href}>{children}</a>,
@@ -17,14 +18,21 @@ vi.mock("next/navigation", () => ({
   useSearchParams: () => loginSearchParams,
 }));
 vi.mock("@/hooks/generated/authentication-management/authentication-management", () => ({
-  useLogin: (options?: { mutation?: { onSuccess?: (data: unknown) => void } }) => {
+  useLogin: (options?: { mutation?: { onSuccess?: (data: unknown) => void; onError?: (error: unknown) => void } }) => {
     loginMutationCallbacks = options?.mutation ?? {};
     return { mutate: loginMutate, isPending: false };
   },
 }));
 
+vi.mock("sonner", () => ({ toast: { error: toastError } }));
+
+const FORBIDDEN_STATUS = 403;
+const UNAUTHORIZED_STATUS = 401;
+const NOT_VERIFIED_MESSAGE = "Email not verified, check your inbox for a verification link";
+
 describe("LoginPage", () => {
   beforeEach(() => {
+    toastError.mockReset();
     loginMutate.mockReset();
     loginPush.mockReset();
     loginSearchParams = new URLSearchParams();
@@ -93,5 +101,17 @@ describe("LoginPage", () => {
       "href",
       expect.not.stringContaining("returnTo"),
     );
+  });
+
+  it("tells an unverified account why it cannot log in", () => {
+    render(<LoginPage />);
+    loginMutationCallbacks.onError?.({ response: { status: FORBIDDEN_STATUS, data: { message: NOT_VERIFIED_MESSAGE } } });
+    expect(toastError).toHaveBeenCalledWith(NOT_VERIFIED_MESSAGE);
+  });
+
+  it("keeps the generic message for wrong credentials", () => {
+    render(<LoginPage />);
+    loginMutationCallbacks.onError?.({ response: { status: UNAUTHORIZED_STATUS, data: { message: "Invalid username or password" } } });
+    expect(toastError).toHaveBeenCalledWith("Invalid email or password.");
   });
 });
