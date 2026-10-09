@@ -124,6 +124,15 @@ Tests:
 
 ## Story 28: UI redesign
 
+### Deferred account and legal requirements
+
+These requirements remain wanted but are deferred. Their detailed scope and tests need review before feature work starts; the completed backend endpoints and legal drafts do not complete the frontend work.
+
+- [ ] Define and build privacy/terms pages and working profile/settings account correction, deletion, and export controls
+- [ ] Define statistics data dependencies and replace placeholder counts with agreed behavior
+- [ ] Update provider disclosures, stored-data inventory, retention wording, and intended personal-export scope
+- [ ] Define and add account-action permission/failure tests, legal-route tests, and statistics/disclosure validation with the implementation batch
+
 Checked against real code: the frontend covers auth, landing, playlist/song CRUD, imports, admin views, group lobby, game session, chat/voice shell, away widget, DJ link-out, and results export. Batches A through E are implemented and wired to generated hooks and realtime clients. The remaining unchecked items below are open import states, visual/state coverage, accessibility, and broader route smoke coverage.
 
 Scope decided: one unified redesign pass covering both the existing pages and the gameplay screens, not two separate efforts. A fresh visual direction, not constrained to the current shadcn/Tailwind theme tokens, though the underlying component library stays unless a specific component doesn't hold up under the new direction. Mockups were built as a multi-artboard canvas via the `design` skill and reviewed before implementation.
@@ -508,3 +517,19 @@ The AI service's HTTP client logs every outgoing request URL, and the YouTube AP
 Tests:
 
 - [x] Unit tests for the redaction: one parameter, every known parameter name, lookalike parameters left alone, the JSON formatter's message and exception text, and the filter on a record with format arguments
+
+## Playlist metadata and lobby controls
+
+The approved review keeps later library, explore, playlist-detail, and lobby improvements. Updated mockups become the visual reference for those requirements. Account and legal-page work remains deferred to a later batch.
+
+- [x] Update the design authority rule and screen requirements for approved filters, actions, member popup, import menu, and lobby picker states
+- [x] Persist playlist creation timestamps and official YouTube song durations, expose them through API contracts, and render unavailable states for legacy records
+- [x] Add group-admin transfer with confirmation, permission refresh, and failure feedback
+- [x] Update dark/light design sources and the published canvas for library, explore, playlist detail, and lobby states
+- [x] Add backend and AI tests for timestamp/duration persistence and API fields, including unavailable metadata
+- [x] Add frontend tests for data display, admin-transfer permissions/failures, and affected filter/menu/picker interactions
+- [x] Run relevant suites and rendered desktop comparisons in both themes against the updated mockups; only the landing page has mobile design scope
+- [x] Record reviewed audit findings and deferred account/legal scope
+- [ ] Open the pull request and archive the completed tasks
+
+Validation: 124 backend tests, 38 AI tests, 54 frontend tests, TypeScript checking, and desktop browser coverage in dark and light themes. The desktop mockups cover the library filters, import menu, playlist metadata, and lobby picker/admin states. Broader story 28 visual verification remains open.

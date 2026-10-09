@@ -3,6 +3,7 @@
 <head>
   <meta charset="utf-8">
   <script src="./support.js"></script>
+<style>.tier-option{display:inline-flex;align-items:center;gap:4px;font:inherit;color:#4c4f69;background:transparent;border:2px solid #bcc0cc;border-radius:100px;padding:10px 12px;cursor:pointer} section button{font:12px Bungee,sans-serif;color:#4c4f69;background:transparent;border:2px solid #bcc0cc;border-radius:100px;padding:10px 16px;cursor:pointer} section h3{font:18px Bungee,sans-serif} section p{line-height:1.6}</style>
 </head>
 <body>
 <x-dc>
@@ -18,12 +19,15 @@
     .vname { font-size: 10px; color: #5c5f77; max-width: 70px; text-align: center; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .lobby-btn { display: inline-flex; align-items: center; gap: 9px; font-family: 'Space Grotesk', sans-serif; font-weight: 600; font-size: 13px; color: #4c4f69; background: #ffffff; border: 2px solid #ccd0da; border-radius: 100px; padding: 13px 22px; cursor: pointer; box-sizing: border-box; }
     .lobby-btn.primary { font-family: 'Bungee', sans-serif; font-size: 13px; color: #ffffff; background: #ed6f27; border: none; box-shadow: 4px 4px 0 rgba(76,79,105,0.3); }
-    .lobby-btn.danger { color: #d20f39; border-color: #ccd0da; background: transparent; }
+    .lobby-btn.danger { color: #d20f39; border-color: #d20f39; background: transparent; }
     .orbit-slot { position: absolute; }
-    @keyframes driftA { 0% { transform: translate(0,0); } 22% { transform: translate(10px,-3px); } 48% { transform: translate(3px,8px); } 74% { transform: translate(-9px,2px); } 100% { transform: translate(0,0); } }
-    @keyframes driftB { 0% { transform: translate(0,0); } 28% { transform: translate(-8px,6px); } 58% { transform: translate(7px,-9px); } 82% { transform: translate(-2px,-5px); } 100% { transform: translate(0,0); } }
+    @keyframes driftA { 0%, 100% { transform: translate(0,0); } 33% { transform: translate(6px,-5px); } 66% { transform: translate(-5px,4px); } }
+    @keyframes driftB { 0%, 100% { transform: translate(0,0); } 33% { transform: translate(-6px,4px); } 66% { transform: translate(5px,-6px); } }
+    @keyframes driftC { 0%, 100% { transform: translate(0,0); } 40% { transform: translate(4px,6px); } 70% { transform: translate(-6px,-4px); } }
     .drift-a { animation: driftA 7s ease-in-out infinite; }
     .drift-b { animation: driftB 8s ease-in-out infinite; animation-delay: -1.2s; }
+    .drift-c { animation: driftC 6.5s ease-in-out infinite; animation-delay: -2.6s; }
+    .drift-d { animation: driftA 7.5s ease-in-out infinite reverse; animation-delay: -0.6s; }
   </style>
 </helmet>
 <div style="width: 1440px; height: 900px; box-sizing: border-box; background: #eff1f5; display: flex; font-family: 'Space Grotesk', sans-serif;">
@@ -55,7 +59,7 @@
     </div>
     <div style="flex: 1;"></div>
     <div class="navicon" title="Theme">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.2" y1="4.2" x2="5.6" y2="5.6"></line><line x1="18.4" y1="18.4" x2="19.8" y2="19.8"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.2" y1="19.8" x2="5.6" y2="18.4"></line><line x1="18.4" y1="5.6" x2="19.8" y2="4.2"></line></svg>
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
     </div>
     <div style="height: 16px;"></div>
     <div style="width: 44px; height: 44px; border-radius: 50%; background: #ed6f27; border: 2px solid #ccd0da; display: flex; align-items: center; justify-content: center; font-family: 'Bungee', sans-serif; font-size: 16px; color: #ffffff; cursor: pointer;">D</div>
@@ -75,7 +79,7 @@
       </div>
     </div>
 
-    <!-- ORBIT: 2 players -->
+    <!-- ORBIT -->
     <div style="flex: 1; min-height: 0; position: relative;">
 
       <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); text-align: center;">
@@ -87,23 +91,41 @@
         </div>
       </div>
 
-      <div class="orbit-slot" style="top: calc(50% - 75px); left: calc(50% - 355px); transform: translate(-50%,-50%) rotate(-6deg);">
+      <div class="orbit-slot" style="top: calc(50% - 145px); left: calc(50% - 260px); transform: translate(-50%,-50%) rotate(-7deg);">
         <div class="drift-a">
           <div class="vavatar-wrap">
             <div style="position: relative;">
-              <div class="vavatar" style="background: #ed6f27; width: 112px; height: 112px; font-size: 36px; box-shadow: 0 0 0 3px #eff1f5, 0 0 0 8px #499f36;">D</div>
-              <svg width="28" height="28" viewBox="0 0 24 24" fill="#d49032" style="position: absolute; top: -10px; right: -10px; filter: drop-shadow(1px 1px 0 #ccd0da);"><path d="M3 19h18l-1.8-9-5.2 4-3-7.5-3 7.5-5.2-4z"></path></svg>
+              <div class="vavatar" style="background: #ed6f27; width: 108px; height: 108px; font-size: 34px; box-shadow: 0 0 0 3px #eff1f5, 0 0 0 8px #499f36;">D</div>
+              <svg width="27" height="27" viewBox="0 0 24 24" fill="#d49032" style="position: absolute; top: -10px; right: -10px; filter: drop-shadow(1px 1px 0 #eff1f5);"><path d="M3 19h18l-1.8-9-5.2 4-3-7.5-3 7.5-5.2-4z"></path></svg>
             </div>
-            <div style="font-weight: 600; font-size: 15px; color: #4c4f69; margin-top: 18px;">Darius</div>
+            <div style="font-weight: 600; font-size: 15px; color: #4c4f69; margin-top: 9px;">Darius</div>
           </div>
         </div>
       </div>
 
-      <div class="orbit-slot" style="top: calc(50% + 140px); left: calc(50% + 340px); transform: translate(-50%,-50%) rotate(5deg);">
+      <div class="orbit-slot" style="top: calc(50% - 195px); left: calc(50% + 245px); transform: translate(-50%,-50%) rotate(5deg);">
         <div class="drift-b">
           <div class="vavatar-wrap">
-            <div class="vavatar" style="background: #3772e6; width: 112px; height: 112px; font-size: 36px; box-shadow: 0 0 0 3px #eff1f5, 0 0 0 8px #499f36;">M</div>
-            <div style="font-weight: 600; font-size: 15px; color: #4c4f69; margin-top: 18px;">Mara</div><button style="font:11px Space Grotesk,sans-serif;border:0;background:transparent;color:#df8e1d;padding:4px;cursor:pointer;">Make group admin</button>
+            <div class="vavatar" style="background: #3772e6; width: 108px; height: 108px; font-size: 34px; box-shadow: 0 0 0 3px #eff1f5, 0 0 0 8px #499f36;">M</div>
+            <div style="font-weight: 600; font-size: 15px; color: #4c4f69; margin-top: 9px;">Mara</div><button style="font:11px Space Grotesk,sans-serif;border:0;background:transparent;color:#df8e1d;padding:4px;cursor:pointer;">Make group admin</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="orbit-slot" style="top: calc(50% + 180px); left: calc(50% - 210px); transform: translate(-50%,-50%) rotate(6deg);">
+        <div class="drift-c">
+          <div class="vavatar-wrap">
+            <div class="vavatar" style="background: #d49032; width: 108px; height: 108px; font-size: 34px; box-shadow: 0 0 0 3px #eff1f5, 0 0 0 8px #ccd0da;">T</div>
+            <div style="font-weight: 600; font-size: 15px; color: #4c4f69; margin-top: 9px;">Theo</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="orbit-slot" style="top: calc(50% + 160px); left: calc(50% + 295px); transform: translate(-50%,-50%) rotate(-5deg);">
+        <div class="drift-d">
+          <div class="vavatar-wrap">
+            <div class="vavatar" style="background: #e387cb; width: 108px; height: 108px; font-size: 34px; box-shadow: 0 0 0 3px #eff1f5, 0 0 0 8px #499f36;">L</div>
+            <div style="font-weight: 600; font-size: 15px; color: #4c4f69; margin-top: 9px;">Lena</div>
           </div>
         </div>
       </div>
@@ -140,6 +162,19 @@
         <div class="vavatar" style="background: #3772e6;">M</div>
         <div class="vname">Mara</div>
       </div>
+      <div class="vavatar-wrap">
+        <div style="position: relative; width: 52px; height: 52px;">
+          <div class="vavatar" style="background: #d49032; width: 100%; height: 100%;">T</div>
+          <div style="position: absolute; inset: 0; border-radius: 50%; background: radial-gradient(circle, rgba(210,15,57,0.88) 0%, rgba(210,15,57,0.55) 65%, rgba(210,15,57,0.4) 100%); display: flex; align-items: center; justify-content: center;">
+            <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 5.12 2.12M15 9.34V4a3 3 0 0 0-5.94-.6"></path><path d="M19 10v2a7 7 0 0 1-.11 1.23"></path><path d="M5 10v2a7 7 0 0 0 7 7 6.94 6.94 0 0 0 3.11-.72"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>
+          </div>
+        </div>
+        <div class="vname" style="color: #d20f39;">Theo</div>
+      </div>
+      <div class="vavatar-wrap">
+        <div class="vavatar" style="background: #e387cb;">L</div>
+        <div class="vname">Lena</div>
+      </div>
       <div class="vavatar-wrap" style="cursor: pointer;">
         <div style="width: 52px; height: 52px; border-radius: 50%; border: 2px dashed #9ca0b0; display: flex; align-items: center; justify-content: center; color: #499f36; box-sizing: border-box;">
           <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path></svg>
@@ -151,6 +186,7 @@
   </div>
 
 </div>
+<section style="position:absolute;right:132px;top:90px;z-index:30;width:480px;box-sizing:border-box;border:3px solid #bcc0cc;border-radius:18px;background:#ffffff;padding:20px;color:#4c4f69;box-shadow:6px 6px 0 rgba(0,0,0,.35);font-family:Space Grotesk,sans-serif;"><div style="display:flex;align-items:center;justify-content:space-between;gap:8px;font:12px Bungee,sans-serif;"><button class="tier-option"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#40a02b" stroke-width="2"><path d="M4 19a9 9 0 1 1 16 0M12 12l4-4"/></svg> Easy</button><button class="tier-option" style="background:#8839ef;color:#eff1f5;border-color:#8839ef;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#eff1f5" stroke-width="2"><path d="M4 19a9 9 0 1 1 16 0M12 12l4-4"/></svg> Medium</button><button class="tier-option"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#d20f39" stroke-width="2"><path d="M4 19a9 9 0 1 1 16 0M12 12l4-4"/></svg> Hard</button><span style="height:28px;border-left:1px solid #bcc0cc;"></span><button class="tier-option"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7h16M4 17h16M8 4v6M16 14v6"/></svg> Custom</button></div><button style="margin-top:16px;padding:10px 24px;border:0;border-radius:100px;background:#fe640b;color:#eff1f5;font-family:Bungee,sans-serif;">Confirm</button></section>
 </x-dc>
 <script data-dc-script data-props='{}'>
 class Component extends DCLogic {}

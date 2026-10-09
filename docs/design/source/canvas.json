@@ -944,6 +944,150 @@
       "h": 900,
       "title": "OAuth2 redirect, light",
       "page": "page-1"
+    },
+    {
+      "file": "YourPlaylistsOwnedDark.dc.html",
+      "x": 0,
+      "y": 35000,
+      "w": 1440,
+      "h": 900,
+      "title": "Library owned, dark",
+      "page": "page-1"
+    },
+    {
+      "file": "YourPlaylistsJoinedDark.dc.html",
+      "x": 1580,
+      "y": 35000,
+      "w": 1440,
+      "h": 900,
+      "title": "Library joined, dark",
+      "page": "page-1"
+    },
+    {
+      "file": "YourPlaylistsSavedDark.dc.html",
+      "x": 3160,
+      "y": 35000,
+      "w": 1440,
+      "h": 900,
+      "title": "Library saved, dark",
+      "page": "page-1"
+    },
+    {
+      "file": "PlaylistDetailAddMenuDark.dc.html",
+      "x": 4740,
+      "y": 35000,
+      "w": 1440,
+      "h": 900,
+      "title": "Playlist add menu, dark",
+      "page": "page-1"
+    },
+    {
+      "file": "GroupLobbyTierPickerDark.dc.html",
+      "x": 0,
+      "y": 36060,
+      "w": 1440,
+      "h": 900,
+      "title": "Lobby TierPicker, dark",
+      "page": "page-1"
+    },
+    {
+      "file": "GroupLobbyGeneratedReviewDark.dc.html",
+      "x": 1580,
+      "y": 36060,
+      "w": 1440,
+      "h": 900,
+      "title": "Lobby GeneratedReview, dark",
+      "page": "page-1"
+    },
+    {
+      "file": "GroupLobbyCustomPickerDark.dc.html",
+      "x": 3160,
+      "y": 36060,
+      "w": 1440,
+      "h": 900,
+      "title": "Lobby CustomPicker, dark",
+      "page": "page-1"
+    },
+    {
+      "file": "GroupLobbyAdminTransferDark.dc.html",
+      "x": 4740,
+      "y": 36060,
+      "w": 1440,
+      "h": 900,
+      "title": "Lobby AdminTransfer, dark",
+      "page": "page-1"
+    },
+    {
+      "file": "YourPlaylistsOwnedLight.dc.html",
+      "x": 0,
+      "y": 37120,
+      "w": 1440,
+      "h": 900,
+      "title": "Library owned, light",
+      "page": "page-1"
+    },
+    {
+      "file": "YourPlaylistsJoinedLight.dc.html",
+      "x": 1580,
+      "y": 37120,
+      "w": 1440,
+      "h": 900,
+      "title": "Library joined, light",
+      "page": "page-1"
+    },
+    {
+      "file": "YourPlaylistsSavedLight.dc.html",
+      "x": 3160,
+      "y": 37120,
+      "w": 1440,
+      "h": 900,
+      "title": "Library saved, light",
+      "page": "page-1"
+    },
+    {
+      "file": "PlaylistDetailAddMenuLight.dc.html",
+      "x": 4740,
+      "y": 37120,
+      "w": 1440,
+      "h": 900,
+      "title": "Playlist add menu, light",
+      "page": "page-1"
+    },
+    {
+      "file": "GroupLobbyTierPickerLight.dc.html",
+      "x": 0,
+      "y": 38180,
+      "w": 1440,
+      "h": 900,
+      "title": "Lobby TierPicker, light",
+      "page": "page-1"
+    },
+    {
+      "file": "GroupLobbyGeneratedReviewLight.dc.html",
+      "x": 1580,
+      "y": 38180,
+      "w": 1440,
+      "h": 900,
+      "title": "Lobby GeneratedReview, light",
+      "page": "page-1"
+    },
+    {
+      "file": "GroupLobbyCustomPickerLight.dc.html",
+      "x": 3160,
+      "y": 38180,
+      "w": 1440,
+      "h": 900,
+      "title": "Lobby CustomPicker, light",
+      "page": "page-1"
+    },
+    {
+      "file": "GroupLobbyAdminTransferLight.dc.html",
+      "x": 4740,
+      "y": 38180,
+      "w": 1440,
+      "h": 900,
+      "title": "Lobby AdminTransfer, light",
+      "page": "page-1"
     }
   ],
   "annotations": [
@@ -1033,6 +1177,14 @@
       "y": 31244,
       "w": 1400,
       "text": "Admin views, desktop only, dark. Gated on the ADMIN role (story 40). Catalog backlog: pending/processed/quota stats plus the bulk-enqueue form, the batch YouTube-ID filtering step happens silently, only the result is shown. Its queue panel leads with what's still moving, processing first, then pending, then a failed-and-retrying row, with completed entries at the bottom, since what an admin actually watches here is the backlog draining, not a history of what already finished. Report review queue: every reportable card ranked by the five-tier priority order, with the actual signals behind each rank (report count, convergence, confirmations) rather than one opaque score, and a manual resolve action, nothing here auto-applies a suggested year.",
+      "page": "page-1"
+    },
+    {
+      "id": "playlist-library-and-lobby",
+      "x": 0,
+      "y": 34920,
+      "w": 1400,
+      "text": "Library filters, playlist add menu, lobby playlist picker, generated review, custom selection, and admin transfer. Account and legal work is deferred.",
       "page": "page-1"
     }
   ],

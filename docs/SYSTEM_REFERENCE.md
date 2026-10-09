@@ -4,6 +4,8 @@ Structured reference for what exists in the code today, distinct from [ARCHITECT
 
 ## API contracts
 
+Batch 1 metadata fields: PlaylistDetailDTO.createdAt is a UTC creation timestamp assigned to new playlists and unchanged by edits. Legacy rows remain null. SongDTO.durationSeconds and SongMetadataResponse.durationSeconds carry a positive whole-second duration from official YouTube contentDetails.duration, never an LLM estimate. The AI identification and resolution contracts use duration_seconds. Unknown metadata remains null. Core persistence records durationFetchedAt; durations expire after 29 days and an hourly cleanup removes expired values, leaving margin below the YouTube 30-day refresh/deletion limit. A patient recheck can populate them again.
+
 Every rate-limited request the core service rejects, whichever limiter caught it, returns 429 with the same body every other error response uses: `ErrorResponse` (`status`, `message`, `timestamp`), never Spring's default `ProblemDetail`. `RateLimitingFilter` applies a 60-requests-per-minute limit to every request, keyed by authenticated user where one exists and by client IP otherwise, except `/auth/login`, `/auth/register`, `/auth/resend-verification`, `/auth/password-reset/request`, and `/auth/2fa/verify`, which always share a stricter 5-requests-per-minute bucket keyed by IP regardless of authentication state. See story 27 and story 50 in `DECISIONS.md`.
 
 ### Core service (Spring Boot)
