@@ -118,5 +118,6 @@ describe("useGameSessionRealtime", () => {
     expect(queryClient.getQueryData(["/api/sessions/groups/4/active"])).toBeUndefined();
     expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ["group", 4] });
     expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ["active-membership"] });
+    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ["game-history"] });
   });
 });

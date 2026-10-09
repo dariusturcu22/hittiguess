@@ -6,6 +6,7 @@
  */
 import type { PlaylistMembershipExportDTO } from './playlistMembershipExportDTO';
 import type { SongDTO } from './songDTO';
+import type { GameSummary, SongPlayObservation } from '../game-history';
 
 export interface PersonalDataExportDTO {
   id?: number;
@@ -16,4 +17,6 @@ export interface PersonalDataExportDTO {
   authProviderId?: string;
   playlists?: PlaylistMembershipExportDTO[];
   submittedSongs?: SongDTO[];
+  gameHistory?: GameSummary[];
+  researchObservations?: SongPlayObservation[];
 }

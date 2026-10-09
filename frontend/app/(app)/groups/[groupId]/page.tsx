@@ -29,12 +29,7 @@ import {
 } from "@/hooks/generated/group-management/group-management";
 import { useGetCurrentUser, useGetUserPlaylists } from "@/hooks/generated/user-management/user-management";
 import { useGetActiveSessionForGroup } from "@/hooks/generated/game-session/game-session";
-import {
-  useGenerateDifficultySet,
-  useStartSessionWithSongs,
-} from "@/hooks/generated/group-management/group-management";
 import type { GenerateDifficultySetRequestTier } from "@/hooks/models/generateDifficultySetRequestTier";
-import type { GeneratedSongPreviewDTO } from "@/hooks/models/generatedSongPreviewDTO";
 import type { MemberDTO } from "@/hooks/models/memberDTO";
 import { useQueryClient } from "@tanstack/react-query";
 import { copyText } from "@/lib/clipboard";
@@ -86,8 +81,6 @@ const MINIMUM_WIN_CONDITION = 1;
 const MINIMUM_PLAYERS_TO_START = 2;
 const LOBBY_FLOAT_STAGGER_CYCLE = 5;
 const LOBBY_FLOAT_STAGGER_SECONDS = 1.1;
-const MINIMUM_TARGET_CARD_COUNT = 1;
-const DIFFICULTY_CARD_HEADROOM_MULTIPLIER = 3;
 const DIFFICULTY_TIERS: GenerateDifficultySetRequestTier[] = ["EASY", "MEDIUM", "HARD"];
 
 function stableMemberNumber(member: MemberDTO): number {
@@ -225,7 +218,6 @@ export default function GroupLobbyPage({ params }: PageProps) {
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [selectedTier, setSelectedTier] = useState<GenerateDifficultySetRequestTier>("MEDIUM");
   const [playlistSource, setPlaylistSource] = useState<"tier" | "custom">("tier");
-  const [reviewedSongs, setReviewedSongs] = useState<GeneratedSongPreviewDTO[] | null>(null);
   const [startError, setStartError] = useState("");
   const [selectedDjMode, setSelectedDjMode] = useState<"FIXED" | "ROTATING">("ROTATING");
   const [selectedPlaylistIds, setSelectedPlaylistIds] = useState<number[]>([]);
@@ -236,8 +228,6 @@ export default function GroupLobbyPage({ params }: PageProps) {
   const { data: currentUser } = useGetCurrentUser();
   const playlistsQuery = useGetUserPlaylists({ query: { retry: false } });
   const startSession = useStartGameSession();
-  const generateSet = useGenerateDifficultySet();
-  const startWithSongs = useStartSessionWithSongs();
   const leaveGroup = useLeaveGroup();
   const removeMember = useRemoveMember();
   const promoteMember = usePromoteMember1();
@@ -257,7 +247,8 @@ export default function GroupLobbyPage({ params }: PageProps) {
   const isCurrentUserLoading = currentUser === undefined;
   const groupPlaylists = groupQuery.data?.playlists ?? [];
   const featuredPlaylist = groupPlaylists[0];
-  const playlistChipLabel = groupPlaylists.length === 0
+  const savedTier = groupQuery.data?.difficultyTier;
+  const playlistChipLabel = savedTier ? `${savedTier.charAt(0)}${savedTier.slice(1).toLowerCase()} difficulty` : groupPlaylists.length === 0
     ? "No playlist selected"
     : groupPlaylists.length === 1
       ? (featuredPlaylist?.name ?? "No playlist selected")
@@ -322,7 +313,9 @@ export default function GroupLobbyPage({ params }: PageProps) {
   }
 
   function openTierPopup() {
-    setReviewedSongs(null);
+    if (groupQuery.data?.difficultyTier) {
+      setSelectedTier(groupQuery.data.difficultyTier);
+    }
     setStartError("");
     closeAllPopups();
     setIsTierPopupOpen(true);
@@ -330,7 +323,6 @@ export default function GroupLobbyPage({ params }: PageProps) {
 
   function closeTierPopup() {
     setIsTierPopupOpen(false);
-    setReviewedSongs(null);
     setStartError("");
   }
 
@@ -373,43 +365,16 @@ export default function GroupLobbyPage({ params }: PageProps) {
     router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
   }, [pathname, router]);
 
-  function handleModeStartSuccess() {
-    refreshGroup();
-    refreshActiveMembership();
-    closeAllPopups();
-  }
-
-  function handleGenerateSet() {
+  function handleConfirmTier() {
     setStartError("");
-    const computedCardCount = Math.max(
-      MINIMUM_TARGET_CARD_COUNT,
-      members.length * (groupQuery.data?.winConditionCardCount ?? MINIMUM_WIN_CONDITION) * DIFFICULTY_CARD_HEADROOM_MULTIPLIER,
-    );
-    generateSet.mutate(
-      { groupId, data: { tier: selectedTier, targetCardCount: computedCardCount } },
+    updateSettings.mutate(
+      { groupId, data: { difficultyTier: selectedTier } },
       {
-        onSuccess: (previews) => setReviewedSongs(previews),
-        onError: (error) => setStartError(mutationErrorMessage(error)),
-      },
-    );
-  }
-
-  function handleConfirmGeneratedSet() {
-    if (!reviewedSongs) {
-      return;
-    }
-    setStartError("");
-    startWithSongs.mutate(
-      {
-        groupId,
-        data: {
-          songIds: reviewedSongs
-            .map((preview) => preview.id)
-            .filter((id): id is number => id !== undefined),
+        onSuccess: () => {
+          refreshGroup();
+          setPlaylistSource("tier");
+          closeAllPopups();
         },
-      },
-      {
-        onSuccess: handleModeStartSuccess,
         onError: (error) => setStartError(mutationErrorMessage(error)),
       },
     );
@@ -584,7 +549,7 @@ export default function GroupLobbyPage({ params }: PageProps) {
                 {playlistChipLabel}
               </span>
               {featuredPlaylist ? (
-                <span className="text-xs text-muted-foreground">{groupPlaylistSongCount} songs</span>
+                <span className="text-xs text-muted-foreground">{savedTier ? "Selected at start" : `${groupPlaylistSongCount} songs`}</span>
               ) : null}
             </button>
             {isTierPopupOpen ? (
@@ -596,7 +561,7 @@ export default function GroupLobbyPage({ params }: PageProps) {
                       <button
                         key={tier}
                         type="button"
-                        onClick={() => { setSelectedTier(tier); setPlaylistSource("tier"); setReviewedSongs(null); setStartError(""); }}
+                        onClick={() => { setSelectedTier(tier); setPlaylistSource("tier"); setStartError(""); }}
                         aria-pressed={playlistSource === "tier" && selectedTier === tier}
                         className={`cursor-pointer whitespace-nowrap rounded-full px-3 py-2 font-display text-xs ${playlistSource === "tier" && selectedTier === tier ? "bg-accent text-accent-foreground" : "border-2 border-border text-muted-foreground"}`}
                       >
@@ -616,27 +581,11 @@ export default function GroupLobbyPage({ params }: PageProps) {
                     </button>
                   </div>
                   <div className="flex items-center gap-3">
-                    <button type="button" onClick={handleGenerateSet} disabled={generateSet.isPending} className="rounded-full bg-primary px-4 py-2 font-display text-xs text-primary-foreground disabled:opacity-60">
-                      {generateSet.isPending ? "Preparing" : "Confirm"}
+                    <button type="button" onClick={handleConfirmTier} disabled={updateSettings.isPending} className="rounded-full bg-primary px-4 py-2 font-display text-xs text-primary-foreground disabled:opacity-60">
+                      {updateSettings.isPending ? "Saving" : "Confirm"}
                     </button>
                   </div>
-                  {reviewedSongs ? (
-                    <div className="mt-4">
-                      <p className="mb-2 text-[13px] text-muted-foreground">Review the set, then confirm to start.</p>
-                      <ul className="max-h-48 space-y-1.5 overflow-y-auto pr-1">
-                        {reviewedSongs.map((preview) => (
-                          <li key={preview.id} className="flex items-baseline justify-between gap-3 rounded-xl border-2 border-border bg-background px-3 py-2">
-                            <span className="truncate text-sm font-semibold text-foreground">{preview.title} <span className="font-normal text-muted-foreground">{(preview.artists ?? []).join(", ")}</span></span>
-                            <span className="shrink-0 font-display text-sm text-accent">{preview.releaseYear}</span>
-                          </li>
-                        ))}
-                      </ul>
-                      <button type="button" onClick={handleConfirmGeneratedSet} disabled={startWithSongs.isPending} className="mt-3 inline-flex items-center gap-2 rounded-full bg-accent px-5 py-2.5 font-display text-xs text-accent-foreground disabled:opacity-60">
-                        {startWithSongs.isPending ? <Loader2 className="size-4 animate-spin" /> : <Play className="size-4 fill-current" />}
-                        Confirm and start
-                      </button>
-                    </div>
-                  ) : null}
+                  <p className="mt-3 text-xs text-muted-foreground">Songs are selected when the session starts.</p>
                   {startError ? <p role="alert" className="mt-4 text-sm text-destructive">{startError}</p> : null}
                 </section>
               </>
@@ -652,7 +601,7 @@ export default function GroupLobbyPage({ params }: PageProps) {
               {playlistChipLabel}
             </span>
             {featuredPlaylist ? (
-              <span className="text-xs text-muted-foreground">{groupPlaylistSongCount} songs</span>
+              <span className="text-xs text-muted-foreground">{savedTier ? "Selected at start" : `${groupPlaylistSongCount} songs`}</span>
             ) : null}
           </div>
         )}

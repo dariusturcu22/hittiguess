@@ -20,4 +20,5 @@ export interface GroupDetailDTO {
   playlists?: PlaylistSummaryDTO[];
   members?: MemberDTO[];
   expiresAt?: string;
+  difficultyTier?: "EASY" | "MEDIUM" | "HARD";
 }
