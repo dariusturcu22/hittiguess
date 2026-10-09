@@ -64,7 +64,7 @@ class SongResolutionServiceTest {
                 "Never Gonna Give You Up", List.of("Rick Astley"), List.of(), 1987, "abcdef",
                 "high", "musicbrainz+discogs+wikidata-lock", "All three sources agree", verificationStatus,
                 RESOLVED_SITELINKS_COUNT, null, null);
-        return new AiResponse(content, "gpt-5.1", 100L, LocalDateTime.now(), "SUCCESS", null, null);
+        return new AiResponse(content, "fixture-model", 100L, LocalDateTime.now(), "SUCCESS", null, null);
     }
 
     @Test
@@ -123,7 +123,7 @@ class SongResolutionServiceTest {
                 "Titanium", List.of("David Guetta"), List.of("Sia"), 2011, "abcdef",
                 "high", "musicbrainz+discogs+wikidata-lock", "All three sources agree", "VERIFIED",
                 RESOLVED_SITELINKS_COUNT, null, null);
-        AiResponse response = new AiResponse(content, "gpt-5.1", 100L, LocalDateTime.now(), "SUCCESS", null, null);
+        AiResponse response = new AiResponse(content, "fixture-model", 100L, LocalDateTime.now(), "SUCCESS", null, null);
         when(songMetadataService.resolveByYoutubeId(YOUTUBE_ID)).thenReturn(response);
         when(songRepository.findByYoutubeId(YOUTUBE_ID)).thenReturn(List.of());
         when(songRepository.save(org.mockito.ArgumentMatchers.any(Song.class)))
@@ -146,7 +146,7 @@ class SongResolutionServiceTest {
                 "Cold Heart", List.of("Elton John", "Dua Lipa"), List.of("Pnau"), 2021, "abcdef",
                 "high", "musicbrainz+discogs+wikidata-lock", "All three sources agree", "VERIFIED",
                 RESOLVED_SITELINKS_COUNT, null, null);
-        AiResponse response = new AiResponse(content, "gpt-5.1", 100L, LocalDateTime.now(), "SUCCESS", null, null);
+        AiResponse response = new AiResponse(content, "fixture-model", 100L, LocalDateTime.now(), "SUCCESS", null, null);
         when(songMetadataService.resolveByYoutubeId(YOUTUBE_ID)).thenReturn(response);
         when(songRepository.findByYoutubeId(YOUTUBE_ID)).thenReturn(List.of());
         when(songRepository.save(org.mockito.ArgumentMatchers.any(Song.class)))

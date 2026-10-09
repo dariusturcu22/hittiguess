@@ -62,7 +62,7 @@ class SongMetadataServiceTest {
     @Test
     void successfulResolutionPassesThroughContent() {
         expectResolveCallReturning("""
-                {"status":"SUCCESS","model":"gpt-5.1","content":{
+                {"status":"SUCCESS","model":"fixture-model","content":{
                   "title":"Title","main_artists":["Artist"],"featured_artists":["Guest"],"release_year":1999,
                   "color":"8B5CF6",
                   "confidence":"high","source":"MusicBrainz","reasoning":"Matched."}}
@@ -118,7 +118,7 @@ class SongMetadataServiceTest {
     void rejectedResolutionCarriesReasonAndDetailWithoutContent() {
         String detail = "The submission's YouTube text was flagged as a prompt-injection attempt.";
         expectResolveCallReturning("""
-                {"status":"REJECTED","model":"gpt-5.1","content":null,
+                {"status":"REJECTED","model":"fixture-model","content":null,
                  "rejection_reason":"PROMPT_INJECTION",
                  "rejection_detail":"%s"}
                 """.formatted(detail));
@@ -135,7 +135,7 @@ class SongMetadataServiceTest {
     @Test
     void errorStatusFromAiServiceMapsToError() {
         expectResolveCallReturning("""
-                {"status":"ERROR","model":"gpt-5.1","content":null}
+                {"status":"ERROR","model":"fixture-model","content":null}
                 """);
 
         AiResponse result = songMetadataService.fetchMetadata(YOUTUBE_URL);

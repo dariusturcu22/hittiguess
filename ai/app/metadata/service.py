@@ -61,13 +61,9 @@ def _clean_title_and_artist(youtube_data: dict[str, str]) -> tuple[str, str]:
 
 
 def _run_precheck(youtube_data: dict[str, object]) -> SubmissionPreCheckResult:
-    """One combined DeepSeek call covering title/artist extraction, a
-    display color, the prompt-injection check, and song/compilation
-    classification, run once per submission ahead of any structured source
-    query. These were three separate LLM calls (title/artist extraction,
-    injection check, classification) plus a fourth gpt-5.1 call purely for
-    display title/artist/color; merging them into one is a direct cost cut,
-    and this one call is shared by every route, including the locked one."""
+    """Extract display metadata and classify submission safety in one structured
+    precheck before querying metadata sources, including on locked routes.
+    """
     prompt = build_precheck_prompt(
         str(youtube_data.get("video_title", "")),
         str(youtube_data.get("channel_title", "")),
