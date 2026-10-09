@@ -492,7 +492,10 @@ html.theme-transition .theme-toggle-thumb {
 }
 .token-earned-drop { animation: token-earned-drop 700ms ease-out both; }
 .incorrect-guess-feedback { animation: incorrect-guess-shake 180ms ease-in-out; }
+.voice-member { transition: height 220ms ease, opacity 220ms ease, transform 220ms ease; }
+.voice-member-leaving { height: 0; overflow: hidden; opacity: 0; transform: scale(0.8); }
 @media (prefers-reduced-motion: reduce) {
   .token-earned-drop { animation: none; display: none; }
   .incorrect-guess-feedback { animation: none; }
+  .voice-member { transition: none; }
 }
