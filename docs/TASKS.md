@@ -18,9 +18,27 @@ Stories that would write an abuse-visibility event (story 41's flagged-injection
 
 ## Story 30: Difficulty-tuned game session generation
 
-Completed generation, selection, public-playlist, and lobby integration work is recorded in [ARCHIVE.md](ARCHIVE.md#story-30-completed-backend-implementation). Personalized training, retraining, monitoring, and their tests remain open. The historical-data conflict in the documentation audit remains unresolved.
+### History and global difficulty preparation
 
-- [ ] Train the personalized collaborative-filtering model on accumulated `Guess` data (story 10) once there's enough of it to evaluate (scaffolded: `PersonalizedDifficultyPredictor` is the plug point, `AggregateBaselinePredictor` is the shipped baseline; blocked until real play accumulates enough guesses to train and beat the baseline, likely months of casual play at the target scale)
+The agreed core/analytics boundary and proposed fields are in [SYSTEM_REFERENCE.md](SYSTEM_REFERENCE.md#planned-game-history-and-difficulty-data). Current code retains only the latest results per group, computes difficulty from temporary rounds, and generates song previews on Confirm. This implementation slice replaces those paths; personalized ML remains deferred.
+
+- [ ] Add core-owned migrations and models for GameSummary, GameParticipantSummary, and SongDifficulty, plus analytics SongPlayObservation and SongDifficultyAggregate
+- [ ] Save a participant-only summary before session purge, preserve ties and departure status, distinguish interruptions from competitive completion, and deduplicate repeated completion
+- [ ] Add paginated history/detail and user-visible statistics endpoints reading core only; keep access after group expiry and deny later group joiners
+- [ ] Extend account deletion and personal export for history and research data; anonymize shared results, remove research identity, and delete summaries with no remaining account-linked participants
+- [ ] Deliver scored-turn observations reliably to analytics without making game completion depend on analytics availability; deduplicate retries and exclude skipped placements from attempt counts
+- [ ] Retain raw observations for 365 days and preserve anonymous per-song aggregates across raw-event expiry without counting retries twice
+- [ ] Calculate global difficulty in the background and publish prepared scores into core; provide popularity-based cold starts and preserve the last good scores on analytics failure
+- [ ] Persist the selected tier on Confirm and generate only at Start, using the current connected player count times the win target times three; select varied eligible songs without loading and scoring the entire catalog
+- [ ] Unit tests: summary totals, ties, interruptions, difficulty aggregation, cold starts, and sampling boundaries
+- [ ] Integration tests: core and analytics migrations, summary-before-purge, participant permissions, deletion/export, retry deduplication, one-year retention, and analytics outages
+- [ ] Performance tests: indexed selection on a representative large catalog, insufficient pools, and overlapping starts; record measured latency before setting a supported target
+
+### Personalized difficulty, deferred
+
+Completed generation, selection, public-playlist, and lobby integration work is recorded in [ARCHIVE.md](ARCHIVE.md#story-30-completed-backend-implementation). Personalized training, retraining, monitoring, and their tests remain open. The historical-data conflict is resolved by the approved core-history and analytics-research boundary below.
+
+- [ ] Train the personalized collaborative-filtering model on retained analytics research observations once there's enough of it to evaluate (scaffolded: `PersonalizedDifficultyPredictor` is the plug point, `AggregateBaselinePredictor` is the shipped baseline; blocked until real play accumulates enough guesses to train and beat the baseline, likely months of casual play at the target scale)
 - [ ] Add a scheduled retraining job for the personalized model
 - [ ] Add a monitoring check comparing the personalized model's prediction accuracy against the simple aggregate baseline; if the personalized model stops beating the baseline, that's the signal it's stale and needs retraining, not just a fixed schedule
 
@@ -31,18 +49,16 @@ Tests:
 
 ## Story 34: First-party usage analytics
 
-Story 42 owns the explicit domain boundary this story reads and writes against: the transactional `GameSession`/`Round`/`Guess` rows this story's game-history task reads a summary from stay in the core database and purge exactly as story 10 specifies; only the compact event/summary data this story writes goes in story 33's separate analytics store. Depends on story 33's store existing, and also on the events it instruments actually existing: story 10 (game session, no `GameSession` model exists yet), story 17 (reports, no `SongReport` entity exists yet), and story 27 (rate limiting, only a narrow one-in-flight-request-per-user concurrency gate exists today on `/api/metadata/song`, not the general per-user/per-IP time-window limiter this depends on for login/register or other endpoints). Login and playlist-creation events can be instrumented once story 33 lands, independent of the others. Event scope is deliberately count/aggregate-based, not behavioral click-tracking: usage stats for the project's own understanding (games played, session length, playlists created, songs submitted, login activity), and abuse-visibility signals that turn existing enforcement into something reviewable (rate-limit-exceeded events from stories 13/27, report submissions from story 17, failed login attempts), not a new detection mechanism of its own.
+Core stores user-visible game summaries, statistics, and prepared difficulty scores. Analytics stores internal usage and research observations with a 365-day raw-event retention window. The analytics store, sessions, reports, and rate limiting already exist; instrumentation and the internal dashboard remain unfinished. History backend work belongs to story 30 and its frontend belongs to story 28.
 
 - [ ] Instrument game session start/end (with the per-game summary), login, playlist creation, and song submission events to write to the analytics store; the game-session half depends on story 10, the rest can start once story 33 lands
 - [ ] Instrument rate-limit-exceeded, report-submitted, and failed-login-attempt events, for abuse visibility, not enforcement; depends on stories 13/27/17 actually shipping their enforcement first, none of which exist yet
 - [ ] Build a simple internal dashboard or query surface over the collected events, including a simple way to flag a user who's crossed a rate-limit or report threshold repeatedly
-- [ ] Build a per-user game history page in the frontend, querying the current user's own game-summary events from the analytics store; the transactional `GameSession`/`Round`/`Guess` rows still purge exactly as story 10 already specifies, this reads only from the separate analytics store
 - [ ] No third-party trackers, matches this story's own scope and the "First-party usage analytics" framing
 
 Tests:
 - [ ] Integration test: each instrumented event type produces the expected record in the analytics store
 - [ ] Integration test: the dashboard/query surface returns correct aggregates for known event data
-- [ ] Integration test: a user's game history page returns only their own game summaries, not other users'
 
 Consent notice, transferred from story 37:
 
@@ -122,6 +138,14 @@ Tests:
 - [x] Unit tests for pagination and the rate limit, including boundary values
 
 ## Story 28: UI redesign
+
+### Game history and difficulty start flow
+
+- [ ] Define history list/detail and statistics mockups against the approved core summary fields before building the pages
+- [ ] Build participant-only paginated history, detail, and statistics views using the core endpoints
+- [ ] Save Easy/Medium/Hard selection on Confirm; generate and start only when Start session is clicked, without revealing the song pool
+- [ ] Frontend unit tests: selection persistence, no generation on Confirm, generation on Start, history permissions, deleted-player entries, loading/error/empty states
+- [ ] Desktop browser tests: difficulty and Custom starts, insufficient catalog, history after group expiry, and both themes
 
 ### Deferred account and legal requirements
 

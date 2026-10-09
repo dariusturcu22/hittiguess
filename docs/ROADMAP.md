@@ -20,7 +20,7 @@ The documentation audit's design conflicts remain pending owner review. A visual
 ## Backend follow-ups
 
 - Story 24: gather-boundary timeout, its unit test, and priority-coordinator verification.
-- Story 30: personalized model training, scheduled retraining, monitoring, and held-out tests. The historical-data conflict remains pending review before the data prerequisite can be resolved. This enhancement does not block Local.
+- Story 30: personalized model training, scheduled retraining, monitoring, and held-out tests. Core history, analytics research observations, prepared global scores, and generation at Start are approved in TASKS.md; personalized ML remains deferred. This enhancement does not block Local.
 - Story 41: deferred source-match confidence tuning and uncertain-case manual review.
 - Story 35: the existing pre-shipping terms-confirmation gate remains in TASKS.md pending reconciliation with the recorded terms read.
 - Flutter DJ-model compliance: the embedded-player replacement remains open; Flutter stays deprioritized behind the web app.

@@ -16,6 +16,10 @@ M08's Topic-upload search/upgrade requirement and C19's genre-enrichment require
 
 New follow-up N01: pgvector similarity searches only verified songs with stored embeddings. `store_verified_song_embedding` exists but has no production caller connecting catalog persistence to indexing. Returned matches now reuse the existing entity; embedding population for new verified songs remains explicit work in TASKS.md.
 
+## Reviewed difficulty history: 2026-10-09
+
+C16 is resolved by the approved core-history and analytics-research boundary. Core will retain compact participant-visible summaries and prepared global scores; analytics will retain raw observations for 365 days and anonymous song aggregates beyond raw expiry. Confirm saves the tier; Start selects the varied song pool. These changes are planned in TASKS.md and are not implemented yet. Personalized ML remains deferred.
+
 ## Scope and evidence
 
 This report compares the current checkout's active documentation, design source files, published design canvas, frontend, Spring core, AI service, and Flutter app. Findings describe the source as it stands on 2026-10-05. They do not choose between conflicting requirements and do not change product behavior, existing status rows, or historical decisions.

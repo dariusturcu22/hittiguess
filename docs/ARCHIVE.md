@@ -1938,3 +1938,9 @@ Tests:
 - [x] Use provider-independent model labels in mocked metadata responses
 - [x] Check runtime model defaults and local overrides for obsolete model selections
 - [x] Run affected metadata unit tests and verify that no obsolete model references remain
+
+## Chore: History and difficulty scope agreement
+
+- [x] Record the approved database boundary, fields, retention, and start flow
+- [x] Define implementation and test tasks against the current result, selection, and deletion paths
+- [x] Extend the analytics retention default to 365 days and run the retention integration test

@@ -264,7 +264,7 @@ analytics_events
   └── payload (jsonb, one typed record per AnalyticsEventType)
 ```
 
-`AnalyticsEventType` values: `GAME_SESSION_STARTED`, `GAME_SESSION_ENDED`, `LOGIN`, `PLAYLIST_CREATED`, `SONG_SUBMITTED`, `RATE_LIMIT_EXCEEDED`, `REPORT_SUBMITTED`, `FAILED_LOGIN_ATTEMPT`, each with its own payload record in the same package. `AnalyticsEventRecorder.recordEvent(AnalyticsEventType, Object)` is the write API; nothing calls it yet, story 34 instruments the real event-producing call sites. `AnalyticsRetentionService.purgeExpiredEvents()`, swept daily by `AnalyticsRetentionSweeper`, deletes events older than `analytics.retention.days` (180 by default).
+`AnalyticsEventType` values: `GAME_SESSION_STARTED`, `GAME_SESSION_ENDED`, `LOGIN`, `PLAYLIST_CREATED`, `SONG_SUBMITTED`, `RATE_LIMIT_EXCEEDED`, `REPORT_SUBMITTED`, `FAILED_LOGIN_ATTEMPT`, each with its own payload record in the same package. `AnalyticsEventRecorder.recordEvent(AnalyticsEventType, Object)` is the write API; nothing calls it yet, story 34 instruments the real event-producing call sites. `AnalyticsRetentionService.purgeExpiredEvents()`, swept daily by `AnalyticsRetentionSweeper`, deletes events older than `analytics.retention.days` (365 by default).
 
 ## State diagrams
 
@@ -314,3 +314,22 @@ stateDiagram-v2
 ```
 
 A `PendingImport` row can also be created indirectly, as a recheck: a user import resolves a song on the fast tier (origin `FAST_TIER_RECHECK`), or a user adds a song by hand (origin `USER_ADD_RECHECK`), and the row is queued at low priority with that provisional year so the patient pipeline re-verifies it afterward. The drain records the patient year on the row (V36), and the admin backlog shows both years side by side. Admin seeds carry origin `ADMIN_SEED`.
+
+
+## Planned game history and difficulty data
+
+Approved scope, not current entities. Core-owned migrations create all core and analytics tables. Current results retain only the latest game per group; the planned history preserves one summary per game before temporary session rows are purged.
+
+| Database | Entity | Fields |
+| --- | --- | --- |
+| Core | GameSummary | id, sourceSessionId (unique), groupName snapshot, startedAt, endedAt, mode, difficultyTier (null for Custom), winTargetCards, participantCount, turnsPlayed, endingReason, rulesVersion |
+| Core | GameParticipantSummary | id, gameSummaryId, userId (nullable after deletion), displayName snapshot, participationStatus, finalCardCount, cardRank, artistRank, titleRank, isWinner, placementAttempts, correctPlacements, titleAttempts, correctTitles, artistAttempts, correctArtists, betsPlaced, betsWon |
+| Core | SongDifficulty | songId, score, tier, placementSampleCount, calculationVersion, calculatedAt |
+| Analytics | SongPlayObservation | eventId (unique), occurredAt, songId, researchPlayerId, gameCorrelationId, placementOutcome, timelineCardCount, validInsertionSlotCount, titleAttempted, titleCorrect, artistAttempts, correctArtists, requestedDifficultyTier (null for Custom), rulesVersion |
+| Analytics | SongDifficultyAggregate | songId, rulesVersion, timelineSizeBand, placementAttempts, correctPlacements, titleAttempts, correctTitles, artistAttempts, correctArtists, updatedAt |
+
+Game summaries exclude song lists, final timelines, raw guesses, chat, and voice. Only original participants can read them, including departed players and after group expiry. Ties remain ties. Interrupted games do not count as competitive wins. Duration derives from the timestamps; user-visible totals derive from core history. Account deletion clears account links and names from shared summaries, removes research identity, and removes summaries once no account-linked participants remain. History has no age-based expiry while a participant account remains.
+
+Raw analytics events and observations expire after 365 days. Anonymous song aggregates survive raw-observation expiry and contain no player identity. Observation delivery and aggregation must be retry-safe; skipped turns do not count as incorrect attempts. Pseudonymous research identities remain account-linked data requiring deletion handling. The reliability mechanism must preserve observations before temporary rows are purged without requiring analytics availability during gameplay.
+
+Difficulty calculation runs in the background and publishes prepared scores to core. Cold starts use the popularity proxy. Session starts use indexed eligible pools and varied sampling, preserving the last successful scores during analytics failures. Confirm stores the selected tier only; Start generates a session pool with connected player count multiplied by win target cards multiplied by three. The generated pool is not saved as a playlist or displayed for review. International eligibility retains the current verified-status and five-sitelink rules. Insufficient eligible songs produce an explicit error. Personalized ML training remains deferred.
