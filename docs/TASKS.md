@@ -262,8 +262,8 @@ App-wide and imports:
 Lobby, voice, and gameplay:
 
 - [x] Animate lobby members floating per the design; keep Start game, Chat, and Settings
-- [x] Make the voice sidebar collapsible everywhere, mandatory only while in a call
-- [x] Order sidebar participants top to bottom with the join control after the last participant
+- [x] Keep the voice sidebar at 76px with no collapse control, visible on the lobby or during an active call
+- [x] Order voice participants top to bottom, with the join control at the top when outside the call
 - [x] Add the voice settings popup: speaker and microphone selection plus a test control (shipped without a prior design)
 - [x] Narrow lobby settings to DJ mode (with a player picker for a fixed DJ) and cards to win; move playlist choice to a multi-select popup that merges duplicates into a temporary playlist
 - [x] Close lobby popups on outside click
@@ -517,3 +517,19 @@ The AI service's HTTP client logs every outgoing request URL, and the YouTube AP
 Tests:
 
 - [x] Unit tests for the redaction: one parameter, every known parameter name, lookalike parameters left alone, the JSON formatter's message and exception text, and the filter on a record with format arguments
+
+## Gameplay, voice, and away-state feedback
+
+The gameplay keeps automatic reveal, complete-pass rounds, joint winners, and guessing that closes when placement locks. Account and legal work remains deferred.
+
+- [ ] Align game rules, results copy, and design documentation with the implemented round and winner behavior
+- [ ] Add a clickable turn notification and sound outside the session page, without repeated alerts after reconnect
+- [ ] Show the active player, round, own tokens, and server deadline countdown in the away widget
+- [ ] Show earned-token feedback only for actual awards, distinct incorrect feedback, and reduced-motion behavior
+- [ ] Include a per-submission token award flag in the private guess result and test awards, partial guesses, and spectator guesses
+- [ ] Keep the voice rail at 76px with its join control at the top and visibility limited to the lobby or an active call
+- [ ] Show member avatars, speaking rings, synchronized mute and deafen status, and member exit/reflow feedback
+- [ ] Update affected mockups and their published canvas to match the approved behavior
+- [ ] Add unit tests for notifications, deadlines, token awards, and voice status synchronization
+- [ ] Verify desktop behavior in both themes, reconnect handling, and voice status across two clients
+- [ ] Run the relevant frontend checks and archive completed tasks before opening the pull request
