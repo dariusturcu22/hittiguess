@@ -487,3 +487,12 @@ Tests:
 - [x] Integration test: a song is visible in the database while the next item of the same backlog is still being resolved
 - [x] Integration test: six simultaneous resolutions of one video leave one song row
 - [x] Integration test: six overlapping enqueues of the same videos queue each video once
+
+## Core startup time
+
+A cold start of the core app takes about 31 seconds on Azure: about 15 seconds for the platform to schedule a node and start the container, and about 14 seconds for Spring to start on one vCPU. Local measurements against throwaway databases at one CPU gave 23 to 29 seconds for the baseline, 11 to 12 seconds with two CPUs, and 12 to 13 seconds with the JIT limited to the fast compiler (`-XX:TieredStopAtLevel=1`), which needs no extra CPU.
+
+- [x] Limit the core image's JIT to the fast compiler through `JAVA_TOOL_OPTIONS` in `backend/Dockerfile`
+- [ ] Measure the next Azure cold start after the deploy and record the Spring startup time against the previous 14 seconds
+- [ ] Re-evaluate the compiler limit under the story 7 load test, since it caps peak throughput of long-running work
+- [ ] Decide between scale-to-zero and a minimum of one replica for the core app once the idle cost is checked against the monthly budget, since scale-to-zero costs about 30 seconds on the first request after five idle minutes
