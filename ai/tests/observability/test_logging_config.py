@@ -7,7 +7,13 @@ from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import SimpleSpanProcessor
 from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
 
-from app.observability.logging_config import JsonLineFormatter, configure_logging
+from app.observability.logging_config import (
+    REDACTED_VALUE,
+    JsonLineFormatter,
+    SecretRedactionFilter,
+    configure_logging,
+    redact_secrets,
+)
 from app.observability.request_context import _current_request_id
 
 
@@ -117,3 +123,54 @@ def test_configure_logging_attaches_the_otlp_handler_to_app_not_root(
     # configure_logging() always replaces root's handlers with just the stdout
     # one; the OTLP handler belongs on "app" only, never on root.
     assert len(logging.getLogger().handlers) == 1
+
+
+FAKE_API_KEY = "fake-key-value-for-tests"
+YOUTUBE_URL_TEMPLATE = "https://www.googleapis.com/youtube/v3/videos?part=snippet&id=abc123&key={key}"
+
+
+def test_redacts_a_credential_query_parameter_and_keeps_the_rest_of_the_url():
+    redacted = redact_secrets(YOUTUBE_URL_TEMPLATE.format(key=FAKE_API_KEY))
+
+    assert FAKE_API_KEY not in redacted
+    assert redacted == YOUTUBE_URL_TEMPLATE.format(key=REDACTED_VALUE)
+
+
+@pytest.mark.parametrize("parameter_name", ["key", "api_key", "apikey", "token", "access_token", "client_secret", "password"])
+def test_redacts_every_known_credential_parameter_name(parameter_name):
+    url = f"https://api.example.test/search?q=hello&{parameter_name}={FAKE_API_KEY}&limit=5"
+
+    redacted = redact_secrets(url)
+
+    assert FAKE_API_KEY not in redacted
+    assert "q=hello" in redacted and "limit=5" in redacted
+
+
+def test_leaves_urls_without_credentials_and_lookalike_parameters_alone():
+    url = "https://musicbrainz.org/ws/2/release-group/?query=title&monkey=1&limit=10"
+
+    assert redact_secrets(url) == url
+
+
+def test_the_json_formatter_redacts_the_message_and_the_exception_text():
+    try:
+        raise RuntimeError(f"Client error for url {YOUTUBE_URL_TEMPLATE.format(key=FAKE_API_KEY)}")
+    except RuntimeError:
+        import sys
+        record = _make_record(f"HTTP Request: GET {YOUTUBE_URL_TEMPLATE.format(key=FAKE_API_KEY)}")
+        record.exc_info = sys.exc_info()
+
+    formatted_line = JsonLineFormatter().format(record)
+
+    assert FAKE_API_KEY not in formatted_line
+    assert REDACTED_VALUE in json.loads(formatted_line)["message"]
+
+
+def test_the_redaction_filter_cleans_a_record_that_uses_format_arguments():
+    record = _make_record("HTTP Request: GET %s")
+    record.args = (YOUTUBE_URL_TEMPLATE.format(key=FAKE_API_KEY),)
+
+    SecretRedactionFilter().filter(record)
+
+    assert FAKE_API_KEY not in record.getMessage()
+    assert record.args == ()

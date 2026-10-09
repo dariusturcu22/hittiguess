@@ -1,5 +1,6 @@
 import json
 import logging
+import re
 import sys
 from datetime import datetime, timezone
 
@@ -19,6 +20,38 @@ from app.observability.tracing import SERVICE_NAME_VALUE
 TRACE_ID_HEX_DIGITS = "032x"
 SPAN_ID_HEX_DIGITS = "016x"
 OTLP_LOGS_PATH = "/v1/logs"
+REDACTED_VALUE = "REDACTED"
+SECRET_QUERY_PARAMETER_NAMES = (
+    "key",
+    "api_key",
+    "apikey",
+    "token",
+    "access_token",
+    "client_secret",
+    "consumer_secret",
+    "password",
+)
+SECRET_QUERY_PARAMETER_PATTERN = re.compile(
+    r"(?P<prefix>[?&](?:" + "|".join(SECRET_QUERY_PARAMETER_NAMES) + r")=)[^&\s\"')]+",
+    re.IGNORECASE,
+)
+
+
+def redact_secrets(text: str) -> str:
+    """Blanks the value of credential-bearing query parameters. The HTTP client logs
+    every request URL, and some external APIs (YouTube) take their key in the query
+    string, so without this a key lands in plain text in every log sink."""
+    return SECRET_QUERY_PARAMETER_PATTERN.sub(rf"\g<prefix>{REDACTED_VALUE}", text)
+
+
+class SecretRedactionFilter(logging.Filter):
+    """Applies redact_secrets to a record's message for handlers that do not go
+    through JsonLineFormatter."""
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        record.msg = redact_secrets(record.getMessage())
+        record.args = ()
+        return True
 
 
 class JsonLineFormatter(logging.Formatter):
@@ -33,7 +66,7 @@ class JsonLineFormatter(logging.Formatter):
             "timestamp": datetime.fromtimestamp(record.created, tz=timezone.utc).isoformat(),
             "level": record.levelname,
             "logger": record.name,
-            "message": record.getMessage(),
+            "message": redact_secrets(record.getMessage()),
         }
 
         request_id = get_current_request_id()
@@ -46,7 +79,7 @@ class JsonLineFormatter(logging.Formatter):
             log_entry["spanId"] = format(span_context.span_id, SPAN_ID_HEX_DIGITS)
 
         if record.exc_info:
-            log_entry["exception"] = self.formatException(record.exc_info)
+            log_entry["exception"] = redact_secrets(self.formatException(record.exc_info))
 
         return json.dumps(log_entry)
 
@@ -80,4 +113,5 @@ def configure_logging(level: int = logging.INFO) -> None:
         # Attaching to root would capture those transport logs too, triggering
         # another export on every export, an unbounded feedback loop.
         otlp_handler = LoggingHandler(level=logging.NOTSET, logger_provider=logger_provider)
+        otlp_handler.addFilter(SecretRedactionFilter())
         logging.getLogger("app").addHandler(otlp_handler)
