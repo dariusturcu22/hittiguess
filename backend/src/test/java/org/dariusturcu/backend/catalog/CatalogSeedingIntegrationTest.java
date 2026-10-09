@@ -47,6 +47,7 @@ import org.dariusturcu.backend.service.PlaylistImportJobService;
 import org.dariusturcu.backend.service.PlaylistImportService;
 import org.dariusturcu.backend.service.SongMetadataService;
 import org.dariusturcu.backend.service.SongResolutionService;
+import org.dariusturcu.backend.service.SongCatalogService;
 import org.dariusturcu.backend.service.YoutubeIdLookupService;
 import org.flywaydb.core.Flyway;
 import org.junit.jupiter.api.AfterEach;
@@ -128,6 +129,12 @@ class CatalogSeedingIntegrationTest {
         }
 
         @Bean
+        SongCatalogService songCatalogService(SongRepository songRepository,
+                                              AlternateYoutubeIdRepository alternateYoutubeIdRepository) {
+            return new SongCatalogService(songRepository, alternateYoutubeIdRepository);
+        }
+
+        @Bean
         YoutubeIdLookupService youtubeIdLookupService(SongRepository songRepository,
                                                       AlternateYoutubeIdRepository alternateYoutubeIdRepository) {
             return new YoutubeIdLookupService(songRepository, alternateYoutubeIdRepository);
@@ -135,8 +142,8 @@ class CatalogSeedingIntegrationTest {
 
         @Bean
         SongResolutionService songResolutionService(StubMetadataResolver stubMetadataResolver,
-                                                     SongRepository songRepository) {
-            return new SongResolutionService(stubMetadataResolver, songRepository);
+                                                     SongCatalogService songCatalogService) {
+            return new SongResolutionService(stubMetadataResolver, songCatalogService);
         }
 
         @Bean
@@ -236,7 +243,7 @@ class CatalogSeedingIntegrationTest {
         final Set<String> unresolvableYoutubeIds = java.util.concurrent.ConcurrentHashMap.newKeySet();
 
         StubMetadataResolver() {
-            super(null);
+            super(null, null);
         }
 
         @Override
@@ -247,7 +254,7 @@ class CatalogSeedingIntegrationTest {
             }
             SongMetadataResponse content = new SongMetadataResponse(
                     "Title for " + youtubeId, List.of("Artist for " + youtubeId), List.of(), PATIENT_YEAR,
-                    "111111", "high", "musicbrainz", "stubbed", "NEEDS_REVIEW", null, null);
+                    "111111", "high", "musicbrainz", "stubbed", "NEEDS_REVIEW", null, null, null);
             return new AiResponse(content, "stub-model", 0, LocalDateTime.now(), "SUCCESS", null, null);
         }
 

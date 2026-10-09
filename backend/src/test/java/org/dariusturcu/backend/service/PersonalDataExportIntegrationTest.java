@@ -87,6 +87,12 @@ class PersonalDataExportIntegrationTest {
         }
 
         @Bean
+        SongCatalogService songCatalogService(SongRepository songRepository,
+                                              org.dariusturcu.backend.repository.AlternateYoutubeIdRepository alternateYoutubeIdRepository) {
+            return new SongCatalogService(songRepository, alternateYoutubeIdRepository);
+        }
+
+        @Bean
         PlaylistService playlistService(
                 PlaylistRepository playlistRepository,
                 SongRepository songRepository,
@@ -96,10 +102,11 @@ class PersonalDataExportIntegrationTest {
                 PlaylistMembershipRepository playlistMembershipRepository,
                 PlaylistBanRepository playlistBanRepository,
                 SavedPlaylistRepository savedPlaylistRepository,
-                CatalogSeedingService catalogSeedingService) {
+                CatalogSeedingService catalogSeedingService,
+                SongCatalogService songCatalogService) {
             return new PlaylistService(playlistRepository, songRepository, playlistMapper, songMapper,
                     playlistAccessService, playlistMembershipRepository, playlistBanRepository, savedPlaylistRepository,
-                    catalogSeedingService);
+                    catalogSeedingService, null, songCatalogService);
         }
 
         @Bean

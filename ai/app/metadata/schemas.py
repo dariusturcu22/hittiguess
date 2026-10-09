@@ -98,6 +98,7 @@ class SongMetadataResult(ConfidenceNormalizedModel):
     verification_status: str | None = None
     sitelinks_count: int | None = None
     duration_seconds: int | None = None
+    canonical_song_id: int | None = None
 
 
 class MetadataResolveResponse(BaseModel):

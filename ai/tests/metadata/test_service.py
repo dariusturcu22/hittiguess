@@ -23,6 +23,7 @@ def _youtube_data(**overrides):
 
 
 OFFICIAL_DURATION_SECONDS = 210
+MATCHED_SONG_ID = 42
 
 
 @pytest.mark.parametrize("duration_seconds", [OFFICIAL_DURATION_SECONDS, None])
@@ -59,7 +60,7 @@ def _precheck_result(**overrides):
 
 def _verified_match():
     return VerifiedSongMatch(
-        id=42,
+        id=MATCHED_SONG_ID,
         main_artists=["Test Artist"],
         featured_artists=["Guest Artist"],
         title="Test Song",
@@ -98,6 +99,8 @@ def test_high_confidence_match_reuses_existing_data_without_running_any_llm(mock
     assert result.content.main_artists == ["Test Artist"]
     assert result.content.featured_artists == ["Guest Artist"]
     assert result.content.source == service.DUPLICATE_MATCH_SOURCE_LABEL
+    assert result.content.canonical_song_id == MATCHED_SONG_ID
+    assert result.content.verification_status == service.VERIFIED_STATUS
     precheck_mock.assert_not_called()
 
 

@@ -1,16 +1,7 @@
-"""Lock-evaluation logic for song release-year verification.
+"""Source agreement can lock a release year without reconciliation.
 
-The decided pipeline shape: MusicBrainz, Discogs, and Wikidata are
-queried first. If all three agree on the same year, that year is locked
-with no LLM involvement. Only when they disagree (partial agreement,
-a missing source, or three-way disagreement) does the pipeline fetch
-and extract Wikipedia (DeepSeek-V4-Flash) and run four-source
-reconciliation (gpt-5-nano). A genuine no-answer from all sources,
-including Wikipedia, routes to manual review rather than guessing.
-
-Validated against a 70-song test set: 99% accuracy overall, 53% of
-songs locked with zero LLM calls. See docs/DECISIONS.md's
-"Metadata pipeline final shape" entry and ai/spikes/run_conditional_pipeline.py.
+The combined submission precheck runs before this stage. Wikipedia extraction
+can corroborate a year when the three structured sources do not agree.
 """
 
 import logging

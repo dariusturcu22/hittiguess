@@ -46,6 +46,7 @@ ERROR_STATUS = "ERROR"
 HIGH_CONFIDENCE_COSINE_DISTANCE_THRESHOLD = 0.08
 
 DUPLICATE_MATCH_SOURCE_LABEL = "pgvector-duplicate-match"
+VERIFIED_STATUS = "VERIFIED"
 DEFAULT_DUPLICATE_MATCH_CONFIDENCE = "high"
 LOCKED_SOURCE_LABEL = "musicbrainz+discogs+wikidata-lock"
 WIKIPEDIA_ASSISTED_LOCK_SOURCE_LABEL = "wikipedia-assisted-lock"
@@ -120,7 +121,8 @@ def _build_duplicate_match_result(match: VerifiedSongMatch) -> SongMetadataResul
             f"{HIGH_CONFIDENCE_COSINE_DISTANCE_THRESHOLD} high-confidence threshold. "
             "Reused its data instead of re-running the metadata pipeline."
         ),
-        verification_status=None,
+        verification_status=VERIFIED_STATUS,
+        canonical_song_id=match.id,
     )
 
 
@@ -195,7 +197,7 @@ def _run_verification_pipeline(
     reasoning_by_route = {
         VerificationRoute.LOCKED: (
             f"All three structured sources (MusicBrainz, Discogs, Wikidata) agree on {release_year}. "
-            "Locked with no LLM call."
+            "Locked without Wikipedia extraction or year reconciliation."
         ),
         VerificationRoute.LOCKED_WITH_WIKIPEDIA: (
             f"At least three source years agree on {release_year} after Wikipedia extraction. "

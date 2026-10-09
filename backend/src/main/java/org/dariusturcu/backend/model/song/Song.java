@@ -47,8 +47,7 @@ public class Song {
 
     private String color;
 
-    // Nullable, not settable through CreateSongRequest/UpdateSongRequest: populated by the
-    // metadata pipeline once it runs, same as confidence and metadataRaw below.
+    // Compatibility field; genre enrichment is dropped.
     private String genre;
 
     @Enumerated(EnumType.STRING)

@@ -97,6 +97,12 @@ class PlaylistImportIntegrationTest {
         }
 
         @Bean
+        SongCatalogService songCatalogService(SongRepository songRepository,
+                                              org.dariusturcu.backend.repository.AlternateYoutubeIdRepository alternateYoutubeIdRepository) {
+            return new SongCatalogService(songRepository, alternateYoutubeIdRepository);
+        }
+
+        @Bean
         PlaylistService playlistService(
                 PlaylistRepository playlistRepository,
                 SongRepository songRepository,
@@ -105,11 +111,12 @@ class PlaylistImportIntegrationTest {
                 PlaylistAccessService playlistAccessService,
                 PlaylistMembershipRepository playlistMembershipRepository,
                 PlaylistBanRepository playlistBanRepository,
-                SavedPlaylistRepository savedPlaylistRepository) {
+                SavedPlaylistRepository savedPlaylistRepository,
+                SongCatalogService songCatalogService) {
             return new PlaylistService(playlistRepository, songRepository, playlistMapper, songMapper,
                     playlistAccessService, playlistMembershipRepository, playlistBanRepository,
                     savedPlaylistRepository, Mockito.mock(CatalogSeedingService.class),
-                    Mockito.mock(SongMetadataService.class));
+                    Mockito.mock(SongMetadataService.class), songCatalogService);
         }
 
         @Bean

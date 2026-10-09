@@ -38,6 +38,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 
 @Service
@@ -57,6 +58,7 @@ public class PlaylistService {
     private final SavedPlaylistRepository savedPlaylistRepository;
     private final CatalogSeedingService catalogSeedingService;
     private final SongMetadataService songMetadataService;
+    private final SongCatalogService songCatalogService;
 
     @Autowired
     public PlaylistService(
@@ -69,7 +71,8 @@ public class PlaylistService {
             PlaylistBanRepository playlistBanRepository,
             SavedPlaylistRepository savedPlaylistRepository,
             CatalogSeedingService catalogSeedingService,
-            SongMetadataService songMetadataService) {
+            SongMetadataService songMetadataService,
+            SongCatalogService songCatalogService) {
         this.playlistRepository = playlistRepository;
         this.songRepository = songRepository;
         this.playlistMapper = playlistMapper;
@@ -80,21 +83,7 @@ public class PlaylistService {
         this.savedPlaylistRepository = savedPlaylistRepository;
         this.catalogSeedingService = catalogSeedingService;
         this.songMetadataService = songMetadataService;
-    }
-
-    public PlaylistService(
-            PlaylistRepository playlistRepository,
-            SongRepository songRepository,
-            PlaylistMapper playlistMapper,
-            SongMapper songMapper,
-            PlaylistAccessService playlistAccessService,
-            PlaylistMembershipRepository playlistMembershipRepository,
-            PlaylistBanRepository playlistBanRepository,
-            SavedPlaylistRepository savedPlaylistRepository,
-            CatalogSeedingService catalogSeedingService) {
-        this(playlistRepository, songRepository, playlistMapper, songMapper, playlistAccessService,
-                playlistMembershipRepository, playlistBanRepository, savedPlaylistRepository,
-                catalogSeedingService, null);
+        this.songCatalogService = songCatalogService;
     }
 
     // VERIFIED is a pipeline-established lock and NEEDS_REVIEW is an LLM-reconciled year;
@@ -219,9 +208,9 @@ public class PlaylistService {
         User user = SecurityUtils.getCurrentUser();
         playlistAccessService.requireWrite(playlist, user);
 
-        List<Song> existingSongs = songRepository.findByYoutubeId(request.youtubeId());
-        if (!existingSongs.isEmpty()) {
-            Song existingSong = existingSongs.get(0);
+        Optional<Song> knownSong = songCatalogService.findKnownSong(request.youtubeId());
+        if (knownSong.isPresent()) {
+            Song existingSong = knownSong.get();
             if (!songRepository.existsByIdAndPlaylistsId(existingSong.getId(), playlistId)) {
                 playlist.addSong(existingSong);
                 playlistRepository.save(playlist);
@@ -233,10 +222,13 @@ public class PlaylistService {
         newSong.setAddedBy(user);
         applyConfirmedMetadata(newSong, request);
 
-        Song savedSong = songRepository.save(newSong);
+        Optional<Song> resolvedSong = songCatalogService.findKnownSong(request.youtubeId());
+        Song savedSong = resolvedSong.orElseGet(() -> songRepository.save(newSong));
         playlist.addSong(savedSong);
         playlistRepository.save(playlist);
-        catalogSeedingService.enqueuePatientRecheck(request.youtubeId(), PendingImportOrigin.USER_ADD_RECHECK, savedSong.getReleaseYear());
+        if (savedSong.getVerificationStatus() != VerificationStatus.VERIFIED) {
+            catalogSeedingService.enqueuePatientRecheck(request.youtubeId(), PendingImportOrigin.USER_ADD_RECHECK, savedSong.getReleaseYear());
+        }
 
         return songMapper.toDTO(savedSong);
     }
