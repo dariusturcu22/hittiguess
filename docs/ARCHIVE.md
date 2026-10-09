@@ -1466,9 +1466,8 @@ Two things settled through discussion:
 - [x] Add a hard pre-pipeline filter, no LLM involved: reject when duration falls outside a generous song-length window (roughly 1-12 minutes) combined with YouTube's own `categoryId` not being Music (10), already-fetched data, no extra API cost
 - [x] For the ambiguous remainder, non-Music category but song-length duration, add an LLM classification pass (structured output: `is_song`, `is_compilation`, confidence, reasoning) reading title, channel, and description for song-like versus gameplay-like signals
 
-- [x] Add a dedicated structured-output prompt-injection check (`contains_injection_attempt`, plus reasoning) run over raw title/channel/description before any extraction or classification LLM call uses that text, separate from relying on the existing delimiting alone to both resist injection and do its actual job
-- [x] Apply this injection check everywhere untrusted YouTube text reaches an LLM: the existing synthesis call, story 40's artist-extraction fallback, and this story's own classification pass, not just one of the three
-  - The gate runs before both LLM calls that exist today (this story's classification pass and the synthesis call). Story 40's artist-extraction fallback is not built yet; the injection check attaches to it when story 40 adds it
+- [x] The combined structured precheck extracts title/artists/color and returns injection and song/compilation flags. Safety evaluation rejects flagged results before source gathering and year reconciliation
+- [x] Full resolution and fast identification share this precheck. A verified duplicate can return earlier. No separate detector runs before every LLM call
 - [x] Decided: a flagged injection attempt writes an abuse-visibility event (story 34's scope, alongside rate-limit-exceeded and report-submitted events), an attempted injection is evidence of intent, not just an uncertain submission, so it's tracked, not silently handled the same as an honestly ambiguous song. Depends on story 34's event pipeline existing. Whether the submission itself is also outright rejected, versus routed to manual review, still needs a call, not yet made
   - Settled and built: the submission is rejected outright (`DECISIONS.md`, 2026-09). The event write is a stubbed structured log line marked `TODO: story 34` until story 34's event pipeline ships
 
@@ -1910,3 +1909,25 @@ The gameplay keeps automatic reveal, complete-pass rounds, joint winners, and gu
 - [x] Run the relevant frontend checks and archive completed tasks before opening the pull request
 
 Validation: 74 backend gameplay and broadcast tests pass, along with 314 frontend tests, TypeScript, and changed-file lint. Four desktop browser cases cover both themes, reconnect, token feedback, reduced motion, and two real WebRTC peers with fixture HTTP/STOMP responses. All 125 design sources match the published canvas; ten updated states render at desktop size.
+
+## Fix: Verified song catalog reuse and metadata contracts
+
+- [x] Save genuinely new fully verified pipeline results to the shared catalog immediately, including single-song previews, without adding playlist membership
+- [x] Carry the matched song ID through AI responses and reuse the existing song for alternate uploads across previews, confirmations, imports, and patient processing
+- [x] Serialize repeated and concurrent writes by YouTube ID and preserve the reused song's primary upload, duration, and metadata
+- [x] Retain ten-minute preview reuse for results awaiting explicit confirmation; unverified previews do not create catalog songs automatically
+- [x] Correct combined-precheck, multi-artist, admin-seeding, fast/patient import, and preview-cache documentation
+- [x] Remove dropped Topic-upload and genre requirements from active docs and record the decisions
+- [x] Unit tests: verified preview persistence, unverified preview exclusion, duplicate response identity, metadata preservation, and confirmation reuse
+- [x] Integration tests: verified lookup without playlist membership, alternate-upload reuse, and simultaneous submissions without duplicate rows
+- [x] Run the affected backend and AI suites, validate documentation links, and archive the completed task section before opening the PR
+
+## Story 40: Catalog seeding queue and user-facing bulk import
+
+Completed seeding, import, progress, and priority-coordination work is recorded in [ARCHIVE.md](ARCHIVE.md#story-40-completed-backend-implementation). Duplicate responses now carry the matched song ID and core links alternate uploads to the existing Song. PostgreSQL tests cover repeated and simultaneous reuse. Automatic embedding indexing remains a separate task.
+
+- [x] When the pgvector check returns a high-confidence match for a new YouTube ID, link that ID to the matched Song and stop without another year lookup. AI responses carry the matched song ID; previews, imports, patient processing, and playlist confirmation reuse it
+
+Tests:
+
+- [x] Integration test: a matched alternate upload reuses the existing Song, preserves primary-upload metadata, and creates one alternate link under simultaneous submissions. AI tests verify the duplicate identity and skipped source/LLM processing

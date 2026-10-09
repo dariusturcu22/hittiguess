@@ -89,17 +89,18 @@ Ads play unmodified, exactly as YouTube serves them, and the DJ has no in-app wa
 
 ## Song source quality
 
-The system prefers official "Topic" channel uploads on YouTube when available, and suggests an upgrade to the user if a better source is found. Enforcing this consistently across submissions is still an open design problem.
+Playback uses the song's stored primary YouTube upload. Alternate uploads of the same recording map to the same catalog song. Automatic Topic-upload searches and upgrade suggestions are dropped.
 
 ## Data quality
 
-An incorrect year on a card breaks the game for everyone at the table. Players can report a song they believe has the wrong year, along with a message, the year they believe is correct, and one or more sources. What causes a reported or newly submitted song to become fully trusted is decided: exact agreement among MusicBrainz, Discogs, and Wikidata locks the year with no LLM involvement; anything short of that goes through Wikipedia extraction and reconciliation instead, landing at `NEEDS_REVIEW`, not automatically verified (see [DECISIONS.md](DECISIONS.md)). Admin-seeded songs are trusted immediately and skip this process entirely.
+An incorrect year on a card breaks the game for everyone at the table. Players can report a song they believe has the wrong year, along with a message, the year they believe is correct, and one or more sources. Exact agreement among MusicBrainz, Discogs, and Wikidata locks the year without Wikipedia extraction or year reconciliation. A combined LLM precheck has already identified and classified the submission. Wikipedia can also corroborate a verified year when at least three source years match or all available years, at least three, span at most one year. Otherwise answers land at `NEEDS_REVIEW`, or `MANUAL_ENTRY` when no source has an answer. Admin-seeded songs follow the same rules and never skip verification because of who submitted them.
+
+A genuinely new fully verified song enters the shared catalog as soon as the pipeline finishes, including when a user only requests its details and never clicks Add. Playlist membership requires a separate explicit action. Unverified previews wait for submission; background imports and admin processing retain their own persistence rules. A recognized alternate upload reuses the existing song instead of creating another catalog entry.
 
 ## Future game mode ideas, not currently scoped
 
-None of these have a story in `PROJECT_STATE.md`. Genre Round in particular overlaps with theme-based session generation, explicitly dropped from story 30 (see [DECISIONS.md](DECISIONS.md)'s "Story 30 cut to two top-level modes" entry: "no on-the-spot themed generation is planned"). Kept here as ideas that could resurface later, not as planned work.
+None of these have a story in `PROJECT_STATE.md`. They remain ideas rather than planned work. Genre enrichment and genre game modes are dropped, see [DECISIONS.md](DECISIONS.md).
 
 - Decade Challenge: songs only from a specific decade.
-- Genre Round: songs tagged with a specific genre.
 - Underground Mode: only songs below a certain mainstream threshold.
 - Speed Round: shorter clip, faster guessing timer.

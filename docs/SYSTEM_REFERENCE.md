@@ -100,6 +100,10 @@ Every rate-limited request the core service rejects, whichever limiter caught it
 
 ### AI microservice (FastAPI)
 
+Resolved metadata carries ordered `main_artists` and `featured_artists`, verification status, confidence, year, color, nullable sitelinks, and the submitted upload's nullable duration. A verified duplicate also carries `canonical_song_id`; a new result leaves it null. Core exposes that field as `canonicalSongId` and uses it for alternate-ID linking rather than creating another Song. The duplicate response's duration belongs to the submitted upload and must not overwrite the reused song's primary-upload duration.
+
+`GET /api/metadata/song` saves genuinely new VERIFIED results to the shared catalog before returning. It never creates playlist membership. Successful previews remain reusable for ten minutes in a per-user/per-video memory cache; unverified previews require explicit submission. Playlist confirmation resolves primary and alternate IDs to the existing Song before creating a row. Admin imports use the same verification rules as user submissions.
+
 | Method | Path | Notes |
 |---|---|---|
 | POST | `/metadata/resolve` | Internal only, gated by `X-Internal-Api-Key`, called by the core service's `SongMetadataService`, never exposed publicly. Independently rate-limited at 30 requests per minute per client address, evaluated before the internal-key check, since anyone holding that shared key could otherwise call it directly. See story 27 |
@@ -201,15 +205,14 @@ Song
   │     gradientColor1/gradientColor2 pair, story 47, V20)
   ├── wikidataSitelinksCount (nullable int, the international-scope and popularity-weighting signal
   │     for story 30's difficulty generation, written by the AI metadata pipeline, V21)
-  ├── artists: List<SongArtist>  (@OneToMany, ordered by displayOrder; today always one MAIN entry,
-  │     the submission flow has no multi-artist entry UI yet, see story 40's featured-artist extraction)
-  ├── genre  (nullable String, populated by the metadata pipeline once it runs, not user-submitted,
-  │     same as confidence/metadataRaw below; replaces the old SongTag/PLAYLIST/SPECIAL/ANIME enum,
-  │     which had no analog in the settled design mockups, see DECISIONS.md's 2026-09 entry)
+  ├── artists: List<SongArtist>  (@OneToMany, ordered by displayOrder; the pipeline persists all
+  │     MAIN artists followed by FEATURED artists; manual artist text maps to one MAIN row)
+  ├── genre  (nullable compatibility field; pipeline enrichment and genre modes are dropped)
   ├── country
   ├── verificationStatus (UNVERIFIED default, VERIFIED, NEEDS_REVIEW, MANUAL_ENTRY; see the state
   │     diagram below; story 18's lock-evaluation pipeline that moves it is built)
-  ├── confidence, metadataRaw (populated by story 18's pipeline; both nullable until a song runs through it)
+  ├── confidence (nullable, populated by the metadata pipeline)
+  ├── metadataRaw (nullable compatibility field, not populated by the current pipeline)
   ├── playlists: Set<Playlist>  (@ManyToMany, mappedBy "songs"; a song can belong to more than one
   │     playlist since story 15, and to zero, a song is a standalone catalog entity independent of
   │     any playlist, see DECISIONS.md's 2026-09 "Song deletion reversed" entry)
@@ -270,16 +273,18 @@ analytics_events
 ```mermaid
 stateDiagram-v2
     [*] --> UNVERIFIED: song submitted
-    UNVERIFIED --> VERIFIED: MusicBrainz, Discogs, and Wikidata agree exactly (no LLM call)
+    UNVERIFIED --> VERIFIED: structured sources agree or Wikipedia corroborates a lock
     UNVERIFIED --> NEEDS_REVIEW: sources disagree, Wikipedia + four-source reconciliation runs
     UNVERIFIED --> MANUAL_ENTRY: no source, including Wikipedia, has any data
-    NEEDS_REVIEW --> VERIFIED: never happens automatically, an admin's manual review is the only path
+    NEEDS_REVIEW --> VERIFIED: patient recheck establishes a source lock or admin resolves a report
     VERIFIED --> VERIFIED: locked against every path except an admin resolving a story 17 report
     VERIFIED --> NEEDS_REVIEW: an admin resolves a report and chooses this status instead
     VERIFIED --> MANUAL_ENTRY: an admin resolves a report and chooses this status instead
 ```
 
 `VERIFIED` is a lock against every automatic path and every other manual path, but not an absolute one: an admin resolving a song's open reports through `POST /api/admin/song-reports/{songId}/resolve` can set a corrected year and change the verification status even on a `VERIFIED` song, per the 2026-09 "Admin report resolution can override a locked song" `DECISIONS.md` entry. No other path, including a report simply being upheld with nothing else, overwrites a locked year. `MANUAL_ENTRY` is the least-trusted tier, distinct from `NEEDS_REVIEW`.
+
+Exact agreement across MusicBrainz, Discogs, and Wikidata skips Wikipedia and reconciliation after the combined precheck. The Wikipedia-assisted lock accepts three matching source years, or at least three available years whose entire range spans at most one year, choosing the earliest. Remaining evidence goes through reconciliation to NEEDS_REVIEW; no-answer results become MANUAL_ENTRY. Catalog persistence protects an already verified year and artist list; a fresh lookup of its primary upload can refresh official duration.
 
 ### Group and game session lifecycle (stories 10, 39)
 

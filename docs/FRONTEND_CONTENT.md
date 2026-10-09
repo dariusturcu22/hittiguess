@@ -30,7 +30,7 @@ Authenticated, playlist-access-gated. Data: a single `SongDTO`'s full fields, pl
 
 ### Add song (`/playlists/[playlistId]/songs/add`)
 
-Authenticated, playlist-access-gated. Fields: YouTube link or ID, with a "get details" action that calls the metadata pipeline and pre-fills artist, title, release year, color, genre, and country for review and adjustment before saving. States: idle, fetching, fetched-and-editable, and error. Story 28 uses a two-path screen: searching the existing catalog and queuing several matches at once as the primary path, with link-and-fetch as the secondary path for tracks not already in the database.
+Authenticated, playlist-access-gated. The primary path searches the shared catalog and queues matches for explicit addition to the playlist. The secondary path accepts a YouTube link or ID and fetches title, main/featured artist lists, year, color, confidence, and verification status. A new fully verified result is already saved to the shared catalog when details return; Add still controls playlist membership. Other preview results remain temporary until submission. Matching previews can be reused for ten minutes without another pipeline call. States distinguish idle, fetching, verified, review-needed, manual input, rejected submissions, and transport failures. Genre enrichment is dropped; country is not supplied by this metadata response.
 
 ### Join by invite (`/playlists/join/[inviteCode]`)
 
@@ -48,7 +48,7 @@ Authenticated. Public playlist cards show their owner and song count and open pl
 
 Reached from Playlist detail's Add song menu. Two sources:
 
-- **From YouTube** (story 40's user-facing bulk import): paste a YouTube playlist link, then a per-song crawl, each row starting from the raw YouTube data (video title, channel name) and updating in place to the resolved title, artist, and year as it's processed. Runs in the background per story 40's background-import UX task: leaving the screen doesn't cancel it, a temporary sidebar icon and a fading toast both reopen it with live progress.
+- **From YouTube**: paste a playlist link and start the background import. Rows begin with raw video titles/channel names, then show identifying, dating, resolved, already-known, or unresolved outcomes. Identification runs concurrently; fast-tier years are provisional and patient processing rechecks them. Songs join the playlist as each resolves. Leaving the page does not cancel the job; the sidebar progress icon and toast reopen it. Polling runs no faster than every five seconds. The existing 200-song import cap and 500-song daily quota produce explicit limit feedback. Duplicate uploads reuse the existing song.
 - **From an existing playlist** (story 45): pick a playlist the player owns, is a member of, or that's published publicly, and every song copies over immediately, no fetching, since it's already a resolved catalog row. Synchronous, no background/progress state needed for this path.
 
 ### Edit playlist

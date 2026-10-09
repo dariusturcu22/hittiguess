@@ -9,18 +9,6 @@ Completed backend records are in [ARCHIVE.md](ARCHIVE.md); [PROJECT_STATE.md](PR
 "Next available task" means the earliest unchecked box under a Ready or In Progress story.
 
 ## Standing policy: all frontend work lives in story 28
- 
-## Fix: Verified song catalog reuse and metadata contracts
-
-- [ ] Save genuinely new fully verified pipeline results to the shared catalog immediately, including single-song previews, without adding playlist membership
-- [ ] Carry the matched song ID through AI responses and reuse the existing song for alternate uploads across previews, confirmations, imports, and patient processing
-- [ ] Serialize repeated and concurrent writes by YouTube ID and preserve the reused song's primary upload, duration, and metadata
-- [ ] Retain ten-minute preview reuse for results awaiting explicit confirmation; unverified previews do not create catalog songs automatically
-- [ ] Correct combined-precheck, multi-artist, admin-seeding, fast/patient import, and preview-cache documentation
-- [ ] Remove dropped Topic-upload and genre requirements from active docs and record the decisions
-- [ ] Unit tests: verified preview persistence, unverified preview exclusion, duplicate response identity, metadata preservation, and confirmation reuse
-- [ ] Integration tests: verified lookup without playlist membership, alternate-upload reuse, and simultaneous submissions without duplicate rows
-- [ ] Run the affected backend and AI suites, validate documentation links, and archive the completed task section before opening the PR
 
 Every story other than story 28 is backend-only. Any frontend task a story would otherwise carry (a page, a component, a WebRTC/browser-side piece, a frontend test) is tracked under story 28's implementation phase instead, not built in that story's own batch. Story 28 is the single place all frontend lands, wired against the real backends every prior batch shipped. Frontend tasks already written inline under other stories stay listed there marked "story 28" for traceability, but they are not part of that story's own batch completion; a backend story is done when its backend code and backend tests pass.
 
@@ -60,24 +48,23 @@ Consent notice, transferred from story 37:
 
 - [ ] Add a cookie/consent notice, only needed once story 34 (first-party analytics) ships; skip until then since no third-party trackers are planned. Deliberately deferred, not a gap: there's nothing to consent to yet
 
-## Story 40: Catalog seeding queue and user-facing bulk import
-
-Completed seeding, import, progress, and priority-coordination work is recorded in [ARCHIVE.md](ARCHIVE.md#story-40-completed-backend-implementation). Canonical song reuse after a pgvector match still needs alternate-ID integration and its test. Story 16 exists; this follow-up covers the integration between the two mechanisms.
-
-- [ ] When story 16's pgvector check returns a high-confidence match for a YouTube ID that passed this story's own exact-ID check as new, link that ID into the alternate-ID table against the matched `Song` instead of creating a new one, and stop there, skipping the full pipeline for it (the alternate-ID linking primitive exists; the pgvector match that triggers it depends on story 16, not yet built)
-
-Tests:
-
-- [ ] Integration test: a new YouTube ID that pgvector matches with high confidence links into the alternate-ID table against the existing `Song` and never triggers the full pipeline
-
 ## Story 41: Submission content safety, non-music rejection and prompt-injection defense
 
-Completed submission-classification work is recorded in [ARCHIVE.md](ARCHIVE.md#story-41-completed-backend-implementation). The source-match secondary signal and uncertain-case review remain deferred. The injection-gate ordering conflict in the documentation audit remains unresolved.
+Completed submission-classification work is recorded in [ARCHIVE.md](ARCHIVE.md#story-41-completed-backend-implementation). The source-match secondary signal and uncertain-case review remain deferred. Injection detection is part of the combined structured precheck; rejected submissions stop before source gathering, not before every LLM call.
 
 - [ ] Use a match (or lack of one) against MusicBrainz/Discogs/Wikidata as a secondary signal for this same ambiguous tier, not a standalone gate: a real game-soundtrack track should resolve to an actual catalogued release, resolving to nothing across all three lowers confidence but doesn't reject outright on its own, this project explicitly wants niche/underground coverage, which also won't always resolve
   - Deferred: tuning how a source non-match lowers confidence needs real submission data to set the weighting without over-rejecting niche tracks, the same data-tuning dependency story 30 carries; the classifier ships without it rather than guessing a threshold
 - [ ] Still-uncertain cases after all of the above route to manual review, not a hard reject, the same "escalate, don't guess" principle already set for artist/title verification
   - Deferred: this manual-review tier depends on the source-match secondary signal above to define "still uncertain" without a threshold; deferred with it. A confident non-music or compilation verdict rejects, and a genuine no-answer song still reaches story 18's MANUAL_ENTRY route downstream
+
+## Fix: Verified catalog embedding indexing
+
+The duplicate query reads only verified songs with stored embeddings. The AI embedding writer exists but no production caller connects it to catalog saves; new verified songs therefore do not automatically become similarity-search candidates.
+
+- [ ] Define and wire embedding population after verified catalog persistence, including upgrades of existing songs and retry behavior
+- [ ] Backfill verified songs with missing embeddings without changing their metadata or playlist membership
+- [ ] Unit tests: normalized artist/title indexing, verified-only writes, and retry behavior
+- [ ] Integration test: a newly verified song becomes searchable and a later alternate upload reuses it without another full pipeline run
 
 ## Story 24: Parallelize metadata pipeline fetches across sources
 

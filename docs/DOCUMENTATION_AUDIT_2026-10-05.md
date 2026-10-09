@@ -8,6 +8,14 @@ New playlists retain creation timestamps; legacy dates remain unavailable. Offic
 
 Account pages, legal UI, statistics, account correction/deletion/export controls, and disclosure updates remain deferred and tracked in TASKS.md. The findings below retain the original audit evidence and stable IDs; the other conflicts still need their separate implementation or documentation changes.
 
+## Reviewed metadata and import findings: 2026-10-09
+
+C12, C13, C14, C15, D06, D07, and D12 are resolved by the approved metadata contracts and catalog reuse. The combined precheck precedes source agreement; Wikipedia can also corroborate a verified year. Admin origin never grants trust. New fully verified results enter the shared catalog immediately without playlist membership. AI duplicate responses carry the existing song ID, and core links alternate uploads without replacing the primary upload or its metadata. Successful unverified previews remain reusable for ten minutes until explicit submission.
+
+M08's Topic-upload search/upgrade requirement and C19's genre-enrichment requirement are dropped. Their compatibility fields are not evidence of implemented enrichment. Raw-evidence storage, source-match safety tuning, and gather timeouts remain outside this change. Earlier tables retain the original finding evidence.
+
+New follow-up N01: pgvector similarity searches only verified songs with stored embeddings. `store_verified_song_embedding` exists but has no production caller connecting catalog persistence to indexing. Returned matches now reuse the existing entity; embedding population for new verified songs remains explicit work in TASKS.md.
+
 ## Scope and evidence
 
 This report compares the current checkout's active documentation, design source files, published design canvas, frontend, Spring core, AI service, and Flutter app. Findings describe the source as it stands on 2026-10-05. They do not choose between conflicting requirements and do not change product behavior, existing status rows, or historical decisions.

@@ -11,7 +11,7 @@
 | Database | PostgreSQL + pgvector | Development host: Supabase. Production host: Neon, see [DECISIONS.md](DECISIONS.md). |
 | Auth | OAuth2 + JWT | Refresh tokens, owned by the core service. |
 | Realtime | Spring STOMP/WebSocket | Game session sync, voice signaling, and text chat, core service. |
-| AI/LLM | OpenAI API | Called directly from the AI microservice, structured output through Pydantic. |
+| AI/LLM | DeepInfra and OpenAI APIs | DeepInfra handles precheck/extraction; OpenAI handles reconciliation and embeddings. LLM output uses Pydantic schemas. |
 | Embeddings | text-embedding-3-small | Deduplication and RAG, generated in the AI microservice. |
 | Hosting, backend | Currently Fly.io | Migrating away; target platform undecided, see [PROJECT_STATE.md](PROJECT_STATE.md). |
 | Hosting, frontend | Vercel | Unchanged. |
@@ -37,41 +37,47 @@ One split is explicit: the transactional Postgres+pgvector instance versus a sep
 
 ### Song and playlist database
 
-Every song has: `youtubeId`, `title`, `releaseYear`, `verificationStatus`, `confidence` (persisted), `metadataRaw` (full pipeline output, for auditability), multi-value `tags` (story 23, built). Release year is one mutable field plus `verificationStatus`, not a separate `submittedYear`/`verifiedYear` pair; once verified, the year doesn't change except through the report/re-verification process (story 18, built). Artists are an ordered list (`SongArtist`), each tagged `MAIN` or `FEATURED`; more than one `MAIN` artist is allowed, the role tag is display-only, and naming any single artist on the list correctly is enough to guess it. No pipeline extracts featured artists into that list yet, submission still populates a single `MAIN` entry per song. See [PROJECT_STATE.md](PROJECT_STATE.md)'s resolved questions and [DECISIONS.md](DECISIONS.md).
+Songs retain their primary `youtubeId`, title, release year, verification status, confidence, color, nullable Wikidata sitelink count, and official upload duration/freshness. Artists are ordered `SongArtist` rows with `MAIN` or `FEATURED` roles. The pipeline extracts both lists and persistence keeps every artist, with main artists first and featured artists afterward. Naming any one credited artist correctly satisfies the artist guess. Manual text entry still maps its artist field to one MAIN row. Verified years remain protected from ordinary user editing; reports and patient processing have their own resolution paths.
 
-`metadataRaw`, and any other field that persists external API output, holds the curated, actually-used subset of a source's response, never the full raw payload. A single source's raw response can run to tens of KB per song; at that size the database's free-tier size cap holds a small fraction of the catalog a curated version would. Any future field storing external API output follows the same rule.
+Every genuinely new fully verified pipeline result enters the shared catalog immediately, including a single-song preview abandoned before Add. A preview never adds playlist membership. Unverified preview results wait for explicit submission; imports and admin processing retain their existing persistence rules. A duplicate match returns the existing song ID and links the submitted upload as an alternate YouTube ID, preserving the existing song's primary upload, duration, and metadata.
+
+The nullable `genre` and `metadataRaw` columns remain for compatibility; neither is populated by the current pipeline. Genre enrichment and genre game modes are dropped. Raw-evidence storage remains outside this change. Any future field storing external API output must retain only curated, actually-used evidence rather than a full source payload.
 
 ### Metadata pipeline (AI microservice)
 
 ```
 YouTube URL
     ↓
-YouTube Data API, title, artist, channel info
+YouTube Data API, title, channel, description, category, duration
+    ↓
+Deterministic category/duration filter
+    ↓ obvious non-music: REJECTED, stop
     ↓
 pgvector similarity check against existing verified songs
-    ↓ high-confidence match: reuse existing data, skip everything below
-Content-safety gate (story 41): injection check on the raw YouTube text before
-    any LLM call, then a deterministic non-music and duration pre-filter, then an
-    LLM is-song/is-compilation classification
-    ↓ flagged for injection, non-music, or a compilation: verificationStatus REJECTED, stop here
+    ↓ high-confidence match: return verified metadata and canonical song ID,
+      link alternate upload in core, skip everything below
+Combined structured LLM precheck: title, MAIN/FEATURED artists, color,
+    injection flag, song/compilation classification
+    ↓ safety evaluation rejects flagged submissions before source gathering
 Query MusicBrainz, Discogs, and Wikidata
     ↓
 All three agree exactly?
-    yes → lock the year, no LLM call, verificationStatus VERIFIED
-    no  → fetch and extract Wikipedia (LLM reading-comprehension call),
-          reconcile all four sources (LLM call), verificationStatus NEEDS_REVIEW
+    yes → lock the year, skip Wikipedia and reconciliation, VERIFIED
+    no  → fetch and extract Wikipedia; corroborating source years can lock VERIFIED
+          otherwise reconcile available evidence, verificationStatus NEEDS_REVIEW
     none of the four has any data at all → verificationStatus MANUAL_ENTRY
     ↓
 Confidence and status surfaced in the UI
     ↓
-Core service stores the song
+Core immediately saves new VERIFIED results without playlist membership
+Other previews wait for explicit submission; imports persist their outcomes
 ```
 
 Quota note: YouTube's `search.list` costs 100 units per call against a 100-call default daily budget. `videos.list` costs 1 unit and batches up to 50 IDs per call. Resolving `(artist, title) → youtubeId` from a known ID avoids `search.list` entirely.
 
-### YouTube source quality
+The combined precheck already runs before source agreement is evaluated. Exact agreement avoids year reconciliation, not all LLM use. Duplicate reuse can return before the precheck; no separate injection detector runs before every LLM call.
 
-Search with `videoCategoryId=10` and look for a channel ending in `" - Topic"`, an official auto-generated upload. Suggest an upgrade when a high-confidence match is found.
+A successful single-song preview is remembered in memory for ten minutes, keyed by authenticated user and submitted YouTube ID. Confirmation can reuse that result when the submitted title, main artists, and year still match. Expired or missing previews require another lookup. This cache does not delay verified catalog insertion, share results between users, or implement the dropped global pipeline cache.
 
 ### Group (core service)
 
@@ -137,15 +143,17 @@ Text: plain messages over the same WebSocket connection, stored for the life of 
 
 ### Verification
 
-Players can report a song's year as incorrect, with a message, the year they believe is correct, and one or more sources. What promotes a reported or new song to fully verified is decided: exact agreement among MusicBrainz, Discogs, and Wikidata locks the year with no LLM involvement; anything short of that routes through Wikipedia extraction and four-source reconciliation instead, landing at `NEEDS_REVIEW`, never silently promoted to verified regardless of LLM confidence (story 18, `DECISIONS.md`). Admin-submitted songs are trusted immediately.
+Players can report a song's year as incorrect, with a message, the year they believe is correct, and one or more sources. Exact agreement among MusicBrainz, Discogs, and Wikidata locks the year without Wikipedia extraction or year reconciliation. Otherwise Wikipedia extraction can establish a corroborated source lock. Three matching years, or at least three available years spanning at most one year, lock VERIFIED; the latter chooses the earliest. Remaining evidence is reconciled to `NEEDS_REVIEW`, or returns `MANUAL_ENTRY` when no source has an answer. High LLM confidence alone never promotes a song to VERIFIED. Admin imports follow the same pipeline and verification rules as user submissions.
 
 ### RAG and deduplication (AI microservice)
 
-Before running the full pipeline for a new submission: normalize `artist + title`, generate a `text-embedding-3-small` embedding, check pgvector cosine-distance similarity against existing verified songs. On a match at or below the high-confidence threshold, reuse the existing data and skip the LLM call. Goals: keep the database free of duplicate rows, and avoid unnecessary LLM cost. The threshold and the AI microservice's database client choice are decided (story 16, `DECISIONS.md`). How this interacts with story 15's song/playlist relational model is an open coordination point, also logged there, since story 15 hadn't merged when story 16 shipped.
+Before the precheck for a new submission, the AI service normalizes the cleaned artist/title, generates a `text-embedding-3-small` embedding, and searches existing verified songs by pgvector cosine distance. A high-confidence match carries `canonical_song_id` alongside the reused metadata. Core links the new upload in `AlternateYoutubeId` and returns the existing Song. Known primary or alternate IDs resolve to the existing song without creating a row. Transaction locks serialize inserts, links, and playlist confirmations for the same submitted ID. Duplicate reuse never replaces the existing song's metadata with another upload's duration.
+
+Similarity matching requires a stored embedding. The existing embedding writer has no production caller connecting catalog saves to indexing; automatic indexing and backfill remain explicit follow-ups in [TASKS.md](TASKS.md).
 
 ### Admin tools
 
-Bulk import mechanism: built, story 40. Two separate paths, an admin-only patient backlog queue draining daily against an LLM tier's quota, and immediate on-the-spot resolution open to any user, never sharing a queue. Admin-submitted songs skip the pipeline and are trusted immediately. Review queue for reports: built, story 17, ranked by a five-tier priority order (converging reports first, then non-converging reports, then confirmed-but-unreported cards, then unconfirmed cards, `VERIFIED` cards with no report never appear).
+The admin catalog backlog drains through the patient pipeline on its schedule or an explicit run-now action. Admin origin grants no special verification status. User imports identify videos concurrently and resolve provisional years through the fast tier; songs appear as they settle and are queued for patient rechecks. A verified duplicate reuses the existing song without another year lookup. The patient drain yields to immediate user work. Review queue for reports: built, story 17, ranked by a five-tier priority order (converging reports first, then non-converging reports, then confirmed-but-unreported cards, then unconfirmed cards, `VERIFIED` cards with no report never appear).
 
 ## Deployment
 
@@ -162,14 +170,13 @@ Beta runs the frontend on Vercel and both backend containers in one Azure Contai
 User searches by link or by keyword (artist, title, year)
   Already in the database: return existing data
   Not in the database: core service forwards the URL to the AI microservice
-AI microservice checks pgvector for a match
-  Match: return existing verified data
-  No match: parallel metadata fetch, then LLM synthesis
-AI microservice returns structured metadata and confidence
-Frontend shows a pre-filled form with a confidence indicator
-User confirms or edits
-Core service saves the song as unverified
-Background: AI microservice checks for a Topic-channel upgrade
+AI microservice filters the submission and checks pgvector
+  Match: return existing verified metadata and song ID
+  No match: combined precheck, source gathering, verification
+Core saves new VERIFIED results or links an alternate upload immediately
+Frontend shows metadata and verification status
+User confirms playlist membership or submits an unverified result explicitly
+Core reuses known songs and matching cached previews
 ```
 
 ## Data flow: playing a game
@@ -194,7 +201,7 @@ Group returns to its lobby state: admin starts another session within 30 minutes
 ## What's built
 
 - Two-service split: Spring Boot core service (`backend/`) and Python/FastAPI AI microservice (`ai/`).
-- Multi-source metadata pipeline in the AI microservice, LLM synthesis with structured output through Pydantic; YouTube, MusicBrainz, Discogs, Wikidata, and Wikipedia are all live, each returning candidate data for the LLM synthesis step to reconcile (story 25). Genius, Last.fm, and iTunes were reviewed and dropped for good, not paused. The lock-before-LLM verification flow in the Metadata resolution flow section above is built (story 18): exact agreement among MusicBrainz, Discogs, and Wikidata locks the year to `VERIFIED` with no LLM call, disagreement routes through Wikipedia extraction and four-source reconciliation to `NEEDS_REVIEW`, and a total no-answer lands at `MANUAL_ENTRY`. A content-safety gate rejects prompt injection, non-music, and compilation submissions before the pipeline runs, returning `REJECTED` (story 41). The pipeline's source fetches run concurrently in a thread pool (story 24). The `Song` schema it writes to (`verificationStatus`, `confidence`, `metadataRaw`) has landed (story 23), as has pgvector-based duplicate detection before a song re-enters the pipeline at all (story 16).
+- Multi-source metadata pipeline in the AI microservice, LLM synthesis with structured output through Pydantic; YouTube, MusicBrainz, Discogs, Wikidata, and Wikipedia are all live, each returning candidate data for the LLM synthesis step to reconcile (story 25). Genius, Last.fm, and iTunes were reviewed and dropped for good, not paused. The source-agreement flow is built (story 18): after the combined precheck, exact agreement among MusicBrainz, Discogs, and Wikidata locks the year to `VERIFIED` without Wikipedia extraction or reconciliation, disagreement consults Wikipedia for a corroborated lock before reconciliation to `NEEDS_REVIEW`, and a total no-answer lands at `MANUAL_ENTRY`. A content-safety gate rejects prompt injection, non-music, and compilation submissions before the pipeline runs, returning `REJECTED` (story 41). The pipeline's source fetches run concurrently in a thread pool (story 24). The pipeline persists verification status, confidence, artists, title, year, color, sitelinks, and duration; `metadataRaw` remains unused, as has pgvector-based duplicate detection before a song re-enters the pipeline at all (story 16).
 - Catalog seeding queue and user-facing bulk import (story 40): a patient admin backlog draining on a scheduled sweep and an immediate on-the-spot import path that never share a queue, a batch YouTube-ID lookup against the database as the cheap first step, the `AlternateYoutubeId` and `PendingImport` tables, the `ADMIN` role and `AdminAccessGuard`.
 - Spring Boot backend: auth, playlist CRUD, song CRUD, song search by link or keyword (story 14); a song's release year is edit-gated by `verificationStatus`, only `UNVERIFIED` and `MANUAL_ENTRY` songs stay editable (story 23). A song belongs to any number of playlists through a join table, not a single owning playlist (story 15). Playlist membership carries a real owner/admin, independently revocable per-member grants, kick versus ban, and a per-playlist join identity (story 46).
 - Group (story 39) and Game session (story 10) backends, synced in real time over WebSocket (story 11): lobby lifecycle, settings, membership, rounds, guesses, betting, scoring, and the two session-long leaderboards are all built server-side; story 28 now implements the lobby and gameplay frontend, including drag-and-drop timeline placement, animated guess feedback, persistent connection, turn notification, and the admin-crown indicator. Visual and route verification remain open.
