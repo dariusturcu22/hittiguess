@@ -496,3 +496,15 @@ A cold start of the core app takes about 31 seconds on Azure: about 15 seconds f
 - [ ] Measure the next Azure cold start after the deploy and record the Spring startup time against the previous 14 seconds
 - [ ] Re-evaluate the compiler limit under the story 7 load test, since it caps peak throughput of long-running work
 - [ ] Decide between scale-to-zero and a minimum of one replica for the core app once the idle cost is checked against the monthly budget, since scale-to-zero costs about 30 seconds on the first request after five idle minutes
+
+## Secrets in AI service logs
+
+The AI service's HTTP client logs every outgoing request URL, and the YouTube API takes its key in the query string, so the production YouTube key reached the Container Apps console logs and the Log Analytics workspace in plain text.
+
+- [x] Redact the values of credential-bearing query parameters (`key`, `api_key`, `apikey`, `token`, `access_token`, `client_secret`, `consumer_secret`, `password`) in every log message and exception text before it reaches stdout, and in records shipped over OTLP (`app/observability/logging_config.py`)
+- [ ] Rotate the production YouTube Data API key in Google Cloud, restrict the new key to the YouTube Data API, delete the old key, and update the `youtube-api-key` Container Apps secret
+- [ ] Purge or let age out the log rows that still contain the old key once it is revoked
+
+Tests:
+
+- [x] Unit tests for the redaction: one parameter, every known parameter name, lookalike parameters left alone, the JSON formatter's message and exception text, and the filter on a record with format arguments
