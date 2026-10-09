@@ -49,6 +49,7 @@ export interface GuessResult {
   roundId?: number;
   artistCorrect?: boolean;
   titleCorrect?: boolean;
+  tokenAwarded?: boolean;
   state?: GuessState;
 }
 
@@ -81,9 +82,11 @@ export function useGameSessionRealtime(
   onSessionEnded?: (ended: SessionEnded) => void,
 ) {
   const queryClient = useQueryClient();
+  const onRoundEventReference = useRef(onRoundEvent);
   const onGuessResultReference = useRef(onGuessResult);
   const onSessionEndedReference = useRef(onSessionEnded);
   useEffect(() => {
+    onRoundEventReference.current = onRoundEvent;
     onGuessResultReference.current = onGuessResult;
     onSessionEndedReference.current = onSessionEnded;
   });
@@ -101,11 +104,12 @@ export function useGameSessionRealtime(
       reconnectDelay: RECONNECT_DELAY_MILLISECONDS,
       onConnect: () => {
         setConnectionState("connected");
+        void queryClient.invalidateQueries({ queryKey: getGetSessionQueryKey(sessionId) });
         client.subscribe(`${SESSION_ROUND_TOPIC}/${sessionId}/round`, (message) => {
           let roundEvent: SessionRoundEvent | undefined;
           try {
             roundEvent = JSON.parse(message.body) as SessionRoundEvent;
-            onRoundEvent?.(roundEvent);
+            onRoundEventReference.current?.(roundEvent);
           } catch (parseError) {
             console.warn(ROUND_EVENT_PARSE_FAILURE_MESSAGE, parseError);
           }
@@ -165,7 +169,7 @@ export function useGameSessionRealtime(
       clientReference.current = null;
       void client.deactivate();
     };
-  }, [hasValidSessionId, onRoundEvent, queryClient, sessionId]);
+  }, [hasValidSessionId, queryClient, sessionId]);
 
   const publish = useCallback((action: string, body?: Record<string, unknown>) => {
     const client = clientReference.current;
