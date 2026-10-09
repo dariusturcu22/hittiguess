@@ -9,6 +9,18 @@ Completed backend records are in [ARCHIVE.md](ARCHIVE.md); [PROJECT_STATE.md](PR
 "Next available task" means the earliest unchecked box under a Ready or In Progress story.
 
 ## Standing policy: all frontend work lives in story 28
+ 
+## Fix: Verified song catalog reuse and metadata contracts
+
+- [ ] Save genuinely new fully verified pipeline results to the shared catalog immediately, including single-song previews, without adding playlist membership
+- [ ] Carry the matched song ID through AI responses and reuse the existing song for alternate uploads across previews, confirmations, imports, and patient processing
+- [ ] Serialize repeated and concurrent writes by YouTube ID and preserve the reused song's primary upload, duration, and metadata
+- [ ] Retain ten-minute preview reuse for results awaiting explicit confirmation; unverified previews do not create catalog songs automatically
+- [ ] Correct combined-precheck, multi-artist, admin-seeding, fast/patient import, and preview-cache documentation
+- [ ] Remove dropped Topic-upload and genre requirements from active docs and record the decisions
+- [ ] Unit tests: verified preview persistence, unverified preview exclusion, duplicate response identity, metadata preservation, and confirmation reuse
+- [ ] Integration tests: verified lookup without playlist membership, alternate-upload reuse, and simultaneous submissions without duplicate rows
+- [ ] Run the affected backend and AI suites, validate documentation links, and archive the completed task section before opening the PR
 
 Every story other than story 28 is backend-only. Any frontend task a story would otherwise carry (a page, a component, a WebRTC/browser-side piece, a frontend test) is tracked under story 28's implementation phase instead, not built in that story's own batch. Story 28 is the single place all frontend lands, wired against the real backends every prior batch shipped. Frontend tasks already written inline under other stories stay listed there marked "story 28" for traceability, but they are not part of that story's own batch completion; a backend story is done when its backend code and backend tests pass.
 
