@@ -118,8 +118,9 @@ for (const theme of ["dark", "light"]) {
     await expect.poll(() => page.evaluate(() => (window as unknown as Window & { turnSoundCount: number }).turnSoundCount)).toBe(1);
     await page.screenshot({ path: testInfo.outputPath("away-turn.png") });
     const ownConnection = [...broker.connections].find((connection) => connection.subscriptions.has(SESSION_TOPIC));
-    await ownConnection?.socket.close({ code: SOCKET_CLOSE_CODE });
-    await expect.poll(() => [...broker.connections].filter((connection) => connection.subscriptions.has(SESSION_TOPIC)).length, { timeout: RECONNECT_TIMEOUT_MILLISECONDS }).toBe(1);
+    if (!ownConnection) throw new Error("Missing active session subscription");
+    await ownConnection.socket.close({ code: SOCKET_CLOSE_CODE });
+    await expect.poll(() => [...broker.connections].some((connection) => connection !== ownConnection && connection.subscriptions.has(SESSION_TOPIC)), { timeout: RECONNECT_TIMEOUT_MILLISECONDS }).toBe(true);
     expect(await page.evaluate(() => (window as unknown as Window & { turnSoundCount: number }).turnSoundCount)).toBe(1);
     broker.round = { ...broker.round, status: "COUNTDOWN", countdownEndsAt: new Date(Date.now() + PHASE_DURATION_MILLISECONDS).toISOString() };
     broker.send(SESSION_TOPIC, { type: "GUESS_LOCKED", sessionId: SESSION_ID, payload: broker.round });
