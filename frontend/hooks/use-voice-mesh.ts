@@ -6,6 +6,7 @@ import { Client } from "@stomp/stompjs";
 import { useGetVoiceTurnCredentials } from "@/hooks/generated/group-management/group-management";
 import type { MemberDTO } from "@/hooks/models/memberDTO";
 import { publishLocalAudioStream, publishTabAudioSharing } from "./use-local-audio-stream";
+import { observeMicrophoneSpeaking, parseVoiceStatus, sendVoiceStatus, VOICE_STATUS_CHANNEL, type VoiceStatus } from "@/lib/voice-status";
 
 const WEBSOCKET_PATH = "/ws";
 const VOICE_TOPIC_PREFIX = "/topic/groups";
@@ -117,6 +118,11 @@ export function useVoiceMesh(groupId: number, currentUserId: number | undefined,
   const peersReference = useRef(new Map<number, RTCPeerConnection>());
   const pendingCandidatesReference = useRef(new Map<number, RTCIceCandidateInit[]>());
   const remoteAudioReference = useRef(new Map<number, HTMLAudioElement>());
+  const statusChannelsReference = useRef(new Map<number, RTCDataChannel>());
+  const localStatusReference = useRef<VoiceStatus>({ isMuted: false, isDeafened: false, isSpeaking: false });
+  const [memberStatuses, setMemberStatuses] = useState<Record<number, VoiceStatus>>({});
+  const [microphoneStream, setMicrophoneStream] = useState<MediaStream | null>(null);
+  const [isSpeaking, setIsSpeaking] = useState(false);
   const isDeafenedReference = useRef(false);
   const silencedUserIdsReference = useRef(new Set<number>());
   const [isMuted, setIsMuted] = useState(false);
@@ -128,6 +134,38 @@ export function useVoiceMesh(groupId: number, currentUserId: number | undefined,
   const [isSignalConnected, setIsSignalConnected] = useState(false);
   const [hasOutgoingAudio, setHasOutgoingAudio] = useState(false);
   const [peerResetCount, setPeerResetCount] = useState(0);
+
+  useEffect(() => {
+    const status = { isMuted: isMuted || microphoneError, isDeafened, isSpeaking: isSpeaking && !isMuted && !microphoneError };
+    localStatusReference.current = status;
+    statusChannelsReference.current.forEach((channel) => sendVoiceStatus(channel, status));
+  }, [isDeafened, isMuted, isSpeaking, microphoneError]);
+
+  useEffect(() => {
+    const context = mixerReference.current?.context;
+    if (!isInVoice || !microphoneStream || !context || isMuted) return;
+    return observeMicrophoneSpeaking(context, microphoneStream, setIsSpeaking);
+  }, [isInVoice, isMuted, microphoneStream]);
+
+  const bindStatusChannel = useCallback((targetMemberUserId: number, channel: RTCDataChannel) => {
+    if (channel.label !== VOICE_STATUS_CHANNEL) { channel.close(); return; }
+    statusChannelsReference.current.set(targetMemberUserId, channel);
+    channel.onopen = () => sendVoiceStatus(channel, localStatusReference.current);
+    channel.onmessage = (event) => {
+      if (statusChannelsReference.current.get(targetMemberUserId) !== channel) return;
+      const status = parseVoiceStatus(event.data);
+      if (status) setMemberStatuses((current) => ({ ...current, [targetMemberUserId]: status }));
+    };
+    channel.onclose = () => {
+      if (statusChannelsReference.current.get(targetMemberUserId) !== channel) return;
+      statusChannelsReference.current.delete(targetMemberUserId);
+      setMemberStatuses((current) => {
+        const remaining = { ...current };
+        delete remaining[targetMemberUserId];
+        return remaining;
+      });
+    };
+  }, []);
 
   const outgoingTrack = useCallback((): MediaStreamTrack | null => {
     const mixedTrack = mixerReference.current?.destination.stream.getAudioTracks().at(0);
@@ -163,6 +201,13 @@ export function useVoiceMesh(groupId: number, currentUserId: number | undefined,
   }, [groupId]);
 
   const closePeer = useCallback((targetMemberUserId: number) => {
+    statusChannelsReference.current.get(targetMemberUserId)?.close();
+    statusChannelsReference.current.delete(targetMemberUserId);
+    setMemberStatuses((current) => {
+      const remaining = { ...current };
+      delete remaining[targetMemberUserId];
+      return remaining;
+    });
     peersReference.current.get(targetMemberUserId)?.close();
     peersReference.current.delete(targetMemberUserId);
     pendingCandidatesReference.current.delete(targetMemberUserId);
@@ -175,7 +220,9 @@ export function useVoiceMesh(groupId: number, currentUserId: number | undefined,
     if (existingPeer) return existingPeer;
     const iceServers = turnCredentialsQuery.data?.iceServers?.flatMap((server) => server.urls ? [{ urls: server.urls, username: server.username, credential: server.credential }] : []) ?? [];
     const peer = new RTCPeerConnection({ iceServers });
+    peer.ondatachannel = (event) => bindStatusChannel(targetMemberUserId, event.channel);
     if (isOfferer) {
+      bindStatusChannel(targetMemberUserId, peer.createDataChannel(VOICE_STATUS_CHANNEL));
       const transceiver = peer.addTransceiver(AUDIO_KIND, { direction: SEND_AND_RECEIVE });
       void transceiver.sender.replaceTrack(outgoingTrack());
       // An offer sent before the other member finished subscribing is lost; a peer that
@@ -208,7 +255,7 @@ export function useVoiceMesh(groupId: number, currentUserId: number | undefined,
     };
     peersReference.current.set(targetMemberUserId, peer);
     return peer;
-  }, [closePeer, outgoingTrack, sendSignal, speakerDeviceId, turnCredentialsQuery.data?.iceServers]);
+  }, [bindStatusChannel, closePeer, outgoingTrack, sendSignal, speakerDeviceId, turnCredentialsQuery.data?.iceServers]);
 
   // A candidate can arrive before the offer or answer it belongs to; it waits here until
   // the peer has a remote description to attach it to.
@@ -265,6 +312,8 @@ export function useVoiceMesh(groupId: number, currentUserId: number | undefined,
   useEffect(() => {
     if (!isInVoice || !currentUserId) return;
     const peers = peersReference.current;
+    const statusChannels = statusChannelsReference.current;
+    const remoteAudio = remoteAudioReference.current;
     const client = new Client({
       brokerURL: websocketUrl(),
       reconnectDelay: RECONNECT_DELAY_MILLISECONDS,
@@ -295,9 +344,21 @@ export function useVoiceMesh(groupId: number, currentUserId: number | undefined,
       setIsSignalConnected(false);
       peers.forEach((peer) => peer.close());
       peers.clear();
+      statusChannels.forEach((channel) => channel.close());
+      statusChannels.clear();
+      setMemberStatuses({});
+      remoteAudio.forEach((audio) => audio.pause());
+      remoteAudio.clear();
       void client.deactivate();
     };
   }, [currentUserId, groupId, isInVoice]);
+
+  useEffect(() => {
+    const activeMemberIds = new Set(voiceMembers.map((member) => member.userId));
+    peersReference.current.forEach((_peer, memberUserId) => {
+      if (!activeMemberIds.has(memberUserId)) closePeer(memberUserId);
+    });
+  }, [closePeer, voiceMembers]);
 
   useEffect(() => {
     if (!isInVoice || !currentUserId || !hasOutgoingAudio || !isSignalConnected) return;
@@ -329,6 +390,7 @@ export function useVoiceMesh(groupId: number, currentUserId: number | undefined,
       const microphoneStream = await navigator.mediaDevices.getUserMedia({ audio: microphoneDeviceId ? { deviceId: { exact: microphoneDeviceId } } : true });
       microphoneStreamReference.current?.getTracks().forEach((track) => track.stop());
       microphoneStreamReference.current = microphoneStream;
+      setMicrophoneStream(microphoneStream);
       if (mixer) {
         mixer.microphoneSource?.disconnect();
         mixer.microphoneSource = mixer.context.createMediaStreamSource(microphoneStream);
@@ -404,6 +466,11 @@ export function useVoiceMesh(groupId: number, currentUserId: number | undefined,
     stopTabAudio();
     microphoneStreamReference.current?.getTracks().forEach((track) => track.stop());
     microphoneStreamReference.current = null;
+    setMicrophoneStream(null);
+    setIsSpeaking(false);
+    statusChannelsReference.current.forEach((channel) => channel.close());
+    statusChannelsReference.current.clear();
+    setMemberStatuses({});
     publishLocalAudioStream(null);
     peersReference.current.forEach((peer) => peer.close());
     peersReference.current.clear();
@@ -437,6 +504,8 @@ export function useVoiceMesh(groupId: number, currentUserId: number | undefined,
   }, [applyRemoteAudioMuting]);
 
   return {
+    memberStatuses,
+    localStatus: { isMuted: isMuted || microphoneError, isDeafened, isSpeaking: isSpeaking && !isMuted && !microphoneError },
     isMuted,
     isDeafened,
     microphoneError,

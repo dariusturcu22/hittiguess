@@ -1109,3 +1109,11 @@ Account/profile/settings pages, legal-page UI, statistics, account-management co
 The six-hour duration refresh supersedes the hourly deletion behavior in the earlier playlist metadata decision. Due video IDs are batched in groups of up to 50 through official videos.list using contentDetails, without the metadata synthesis pipeline. Successful lookups update freshness; missing videos clear duration. Failed lookups do not extend freshness and remain due for the next sweep. Expired cached values are cleared after a failed sweep.
 
 A videos.list request costs one quota unit for up to 50 IDs. Refresh shares the project's quota with new-song lookups. Evenly spread refreshes of a million videos every 29 days use roughly 690 units daily, while expiry spikes, retries, and partial batches increase that cost. No separate daily refresh allowance is enforced yet; a catalog approaching the shared quota limit needs budgeting or an approved quota increase.
+
+## 2026-10-09: Gameplay feedback and voice presentation
+
+The approved gameplay behavior keeps automatic reveal after betting, full-pass rounds, joint winners, and guessing that closes at placement lock-in. Opening YouTube does not start the round timers. Older manual-reveal and first-to-target text is superseded.
+
+The voice sidebar is a 76px rail without collapse. It appears on the lobby or during an active call, with join at the top outside a call. Per-group avatars, microphone speaking rings, and mute/deafen indicators use the existing voice peer connections. A reliable ordered data channel carries transient status, sends the current state when it opens, and clears remote state when the peer closes. Speaking detection excludes shared song audio.
+
+Away state shows the active player, round, own tokens, and only the current phase's server deadline. An unlocked own turn produces a clickable banner and one sound per turn across reconnects. Audio starts after a browser interaction. Token drop feedback runs only for a new token award, with separate incorrect-guess feedback and reduced-motion support. Account and legal work remains deferred.

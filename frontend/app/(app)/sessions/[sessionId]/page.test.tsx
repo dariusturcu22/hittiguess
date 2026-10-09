@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import GameSessionPage from "./page";
 
 let roundEventHandler: ((event: { type: string; payload?: Record<string, unknown> }) => void) | undefined;
-type MockGuessResult = { roundId?: number; artistCorrect?: boolean; titleCorrect?: boolean; state?: Record<string, unknown> };
+type MockGuessResult = { roundId?: number; artistCorrect?: boolean; titleCorrect?: boolean; tokenAwarded?: boolean; state?: Record<string, unknown> };
 let guessResultHandler: ((result: MockGuessResult) => void) | undefined;
 let sessionEndedHandler: ((ended: { groupId?: number }) => void) | undefined;
 let mockGuessState: Record<string, unknown> | undefined;
@@ -66,7 +66,7 @@ vi.mock("next/link", () => ({
 }));
 
 vi.mock("@tanstack/react-query", () => ({
-  useQueryClient: () => ({ setQueryData: vi.fn() }),
+  useQueryClient: () => ({ setQueryData: vi.fn(), getQueryData: () => mockGuessState }),
 }));
 
 vi.mock("@/hooks/generated/game-session/game-session", () => ({
@@ -212,6 +212,21 @@ describe("GameSessionPage", () => {
     fireEvent.click(screen.getByRole("button", { name: "Submit guess the title" }));
     expect(submitGuess).toHaveBeenLastCalledWith("", "Yesterday");
     expect(screen.getByText("Checking your guess…")).toBeVisible();
+  });
+
+  it("animates a new token award once without animating a partial correct guess", async () => {
+    const view = render(<GameSessionPage params={SESSION_PARAMS} />);
+    await screen.findByText("Your turn");
+    const RESULT_ROUND_ID = 30;
+    act(() => guessResultHandler?.({ roundId: RESULT_ROUND_ID, artistCorrect: true, state: { roundId: RESULT_ROUND_ID, tokenEarned: false } }));
+    expect(view.container.querySelector(".token-earned-drop")).toBeNull();
+    act(() => guessResultHandler?.({ roundId: RESULT_ROUND_ID, titleCorrect: true, tokenAwarded: true, state: { roundId: RESULT_ROUND_ID, tokenEarned: true } }));
+    const earnedCoin = view.container.querySelector(".token-earned-drop");
+    expect(earnedCoin).not.toBeNull();
+    act(() => guessResultHandler?.({ roundId: RESULT_ROUND_ID, titleCorrect: true, tokenAwarded: true, state: { roundId: RESULT_ROUND_ID, tokenEarned: true } }));
+    expect(view.container.querySelector(".token-earned-drop")).toBe(earnedCoin);
+    act(() => guessResultHandler?.({ roundId: RESULT_ROUND_ID, artistCorrect: false, titleCorrect: false }));
+    expect(view.container.querySelector(".incorrect-guess-feedback")).not.toBeNull();
   });
 
   it("tells the guesser how their artist guess went", async () => {

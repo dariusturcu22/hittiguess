@@ -72,7 +72,7 @@ class SessionBroadcastListenerTest {
         String guesserUsername = "guesser";
         long roundId = 3L;
 
-        context.publishEvent(new GuessResultEvent(guesserUsername, SESSION_ID, new GuessResultDTO(roundId, true, false,
+        context.publishEvent(new GuessResultEvent(guesserUsername, SESSION_ID, new GuessResultDTO(roundId, true, false, false,
                 new GuessStateDTO(roundId, 1, 1, true, false, false, false))));
 
         verify(messagingTemplate).convertAndSendToUser(eq(guesserUsername), eq(SessionDestinations.guessResultQueue(SESSION_ID)), anyString());

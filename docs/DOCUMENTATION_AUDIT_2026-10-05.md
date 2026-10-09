@@ -148,3 +148,9 @@ The active LAN manual-playtest box needs its original scope reconciled against t
 2. Resolve C08 through C19 and M01 through M11 individually. Record whether each requires docs correction, a code task, a mockup update, or a clarified scope. C13, C15, and C16 affect substantive backend/AI behavior, not wording alone.
 3. Reconcile S01 through S21 using the listed implementation evidence. Keep runtime and visual acceptance gates distinct from implementation checkboxes.
 4. Split/archive A01 through A10 after the remaining tasks have clear homes. Preserve DECISIONS history and avoid marking unfinished follow-ups complete to satisfy the archive script.
+
+## Gameplay, voice, and away-state resolution
+
+C07 keeps the approved 76px voice rail, join at the top outside calls, lobby/call visibility, and no collapse. C08 keeps automatic reveal after betting. C09 keeps complete-pass rounds and joint winners; the older first-to-target task and results copy is superseded. C10 closes guessing at placement lock-in; opening YouTube does not start round timers.
+
+M01 adds the away-turn banner and one sound per turn across reconnects. M02 adds per-group avatars, microphone speaking rings, synchronized mute/deafen state over voice peer connections, and member departure motion. M03 adds round and own tokens to the live away widget, with a countdown only for the current phase's server deadline. M04 adds a token drop only for a new token award and separate incorrect feedback. Reduced-motion preferences suppress those animations.

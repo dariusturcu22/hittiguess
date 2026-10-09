@@ -262,8 +262,8 @@ App-wide and imports:
 Lobby, voice, and gameplay:
 
 - [x] Animate lobby members floating per the design; keep Start game, Chat, and Settings
-- [x] Make the voice sidebar collapsible everywhere, mandatory only while in a call
-- [x] Order sidebar participants top to bottom with the join control after the last participant
+- [x] Keep the voice sidebar at 76px with no collapse control, visible on the lobby or during an active call
+- [x] Order voice participants top to bottom, with the join control at the top when outside the call
 - [x] Add the voice settings popup: speaker and microphone selection plus a test control (shipped without a prior design)
 - [x] Narrow lobby settings to DJ mode (with a player picker for a fixed DJ) and cards to win; move playlist choice to a multi-select popup that merges duplicates into a temporary playlist
 - [x] Close lobby popups on outside click

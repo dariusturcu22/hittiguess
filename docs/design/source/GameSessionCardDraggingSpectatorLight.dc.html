@@ -14,7 +14,7 @@
     .navicon.active { background: #8f4fe3; box-shadow: 3px 3px 0 rgba(76,79,105,0.3); color: #ffffff; }
     .divider { width: 32px; height: 2px; background: #ccd0da; border-radius: 2px; margin: 14px auto; flex-shrink: 0; }
     .vavatar-wrap { display: flex; flex-direction: column; align-items: center; gap: 6px; }
-    .vavatar { width: 52px; height: 52px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-family: 'Bungee', sans-serif; font-size: 17px; color: #ffffff; }
+    .vavatar { width: 46px; height: 46px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-family: 'Bungee', sans-serif; font-size: 17px; color: #ffffff; }
     .vname { font-size: 10px; color: #5c5f77; max-width: 70px; text-align: center; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .vctrl { width: 42px; height: 42px; border-radius: 12px; display: flex; align-items: center; justify-content: center; cursor: pointer; }
 
@@ -254,29 +254,29 @@
   </div>
 
   <!-- RIGHT VOICE SIDEBAR, Darius highlighted as the one with the floor -->
-  <div style="width: 100px; flex-shrink: 0; background: #e6e9ef; border-left: 3px solid #ccd0da; display: flex; flex-direction: column; align-items: center; padding: 22px 0 20px; box-sizing: border-box;">
-    <div style="display: flex; flex-direction: column; align-items: center; gap: 24px;">
+  <div aria-label="Voice sidebar" style="width: 76px; flex-shrink: 0; background: #e6e9ef; border-left: 3px solid #ccd0da; display: flex; flex-direction: column; align-items: center; padding: 22px 0 20px; box-sizing: border-box;">
+    <div style="display: flex; flex-direction: column; align-items: center; gap: 20px;">
       <div class="vavatar-wrap">
-        <div style="width: 52px; height: 52px; border-radius: 50%; box-shadow: 0 0 0 3px #e6e9ef, 0 0 0 6px #ed6f27;">
-          <div class="vavatar" style="background: #499f36; width: 100%; height: 100%;">D</div>
+        <div style="width: 46px; height: 46px; border-radius: 50%; box-shadow: 0 0 0 3px #e6e9ef, 0 0 0 6px #ed6f27;">
+          <div class="vavatar" style="background: #499f36; width: 100%; height: 100%;"><img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIzMiIgaGVpZ2h0PSIzMiI+PHJlY3Qgd2lkdGg9IjMyIiBoZWlnaHQ9IjMyIiBmaWxsPSIjYTZlM2ExIi8+PHJlY3QgeD0iOCIgeT0iOCIgd2lkdGg9IjE2IiBoZWlnaHQ9IjE2IiBmaWxsPSIjMzEzMjQ0Ii8+PC9zdmc+" alt="Darius avatar" style="width: 100%; height: 100%; border-radius: 50%; image-rendering: pixelated;"></div>
         </div>
         <div class="vname" style="color: #ed6f27;">Darius</div>
       </div>
       <div class="vavatar-wrap">
-        <div style="width: 52px; height: 52px; border-radius: 50%; box-shadow: 0 0 0 3px #e6e9ef, 0 0 0 6px #499f36;">
+        <div style="width: 46px; height: 46px; border-radius: 50%; box-shadow: 0 0 0 3px #e6e9ef, 0 0 0 6px #499f36;">
           <div class="vavatar" style="background: #3772e6; width: 100%; height: 100%;">M</div>
         </div>
         <div class="vname" style="color: #499f36;">Mara</div>
       </div>
       <div class="vavatar-wrap">
-        <div style="position: relative; width: 52px; height: 52px;">
+        <div style="position: relative; width: 46px; height: 46px;">
           <div class="vavatar" style="background: #d49032; width: 100%; height: 100%;">T</div>
-          <div style="position: absolute; inset: 0; border-radius: 50%; background: rgba(210,15,57,0.6); display: flex; align-items: center; justify-content: center;">
+          <div title="Muted" style="position: absolute; bottom: -3px; left: -3px; border-radius: 50%; background: #e6e9ef; color: #e78284; padding: 2px;">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke-linecap="round">
               <g stroke="#ffffff" stroke-width="4.6"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 5.12 2.12M15 9.34V4a3 3 0 0 0-5.94-.6"></path><path d="M19 10v2a7 7 0 0 1-.11 1.23"></path><path d="M5 10v2a7 7 0 0 0 7 7 6.94 6.94 0 0 0 3.11-.72"></path><line x1="1" y1="1" x2="23" y2="23"></line></g>
               <g stroke="#d20f39" stroke-width="2.6"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 5.12 2.12M15 9.34V4a3 3 0 0 0-5.94-.6"></path><path d="M19 10v2a7 7 0 0 1-.11 1.23"></path><path d="M5 10v2a7 7 0 0 0 7 7 6.94 6.94 0 0 0 3.11-.72"></path><line x1="1" y1="1" x2="23" y2="23"></line></g>
             </svg>
-          </div>
+          </div><div title="Deafened" style="position: absolute; bottom: -3px; right: -3px; background: #e6e9ef; color: #f9e2af; border-radius: 50%; padding: 2px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 14v-3a9 9 0 0 1 18 0v3M3 14h4v7H3zM17 14h4v7h-4zM2 2l20 20"/></svg></div>
         </div>
         <div class="vname" style="color: #d20f39;">Theo</div>
       </div>
@@ -293,6 +293,7 @@
       <div class="vctrl" style="background: #ffffff; color: #4c4f69;" title="Deafen">
         <svg width="19" height="19" viewBox="0 0 24 24" fill="currentColor"><path d="M12 3a8 8 0 0 0-8 8v6a3 3 0 0 0 3 3h1a2 2 0 0 0 2-2v-4a2 2 0 0 0-2-2H6v-1a6 6 0 0 1 12 0v1h-2a2 2 0 0 0-2 2v4a2 2 0 0 0 2 2h1a3 3 0 0 0 3-3v-6a8 8 0 0 0-8-8z"></path></svg>
       </div>
+      <div class="vctrl" style="background: #eff1f5; color: #4c4f69;" title="Voice settings"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 2v4m0 12v4M2 12h4m12 0h4M5 5l3 3m8 8 3 3M5 19l3-3m8-8 3-3"/></svg></div>
       <div class="divider" style="margin: 6px auto;"></div>
       <div class="vctrl" style="background: #d20f39;" title="Leave voice">
         <svg width="19" height="19" viewBox="0 0 24 24" fill="#eff1f5" style="transform: rotate(135deg);"><path d="M6.62 10.79a15.05 15.05 0 0 0 6.59 6.59l2.2-2.2a1 1 0 0 1 1.11-.21 11.4 11.4 0 0 0 3.58.57 1 1 0 0 1 1 1V20a1 1 0 0 1-1 1C10.61 21 3 13.39 3 4a1 1 0 0 1 1-1h3.5a1 1 0 0 1 1 1 11.4 11.4 0 0 0 .57 3.58 1 1 0 0 1-.25 1.02z"></path></svg>

@@ -57,6 +57,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
+import org.mockito.ArgumentCaptor;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -1237,6 +1238,13 @@ class GameSessionServiceTest {
                 new TitleArtistGuessRequest("David Bowie", null));
 
         assertThat(active.getTokenCount()).isEqualTo(1);
+        ArgumentCaptor<Object> eventCaptor = ArgumentCaptor.forClass(Object.class);
+        verify(eventPublisher, org.mockito.Mockito.atLeastOnce()).publishEvent(eventCaptor.capture());
+        assertThat(eventCaptor.getAllValues().stream()
+                .filter(GuessResultEvent.class::isInstance)
+                .map(GuessResultEvent.class::cast)
+                .map(event -> event.result().tokenAwarded()))
+                .containsExactly(false, true, false);
     }
 
     @Test
@@ -1252,6 +1260,13 @@ class GameSessionServiceTest {
                 new TitleArtistGuessRequest("Queen", "Bohemian Rhapsody"));
 
         assertThat(bystander.getTokenCount()).isZero();
+        ArgumentCaptor<Object> eventCaptor = ArgumentCaptor.forClass(Object.class);
+        verify(eventPublisher, org.mockito.Mockito.atLeastOnce()).publishEvent(eventCaptor.capture());
+        assertThat(eventCaptor.getAllValues().stream()
+                .filter(GuessResultEvent.class::isInstance)
+                .map(GuessResultEvent.class::cast)
+                .map(event -> event.result().tokenAwarded()))
+                .containsExactly(false);
     }
 
     // --- Guess results ----------------------------------------------------------------
@@ -1270,7 +1285,7 @@ class GameSessionServiceTest {
 
         GuessStateDTO expectedState = new GuessStateDTO(round.getId(), 1, 1, true, true, false, false);
         verify(eventPublisher).publishEvent(new GuessResultEvent(bystander.getUser().getUsername(), session.getId(),
-                new GuessResultDTO(round.getId(), true, false, expectedState)));
+                new GuessResultDTO(round.getId(), true, false, false, expectedState)));
     }
 
     @Test

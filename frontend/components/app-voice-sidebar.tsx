@@ -8,25 +8,17 @@ import { usePathname } from "next/navigation";
 import { getGetActiveMembershipQueryKey, getGetGroupQueryKey, useGetActiveMembership, useJoinVoice, useLeaveVoice } from "@/hooks/generated/group-management/group-management";
 import { useGetActiveSessionForGroup, useGetSession } from "@/hooks/generated/game-session/game-session";
 import { useGetCurrentUser } from "@/hooks/generated/user-management/user-management";
-import { useGameSessionRealtime } from "@/hooks/use-game-session-realtime";
 import { shouldSilenceDjForActivePlayer, useVoiceMesh } from "@/hooks/use-voice-mesh";
 import { useAudioDevices } from "@/hooks/use-audio-devices";
 import { DJ_AUDIO_SHARE_EVENT } from "@/hooks/use-local-audio-stream";
 import { Button } from "@/components/shadcn/button";
 import { VoiceSettingsPopup } from "@/components/voice-settings-popup";
+import { VoiceMemberList } from "@/components/voice-member-list";
 
 const LOBBY_PATH_PATTERN = /^\/groups\/\d+/;
 // Matches the left sidebar's width in every state, in a call or not.
 const RAIL_CLASSES = "flex w-[76px] shrink-0 flex-col items-center border-l-[3px] border-sidebar-border bg-sidebar py-5";
 
-const MEMBER_COLORS = [
-  "bg-primary text-primary-foreground",
-  "bg-accent text-accent-foreground",
-  "bg-warning text-warning-foreground",
-  "bg-secondary text-secondary-foreground",
-  "bg-primary text-primary-foreground",
-  "bg-accent text-accent-foreground",
-];
 
 export function AppVoiceSidebar() {
   const queryClient = useQueryClient();
@@ -90,7 +82,6 @@ export function AppVoiceSidebar() {
   useEffect(() => {
     if (!isCurrentDj) stopTabAudio();
   }, [isCurrentDj, stopTabAudio]);
-  useGameSessionRealtime(activeSessionId ?? 0);
 
   const { isSignalConnected } = voiceMesh;
   const { mutate: announceJoin } = joinVoice;
@@ -142,5 +133,5 @@ export function AppVoiceSidebar() {
 
   if (!isInVoice) return <aside aria-label="Voice sidebar" className={RAIL_CLASSES}><Button type="button" variant="outline" size="icon-lg" title="Join call" aria-label="Join call" onClick={joinCall} disabled={isJoiningCall} className="rounded-full border-dashed border-primary text-primary">{isJoiningCall ? <Loader2 className="size-4 animate-spin" /> : <Phone className="size-[19px]" />}</Button>{microphoneMessage ? <p className="mt-2 text-center text-[9px] text-destructive">{microphoneMessage}</p> : null}{voiceMesh.tabAudioError ? <p className="mt-2 text-center text-[9px] text-destructive">{voiceMesh.tabAudioErrorMessage}</p> : null}</aside>;
 
-  return <aside aria-label="Voice sidebar" className={`relative ${RAIL_CLASSES}`}><div className="flex flex-col items-center gap-5">{voiceMembers.map((member, index) => <div key={member.id} className="flex flex-col items-center gap-1.5"><div className={`avatar-initial flex size-[46px] items-center justify-center rounded-full font-display text-base ${MEMBER_COLORS[index % MEMBER_COLORS.length]}`}>{member.displayName?.charAt(0).toUpperCase() ?? "?"}</div><span className="max-w-[64px] truncate text-[10px] text-sidebar-foreground">{member.displayName ?? "Player"}</span></div>)}</div><div className="flex-1" />{microphoneMessage ? <p className="mb-2 text-center text-[9px] text-destructive">{microphoneMessage}</p> : null}{voiceMesh.tabAudioError ? <p className="mb-2 text-center text-[9px] text-destructive">{voiceMesh.tabAudioErrorMessage}</p> : null}<div className="flex flex-col items-center gap-2.5">{isInVoice ? <><Button type="button" variant="ghost" size="icon-lg" title="Mute" aria-label="Mute" aria-pressed={voiceMesh.isMuted} onClick={toggleMute} className="rounded-xl bg-card text-card-foreground">{voiceMesh.isMuted ? <MicOff className="size-[19px]" /> : <Mic className="size-[19px]" />}</Button><Button type="button" variant="ghost" size="icon-lg" title="Deafen" aria-label="Deafen" aria-pressed={voiceMesh.isDeafened} onClick={toggleDeafen} className={`rounded-xl ${voiceMesh.isDeafened ? "bg-primary text-primary-foreground" : "bg-card text-card-foreground"}`}><Headphones className="size-[19px]" /></Button><Button type="button" variant="ghost" size="icon-lg" title="Voice settings" aria-label="Voice settings" onClick={() => setIsSettingsOpen((currentValue) => !currentValue)} className={`rounded-xl ${isSettingsOpen ? "bg-primary text-primary-foreground" : "bg-card text-card-foreground"}`}><Settings className="size-[19px]" /></Button><div className="my-1 h-0.5 w-8 bg-sidebar-border" /><Button type="button" variant="destructive" size="icon-lg" title="Leave voice" aria-label="Leave voice" onClick={leaveCall} disabled={leaveVoice.isPending} className="rounded-xl">{leaveVoice.isPending ? <Loader2 className="size-4 animate-spin" /> : <PhoneOff className="size-[19px]" />}</Button></> : <Button type="button" variant="outline" size="icon-lg" title="Join call" aria-label="Join call" onClick={joinCall} disabled={isJoiningCall} className="rounded-full border-dashed border-primary text-primary">{isJoiningCall ? <Loader2 className="size-4 animate-spin" /> : <Phone className="size-[19px]" />}</Button>}</div>{isSettingsOpen ? <VoiceSettingsPopup onClose={() => setIsSettingsOpen(false)} /> : null}</aside>;
+  return <aside aria-label="Voice sidebar" className={`relative ${RAIL_CLASSES}`}><VoiceMemberList members={voiceMembers} currentUserId={currentUserQuery.data?.id} localStatus={voiceMesh.localStatus} memberStatuses={voiceMesh.memberStatuses} /><div className="flex-1" />{microphoneMessage ? <p className="mb-2 text-center text-[9px] text-destructive">{microphoneMessage}</p> : null}{voiceMesh.tabAudioError ? <p className="mb-2 text-center text-[9px] text-destructive">{voiceMesh.tabAudioErrorMessage}</p> : null}<div className="flex shrink-0 flex-col items-center gap-2.5">{isInVoice ? <><Button type="button" variant="ghost" size="icon-lg" title="Mute" aria-label="Mute" aria-pressed={voiceMesh.isMuted} onClick={toggleMute} className="rounded-xl bg-card text-card-foreground">{voiceMesh.isMuted ? <MicOff className="size-[19px]" /> : <Mic className="size-[19px]" />}</Button><Button type="button" variant="ghost" size="icon-lg" title="Deafen" aria-label="Deafen" aria-pressed={voiceMesh.isDeafened} onClick={toggleDeafen} className={`rounded-xl ${voiceMesh.isDeafened ? "bg-primary text-primary-foreground" : "bg-card text-card-foreground"}`}><Headphones className="size-[19px]" /></Button><Button type="button" variant="ghost" size="icon-lg" title="Voice settings" aria-label="Voice settings" onClick={() => setIsSettingsOpen((currentValue) => !currentValue)} className={`rounded-xl ${isSettingsOpen ? "bg-primary text-primary-foreground" : "bg-card text-card-foreground"}`}><Settings className="size-[19px]" /></Button><div className="my-1 h-0.5 w-8 bg-sidebar-border" /><Button type="button" variant="destructive" size="icon-lg" title="Leave voice" aria-label="Leave voice" onClick={leaveCall} disabled={leaveVoice.isPending} className="rounded-xl">{leaveVoice.isPending ? <Loader2 className="size-4 animate-spin" /> : <PhoneOff className="size-[19px]" />}</Button></> : <Button type="button" variant="outline" size="icon-lg" title="Join call" aria-label="Join call" onClick={joinCall} disabled={isJoiningCall} className="rounded-full border-dashed border-primary text-primary">{isJoiningCall ? <Loader2 className="size-4 animate-spin" /> : <Phone className="size-[19px]" />}</Button>}</div>{isSettingsOpen ? <VoiceSettingsPopup onClose={() => setIsSettingsOpen(false)} /> : null}</aside>;
 }

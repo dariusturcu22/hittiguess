@@ -50,6 +50,22 @@ function wrapper({ children }: { children: ReactNode }) {
 }
 
 describe("useGameSessionRealtime", () => {
+  it("uses the latest event callback without replacing the subscription", () => {
+    const initialCallback = vi.fn();
+    const latestCallback = vi.fn();
+    const queryClient = new QueryClient();
+    const view = renderHook(({ callback }) => useGameSessionRealtime(1, callback), {
+      wrapper: ({ children }: { children: ReactNode }) => createElement(QueryClientProvider, { client: queryClient }, children),
+      initialProps: { callback: initialCallback },
+    });
+    const subscribedHandler = roundMessageHandler;
+    view.rerender({ callback: latestCallback });
+    expect(roundMessageHandler).toBe(subscribedHandler);
+    roundMessageHandler?.({ body: JSON.stringify({ type: "ROUND_STARTED", sessionId: 1 }) });
+    expect(initialCallback).not.toHaveBeenCalled();
+    expect(latestCallback).toHaveBeenCalledOnce();
+  });
+
   it("forwards a guess-locked event immediately", () => {
     const onRoundEvent = vi.fn();
     renderHook(() => useGameSessionRealtime(1, onRoundEvent), { wrapper });
@@ -67,6 +83,7 @@ describe("useGameSessionRealtime", () => {
       wrapper: ({ children }: { children: ReactNode }) => createElement(QueryClientProvider, { client: queryClient }, children),
     });
 
+    invalidateQueries.mockClear();
     roundMessageHandler?.({ body: JSON.stringify({ type: "PLACEMENT_PREVIEW", sessionId: 1, payload: { roundId: 3, activePlayerId: 4, position: 2 } }) });
 
     expect(onRoundEvent).toHaveBeenCalledWith(expect.objectContaining({ type: "PLACEMENT_PREVIEW" }));

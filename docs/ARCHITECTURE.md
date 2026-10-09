@@ -183,7 +183,7 @@ DJ and active player assigned for round 1
 DJ opens the real YouTube page (remote) or app (in-person)
 Other players hear the stream (remote) or the room (in-person), see game UI only
 Active player guesses; other players may bet after the guess locks
-DJ triggers reveal manually, once the betting window closes
+The server reveals the song automatically once the betting window closes
 Backend scores the round, updates tokens
 Next round: active player rotates, DJ follows the group's fixed or rotating setting
 Game ends when a player completes their timeline, or the session is abandoned after 10 minutes with zero connected players

@@ -1,4 +1,5 @@
 @import "tailwindcss";
+
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 
@@ -478,4 +479,23 @@ html.theme-transition .theme-toggle-thumb {
 
 @media (prefers-reduced-motion: reduce) {
   .gameplay-wobble, .gameplay-gap-pulse, .gameplay-card-float, .gameplay-reveal-flip, .gameplay-timer-blink, .gameplay-role-float { animation: none; }
+}
+
+@keyframes token-earned-drop {
+  from { transform: translateY(-70px) rotate(-18deg); opacity: 0; }
+  35% { opacity: 1; }
+  to { transform: translateY(0) rotate(0); opacity: 0; }
+}
+@keyframes incorrect-guess-shake {
+  25% { transform: translateX(-4px); }
+  75% { transform: translateX(4px); }
+}
+.token-earned-drop { animation: token-earned-drop 700ms ease-out both; }
+.incorrect-guess-feedback { animation: incorrect-guess-shake 180ms ease-in-out; }
+.voice-member { transition: height 220ms ease, opacity 220ms ease, transform 220ms ease; }
+.voice-member-leaving { height: 0; overflow: hidden; opacity: 0; transform: scale(0.8); }
+@media (prefers-reduced-motion: reduce) {
+  .token-earned-drop { animation: none; display: none; }
+  .incorrect-guess-feedback { animation: none; }
+  .voice-member { transition: none; }
 }
