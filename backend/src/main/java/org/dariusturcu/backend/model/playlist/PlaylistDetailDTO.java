@@ -5,6 +5,7 @@ import org.dariusturcu.backend.model.song.SongDTO;
 
 import java.util.List;
 import java.util.Set;
+import java.time.Instant;
 
 public record PlaylistDetailDTO(
         @NotNull
@@ -23,5 +24,6 @@ public record PlaylistDetailDTO(
         Long ownerId,
         @NotNull
         Set<PlaylistMemberDTO> members,
-        boolean isPublic) {
+        boolean isPublic,
+        Instant createdAt) {
 }

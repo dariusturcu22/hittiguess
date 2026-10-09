@@ -12,7 +12,7 @@ let playlistMembers = [
   { userId: 11, displayName: "Alex", username: "alex", owner: true },
   { userId: 12, displayName: "Sam", username: "sam", owner: false },
 ];
-let playlistSongs: Array<{ id: number; title: string; artists: Array<{ name: string }>; youtubeId: string }> = [];
+let playlistSongs: Array<{ id: number; title: string; artists: Array<{ name: string }>; youtubeId: string; durationSeconds?: number }> = [];
 
 const playlistDetail = {
   id: 7,
@@ -86,6 +86,12 @@ async function renderContent() {
 }
 
 describe("PlaylistContent detail states", () => {
+  it("shows unavailable metadata for legacy rows", async () => {
+    playlistSongs = [{ id: 31, title: "Legacy track", artists: [{ name: "Artist" }], youtubeId: "legacy-video" }];
+    await renderContent();
+    expect(screen.getByText("Creation date unavailable")).toBeVisible();
+    expect(screen.getByLabelText("Duration: Unavailable")).toBeInTheDocument();
+  });
   beforeEach(() => {
     routerPush.mockReset();
     leaveMutate.mockReset();

@@ -12,6 +12,18 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 class SongMapperTest {
 
+    @Test
+    void durationIsAvailableOnlyWhileOfficialDataIsFresh() {
+        Song song = songWithGenre(null);
+        int officialDurationSeconds = 210;
+        song.recordOfficialDuration(officialDurationSeconds);
+        assertThat(songMapper.toDTO(song).durationSeconds()).isEqualTo(officialDurationSeconds);
+        song.setDurationFetchedAt(java.time.Instant.now().minus(org.dariusturcu.backend.service.SongDurationRefreshService.RETENTION));
+        assertThat(songMapper.toDTO(song).durationSeconds()).isNull();
+        song.recordOfficialDuration(null);
+        assertThat(songMapper.toDTO(song).durationSeconds()).isNull();
+    }
+
     private final SongMapper songMapper = new SongMapper();
 
     private Song songWithGenre(String genre) {

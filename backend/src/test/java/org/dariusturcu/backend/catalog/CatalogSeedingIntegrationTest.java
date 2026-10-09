@@ -247,7 +247,7 @@ class CatalogSeedingIntegrationTest {
             }
             SongMetadataResponse content = new SongMetadataResponse(
                     "Title for " + youtubeId, List.of("Artist for " + youtubeId), List.of(), PATIENT_YEAR,
-                    "111111", "high", "musicbrainz", "stubbed", "NEEDS_REVIEW", null);
+                    "111111", "high", "musicbrainz", "stubbed", "NEEDS_REVIEW", null, null);
             return new AiResponse(content, "stub-model", 0, LocalDateTime.now(), "SUCCESS", null, null);
         }
 
@@ -258,7 +258,7 @@ class CatalogSeedingIntegrationTest {
                 return Optional.of(new AiIdentifyResponse("ERROR", "stub-model", null, null, null, null));
             }
             AiIdentifiedSong identified = new AiIdentifiedSong(
-                    "Title for " + youtubeId, List.of("Artist for " + youtubeId), List.of(), "111111");
+                    "Title for " + youtubeId, List.of("Artist for " + youtubeId), List.of(), "111111", null);
             return Optional.of(new AiIdentifyResponse("SUCCESS", "stub-model", identified, null, null, null));
         }
 

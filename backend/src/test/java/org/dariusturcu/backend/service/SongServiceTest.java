@@ -92,9 +92,9 @@ class SongServiceTest {
         when(songRepository.findByVerificationStatus(eq(VerificationStatus.VERIFIED), any(Pageable.class)))
                 .thenReturn(new PageImpl<>(List.of(firstSong, secondSong, overflowSong)));
         SongDTO firstDTO = new SongDTO(1L, List.of(), "First", 1999, "video-1", "cba6f7", null,
-                Country.NONE, VerificationStatus.VERIFIED, "high", false, null);
+                Country.NONE, VerificationStatus.VERIFIED, "high", false, null, null);
         SongDTO secondDTO = new SongDTO(2L, List.of(), "Second", 2000, "video-2", "cba6f7", null,
-                Country.NONE, VerificationStatus.VERIFIED, "high", false, null);
+                Country.NONE, VerificationStatus.VERIFIED, "high", false, null, null);
         when(songMapper.toDTO(firstSong)).thenReturn(firstDTO);
         when(songMapper.toDTO(secondSong)).thenReturn(secondDTO);
 

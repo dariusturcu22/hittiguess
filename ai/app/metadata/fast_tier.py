@@ -101,6 +101,7 @@ def identify(youtube_url: str) -> IdentifyResponse:
             main_artists=outcome.main_artists,
             featured_artists=outcome.featured_artists,
             color=outcome.color,
+            duration_seconds=outcome.duration_seconds,
         ),
     )
 

@@ -10,5 +10,6 @@ public record AiIdentifiedSong(
         String title,
         List<String> mainArtists,
         List<String> featuredArtists,
-        String color) {
+        String color,
+        Integer durationSeconds) {
 }

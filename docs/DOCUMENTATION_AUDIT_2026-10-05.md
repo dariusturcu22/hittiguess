@@ -1,5 +1,13 @@
 # Documentation audit: 2026-10-05
 
+## Reviewed library and lobby findings: 2026-10-09
+
+C01 through C06 and M05 are resolved by the approved library and lobby requirements. Later approved requirements supersede older mockups. Library and Explore filters, member popups, import inside Add song, separate lobby playlist selection, and fixed-DJ selection remain intended behavior. Dark and light design sources and the published canvas include the added states.
+
+New playlists retain creation timestamps; legacy dates remain unavailable. Official YouTube durations travel through the metadata pipeline and API, become due after 29 days, and refresh automatically every six hours through batched video lookups. The lobby exposes confirmed admin transfer and refreshes permissions after success. Desktop checks cover both themes. Only the landing page has mobile design scope.
+
+Account pages, legal UI, statistics, account correction/deletion/export controls, and disclosure updates remain deferred and tracked in TASKS.md. The findings below retain the original audit evidence and stable IDs; the other conflicts still need their separate implementation or documentation changes.
+
 ## Scope and evidence
 
 This report compares the current checkout's active documentation, design source files, published design canvas, frontend, Spring core, AI service, and Flutter app. Findings describe the source as it stands on 2026-10-05. They do not choose between conflicting requirements and do not change product behavior, existing status rows, or historical decisions.

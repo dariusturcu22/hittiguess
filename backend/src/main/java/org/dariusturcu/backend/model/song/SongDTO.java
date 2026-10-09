@@ -23,6 +23,7 @@ public record SongDTO(
         VerificationStatus verificationStatus,
         String confidence,
         boolean needsUserAttention,
-        UserSummaryDTO addedBy
+        UserSummaryDTO addedBy,
+        Integer durationSeconds
 ) {
 }

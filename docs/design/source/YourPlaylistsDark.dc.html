@@ -68,10 +68,10 @@
 
     <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 28px;">
       <div style="font-family: 'Bungee', sans-serif; font-size: 34px; color: #cba6f7; text-shadow: 3px 3px 0 #313244;">Your playlists</div>
-      <div class="pill-primary">
+      <div style="display:flex;gap:12px;"><div class="filter-pill inactive">Join playlist</div><div class="pill-primary">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#1e1e2e" stroke-width="3" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
         Create playlist
-      </div>
+      </div></div>
     </div>
 
     <div style="display: flex; align-items: center; gap: 16px; margin-bottom: 28px;">
@@ -79,8 +79,10 @@
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6c7086" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="position: absolute; left: 16px; top: 50%; transform: translateY(-50%);"><circle cx="11" cy="11" r="7"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
         <input class="search-input" style="width: 100%;" type="text" placeholder="Search your playlists...">
       </div>
-      <div class="filter-pill active">Owned</div>
+      <div class="filter-pill active">All</div>
+      <div class="filter-pill inactive">Owned</div>
       <div class="filter-pill inactive">Joined</div>
+      <div class="filter-pill inactive">Saved</div>
     </div>
 
     <div class="custom-scroll" style="flex: 1; min-height: 0; overflow-y: auto; padding-right: 4px;">

@@ -18,11 +18,11 @@ No visible content of its own, a transient handoff screen while the OAuth2 flow 
 
 ### Playlist list (`/playlists`, dashboard)
 
-Authenticated. Data: the current user's playlists, each as a `PlaylistSummaryDTO` (id, name, color, song count). States: empty (no playlists yet, distinct call to action), loaded. Actions: create a playlist, open a playlist, join a playlist by invite code or link.
+Authenticated. The library combines membership playlists and saved public playlists without duplicate cards. All, Owned, Joined, and Saved filters combine with name search. Join sits beside Create playlist. All and Owned offer creation, Joined offers joining, and Saved offers Explore. Loading, error, empty-library, empty-filter, and no-search-results states are distinct. Saving a public playlist does not grant membership.
 
 ### Playlist detail (`/playlists/[playlistId]`)
 
-Authenticated, playlist-access-gated. Data: a `PlaylistDetailDTO`, name, color, invite code, song count, the full song list (each a `SongDTO`: artist, title, release year, YouTube ID, tag, country, who added it), and the member list (`UserSummaryDTO`s). States: empty (no songs yet), loaded, search-with-no-results (distinct message from the empty state, `ARCHIVE.md`'s QA-pass fixes). Actions today: rename the playlist, change its color, add a song, open a song, remove a song, copy the invite link/code, search/filter songs by title (client-side today). Story 28's design pass moves rename/color-change into a dedicated Edit playlist screen rather than inline fields, and adds a second way to add content alongside Add song: Import playlist, covering both a YouTube-playlist crawl (story 40) and copying songs from another accessible playlist (story 45); see their own sections below.
+Authenticated and playlist-access-gated. Playlist detail shows name, description, song count, owner, creation date, invite controls, songs, and member circles opening a popup. Editing belongs to the dedicated Edit playlist route. Add song opens a menu with individual song entry and Import playlist; import has YouTube and accessible-playlist sources. Each song shows artist names, title, release year, and official YouTube video duration. Legacy creation dates and missing or expired durations show unavailable text. Empty, loaded, importing, attention-needed, and no-search-results states remain distinct.
 
 ### Song detail (`/playlists/[playlistId]/songs/[songId]`)
 
@@ -42,11 +42,11 @@ Surfaced during story 28's design pass, none of the following exist as frontend 
 
 ### Explore public playlists
 
-Authenticated. Data: playlists published publicly (story 30's `isPublic` flag), each a `PlaylistSummaryDTO` plus its owner. States: empty, loaded. Actions: "Save" a public playlist into the current user's own library without becoming a member of it, distinct from "Join," which is for accepting an invite link and becoming a real member (Join by invite, above). Depends on story 30's `isPublic` flag and publish/unpublish endpoint.
+Authenticated. Public playlist cards show their owner and song count and open playlist detail. All, Saved, and Not saved filters combine with name search. Save adds a public playlist to the library without granting membership. Loading, error, empty-catalog, empty-filter, and no-search-results states remain distinct. The desktop grid uses four columns.
 
 ### Import playlist
 
-Reached from Playlist detail, a second way to add content alongside Add song. Two sources:
+Reached from Playlist detail's Add song menu. Two sources:
 
 - **From YouTube** (story 40's user-facing bulk import): paste a YouTube playlist link, then a per-song crawl, each row starting from the raw YouTube data (video title, channel name) and updating in place to the resolved title, artist, and year as it's processed. Runs in the background per story 40's background-import UX task: leaving the screen doesn't cancel it, a temporary sidebar icon and a fading toast both reopen it with live progress.
 - **From an existing playlist** (story 45): pick a playlist the player owns, is a member of, or that's published publicly, and every song copies over immediately, no fetching, since it's already a resolved catalog row. Synchronous, no background/progress state needed for this path.
@@ -57,11 +57,11 @@ Reached from Playlist detail, owner only (story 46). Data: cover image, name, ti
 
 ## Planned gameplay screens (not yet built)
 
-None of the following exist as frontend code today; content is derived from `GAME_DESIGN.md` and `ARCHITECTURE.md`, not from an implementation.
+The library, Explore, playlist detail, and lobby requirements reflect the approved library and lobby requirements. Other screen descriptions retain their earlier scope pending review.
 
 ### Group lobby
 
-Data: the group's member list (per-group display name and avatar, not the account profile), the admin marked distinctly (crown icon per `GAME_DESIGN.md`), the invite link and 4-letter join code, current settings (playlist(s) or generation mode, DJ mode, win-condition card count), read-only for non-admins. Actions (admin only): edit settings, promote another member to admin, start the game session. Actions (everyone): copy the invite link/code, leave the group, open text chat and voice (see their own sections below, available from this screen since both are group-scoped, not session-scoped).
+The lobby shows group-specific member identities, the admin crown, invite link, and four-letter join code. Admin Settings contains DJ mode, a member selector for fixed DJ, and cards to win. A separate playlist picker offers Easy, Medium, Hard, and Custom on one row, with icons and a divider before Custom. Confirm prepares a generated set for review; Confirm and start launches the reviewed set. Custom selects multiple accessible playlists and displays their combined song count before confirmation. Settings, playlist selection, and chat are mutually exclusive and dismiss on outside click. Only the current admin can start, change settings, remove members, or transfer admin status. Make group admin requires confirmation, refreshes permissions and the crown on success, and keeps the dialog open with failure feedback. Everyone can copy the invite and leave with confirmation. Chat and voice remain group-scoped.
 
 ### Game session / timeline (per player)
 

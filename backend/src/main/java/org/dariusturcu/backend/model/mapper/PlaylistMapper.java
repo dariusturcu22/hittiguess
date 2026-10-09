@@ -58,7 +58,8 @@ public class PlaylistMapper {
                 playlist.getMemberships().stream()
                         .map(membership -> toMemberDTO(membership, membership.getUser().getId().equals(ownerId)))
                         .collect(Collectors.toSet()),
-                playlist.isPublic()
+                playlist.isPublic(),
+                playlist.getCreatedAt()
         );
     }
 

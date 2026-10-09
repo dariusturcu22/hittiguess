@@ -73,16 +73,18 @@ def test_date_fast_reports_no_answer_when_both_lanes_come_up_empty(mocker):
 
 
 def test_identify_returns_the_clean_song_without_dating_it(mocker):
+    official_duration_seconds = 210
     mocker.patch.object(
         fast_tier,
         "identify_submission",
-        return_value=service.IdentifiedSubmission(title="Test Song", main_artists=["Test Artist"], featured_artists=[], color="8B5CF6"),
+        return_value=service.IdentifiedSubmission(title="Test Song", main_artists=["Test Artist"], featured_artists=[], color="8B5CF6", duration_seconds=official_duration_seconds),
     )
 
     result = fast_tier.identify(YOUTUBE_URL)
 
     assert result.status == "SUCCESS"
     assert result.identified.title == "Test Song"
+    assert result.identified.duration_seconds == official_duration_seconds
     assert result.duplicate is None
 
 

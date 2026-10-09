@@ -149,7 +149,7 @@ class CatalogSeedingConcurrencyIntegrationTest {
             }
             SongMetadataResponse content = new SongMetadataResponse(
                     "Title for " + youtubeId, List.of("Artist for " + youtubeId), List.of(), PATIENT_YEAR,
-                    "111111", "high", "musicbrainz", "stubbed", "NEEDS_REVIEW", null);
+                    "111111", "high", "musicbrainz", "stubbed", "NEEDS_REVIEW", null, null);
             return new AiResponse(content, "stub-model", 0, LocalDateTime.now(), "SUCCESS", null, null);
         }
     }

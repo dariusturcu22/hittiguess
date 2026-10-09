@@ -23,6 +23,7 @@ import {
   useGetGroup,
   useLeaveGroup,
   useRemoveMember,
+  usePromoteMember1,
   useStartGameSession,
   useUpdateGroupSettings,
 } from "@/hooks/generated/group-management/group-management";
@@ -124,10 +125,12 @@ function LobbyMember({
   member,
   isCurrentUser,
   onRemove,
+  onPromote,
 }: {
   member: MemberDTO;
   isCurrentUser: boolean;
   onRemove?: (member: MemberDTO) => void;
+  onPromote?: (member: MemberDTO) => void;
 }) {
   const colorClass = MEMBER_COLORS[stableMemberIndex(member, MEMBER_COLORS.length)];
   const orbitPosition = ORBIT_POSITIONS[stableMemberIndex(member, ORBIT_POSITIONS.length)];
@@ -159,6 +162,11 @@ function LobbyMember({
         {member.displayName || "Player"}
         {isCurrentUser ? " (you)" : ""}
       </span>
+      {onPromote ? (
+        <button type="button" onClick={() => onPromote(member)} aria-label={`Make ${member.displayName || "Player"} group admin`} className="mt-1 cursor-pointer text-xs font-semibold text-warning hover:underline">
+          Make group admin
+        </button>
+      ) : null}
       {!member.isConnected ? (
         <span className="mt-0.5 text-[10px] text-muted-foreground">Away</span>
       ) : null}
@@ -232,6 +240,8 @@ export default function GroupLobbyPage({ params }: PageProps) {
   const startWithSongs = useStartSessionWithSongs();
   const leaveGroup = useLeaveGroup();
   const removeMember = useRemoveMember();
+  const promoteMember = usePromoteMember1();
+  const [memberPendingPromotion, setMemberPendingPromotion] = useState<MemberDTO | null>(null);
   const [memberPendingRemoval, setMemberPendingRemoval] = useState<MemberDTO | null>(null);
   const updateSettings = useUpdateGroupSettings();
   const activeSessionQuery = useGetActiveSessionForGroup(groupId, {
@@ -448,6 +458,24 @@ export default function GroupLobbyPage({ params }: PageProps) {
     );
   }
 
+  function handleConfirmPromotion() {
+    const memberId = memberPendingPromotion?.id;
+    if (memberId === undefined || !isCurrentUserAdmin || promoteMember.isPending) {
+      return;
+    }
+    promoteMember.mutate({ groupId, memberId }, {
+      onSuccess: (group) => {
+        queryClient.setQueryData(getGetGroupQueryKey(groupId), group);
+        refreshGroup();
+        refreshActiveMembership();
+        closeAllPopups();
+        setMemberPendingPromotion(null);
+        toast.success("Group admin transferred");
+      },
+      onError: (error) => toast.error(mutationErrorMessage(error)),
+    });
+  }
+
   function openSettings() {
     setSelectedDjMode(groupQuery.data?.djMode ?? "ROTATING");
     setSelectedFixedDjMemberId(groupQuery.data?.fixedDjMemberId ?? undefined);
@@ -562,15 +590,15 @@ export default function GroupLobbyPage({ params }: PageProps) {
             {isTierPopupOpen ? (
               <>
                 <button type="button" aria-label="Close start options" onClick={closeTierPopup} className="fixed inset-0 z-10 cursor-default" />
-                <section aria-label="Start options" className="absolute right-0 top-full z-20 mt-2 w-[320px] rounded-[18px] border-[3px] border-border bg-card p-5 shadow-[6px_6px_0_rgba(0,0,0,0.35)]">
-                  <div className="mb-4 flex flex-wrap items-center gap-2">
+                <section aria-label="Start options" className="absolute right-0 top-full z-20 mt-2 w-[480px] rounded-[18px] border-[3px] border-border bg-card p-5 shadow-[6px_6px_0_rgba(0,0,0,0.35)]">
+                  <div className="mb-4 flex items-center justify-between gap-1">
                     {DIFFICULTY_TIERS.map((tier) => (
                       <button
                         key={tier}
                         type="button"
                         onClick={() => { setSelectedTier(tier); setPlaylistSource("tier"); setReviewedSongs(null); setStartError(""); }}
                         aria-pressed={playlistSource === "tier" && selectedTier === tier}
-                        className={`cursor-pointer rounded-full px-4 py-2 font-display text-xs ${playlistSource === "tier" && selectedTier === tier ? "bg-accent text-accent-foreground" : "border-2 border-border text-muted-foreground"}`}
+                        className={`cursor-pointer whitespace-nowrap rounded-full px-3 py-2 font-display text-xs ${playlistSource === "tier" && selectedTier === tier ? "bg-accent text-accent-foreground" : "border-2 border-border text-muted-foreground"}`}
                       >
                         <Gauge className={`mr-1 inline size-3.5 ${tier === "EASY" ? "text-green" : tier === "HARD" ? "text-destructive" : "text-warning"}`} />
                         {tier.charAt(0) + tier.slice(1).toLowerCase()}
@@ -581,7 +609,7 @@ export default function GroupLobbyPage({ params }: PageProps) {
                       type="button"
                       onClick={openCustomPicker}
                       aria-pressed={playlistSource === "custom"}
-                      className={`cursor-pointer rounded-full px-4 py-2 font-display text-xs ${playlistSource === "custom" ? "bg-accent text-accent-foreground" : "border-2 border-border text-muted-foreground"}`}
+                      className={`cursor-pointer whitespace-nowrap rounded-full px-3 py-2 font-display text-xs ${playlistSource === "custom" ? "bg-accent text-accent-foreground" : "border-2 border-border text-muted-foreground"}`}
                     >
                       <SlidersHorizontal className="mr-1 inline size-3.5" />
                       Custom
@@ -656,6 +684,7 @@ export default function GroupLobbyPage({ params }: PageProps) {
             member={member}
             isCurrentUser={member.userId === currentUser?.id}
             onRemove={isCurrentUserAdmin && member.userId !== currentUser?.id ? setMemberPendingRemoval : undefined}
+            onPromote={isCurrentUserAdmin && member.userId !== currentUser?.id ? setMemberPendingPromotion : undefined}
           />
         ))}
         <AlertDialog
@@ -674,6 +703,20 @@ export default function GroupLobbyPage({ params }: PageProps) {
               <AlertDialogAction variant="destructive" onClick={handleConfirmRemoval}>
                 Remove
               </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+        <AlertDialog open={memberPendingPromotion !== null} onOpenChange={(isOpen) => { if (!isOpen && !promoteMember.isPending) setMemberPendingPromotion(null); }}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Make {memberPendingPromotion?.displayName || "this player"} group admin?</AlertDialogTitle>
+              <AlertDialogDescription>They will control group settings and membership. Your admin controls will be removed.</AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={promoteMember.isPending}>Cancel</AlertDialogCancel>
+              <button type="button" onClick={handleConfirmPromotion} disabled={promoteMember.isPending} className="cursor-pointer rounded-full bg-primary px-4 py-2 font-semibold text-primary-foreground disabled:opacity-60">
+                {promoteMember.isPending ? "Transferring..." : "Transfer admin"}
+              </button>
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>

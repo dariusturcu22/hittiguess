@@ -1869,3 +1869,26 @@ Tests:
 - [x] Unit tests for the error message selection: wrong credentials, unverified, locked, a refusal with no readable reason, an unexpected server error, and no response
 - [x] Login page tests: an unverified account shows the server's reason and wrong credentials keep the generic message
 - [x] Login page tests: the resend option appears only for an unverified account, calls the resend request with that email, clears on the next attempt, and reports success and failure
+
+## Playlist metadata and lobby controls
+
+The approved review keeps later library, explore, playlist-detail, and lobby improvements. Updated mockups become the visual reference for those requirements. Account and legal-page work remains deferred to a later batch.
+
+- [x] Update the design authority rule and screen requirements for approved filters, actions, member popup, import menu, and lobby picker states
+- [x] Persist playlist creation timestamps and official YouTube song durations, expose them through API contracts, and render unavailable states for legacy records
+- [x] Add group-admin transfer with confirmation, permission refresh, and failure feedback
+- [x] Update dark/light design sources and the published canvas for library, explore, playlist detail, and lobby states
+- [x] Add backend and AI tests for timestamp/duration persistence and API fields, including unavailable metadata
+- [x] Add frontend tests for data display, admin-transfer permissions/failures, and affected filter/menu/picker interactions
+- [x] Run relevant suites and rendered desktop comparisons in both themes against the updated mockups; only the landing page has mobile design scope
+- [x] Record reviewed audit findings and deferred account/legal scope
+- [x] Open the pull request and archive the completed tasks
+
+Validation: 124 backend tests, 38 AI tests, 54 frontend tests, TypeScript checking, and desktop browser coverage in dark and light themes. The desktop mockups cover the library filters, import menu, playlist metadata, and lobby picker/admin states. Broader story 28 visual verification remains open.
+
+## Automatic YouTube duration refresh
+
+- [x] Replace hourly duration deletion with a six-hour refresh of due video IDs, index the due lookup, and batch official videos.list requests without the AI pipeline
+- [x] Keep successful refresh timestamps, clear unavailable durations, and retry failed lookups without extending stale data retention
+- [x] Add AI endpoint/source tests and backend scheduling, batching, persistence, concurrency, and failure tests
+- [x] Document refresh behavior and shared YouTube quota costs, archive completed tasks, and update the existing pull request

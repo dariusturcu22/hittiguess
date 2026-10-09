@@ -1,7 +1,8 @@
 from enum import Enum
 from typing import Literal
 
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, Field, field_validator
+from app.metadata.sources.util import YOUTUBE_VIDEOS_BATCH_SIZE
 
 ConfidenceLevel = Literal["low", "medium", "high"]
 LOW_CONFIDENCE = "low"
@@ -96,6 +97,7 @@ class SongMetadataResult(ConfidenceNormalizedModel):
     reasoning: str
     verification_status: str | None = None
     sitelinks_count: int | None = None
+    duration_seconds: int | None = None
 
 
 class MetadataResolveResponse(BaseModel):
@@ -137,6 +139,7 @@ class IdentifiedSong(BaseModel):
     main_artists: list[str] = []
     featured_artists: list[str] = []
     color: str
+    duration_seconds: int | None = None
 
 
 class IdentifyResponse(BaseModel):
@@ -161,3 +164,14 @@ class FastDateResponse(BaseModel):
     confidence: ConfidenceLevel
     source: str
     lane: str | None
+
+
+MINIMUM_VIDEO_BATCH_SIZE = 1
+
+
+class VideoDurationsRequest(BaseModel):
+    video_ids: list[str] = Field(min_length=MINIMUM_VIDEO_BATCH_SIZE, max_length=YOUTUBE_VIDEOS_BATCH_SIZE)
+
+
+class VideoDurationsResponse(BaseModel):
+    durations: dict[str, int | None]

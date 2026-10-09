@@ -64,7 +64,8 @@ public class SongResolutionService {
                 fastDate.source(),
                 FAST_TIER_REASONING,
                 VerificationStatus.UNVERIFIED.name(),
-                null);
+                null,
+                identified.durationSeconds());
         return persistResolvedSong(youtubeId, metadata, addedBy);
     }
 
@@ -91,6 +92,7 @@ public class SongResolutionService {
             song.setReleaseYear(metadata.releaseYear());
         }
         song.setColor(metadata.color());
+        song.recordOfficialDuration(metadata.durationSeconds());
         song.setConfidence(metadata.confidence());
         song.setWikidataSitelinksCount(metadata.sitelinksCount());
         if (metadata.verificationStatus() != null) {

@@ -171,7 +171,8 @@ public class SongMetadataService {
                 content.source(),
                 content.reasoning(),
                 content.verificationStatus(),
-                content.sitelinksCount()
+                content.sitelinksCount(),
+                content.durationSeconds()
         );
     }
 

@@ -4,8 +4,8 @@
  * OpenAPI definition
  * OpenAPI spec version: v0
  */
-import type { PlaylistMemberDTO } from './playlistMemberDTO';
 import type { SongDTO } from './songDTO';
+import type { PlaylistMemberDTO } from './playlistMemberDTO';
 
 export interface PlaylistDetailDTO {
   id: number;
@@ -18,4 +18,5 @@ export interface PlaylistDetailDTO {
   ownerId: number;
   members: PlaylistMemberDTO[];
   isPublic?: boolean;
+  createdAt?: string;
 }

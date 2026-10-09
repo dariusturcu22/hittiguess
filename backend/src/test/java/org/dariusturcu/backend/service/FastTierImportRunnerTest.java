@@ -111,7 +111,7 @@ class FastTierImportRunnerTest {
 
     private static Optional<AiIdentifyResponse> identified(String youtubeId) {
         return Optional.of(new AiIdentifyResponse(SUCCESS_STATUS, "model",
-                new AiIdentifiedSong("Title " + youtubeId, List.of("Artist " + youtubeId), List.of(), "111111"), null, null, null));
+                new AiIdentifiedSong("Title " + youtubeId, List.of("Artist " + youtubeId), List.of(), "111111", null), null, null, null));
     }
 
     private static Optional<AiFastDateResponse> dated(Integer releaseYear) {
@@ -181,7 +181,7 @@ class FastTierImportRunnerTest {
     @Test
     void aVerifiedDuplicateSkipsTheYearLookupAndTheRecheck() {
         AiMetadataContent duplicate = new AiMetadataContent("Title", List.of("Artist"), List.of(), 1975, "111111",
-                "high", "pgvector-duplicate-match", "match", "VERIFIED", null);
+                "high", "pgvector-duplicate-match", "match", "VERIFIED", null, null);
         when(songMetadataService.identifyByYoutubeId(FIRST_VIDEO_ID))
                 .thenReturn(Optional.of(new AiIdentifyResponse(SUCCESS_STATUS, "model", null, duplicate, null, null)));
         when(songResolutionService.persistDuplicateAnswer(eq(FIRST_VIDEO_ID), eq(duplicate), any())).thenReturn(songWithYear(1975));

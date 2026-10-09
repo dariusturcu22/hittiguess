@@ -10,6 +10,7 @@ import org.hibernate.annotations.BatchSize;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.time.Instant;
 
 @Entity
 @Setter
@@ -23,6 +24,16 @@ public class Playlist {
     private Long id;
 
     private String name;
+
+    @Column(updatable = false)
+    private Instant createdAt;
+
+    @PrePersist
+    void recordCreationTime() {
+        if (createdAt == null) {
+            createdAt = Instant.now().truncatedTo(java.time.temporal.ChronoUnit.MICROS);
+        }
+    }
 
     private String color;
 

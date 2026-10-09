@@ -1095,3 +1095,17 @@ Why: Azure Container Apps supplies the public cloud deployment, container operat
 Decision: the two production Postgres databases, the transactional core project with pgvector and the analytics project, run on Neon instead of Supabase. The app has a single production deployment, and the closed-beta access gate is a phase of that deployment, not a separate environment. The Azure Container Apps and Vercel plan from the earlier Beta entry is unchanged.
 
 Why: Neon's Free plan suspends idle compute after five minutes and wakes it automatically on the next query in roughly half a second, while a Supabase Free project pauses after a week of inactivity and stays down until restored by hand. A paused database would take down a rarely visited production app without warning. Neon's Free plan also gives 1 GB per project, raised from 0.5 GB on 2026-10-02, against 500 MB on Supabase. Both providers offer standard Postgres with pgvector, so the Flyway histories and the Spring datasource configuration carry over with new connection URLs. Neon closes idle connections on suspend, so the Spring connection pool retires connections before that happens.
+
+## 2026-10-09: Playlist metadata and lobby design requirements
+
+Later approved product requirements supersede older mockups. The affected design sources and published canvas must reflect those requirements before serving as the visual reference. Library and Explore filters, playlist member popups, import inside Add song, and separate lobby playlist selection remain the intended behavior. Group-admin transfer requires confirmation and updates permissions after success.
+
+New playlists retain their creation timestamp. Existing playlists have no reliable creation date and keep a null value. Song duration comes from the submitted upload's official YouTube metadata, including duplicate matches, and remains nullable. Stored durations expire after 29 days with hourly cleanup; they are not inferred from title, release metadata, or a different upload.
+
+Account/profile/settings pages, legal-page UI, statistics, account-management controls, and disclosure/export-scope updates are deferred to a later documentation-review batch. Their missing implementation remains tracked rather than marked complete.
+
+## 2026-10-09: Automatic YouTube duration refresh
+
+The six-hour duration refresh supersedes the hourly deletion behavior in the earlier playlist metadata decision. Due video IDs are batched in groups of up to 50 through official videos.list using contentDetails, without the metadata synthesis pipeline. Successful lookups update freshness; missing videos clear duration. Failed lookups do not extend freshness and remain due for the next sweep. Expired cached values are cleared after a failed sweep.
+
+A videos.list request costs one quota unit for up to 50 IDs. Refresh shares the project's quota with new-song lookups. Evenly spread refreshes of a million videos every 29 days use roughly 690 units daily, while expiry spikes, retries, and partial batches increase that cost. No separate daily refresh allowance is enforced yet; a catalog approaching the shared quota limit needs budgeting or an approved quota increase.

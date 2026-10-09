@@ -124,6 +124,15 @@ Tests:
 
 ## Story 28: UI redesign
 
+### Deferred account and legal requirements
+
+These requirements remain wanted but are deferred. Their detailed scope and tests need review before feature work starts; the completed backend endpoints and legal drafts do not complete the frontend work.
+
+- [ ] Define and build privacy/terms pages and working profile/settings account correction, deletion, and export controls
+- [ ] Define statistics data dependencies and replace placeholder counts with agreed behavior
+- [ ] Update provider disclosures, stored-data inventory, retention wording, and intended personal-export scope
+- [ ] Define and add account-action permission/failure tests, legal-route tests, and statistics/disclosure validation with the implementation batch
+
 Checked against real code: the frontend covers auth, landing, playlist/song CRUD, imports, admin views, group lobby, game session, chat/voice shell, away widget, DJ link-out, and results export. Batches A through E are implemented and wired to generated hooks and realtime clients. The remaining unchecked items below are open import states, visual/state coverage, accessibility, and broader route smoke coverage.
 
 Scope decided: one unified redesign pass covering both the existing pages and the gameplay screens, not two separate efforts. A fresh visual direction, not constrained to the current shadcn/Tailwind theme tokens, though the underlying component library stays unless a specific component doesn't hold up under the new direction. Mockups were built as a multi-artboard canvas via the `design` skill and reviewed before implementation.

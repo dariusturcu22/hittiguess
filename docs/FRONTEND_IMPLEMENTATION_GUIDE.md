@@ -2,9 +2,11 @@
 
 ## The rule
 
-`docs/design/source/*.dc.html` is the literal spec for every frontend page and screen. Not a mood board, not a starting point for inspiration: the literal structure, spacing, and styling to build. If the current app's layout differs from a mockup's layout, the mockup wins and the app gets rebuilt to match it. This is true regardless of how much existing code already covers that page.
+Approved product requirements take precedence over older mockups. A later approved review or playtest requirement first updates the affected mockups and content specification. The updated design source files then define the layout, spacing, styling, and states to build and verify. Existing implementation alone does not establish a new requirement.
 
-This supersedes any instinct to preserve an existing page's structure and only change its classes or tokens. A restyle that keeps the old DOM structure and reapplies new colors/fonts/spacing on top of it produces a page that looks like the old page with a skin, not like the mockup, whenever the mockup's actual layout differs from what already exists. Retheme-only is only correct when the mockup and the existing page already share the same structure; check that per page, don't assume it.
+The approved library and lobby requirements retain library and Explore filters, playlist member popups, import inside Add song, and the separate lobby playlist picker. Older layouts that omit these controls are superseded. Unreviewed conflicts elsewhere remain open in the documentation audit. App screens have desktop design scope; only the landing page has mobile variants.
+
+Library filter states use `YourPlaylistsOwned*`, `YourPlaylistsJoined*`, and `YourPlaylistsSaved*`. The playlist add menu uses `PlaylistDetailAddMenu*`. Lobby picker, generated-song review, custom selection, and admin transfer use `GroupLobbyTierPicker*`, `GroupLobbyGeneratedReview*`, `GroupLobbyCustomPicker*`, and `GroupLobbyAdminTransfer*`. Each state has dark and light source files alongside its base screen.
 
 ## What's already frozen
 
