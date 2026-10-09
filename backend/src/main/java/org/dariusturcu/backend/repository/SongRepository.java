@@ -13,6 +13,10 @@ import java.util.List;
 
 public interface SongRepository extends JpaRepository<Song, Long> {
 
+    @org.springframework.data.jpa.repository.Modifying
+    @Query("update Song song set song.durationSeconds = null, song.durationFetchedAt = null where song.durationFetchedAt <= :cutoff")
+    int clearExpiredDurations(@Param("cutoff") java.time.Instant cutoff);
+
     List<Song> findByYoutubeId(String youtubeId);
 
     // Holds a Postgres advisory lock until the surrounding transaction ends, so work keyed on

@@ -22,4 +22,5 @@ export interface SongDTO {
   confidence?: string;
   needsUserAttention?: boolean;
   addedBy?: UserSummaryDTO;
+  durationSeconds?: number;
 }

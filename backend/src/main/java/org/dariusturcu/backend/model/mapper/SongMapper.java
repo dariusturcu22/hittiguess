@@ -6,6 +6,8 @@ import org.dariusturcu.backend.model.user.UserSummaryDTO;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
+import java.time.Instant;
+import org.dariusturcu.backend.service.SongDurationRetentionService;
 
 @Component
 public class SongMapper {
@@ -24,7 +26,9 @@ public class SongMapper {
                 needsUserAttention(song),
                 song.getAddedBy() != null
                         ? new UserSummaryDTO(song.getAddedBy().getId(), song.getAddedBy().getUsername())
-                        : null
+                        : null,
+                song.getDurationFetchedAt() != null && song.getDurationFetchedAt().isAfter(Instant.now().minus(SongDurationRetentionService.RETENTION))
+                        ? song.getDurationSeconds() : null
         );
     }
 
@@ -58,6 +62,9 @@ public class SongMapper {
         // it gets here, no need to guess whether it was omitted the way a 0 check would.
         song.setReleaseYear(request.releaseYear());
         if (request.youtubeId() != null) {
+            if (!request.youtubeId().equals(song.getYoutubeId())) {
+                song.recordOfficialDuration(null);
+            }
             song.setYoutubeId(request.youtubeId());
         }
         if (request.color() != null) {

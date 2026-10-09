@@ -71,6 +71,7 @@ import { useActiveImport } from "@/hooks/generated/playlist-import-jobs/playlist
 import { playlistTitleColor } from "@/lib/playlist-colors";
 import { copyText } from "@/lib/clipboard";
 import { countImportItems } from "@/lib/playlist-import-job";
+import { formatPlaylistCreation, formatSongDuration } from "@/lib/playlist-metadata";
 import { PhantomEmptyState } from "@/components/phantom-empty-state";
 
 const ACTIVE_IMPORT_REFRESH_MILLISECONDS = 5_000;
@@ -317,6 +318,7 @@ export default function PlaylistContent({
 
             <div className="text-[13px] text-muted-foreground">
               {playlist.songCount} songs
+              <span className="ml-3">{formatPlaylistCreation(playlist.createdAt)}</span>
               {owner && (
                 <>
                   {" "}
@@ -687,6 +689,9 @@ function SongRow({
       <div className="w-9 shrink-0 text-right text-[13px] text-muted-foreground sm:w-[50px]">
         {song.releaseYear}
       </div>
+      <span className="hidden shrink-0 text-right text-xs tabular-nums text-muted-foreground sm:block sm:w-20" aria-label={`Duration: ${formatSongDuration(song.durationSeconds)}`}>
+        {formatSongDuration(song.durationSeconds)}
+      </span>
       <Link
         href={`/playlists/${playlistId}/songs/${song.id}`}
         title={isManualEntry ? "Edit song details" : "View song details"}

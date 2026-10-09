@@ -11,6 +11,7 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.time.Instant;
 
 @Entity
 @Getter
@@ -34,6 +35,15 @@ public class Song {
     private int releaseYear;
 
     private String youtubeId;
+
+    private Integer durationSeconds;
+
+    private Instant durationFetchedAt;
+
+    public void recordOfficialDuration(Integer durationSeconds) {
+        this.durationSeconds = durationSeconds != null && durationSeconds > 0 ? durationSeconds : null;
+        this.durationFetchedAt = this.durationSeconds == null ? null : Instant.now();
+    }
 
     private String color;
 

@@ -15,6 +15,18 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 class PlaylistMapperTest {
 
+    @Test
+    void detailIncludesCreationTimeWithoutInventingLegacyDates() {
+        User owner = new User();
+        owner.setId(OWNER_ID);
+        Playlist playlist = new Playlist();
+        playlist.setOwner(owner);
+        assertThat(playlistMapper.toDetailDTO(playlist).createdAt()).isNull();
+        Instant createdAt = Instant.parse("2026-10-09T10:00:00Z");
+        playlist.setCreatedAt(createdAt);
+        assertThat(playlistMapper.toDetailDTO(playlist).createdAt()).isEqualTo(createdAt);
+    }
+
     private static final Long OWNER_ID = 10L;
     private static final Long MEMBER_ID = 20L;
 

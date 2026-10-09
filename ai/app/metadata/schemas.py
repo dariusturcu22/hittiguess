@@ -96,6 +96,7 @@ class SongMetadataResult(ConfidenceNormalizedModel):
     reasoning: str
     verification_status: str | None = None
     sitelinks_count: int | None = None
+    duration_seconds: int | None = None
 
 
 class MetadataResolveResponse(BaseModel):
@@ -137,6 +138,7 @@ class IdentifiedSong(BaseModel):
     main_artists: list[str] = []
     featured_artists: list[str] = []
     color: str
+    duration_seconds: int | None = None
 
 
 class IdentifyResponse(BaseModel):

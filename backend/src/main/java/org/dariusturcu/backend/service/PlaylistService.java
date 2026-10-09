@@ -257,6 +257,7 @@ public class PlaylistService {
             return;
         }
 
+        song.recordOfficialDuration(metadata.durationSeconds());
         song.setConfidence(metadata.confidence());
         song.setVerificationStatus(VerificationStatus.valueOf(metadata.verificationStatus()));
         song.setWikidataSitelinksCount(metadata.sitelinksCount());

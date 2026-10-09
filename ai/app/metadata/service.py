@@ -257,6 +257,7 @@ class IdentifiedSubmission:
     main_artists: list[str]
     featured_artists: list[str]
     color: str
+    duration_seconds: int | None = None
 
 
 def identify_submission(youtube_url: str) -> MetadataResolveResponse | IdentifiedSubmission:
@@ -283,6 +284,7 @@ def identify_submission(youtube_url: str) -> MetadataResolveResponse | Identifie
 
     duplicate_match_result = _check_for_duplicate(regex_title, regex_artist)
     if duplicate_match_result is not None:
+        duplicate_match_result = duplicate_match_result.model_copy(update={"duration_seconds": duration_seconds})
         return MetadataResolveResponse(status=SUCCESS_STATUS, model=settings.deepinfra_model, content=duplicate_match_result)
 
     precheck = _run_precheck(youtube_data)
@@ -304,6 +306,7 @@ def identify_submission(youtube_url: str) -> MetadataResolveResponse | Identifie
         main_artists=precheck.main_artists or ([regex_artist] if regex_artist else []),
         featured_artists=precheck.featured_artists or [],
         color=precheck.color,
+        duration_seconds=duration_seconds,
     )
 
 
@@ -316,6 +319,7 @@ def resolve_metadata(youtube_url: str) -> MetadataResolveResponse:
         result = _run_verification_pipeline(
             identified.title, identified.main_artists, identified.color, identified.featured_artists
         )
+        result = result.model_copy(update={"duration_seconds": identified.duration_seconds})
         return MetadataResolveResponse(status=SUCCESS_STATUS, model=settings.deepinfra_model, content=result)
     except Exception as pipeline_error:
         logger.warning("Metadata pipeline failed: %s", pipeline_error)

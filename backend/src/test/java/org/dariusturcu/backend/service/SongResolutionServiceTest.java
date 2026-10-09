@@ -25,6 +25,21 @@ import static org.mockito.Mockito.when;
 @ExtendWith(MockitoExtension.class)
 class SongResolutionServiceTest {
 
+    @Test
+    void persistsOfficialDurationAndClearsUnavailableRecheckData() {
+        int officialDurationSeconds = 210;
+        SongMetadataResponse metadata = new SongMetadataResponse("Track", List.of("Artist"), List.of(),
+                1999, "abcdef", "high", "source", "reason", "VERIFIED", null, officialDurationSeconds);
+        Song existing = new Song();
+        when(songRepository.findByYoutubeId(YOUTUBE_ID)).thenReturn(List.of(existing));
+        when(songRepository.save(org.mockito.ArgumentMatchers.any(Song.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(songMetadataService.resolveByYoutubeId(YOUTUBE_ID)).thenReturn(
+                new AiResponse(metadata, "model", 0L, null, "SUCCESS", null, null));
+        assertThat(service().resolveAndPersist(YOUTUBE_ID, null).orElseThrow().getDurationSeconds()).isEqualTo(officialDurationSeconds);
+        when(songMetadataService.resolveByYoutubeId(YOUTUBE_ID)).thenReturn(successResponse("VERIFIED"));
+        assertThat(service().resolveAndPersist(YOUTUBE_ID, null).orElseThrow().getDurationSeconds()).isNull();
+    }
+
     private static final String YOUTUBE_ID = "dQw4w9WgXcQ";
     private static final Long EXISTING_SONG_ID = 6L;
     private static final Integer RESOLVED_SITELINKS_COUNT = 24;
@@ -44,7 +59,7 @@ class SongResolutionServiceTest {
         SongMetadataResponse content = new SongMetadataResponse(
                 "Never Gonna Give You Up", List.of("Rick Astley"), List.of(), 1987, "abcdef",
                 "high", "musicbrainz+discogs+wikidata-lock", "All three sources agree", verificationStatus,
-                RESOLVED_SITELINKS_COUNT);
+                RESOLVED_SITELINKS_COUNT, null);
         return new AiResponse(content, "gpt-5.1", 100L, LocalDateTime.now(), "SUCCESS", null, null);
     }
 
@@ -103,7 +118,7 @@ class SongResolutionServiceTest {
         SongMetadataResponse content = new SongMetadataResponse(
                 "Titanium", List.of("David Guetta"), List.of("Sia"), 2011, "abcdef",
                 "high", "musicbrainz+discogs+wikidata-lock", "All three sources agree", "VERIFIED",
-                RESOLVED_SITELINKS_COUNT);
+                RESOLVED_SITELINKS_COUNT, null);
         AiResponse response = new AiResponse(content, "gpt-5.1", 100L, LocalDateTime.now(), "SUCCESS", null, null);
         when(songMetadataService.resolveByYoutubeId(YOUTUBE_ID)).thenReturn(response);
         when(songRepository.findByYoutubeId(YOUTUBE_ID)).thenReturn(List.of());
@@ -126,7 +141,7 @@ class SongResolutionServiceTest {
         SongMetadataResponse content = new SongMetadataResponse(
                 "Cold Heart", List.of("Elton John", "Dua Lipa"), List.of("Pnau"), 2021, "abcdef",
                 "high", "musicbrainz+discogs+wikidata-lock", "All three sources agree", "VERIFIED",
-                RESOLVED_SITELINKS_COUNT);
+                RESOLVED_SITELINKS_COUNT, null);
         AiResponse response = new AiResponse(content, "gpt-5.1", 100L, LocalDateTime.now(), "SUCCESS", null, null);
         when(songMetadataService.resolveByYoutubeId(YOUTUBE_ID)).thenReturn(response);
         when(songRepository.findByYoutubeId(YOUTUBE_ID)).thenReturn(List.of());

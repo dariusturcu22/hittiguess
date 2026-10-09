@@ -22,6 +22,25 @@ def _youtube_data(**overrides):
     return data
 
 
+OFFICIAL_DURATION_SECONDS = 210
+
+
+@pytest.mark.parametrize("duration_seconds", [OFFICIAL_DURATION_SECONDS, None])
+def test_official_duration_flows_to_resolved_metadata(mocker, duration_seconds):
+    _patch_pipeline_dependencies(mocker, duplicate_match=None)
+    mocker.patch.object(service.youtube, "fetch_youtube_metadata", return_value=_youtube_data(duration_seconds=duration_seconds))
+    response = service.resolve_metadata("https://www.youtube.com/watch?v=test-video")
+    assert response.content.duration_seconds == duration_seconds
+
+
+def test_duplicate_duration_comes_from_the_submitted_upload(mocker):
+    _patch_pipeline_dependencies(mocker, duplicate_match=_verified_match())
+    official_duration_seconds = 245
+    mocker.patch.object(service.youtube, "fetch_youtube_metadata", return_value=_youtube_data(duration_seconds=official_duration_seconds))
+    response = service.resolve_metadata("https://www.youtube.com/watch?v=alternate-video")
+    assert response.content.duration_seconds == official_duration_seconds
+
+
 def _precheck_result(**overrides):
     fields = {
         "title": "Test Song",
