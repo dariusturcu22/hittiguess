@@ -7,7 +7,7 @@ import org.springframework.stereotype.Component;
 
 import java.util.List;
 import java.time.Instant;
-import org.dariusturcu.backend.service.SongDurationRetentionService;
+import org.dariusturcu.backend.service.SongDurationRefreshService;
 
 @Component
 public class SongMapper {
@@ -27,7 +27,7 @@ public class SongMapper {
                 song.getAddedBy() != null
                         ? new UserSummaryDTO(song.getAddedBy().getId(), song.getAddedBy().getUsername())
                         : null,
-                song.getDurationFetchedAt() != null && song.getDurationFetchedAt().isAfter(Instant.now().minus(SongDurationRetentionService.RETENTION))
+                song.getDurationFetchedAt() != null && song.getDurationFetchedAt().isAfter(Instant.now().minus(SongDurationRefreshService.RETENTION))
                         ? song.getDurationSeconds() : null
         );
     }

@@ -13,9 +13,19 @@ import java.util.List;
 
 public interface SongRepository extends JpaRepository<Song, Long> {
 
+    @org.springframework.transaction.annotation.Transactional
     @org.springframework.data.jpa.repository.Modifying
-    @Query("update Song song set song.durationSeconds = null, song.durationFetchedAt = null where song.durationFetchedAt <= :cutoff")
+    @Query("update Song song set song.durationSeconds = null where song.durationFetchedAt <= :cutoff")
     int clearExpiredDurations(@Param("cutoff") java.time.Instant cutoff);
+
+    @Query("select distinct song.youtubeId from Song song where song.durationFetchedAt <= :cutoff and song.youtubeId is not null order by song.youtubeId")
+    List<String> findDurationRefreshCandidates(@Param("cutoff") java.time.Instant cutoff, Pageable pageable);
+
+    @org.springframework.transaction.annotation.Transactional
+    @org.springframework.data.jpa.repository.Modifying
+    @Query("update Song song set song.durationSeconds = :durationSeconds, song.durationFetchedAt = :checkedAt where song.youtubeId = :youtubeId and song.durationFetchedAt <= :cutoff")
+    int updateRefreshedDuration(@Param("youtubeId") String youtubeId, @Param("durationSeconds") Integer durationSeconds,
+                               @Param("checkedAt") java.time.Instant checkedAt, @Param("cutoff") java.time.Instant cutoff);
 
     List<Song> findByYoutubeId(String youtubeId);
 

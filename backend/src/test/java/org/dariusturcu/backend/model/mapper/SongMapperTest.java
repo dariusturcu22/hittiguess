@@ -18,7 +18,7 @@ class SongMapperTest {
         int officialDurationSeconds = 210;
         song.recordOfficialDuration(officialDurationSeconds);
         assertThat(songMapper.toDTO(song).durationSeconds()).isEqualTo(officialDurationSeconds);
-        song.setDurationFetchedAt(java.time.Instant.now().minus(org.dariusturcu.backend.service.SongDurationRetentionService.RETENTION));
+        song.setDurationFetchedAt(java.time.Instant.now().minus(org.dariusturcu.backend.service.SongDurationRefreshService.RETENTION));
         assertThat(songMapper.toDTO(song).durationSeconds()).isNull();
         song.recordOfficialDuration(null);
         assertThat(songMapper.toDTO(song).durationSeconds()).isNull();

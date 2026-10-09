@@ -22,6 +22,10 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 import tools.jackson.databind.ObjectMapper;
 
 import java.time.Instant;
+import java.time.Duration;
+import java.util.List;
+import org.springframework.data.domain.PageRequest;
+import org.dariusturcu.backend.service.SongDurationRefreshService;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -30,6 +34,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 @Transactional
 class PlaylistMetadataIntegrationTest {
     private static final int OFFICIAL_DURATION_SECONDS = 210;
+    private static final int REFRESH_BATCH_SIZE = 50;
+    private static final int FIRST_PAGE = 0;
+    private static final Duration EXPIRED_AGE = SongDurationRefreshService.RETENTION.plus(Duration.ofHours(1));
     @Container
     static final PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("pgvector/pgvector:pg18");
 
@@ -82,5 +89,41 @@ class PlaylistMetadataIntegrationTest {
         songRepository.clearExpiredDurations(Instant.now());
         entityManager.clear();
         assertThat(songRepository.findById(song.getId()).orElseThrow().getDurationSeconds()).isNull();
+    }
+
+    @Test
+    void refreshSelectionDeduplicatesUploadsAndProtectsConcurrentFreshMetadata() {
+        Instant checkedAt = Instant.now().truncatedTo(java.time.temporal.ChronoUnit.MICROS);
+        Instant expiredAt = checkedAt.minus(EXPIRED_AGE);
+        Instant cutoff = checkedAt.minus(SongDurationRefreshService.RETENTION);
+        Song expired = new Song();
+        expired.setYoutubeId("expired-upload");
+        expired.setDurationSeconds(OFFICIAL_DURATION_SECONDS);
+        expired.setDurationFetchedAt(expiredAt);
+        Song duplicate = new Song();
+        duplicate.setYoutubeId("expired-upload");
+        duplicate.setDurationSeconds(OFFICIAL_DURATION_SECONDS);
+        duplicate.setDurationFetchedAt(expiredAt);
+        Song fresh = new Song();
+        fresh.setYoutubeId("fresh-upload");
+        fresh.recordOfficialDuration(OFFICIAL_DURATION_SECONDS);
+        songRepository.saveAllAndFlush(List.of(expired, duplicate, fresh));
+        assertThat(songRepository.findDurationRefreshCandidates(cutoff, PageRequest.of(FIRST_PAGE, REFRESH_BATCH_SIZE)))
+                .containsExactly("expired-upload");
+        songRepository.clearExpiredDurations(cutoff);
+        entityManager.clear();
+        Song pending = songRepository.findById(expired.getId()).orElseThrow();
+        assertThat(pending.getDurationSeconds()).isNull();
+        assertThat(pending.getDurationFetchedAt()).isEqualTo(expiredAt.truncatedTo(java.time.temporal.ChronoUnit.MICROS));
+        assertThat(songRepository.updateRefreshedDuration("fresh-upload", null, checkedAt, cutoff)).isZero();
+        assertThat(songRepository.updateRefreshedDuration("expired-upload", OFFICIAL_DURATION_SECONDS, checkedAt, cutoff))
+                .isEqualTo(List.of(expired, duplicate).size());
+        entityManager.clear();
+        assertThat(songRepository.findDurationRefreshCandidates(cutoff, PageRequest.of(FIRST_PAGE, REFRESH_BATCH_SIZE))).isEmpty();
+        assertThat(songRepository.findById(expired.getId()).orElseThrow().getDurationSeconds()).isEqualTo(OFFICIAL_DURATION_SECONDS);
+        assertThat(songRepository.findById(fresh.getId()).orElseThrow().getDurationSeconds()).isEqualTo(OFFICIAL_DURATION_SECONDS);
+        songRepository.updateRefreshedDuration("expired-upload", null, checkedAt, checkedAt);
+        entityManager.clear();
+        assertThat(songRepository.findById(expired.getId()).orElseThrow().getDurationSeconds()).isNull();
     }
 }

@@ -12,6 +12,9 @@ from app.metadata.sources.util import (
 from app.observability.error_reporting import report_source_failure
 
 SOURCE_NAME = "youtube"
+VIDEO_DURATIONS_ENDPOINT = "https://www.googleapis.com/youtube/v3/videos"
+VIDEO_DURATIONS_PART = "contentDetails"
+VIDEO_LOOKUP_TIMEOUT_SECONDS = 5.0
 
 
 class PlaylistFetchError(Exception):
@@ -130,3 +133,19 @@ def fetch_video_titles_and_channels(video_ids: list[str]) -> dict[str, dict[str,
             }
 
     return video_info_by_id
+
+
+def fetch_video_durations(video_ids: list[str]) -> dict[str, int | None]:
+    unique_video_ids = list(dict.fromkeys(video_ids))
+    response = httpx.get(
+        VIDEO_DURATIONS_ENDPOINT,
+        params={"part": VIDEO_DURATIONS_PART, "id": ",".join(unique_video_ids), "key": settings.youtube_api_key},
+        timeout=VIDEO_LOOKUP_TIMEOUT_SECONDS,
+    )
+    response.raise_for_status()
+    durations = dict.fromkeys(unique_video_ids)
+    for video in response.json()["items"]:
+        video_id = video.get("id")
+        if video_id in durations:
+            durations[video_id] = parse_iso8601_duration_seconds(video.get("contentDetails", {}).get("duration"))
+    return durations
