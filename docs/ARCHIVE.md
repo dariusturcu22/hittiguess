@@ -1751,15 +1751,15 @@ Built on `feature/game-session`, stacked off `feature/websocket-sync`. The gamep
 - [x] Implement `GameSession`, `Player`, `Round`, and `Guess` as ephemeral Postgres rows, purged when the session ends
 - [x] Initialize a session from the group's current settings when the admin starts it (playlist(s), DJ mode, win-condition card count), snapshotting the group's connected members as the roster
 - [x] Assign round 1's active player and DJ
-- [x] Round rotation: active player rotates each round, DJ stays fixed or rotates per the group's setting, skipping players marked `Left`
+- [x] Turn rotation: the active player rotates each turn, and a round completes after every eligible active player has taken a turn. The DJ stays fixed or rotates per the group's setting, skipping players marked `Left`
 - [x] Guess placement and lock-in: before/after/between on the active player's timeline. Lock-in sound effect is a frontend concern, not built this batch (backend only)
 - [x] 3-5 second countdown after lock-in, then a 15-second betting window; skip the window entirely if no player holds a token
 - [x] Betting: every token-holding player may bet during the window, at the same time as each other, each on a different gap in the active player's own timeline than the one the active player just locked in, one bet per interval rather than one bet per round; concurrency-safe so only the first bet on a given gap is accepted and a losing attempt doesn't cost a token; a player still can't bet twice in the same round; a skip-betting action ends the window early
 - [x] Automatic reveal once the betting window closes: broadcast the song's artist, title, and year to every player, off the same window timer, with no DJ or player action triggering it
-- [x] Artist/title guess box, available to every player except the DJ for the whole turn, independent of timeline placement; only the active player's fully correct guess awards a token, matching normalizes both strings (lowercase, strip punctuation, strip diacritics, collapse whitespace) and compares them with Damerau-Levenshtein edit distance, a flat budget of 1 regardless of length (see `DECISIONS.md`). For a song with more than one artist (main or featured, story 23), naming any single one of them correctly is enough for the token, not all of them
+- [x] Artist/title guess box, available to every player except the DJ during placement until lock-in, independent of timeline placement; only the active player's fully correct guess awards a token, matching normalizes both strings (lowercase, strip punctuation, strip diacritics, collapse whitespace) and compares them with Damerau-Levenshtein edit distance, a flat budget of 1 regardless of length (see `DECISIONS.md`). For a song with more than one artist (main or featured, story 23), naming any single one of them correctly is enough for the token, not all of them
 - [x] Scoring: apply the four outcome rules in `GAME_DESIGN.md` (correct placement keeps the card even on a tied release year, and every bet is lost regardless; a wrong placement with a bet sitting on the gap that's objectively correct for the active player's timeline gives the card to that bettor's own timeline, inserted at wherever it objectively belongs there; a wrong placement with no bet on the correct gap, whether no one bet there or no one bet at all, discards the card)
 - [x] Track two running per-player tallies for the session, fed by every player's guesses, active or not: total individual artists correctly named (every correct name, main or featured, from any song, adds one, regardless of how many total artists that song has) and total fully-correct title guesses. A non-active player's guess never earns a token or affects placement/betting, it only feeds these two tallies
-- [x] Win condition: first player to reach the group's configured card count wins, bounded 5-20 for a 2-3 player group or 5-15 for a 4-8 player group (reuses `GroupService`'s existing validation, not re-implemented)
+- [x] Win condition: the current full-pass round completes after a player reaches the group's configured card count; the highest card count wins, with joint winners on a tie, bounded 5-20 for a 2-3 player group or 5-15 for a 4-8 player group (reuses `GroupService`'s existing validation, not re-implemented)
 - [x] Player disconnect: mark `isConnected` false, leave timeline/tokens/turn order untouched
 - [x] Player explicit leave: mark `Left`, exclude from future turns and DJ rotation, existing timeline cards still count toward the final results
 - [x] Active-player turn timeout: if the active player is disconnected when their turn comes, or disconnects mid-turn, auto-skip after 90 seconds and mark them `Left`
@@ -1892,3 +1892,21 @@ Validation: 124 backend tests, 38 AI tests, 54 frontend tests, TypeScript checki
 - [x] Keep successful refresh timestamps, clear unavailable durations, and retry failed lookups without extending stale data retention
 - [x] Add AI endpoint/source tests and backend scheduling, batching, persistence, concurrency, and failure tests
 - [x] Document refresh behavior and shared YouTube quota costs, archive completed tasks, and update the existing pull request
+
+## Gameplay, voice, and away-state feedback
+
+The gameplay keeps automatic reveal, complete-pass rounds, joint winners, and guessing that closes when placement locks. Account and legal work remains deferred.
+
+- [x] Align game rules, results copy, and design documentation with the implemented round and winner behavior
+- [x] Add a clickable turn notification and sound outside the session page, without repeated alerts after reconnect
+- [x] Show the active player, round, own tokens, and server deadline countdown in the away widget
+- [x] Show earned-token feedback only for actual awards, distinct incorrect feedback, and reduced-motion behavior
+- [x] Include a per-submission token award flag in the private guess result and test awards, partial guesses, and spectator guesses
+- [x] Keep the voice rail at 76px with its join control at the top and visibility limited to the lobby or an active call
+- [x] Show member avatars, speaking rings, synchronized mute and deafen status, and member exit/reflow feedback
+- [x] Update affected mockups and their published canvas to match the approved behavior
+- [x] Add unit tests for notifications, deadlines, token awards, and voice status synchronization
+- [x] Verify desktop behavior in both themes, reconnect handling, and voice status across two clients
+- [x] Run the relevant frontend checks and archive completed tasks before opening the pull request
+
+Validation: 74 backend gameplay and broadcast tests pass, along with 314 frontend tests, TypeScript, and changed-file lint. Four desktop browser cases cover both themes, reconnect, token feedback, reduced motion, and two real WebRTC peers with fixture HTTP/STOMP responses. All 125 design sources match the published canvas; ten updated states render at desktop size.

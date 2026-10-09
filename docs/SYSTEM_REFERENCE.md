@@ -130,6 +130,10 @@ Story 30's Difficulty-Based-generation and Custom-mode session-start endpoints (
 
 ## Entity model
 
+Private guess results on `/user/queue/sessions/{sessionId}/guess-result` include `roundId`, `artistCorrect`, `titleCorrect`, `tokenAwarded`, and the current `state`. `tokenAwarded` is true only when that submission grants a new token. The state's `tokenEarned` remains true for later submissions in the same turn. The frontend uses the per-submission flag for award feedback.
+
+Voice peer connections carry a reliable ordered `voice-status` data channel with `isMuted`, `isDeafened`, and `isSpeaking`. The sender identity comes from the established peer connection. Current status is sent when the channel opens; status is discarded when the peer closes. Speaking measures microphone audio only.
+
 ### Current (JPA entities, core service)
 
 Current JPA entities: `User`, `Playlist`, `PlaylistMembership`, `PlaylistBan`, `SavedPlaylist`, `Song`, `SongArtist`, `RefreshToken`, `EmailVerificationToken`, `PasswordResetToken`, `TwoFactorBackupCode` (story 50), plus `Group` and `Member` (story 39), `GameSession`, `Player`, `Round`, `Guess`, and `Bet` (story 10), `ChatMessage` (story 13), `AlternateYoutubeId` and `PendingImport` (story 40), `SongReport` and `SongConfirmation` (story 17), and `PlaylistImportJob` and `PlaylistImportJobItem` (story 47). `Bet` (round, player, position, placedAt) is one accepted bet against a round's active-player timeline; a round can carry several, one per distinct gap, enforced by unique constraints on the `bets` table rather than a single bettor column on `Round`. The core seven are detailed below; the game, group, and chat entities follow the shapes in `ARCHITECTURE.md` and their own story sections in `TASKS.md`.

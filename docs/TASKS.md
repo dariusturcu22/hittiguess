@@ -517,19 +517,3 @@ The AI service's HTTP client logs every outgoing request URL, and the YouTube AP
 Tests:
 
 - [x] Unit tests for the redaction: one parameter, every known parameter name, lookalike parameters left alone, the JSON formatter's message and exception text, and the filter on a record with format arguments
-
-## Gameplay, voice, and away-state feedback
-
-The gameplay keeps automatic reveal, complete-pass rounds, joint winners, and guessing that closes when placement locks. Account and legal work remains deferred.
-
-- [ ] Align game rules, results copy, and design documentation with the implemented round and winner behavior
-- [ ] Add a clickable turn notification and sound outside the session page, without repeated alerts after reconnect
-- [ ] Show the active player, round, own tokens, and server deadline countdown in the away widget
-- [ ] Show earned-token feedback only for actual awards, distinct incorrect feedback, and reduced-motion behavior
-- [ ] Include a per-submission token award flag in the private guess result and test awards, partial guesses, and spectator guesses
-- [ ] Keep the voice rail at 76px with its join control at the top and visibility limited to the lobby or an active call
-- [ ] Show member avatars, speaking rings, synchronized mute and deafen status, and member exit/reflow feedback
-- [ ] Update affected mockups and their published canvas to match the approved behavior
-- [ ] Add unit tests for notifications, deadlines, token awards, and voice status synchronization
-- [ ] Verify desktop behavior in both themes, reconnect handling, and voice status across two clients
-- [ ] Run the relevant frontend checks and archive completed tasks before opening the pull request

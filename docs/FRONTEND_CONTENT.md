@@ -65,15 +65,15 @@ The lobby shows group-specific member identities, the admin crown, invite link, 
 
 ### Game session / timeline (per player)
 
-Data: the active player's own timeline (ordered cards, each showing artist/title/year once revealed), whose turn it is, the DJ, each player's token count, the current round's phase (playing, guess-lock-in, countdown, betting, reveal, scored). Actions: drag-and-drop a card to place a guess (before/after/between existing cards), lock in, submit an artist/title guess in a box available for the whole turn (every player except the DJ, story 10), place a bet during the betting window if holding a token, skip-betting. Feedback content: a lock-in sound cue, a token-earned animation on a correct guess, a distinct animation for an incorrect one (`GAME_DESIGN.md`'s Interaction and animation section covers the visual side, not the content).
+Data: the active player's own timeline (ordered cards, each showing artist/title/year once revealed), whose turn it is, the DJ, each player's token count, the current round's phase (playing, guess-lock-in, countdown, betting, reveal, scored). Actions: drag-and-drop a card to place a guess (before/after/between existing cards), lock in, submit an artist/title guess in a box available during placement until lock-in (every player except the DJ, story 10), place a bet during the betting window if holding a token, skip-betting. Feedback content: a lock-in sound cue, a token-earned animation when the active player actually receives a new token, a distinct animation for an incorrect one (`GAME_DESIGN.md`'s Interaction and animation section covers the visual side, not the content).
 
 ### DJ view
 
-Data: the current song's real YouTube page or app link-out, not an embedded player. Actions, DJ only: "Open YouTube Link" (paired with the audio-sharing UI warning, story 9). That's the DJ's only action; there's no in-app pause, play, close, end-turn, or reveal, playback happens entirely on YouTube and the round's flow (betting countdown, reveal, advancing to the next player) runs automatically once the song's been opened. Non-DJ players see the same shared game UI, just without that link-out.
+Data: the current song's real YouTube page or app link-out, not an embedded player. Actions, DJ only: "Open YouTube Link" (paired with the audio-sharing UI warning, story 9). That's the DJ's only action; there's no in-app pause, play, close, end-turn, or reveal, playback happens entirely on YouTube and the round's flow (betting countdown, reveal, advancing to the next player) runs automatically from placement lock-in. Opening YouTube does not start those timers. Non-DJ players see the same shared game UI, just without that link-out.
 
 ### Voice sidebar
 
-Data: each connected group member as an avatar with name, a speaking indicator, mute/deafen state. Actions: join or leave the voice room at any time, mute/deafen self. Persists across the "playing while away" minimized state (`GAME_DESIGN.md`).
+Data: each voice member as a per-group avatar with name, a microphone speaking ring, and synchronized mute/deafen state. The rail is 76px wide, has no collapse control, and appears on the lobby or during an active call. The join control is at the top when outside a call. Member departure closes the gap with motion that respects reduced-motion preferences. Actions: join or leave the voice room at any time, mute/deafen self. Persists across the "playing while away" minimized state (`GAME_DESIGN.md`).
 
 ### Text chat overlay
 
@@ -81,11 +81,11 @@ Data: message history for the group (sender's per-group display name, message bo
 
 ### Turn notification
 
-Content: a sound cue plus a clickable visual banner, shown only when it's the player's turn and the game screen isn't focused. Action: clicking the banner (or the sound's implicit prompt) returns the player to the game screen.
+Content: a sound cue plus a clickable visual banner, shown while the player has an unlocked placement turn and uses another app page. The sound plays once per session and turn, including across reconnects, after a browser interaction enables audio. Action: clicking the banner (or the sound's implicit prompt) returns the player to the game screen.
 
 ### Playing-while-away widget
 
-Data: a minimized summary of session state (whose turn it is, own token count) while the player uses another part of the app. Actions: click to return to the full game screen. The voice sidebar and turn notification both stay available in this state.
+Data: a minimized summary of session state (active player, round number, own token count, and a countdown only for the current phase's server deadline) while the player uses another part of the app. Actions: click to return to the full game screen. The voice sidebar and turn notification both stay available in this state.
 
 ### Results / leaderboard
 
