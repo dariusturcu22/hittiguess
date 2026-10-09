@@ -33,7 +33,7 @@ The two services run in the same hosting environment and reach each other over i
 
 ### Database domain boundary
 
-One split is explicit: the transactional Postgres+pgvector instance versus a separate append-heavy analytics/event store ([PROJECT_STATE.md](PROJECT_STATE.md) story 33). Every entity either service reads or writes today, users, groups, sessions, rounds, guesses, songs, playlists, and pgvector embeddings, lives in the transactional instance; only usage/event data (games played, session length, rate-limit-exceeded, report-submitted, and similar counters) goes in the analytics store. No entity is planned to live in both, or move between them. This is the only database split in the architecture, there's no separate database per service.
+Core Postgres+pgvector stores data directly used by the product: accounts, groups, temporary gameplay, playlists, songs, embeddings, participant history, and prepared difficulty. The separate analytics project stores internal usage and research observations plus anonymous song aggregates. Core owns both migration histories. A durable core queue bridges research delivery; analytics availability is not required during gameplay. The AI service shares core data and never alters schema.
 
 ### Song and playlist database
 
@@ -102,19 +102,21 @@ Group
 
 ### Game session (core service)
 
-A game session is the round-by-round gameplay itself, created only when the group's admin starts one. Ephemeral: purged entirely when it ends, except for a downloadable results export.
+A game session is the round-by-round gameplay itself, created only when the group's admin starts one. Temporary gameplay rows are purged when the session ends. Compact participant-only history is committed first; the latest normal result per group also remains available for export.
 
 ```
 GameSession
-  ├── id, groupId, status
+  ├── id, groupId, status, difficultyTier, currentRoundNumber, currentGameRoundNumber
   ├── players[] → Player (userId, timeline[], tokenCount, isConnected)
   ├── currentRound → Round
-  │     ├── activePlayerId (rotates each round)
+  │     ├── activePlayerId (rotates each turn)
   │     ├── djPlayerId (fixed or rotating, per group setting)
   │     ├── currentSong
   │     ├── status
-  │     └── guesses[] → Guess (playerId, guessedYear, placedPosition, isCorrect)
-  └── history[]
+  │     ├── placedPosition, placementCorrect, timelineCardCount, validInsertionSlotCount
+  │     ├── phase deadlines, guesses[], bets[], betting skip voters
+  │     └── guesses[] → Guess (playerId, guessedTitle, guessedArtist, titleCorrect, artistCorrect)
+  └── songQueue[]
 ```
 
 If every player disconnects and none reconnect within 10 minutes, the session is torn down as abandoned and produces no results export. A single player's disconnect never ends the session while anyone else is still connected.
@@ -210,7 +212,7 @@ Group returns to its lobby state: admin starts another session within 30 minutes
 - Group-scoped text chat backend (story 13): `ChatMessage`/`chat_messages` (`V14`), member-only STOMP send and REST history, 500-character and 5-per-10-second limits, deletion cascade on group deletion. Story 28 implements the chat overlay UI; state and accessibility verification remain open.
 - Community song reports and confirmations backend (story 17): `SongReport`/`SongConfirmation` entities with per-user-per-song uniqueness, submission endpoints, and an admin review queue ranked by a five-tier priority order reusing story 40's `AdminAccessGuard`. Report resolution stays manual. Story 28 implements the report button, thumbs-up, and review-surface UI; broader action and route verification remain open.
 - Playlist-to-playlist song import backend (story 45): a copy endpoint linking every song from a source playlist the requester can read into a target playlist they can write to, reusing story 15's join table; duplicates are skipped. Story 28 implements the frontend picker, with choose-source and existing-playlist loading, empty, and error states still open.
-- Difficulty-tuned game session generation, backend slice (story 30): per-song aggregate difficulty scoring from real `Round` data, the three group-scoring strategies (easy protects the weakest player, hard averages, medium takes the median), sitelinks-based popularity weighting through a fallback seam pending the sitelinks column itself, and public playlists (`Playlist.isPublic`, owner-only publish/unpublish, a public-browse endpoint, and a `SavedPlaylist` save/unsave capability distinct from membership). The Difficulty-Based and Custom-mode session-start endpoints, persisting the sitelinks count on `Song`, and the personalized collaborative-filtering layer remain unbuilt, see below.
+- Difficulty-tuned generation (story 30): Confirm saves the tier; Start selects an indexed, varied pool from prepared core scores. Core history stores compact game and participant summaries before session purge. Durable core delivery sends research observations to analytics, where retry-safe anonymous aggregates survive the 365-day raw retention window. Background calculation publishes global scores every six hours. Custom playlist and pasted-link starts, public playlist browsing, and saved playlists are implemented. Personalized modeling remains deferred.
 - Rate limiting across both services' public-facing endpoints, including auth and the internal AI-microservice endpoint (story 27).
 - A separate analytics/event-store database for usage and event data, isolated from the transactional Postgres+pgvector instance (stories 33, 42, 43).
 - Privacy policy, terms of service, and a GDPR personal-data export endpoint (story 37); a cookie-consent notice stays deliberately out of scope until first-party analytics (story 34) ships.

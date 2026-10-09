@@ -6,7 +6,7 @@ C01 through C06 and M05 are resolved by the approved library and lobby requireme
 
 New playlists retain creation timestamps; legacy dates remain unavailable. Official YouTube durations travel through the metadata pipeline and API, become due after 29 days, and refresh automatically every six hours through batched video lookups. The lobby exposes confirmed admin transfer and refreshes permissions after success. Desktop checks cover both themes. Only the landing page has mobile design scope.
 
-Account pages, legal UI, statistics, account correction/deletion/export controls, and disclosure updates remain deferred and tracked in TASKS.md. The findings below retain the original audit evidence and stable IDs; the other conflicts still need their separate implementation or documentation changes.
+Account pages, legal UI, account correction/deletion/export controls, and disclosure updates remain deferred and tracked in TASKS.md. The findings below retain the original audit evidence and stable IDs; the other conflicts still need their separate implementation or documentation changes.
 
 ## Reviewed metadata and import findings: 2026-10-09
 
@@ -18,7 +18,11 @@ New follow-up N01: pgvector similarity searches only verified songs with stored 
 
 ## Reviewed difficulty history: 2026-10-09
 
-C16 is resolved by the approved core-history and analytics-research boundary. Core will retain compact participant-visible summaries and prepared global scores; analytics will retain raw observations for 365 days and anonymous song aggregates beyond raw expiry. Confirm saves the tier; Start selects the varied song pool. These changes are planned in TASKS.md and are not implemented yet. Personalized ML remains deferred.
+C16 is resolved by the approved core-history and analytics-research boundary. Core retains compact participant-visible summaries and prepared global scores; analytics retains raw observations for 365 days and anonymous song aggregates beyond raw expiry. Confirm saves the tier; Start selects the varied song pool. Participant history and statistics pages use core endpoints; account deletion and personal exports include the retained history and research data. Personalized ML remains deferred.
+
+## Reviewed API and product contracts
+
+C11, C17, C18, D01, D02, D03, D04, D05, D08, and D10 are reconciled against the current editing permissions, email behavior, group scope, controller routes, export modes, removal enforcement, and invite-code generation. The original tables retain historical evidence. Deferred legal copy and account pages remain separate work.
 
 ## Scope and evidence
 

@@ -26,7 +26,7 @@ Authenticated and playlist-access-gated. Playlist detail shows name, description
 
 ### Song detail (`/playlists/[playlistId]/songs/[songId]`)
 
-Authenticated, playlist-access-gated. Data: a single `SongDTO`'s full fields, plus who added it. Actions today: edit the song's fields, delete it from the playlist. Once story 17 ships, this view also needs a report affordance (available on every card regardless of `verificationStatus`) and, on `NEEDS_REVIEW`/`MANUAL_ENTRY` cards only, a thumbs-up confirmation affordance. Once story 23's `verificationStatus` ships, editing narrows to `MANUAL_ENTRY` songs only, decided during story 28's design pass (see `DECISIONS.md`): `VERIFIED` and `NEEDS_REVIEW` songs lose the edit action and keep report (plus, for `NEEDS_REVIEW`, the thumbs-up) instead, routed to this same read-only view; `MANUAL_ENTRY` songs route to a separate, dedicated edit screen with the fields actually editable. None of this is built yet, noted here so the eventual content and permission changes aren't a surprise.
+Authenticated and playlist-access-gated. Song detail shows metadata, verification status, and attribution. Reports are available regardless of status; NEEDS_REVIEW and MANUAL_ENTRY also offer confirmation. UNVERIFIED and MANUAL_ENTRY allow metadata editing only when the caller has write access to every playlist containing the shared song. VERIFIED and NEEDS_REVIEW remain read-only. Removing a song from a playlist is separate from editing its shared metadata.
 
 ### Add song (`/playlists/[playlistId]/songs/add`)
 
@@ -61,7 +61,7 @@ The library, Explore, playlist detail, and lobby requirements reflect the approv
 
 ### Group lobby
 
-The lobby shows group-specific member identities, the admin crown, invite link, and four-letter join code. Admin Settings contains DJ mode, a member selector for fixed DJ, and cards to win. A separate playlist picker offers Easy, Medium, Hard, and Custom on one row, with icons and a divider before Custom. Confirm prepares a generated set for review; Confirm and start launches the reviewed set. Custom selects multiple accessible playlists and displays their combined song count before confirmation. Settings, playlist selection, and chat are mutually exclusive and dismiss on outside click. Only the current admin can start, change settings, remove members, or transfer admin status. Make group admin requires confirmation, refreshes permissions and the crown on success, and keeps the dialog open with failure feedback. Everyone can copy the invite and leave with confirmation. Chat and voice remain group-scoped.
+The lobby shows group-specific member identities, the admin crown, invite link, and four-letter join code. Admin Settings contains DJ mode, a member selector for fixed DJ, and cards to win. A separate playlist picker offers Easy, Medium, Hard, and Custom on one row, with icons and a divider before Custom. Confirm saves the tier without generating songs. Start selects the prepared difficulty pool and starts the session; song identities are not previewed. Custom selects multiple accessible playlists and displays their combined song count before confirmation. Settings, playlist selection, and chat are mutually exclusive and dismiss on outside click. Only the current admin can start, change settings, remove members, or transfer admin status. Make group admin requires confirmation, refreshes permissions and the crown on success, and keeps the dialog open with failure feedback. Removal is available only while the group is open, prevents the removed account from rejoining that group, and closes its sockets after commit. Group display names are 1 to 30 characters with no control characters. Avatar links are HTTPS Google profile images, at most 1024 characters. Everyone can copy the invite and leave with confirmation. Chat and voice remain group-scoped.
 
 ### Game session / timeline (per player)
 
@@ -106,3 +106,7 @@ Data: every reportable card ranked by the five-tier priority order in `TASKS.md`
 ## Content this file deliberately excludes
 
 Colors, typography, spacing, component styling, and layout are story 28's scope, not this one's. Where a screen's exact copy (button labels, error message text, empty-state wording) isn't already fixed by a decision in `DECISIONS.md` or `GAME_DESIGN.md`, it's left to be written during story 28's design and implementation passes rather than guessed at here.
+
+### Game history (`/history`, `/history/[summaryId]`)
+
+The list shows the account's completed games, wins, win rate, and paginated summaries. Each row shows the group snapshot, completion time, mode, duration, and the participant's result. Interrupted games are labeled and do not count as wins. Details show final card, artist, and title ranks, attempts and correct counts, bets placed and won, departure status, and tied winners. Deleted accounts appear as Deleted player. Only original participants have access, including after group expiry. Loading, empty, unavailable, and retry states are explicit. The account menu uses the same core statistics rather than placeholders.

@@ -1944,3 +1944,38 @@ Tests:
 - [x] Record the approved database boundary, fields, retention, and start flow
 - [x] Define implementation and test tasks against the current result, selection, and deletion paths
 - [x] Extend the analytics retention default to 365 days and run the retention integration test
+
+## Game history and prepared global difficulty
+
+The agreed core/analytics boundary and fields are in [SYSTEM_REFERENCE.md](SYSTEM_REFERENCE.md#game-history-and-difficulty-data). Core history retains every compact game summary, analytics retains research observations, and prepared core scores serve generation at Start. Personalized ML remains deferred.
+
+- [x] Add core-owned migrations and models for GameSummary, GameParticipantSummary, and SongDifficulty, plus analytics SongPlayObservation and SongDifficultyAggregate
+- [x] Save a participant-only summary before session purge, preserve ties and departure status, distinguish interruptions from competitive completion, and deduplicate repeated completion
+- [x] Add paginated history/detail and user-visible statistics endpoints reading core only; keep access after group expiry and deny later group joiners
+- [x] Extend account deletion and personal export for history and research data; anonymize shared results, remove research identity, and delete summaries with no remaining account-linked participants
+- [x] Deliver scored-turn observations reliably to analytics without making game completion depend on analytics availability; deduplicate retries and exclude skipped placements from attempt counts
+- [x] Retain raw observations for 365 days and preserve anonymous per-song aggregates across raw-event expiry without counting retries twice
+- [x] Calculate global difficulty in the background and publish prepared scores into core; provide popularity-based cold starts and preserve the last good scores on analytics failure
+- [x] Persist the selected tier on Confirm and generate only at Start, using the current connected player count times the win target times three; select varied eligible songs without loading and scoring the entire catalog
+- [x] Unit tests: summary totals, ties, interruptions, difficulty aggregation, cold starts, and sampling boundaries
+- [x] Integration tests: core and analytics migrations, summary-before-purge, participant permissions, deletion/export, retry deduplication, one-year retention, and analytics outages
+- [x] Performance tests: indexed selection on a representative large catalog, insufficient pools, and overlapping starts; record measured latency before setting a supported target
+
+The indexed selection check used 100,000 generated catalog songs, twenty selections, and a 96-song pool. The latest local mean was 13 ms; other local runs measured 12 to 33 ms. This measures indexed selection with a repository fixture, not full HTTP request latency or a production service target. Real PostgreSQL integration tests also cover Confirm without session creation, the full generated pool at Start, and overlapping starts producing one session.
+
+
+## Game history and difficulty frontend
+
+- [x] Define history list/detail and statistics mockups against the approved core summary fields before building the pages
+- [x] Build participant-only paginated history, detail, and statistics views using the core endpoints
+- [x] Save Easy/Medium/Hard selection on Confirm; generate and start only when Start session is clicked, without revealing the song pool
+- [x] Frontend unit tests: selection persistence, no generation on Confirm, generation on Start, history permissions, deleted-player entries, loading/error/empty states
+- [x] Desktop browser tests: difficulty and Custom starts, insufficient catalog, history after group expiry, and both themes
+
+Desktop browser coverage uses API fixtures in both themes. Core PostgreSQL integration tests enforce participant access and group-independent retention. The history pages, account statistics, Custom selection, insufficient-catalog feedback, and tier selection at Start are implemented. Session completion refreshes history and statistics queries.
+
+## Docs: Implemented API and product contracts
+
+- [x] Correct song-edit status and shared-playlist permissions, group removal and invite rules, and group-scoped chat/voice wording
+- [x] Add implemented API routes, export modes and paper sizes, and correct local email setup
+- [x] Validate changed claims against code, check documentation links, and archive completed tasks

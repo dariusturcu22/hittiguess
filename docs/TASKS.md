@@ -18,25 +18,11 @@ Stories that would write an abuse-visibility event (story 41's flagged-injection
 
 ## Story 30: Difficulty-tuned game session generation
 
-### History and global difficulty preparation
-
-The agreed core/analytics boundary and proposed fields are in [SYSTEM_REFERENCE.md](SYSTEM_REFERENCE.md#planned-game-history-and-difficulty-data). Current code retains only the latest results per group, computes difficulty from temporary rounds, and generates song previews on Confirm. This implementation slice replaces those paths; personalized ML remains deferred.
-
-- [ ] Add core-owned migrations and models for GameSummary, GameParticipantSummary, and SongDifficulty, plus analytics SongPlayObservation and SongDifficultyAggregate
-- [ ] Save a participant-only summary before session purge, preserve ties and departure status, distinguish interruptions from competitive completion, and deduplicate repeated completion
-- [ ] Add paginated history/detail and user-visible statistics endpoints reading core only; keep access after group expiry and deny later group joiners
-- [ ] Extend account deletion and personal export for history and research data; anonymize shared results, remove research identity, and delete summaries with no remaining account-linked participants
-- [ ] Deliver scored-turn observations reliably to analytics without making game completion depend on analytics availability; deduplicate retries and exclude skipped placements from attempt counts
-- [ ] Retain raw observations for 365 days and preserve anonymous per-song aggregates across raw-event expiry without counting retries twice
-- [ ] Calculate global difficulty in the background and publish prepared scores into core; provide popularity-based cold starts and preserve the last good scores on analytics failure
-- [ ] Persist the selected tier on Confirm and generate only at Start, using the current connected player count times the win target times three; select varied eligible songs without loading and scoring the entire catalog
-- [ ] Unit tests: summary totals, ties, interruptions, difficulty aggregation, cold starts, and sampling boundaries
-- [ ] Integration tests: core and analytics migrations, summary-before-purge, participant permissions, deletion/export, retry deduplication, one-year retention, and analytics outages
-- [ ] Performance tests: indexed selection on a representative large catalog, insufficient pools, and overlapping starts; record measured latency before setting a supported target
+Core history and prepared global difficulty are implemented. The completed tasks and tests are in [ARCHIVE.md](ARCHIVE.md#game-history-and-prepared-global-difficulty).
 
 ### Personalized difficulty, deferred
 
-Completed generation, selection, public-playlist, and lobby integration work is recorded in [ARCHIVE.md](ARCHIVE.md#story-30-completed-backend-implementation). Personalized training, retraining, monitoring, and their tests remain open. The historical-data conflict is resolved by the approved core-history and analytics-research boundary below.
+Completed generation, selection, public-playlist, and lobby integration work is recorded in [ARCHIVE.md](ARCHIVE.md#story-30-completed-backend-implementation). Personalized training, retraining, monitoring, and their tests remain open. The historical-data conflict is resolved by the implemented core-history and analytics-research boundary in SYSTEM_REFERENCE.md.
 
 - [ ] Train the personalized collaborative-filtering model on retained analytics research observations once there's enough of it to evaluate (scaffolded: `PersonalizedDifficultyPredictor` is the plug point, `AggregateBaselinePredictor` is the shipped baseline; blocked until real play accumulates enough guesses to train and beat the baseline, likely months of casual play at the target scale)
 - [ ] Add a scheduled retraining job for the personalized model
@@ -72,6 +58,12 @@ Completed submission-classification work is recorded in [ARCHIVE.md](ARCHIVE.md#
   - Deferred: tuning how a source non-match lowers confidence needs real submission data to set the weighting without over-rejecting niche tracks, the same data-tuning dependency story 30 carries; the classifier ships without it rather than guessing a threshold
 - [ ] Still-uncertain cases after all of the above route to manual review, not a hard reject, the same "escalate, don't guess" principle already set for artist/title verification
   - Deferred: this manual-review tier depends on the source-match secondary signal above to define "still uncertain" without a threshold; deferred with it. A confident non-music or compilation verdict rejects, and a genuine no-answer song still reaches story 18's MANUAL_ENTRY route downstream
+
+## Docs: Remaining audit reconciliation
+
+- [ ] Recheck unresolved audit findings against merged code and reviewed source-of-truth decisions
+- [ ] Archive completed clusters while retaining missing features and uncompleted acceptance checks
+- [ ] Validate remaining claims, documentation links, and task references
 
 ## Fix: Verified catalog embedding indexing
 
@@ -139,13 +131,7 @@ Tests:
 
 ## Story 28: UI redesign
 
-### Game history and difficulty start flow
-
-- [ ] Define history list/detail and statistics mockups against the approved core summary fields before building the pages
-- [ ] Build participant-only paginated history, detail, and statistics views using the core endpoints
-- [ ] Save Easy/Medium/Hard selection on Confirm; generate and start only when Start session is clicked, without revealing the song pool
-- [ ] Frontend unit tests: selection persistence, no generation on Confirm, generation on Start, history permissions, deleted-player entries, loading/error/empty states
-- [ ] Desktop browser tests: difficulty and Custom starts, insufficient catalog, history after group expiry, and both themes
+The completed history pages and difficulty start flow are in [ARCHIVE.md](ARCHIVE.md#game-history-and-difficulty-frontend).
 
 ### Deferred account and legal requirements
 
