@@ -20,6 +20,7 @@ let lobbySearchParams = new URLSearchParams();
 const updateSettingsMutate = vi.fn();
 const leaveMutate = vi.fn();
 const removeMemberMutate = vi.fn();
+const promoteMemberMutate = vi.fn();
 let lobbyMembers = [
   { id: 1, userId: 11, displayName: "Admin", isAdmin: true, isConnected: true },
   { id: 2, userId: 12, displayName: "Sam", isAdmin: false, isConnected: true },
@@ -55,6 +56,7 @@ vi.mock("@/hooks/generated/group-management/group-management", () => ({
   }),
   useLeaveGroup: () => ({ mutate: leaveMutate, isPending: false }),
   useRemoveMember: () => ({ mutate: removeMemberMutate, isPending: false }),
+  usePromoteMember1: () => ({ mutate: promoteMemberMutate, isPending: false }),
   useStartGameSession: () => ({ mutate: startSessionMutate, isPending: false }),
   useUpdateGroupSettings: () => ({ mutate: updateSettingsMutate, isPending: false }),
   useGenerateDifficultySet: () => ({ mutate: generateMutate, isPending: false }),
@@ -97,6 +99,31 @@ async function renderPage() {
 }
 
 describe("GroupLobbyPage start options", () => {
+  it("requires confirmation and refreshes admin permissions after transfer", async () => {
+    promoteMemberMutate.mockImplementation((_arguments, options) => options.onSuccess({ id: 1, members: lobbyMembers.map((member) => ({ ...member, isAdmin: member.userId === 12 })) }));
+    await renderPage();
+    expect(screen.queryByRole("button", { name: "Make Admin group admin" })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Make Sam group admin" }));
+    expect(promoteMemberMutate).not.toHaveBeenCalled();
+    fireEvent.click(await screen.findByRole("button", { name: "Transfer admin" }));
+    expect(promoteMemberMutate).toHaveBeenCalledWith({ groupId: 1, memberId: 2 }, expect.anything());
+    await waitFor(() => expect(toastMocks.success).toHaveBeenCalledWith("Group admin transferred"));
+  });
+
+  it("keeps the confirmation open and reports a failed transfer", async () => {
+    promoteMemberMutate.mockImplementation((_arguments, options) => options.onError({ response: { data: { message: "Only the group admin can do that" } } }));
+    await renderPage();
+    fireEvent.click(screen.getByRole("button", { name: "Make Sam group admin" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Transfer admin" }));
+    await waitFor(() => expect(toastMocks.error).toHaveBeenCalledWith("Only the group admin can do that"));
+    expect(screen.getByRole("button", { name: "Transfer admin" })).toBeVisible();
+  });
+
+  it("hides transfer controls from non-admin members", async () => {
+    lobbyMembers = lobbyMembers.map((member) => ({ ...member, isAdmin: member.userId === 12 }));
+    await renderPage();
+    expect(screen.queryByRole("button", { name: /^Make .* group admin$/ })).not.toBeInTheDocument();
+  });
   beforeEach(() => {
     lobbyState.status = "OPEN";
     lobbyState.cachedSessionId = undefined;
