@@ -181,7 +181,7 @@ class FastTierImportRunnerTest {
     @Test
     void aVerifiedDuplicateSkipsTheYearLookupAndTheRecheck() {
         AiMetadataContent duplicate = new AiMetadataContent("Title", List.of("Artist"), List.of(), 1975, "111111",
-                "high", "pgvector-duplicate-match", "match", "VERIFIED", null, null);
+                "high", "pgvector-duplicate-match", "match", "VERIFIED", null, null, null);
         when(songMetadataService.identifyByYoutubeId(FIRST_VIDEO_ID))
                 .thenReturn(Optional.of(new AiIdentifyResponse(SUCCESS_STATUS, "model", null, duplicate, null, null)));
         when(songResolutionService.persistDuplicateAnswer(eq(FIRST_VIDEO_ID), eq(duplicate), any())).thenReturn(songWithYear(1975));

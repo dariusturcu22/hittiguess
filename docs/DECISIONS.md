@@ -1117,3 +1117,13 @@ The approved gameplay behavior keeps automatic reveal after betting, full-pass r
 The voice sidebar is a 76px rail without collapse. It appears on the lobby or during an active call, with join at the top outside a call. Per-group avatars, microphone speaking rings, and mute/deafen indicators use the existing voice peer connections. A reliable ordered data channel carries transient status, sends the current state when it opens, and clears remote state when the peer closes. Speaking detection excludes shared song audio.
 
 Away state shows the active player, round, own tokens, and only the current phase's server deadline. An unlocked own turn produces a clickable banner and one sound per turn across reconnects. Audio starts after a browser interaction. Token drop feedback runs only for a new token award, with separate incorrect-guess feedback and reduced-motion support. Account and legal work remains deferred.
+
+## 2026-10-09: Verified results populate the catalog independently of playlists
+
+Every genuinely new fully verified pipeline result enters the shared catalog immediately, regardless of submission origin or whether the user confirms a preview. Playlist membership requires an explicit action. Unverified previews remain temporary until submission; imports and admin processing retain their existing persistence behavior. The ten-minute per-user/per-video preview cache avoids repeated processing for confirmation and does not delay verified catalog insertion.
+
+Verified duplicate responses carry the existing song ID. The core service links an alternate upload to that song rather than inserting another Song. Reuse preserves its primary video, duration, metadata, and attribution. Primary inserts, alternate-ID links, and playlist confirmation share transaction locks by submitted YouTube ID. A provisional response cannot downgrade an existing verified song.
+
+Admin origin never grants verification or bypasses the pipeline. The combined structured precheck handles extraction, classification, and injection detection; rejection stops downstream source gathering. Exact three-source agreement skips Wikipedia and year reconciliation, not the earlier precheck. These rules supersede older claims of immediate admin trust and a separate detector before every LLM call.
+
+Automatic Topic-upload searches and upgrade suggestions, genre enrichment, and genre game modes are dropped. Existing nullable genre columns remain for compatibility. Raw-evidence storage, source-match safety tuning, and gather-boundary timeouts remain outside this change.

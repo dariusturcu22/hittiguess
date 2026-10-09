@@ -12,6 +12,7 @@ from app.rate_limit import FAST_TIER_MAX_REQUESTS_PER_WINDOW, fast_tier_rate_lim
 YOUTUBE_URL = "https://youtube.com/watch?v=abc12345678"
 TOO_MANY_REQUESTS_STATUS_CODE = 429
 OK_STATUS_CODE = 200
+MATCHED_SONG_ID = 42
 
 
 @pytest.fixture(autouse=True)
@@ -90,7 +91,9 @@ def test_identify_returns_the_clean_song_without_dating_it(mocker):
 
 def test_identify_passes_a_verified_duplicate_through_whole(mocker):
     duplicate = SongMetadataResult(
-        title="Test Song", release_year=1999, color="8B5CF6", confidence="high", source=service.DUPLICATE_MATCH_SOURCE_LABEL, reasoning="match"
+        title="Test Song", release_year=1999, color="8B5CF6", confidence="high",
+        source=service.DUPLICATE_MATCH_SOURCE_LABEL, reasoning="match",
+        verification_status=service.VERIFIED_STATUS, canonical_song_id=MATCHED_SONG_ID,
     )
     mocker.patch.object(
         fast_tier, "identify_submission", return_value=MetadataResolveResponse(status="SUCCESS", model="model", content=duplicate)
@@ -100,6 +103,8 @@ def test_identify_passes_a_verified_duplicate_through_whole(mocker):
 
     assert result.identified is None
     assert result.duplicate.release_year == 1999
+    assert result.duplicate.canonical_song_id == MATCHED_SONG_ID
+    assert result.duplicate.verification_status == service.VERIFIED_STATUS
 
 
 def test_identify_passes_a_rejection_through(mocker):

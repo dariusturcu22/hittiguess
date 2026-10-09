@@ -48,24 +48,23 @@ Consent notice, transferred from story 37:
 
 - [ ] Add a cookie/consent notice, only needed once story 34 (first-party analytics) ships; skip until then since no third-party trackers are planned. Deliberately deferred, not a gap: there's nothing to consent to yet
 
-## Story 40: Catalog seeding queue and user-facing bulk import
-
-Completed seeding, import, progress, and priority-coordination work is recorded in [ARCHIVE.md](ARCHIVE.md#story-40-completed-backend-implementation). Canonical song reuse after a pgvector match still needs alternate-ID integration and its test. Story 16 exists; this follow-up covers the integration between the two mechanisms.
-
-- [ ] When story 16's pgvector check returns a high-confidence match for a YouTube ID that passed this story's own exact-ID check as new, link that ID into the alternate-ID table against the matched `Song` instead of creating a new one, and stop there, skipping the full pipeline for it (the alternate-ID linking primitive exists; the pgvector match that triggers it depends on story 16, not yet built)
-
-Tests:
-
-- [ ] Integration test: a new YouTube ID that pgvector matches with high confidence links into the alternate-ID table against the existing `Song` and never triggers the full pipeline
-
 ## Story 41: Submission content safety, non-music rejection and prompt-injection defense
 
-Completed submission-classification work is recorded in [ARCHIVE.md](ARCHIVE.md#story-41-completed-backend-implementation). The source-match secondary signal and uncertain-case review remain deferred. The injection-gate ordering conflict in the documentation audit remains unresolved.
+Completed submission-classification work is recorded in [ARCHIVE.md](ARCHIVE.md#story-41-completed-backend-implementation). The source-match secondary signal and uncertain-case review remain deferred. Injection detection is part of the combined structured precheck; rejected submissions stop before source gathering, not before every LLM call.
 
 - [ ] Use a match (or lack of one) against MusicBrainz/Discogs/Wikidata as a secondary signal for this same ambiguous tier, not a standalone gate: a real game-soundtrack track should resolve to an actual catalogued release, resolving to nothing across all three lowers confidence but doesn't reject outright on its own, this project explicitly wants niche/underground coverage, which also won't always resolve
   - Deferred: tuning how a source non-match lowers confidence needs real submission data to set the weighting without over-rejecting niche tracks, the same data-tuning dependency story 30 carries; the classifier ships without it rather than guessing a threshold
 - [ ] Still-uncertain cases after all of the above route to manual review, not a hard reject, the same "escalate, don't guess" principle already set for artist/title verification
   - Deferred: this manual-review tier depends on the source-match secondary signal above to define "still uncertain" without a threshold; deferred with it. A confident non-music or compilation verdict rejects, and a genuine no-answer song still reaches story 18's MANUAL_ENTRY route downstream
+
+## Fix: Verified catalog embedding indexing
+
+The duplicate query reads only verified songs with stored embeddings. The AI embedding writer exists but no production caller connects it to catalog saves; new verified songs therefore do not automatically become similarity-search candidates.
+
+- [ ] Define and wire embedding population after verified catalog persistence, including upgrades of existing songs and retry behavior
+- [ ] Backfill verified songs with missing embeddings without changing their metadata or playlist membership
+- [ ] Unit tests: normalized artist/title indexing, verified-only writes, and retry behavior
+- [ ] Integration test: a newly verified song becomes searchable and a later alternate upload reuses it without another full pipeline run
 
 ## Story 24: Parallelize metadata pipeline fetches across sources
 

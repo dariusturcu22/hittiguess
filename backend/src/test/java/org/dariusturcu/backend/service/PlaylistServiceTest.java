@@ -79,6 +79,8 @@ class PlaylistServiceTest {
     private CatalogSeedingService catalogSeedingService;
     @Mock
     private SongMetadataService songMetadataService;
+    @Mock
+    private SongCatalogService songCatalogService;
 
     @InjectMocks
     private PlaylistService playlistService;
@@ -243,7 +245,7 @@ class PlaylistServiceTest {
         CreateSongRequest request = anyCreateRequest();
         Song existingSong = songWithStatus(VerificationStatus.VERIFIED);
         existingSong.getPlaylists().clear();
-        when(songRepository.findByYoutubeId(request.youtubeId())).thenReturn(List.of(existingSong));
+        when(songCatalogService.findKnownSong(request.youtubeId())).thenReturn(Optional.of(existingSong));
         when(songRepository.existsByIdAndPlaylistsId(SONG_ID, PLAYLIST_ID)).thenReturn(false);
         when(songMapper.toDTO(existingSong)).thenReturn(null);
 
@@ -259,7 +261,7 @@ class PlaylistServiceTest {
     void createSongDoesNotRelinkASongAlreadyInThePlaylist() {
         CreateSongRequest request = anyCreateRequest();
         Song existingSong = songWithStatus(VerificationStatus.VERIFIED);
-        when(songRepository.findByYoutubeId(request.youtubeId())).thenReturn(List.of(existingSong));
+        when(songCatalogService.findKnownSong(request.youtubeId())).thenReturn(Optional.of(existingSong));
         when(songRepository.existsByIdAndPlaylistsId(SONG_ID, PLAYLIST_ID)).thenReturn(true);
         when(songMapper.toDTO(existingSong)).thenReturn(null);
 
@@ -275,7 +277,6 @@ class PlaylistServiceTest {
         CreateSongRequest request = anyCreateRequest();
         Song newSong = new Song();
         newSong.setId(SONG_ID);
-        when(songRepository.findByYoutubeId(request.youtubeId())).thenReturn(List.of());
         when(songMapper.toEntity(request)).thenReturn(newSong);
         when(songRepository.save(newSong)).thenReturn(newSong);
         when(songMapper.toDTO(newSong)).thenReturn(null);
@@ -294,9 +295,8 @@ class PlaylistServiceTest {
         Song newSong = new Song();
         newSong.setId(SONG_ID);
         SongMetadataResponse metadata = new SongMetadataResponse(
-                "Title", List.of("Artist"), List.of(), 2000, "abcdef", "high", "sources", "matched", "VERIFIED", RESOLVED_SITELINKS_COUNT, null);
+                "Title", List.of("Artist"), List.of(), 2000, "abcdef", "high", "sources", "matched", "VERIFIED", RESOLVED_SITELINKS_COUNT, null, null);
         AiResponse response = new AiResponse(metadata, null, 0L, null, "SUCCESS", null, null);
-        when(songRepository.findByYoutubeId(request.youtubeId())).thenReturn(List.of());
         when(songMapper.toEntity(request)).thenReturn(newSong);
         when(songMetadataService.resolveByYoutubeId(request.youtubeId())).thenReturn(response);
         when(songRepository.save(newSong)).thenReturn(newSong);
@@ -316,9 +316,8 @@ class PlaylistServiceTest {
         Song newSong = new Song();
         newSong.setId(SONG_ID);
         SongMetadataResponse metadata = new SongMetadataResponse(
-                "Original title", List.of("Artist"), List.of(), 2000, "abcdef", "high", "sources", "matched", "VERIFIED", null, null);
+                "Original title", List.of("Artist"), List.of(), 2000, "abcdef", "high", "sources", "matched", "VERIFIED", null, null, null);
         AiResponse response = new AiResponse(metadata, null, 0L, null, "SUCCESS", null, null);
-        when(songRepository.findByYoutubeId(request.youtubeId())).thenReturn(List.of());
         when(songMapper.toEntity(request)).thenReturn(newSong);
         when(songMetadataService.resolveByYoutubeId(request.youtubeId())).thenReturn(response);
         when(songRepository.save(newSong)).thenReturn(newSong);

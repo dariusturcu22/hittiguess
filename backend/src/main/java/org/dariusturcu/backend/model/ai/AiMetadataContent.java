@@ -17,6 +17,7 @@ public record AiMetadataContent(
         String reasoning,
         String verificationStatus,
         Integer sitelinksCount,
-        Integer durationSeconds
+        Integer durationSeconds,
+        Long canonicalSongId
 ) {
 }

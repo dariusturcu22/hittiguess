@@ -66,6 +66,8 @@ def test_submitting_a_near_duplicate_song_reuses_verified_data_instead_of_runnin
     assert result.content.featured_artists == []
     assert result.content.release_year == 2000
     assert result.content.source == service.DUPLICATE_MATCH_SOURCE_LABEL
+    assert result.content.canonical_song_id == existing_verified_song
+    assert result.content.verification_status == service.VERIFIED_STATUS
     precheck_mock.assert_not_called()
     musicbrainz_search.assert_not_called()
     wikidata_search.assert_not_called()

@@ -7,16 +7,12 @@ import org.dariusturcu.backend.model.ai.AiIdentifiedSong;
 import org.dariusturcu.backend.model.ai.AiMetadataContent;
 import org.dariusturcu.backend.model.ai.AiResponse;
 import org.dariusturcu.backend.model.ai.SongMetadataResponse;
-import org.dariusturcu.backend.model.song.ArtistRole;
 import org.dariusturcu.backend.model.song.Song;
-import org.dariusturcu.backend.model.song.SongArtist;
 import org.dariusturcu.backend.model.song.VerificationStatus;
 import org.dariusturcu.backend.model.user.User;
-import org.dariusturcu.backend.repository.SongRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.List;
 import java.util.Optional;
 
 /**
@@ -33,13 +29,11 @@ import java.util.Optional;
 public class SongResolutionService {
 
     private static final String SUCCESS_STATUS = "SUCCESS";
-    private static final int MAIN_ARTIST_DISPLAY_ORDER_START = 0;
-    private static final String SONG_LOCK_KEY_PREFIX = "song-youtube-id:";
     private static final String FAST_TIER_REASONING =
             "Provisional fast-tier answer from one source, queued for the patient pipeline to recheck.";
 
     private final SongMetadataService songMetadataService;
-    private final SongRepository songRepository;
+    private final SongCatalogService songCatalogService;
 
     @Transactional
     public Optional<Song> resolveAndPersist(String youtubeId, User addedBy) {
@@ -47,7 +41,7 @@ public class SongResolutionService {
         if (!SUCCESS_STATUS.equals(aiResponse.status()) || aiResponse.content() == null) {
             return Optional.empty();
         }
-        return Optional.of(persistResolvedSong(youtubeId, aiResponse.content(), addedBy));
+        return Optional.of(songCatalogService.persist(youtubeId, aiResponse.content(), addedBy));
     }
 
     // Saves a fast-tier answer: the identified title, artists, and color with the one
@@ -65,71 +59,15 @@ public class SongResolutionService {
                 FAST_TIER_REASONING,
                 VerificationStatus.UNVERIFIED.name(),
                 null,
-                identified.durationSeconds());
-        return persistResolvedSong(youtubeId, metadata, addedBy);
+                identified.durationSeconds(), null);
+        return songCatalogService.persist(youtubeId, metadata, addedBy);
     }
 
     // Saves a verified duplicate's answer the identify pass already found, which needs
     // no year lookup of its own.
     @Transactional
     public Song persistDuplicateAnswer(String youtubeId, AiMetadataContent duplicate, User addedBy) {
-        return persistResolvedSong(youtubeId, SongMetadataService.toSongMetadataResponse(duplicate), addedBy);
+        return songCatalogService.persist(youtubeId, SongMetadataService.toSongMetadataResponse(duplicate), addedBy);
     }
 
-    private Song persistResolvedSong(String youtubeId, SongMetadataResponse metadata, User addedBy) {
-        // Two resolutions of one video (the backlog drain and an on-the-spot import) would
-        // otherwise both find no row and each insert one, since the column has no unique key.
-        songRepository.acquireTransactionLock(SONG_LOCK_KEY_PREFIX + youtubeId);
-        List<Song> existingSongs = songRepository.findByYoutubeId(youtubeId);
-        Song song = existingSongs.isEmpty() ? new Song() : existingSongs.get(0);
-
-        if (song.getAddedBy() == null && addedBy != null) {
-            song.setAddedBy(addedBy);
-        }
-        song.setYoutubeId(youtubeId);
-        song.setTitle(metadata.title());
-        if (metadata.releaseYear() != null) {
-            song.setReleaseYear(metadata.releaseYear());
-        }
-        song.setColor(metadata.color());
-        song.recordOfficialDuration(metadata.durationSeconds());
-        song.setConfidence(metadata.confidence());
-        song.setWikidataSitelinksCount(metadata.sitelinksCount());
-        if (metadata.verificationStatus() != null) {
-            song.setVerificationStatus(VerificationStatus.valueOf(metadata.verificationStatus()));
-        }
-
-        song.getArtists().clear();
-        int displayOrder = MAIN_ARTIST_DISPLAY_ORDER_START;
-        if (metadata.mainArtists() != null) {
-            for (String mainName : metadata.mainArtists()) {
-                if (mainName == null || mainName.isBlank()) {
-                    continue;
-                }
-                SongArtist mainArtist = new SongArtist();
-                mainArtist.setSong(song);
-                mainArtist.setName(mainName);
-                mainArtist.setRole(ArtistRole.MAIN);
-                mainArtist.setDisplayOrder(displayOrder);
-                song.getArtists().add(mainArtist);
-                displayOrder++;
-            }
-        }
-        if (metadata.featuredArtists() != null) {
-            for (String featuredName : metadata.featuredArtists()) {
-                if (featuredName == null || featuredName.isBlank()) {
-                    continue;
-                }
-                SongArtist featuredArtist = new SongArtist();
-                featuredArtist.setSong(song);
-                featuredArtist.setName(featuredName);
-                featuredArtist.setRole(ArtistRole.FEATURED);
-                featuredArtist.setDisplayOrder(displayOrder);
-                song.getArtists().add(featuredArtist);
-                displayOrder++;
-            }
-        }
-
-        return songRepository.save(song);
-    }
 }

@@ -14,6 +14,10 @@ import org.springframework.test.web.client.MockRestServiceServer;
 import org.springframework.web.client.RestClient;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.method;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withServerError;
@@ -27,12 +31,13 @@ class SongMetadataServiceTest {
 
     private MockRestServiceServer mockServer;
     private SongMetadataService songMetadataService;
+    private final SongCatalogService songCatalogService = org.mockito.Mockito.mock(SongCatalogService.class);
 
     @BeforeEach
     void setUp() {
         RestClient.Builder builder = RestClient.builder();
         mockServer = MockRestServiceServer.bindTo(builder).build();
-        songMetadataService = new SongMetadataService(builder.build());
+        songMetadataService = new SongMetadataService(builder.build(), songCatalogService);
 
         User currentUser = new User();
         currentUser.setId(CURRENT_USER_ID);
@@ -57,7 +62,7 @@ class SongMetadataServiceTest {
     @Test
     void successfulResolutionPassesThroughContent() {
         expectResolveCallReturning("""
-                {"status":"SUCCESS","model":"gpt-5.1","content":{
+                {"status":"SUCCESS","model":"fixture-model","content":{
                   "title":"Title","main_artists":["Artist"],"featured_artists":["Guest"],"release_year":1999,
                   "color":"8B5CF6",
                   "confidence":"high","source":"MusicBrainz","reasoning":"Matched."}}
@@ -72,6 +77,40 @@ class SongMetadataServiceTest {
         assertThat(result.content().featuredArtists()).containsExactly("Guest");
         assertThat(result.rejectionReason()).isNull();
         assertThat(songMetadataService.findCachedPreview("dQw4w9WgXcQ")).contains(result);
+        verify(songCatalogService, never()).persist(any(), any(), any());
+        mockServer.verify();
+    }
+
+    @Test
+    void verifiedPreviewImmediatelyPersistsTheServerResultForTheCurrentUser() {
+        expectResolveCallReturning("""
+                {"status":"SUCCESS","model":"model","content":{
+                  "title":"Title","main_artists":["Artist"],"featured_artists":[],"release_year":1999,
+                  "color":"8B5CF6","confidence":"high","source":"sources","reasoning":"Agreement",
+                  "verification_status":"VERIFIED","canonical_song_id":null}}
+                """);
+
+        AiResponse result = songMetadataService.fetchMetadata(YOUTUBE_URL);
+
+        verify(songCatalogService).persist(eq("dQw4w9WgXcQ"), eq(result.content()),
+                eq(org.dariusturcu.backend.security.util.SecurityUtils.getCurrentUser()));
+        mockServer.verify();
+    }
+
+    @Test
+    void duplicateIdentitySurvivesTheAiWireFormatConversion() {
+        Long matchedSongId = 42L;
+        expectResolveCallReturning("""
+                {"status":"SUCCESS","model":"model","content":{
+                  "title":"Title","main_artists":["Artist"],"featured_artists":[],"release_year":1999,
+                  "color":"8B5CF6","confidence":"high","source":"pgvector-duplicate-match",
+                  "reasoning":"Matched","verification_status":"VERIFIED","canonical_song_id":%s}}
+                """.formatted(matchedSongId));
+
+        AiResponse result = songMetadataService.fetchMetadata(YOUTUBE_URL);
+
+        assertThat(result.content().canonicalSongId()).isEqualTo(matchedSongId);
+        verify(songCatalogService).persist(eq("dQw4w9WgXcQ"), eq(result.content()), any(User.class));
         mockServer.verify();
     }
 
@@ -79,7 +118,7 @@ class SongMetadataServiceTest {
     void rejectedResolutionCarriesReasonAndDetailWithoutContent() {
         String detail = "The submission's YouTube text was flagged as a prompt-injection attempt.";
         expectResolveCallReturning("""
-                {"status":"REJECTED","model":"gpt-5.1","content":null,
+                {"status":"REJECTED","model":"fixture-model","content":null,
                  "rejection_reason":"PROMPT_INJECTION",
                  "rejection_detail":"%s"}
                 """.formatted(detail));
@@ -96,7 +135,7 @@ class SongMetadataServiceTest {
     @Test
     void errorStatusFromAiServiceMapsToError() {
         expectResolveCallReturning("""
-                {"status":"ERROR","model":"gpt-5.1","content":null}
+                {"status":"ERROR","model":"fixture-model","content":null}
                 """);
 
         AiResponse result = songMetadataService.fetchMetadata(YOUTUBE_URL);

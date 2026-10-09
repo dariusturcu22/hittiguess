@@ -1,7 +1,7 @@
 """Spike: exercise any OpenAI-compatible chat completions endpoint against
 the shared LlmExtractionResult schema, covering the story 20 candidates that
 expose an OpenAI-compatible API (Groq, DeepInfra, llama.cpp's local server)
-plus the OpenAI benchmark models (gpt-5.1, gpt-5-mini, gpt-5-nano)
+plus the OpenAI benchmark models (gpt-5-mini, gpt-5-nano)
 themselves, so all of them go through the same code path for a fair
 comparison. Zhipu's provider config stays here unused, see spikes/README.md
 for why it's dropped from the shortlist.

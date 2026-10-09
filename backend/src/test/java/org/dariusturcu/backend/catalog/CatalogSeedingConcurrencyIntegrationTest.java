@@ -13,6 +13,7 @@ import org.dariusturcu.backend.service.PendingImportProcessor;
 import org.dariusturcu.backend.service.PlaylistExpansionService;
 import org.dariusturcu.backend.service.SongMetadataService;
 import org.dariusturcu.backend.service.SongResolutionService;
+import org.dariusturcu.backend.service.SongCatalogService;
 import org.dariusturcu.backend.service.YoutubeIdLookupService;
 import org.flywaydb.core.Flyway;
 import org.junit.jupiter.api.AfterEach;
@@ -81,6 +82,12 @@ class CatalogSeedingConcurrencyIntegrationTest {
         }
 
         @Bean
+        SongCatalogService songCatalogService(SongRepository songRepository,
+                                              AlternateYoutubeIdRepository alternateYoutubeIdRepository) {
+            return new SongCatalogService(songRepository, alternateYoutubeIdRepository);
+        }
+
+        @Bean
         YoutubeIdLookupService youtubeIdLookupService(SongRepository songRepository,
                                                       AlternateYoutubeIdRepository alternateYoutubeIdRepository) {
             return new YoutubeIdLookupService(songRepository, alternateYoutubeIdRepository);
@@ -88,8 +95,8 @@ class CatalogSeedingConcurrencyIntegrationTest {
 
         @Bean
         SongResolutionService songResolutionService(GatedMetadataResolver gatedMetadataResolver,
-                                                     SongRepository songRepository) {
-            return new SongResolutionService(gatedMetadataResolver, songRepository);
+                                                     SongCatalogService songCatalogService) {
+            return new SongResolutionService(gatedMetadataResolver, songCatalogService);
         }
 
         @Bean
@@ -130,7 +137,7 @@ class CatalogSeedingConcurrencyIntegrationTest {
         final CountDownLatch blockedItemMayFinish = new CountDownLatch(1);
 
         GatedMetadataResolver() {
-            super(null);
+            super(null, null);
         }
 
         @Override
@@ -149,7 +156,7 @@ class CatalogSeedingConcurrencyIntegrationTest {
             }
             SongMetadataResponse content = new SongMetadataResponse(
                     "Title for " + youtubeId, List.of("Artist for " + youtubeId), List.of(), PATIENT_YEAR,
-                    "111111", "high", "musicbrainz", "stubbed", "NEEDS_REVIEW", null, null);
+                    "111111", "high", "musicbrainz", "stubbed", "NEEDS_REVIEW", null, null, null);
             return new AiResponse(content, "stub-model", 0, LocalDateTime.now(), "SUCCESS", null, null);
         }
     }

@@ -11,6 +11,8 @@ import org.dariusturcu.backend.model.ai.AiServiceResolveResponse;
 import org.dariusturcu.backend.model.ai.FastDateRequest;
 import org.dariusturcu.backend.model.ai.MetadataResolveRequest;
 import org.dariusturcu.backend.model.ai.SongMetadataResponse;
+import org.dariusturcu.backend.model.song.VerificationStatus;
+import org.dariusturcu.backend.model.user.User;
 import org.dariusturcu.backend.security.util.SecurityUtils;
 import org.dariusturcu.backend.util.RequestPacer;
 import org.dariusturcu.backend.util.YoutubeLinkParser;
@@ -40,6 +42,7 @@ public class SongMetadataService {
             Duration.ofMinutes(1).dividedBy(AI_FAST_TIER_REQUESTS_PER_MINUTE);
 
     private final RestClient aiServiceRestClient;
+    private final SongCatalogService songCatalogService;
 
     // The metadata pipeline chains several rate-limited external calls plus a paid LLM call,
     // so one user queuing many concurrent requests can tie up threads and run up cost. Capping
@@ -61,6 +64,7 @@ public class SongMetadataService {
         try {
             AiResponse response = resolve(youtubeUrl);
             Optional<String> youtubeId = YoutubeLinkParser.parseVideoId(youtubeUrl);
+            youtubeId.ifPresent(videoId -> persistVerifiedResult(videoId, response, SecurityUtils.getCurrentUser()));
             if (SUCCESS_STATUS.equals(response.status()) && response.content() != null && youtubeId.isPresent()) {
                 previewMetadataByKey.put(new PreviewCacheKey(userId, youtubeId.get()), new CachedPreview(response, Instant.now()));
             }
@@ -75,7 +79,16 @@ public class SongMetadataService {
     // The priority coordinator, not a per-user cap, is what paces the drain against on-the-spot
     // traffic for the shared external rate-limit budget.
     public AiResponse resolveByYoutubeId(String youtubeId) {
-        return resolve(YOUTUBE_WATCH_URL_PREFIX + youtubeId);
+        AiResponse response = resolve(YOUTUBE_WATCH_URL_PREFIX + youtubeId);
+        persistVerifiedResult(youtubeId, response, null);
+        return response;
+    }
+
+    private void persistVerifiedResult(String youtubeId, AiResponse response, User addedBy) {
+        if (SUCCESS_STATUS.equals(response.status()) && response.content() != null
+                && VerificationStatus.VERIFIED.name().equals(response.content().verificationStatus())) {
+            songCatalogService.persist(youtubeId, response.content(), addedBy);
+        }
     }
 
     // The fast tier's first pass for one video. Empty when the AI service can't be
@@ -172,7 +185,8 @@ public class SongMetadataService {
                 content.reasoning(),
                 content.verificationStatus(),
                 content.sitelinksCount(),
-                content.durationSeconds()
+                content.durationSeconds(),
+                content.canonicalSongId()
         );
     }
 

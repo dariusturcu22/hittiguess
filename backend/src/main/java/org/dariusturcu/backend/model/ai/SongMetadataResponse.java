@@ -17,7 +17,8 @@ public record SongMetadataResponse(
         String reasoning,
         String verificationStatus,
         Integer sitelinksCount,
-        Integer durationSeconds
+        Integer durationSeconds,
+        Long canonicalSongId
 ) {
 
 }
