@@ -20,6 +20,9 @@ import java.util.Set;
 @Table(name = "groups")
 public class Group {
 
+    @Enumerated(EnumType.STRING)
+    private org.dariusturcu.backend.difficulty.DifficultyTier difficultyTier;
+
     public static final int MAX_MEMBERS = 8;
 
     @Id

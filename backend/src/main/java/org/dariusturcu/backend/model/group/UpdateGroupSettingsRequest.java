@@ -8,5 +8,10 @@ public record UpdateGroupSettingsRequest(
         Set<Long> playlistIds,
         DjMode djMode,
         Integer winConditionCardCount,
-        Long fixedDjMemberId) {
+        Long fixedDjMemberId,
+        org.dariusturcu.backend.difficulty.DifficultyTier difficultyTier) {
+    public UpdateGroupSettingsRequest(Set<Long> playlistIds, DjMode djMode,
+            Integer winConditionCardCount, Long fixedDjMemberId) {
+        this(playlistIds, djMode, winConditionCardCount, fixedDjMemberId, null);
+    }
 }

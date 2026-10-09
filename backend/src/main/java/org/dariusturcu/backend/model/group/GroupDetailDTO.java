@@ -15,5 +15,6 @@ public record GroupDetailDTO(
         int winConditionCardCount,
         List<PlaylistSummaryDTO> playlists,
         List<MemberDTO> members,
-        Instant expiresAt) {
+        Instant expiresAt,
+        org.dariusturcu.backend.difficulty.DifficultyTier difficultyTier) {
 }

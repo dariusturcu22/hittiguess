@@ -14,6 +14,8 @@ public record PersonalDataExportDTO(
         String authProvider,
         String authProviderId,
         List<PlaylistMembershipExportDTO> playlists,
-        List<SongDTO> submittedSongs
+        List<SongDTO> submittedSongs,
+        List<org.dariusturcu.backend.history.GameSummary> gameHistory,
+        List<org.dariusturcu.backend.research.SongPlayObservation> researchObservations
 ) {
 }

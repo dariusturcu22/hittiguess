@@ -28,6 +28,8 @@ public class AnalyticsRetentionService {
 
     public int purgeExpiredEvents() {
         Instant retentionCutoff = Instant.now().minus(retentionDays, ChronoUnit.DAYS);
-        return analyticsJdbcTemplate.update(DELETE_EVENTS_OLDER_THAN_CUTOFF_SQL, Timestamp.from(retentionCutoff));
+        int expiredEvents = analyticsJdbcTemplate.update(DELETE_EVENTS_OLDER_THAN_CUTOFF_SQL, Timestamp.from(retentionCutoff));
+        int expiredObservations = analyticsJdbcTemplate.update("DELETE FROM song_play_observations WHERE occurred_at < ?", Timestamp.from(retentionCutoff));
+        return expiredEvents + expiredObservations;
     }
 }

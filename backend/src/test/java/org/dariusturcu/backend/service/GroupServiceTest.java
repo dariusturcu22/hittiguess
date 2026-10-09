@@ -454,7 +454,7 @@ class GroupServiceTest {
     void updateGroupSettingsRejectsANonAdmin() {
         Group group = groupWithAdmin();
         memberOf(group, otherUser, false, Instant.now());
-        when(groupRepository.findById(10L)).thenReturn(Optional.of(group));
+        when(groupRepository.findByIdForUpdate(10L)).thenReturn(Optional.of(group));
         authenticateAs(otherUser);
 
         assertThatThrownBy(() -> groupService.updateGroupSettings(
@@ -465,7 +465,7 @@ class GroupServiceTest {
     @Test
     void updateGroupSettingsRejectsAWinConditionCountBelowTheMinimum() {
         Group group = groupWithAdmin();
-        when(groupRepository.findById(10L)).thenReturn(Optional.of(group));
+        when(groupRepository.findByIdForUpdate(10L)).thenReturn(Optional.of(group));
 
         assertThatThrownBy(() -> groupService.updateGroupSettings(
                 10L, new UpdateGroupSettingsRequest(null, null, 4, null)))
@@ -475,7 +475,7 @@ class GroupServiceTest {
     @Test
     void updateGroupSettingsRejectsAWinConditionCountAboveTheSmallGroupMaximum() {
         Group group = groupWithAdmin();
-        when(groupRepository.findById(10L)).thenReturn(Optional.of(group));
+        when(groupRepository.findByIdForUpdate(10L)).thenReturn(Optional.of(group));
 
         assertThatThrownBy(() -> groupService.updateGroupSettings(
                 10L, new UpdateGroupSettingsRequest(null, null, 21, null)))
@@ -485,7 +485,7 @@ class GroupServiceTest {
     @Test
     void updateGroupSettingsAcceptsTheMinimumBoundaryForASmallGroup() {
         Group group = groupWithAdmin();
-        when(groupRepository.findById(10L)).thenReturn(Optional.of(group));
+        when(groupRepository.findByIdForUpdate(10L)).thenReturn(Optional.of(group));
 
         GroupDetailDTO result = groupService.updateGroupSettings(
                 10L, new UpdateGroupSettingsRequest(null, null, 5, null));
@@ -496,7 +496,7 @@ class GroupServiceTest {
     @Test
     void updateGroupSettingsAcceptsTheMaximumBoundaryForASmallGroup() {
         Group group = groupWithAdmin();
-        when(groupRepository.findById(10L)).thenReturn(Optional.of(group));
+        when(groupRepository.findByIdForUpdate(10L)).thenReturn(Optional.of(group));
 
         GroupDetailDTO result = groupService.updateGroupSettings(
                 10L, new UpdateGroupSettingsRequest(null, null, 20, null));
@@ -514,7 +514,7 @@ class GroupServiceTest {
         fourthUser.setId(4L);
         memberOf(group, thirdUser, false, Instant.now());
         memberOf(group, fourthUser, false, Instant.now());
-        when(groupRepository.findById(10L)).thenReturn(Optional.of(group));
+        when(groupRepository.findByIdForUpdate(10L)).thenReturn(Optional.of(group));
 
         assertThatThrownBy(() -> groupService.updateGroupSettings(
                 10L, new UpdateGroupSettingsRequest(null, null, 16, null)))
@@ -531,7 +531,7 @@ class GroupServiceTest {
         fourthUser.setId(4L);
         memberOf(group, thirdUser, false, Instant.now());
         memberOf(group, fourthUser, false, Instant.now());
-        when(groupRepository.findById(10L)).thenReturn(Optional.of(group));
+        when(groupRepository.findByIdForUpdate(10L)).thenReturn(Optional.of(group));
 
         GroupDetailDTO result = groupService.updateGroupSettings(
                 10L, new UpdateGroupSettingsRequest(null, null, 15, null));
@@ -549,7 +549,7 @@ class GroupServiceTest {
         fourthUser.setId(4L);
         memberOf(group, thirdUser, false, Instant.now());
         memberOf(group, fourthUser, false, Instant.now());
-        when(groupRepository.findById(10L)).thenReturn(Optional.of(group));
+        when(groupRepository.findByIdForUpdate(10L)).thenReturn(Optional.of(group));
 
         assertThatThrownBy(() -> groupService.updateGroupSettings(
                 10L, new UpdateGroupSettingsRequest(null, null, 20, null)))
@@ -563,7 +563,7 @@ class GroupServiceTest {
     @Test
     void startGameSessionLocksTheGroupAndClearsThePreSessionTimer() {
         Group group = groupWithAdmin();
-        when(groupRepository.findById(10L)).thenReturn(Optional.of(group));
+        when(groupRepository.findByIdForUpdate(10L)).thenReturn(Optional.of(group));
 
         GroupDetailDTO result = groupService.startGameSession(10L);
 
@@ -685,7 +685,7 @@ class GroupServiceTest {
     @Test
     void updateGroupSettingsPublishesASettingsChangedEvent() {
         Group group = groupWithAdmin();
-        when(groupRepository.findById(10L)).thenReturn(Optional.of(group));
+        when(groupRepository.findByIdForUpdate(10L)).thenReturn(Optional.of(group));
 
         groupService.updateGroupSettings(10L, new UpdateGroupSettingsRequest(null, DjMode.ROTATING, null, null));
 
@@ -698,7 +698,7 @@ class GroupServiceTest {
     void updateGroupSettingsStoresTheChosenFixedDj() {
         Group group = groupWithAdmin();
         Member secondMember = memberOf(group, otherUser, false, Instant.now());
-        when(groupRepository.findById(10L)).thenReturn(Optional.of(group));
+        when(groupRepository.findByIdForUpdate(10L)).thenReturn(Optional.of(group));
 
         groupService.updateGroupSettings(
                 10L, new UpdateGroupSettingsRequest(null, DjMode.FIXED, null, secondMember.getId()));
@@ -709,7 +709,7 @@ class GroupServiceTest {
     @Test
     void updateGroupSettingsRejectsAFixedDjWhoIsNotAMember() {
         Group group = groupWithAdmin();
-        when(groupRepository.findById(10L)).thenReturn(Optional.of(group));
+        when(groupRepository.findByIdForUpdate(10L)).thenReturn(Optional.of(group));
 
         assertThatThrownBy(() -> groupService.updateGroupSettings(
                         10L, new UpdateGroupSettingsRequest(null, DjMode.FIXED, null, 999L)))
@@ -720,7 +720,7 @@ class GroupServiceTest {
     @Test
     void startGameSessionPublishesAGameSessionStartedEvent() {
         Group group = groupWithAdmin();
-        when(groupRepository.findById(10L)).thenReturn(Optional.of(group));
+        when(groupRepository.findByIdForUpdate(10L)).thenReturn(Optional.of(group));
 
         groupService.startGameSession(10L);
 

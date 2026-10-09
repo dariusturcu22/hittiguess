@@ -72,7 +72,8 @@ public class GroupMapper {
                 group.getMembers().stream()
                         .map(this::toMemberDTO)
                         .toList(),
-                group.getExpiresAt()
+                group.getExpiresAt(),
+                group.getDifficultyTier()
         );
     }
 }

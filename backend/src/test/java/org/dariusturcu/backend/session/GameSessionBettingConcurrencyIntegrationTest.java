@@ -180,7 +180,7 @@ class GameSessionBettingConcurrencyIntegrationTest {
 
         @Bean
         DifficultyTunedSongSelector difficultySelector(SongRepository songRepository, RoundRepository roundRepository) {
-            return new DifficultyTunedSongSelector(
+            return new DifficultyTunedSongSelector(org.mockito.Mockito.mock(org.dariusturcu.backend.difficulty.PreparedDifficultyService.class),
                     songRepository, roundRepository, new SongDifficultyScorer(), new DifficultyBand(),
                     new GroupDifficultyStrategy(), new AggregateBaselinePredictor());
         }

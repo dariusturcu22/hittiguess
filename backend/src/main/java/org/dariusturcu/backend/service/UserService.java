@@ -51,6 +51,7 @@ public class UserService {
     private final PlaylistBanRepository playlistBanRepository;
     private final SongRepository songRepository;
     private final SavedPlaylistRepository savedPlaylistRepository;
+    private final org.springframework.context.ApplicationEventPublisher eventPublisher;
     private final SecureRandom secureRandom = new SecureRandom();
 
     private List<PlaylistSummaryDTO> getPlaylistSummaries(Long userId) {
@@ -118,6 +119,7 @@ public class UserService {
             departFromPlaylist(membership.getPlaylist(), user, membership);
         }
 
+        eventPublisher.publishEvent(new org.dariusturcu.backend.history.AccountHistoryDeleted(user.getId()));
         userRepository.delete(user);
     }
 

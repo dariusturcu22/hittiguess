@@ -16,6 +16,9 @@ import java.time.Instant;
 @Table(name = "bets")
 public class Bet {
 
+    @Column(nullable = false)
+    private boolean won;
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;

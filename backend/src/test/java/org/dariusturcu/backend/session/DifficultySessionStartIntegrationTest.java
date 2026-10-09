@@ -102,6 +102,10 @@ class DifficultySessionStartIntegrationTest {
     private static final int TWO_PLAYER_WIN_CONDITION_CARD_COUNT = 5;
     // Two players times the five-card win condition: the smallest pool a session starts with.
     private static final int STARTABLE_TWO_PLAYER_POOL_SIZE = 10;
+    private static final int PREPARED_POOL_SIZE = 30;
+    private static final int PARALLEL_START_COUNT = 2;
+    private static final int START_BARRIER_TIMEOUT_SECONDS = 10;
+    private static final int START_RESULT_TIMEOUT_SECONDS = 30;
     private static final int REVIEWED_CARD_COUNT = STARTABLE_TWO_PLAYER_POOL_SIZE;
     private static final int SPARE_CATALOG_SONG_COUNT = 2;
     private static final String KNOWN_VIDEO_ID_PREFIX = "known-video-";
@@ -184,8 +188,17 @@ class DifficultySessionStartIntegrationTest {
         }
 
         @Bean
-        DifficultyTunedSongSelector difficultySelector(SongRepository songRepository, RoundRepository roundRepository) {
-            return new DifficultyTunedSongSelector(
+        org.dariusturcu.backend.difficulty.PreparedDifficultyService preparedDifficultyService(
+                javax.sql.DataSource dataSource, SongRepository songs) {
+            return new org.dariusturcu.backend.difficulty.PreparedDifficultyService(
+                    new org.springframework.jdbc.core.JdbcTemplate(dataSource),
+                    Mockito.mock(org.springframework.jdbc.core.JdbcTemplate.class), songs,
+                    new SongDifficultyScorer(), new DifficultyBand());
+        }
+
+        @Bean
+        DifficultyTunedSongSelector difficultySelector(SongRepository songRepository, RoundRepository roundRepository, org.dariusturcu.backend.difficulty.PreparedDifficultyService prepared) {
+            return new DifficultyTunedSongSelector(prepared,
                     songRepository, roundRepository, new SongDifficultyScorer(), new DifficultyBand(),
                     new GroupDifficultyStrategy(), new AggregateBaselinePredictor());
         }
@@ -407,5 +420,62 @@ class DifficultySessionStartIntegrationTest {
 
         GameSession session = gameSessionRepository.findByGroupId(createdGroup.id()).orElseThrow();
         assertThat(playedSongIds(session)).containsExactlyInAnyOrderElementsOf(knownIds);
+    }
+    @Test
+    void confirmedTierProducesTheFullHiddenPoolOnlyAtStart() {
+        User admin = persistUser("prepared-admin-" + System.nanoTime());
+        User other = persistUser("prepared-player-" + System.nanoTime());
+        playlistWithSongs("prepared", admin, PREPARED_POOL_SIZE, VerificationStatus.VERIFIED, 40);
+        GroupDetailDTO group = twoPlayerGroup(admin, other, null, TWO_PLAYER_WIN_CONDITION_CARD_COUNT);
+        groupService.updateGroupSettings(group.id(), new UpdateGroupSettingsRequest(null, null, null, null, DifficultyTier.EASY));
+        assertThat(gameSessionRepository.findByGroupId(group.id())).isEmpty();
+        songRepository.flush();
+
+        groupService.startGameSession(group.id());
+
+        GameSession session = gameSessionRepository.findByGroupId(group.id()).orElseThrow();
+        assertThat(session.getDifficultyTier()).isEqualTo(DifficultyTier.EASY);
+        assertThat(playedSongIds(session)).hasSize(PREPARED_POOL_SIZE);
+    }
+
+    @Test
+    @Transactional(propagation = org.springframework.transaction.annotation.Propagation.NOT_SUPPORTED)
+    void overlappingStartsCreateExactlyOneSession() throws Exception {
+        User admin = persistUser("parallel-admin-" + System.nanoTime());
+        User other = persistUser("parallel-player-" + System.nanoTime());
+        for (int songNumber = 0; songNumber < PREPARED_POOL_SIZE; songNumber++) {
+            persistCatalogSong(null, admin, 2000, "Parallel " + songNumber, VerificationStatus.VERIFIED, 40,
+                    "parallel-" + System.nanoTime());
+        }
+        GroupDetailDTO group = twoPlayerGroup(admin, other, null, TWO_PLAYER_WIN_CONDITION_CARD_COUNT);
+        groupService.updateGroupSettings(group.id(), new UpdateGroupSettingsRequest(null, null, null, null, DifficultyTier.EASY));
+        var ready = new java.util.concurrent.CountDownLatch(PARALLEL_START_COUNT);
+        var start = new java.util.concurrent.CountDownLatch(1);
+        try (var workers = java.util.concurrent.Executors.newFixedThreadPool(PARALLEL_START_COUNT)) {
+            List<java.util.concurrent.Future<Boolean>> outcomes = new ArrayList<>();
+            for (int workerNumber = 0; workerNumber < PARALLEL_START_COUNT; workerNumber++) {
+                outcomes.add(workers.submit(() -> {
+                    authenticateAs(admin);
+                    ready.countDown();
+                    start.await();
+                    try {
+                        groupService.startGameSession(group.id());
+                        return true;
+                    } catch (org.dariusturcu.backend.exception.ConflictException expected) {
+                        return false;
+                    } finally {
+                        SecurityContextHolder.clearContext();
+                    }
+                }));
+            }
+            assertThat(ready.await(START_BARRIER_TIMEOUT_SECONDS, java.util.concurrent.TimeUnit.SECONDS)).isTrue();
+            start.countDown();
+            int successfulStarts = 0;
+            for (var outcome : outcomes) {
+                if (outcome.get(START_RESULT_TIMEOUT_SECONDS, java.util.concurrent.TimeUnit.SECONDS)) successfulStarts++;
+            }
+            assertThat(successfulStarts).isEqualTo(1);
+            assertThat(gameSessionRepository.findByGroupId(group.id())).isPresent();
+        }
     }
 }

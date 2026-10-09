@@ -35,7 +35,7 @@ class GroupBroadcastListenerTest {
     private GroupDetailDTO groupDetail(Long groupId) {
         return new GroupDetailDTO(
                 groupId, "invite-code", "ABCD", GroupStatus.OPEN, DjMode.FIXED, null, 5,
-                List.of(), List.of(), null);
+                List.of(), List.of(), null, null);
     }
 
     @Test

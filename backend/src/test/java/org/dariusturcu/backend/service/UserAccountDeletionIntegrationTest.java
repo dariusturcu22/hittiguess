@@ -56,6 +56,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 @SpringBootTest(classes = UserAccountDeletionIntegrationTest.JpaTestConfig.class)
 class UserAccountDeletionIntegrationTest {
 
+    @org.springframework.context.annotation.Import({org.dariusturcu.backend.history.HistoryDataSourceConfig.class, org.dariusturcu.backend.history.GameHistoryService.class})
     @Configuration
     @EnableAutoConfiguration(exclude = OAuth2ClientAutoConfiguration.class)
     @EntityScan("org.dariusturcu.backend.model")
@@ -120,9 +121,9 @@ class UserAccountDeletionIntegrationTest {
                 PlaylistMembershipRepository playlistMembershipRepository,
                 PlaylistBanRepository playlistBanRepository,
                 SongRepository songRepository,
-                SavedPlaylistRepository savedPlaylistRepository) {
+                SavedPlaylistRepository savedPlaylistRepository, org.springframework.context.ApplicationEventPublisher eventPublisher) {
             return new UserService(userRepository, playlistRepository, userMapper, playlistMapper,
-                    playlistMembershipRepository, playlistBanRepository, songRepository, savedPlaylistRepository);
+                    playlistMembershipRepository, playlistBanRepository, songRepository, savedPlaylistRepository, eventPublisher);
         }
     }
 
@@ -144,6 +145,11 @@ class UserAccountDeletionIntegrationTest {
     private PlaylistMembershipRepository playlistMembershipRepository;
     @Autowired
     private SongRepository songRepository;
+    @Autowired
+    @org.springframework.beans.factory.annotation.Qualifier("coreJdbcTemplate")
+    private org.springframework.jdbc.core.JdbcTemplate core;
+    @Autowired
+    private org.dariusturcu.backend.history.GameHistoryService history;
     @Autowired
     private UserService userService;
     @Autowired
@@ -217,5 +223,20 @@ class UserAccountDeletionIntegrationTest {
                 .isTrue();
         assertThat(playlistMembershipRepository.existsByPlaylistIdAndUserId(sharedPlaylist.id(), owner.getId()))
                 .isFalse();
+    }
+
+    @Test
+    void deletingAnAccountAnonymizesItsSharedHistory() {
+        User deletingUser = persistUser("history-owner-" + UUID.randomUUID());
+        User remainingUser = persistUser("history-participant-" + UUID.randomUUID());
+        long originalSessionId = 101L;
+        Long summaryId = core.queryForObject("INSERT INTO game_summaries(source_session_id, group_name, started_at, ended_at, mode, win_target_cards, participant_count, turns_played, ending_reason, rules_version) VALUES (?, 'Group ABCD', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'CUSTOM', 8, 2, 4, 'TARGET_REACHED', 'full-pass-v1') RETURNING id", Long.class, originalSessionId);
+        for (User participant : java.util.List.of(deletingUser, remainingUser)) {
+            core.update("INSERT INTO game_participant_summaries(game_summary_id, user_id, display_name, participation_status, final_card_count, card_rank, artist_rank, title_rank, is_winner, placement_attempts, correct_placements, title_attempts, correct_titles, artist_attempts, correct_artists, bets_placed, bets_won) VALUES (?, ?, ?, 'FINISHED', 8, 1, 1, 1, true, 7, 7, 4, 4, 4, 4, 0, 0)", summaryId, participant.getId(), participant.getUsername());
+        }
+        actAs(deletingUser);
+        userService.deleteUser();
+        assertThat(history.export(deletingUser.getId())).isEmpty();
+        assertThat(history.export(remainingUser.getId()).getFirst().participants()).anyMatch(participant -> participant.userId() == null && participant.displayName().equals("Deleted player"));
     }
 }
