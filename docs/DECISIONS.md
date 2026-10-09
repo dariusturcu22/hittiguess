@@ -1103,3 +1103,9 @@ Later approved product requirements supersede older mockups. The affected design
 New playlists retain their creation timestamp. Existing playlists have no reliable creation date and keep a null value. Song duration comes from the submitted upload's official YouTube metadata, including duplicate matches, and remains nullable. Stored durations expire after 29 days with hourly cleanup; they are not inferred from title, release metadata, or a different upload.
 
 Account/profile/settings pages, legal-page UI, statistics, account-management controls, and disclosure/export-scope updates are deferred to a later documentation-review batch. Their missing implementation remains tracked rather than marked complete.
+
+## 2026-10-09: Automatic YouTube duration refresh
+
+The six-hour duration refresh supersedes the hourly deletion behavior in the earlier playlist metadata decision. Due video IDs are batched in groups of up to 50 through official videos.list using contentDetails, without the metadata synthesis pipeline. Successful lookups update freshness; missing videos clear duration. Failed lookups do not extend freshness and remain due for the next sweep. Expired cached values are cleared after a failed sweep.
+
+A videos.list request costs one quota unit for up to 50 IDs. Refresh shares the project's quota with new-song lookups. Evenly spread refreshes of a million videos every 29 days use roughly 690 units daily, while expiry spikes, retries, and partial batches increase that cost. No separate daily refresh allowance is enforced yet; a catalog approaching the shared quota limit needs budgeting or an approved quota increase.

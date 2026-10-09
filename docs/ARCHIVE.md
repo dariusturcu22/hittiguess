@@ -1885,3 +1885,10 @@ The approved review keeps later library, explore, playlist-detail, and lobby imp
 - [x] Open the pull request and archive the completed tasks
 
 Validation: 124 backend tests, 38 AI tests, 54 frontend tests, TypeScript checking, and desktop browser coverage in dark and light themes. The desktop mockups cover the library filters, import menu, playlist metadata, and lobby picker/admin states. Broader story 28 visual verification remains open.
+
+## Automatic YouTube duration refresh
+
+- [x] Replace hourly duration deletion with a six-hour refresh of due video IDs, index the due lookup, and batch official videos.list requests without the AI pipeline
+- [x] Keep successful refresh timestamps, clear unavailable durations, and retry failed lookups without extending stale data retention
+- [x] Add AI endpoint/source tests and backend scheduling, batching, persistence, concurrency, and failure tests
+- [x] Document refresh behavior and shared YouTube quota costs, archive completed tasks, and update the existing pull request
