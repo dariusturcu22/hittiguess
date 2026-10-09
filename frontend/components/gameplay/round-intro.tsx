@@ -40,7 +40,7 @@ export function RoundIntro({ winConditionCardCount, roundNumber, countdownSecond
 
   return <div role="status" aria-live="polite" className="absolute inset-0 z-40 flex flex-col items-center justify-center gap-8 bg-background bg-dotted px-6 text-center">
     <div className="flex flex-col items-center gap-3">
-      <p className="text-xs font-bold uppercase tracking-[4px] text-muted-foreground">First to {winConditionCardCount} cards wins</p>
+      <p className="text-xs font-bold uppercase tracking-[4px] text-muted-foreground">Target: {winConditionCardCount} cards. Everyone finishes the round.</p>
       <h2 className="font-display text-6xl text-foreground [text-shadow:4px_4px_0_var(--text-shadow-on-page)] sm:text-7xl">Round {roundNumber}</h2>
     </div>
     <div className="relative size-[130px]">

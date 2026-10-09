@@ -65,10 +65,11 @@ export function PlayerAvatar({ name, colorIndex, className = "size-8 text-xs" }:
   return <div className={`flex shrink-0 items-center justify-center rounded-full font-display text-[#11111b] ${colorClass} ${className}`} aria-hidden="true">{name?.charAt(0).toUpperCase() ?? "?"}</div>;
 }
 
-export function TokenPile({ tokenCount, label, isDimmed = false }: { tokenCount: number; label: string; isDimmed?: boolean }) {
+export function TokenPile({ tokenCount, label, isDimmed = false, earnedTokenRoundId }: { tokenCount: number; label: string; isDimmed?: boolean; earnedTokenRoundId?: number }) {
   const visibleCoins = Math.min(tokenCount, TOKEN_PILE_MAXIMUM_COINS);
   return <div className={`flex flex-col items-center gap-2.5 transition-opacity ${isDimmed ? "opacity-50" : ""}`} aria-label={`${label}: ${tokenCount}`}>
     <div className="relative h-[60px] w-[70px]">
+      {earnedTokenRoundId !== undefined ? <Coin key={earnedTokenRoundId} className="token-earned-drop absolute left-3 top-1.5 z-10" /> : null}
       {visibleCoins === 0 ? <div className="absolute left-3 top-1.5 size-[46px] rounded-full border-2 border-dashed border-muted-foreground/60" /> : null}
       {Array.from({ length: visibleCoins }, (_, coinIndex) => <Coin key={coinIndex} className="absolute" style={{ left: (visibleCoins - 1 - coinIndex) * TOKEN_PILE_COIN_OFFSET_PIXELS, top: (visibleCoins - 1 - coinIndex) * (TOKEN_PILE_COIN_OFFSET_PIXELS / 2), transform: `rotate(${TOKEN_PILE_COIN_ROTATIONS.at(coinIndex) ?? 0}deg)` }} />)}
     </div>

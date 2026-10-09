@@ -79,7 +79,7 @@ interface CorrectGuessToast {
 
 function guessResultMessage(result: GuessResult, guessedArtist: boolean): string {
   const state = result.state;
-  if (state?.tokenEarned && (result.artistCorrect || result.titleCorrect)) return "Title and artist in. You earned a token!";
+  if (result.tokenAwarded) return "Title and artist in. You earned a token!";
   if (guessedArtist) {
     if (!result.artistCorrect) return "Wrong artist. No more artist guesses this round.";
     const remainingArtists = (state?.artistCount ?? 0) - (state?.correctArtistCount ?? 0);
@@ -218,6 +218,9 @@ export default function GameSessionPage({ params }: PageProps) {
   const [artistGuess, setArtistGuess] = useState("");
   const [titleGuess, setTitleGuess] = useState("");
   const [feedbackMessage, setFeedbackMessage] = useState("");
+  const [earnedTokenRoundId, setEarnedTokenRoundId] = useState<number | undefined>(undefined);
+  const [guessFeedbackSequence, setGuessFeedbackSequence] = useState(0);
+  const awardedRoundsReference = useRef(new Set<number>());
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [isTurnNoticeVisible, setIsTurnNoticeVisible] = useState(false);
   const [correctGuessToast, setCorrectGuessToast] = useState<CorrectGuessToast | null>(null);
@@ -259,6 +262,12 @@ export default function GameSessionPage({ params }: PageProps) {
     }
   }, []);
   const handleGuessResult = useCallback((result: GuessResult) => {
+    setGuessFeedbackSequence((sequence) => sequence + 1);
+    const resultRoundId = result.roundId ?? result.state?.roundId;
+    if (result.tokenAwarded && resultRoundId !== undefined && !awardedRoundsReference.current.has(resultRoundId)) {
+      awardedRoundsReference.current.add(resultRoundId);
+      setEarnedTokenRoundId(resultRoundId);
+    }
     setIsGuessResultCorrect(Boolean(result.artistCorrect || result.titleCorrect));
     setFeedbackMessage(guessResultMessage(result, lastArtistGuessReference.current));
     if (result.state) queryClient.setQueryData(getGetGuessStateQueryKey(sessionId), result.state);
@@ -526,7 +535,7 @@ export default function GameSessionPage({ params }: PageProps) {
   const focusKey = isRevealed ? `revealed-${currentRound?.id}` : isLocked ? `locked-${currentRound?.id}` : droppedGap !== null && !placementDrag ? `dropped-${droppedGap}` : null;
 
   // --- Header status line ----------------------------------------------------------
-  let statusDetail: ReactNode = `First to ${winConditionCardCount} cards wins`;
+  let statusDetail: ReactNode = `Target: ${winConditionCardCount} cards. Everyone finishes the round.`;
   let statusLabel: ReactNode = null;
   let statusClassName = "text-primary";
   if (isAwaitingPlacement) {
@@ -687,7 +696,7 @@ export default function GameSessionPage({ params }: PageProps) {
       {aboveTimeline ? <div className="absolute bottom-[calc(50%+132px)] left-1/2 flex -translate-x-1/2 justify-center">{aboveTimeline}</div> : null}
       {caption ? <p className="absolute left-1/2 top-[calc(50%+98px)] w-max max-w-[calc(100%-16px)] -translate-x-1/2 text-center text-xs text-muted-foreground">{caption}</p> : null}
       {belowTimeline ? <div className="absolute left-1/2 top-[calc(50%+148px)] flex w-full -translate-x-1/2 justify-center px-3">{belowTimeline}</div> : null}
-      <p className={`absolute bottom-0 left-1/2 w-max max-w-full -translate-x-1/2 text-center text-xs ${isGuessResultCorrect === true ? "font-semibold text-green" : isGuessResultCorrect === false ? "text-destructive" : "text-muted-foreground"}`} aria-live="polite">{feedbackMessage}</p>
+      <div aria-live="polite" className="absolute bottom-0 left-1/2 w-max max-w-full -translate-x-1/2"><p key={guessFeedbackSequence} className={`text-center text-xs ${isGuessResultCorrect === true ? "font-semibold text-green" : isGuessResultCorrect === false ? "incorrect-guess-feedback text-destructive" : "text-muted-foreground"}`}>{feedbackMessage}</p></div>
     </section>
 
     {isChatOpen ? <GroupChatOverlay groupId={session.groupId ?? 0} connectionState={groupRealtime.connectionState} sendChat={groupRealtime.sendChat} onClose={() => setIsChatOpen(false)} /> : null}
@@ -702,7 +711,7 @@ export default function GameSessionPage({ params }: PageProps) {
         <button type="button" onClick={() => setIsChatOpen((isOpen) => !isOpen)} aria-label={isChatOpen ? "Close chat" : "Open chat"} className={`relative z-20 flex size-11 items-center justify-center rounded-full border-2 bg-card text-card-foreground transition-colors ${isChatOpen ? "border-primary text-primary" : "border-border hover:border-primary"}`}><MessageCircle className="size-[18px]" /></button>
       </div>
       <div onPointerDown={startBetDrag} className={canStakeBet ? "cursor-grab touch-none select-none active:cursor-grabbing" : ""} title={canStakeBet ? "Drag a token onto the timeline to bet" : undefined}>
-        <TokenPile tokenCount={Math.max(0, tokenCount - (betDrag ? 1 : 0))} label={isSittingOut ? "Sitting out" : "Your tokens"} isDimmed={isSittingOut} />
+        <TokenPile tokenCount={Math.max(0, tokenCount - (betDrag ? 1 : 0))} label={isSittingOut ? "Sitting out" : "Your tokens"} isDimmed={isSittingOut} earnedTokenRoundId={earnedTokenRoundId} />
       </div>
     </footer>
 

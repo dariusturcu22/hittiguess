@@ -803,7 +803,8 @@ public class GameSessionService {
         List<Guess> guessesAfter = new ArrayList<>(earlierGuessesThisRound);
         guessesAfter.add(guess);
         GuessStateDTO stateAfter = guessState(round, guessesAfter, player);
-        if (stateAfter.tokenEarned() && !stateBefore.tokenEarned()) {
+        boolean tokenAwarded = stateAfter.tokenEarned() && !stateBefore.tokenEarned();
+        if (tokenAwarded) {
             player.setTokenCount(player.getTokenCount() + 1);
         }
 
@@ -812,7 +813,7 @@ public class GameSessionService {
         playerRepository.save(player);
 
         eventPublisher.publishEvent(new GuessResultEvent(player.getUser().getUsername(), sessionId,
-                new GuessResultDTO(round.getId(), isArtistCorrect, isTitleCorrect, stateAfter)));
+                new GuessResultDTO(round.getId(), isArtistCorrect, isTitleCorrect, tokenAwarded, stateAfter)));
         if (isArtistCorrect || isTitleCorrect) {
             eventPublisher.publishEvent(new SessionBroadcastEvent(SessionEventType.GUESS_CORRECT, sessionId,
                     new CorrectGuessDTO(round.getId(), player.getId(), player.getDisplayName(),
