@@ -36,13 +36,13 @@ Azure Container Apps hosts core and AI in one EU environment. Vercel hosts the f
 - [ ] Disable or cap Log Analytics ingestion/retention; add anomaly alerts, a resource-group budget, and a $12 shutdown Action Group
 - [ ] Cost-control test: alerts and shutdown against an isolated resource group
 - [ ] Load-test core/AI CPU, memory, WebSockets, and game-action latency; validate resource limits and add a tested active-game admission limit with a clear busy response
-- [ ] Measure deployed cold start after the JIT change, test compiler-limit throughput, and choose scale-to-zero or minimum replicas within budget
+- [ ] Test the throughput limit of the C1-only JIT setting under game load; Azure stays on scale-to-zero for the trial
 - [ ] Verify Vercel root frontend, production branch dev, beta gate, domain, API origin, and shared auth cookies
 - [ ] Verify real Google login and ordinary signup, verification, login, and password-reset delivery; configure the Resend domain and sender
 - [ ] Add HTTP liveness/readiness probes to both apps
 - [ ] Deployment smoke test: health, HTTPS API, WSS STOMP, protected-route session_hint cookie, and internal core-to-AI requests
 - [ ] Production two-device acceptance: login, import, full game, reconnect, voice, DJ audio, and results
-- [ ] Document the Hetzner fallback and rehearse isolated deployment, DNS cutover, and rollback
+- [ ] Plan the move to one Hetzner server before the Azure trial credit ends: document the deployment, rehearse it in isolation, and prepare DNS cutover and rollback
 - [ ] Optional: decide whether production deployments require GitHub environment reviewers
 
 ## Story 8: Production databases
