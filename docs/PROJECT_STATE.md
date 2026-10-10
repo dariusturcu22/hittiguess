@@ -6,7 +6,7 @@
 
 | ID | Remaining scope | Status |
 | --- | --- | --- |
-| 7 | Production hosting, cost/capacity controls, deployment acceptance, Hetzner fallback | Ready |
+| 7 | Production hosting, cost/capacity controls, deployment acceptance, Hetzner migration after the Azure trial | Ready |
 | 8 | Neon validation, idle wake, backups, catalog import decision | Ready |
 | 24 | Concurrent-gather priority verification; optional gather timeout | Ready for verification; timeout deferred |
 | 28 | Two-factor UI, desktop/state acceptance; account/legal pages later | Ready; account/legal scope deferred |

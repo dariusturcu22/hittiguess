@@ -1146,3 +1146,9 @@ Prepared core difficulty uses popularity for new verified songs and retained pla
 ## 2026-10-10 | Durable verified catalog embedding indexing
 
 Core owns a versioned embedding queue and database triggers so every verified catalog save path, including verification upgrades and artist/title edits, schedules indexing after its transaction commits. Existing verified entries with missing embeddings enter the same queue. AI performs the embedding call through an authenticated internal endpoint, with bounded requests, leased jobs, retry backoff, and stale-result checks. A separate core scheduler invokes it only when work is due. Indexing does not delay submission requests or change playlist membership; similarity reuse begins once the embedding is stored.
+
+## 2026-10-10 | Azure runs the backend during the free trial, then Hetzner
+
+Decision: The backend stays on Azure Container Apps with scale-to-zero while the free trial credit lasts, about three weeks from this date. It then moves to one fixed-price Hetzner server. Vercel and both Neon projects stay unchanged.
+
+Why: A measured cold start after scale-to-zero is about 35 seconds, and Azure's usage-based pricing costs more than the project wants to pay for an always-on replica. The trial credit covers the beta period at no cost, and a fixed monthly price on Hetzner avoids a variable bill afterward. The C1-only JIT setting shortened Spring startup by under a second on Azure's single vCPU, so most of the cold start is Azure scheduling and cannot be tuned away in the app.
