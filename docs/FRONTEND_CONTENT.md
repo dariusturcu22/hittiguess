@@ -1,6 +1,6 @@
 # FRONTEND_CONTENT.md: Frontend Content Specifications
 
-What data, state, and actions each frontend view needs, independent of visual design. Story 28's mockups design how these look; this file specifies what they have to show and do regardless of that design. Existing pages are grounded in the real API contracts in [SYSTEM_REFERENCE.md](SYSTEM_REFERENCE.md); planned gameplay screens are grounded in [GAME_DESIGN.md](GAME_DESIGN.md) and [ARCHITECTURE.md](ARCHITECTURE.md), since none of that code exists yet.
+What data, state, and actions each frontend view needs, independent of visual design. Story 28's mockups design how these look; this file specifies what they have to show and do regardless of that design. The implemented views use the contracts in [SYSTEM_REFERENCE.md](SYSTEM_REFERENCE.md) and the rules in [GAME_DESIGN.md](GAME_DESIGN.md). TASKS.md distinguishes missing features from remaining verification. App screens have desktop scope; only the landing page has mobile design scope.
 
 ## Existing pages
 
@@ -10,11 +10,11 @@ Public, unauthenticated. Content: product name and one-line explanation, a call 
 
 ### Login, Register, Forgot password (`(auth)`)
 
-Public, unauthenticated. Login: username/email and password fields, an OAuth2 login option, a link to register and to forgot-password. Register: username, email, password fields. Forgot password: currently a non-functional placeholder that says so honestly rather than silently doing nothing (`ARCHIVE.md`'s pre-split-polish batch 5); a real flow is a future feature, not specified here until it exists.
+Public, unauthenticated. Login: username/email and password fields, an OAuth2 login option, a link to register and to forgot-password. Register: username, email, password fields. Forgot password requests a reset email and the reset-password route accepts the token and new password. Verify-email handles registration tokens. Both flows show pending, success, and failure states. Two-factor setup and the second login step remain frontend work in TASKS.md.
 
 ### OAuth2 redirect (`/oauth2/redirect`)
 
-No visible content of its own, a transient handoff screen while the OAuth2 flow completes and redirects into the dashboard.
+A transient handoff screen shows loading while the OAuth2 flow completes and redirects into the app; a failed handoff returns to login with feedback.
 
 ### Playlist list (`/playlists`, dashboard)
 
@@ -36,9 +36,7 @@ Authenticated, playlist-access-gated. The primary path searches the shared catal
 
 Authenticated. The route previews the playlist before joining, including its cover, name, song count, member preview, and a per-playlist display-name and avatar step. On success it redirects into the joined playlist. On failure it shows an error. A banned user is refused.
 
-## Planned playlist screens (not yet built)
-
-Surfaced during story 28's design pass, none of the following exist as frontend code today.
+## Playlist discovery, import, and editing
 
 ### Explore public playlists
 
@@ -53,11 +51,11 @@ Reached from Playlist detail's Add song menu. Two sources:
 
 ### Edit playlist
 
-Reached from Playlist detail, owner only (story 46). Data: cover image, name, title color (the same `color` field used elsewhere, not a separate cover color), description, `isPublic` (story 30), and the full member list, each member's `canRead`/`canWrite`/`canDelete` grants, and whether they're kicked/banned-eligible. Actions: change the cover (click-through on the cover itself, not a separate control), rename inline (pencil to edit, a save action beside it), pick a title color, edit the description, toggle public, save/cancel, delete the playlist. Member-row actions: toggle each of the three grants independently, kick (membership ends, can rejoin via invite), ban (membership ends, can't rejoin). Splits rename/color-change out of Playlist detail's inline fields into their own screen.
+Reached from Playlist detail, owner only (story 46). Data: cover image, name, title color (the same `color` field used elsewhere, not a separate cover color), description, `isPublic` (story 30), and the full member list, each member's `canRead`/`canWrite`/`canDelete` grants, and whether they're kicked/banned-eligible. Actions: change the cover (click-through on the cover itself, not a separate control), edit the name in the form, pick a title color, edit the description, toggle public, save/cancel, delete the playlist. Member-row actions: toggle each of the three grants independently, kick (membership ends, can rejoin via invite), ban (membership ends, can't rejoin). Name and color editing belong to this route.
 
-## Planned gameplay screens (not yet built)
+## Gameplay and group views
 
-The library, Explore, playlist detail, and lobby requirements reflect the approved library and lobby requirements. Other screen descriptions retain their earlier scope pending review.
+These views implement the approved group, session, voice, and away-state requirements. Live media delivery and the complete visual matrix remain verification tasks.
 
 ### Group lobby
 
@@ -77,7 +75,7 @@ Data: each voice member as a per-group avatar with name, a microphone speaking r
 
 ### Text chat overlay
 
-Data: message history for the group (sender's per-group display name, message body, timestamp), loaded on join or reconnect. Actions: send a message (500-character limit, rate-limited to 5 per 10 seconds, story 13), toggle the overlay open/closed.
+Data: message history for the group (sender's per-group display name, message body, timestamp), loaded on join. Explicit history recovery for chat events missed during reconnect remains in TASKS.md. Actions: send a message (500-character limit, rate-limited to 5 per 10 seconds, story 13), toggle the overlay open/closed.
 
 ### Turn notification
 
@@ -91,22 +89,28 @@ Data: a minimized summary of session state (active player, round number, own tok
 
 Data, on a normal session end: the main card-count ranking (winner and placement order), plus the two separate session-long tallies, "Most Artists Guessed" and "Most Titles Guessed" (story 10). Actions: download the results export, return to the group lobby.
 
-## Admin views (not yet built)
+## Admin views
 
-Gated on the `ADMIN` role story 40 owns (absorbed from story 19); none of these exist as frontend code today.
+The backlog and report routes exist and require the ADMIN role.
 
 ### Catalog backlog status
 
-Data: pending count, how many processed today, remaining daily LLM quota (story 40). Actions: submit a YouTube playlist link or a raw list of video IDs to bulk-enqueue into the backlog; the batch YouTube-ID lookup runs first so already-known songs are never enqueued, this view doesn't need to show that filtering step, only its result.
+Data: pending count, how many processed today, remaining daily drain quota and recent provisional/patient rechecks (story 40). Actions: submit a YouTube playlist link or a raw list of video IDs to bulk-enqueue into the backlog; the batch YouTube-ID lookup runs first so already-known songs are never enqueued, this view doesn't need to show that filtering step, only its result.
 
 ### Report review queue (story 17)
 
-Data: every reportable card ranked by the five-tier priority order in `TASKS.md` (converging reports first, then non-converging, then confirmed-but-unreported, then unconfirmed, `VERIFIED` cards with no report never appear), and for each one the actual signals behind its rank, report count, whether they converge and on what year, confirmation count, not a single opaque score. Actions: resolve a report by setting the correct year and `verificationStatus`, the review stays a manual admin judgment call, nothing here auto-applies a suggested year.
+Data: every reviewable card ranked by the five-tier priority order in `SYSTEM_REFERENCE.md` (converging reports first, then non-converging, then confirmed-but-unreported, then unconfirmed, `VERIFIED` cards with no report never appear), and for each one the actual signals behind its rank, report count, whether they converge and on what year, confirmation count, not a single opaque score. Actions: resolve a report by setting the correct year and `verificationStatus`, the review stays a manual admin judgment call, nothing here auto-applies a suggested year.
+
+## Retained history
+
+### Game history (`/history`, `/history/[summaryId]`)
+
+The list shows the account's completed games, wins, win rate, and paginated summaries. Each row shows the group snapshot, completion time, mode, duration, and the participant's result. Interrupted games are labeled and do not count as wins. Details show final card, artist, and title ranks, attempts and correct counts, bets placed and won, departure status, and tied winners. Deleted accounts appear as Deleted player. Only original participants have access, including after group expiry. Loading, empty, unavailable, and retry states are explicit. The account menu uses the same core statistics rather than placeholders.
 
 ## Content this file deliberately excludes
 
 Colors, typography, spacing, component styling, and layout are story 28's scope, not this one's. Where a screen's exact copy (button labels, error message text, empty-state wording) isn't already fixed by a decision in `DECISIONS.md` or `GAME_DESIGN.md`, it's left to be written during story 28's design and implementation passes rather than guessed at here.
 
-### Game history (`/history`, `/history/[summaryId]`)
+## Deferred account and legal views
 
-The list shows the account's completed games, wins, win rate, and paginated summaries. Each row shows the group snapshot, completion time, mode, duration, and the participant's result. Interrupted games are labeled and do not count as wins. Details show final card, artist, and title ranks, attempts and correct counts, bets placed and won, departure status, and tied winners. Deleted accounts appear as Deleted player. Only original participants have access, including after group expiry. Loading, empty, unavailable, and retry states are explicit. The account menu uses the same core statistics rather than placeholders.
+Profile/settings account controls and privacy/terms routes remain deferred. Their future copy must reflect the actual providers, stored data, retention, and export scope. History and summary statistics are already implemented and are not placeholder data.

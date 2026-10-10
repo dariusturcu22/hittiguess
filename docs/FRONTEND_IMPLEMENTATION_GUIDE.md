@@ -4,7 +4,7 @@
 
 Approved product requirements take precedence over older mockups. A later approved review or playtest requirement first updates the affected mockups and content specification. The updated design source files then define the layout, spacing, styling, and states to build and verify. Existing implementation alone does not establish a new requirement.
 
-The approved library and lobby requirements retain library and Explore filters, playlist member popups, import inside Add song, and the separate lobby playlist picker. Older layouts that omit these controls are superseded. The approved gameplay requirements retain automatic reveal after betting, full-pass rounds, joint winners, and guessing that closes at placement lock-in. Voice uses a 76px rail without collapse, with join at the top outside a call. Away-turn notifications, phase deadlines, and actual token-award feedback follow the content specification. Other unreviewed conflicts remain open in the documentation audit. App screens have desktop design scope; only the landing page has mobile variants.
+The approved library and lobby requirements retain library and Explore filters, playlist member popups, import inside Add song, and the separate lobby playlist picker. Older layouts that omit these controls are superseded. The approved gameplay requirements retain automatic reveal after betting, full-pass rounds, joint winners, and guessing that closes at placement lock-in. Voice uses a 76px rail without collapse, with join at the top outside a call. Away-turn notifications, phase deadlines, and actual token-award feedback follow the content specification. The documentation audit records the reviewed resolutions and the explicitly deferred account/legal scope. App screens have desktop design scope; only the landing page has mobile variants.
 
 Library filter states use `YourPlaylistsOwned*`, `YourPlaylistsJoined*`, and `YourPlaylistsSaved*`. The playlist add menu uses `PlaylistDetailAddMenu*`. Lobby picker, custom selection, and admin transfer use `GroupLobbyTierPicker*`, `GroupLobbyCustomPicker*`, and `GroupLobbyAdminTransfer*`. Each state has dark and light source files alongside its base screen.
 
@@ -47,7 +47,7 @@ Grouped by where each maps in the app. "Route" is the real or planned path under
 | `/playlists/[playlistId]/songs/add` | `AddSongDark.dc.html`, `AddSongLight.dc.html`, `AddNewSongLinkDark.dc.html`, `AddNewSongLinkLight.dc.html` (paste-a-link step), `AddNewSongReviewEditableDark.dc.html`, `AddNewSongReviewEditableLight.dc.html` (confirm step, editable), `AddNewSongReviewLockedDark.dc.html`, `AddNewSongReviewLockedLight.dc.html` (confirm step, a verified song's locked fields) |
 | `/playlists/join/[inviteCode]` | `JoinInviteDark.dc.html`, `JoinInviteLight.dc.html` |
 
-### Playlist screens (routes implemented, with some states still open)
+### Playlist screens (routes implemented)
 
 | Route (proposed) | Mockup files |
 | --- | --- |
@@ -71,7 +71,7 @@ Grouped by where each maps in the app. "Route" is the real or planned path under
 | Gameplay overlays and app-wide away state (not separate routes) | `TurnNotificationDark.dc.html`, `TurnNotificationLight.dc.html`, `AwayWidgetDark.dc.html`, `AwayWidgetLight.dc.html`, `TextChatOverlayDark.dc.html`, `TextChatOverlayLight.dc.html` |
 | Results/leaderboard | `ResultsDark.dc.html`, `ResultsLight.dc.html`, `ResultsTwoPlayersDark.dc.html`, `ResultsTwoPlayersLight.dc.html`, `ResultsEightPlayersDark.dc.html`, `ResultsEightPlayersLight.dc.html` |
 
-The current `dev` frontend implements the routes and gameplay wiring for Batches A through E. The choose-source and existing-playlist import states, broader route and representative-state tests, rendered comparison across the mockup matrix, and the accessibility pass remain open. Live Playwright validation of the group and gameplay flows requires the backend services to run from this same checkout.
+The current `dev` frontend implements the routes and gameplay wiring for Batches A through E. Choose-source and existing-playlist import states and colocated route/state tests exist. The full desktop rendered matrix, remaining contrast/keyboard/motion checks, and real HTTPS multiplayer media acceptance remain open. App screens are checked on desktop; only the landing page has mobile scope. Live Playwright validation of the group and gameplay flows requires the backend services to run from this same checkout.
 
 ### Reference sheets, not pages
 
