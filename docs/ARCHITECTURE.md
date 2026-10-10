@@ -151,7 +151,7 @@ Players can report a song's year as incorrect, with a message, the year they bel
 
 Before the precheck for a new submission, the AI service normalizes the cleaned artist/title, generates a `text-embedding-3-small` embedding, and searches existing verified songs by pgvector cosine distance. A high-confidence match carries `canonical_song_id` alongside the reused metadata. Core links the new upload in `AlternateYoutubeId` and returns the existing Song. Known primary or alternate IDs resolve to the existing song without creating a row. Transaction locks serialize inserts, links, and playlist confirmations for the same submitted ID. Duplicate reuse never replaces the existing song's metadata with another upload's duration.
 
-Similarity matching requires a stored embedding. The existing embedding writer has no production caller connecting catalog saves to indexing; automatic indexing and backfill remain explicit follow-ups in [TASKS.md](TASKS.md).
+Similarity matching requires a stored embedding. Core migration V41 queues verified inserts, status upgrades, and artist/title edits, and backfills verified songs with missing embeddings. A separate core scheduler checks for due work every ten seconds and calls the authenticated AI indexing endpoint only when needed. The AI service leases one job, embeds the normalized main artists and title, and stores the result only if its metadata generation and lease attempt still match. Failures retry with capped exponential backoff; expired leases recover interrupted workers. Metadata changes invalidate old embeddings, and indexing never changes playlist membership or song metadata. Similarity reuse becomes available after indexing completes.
 
 ### Admin tools
 

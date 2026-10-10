@@ -9,6 +9,7 @@ from app.observability.sentry import init_sentry
 from app.observability.tracing import setup_tracing
 from app.auth import require_internal_api_key
 from app.config import settings
+from app.dedup.router import router as catalog_router
 
 configure_logging()
 init_sentry()
@@ -24,6 +25,7 @@ app = FastAPI(title="hittiguess AI microservice", openapi_url=None, docs_url=Non
 app.add_middleware(CorrelationIdMiddleware)
 app.include_router(metadata_router)
 app.include_router(fast_tier_router)
+app.include_router(catalog_router)
 
 setup_tracing(app)
 # Only the Alloy scraper reads metrics, sending the same internal key the backend uses.
