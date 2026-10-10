@@ -1,45 +1,24 @@
 # ROADMAP.md: Implementation Order
 
-This file orders remaining work. [TASKS.md](TASKS.md) owns the requirements and tests, and [PROJECT_STATE.md](PROJECT_STATE.md) governs whether a story is ready to start. Completed implementation summaries and the checked frontend batch plan are in [ARCHIVE.md](ARCHIVE.md#completed-roadmap-implementation-history).
+[TASKS.md](TASKS.md) owns requirements and tests; [PROJECT_STATE.md](PROJECT_STATE.md) governs story readiness. [REMAINING_WORK.md](REMAINING_WORK.md) lists the complete remaining scope. Completed implementation records are in [ARCHIVE.md](ARCHIVE.md).
 
-## Readiness tiers
+## Audit completion
 
-- **Local**: the owner can complete a game with another local player, including the admin surface, voice, and DJ audio. Stories 28 and 47 retain visual, interaction, test, and mockup-review follow-ups. Release-playtest reconnect and test requirements and final LAN acceptance remain open in TASKS.md.
-- **Beta**: real accounts can play a deployed app. Story 50's remaining two-factor frontend work and stories 7 and 8's provisioning and validation must be complete. Azure Container Apps, Vercel, and separate transactional and analytics Neon projects are the selected deployment plan; Hetzner is the cost-control fallback.
-- **Finished**: the deployed app is ready for public announcement with story 34's first-party analytics and its dependent consent notice complete.
+Automatic verified-song embedding indexing is ready for review in [PR #274](https://github.com/dariusturcu22/hittiguess/pull/274). The documentation reconciliation resolves stale claims and archives completed clusters. No source-of-truth decision from the reviewed audit batches remains unanswered. Account/legal requirements and personalized models retain their deferrals; production and visual acceptance remain separate tasks.
 
-## Local: review and validate
+## Local and Beta priorities
 
-1. Story 47: reconcile the remaining product-review requirements and design mockups, complete interactive-state test coverage, and run the voice, contrast, and motion acceptance checks.
-2. Story 28: complete the desktop light/dark rendered matrix and the landing page mobile checks and the transferred frontend requirements and tests. The completed marketing, theme, and scrollbar batches are archived. Profile/settings direction and optional exit motion remain explicit follow-ups; optional motion is not a release gate.
-3. Release playtest acceptance: retain the unresolved parts of the compound UI requirements, missed-event reconnect recovery, configured TURN validation, frontend/backend test coverage, and two-client HTTPS browser checks.
-4. LAN playtest acceptance: complete and record the final full-game-plus-voice multi-device run.
+1. Revoke the YouTube key recorded as exposed in production logs and configure its restricted replacement. Complete the remaining Azure cost controls.
+2. Close missed-event reconnect recovery and its tests. Finish two-factor frontend states under story 28, against the implemented story 50 backend.
+3. Complete the desktop dark/light route/state comparison and focused coverage gaps. Only the landing page has mobile scope. Reconcile remaining mockup states with approved requirements, then complete contrast, keyboard, motion, and navigation checks.
+4. Verify production login, email delivery, shared cookies, HTTP probes, WSS, core-to-AI communication, live observability, and configured TURN. The Azure apps, Vercel frontend, and Neon projects already exist.
+5. Load-test capacity and admission, validate resource limits and cold-start behavior, verify Neon boundaries/idle wake, and rehearse backups and the Hetzner fallback.
+6. Complete HTTPS two-client and final LAN full-game/voice acceptance, including import, reconnect, DJ capture, and results before Beta invitations.
 
-The documentation audit's design conflicts remain pending owner review. A visual pass must use the reviewed source of truth rather than treating conflicting mockups and later requirements as interchangeable.
+Catalog uniqueness cleanup and concurrent-gather priority verification remain backend follow-ups. Optional deployment reviewers, removed-item exit motion, and the exact Joined-tab copy retain their own decisions in TASKS.md.
 
-## Backend follow-ups
+## Later work
 
-- Story 24: gather-boundary timeout, its unit test, and priority-coordinator verification.
-- Story 30: personalized model training, scheduled retraining, monitoring, and held-out tests. Core history, analytics research observations, prepared global scores, and generation at Start are implemented; personalized ML remains deferred. This enhancement does not block Local.
-- Story 41: deferred source-match confidence tuning and uncertain-case manual review.
-- Story 35: the existing pre-shipping terms-confirmation gate remains in TASKS.md pending reconciliation with the recorded terms read.
-- Flutter DJ-model compliance: the embedded-player replacement remains open; Flutter stays deprioritized behind the web app.
+Story 34 needs confirmed event/dashboard requirements before implementation. It covers internal first-party usage and abuse visibility, tests, and the reviewed notice behavior. Core participant history and statistics already exist.
 
-## Beta: deploy and validate
-
-1. Story 50: complete two-factor setup and the second login step in the frontend, with the required tests.
-2. Story 7: provision Azure Container Apps, cost controls, production configuration, image delivery, load/admission validation, and the Hetzner migration runbook/rehearsal.
-3. Story 8: provision and validate the transactional and analytics Neon projects, migrations, backups, and connection boundaries.
-4. Story 38: import the dashboard into the live environment, add production uptime monitoring once a deployment exists, and retain the real observability-delivery test requirement.
-5. Complete production device-level game, reconnect, voice, DJ audio, import, and results acceptance before inviting friends for Beta matches.
-
-## Finished
-
-Story 34 owns first-party usage and abuse-event instrumentation, the internal query/dashboard, its tests, and the consent notice transferred from story 37. Its existing story gate remains in PROJECT_STATE.md; the completed analytics store and backend enforcement records are in ARCHIVE.md.
-
-## Remaining documentation-audit changes
-
-1. Connect fully verified catalog persistence to automatic embedding indexing, including retry and failure tests. Existing similarity search and duplicate reuse remain in place.
-2. Recheck the audit findings against the merged implementation, archive completed task sections, and retain only genuine missing capabilities and verification work.
-
-History, prepared global difficulty, generation at Start, and the API/product contract corrections are the current completed implementation slice. Account/legal pages and personalized difficulty models remain deferred in TASKS.md.
+Account/legal pages and disclosure work, personalized difficulty models, source-match safety tuning, gather-boundary timeout, raw-evidence storage, and Flutter link-out remain deferred or require definition. Genre enrichment and Topic-upload upgrade suggestions are dropped.
