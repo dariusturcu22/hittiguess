@@ -41,4 +41,4 @@ A story can have draft tasks written against it in TASKS.md while still marked N
 
 Current product rules: [GAME_DESIGN.md](GAME_DESIGN.md). Technical blueprint: [ARCHITECTURE.md](ARCHITECTURE.md). API and entity reference: [SYSTEM_REFERENCE.md](SYSTEM_REFERENCE.md). Decision history: [DECISIONS.md](DECISIONS.md). Resolved backlog questions: [ARCHIVE.md](ARCHIVE.md#resolved-project-state-questions).
 
-Completed stories are archived once their remaining requirements and tests have an active home in TASKS.md. Reviewed audit decisions and the remaining deferred requirements are in [the documentation audit](DOCUMENTATION_AUDIT_2026-10-05.md). Automatic embedding indexing is pending review in PR #274; TASKS.md retains it until merge.
+Completed stories are archived once their remaining requirements and tests have an active home in TASKS.md. Reviewed audit decisions and the remaining deferred requirements are in [the documentation audit](DOCUMENTATION_AUDIT_2026-10-05.md). Automatic embedding indexing is merged in PR #274; its completed tasks are recorded in ARCHIVE.md.

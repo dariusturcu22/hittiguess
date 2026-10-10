@@ -18,7 +18,7 @@ The reviewed source-of-truth decisions are resolved in the merged library/lobby,
 | D01 through D08, D10, D12 | Current API/product references include recovery, deadlines, exhaustion, retained summaries, skip voting, fields/events, routes, export modes, enforcement, source boundaries, invite codes, and preview reuse. |
 | D09 and D11 | Technical provider and history/research boundaries are documented. Legal-provider disclosures, the complete stored-data inventory, and remaining account/export UI scope stay deferred. |
 | S01 through S21 | Active docs no longer describe existing services/screens as absent. Completed task clusters move to ARCHIVE.md; mockup and live acceptance checks remain open. The recorded terms read closes its duplicate task. |
-| N01 | Automatic verified embedding indexing is implemented in [PR #274](https://github.com/dariusturcu22/hittiguess/pull/274), pending review and merge. The merged branch still has this indexing gap. |
+| N01 | Automatic verified embedding indexing is implemented in [PR #274](https://github.com/dariusturcu22/hittiguess/pull/274) and merged into dev. |
 
 The design source directory contains 129 artboards including theme/state variants and reference boards. Source/canvas equality does not establish visual fidelity; the complete desktop matrix stays open, with mobile checks only for the landing page. Azure Container Apps, Vercel, and both Neon projects have recorded provisioning and deployment work. Cost controls, backups, live observability, media, and production acceptance still require validation.
 
@@ -36,7 +36,7 @@ C12, C13, C14, C15, D06, D07, and D12 are resolved by the approved metadata cont
 
 M08's Topic-upload search/upgrade requirement and C19's genre-enrichment requirement are dropped. Their compatibility fields are not evidence of implemented enrichment. Raw-evidence storage, source-match safety tuning, and gather timeouts remain outside this change. Earlier tables retain the original finding evidence.
 
-N01 is implemented in PR #274, pending review and merge. Its queue covers new verified songs, upgrades, metadata changes, and missing-embedding backfill; retries and stale-result checks have unit and database tests.
+N01 is implemented and merged in PR #274. Its queue covers new verified songs, upgrades, metadata changes, and missing-embedding backfill; retries and stale-result checks have unit and database tests.
 
 ## Reviewed difficulty history: 2026-10-09
 

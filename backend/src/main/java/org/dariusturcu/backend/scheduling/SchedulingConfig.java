@@ -7,11 +7,7 @@ import org.springframework.scheduling.TaskScheduler;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
 
-// A pooled TaskScheduler bean, used two ways: directly by GameSessionScheduler for the
-// round-level countdown/betting/turn-timeout/abandon timers, and implicitly by every
-// @Scheduled method in the application (including GroupExpirySweeper's sweep), since
-// Spring's scheduling infrastructure picks up a TaskScheduler bean if one exists instead
-// of falling back to its single-threaded default.
+// Game timers use the default pool; embedding calls use a separate scheduler.
 @Configuration
 public class SchedulingConfig {
 
@@ -28,6 +24,16 @@ public class SchedulingConfig {
     private static final String FAST_TIER_DATING_THREAD_NAME_PREFIX = "fast-tier-dating-";
     private static final int BACKLOG_DRAIN_POOL_SIZE = 1;
     private static final String BACKLOG_DRAIN_THREAD_NAME_PREFIX = "backlog-drain-";
+    private static final int EMBEDDING_SCHEDULER_POOL_SIZE = 1;
+    private static final String EMBEDDING_THREAD_NAME_PREFIX = "catalog-embedding-";
+
+    @Bean
+    public TaskScheduler catalogEmbeddingTaskScheduler() {
+        ThreadPoolTaskScheduler scheduler = new ThreadPoolTaskScheduler();
+        scheduler.setPoolSize(EMBEDDING_SCHEDULER_POOL_SIZE);
+        scheduler.setThreadNamePrefix(EMBEDDING_THREAD_NAME_PREFIX);
+        return scheduler;
+    }
 
     @Bean
     public TaskScheduler taskScheduler() {

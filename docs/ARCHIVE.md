@@ -2242,3 +2242,14 @@ Tests:
 - [x] Recheck unresolved audit findings against merged code and reviewed source-of-truth decisions
 - [x] Archive completed clusters while retaining missing features and uncompleted acceptance checks
 - [x] Validate remaining claims, documentation links, and task references
+
+## Fix: Verified catalog embedding indexing
+
+Verified catalog inserts, upgrades, and artist/title edits schedule durable embedding indexing. Core owns the queue migration and scheduler; the authenticated AI worker claims and completes versioned leases.
+
+- [x] Define and wire embedding population after verified catalog persistence, including upgrades of existing songs and retry behavior
+  - Core migrations own a durable indexing queue for verified inserts, upgrades, and artist/title edits. An internal AI endpoint drains leased work; the core scheduler only calls it when work is due. Failed leases retry with backoff, and version checks discard results for changed metadata.
+  - Migration and database integration tests cover backfill, invalidation, concurrent claims, lease recovery, and stale-result rejection. Scheduler and internal-auth tests cover production invocation.
+- [x] Backfill verified songs with missing embeddings without changing their metadata or playlist membership
+- [x] Unit tests: normalized artist/title indexing, verified-only writes, and retry behavior
+- [x] Integration test: a newly verified song becomes searchable and a later alternate upload reuses it without another full pipeline run

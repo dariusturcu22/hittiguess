@@ -4,7 +4,7 @@ This inventory summarizes [TASKS.md](TASKS.md). Completed records are in [ARCHIV
 
 ## Review pending
 
-Automatic verified-song embedding indexing is implemented in [PR #274](https://github.com/dariusturcu22/hittiguess/pull/274). It includes verified inserts/upgrades, artist/title invalidation, missing-embedding backfill, durable retry leases, and duplicate-reuse tests. The merged branch retains the gap until that PR lands. The documentation reconciliation closes the remaining audit corrections; deferred requirements and acceptance tasks remain listed below.
+Automatic verified-song embedding indexing is implemented in [PR #274](https://github.com/dariusturcu22/hittiguess/pull/274). It includes verified inserts/upgrades, artist/title invalidation, missing-embedding backfill, durable retry leases, and duplicate-reuse tests. The implementation is merged into dev. The documentation reconciliation closes the remaining audit corrections; deferred requirements and acceptance tasks remain listed below.
 
 ## Product implementation and local acceptance
 

@@ -4,7 +4,7 @@
 
 ## Audit completion
 
-Automatic verified-song embedding indexing is ready for review in [PR #274](https://github.com/dariusturcu22/hittiguess/pull/274). The documentation reconciliation resolves stale claims and archives completed clusters. No source-of-truth decision from the reviewed audit batches remains unanswered. Account/legal requirements and personalized models retain their deferrals; production and visual acceptance remain separate tasks.
+Automatic verified-song embedding indexing is merged in [PR #274](https://github.com/dariusturcu22/hittiguess/pull/274). The documentation reconciliation resolves stale claims and archives completed clusters. No source-of-truth decision from the reviewed audit batches remains unanswered. Account/legal requirements and personalized models retain their deferrals; production and visual acceptance remain separate tasks.
 
 ## Local and Beta priorities
 

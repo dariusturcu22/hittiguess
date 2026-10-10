@@ -59,14 +59,6 @@ Completed submission-classification work is recorded in [ARCHIVE.md](ARCHIVE.md#
 - [ ] Still-uncertain cases after all of the above route to manual review, not a hard reject, the same "escalate, don't guess" principle already set for artist/title verification
   - Deferred: this manual-review tier depends on the source-match secondary signal above to define "still uncertain" without a threshold; deferred with it. A confident non-music or compilation verdict rejects, and a genuine no-answer song still reaches story 18's MANUAL_ENTRY route downstream
 
-## Fix: Verified catalog embedding indexing
-
-Automatic indexing, backfill, retries, and tests are implemented in [PR #274](https://github.com/dariusturcu22/hittiguess/pull/274), pending review and merge. The current merged branch still has the gap. These tasks stay open until the implementation lands.
-
-- [ ] Define and wire embedding population after verified catalog persistence, including upgrades of existing songs and retry behavior
-- [ ] Backfill verified songs with missing embeddings without changing their metadata or playlist membership
-- [ ] Unit tests: normalized artist/title indexing, verified-only writes, and retry behavior
-- [ ] Integration test: a newly verified song becomes searchable and a later alternate upload reuses it without another full pipeline run
 
 ## Story 24: Parallelize metadata pipeline fetches across sources
 
