@@ -10,7 +10,7 @@
 - Backend, AI microservice: Python + FastAPI. Metadata pipeline, LLM synthesis, embeddings. Calls OpenAI directly.
 - Frontend: Next.js (TypeScript), deployed on Vercel.
 - Database: PostgreSQL + pgvector. Development data is on Supabase; production runs on two Neon projects, see docs/DECISIONS.md.
-- Hosting, backend: currently Fly.io, migrating away; target platform undecided, see docs/PROJECT_STATE.md.
+- Hosting, backend: Azure Container Apps for core and AI. The previous Fly.io deployment stays online until the release switch. See docs/ARCHITECTURE.md.
 - Mobile: Flutter, deprioritized.
 
 See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the full technical breakdown.
