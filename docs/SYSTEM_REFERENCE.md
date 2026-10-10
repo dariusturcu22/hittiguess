@@ -317,7 +317,7 @@ stateDiagram-v2
     pending --> processing: scheduled drain picks it up (or pauses if on-the-spot traffic is active)
     processing --> done: patient pipeline resolves it
     processing --> failed: pipeline errors out
-    failed --> pending: retried on a later drain
+    failed --> [*]: stays failed until the ID is enqueued again
     done --> [*]
 ```
 

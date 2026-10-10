@@ -32,7 +32,7 @@ Frontend implementation and tests belong to story 28. Feature work requires a Re
 
 Azure Container Apps hosts core and AI in one EU environment. Vercel hosts the frontend. Core stays single-replica because game and STOMP state are process-local. The whole-deployment ceiling is $20/month.
 
-- [ ] Rotate/restrict the exposed YouTube API key, revoke the old key, update the Container Apps secret, and purge or age out affected logs
+- [ ] Restrict the new YouTube API key to the YouTube Data API; confirm the exposed key's log lines have aged out of Log Analytics
 - [ ] Disable or cap Log Analytics ingestion/retention; add anomaly alerts, a resource-group budget, and a $12 shutdown Action Group
 - [ ] Cost-control test: alerts and shutdown against an isolated resource group
 - [ ] Load-test core/AI CPU, memory, WebSockets, and game-action latency; validate resource limits and add a tested active-game admission limit with a clear busy response
@@ -65,6 +65,17 @@ Both Neon projects are provisioned. Core owns schema migrations; AI connects onl
 - [ ] Story 24: verify concurrent source gathering preserves immediate-work priority over the patient backlog, with an integration test
 - [ ] Merge existing catalog duplicates and add unique songs(youtube_id) and active pending_imports indexes
 - [ ] Integration tests: cleanup preserves playlist/alternate-ID links and indexes reject concurrent duplicates
+
+## Admin catalog seeding redesign, requirements pending
+
+Both the seeding behavior and the admin page change. The owner supplies the requirements; these tasks are the confirmed starting points and the story stays Needs Definition until the breakdown is checked against the code.
+
+- [ ] Classify pipeline failures as transient (service outage, rejected key, rate limit, timeout, shutdown mid-item) or permanent (video unavailable, no usable metadata); a transient failure leaves the item pending with a retry delay and attempt count instead of marking it failed
+- [ ] Store the real failure reason and failing stage on each failed item; show it in the admin view
+- [ ] Add a retry action for failed items; failed rows are never picked up again today, and the status diagram in SYSTEM_REFERENCE.md describes a retry that does not exist
+- [ ] Resume interrupted work after a restart or redeploy without waiting for the daily timer; the drain currently also starts at every application boot because the daily timer fires immediately
+- [ ] Redesign the admin catalog page and its enqueue/drain flow from the owner's requirements (per-playlist progress, status detail, daily quota visibility)
+- [ ] Unit and integration tests: transient versus permanent classification, retry limits, interrupted-item recovery, retry action, and the status endpoint
 
 ## Story 34: Usage analytics, definition required
 
