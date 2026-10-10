@@ -1,12 +1,34 @@
 # Documentation audit: 2026-10-05
 
+## Current resolution: 2026-10-10
+
+The reviewed source-of-truth decisions are resolved in the merged library/lobby, gameplay/voice, metadata/import, history/difficulty, and API-contract changes. The tables below preserve the original October 5 evidence and stable finding IDs; they do not describe the current backlog. [TASKS.md](TASKS.md) owns active work, and [REMAINING_WORK.md](REMAINING_WORK.md) summarizes it.
+
+| Findings | Current result |
+| --- | --- |
+| A01 through A10 | Approved completed clusters are archived. Unfinished feature, visual, infrastructure, and real-device acceptance work remains active. |
+| C01 through C11 | Later approved product requirements define the current mockups and behavior: library filters, member popups, Add-song imports, separate lobby selection, 76px voice rail, automatic reveal, full-pass rounds, tied winners, placement-only guessing, and shared-song edit permissions. |
+| C12 through C15 | Combined precheck, source agreement, ordinary admin verification, verified-result catalog persistence, and alternate-upload entity reuse are implemented and documented. |
+| C16 | Core participant history and prepared global scores coexist with analytics research, 365-day raw retention, anonymous aggregates, and retry-safe delivery. Confirm saves the tier; Start generates the pool. Personalized ML stays deferred. |
+| C17 and C18 | Email tokens are not logged. Chat/voice are group-scoped; timelines belong to players. Current references state these rules. |
+| C19 and M08 | Genre enrichment and automatic Topic-upload upgrade suggestions are dropped. Compatibility columns do not imply an active enrichment feature. Raw-evidence storage remains unimplemented and requires scope before use. |
+| M01 through M05 | Away-turn sound/banner, own-token/deadline widget, token-award and incorrect feedback, participant voice presentation, and admin transfer are implemented with focused tests and desktop browser coverage. Live media acceptance remains separate. |
+| M06 and M07 | Core-backed history and statistics replace placeholder counts. Profile/settings account controls, legal routes, and disclosure updates remain deferred. |
+| M09 through M11 | Flutter link-out, safety-confidence tuning, and the gather-boundary timeout remain explicit follow-ups; current deferrals are unchanged. |
+| D01 through D08, D10, D12 | Current API/product references include recovery, deadlines, exhaustion, retained summaries, skip voting, fields/events, routes, export modes, enforcement, source boundaries, invite codes, and preview reuse. |
+| D09 and D11 | Technical provider and history/research boundaries are documented. Legal-provider disclosures, the complete stored-data inventory, and remaining account/export UI scope stay deferred. |
+| S01 through S21 | Active docs no longer describe existing services/screens as absent. Completed task clusters move to ARCHIVE.md; mockup and live acceptance checks remain open. The recorded terms read closes its duplicate task. |
+| N01 | Automatic verified embedding indexing is implemented in [PR #274](https://github.com/dariusturcu22/hittiguess/pull/274) and merged into dev. |
+
+The design source directory contains 129 artboards including theme/state variants and reference boards. Source/canvas equality does not establish visual fidelity; the complete desktop matrix stays open, with mobile checks only for the landing page. Azure Container Apps, Vercel, and both Neon projects have recorded provisioning and deployment work. Cost controls, backups, live observability, media, and production acceptance still require validation.
+
 ## Reviewed library and lobby findings: 2026-10-09
 
 C01 through C06 and M05 are resolved by the approved library and lobby requirements. Later approved requirements supersede older mockups. Library and Explore filters, member popups, import inside Add song, separate lobby playlist selection, and fixed-DJ selection remain intended behavior. Dark and light design sources and the published canvas include the added states.
 
 New playlists retain creation timestamps; legacy dates remain unavailable. Official YouTube durations travel through the metadata pipeline and API, become due after 29 days, and refresh automatically every six hours through batched video lookups. The lobby exposes confirmed admin transfer and refreshes permissions after success. Desktop checks cover both themes. Only the landing page has mobile design scope.
 
-Account pages, legal UI, account correction/deletion/export controls, and disclosure updates remain deferred and tracked in TASKS.md. The findings below retain the original audit evidence and stable IDs; the other conflicts still need their separate implementation or documentation changes.
+Account pages, legal UI, account correction/deletion/export controls, and disclosure updates remain deferred and tracked in TASKS.md. The findings below retain the original audit evidence and stable IDs; current outcomes are listed in the resolution table above.
 
 ## Reviewed metadata and import findings: 2026-10-09
 
@@ -14,7 +36,7 @@ C12, C13, C14, C15, D06, D07, and D12 are resolved by the approved metadata cont
 
 M08's Topic-upload search/upgrade requirement and C19's genre-enrichment requirement are dropped. Their compatibility fields are not evidence of implemented enrichment. Raw-evidence storage, source-match safety tuning, and gather timeouts remain outside this change. Earlier tables retain the original finding evidence.
 
-New follow-up N01: pgvector similarity searches only verified songs with stored embeddings. `store_verified_song_embedding` exists but has no production caller connecting catalog persistence to indexing. Returned matches now reuse the existing entity; embedding population for new verified songs remains explicit work in TASKS.md.
+N01 is implemented and merged in PR #274. Its queue covers new verified songs, upgrades, metadata changes, and missing-embedding backfill; retries and stale-result checks have unit and database tests.
 
 ## Reviewed difficulty history: 2026-10-09
 
@@ -24,7 +46,7 @@ C16 is resolved by the approved core-history and analytics-research boundary. Co
 
 C11, C17, C18, D01, D02, D03, D04, D05, D08, and D10 are reconciled against the current editing permissions, email behavior, group scope, controller routes, export modes, removal enforcement, and invite-code generation. The original tables retain historical evidence. Deferred legal copy and account pages remain separate work.
 
-## Scope and evidence
+## Original scope and evidence
 
 This report compares the current checkout's active documentation, design source files, published design canvas, frontend, Spring core, AI service, and Flutter app. Findings describe the source as it stands on 2026-10-05. They do not choose between conflicting requirements and do not change product behavior, existing status rows, or historical decisions.
 
@@ -40,7 +62,7 @@ Links point to repository files. Section names and function names identify the r
 
 ## Archive candidates
 
-Review status: A01 through A10 are approved. The archive cleanup separates completed records from unfinished requirements and tests, and records six implementation-backed release-playtest completions. The findings below remain the original audit snapshot. Design conflicts, implementation gaps, and other stale claims still await review.
+Review status: A01 through A10 are approved. The archive cleanup separates completed records from unfinished requirements and tests, and records six implementation-backed release-playtest completions. The findings below remain the original audit snapshot. Current resolutions are listed above.
 
 | ID | Material retained in active files | Why it remains and what can be archived |
 | --- | --- | --- |
@@ -142,7 +164,7 @@ M01 through M09 should not be automatically converted into new feature tasks unt
 | S20 | PROJECT_STATE Open questions says neither aggregate baseline nor Guess entity exists until story 10 | AggregateBaselinePredictor, Guess, GameSession, and Round exist. The remaining issue is durable historical data and model quality, C16, rather than absent entities. |
 | S21 | TASKS Story 35 still requires a final YouTube-terms read; PROJECT_STATE Resolved questions says that direct read occurred and the API is clear to ship as designed | The docs already record the read and conclusion. Reconcile whether the unchecked box means that completed read or a new pre-release recheck. This audit does not revalidate external terms or certify compliance. |
 
-## Valid remaining work
+## Original remaining-work snapshot
 
 The following incomplete statuses have support in the inspected source or explicitly require evidence beyond it:
 
@@ -158,7 +180,7 @@ The following incomplete statuses have support in the inspected source or explic
 
 The active LAN manual-playtest box needs its original scope reconciled against the multiple archived playtests. Existing reports show playtests occurred, but do not by themselves prove that the exact final full-game-plus-voice acceptance run passed.
 
-## Review order
+## Original review order
 
 1. Choose authority for C01 through C07: frontend guide, later owner requirements, and current mockups. This determines what a meaningful visual-verification pass should compare.
 2. Resolve C08 through C19 and M01 through M11 individually. Record whether each requires docs correction, a code task, a mockup update, or a clarified scope. C13, C15, and C16 affect substantive backend/AI behavior, not wording alone.
