@@ -80,6 +80,13 @@ Tests:
 - [ ] Unit test for the gather-level per-source timeout: deferred with that task above
 - [ ] Integration test: concurrent structured-source gathering preserves immediate-work priority over the patient backlog
 
+## Deferred: Curated metadata evidence
+
+The metadataRaw compatibility column is unused. Evidence storage requires a defined story before feature work; full external payloads are not an approved storage contract.
+
+- [ ] Define curated evidence fields, source provenance, external-data retention/refresh behavior, and a story/task breakdown against the real pipeline
+- [ ] Define persistence, access, and retention tests alongside the approved evidence-storage scope
+
 ## Chore: Flutter DJ-model compliance
 
 Flutter remains deprioritized. The inspected mobile client embeds youtube_player_iframe; the non-negotiable real YouTube app/site playback rule still applies.
