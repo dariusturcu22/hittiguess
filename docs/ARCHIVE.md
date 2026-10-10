@@ -1979,3 +1979,266 @@ Desktop browser coverage uses API fixtures in both themes. Core PostgreSQL integ
 - [x] Correct song-edit status and shared-playlist permissions, group removal and invite rules, and group-scoped chat/voice wording
 - [x] Add implemented API routes, export modes and paper sizes, and correct local email setup
 - [x] Validate changed claims against code, check documentation links, and archive completed tasks
+
+## Chore: Flutter DJ-model compliance completed records, October reconciliation
+
+These tasks record completed work. Later approved requirements supersede older layouts; remaining requirements and acceptance checks stay in TASKS.md.
+
+- [x] Check the current Flutter code for any embedded or hidden YouTube playback (an in-app WebView or player widget); not yet confirmed against the real Flutter codebase (done: `mobile/lib/main.dart` embeds `youtube_player_iframe`, so the item below applies)
+
+## Story 38: Observability completed records, October reconciliation
+
+These tasks record completed work. Later approved requirements supersede older layouts; remaining requirements and acceptance checks stay in TASKS.md.
+
+- [x] Add Spring Boot Actuator to the core service for health/metrics endpoints, expose `/actuator/prometheus`
+- [x] Add an equivalent health endpoint to the AI microservice (FastAPI has none today), expose metrics via `prometheus-fastapi-instrumentator`
+- [x] Set up a Grafana Cloud free-tier account, point both services' Prometheus metrics at it .  a Grafana Alloy container (`observability/alloy/config.alloy`, wired into `backend/docker-compose.yml`) scrapes both services' local endpoints (`/actuator/prometheus`, `/metrics`) via `host.docker.internal` and remote-writes to Grafana Cloud's hosted Prometheus, since neither service runs as its own container for Alloy to scrape directly
+- [x] Add OpenTelemetry auto-instrumentation to both services for distributed tracing, viewable in Grafana Cloud's Tempo .  a real trace, sent with `OTEL_SDK_DISABLED=false` and a real Grafana Cloud OTLP endpoint, was confirmed to land in Tempo. The AI microservice's exporter had a real bug fixed here: passing `endpoint` directly to `OTLPSpanExporter` skips the SDK's own per-signal path resolution, so every export 404'd silently until the `/v1/traces` suffix was added explicitly; confirmed via a direct HTTP check against Grafana Cloud's gateway before and after the fix
+- [x] Ship both services' structured logs to Grafana Cloud's Loki .  logs ship through the same unified OTLP gateway as traces instead of a separate Loki-specific push path: the backend gets a second Logback appender (`OpenTelemetryAppender`), the AI microservice gets an OTLP `LoggingHandler` attached to the `app` logger specifically, not the root logger, since attaching to root captures the exporter's own HTTP transport logs and re-exports them, an unbounded feedback loop confirmed by reproducing it before fixing it. A real log record was confirmed to land in Grafana Cloud (`204` from the OTLP gateway) after the fix
+- [x] Add error tracking (Sentry, free tier) to both services .  SDK wiring is in place in both services (`sentry-spring-boot-4`, `sentry-sdk`); real Sentry projects now exist for both services and real DSNs are configured
+- [x] Add a request-id/correlation-id filter so one user action can be traced across both services' logs, and correlates with the OpenTelemetry trace for the same request
+- [x] Build a basic Grafana dashboard: request rate, error rate, latency percentiles for both services .  written as dashboard-as-code at `observability/grafana/hittiguess-overview-dashboard.json`, not provisioned into a live Grafana instance since no account exists yet
+- [x] Surface the AI microservice's per-source fetch failures and OpenAI call failures as visible alerts, rather than only the generic swallowed `status="ERROR"` response .  each metadata source and the OpenAI synthesis call now logs a structured error and calls the Sentry SDK's capture path distinctly, instead of disappearing into the pipeline's generic error response
+- [x] Add a periodic check against Grafana Cloud's and Sentry's free-tier usage limits, so approaching them is noticed before either starts silently dropping data or asking for payment (a daily scheduled check reads Sentry accepted errors and Grafana active series against configurable quotas and warns at 80%; each half stays silent until its credentials exist; log and trace gigabyte billing has no stable code endpoint and stays a console billing alert)
+- [x] Integration test: Actuator health endpoint reports correctly both when healthy and when a dependency (the database) is down
+- [x] Integration test: a request-id set on an incoming request propagates through a core-service-to-AI-service call, appears in both services' logs, and correlates with a single OpenTelemetry trace .  the backend side (filter, MDC, span attribute, RestClient interceptor) is proven against the real production code path; the AI microservice side (reusing an incoming id, echoing it, logging it) is proven independently in its own suite. This sandbox's JDK cannot open real loopback sockets between processes (the same limitation `BackendApplicationTests` is excluded for), so a literal cross-process HTTP call between the two real running services could not be executed here; `MockRestServiceServer` stands in for the AI service's HTTP boundary while exercising every other real component.
+
+## Story 28: UI redesign completed records, October reconciliation
+
+These tasks record completed work. Later approved requirements supersede older layouts; remaining requirements and acceptance checks stay in TASKS.md.
+
+- [x] Design phase: establish the fresh visual direction (color, type, spacing, component style) and apply it across every existing page: landing, login, register, forgot-password, dashboard/playlist list, playlist detail, song detail, add song, join-by-invite. See `docs/design/hittiguess-design.html`
+- [x] Design phase: extend the same visual system to the gameplay screens `GAME_DESIGN.md` specs but that don't exist as code yet: group lobby (member list, admin crown, join code/link, settings), game session/timeline (drag-and-drop cards, guess box, token count, betting window), DJ view (open-in-YouTube link-out), voice sidebar, text chat overlay, turn notification banner, the minimized "playing while away" widget state, and the results/leaderboard screen. See `docs/design/hittiguess-design.html`
+- [x] Review pass against every mockup with the project owner before implementation starts, checking each gameplay screen against `GAME_DESIGN.md`'s spec for anything the design missed
+- [x] Implementation: rebuild the existing pages' actual layouts to match their mockups across Batches A through D, not just their color/font tokens. The remaining route smoke and rendered comparison checks are listed below. See `docs/FRONTEND_IMPLEMENTATION_GUIDE.md` for the required per-page workflow and verification step
+- [x] Implementation: build the new gameplay screens as real Next.js components/routes and wire them to stories 9/10/11/12/13/39's actual backends. Representative-state and rendered verification remain open
+- [x] Component/token boundary: no longer retheme-only where a mockup's layout differs from the existing page's layout; `docs/FRONTEND_IMPLEMENTATION_GUIDE.md` supersedes the retheme-only rule for those pages. shadcn primitives (`components/shadcn/*`) are still used wherever they're the natural fit for a control (button, input, dialog, table), never replaced with hand-built markup for a form control or anything interactive; but a page's overall layout is rebuilt to match its mockup rather than kept as-is (decided in `DECISIONS.md`: Batch F keeps the primitives, layout is rebuilt per mockup)
+- [x] Build the group lobby route and shell from the `GroupLobby*` mockups, including member presence, admin indicators, join link, group settings, and the empty, two-player, and eight-player layouts
+- [x] Wire the group lobby to the generated group-management hooks and persistent group WebSocket events, with loading, forbidden, missing, and connection-error states
+- [x] Bridge the browser's HTTP-only access-token cookie into the STOMP authentication flow, so the gameplay client can connect without exposing the token to JavaScript
+- [x] Build the game-session route and shared round shell from the `GameSession*` mockups, including player, DJ, and spectator layouts, current-song card, timeline, token count, and persistent session connection
+- [x] Implement timeline card placement and guess submission against the game-session API, including dragging, dropped, locked, and animated reveal states
+- [x] Implement betting-window preparation and active states, including token-holder variants and round progression from session broadcasts
+- [x] Build the DJ link-out action and audio-sharing warning, always opening the real YouTube page or app rather than embedding playback
+- [x] Add the group text-chat overlay, turn notification, away widget, and voice sidebar to the gameplay shell, wired to the group-chat, WebSocket signaling, and TURN-credentials APIs
+- [x] Build the results and leaderboard route from the `Results*` mockups for two-player and eight-player sessions, including the session export action
+- [x] Add unit coverage for each new interactive component and Playwright coverage for lobby join, session start, placement, betting, link-out warning, chat, and results export
+- [x] Frontend test: each redesigned existing page renders without regression (a smoke test per route) (every one of the 24 routes has colocated tests, verified by audit)
+- [x] Frontend test: the new gameplay screens render correctly against representative mock state (empty, mid-game, varying player counts) (session tests cover active-player, DJ, spectator, and pre-round states plus guess submission)
+- [x] Frontend test: the drag-and-drop timeline placement and the guess box's animated feedback behave per `GAME_DESIGN.md`'s Interaction and animation section (keyboard placement, placement feedback, feedback clearing, and guess submission are covered)
+- [x] Accessibility check: color contrast and keyboard navigation for the new visual direction, specifically the semi-transparent chat overlay and the voice sidebar (chat focus and Escape handling plus sidebar labeled controls and toggle states are covered, contrast audited under Batch F)
+- [x] Rebuild the shared app shell states from `AppShellDark`: active session, profile panel with statistics, and voice participant rail
+- [x] Match the landing desktop and mobile structure, CTA copy, card fan, feature sections, final CTA, and footer
+- [x] Match login and register control placement, card sizing, spacing, and Google button treatment
+- [x] Add a deterministic capture state for the transient OAuth2 redirect screen
+- [x] Match Your Playlists grid placement and remove the extra top-level join action
+- [x] Match Playlist Detail's permanent member panel, header proportions, toolbar, banner, and song rows
+- [x] Match Edit Playlist's description, cover edit affordance, explicit save and cancel actions, invite copy action, delete panel, and member metadata
+- [x] Match Join by Invite's playlist summary, cover, member avatars, and join identity controls
+- [x] Match verified, needs-review, and editable song detail card dimensions, actions, cover treatment, and footer structure
+- [x] Match Add Song result density and selected-song panel, with deterministic editable and locked review states
+- [x] Match Explore Public Playlists card mosaics and populated grid
+- [x] Match the YouTube import link step and implement the processing list, progress bar, temporary sidebar progress icon, and progress toast states
+- [x] Preserve the matching choose-source and existing-playlist import layouts while adding designed loading, empty, and error states (both steps render loading, retryable error, and empty states, covered by import page tests)
+- [x] Expose and render the catalog backlog's per-item queue required by `AdminCatalogBacklogDark`
+- [x] Match the report queue's artist metadata, convergence count, tier badges, and designed loading, empty, and error states
+- [x] Frontend tests cover every new or changed interactive state in this remediation (colocated tests per route carry the states; the full suite passes)
+- [x] Route smoke tests cover every Batch A through D route (every one of the 24 routes has colocated tests, verified by audit)
+
+## Story 47: Product ground-truth pass completed records, October reconciliation
+
+These tasks record completed work. Later approved requirements supersede older layouts; remaining requirements and acceptance checks stay in TASKS.md.
+
+- [x] Add an All filter beside Owned, Joined, and Saved
+- [x] Give each tab its own end tile: Owned keeps New playlist, Joined gets Join playlist, Saved gets Explore public playlists
+- [x] Add a Join playlist button beside Create playlist
+- [x] Add All, Saved, and Not saved filters
+- [x] Make each playlist card open its playlist detail; the Save/Saved action stays on the card
+- [x] Enforce the six predetermined title colors everywhere a color is set, no other values
+- [x] Build the four-tile mosaic cover: squared YouTube thumbnails with no black bars, placeholders filling empty tiles, thumbnails filling in progressively as songs are added
+- [x] Show member circles only, opening a centered full member list popup on click
+- [x] Show the ghost empty state with no songs, no in-list search box, and no redundant call to action
+- [x] Scope the song search to songs inside the playlist
+- [x] Start session opens gameplay with that playlist already selected
+- [x] Confirm before leaving a playlist
+- [x] Add the export options UI (content choice, paper size, download or print; duplex not built)
+- [x] Offer invite by code and invite by link, each copying a ready message; invite URLs respect localhost versus production
+- [x] Implement cover change, title, title color, description, public toggle, and invite-link copy
+- [x] Confirm delete works behind its warning, and the members tab grants, kick, and ban all work
+- [x] Decide the pixel-art cover rule (upload pixelized for direct database storage, same rule for profile pictures); pixelize and store won
+- [x] Audit every clickable control for the pointer hand cursor
+- [x] Link songs from an existing playlist instantly
+- [x] Run YouTube imports in the background with a sidebar progress indicator, hover progress, greyed pending songs in the detail view, and a return path to the live progress screen
+- [x] Show catalog recommendations by default with fetch-more, and keep the add-tray contents across navigation until committed
+- [x] Show continuous staged progress on single-song fetch: submitted title and channel plus the sources being consulted
+- [x] Animate lobby members floating per the design; keep Start game, Chat, and Settings
+- [x] Keep the voice sidebar at 76px with no collapse control, visible on the lobby or during an active call
+- [x] Order voice participants top to bottom, with the join control at the top when outside the call
+- [x] Add the voice settings popup: speaker and microphone selection plus a test control (shipped without a prior design)
+- [x] Narrow lobby settings to DJ mode (with a player picker for a fixed DJ) and cards to win; move playlist choice to a multi-select popup that merges duplicates into a temporary playlist
+- [x] Close lobby popups on outside click
+- [x] Block starting alone with an explanatory message (two players minimum)
+- [x] Confirm before leaving the lobby; drop the stray Live label
+- [x] Fix away-status reliability
+- [x] Show the first-time countdown only, enforce DJ, turn, guessing, token, betting, skip, and leaderboard rules per `GAME_DESIGN.md`
+- [x] Animate the unrevealed card as an audio-reactive visualizer
+- [x] Offer results download options (PDF print, copy as text, CSV download; shipped without a prior design)
+- [x] Verify admin pages update live with processing state
+- [x] Confirm each cluster above against the real code before building it (the gate to Ready)
+- [x] Playwright multi-user coverage for join, lobby, full rounds, results, and the import background flow
+
+## Story 7: Beta hosting on Azure Container Apps completed records, October reconciliation
+
+These tasks record completed work. Later approved requirements supersede older layouts; remaining requirements and acceptance checks stay in TASKS.md.
+
+- [x] Create the Azure subscription, the `hittiguess-rg` resource group in Germany West Central with tags, and the Consumption-only `hittiguess-env` Container Apps environment with no VNet, private endpoint, dedicated workload profile, Azure Database, or Container Registry
+- [x] Create the `hittiguess-monthly` subscription budget of $20 with email alerts at $5, $10, $12, and $20 actual spend and at $20 forecast spend
+- [x] Build the Spring core production image: multi-stage Dockerfile with a cached dependency layer, a non-root user, and container-aware heap sizing; `application-prod.properties` enables graceful shutdown and health probes, and `/actuator/health/**` is public for platform probes
+- [x] Create the FastAPI AI service container definition (`ai/Dockerfile`)
+- [x] Serve the core API from `api.hittiguess.com` with a managed certificate and set the auth cookies' `Domain` to `hittiguess.com`, so the frontend's `proxy.ts` can read the `session_hint` cookie the backend sets
+- [x] Configure the Spring core Container App with external HTTPS and WebSocket ingress, `minReplicas: 0`, `maxReplicas: 1`, and single active revision routing; WebSocket traffic is not yet exercised against it
+- [x] Configure the FastAPI Container App with internal-only ingress, `minReplicas: 0`, `maxReplicas: 1`, and the core app's internal service-discovery URL
+- [x] Build commit-SHA-tagged backend images in GitHub Actions, publish them to GitHub Container Registry, and deploy them through Azure OpenID Connect federation without a long-lived Azure credential
+- [x] Configure Container Apps secrets for the database connections, authentication, OAuth, email, YouTube, OpenAI, DeepInfra, and Discogs values; none entered a repository file, image layer, or workflow log
+- [x] Configure production Spring settings: `APP_ENV=prod`, frontend URL and allowed origins, secure cookies, the cookie domain, and the internal AI-service URL
+- [x] Configure `NEXT_PUBLIC_API_URL` in Vercel with `https://api.hittiguess.com`; the Content-Security-Policy on the deployed frontend allows `https` and `wss` for that origin
+- [x] Core image smoke test: `scripts/smoke-test-core-image.sh` builds the image, starts it with production settings against throwaway Postgres containers, and checks the Flyway migrations, the vector extension, the non-root user, and the three health probes
+
+## Story 8: Production Neon database provisioning completed records, October reconciliation
+
+These tasks record completed work. Later approved requirements supersede older layouts; remaining requirements and acceptance checks stay in TASKS.md.
+
+- [x] Create the `hittiguess-core` Neon project in an EU region with the `vector` extension enabled
+- [x] Create the `hittiguess-analytics` Neon project in the same region
+- [x] Set production database credentials and TLS connection URLs as Container Apps secrets for the Spring core and AI service, with the AI service limited to the transactional database
+
+## Closed-beta frontend showcase completed records, October reconciliation
+
+These tasks record completed work. Later approved requirements supersede older layouts; remaining requirements and acceptance checks stay in TASKS.md.
+
+- [x] Add the flag, the access-code check, and the signed `beta_access` cookie (`lib/beta-access.ts`, `app/api/beta-access/route.ts`)
+- [x] Redirect every route except `/`, `/closed-beta`, and the access-code endpoint to `/closed-beta` for visitors without the cookie (`proxy.ts`)
+- [x] Skip the landing page's current-user request for visitors without access
+- [x] Add the closed-beta screen with the legacy app link, a back-to-home link, and the access-code field
+- [x] Unit tests for the proxy redirect rules, cookie validation, and flag-off behavior (`proxy.closed-beta.test.ts`)
+
+## AI service production image completed records, October reconciliation
+
+These tasks record completed work. Later approved requirements supersede older layouts; remaining requirements and acceptance checks stay in TASKS.md.
+
+- [x] Add `ai/Dockerfile`: a build stage that installs the locked dependencies with uv, and a slim runtime stage that runs as a non-root user and serves on port 8000, plus `ai/.dockerignore`
+- [x] Enable TLS in `app/dedup/database.py` when `DATABASE_URL` carries `sslmode=require`, `verify-ca`, or `verify-full`
+- [x] Unit tests for the connection parameters: no TLS for a plain URL or `disable`, `allow`, and `prefer`; TLS for `require`, `verify-ca`, and `verify-full`
+- [x] AI image smoke test: `scripts/smoke-test-ai-image.sh` builds the image, starts it against a throwaway pgvector Postgres, and checks `/health`, the internal-key protection on `/metrics`, the non-root user, and the database connection
+
+## Auth cookie domain for production completed records, October reconciliation
+
+These tasks record completed work. Later approved requirements supersede older layouts; remaining requirements and acceptance checks stay in TASKS.md.
+
+- [x] Add `app.cookie-domain` (from `COOKIE_DOMAIN`) and apply it to every cookie `CookieUtil` creates, including deletions so a browser removes the same cookie
+- [x] Create the core API's custom domain `api.hittiguess.com` on the Azure Container App and set `COOKIE_DOMAIN=hittiguess.com` in its production configuration
+- [x] Add the API subdomain to the frontend's `NEXT_PUBLIC_API_URL` in Vercel and to the Content-Security-Policy through that variable
+- [x] Give the `XSRF-TOKEN` CSRF cookie the shared parent domain when `COOKIE_DOMAIN` is set; the frontend reads it from `document.cookie` to send the `X-XSRF-TOKEN` header, and a host-only cookie on the API subdomain is hidden from it, so every state-changing request such as logout failed with 403
+- [x] Unit tests for `CookieUtil`: host-only without a domain, the configured domain on all three auth cookies, deletion using the same domain, and the other cookie attributes unchanged
+- [x] Unit tests for the CSRF cookie: host-only without a domain, the shared parent domain and a script-readable cookie with one
+
+## Backend deploy workflow completed records, October reconciliation
+
+These tasks record completed work. Later approved requirements supersede older layouts; remaining requirements and acceptance checks stay in TASKS.md.
+
+- [x] Add the workflow with the smoke-test, publish, and deploy jobs; the deploy job uses OpenID Connect through `azure/login` and the `production` environment, with no stored Azure credential
+- [x] Create the `hittiguess-github-deploy` Azure app registration with a federated credential for the `production` environment and the Contributor role on `hittiguess-rg`, and set the `AZURE_CLIENT_ID`, `AZURE_TENANT_ID`, and `AZURE_SUBSCRIPTION_ID` repository variables; the credential subject uses GitHub's immutable form with the owner and repository IDs (`repo:dariusturcu22@39344694/hittiguess@1156579634:environment:production`), which the repository's OIDC settings require
+- [x] Make the two published GHCR packages public so Container Apps can pull them without a registry credential
+- [x] Create the `hittiguess-core` and `hittiguess-ai` Container Apps, which the deploy job updates but does not create
+- [x] The workflow passes `actionlint`
+- [x] First end-to-end run: smoke tests pass, both images appear in GHCR, and the deploy job moves each Container App to the new SHA
+
+## Container Apps creation completed records, October reconciliation
+
+These tasks record completed work. Later approved requirements supersede older layouts; remaining requirements and acceptance checks stay in TASKS.md.
+
+- [x] Add the creation script with Neon connection-string parsing that rejects pooled hosts, and secret-safe character validation
+- [x] Create the Google OAuth client for the hittiguess account, a new YouTube Data API key, and a Resend API key, stored as Container Apps secrets
+- [x] Run the script, then confirm `/actuator/health/readiness` on the core app answers 200
+- [x] Add `api.hittiguess.com` to the core app with a managed certificate and set `NEXT_PUBLIC_API_URL` in Vercel
+- [x] Set the `AZURE_CLIENT_ID`, `AZURE_TENANT_ID`, and `AZURE_SUBSCRIPTION_ID` repository variables once both apps exist
+- [x] The script parses, and its connection-string and secret helpers are checked against valid, pooled, malformed, and unsafe inputs
+
+## Catalog seeding concurrency completed records, October reconciliation
+
+These tasks record completed work. Later approved requirements supersede older layouts; remaining requirements and acceptance checks stay in TASKS.md.
+
+- [x] Serialize saves of one YouTube ID and enqueue calls with a Postgres advisory lock held to the end of the transaction (`SongRepository.acquireTransactionLock`, used by `SongResolutionService` and `CatalogSeedingService`), which also holds across replicas
+- [x] Integration test: a song is visible in the database while the next item of the same backlog is still being resolved
+- [x] Integration test: six simultaneous resolutions of one video leave one song row
+- [x] Integration test: six overlapping enqueues of the same videos queue each video once
+
+## Core startup time completed records, October reconciliation
+
+These tasks record completed work. Later approved requirements supersede older layouts; remaining requirements and acceptance checks stay in TASKS.md.
+
+- [x] Limit the core image's JIT to the fast compiler through `JAVA_TOOL_OPTIONS` in `backend/Dockerfile`
+
+## Secrets in AI service logs completed records, October reconciliation
+
+These tasks record completed work. Later approved requirements supersede older layouts; remaining requirements and acceptance checks stay in TASKS.md.
+
+- [x] Redact the values of credential-bearing query parameters (`key`, `api_key`, `apikey`, `token`, `access_token`, `client_secret`, `consumer_secret`, `password`) in every log message and exception text before it reaches stdout, and in records shipped over OTLP (`app/observability/logging_config.py`)
+- [x] Unit tests for the redaction: one parameter, every known parameter name, lookalike parameters left alone, the JSON formatter's message and exception text, and the filter on a record with format arguments
+
+## Production validation completed tests, October reconciliation
+
+- [x] AI service image smoke test: the Dockerfile and scripts/smoke-test-ai-image.sh exist; the first successful deployment record includes both image smoke tests
+- [x] Fresh-database integration tests: BackendApplicationTests and HistoryResearchIntegrationTest provision both complete migration histories independently, including pgvector
+
+## Story 35: Public ground-truth data API
+
+The verified-triples endpoint and its tests are implemented. The direct YouTube-terms read and recorded conclusion already exist in ARCHIVE.md's resolved project-state questions. This closes the duplicate read task; it does not constitute a new legal review.
+
+- [x] Add a public read-only endpoint exposing verified `(artist, title, release_year)` triples only, no YouTube-sourced fields (built as `GET /api/ground-truth/songs`, joint MAIN-artist display string plus title plus locked year)
+- [x] Filter to verified songs only, depends on story 23's `verificationStatus` field existing (the query filters on `VERIFIED`; covered by service and data integration tests)
+- [x] Add pagination and rate limiting for public consumption (coordinate with story 27) (Spring page parameters with an explicit envelope, plus the general 60-per-minute anonymous bucket, covered by page-boundary and rate-limit tests)
+- [x] Final confirmation read of YouTube terms, recorded in ARCHIVE.md's resolved project-state questions
+
+Tests:
+- [x] Integration test: the endpoint returns only verified songs, unverified songs never appear
+- [x] Integration test: no YouTube-sourced field (`youtubeId` or anything derived from it) appears in the response shape
+- [x] Unit tests for pagination and the rate limit, including boundary values
+
+## Story 50: Auth hardening
+
+The backend authentication slice is built: `User` carries email-verification and two-factor fields, `AuthController` exposes verification, password-reset, and two-factor endpoints, and `EmailService` sends through Resend. The forgot-password request and confirmation pages are wired to their generated hooks. The two-factor setup and second-login-step screens remain open. Gates Beta, not Local.
+
+Email provider: Resend, chosen for its free tier (3,000 emails/month) and simple REST API, matching this project's existing pattern of picking the smallest free-tier service that does the job (Grafana Cloud, Sentry). A production Resend key is recorded as configured; sender-domain verification remains in the Container Apps tasks.
+
+Two-factor authentication: TOTP (an authenticator app, e.g. Google Authenticator or Authy generating a 6-digit code from a shared secret), not SMS. No third-party SMS provider, no per-message cost, and it's the standard low-cost second factor for a project at this scale.
+
+- [x] Add the Resend Java SDK (or a plain `RestClient` call to its REST API, whichever this project's existing HTTP-client conventions favor once checked against `AiServiceConfig`'s pattern) and an `EmailService` wrapping it; document `RESEND_API_KEY` in `backend/.env.example`
+- [x] Add `emailVerified` (boolean, default false) to `User`; a Google OAuth2 signup sets it `true` immediately, since Google has already verified that email, only a local username/password signup starts unverified
+- [x] Add an `EmailVerificationToken` entity (user, token, expiresAt), issued on registration and re-sendable; `POST /auth/register` sends a verification email with a link/token instead of (or alongside) completing signup, and a new `POST /auth/verify-email` endpoint marks the account verified when a valid, unexpired token is submitted
+- [x] Decide and enforce what an unverified account can and can't do: block login entirely until verified (the simpler rule, avoids gating every downstream endpoint individually) versus allowing login but restricting real actions; document whichever is chosen in `DECISIONS.md`
+- [x] Add a resend-verification-email endpoint, rate-limited the same way other auth endpoints are (see story 27, `RateLimitingFilter`'s existing `/auth/*` bucket)
+- [x] Add a `PasswordResetToken` entity (user, token, expiresAt, used), `POST /auth/password-reset/request` (accepts an email, always returns success regardless of whether the email exists, to avoid leaking which emails are registered, and emails a reset link/token only if it does), and `POST /auth/password-reset/confirm` (token plus new password, single-use, expires after a short window)
+- [x] Wire the frontend forgot-password request and confirmation pages to the generated request/confirm hooks (`frontend/app/(auth)/forgot-password`, `frontend/app/(auth)/reset-password`)
+- [x] Add `totpSecret` (nullable, encrypted at rest or at minimum never returned by any DTO once set) and `twoFactorEnabled` (boolean, default false) to `User`
+- [x] Add `POST /auth/2fa/setup` (admin/self, authenticated): generates a TOTP secret and a provisioning URI/QR code, not yet enabled until confirmed
+- [x] Add `POST /auth/2fa/confirm`: the user submits one valid code generated from the new secret to prove they've actually added it to an authenticator app before `twoFactorEnabled` flips true
+- [x] Add backup/recovery codes: a set of one-time-use codes generated alongside 2FA setup, shown once, each usable exactly once in place of a TOTP code if the authenticator app is unavailable
+- [x] Add `POST /auth/2fa/disable` (requires the current password or a valid code, not just being logged in, to prevent a hijacked session from silently turning it off)
+- [x] Change the login flow for a `twoFactorEnabled` account: `POST /auth/login` with a correct password but 2FA enabled returns a short-lived, narrowly-scoped intermediate token (not a real access/refresh pair) instead of completing login; a new `POST /auth/2fa/verify` endpoint accepts that intermediate token plus a TOTP or backup code and only then issues the real access/refresh cookies
+The remaining two-factor frontend requirements and explicit tests are transferred to story 28. The completed backend slice does not complete those screens.
+
+Tests:
+- [x] Unit tests for `EmailService` (mocked HTTP call to Resend, not a real send in any test)
+- [x] Unit and integration tests for the email-verification flow: an unverified account can't log in (or is restricted, per whichever rule was chosen), a valid token verifies the account, an expired or already-used token is rejected, a resend request is rate-limited
+- [x] Unit and integration tests for password reset: a request for a nonexistent email still returns success and sends no real error signal, a valid token resets the password and is then rejected on reuse, an expired token is rejected
+- [x] Unit tests for TOTP setup/confirm/disable: an unconfirmed secret doesn't enable 2FA, a wrong code during confirm doesn't enable it either, disable requires the extra proof and a bare authenticated request alone is rejected
+- [x] Integration test for the two-step login flow: a 2FA-enabled account's login with just a password doesn't issue real tokens, a correct second-factor code completes it, a wrong or reused backup code is rejected
+- [x] Unit test confirming no DTO or API response ever includes `totpSecret` or an unused backup code in plain form after initial generation
+- [x] Wire the frontend's existing forgot-password form to the new request/confirm endpoints (already wired: the request page calls `useRequestPasswordReset`, the confirm page calls `useConfirmPasswordReset` with a mismatch guard, both covered by colocated tests)
+
+## Docs: Remaining audit reconciliation
+
+- [x] Recheck unresolved audit findings against merged code and reviewed source-of-truth decisions
+- [x] Archive completed clusters while retaining missing features and uncompleted acceptance checks
+- [x] Validate remaining claims, documentation links, and task references
