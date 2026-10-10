@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useTheme } from "next-themes";
 import { useQueryClient } from "@tanstack/react-query";
-import { Moon, Sun } from "lucide-react";
+import { History, Moon, Sun } from "lucide-react";
 
 import { LogoBars } from "@/components/logo";
 import { NavUser } from "@/components/nav-user";
@@ -252,6 +252,10 @@ export function AppSidebar() {
       </div>
 
       <div className={RAIL_DIVIDER_CLASSES} />
+
+      <Link href="/history" title="Game history" className={`${RAIL_ICON_BASE_CLASSES} ${pathname.startsWith("/history") ? RAIL_ICON_ACTIVE_CLASSES : RAIL_ICON_INTERACTIVE_CLASSES}`}>
+        <History className="size-5" />
+      </Link>
 
       {activeGroup?.id ? (
         <Link

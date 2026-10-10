@@ -130,7 +130,7 @@ class PlaylistImportIntegrationTest {
                 SongRepository songRepository,
                 SavedPlaylistRepository savedPlaylistRepository) {
             return new UserService(userRepository, playlistRepository, userMapper, playlistMapper,
-                    playlistMembershipRepository, playlistBanRepository, songRepository, savedPlaylistRepository);
+                    playlistMembershipRepository, playlistBanRepository, songRepository, savedPlaylistRepository, org.mockito.Mockito.mock(org.springframework.context.ApplicationEventPublisher.class));
         }
     }
 

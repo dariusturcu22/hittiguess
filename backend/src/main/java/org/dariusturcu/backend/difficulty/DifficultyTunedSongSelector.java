@@ -30,6 +30,7 @@ import java.util.stream.Collectors;
 @Transactional(readOnly = true)
 public class DifficultyTunedSongSelector {
 
+    private final PreparedDifficultyService preparedDifficulty;
     private final SongRepository songRepository;
     private final RoundRepository roundRepository;
     private final SongDifficultyScorer songDifficultyScorer;
@@ -46,6 +47,10 @@ public class DifficultyTunedSongSelector {
     // country's coverage typically carries. Initial heuristic value, to be tuned once real
     // catalog data exists to check it against. See docs/DECISIONS.md.
     static final int INTERNATIONAL_SCOPE_MINIMUM_SITELINKS = 5;
+
+    public List<Song> selectPreparedInternational(DifficultyTier tier, int targetCount) {
+        return preparedDifficulty.select(tier, targetCount);
+    }
 
     public List<ScoredSong> selectForGroup(
             List<Long> playerIds,

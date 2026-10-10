@@ -23,13 +23,15 @@ const MEMBERS = [
 
 async function fixture(page: Page, theme: string) {
   let transferred = false;
+  let difficultyTier = "MEDIUM";
   await page.context().addCookies([{ name: "session_hint", value: "playlist-lobby-fixture", url: "http://localhost:3000" }]);
   await page.addInitScript((selectedTheme) => localStorage.setItem("theme", selectedTheme), theme);
   await page.emulateMedia({ reducedMotion: "reduce" });
   await page.route(API_PATTERN, async (route) => {
     const path = new URL(route.request().url()).pathname;
+    if (path.endsWith("/settings") && route.request().method() === "PATCH") difficultyTier = route.request().postDataJSON().difficultyTier ?? difficultyTier;
     const members = MEMBERS.map((member) => ({ ...member, isAdmin: transferred ? member.userId === MEMBER_USER_ID : member.isAdmin }));
-    const group = { id: GROUP_ID, joinCode: "ABCD", inviteCode: "group-invite", status: "OPEN", djMode: "ROTATING", winConditionCardCount: 5, members, playlists: [OWNED_PLAYLIST] };
+    const group = { id: GROUP_ID, joinCode: "ABCD", inviteCode: "group-invite", status: "OPEN", djMode: "ROTATING", winConditionCardCount: 5, difficultyTier, members, playlists: [OWNED_PLAYLIST] };
     let body: unknown = {};
     let status = 200;
     if (path.endsWith(`/members/${MEMBER_ID}/promote`)) { transferred = true; body = { ...group, members: members.map((member) => ({ ...member, isAdmin: member.userId === MEMBER_USER_ID })) }; }
@@ -37,7 +39,7 @@ async function fixture(page: Page, theme: string) {
     else if (path === "/api/users/me/playlists") body = PLAYLISTS;
     else if (path === "/api/users/me/saved-playlists") body = [SAVED_PLAYLIST];
     else if (path === "/api/groups/active") body = group;
-    else if (path === `/api/groups/${GROUP_ID}`) body = group;
+    else if (path === `/api/groups/${GROUP_ID}` || path.endsWith("/settings")) body = group;
     else if (path.endsWith("/session/generate")) body = [{ id: 31, title: "Sample track", artists: ["Sample artist"], releaseYear: 1999 }];
     else if (path === "/api/playlists/public") body = [{ ...OWNED_PLAYLIST, owner: { id: OWNER_USER_ID, username: "Alex" } }, SAVED_PLAYLIST];
     else if (path === `/api/playlists/${PLAYLIST_ID}`) body = { ...OWNED_PLAYLIST, ownerId: OWNER_USER_ID, inviteCode: "MIDNIGHT", createdAt: "2026-10-09T10:00:00Z", members: [{ userId: OWNER_USER_ID, username: "Alex", displayName: "Alex", owner: true }, { userId: MEMBER_USER_ID, username: "Sam", displayName: "Sam", owner: false }], songs: [
@@ -95,9 +97,8 @@ for (const theme of THEMES) {
       }
       await page.screenshot({ path: testInfo.outputPath("lobby-tiers.png"), animations: "disabled" });
       await page.getByRole("button", { name: "Confirm", exact: true }).click();
-      await expect(page.getByRole("button", { name: "Confirm and start", exact: true })).toBeVisible();
-      await expect(page.getByRole("region", { name: "Start options" }).getByText("Sample track Sample artist", { exact: true })).toBeVisible();
-      await page.screenshot({ path: testInfo.outputPath("lobby-generated.png"), animations: "disabled" });
+      await expect(page.getByText("Medium difficulty", { exact: true })).toBeVisible();
+      await page.getByRole("button", { name: "Choose playlists" }).click();
       await page.getByRole("button", { name: "Custom", exact: true }).click();
       await expect(page.getByRole("region", { name: "Custom playlist selection" })).toBeVisible();
       await page.screenshot({ path: testInfo.outputPath("lobby-custom.png"), animations: "disabled" });

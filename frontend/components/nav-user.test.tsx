@@ -4,6 +4,12 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { NavUser } from "./nav-user";
 
 const uploadAvatarMutate = vi.fn();
+const statistics = vi.hoisted(() => vi.fn());
+
+vi.mock("@/hooks/game-history", async (importOriginal) => ({
+  ...await importOriginal<typeof import("@/hooks/game-history")>(),
+  useHistoryStatistics: statistics,
+}));
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: vi.fn() }),
@@ -37,6 +43,7 @@ vi.mock("@/lib/pixelate", () => ({
 describe("NavUser avatar upload", () => {
   beforeEach(() => {
     uploadAvatarMutate.mockReset();
+    statistics.mockReturnValue({ data: { gamesPlayed: 12, wins: 5 } });
     vi.stubGlobal("URL", {
       createObjectURL: vi.fn(() => "blob:preview"),
       revokeObjectURL: vi.fn(),
@@ -45,10 +52,8 @@ describe("NavUser avatar upload", () => {
 
   function openMenu() {
     const trigger = screen.getByRole("button", { name: "A" });
-    fireEvent.pointerDown(trigger);
-    fireEvent.mouseDown(trigger);
-    fireEvent.mouseUp(trigger);
-    fireEvent.click(trigger);
+    trigger.focus();
+    fireEvent.keyDown(trigger, { key: "ArrowDown" });
   }
 
   it("uploads the pixelized file as the profile picture", async () => {
@@ -71,5 +76,20 @@ describe("NavUser avatar upload", () => {
     render(<NavUser />);
 
     expect(screen.getByRole("button", { name: "A" })).toBeVisible();
+  });
+
+  it("shows the account's actual games and wins", async () => {
+    render(<NavUser />);
+    openMenu();
+    expect(await screen.findByText("12")).toBeVisible();
+    expect(screen.getByText("42%")).toBeVisible();
+    expect(screen.getByText("5")).toBeVisible();
+  });
+
+  it("does not show zero statistics when their request fails", async () => {
+    statistics.mockReturnValue({ isError: true });
+    render(<NavUser />);
+    openMenu();
+    expect(await screen.findAllByText("Unavailable")).toHaveLength(3);
   });
 });

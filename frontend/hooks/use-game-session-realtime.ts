@@ -8,6 +8,7 @@ import { getGetActiveSessionForGroupQueryKey, getGetCurrentRoundLinkOutQueryKey,
 import { getGetActiveMembershipQueryKey, getGetGroupQueryKey } from "@/hooks/generated/group-management/group-management";
 import type { GameSessionDTO } from "@/hooks/models/gameSessionDTO";
 import type { RoundDTO } from "@/hooks/models/roundDTO";
+import { HISTORY_QUERY_KEY } from "@/hooks/game-history";
 
 const WEBSOCKET_PATH = "/ws";
 const SESSION_ROUND_TOPIC = "/topic/sessions";
@@ -154,6 +155,7 @@ export function useGameSessionRealtime(
             queryClient.removeQueries({ predicate: (query) => ACTIVE_SESSION_QUERY_PATTERN.test(String(query.queryKey.at(0) ?? "")) });
           }
           void queryClient.invalidateQueries({ queryKey: getGetActiveMembershipQueryKey() });
+          void queryClient.invalidateQueries({ queryKey: HISTORY_QUERY_KEY });
           onSessionEndedReference.current?.({ groupId });
         });
       },

@@ -104,3 +104,20 @@ None of these have a story in `PROJECT_STATE.md`. They remain ideas rather than 
 - Decade Challenge: songs only from a specific decade.
 - Underground Mode: only songs below a certain mainstream threshold.
 - Speed Round: shorter clip, faster guessing timer.
+
+
+## Group permissions and identifiers
+
+Chat and voice belong to the group and remain available between games. Each player has a personal timeline. The admin can remove another member while the group is open; removal prevents that account from rejoining the same group and closes its sockets after commit. Admin transfer is separate from removal. Group join codes have four uppercase letters; playlist invite codes have eight uppercase letters, with older stored formats possible.
+
+A skip-betting vote is available only to eligible bettors. The betting window closes early once every eligible bettor has bet or skipped; an arbitrary member cannot end it alone. Shared-song edits require an editable status, UNVERIFIED or MANUAL_ENTRY, and write access to every playlist containing that song.
+
+## Session recovery and retained history
+
+A connected active player has three minutes to lock a placement. An expired placement deadline skips that turn without marking the connected player as departed. The four-second countdown follows lock-in, betting lasts fifteen seconds, and the revealed card remains for six seconds before the next turn. Disconnected active players still use the separate ninety-second departure rule.
+
+An exhausted song queue ends the game with the current standings, even when nobody reached the target. Equal top card counts share the win. After a backend restart, active sessions retain their cards, tokens, and turn state. Players begin disconnected until their sockets return, and timers resume from stored deadlines. Ten minutes with no connected players abandons the session.
+
+Normal completion and abandonment save compact participant-only history before temporary session rows are removed. Interrupted games appear in history but never count as competitive wins. History survives group expiry and departure; later group members cannot read earlier games. The latest normal result per group also remains available for export and is replaced by that group's next normal completion.
+
+Difficulty Confirm saves Easy, Medium, or Hard only. Start selects a hidden pool of connected players multiplied by the target card count multiplied by three. Selection uses prepared global scores in core and requires VERIFIED songs with at least five Wikidata sitelinks. The pool is shuffled and is not added as a playlist. An insufficient tier pool produces an error. Custom uses the selected playlists or pasted playlist source.

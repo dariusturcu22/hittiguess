@@ -59,6 +59,8 @@ class UserServiceTest {
     private SongRepository songRepository;
     @Mock
     private SavedPlaylistRepository savedPlaylistRepository;
+    @Mock
+    private org.springframework.context.ApplicationEventPublisher eventPublisher;
 
     @InjectMocks
     private UserService userService;

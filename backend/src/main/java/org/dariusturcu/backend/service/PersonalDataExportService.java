@@ -29,6 +29,8 @@ public class PersonalDataExportService {
     private final PlaylistMembershipRepository playlistMembershipRepository;
     private final SongRepository songRepository;
     private final SongMapper songMapper;
+    private final org.dariusturcu.backend.history.GameHistoryService history;
+    private final org.dariusturcu.backend.research.SongResearchService research;
 
     public PersonalDataExportDTO exportCurrentUser() {
         User contextUser = SecurityUtils.getCurrentUser();
@@ -51,7 +53,9 @@ public class PersonalDataExportService {
                 user.getAuthProvider() != null ? user.getAuthProvider().name() : null,
                 user.getAuthProviderId(),
                 playlists,
-                submittedSongs
+                submittedSongs,
+                history.export(user.getId()),
+                research.export(user.getId())
         );
     }
 

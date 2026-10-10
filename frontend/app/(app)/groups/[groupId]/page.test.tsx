@@ -161,38 +161,30 @@ describe("GroupLobbyPage start options", () => {
     expect(routerMock.replace).toHaveBeenCalledWith("/sessions/44");
   });
 
-  it("generates a difficulty set for review and confirms it into a start", async () => {
+  it("saves the difficulty on Confirm without generating or starting", async () => {
     await renderPage();
-
     fireEvent.click(screen.getByRole("button", { name: "Choose playlists" }));
     fireEvent.click(screen.getByRole("button", { name: "Confirm" }));
-
-    expect(generateMutate).toHaveBeenCalledWith(
-      { groupId: 1, data: { tier: "MEDIUM", targetCardCount: 30 } },
-      expect.anything(),
+    expect(updateSettingsMutate).toHaveBeenCalledWith(
+      { groupId: 1, data: { difficultyTier: "MEDIUM" } }, expect.anything(),
     );
-    expect(screen.getByText("Song One")).toBeVisible();
-    expect(screen.getByText("1999", { exact: true })).toBeVisible();
-
-    fireEvent.click(screen.getByRole("button", { name: "Confirm and start" }));
-
-    expect(startWithSongsMutate).toHaveBeenCalledWith(
-      { groupId: 1, data: { songIds: [31, 32] } },
-      expect.anything(),
-    );
+    expect(generateMutate).not.toHaveBeenCalled();
+    expect(startWithSongsMutate).not.toHaveBeenCalled();
+    expect(startSessionMutate).not.toHaveBeenCalled();
+    expect(screen.queryByText("Song One")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Start game" }));
+    expect(startSessionMutate).toHaveBeenCalledWith({ groupId: 1 }, expect.anything());
   });
 
-  it("switches difficulty tiers inside the chip popup", async () => {
+  it("saves the requested difficulty tier", async () => {
     await renderPage();
-
     fireEvent.click(screen.getByRole("button", { name: "Choose playlists" }));
     fireEvent.click(screen.getByRole("button", { name: "Hard" }));
     fireEvent.click(screen.getByRole("button", { name: "Confirm" }));
-
-    expect(generateMutate).toHaveBeenCalledWith(
-      { groupId: 1, data: { tier: "HARD", targetCardCount: 30 } },
-      expect.anything(),
+    expect(updateSettingsMutate).toHaveBeenCalledWith(
+      { groupId: 1, data: { difficultyTier: "HARD" } }, expect.anything(),
     );
+    expect(generateMutate).not.toHaveBeenCalled();
   });
 
   it("opens the fullscreen custom picker with a back path to the tiers", async () => {

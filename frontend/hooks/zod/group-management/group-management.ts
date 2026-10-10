@@ -179,7 +179,8 @@ export const UpdateGroupSettingsBody = zod.object({
   "playlistIds": zod.array(zod.int()).optional(),
   "djMode": zod.enum(['FIXED', 'ROTATING']).optional(),
   "winConditionCardCount": zod.int().optional(),
-  "fixedDjMemberId": zod.int().optional()
+  "fixedDjMemberId": zod.int().optional(),
+  "difficultyTier": zod.enum(['EASY', 'MEDIUM', 'HARD']).optional()
 })
 
 export const UpdateGroupSettingsResponse = zod.unknown()

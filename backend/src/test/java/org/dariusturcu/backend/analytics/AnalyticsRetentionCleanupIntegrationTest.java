@@ -24,7 +24,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class AnalyticsRetentionCleanupIntegrationTest {
 
     private static final String ANALYTICS_MIGRATION_LOCATION = "classpath:db/analytics-migration";
-    private static final int RETENTION_DAYS = 30;
+    private static final int RETENTION_DAYS = 365;
     private static final String INSERT_EVENT_AT_AGE_SQL =
             "INSERT INTO analytics_events (event_type, occurred_at, payload) VALUES (?, ?, CAST(? AS jsonb))";
 

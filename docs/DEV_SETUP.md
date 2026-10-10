@@ -45,10 +45,12 @@ To let other devices on the same network play against this machine:
 4. Other players open `http://<address>:3000`. Accept the Windows Firewall
    prompts for Node.js and Java.
 5. Players register local accounts. Google sign-in is unavailable over the
-   LAN. Without a Resend key, verification links print in the backend log;
-   forward them manually.
-6. Voice uses STUN only. Direct connections normally succeed on one
-   subnet; one-sided silence indicates TURN is required.
+   LAN. Configure Resend to deliver verification email, or use already verified
+   development accounts. Without a Resend key, email is not sent. Verification
+   tokens and links never appear in logs.
+6. Voice always has STUN and also uses Cloudflare TURN when configured.
+   Direct connections normally succeed on one subnet; one-sided silence
+   requires checking the configured relay and actual media delivery.
 7. Afterward, delete playtest accounts, playlists, groups, and sessions
    from the dev database.
 

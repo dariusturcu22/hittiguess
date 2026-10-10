@@ -19,6 +19,9 @@ import java.util.Set;
 @Table(name = "rounds")
 public class Round {
 
+    private Integer timelineCardCount;
+    private Integer validInsertionSlotCount;
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;

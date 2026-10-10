@@ -6,7 +6,7 @@ Approved product requirements take precedence over older mockups. A later approv
 
 The approved library and lobby requirements retain library and Explore filters, playlist member popups, import inside Add song, and the separate lobby playlist picker. Older layouts that omit these controls are superseded. The approved gameplay requirements retain automatic reveal after betting, full-pass rounds, joint winners, and guessing that closes at placement lock-in. Voice uses a 76px rail without collapse, with join at the top outside a call. Away-turn notifications, phase deadlines, and actual token-award feedback follow the content specification. Other unreviewed conflicts remain open in the documentation audit. App screens have desktop design scope; only the landing page has mobile variants.
 
-Library filter states use `YourPlaylistsOwned*`, `YourPlaylistsJoined*`, and `YourPlaylistsSaved*`. The playlist add menu uses `PlaylistDetailAddMenu*`. Lobby picker, generated-song review, custom selection, and admin transfer use `GroupLobbyTierPicker*`, `GroupLobbyGeneratedReview*`, `GroupLobbyCustomPicker*`, and `GroupLobbyAdminTransfer*`. Each state has dark and light source files alongside its base screen.
+Library filter states use `YourPlaylistsOwned*`, `YourPlaylistsJoined*`, and `YourPlaylistsSaved*`. The playlist add menu uses `PlaylistDetailAddMenu*`. Lobby picker, custom selection, and admin transfer use `GroupLobbyTierPicker*`, `GroupLobbyCustomPicker*`, and `GroupLobbyAdminTransfer*`. Each state has dark and light source files alongside its base screen.
 
 ## What's already frozen
 
@@ -83,3 +83,7 @@ These are component-variant exploration boards (flat gray canvas, not a themed a
 | `NotificationOptions.dc.html` | Toast/notification visual variants |
 | `TokenPileOptions.dc.html` | Betting token pile visual variants |
 | `PlayfulCatppuccinDark.dc.html`, `PlayfulCatppuccinLight.dc.html` | Early palette/style exploration, superseded by the tokens in `globals.css` |
+
+## Game history
+
+`/history` uses GameHistoryDark.dc.html and GameHistoryLight.dc.html. `/history/[summaryId]` uses GameHistoryDetailDark.dc.html and GameHistoryDetailLight.dc.html. The history list has core-backed totals, a paginated table, and explicit loading, error, and empty states. Detail shows participant-only results, shared ranks, departed/deleted players, and interruptions. The generated-song review state is superseded: Confirm stores a tier and Start selects the hidden pool.

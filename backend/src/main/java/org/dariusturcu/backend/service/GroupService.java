@@ -163,7 +163,11 @@ public class GroupService {
     // a SETTINGS_CHANGED event, which GroupBroadcastListener forwards to the group's
     // settings topic.
     public GroupDetailDTO updateGroupSettings(Long groupId, UpdateGroupSettingsRequest request) {
-        Group group = findGroup(groupId);
+        Group group = groupRepository.findByIdForUpdate(groupId)
+                .orElseThrow(() -> new ResourceNotFoundException(ResourceType.GROUP, groupId));
+        if (group.getStatus() != GroupStatus.OPEN) {
+            throw new ConflictException("Settings cannot change while a session is running");
+        }
         requireAdmin(group, SecurityUtils.getCurrentUser());
 
         if (request.playlistIds() != null) {
@@ -171,6 +175,10 @@ public class GroupService {
                     .map(this::findAccessiblePlaylist)
                     .collect(Collectors.toSet());
             group.setPlaylists(playlists);
+            group.setDifficultyTier(null);
+        }
+        if (request.difficultyTier() != null) {
+            group.setDifficultyTier(request.difficultyTier());
         }
         if (request.djMode() != null) {
             group.setDjMode(request.djMode());
@@ -193,11 +201,12 @@ public class GroupService {
         return result;
     }
 
-    // Story 10 owns the actual game session model; until it exists, this only flips
-    // the group-side state it will hook into: locking the group to new members and
-    // clearing the pre-session timer since a session is now in progress.
     public GroupDetailDTO startGameSession(Long groupId) {
-        Group group = findGroup(groupId);
+        Group group = groupRepository.findByIdForUpdate(groupId)
+                .orElseThrow(() -> new ResourceNotFoundException(ResourceType.GROUP, groupId));
+        if (group.getStatus() != GroupStatus.OPEN) {
+            throw new ConflictException("A session is already running for this group");
+        }
         requireAdmin(group, SecurityUtils.getCurrentUser());
 
         group.setStatus(GroupStatus.LOCKED);

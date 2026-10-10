@@ -11,7 +11,7 @@ This file orders remaining work. [TASKS.md](TASKS.md) owns the requirements and 
 ## Local: review and validate
 
 1. Story 47: reconcile the remaining product-review requirements and design mockups, complete interactive-state test coverage, and run the voice, contrast, and motion acceptance checks.
-2. Story 28: complete the desktop/mobile and light/dark rendered matrix and the transferred frontend requirements and tests. The completed marketing, theme, and scrollbar batches are archived. Profile/settings direction and optional exit motion remain explicit follow-ups; optional motion is not a release gate.
+2. Story 28: complete the desktop light/dark rendered matrix and the landing page mobile checks and the transferred frontend requirements and tests. The completed marketing, theme, and scrollbar batches are archived. Profile/settings direction and optional exit motion remain explicit follow-ups; optional motion is not a release gate.
 3. Release playtest acceptance: retain the unresolved parts of the compound UI requirements, missed-event reconnect recovery, configured TURN validation, frontend/backend test coverage, and two-client HTTPS browser checks.
 4. LAN playtest acceptance: complete and record the final full-game-plus-voice multi-device run.
 
@@ -20,7 +20,7 @@ The documentation audit's design conflicts remain pending owner review. A visual
 ## Backend follow-ups
 
 - Story 24: gather-boundary timeout, its unit test, and priority-coordinator verification.
-- Story 30: personalized model training, scheduled retraining, monitoring, and held-out tests. The historical-data conflict remains pending review before the data prerequisite can be resolved. This enhancement does not block Local.
+- Story 30: personalized model training, scheduled retraining, monitoring, and held-out tests. Core history, analytics research observations, prepared global scores, and generation at Start are implemented; personalized ML remains deferred. This enhancement does not block Local.
 - Story 41: deferred source-match confidence tuning and uncertain-case manual review.
 - Story 35: the existing pre-shipping terms-confirmation gate remains in TASKS.md pending reconciliation with the recorded terms read.
 - Flutter DJ-model compliance: the embedded-player replacement remains open; Flutter stays deprioritized behind the web app.
@@ -35,4 +35,11 @@ The documentation audit's design conflicts remain pending owner review. A visual
 
 ## Finished
 
-Story 34 owns first-party usage and abuse-event instrumentation, the query/dashboard and game-history surfaces, their tests, and the consent notice transferred from story 37. Its existing story gate remains in PROJECT_STATE.md; the completed analytics store and backend enforcement records are in ARCHIVE.md.
+Story 34 owns first-party usage and abuse-event instrumentation, the internal query/dashboard, its tests, and the consent notice transferred from story 37. Its existing story gate remains in PROJECT_STATE.md; the completed analytics store and backend enforcement records are in ARCHIVE.md.
+
+## Remaining documentation-audit changes
+
+1. Connect fully verified catalog persistence to automatic embedding indexing, including retry and failure tests. Existing similarity search and duplicate reuse remain in place.
+2. Recheck the audit findings against the merged implementation, archive completed task sections, and retain only genuine missing capabilities and verification work.
+
+History, prepared global difficulty, generation at Start, and the API/product contract corrections are the current completed implementation slice. Account/legal pages and personalized difficulty models remain deferred in TASKS.md.

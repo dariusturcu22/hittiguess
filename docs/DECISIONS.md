@@ -1127,3 +1127,18 @@ Verified duplicate responses carry the existing song ID. The core service links 
 Admin origin never grants verification or bypasses the pipeline. The combined structured precheck handles extraction, classification, and injection detection; rejection stops downstream source gathering. Exact three-source agreement skips Wikipedia and year reconciliation, not the earlier precheck. These rules supersede older claims of immediate admin trust and a separate detector before every LLM call.
 
 Automatic Topic-upload searches and upgrade suggestions, genre enrichment, and genre game modes are dropped. Existing nullable genre columns remain for compatibility. Raw-evidence storage, source-match safety tuning, and gather-boundary timeouts remain outside this change.
+
+
+## 2026-10-09 | Core game history, prepared difficulty, and one-year analytics retention
+
+Decision: user-visible game history and statistics live in core, alongside prepared song difficulty scores used by session generation. Analytics holds internal usage and research data. This supersedes the earlier plan to serve player history from analytics. Compact game and participant summaries persist before temporary session deletion, remain participant-only after group expiry, preserve ties and departures, and exclude song timelines, raw guesses, chat, and voice. Interrupted games do not count as wins.
+
+History remains while any participant account remains. Account deletion removes identifying fields and access, leaves anonymous deleted-player results for other participants, and removes a summary after its last account-linked participant is deleted. Raw analytics retention changes from 180 to 365 days, including planned research observations. Anonymous per-song aggregates survive raw-event expiry. Research identity is subject to account deletion.
+
+Difficulty calculation runs in the background from analytics observations and publishes prepared scores into core. Cold starts use popularity; personalization remains deferred. Confirm saves the tier without generating songs. Start selects a varied eligible pool using connected players times the win target times three, without exposing song previews or requiring analytics availability. The field contract and implementation tasks are recorded in SYSTEM_REFERENCE.md and TASKS.md.
+
+## 2026-10-09: Durable research delivery and prepared global selection
+
+Scored turns queue pseudonymous research observations in core within the gameplay transaction. Analytics delivery commits the observation, retry key, and anonymous aggregate together; core acknowledges only after that commit. Gameplay does not require analytics availability. Account deletion queues anonymization and removes the core identity mapping. Analytics tombstones prevent late deliveries from restoring that identity. Raw observations expire after 365 days, including observations still queued during an outage; anonymous aggregates survive.
+
+Prepared core difficulty uses popularity for new verified songs and retained placement aggregates for measured songs. Background refresh runs every six hours and retains prior scores when analytics is unavailable. Start uses the tier and sampling-key index with a random pivot and wraparound, then shuffles the selected pool. Confirm persists the tier only. Compact core summaries retain participant history independently of temporary sessions and group lifetime. Personalized models remain deferred.

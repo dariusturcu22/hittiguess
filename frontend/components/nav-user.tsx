@@ -15,6 +15,8 @@ import { getGetCurrentUserQueryKey, useGetCurrentUser } from "@/hooks/generated/
 import { useUploadOwnAvatar } from "@/hooks/generated/pixel-art-images/pixel-art-images";
 import { PixelImageInput } from "@/components/pixel-image-input";
 
+import { useHistoryStatistics, PERCENT_SCALE } from "@/hooks/game-history";
+
 export function NavUser() {
   const router = useRouter();
   const queryClient = useQueryClient();
@@ -36,6 +38,9 @@ export function NavUser() {
         window.location.pathname !== "/register",
     },
   });
+
+  const { data: statistics } = useHistoryStatistics(Boolean(user?.id));
+  const winRate = statistics && statistics.gamesPlayed > 0 ? Math.round(statistics.wins / statistics.gamesPlayed * PERCENT_SCALE) : 0;
 
   function handleLogout() {
     logout();
@@ -134,16 +139,16 @@ export function NavUser() {
         </div>
         <div className="grid grid-cols-3 divide-x-2 divide-secondary px-3 py-4 text-center">
           <div>
-            <div className="font-display text-base text-card-foreground">0</div>
+            <div className="font-display text-base text-card-foreground">{statistics?.gamesPlayed ?? "Unavailable"}</div>
             <div className="mt-1 text-[9px] uppercase tracking-wide text-muted-foreground">Games</div>
           </div>
           <div>
-            <div className="font-display text-base text-card-foreground">0%</div>
+            <div className="font-display text-base text-card-foreground">{statistics ? `${winRate}%` : "Unavailable"}</div>
             <div className="mt-1 text-[9px] uppercase tracking-wide text-muted-foreground">Win rate</div>
           </div>
           <div>
-            <div className="font-display text-base text-card-foreground">0</div>
-            <div className="mt-1 text-[9px] uppercase tracking-wide text-muted-foreground">Streak</div>
+            <div className="font-display text-base text-card-foreground">{statistics?.wins ?? "Unavailable"}</div>
+            <div className="mt-1 text-[9px] uppercase tracking-wide text-muted-foreground">Wins</div>
           </div>
         </div>
       </DropdownMenuContent>

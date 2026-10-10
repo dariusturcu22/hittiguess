@@ -135,6 +135,8 @@ class GameSessionServiceTest {
     private static final String PASTED_PLAYLIST_LINK = "https://youtube.com/playlist?list=abc123";
     // Two players times the fixture group's five-card win condition.
     private static final int STARTABLE_POOL_SIZE = 10;
+    private static final int PREPARED_POOL_SIZE = 30;
+    private static final long DISCONNECTED_USER_ID = 3L;
     private static final long FIRST_CATALOG_SONG_ID = 11L;
     private static final java.time.Duration AUTO_ABANDON_DELAY = java.time.Duration.ofMinutes(10);
 
@@ -1497,7 +1499,7 @@ class GameSessionServiceTest {
     @Test
     void startSessionWithSongsStagesThePoolAndDelegatesLocking() {
         Group group = groupWithTwoConnectedMembers();
-        when(groupRepository.findById(GROUP_ID)).thenReturn(Optional.of(group));
+        when(groupRepository.findByIdForUpdate(GROUP_ID)).thenReturn(Optional.of(group));
         List<Long> songIds = catalogPool(STARTABLE_POOL_SIZE);
 
         gameSessionService.startSessionWithSongs(GROUP_ID, new StartSessionWithSongsRequest(songIds));
@@ -1509,7 +1511,7 @@ class GameSessionServiceTest {
     @Test
     void startSessionWithSongsRejectsUnknownSongIds() {
         Group group = groupWithTwoConnectedMembers();
-        when(groupRepository.findById(GROUP_ID)).thenReturn(Optional.of(group));
+        when(groupRepository.findByIdForUpdate(GROUP_ID)).thenReturn(Optional.of(group));
 
         assertThatThrownBy(() -> gameSessionService.startSessionWithSongs(
                         GROUP_ID, new StartSessionWithSongsRequest(List.of(99L))))
@@ -1520,7 +1522,7 @@ class GameSessionServiceTest {
     @Test
     void startSessionWithSongsRejectsAShortPool() {
         Group group = groupWithTwoConnectedMembers();
-        when(groupRepository.findById(GROUP_ID)).thenReturn(Optional.of(group));
+        when(groupRepository.findByIdForUpdate(GROUP_ID)).thenReturn(Optional.of(group));
         List<Long> oneSongShort = catalogPool(STARTABLE_POOL_SIZE - 1);
 
         assertThatThrownBy(() -> gameSessionService.startSessionWithSongs(
@@ -1532,7 +1534,7 @@ class GameSessionServiceTest {
     @Test
     void startSessionWithSongsRejectsNonAdmin() {
         Group group = groupWithTwoConnectedMembers();
-        when(groupRepository.findById(GROUP_ID)).thenReturn(Optional.of(group));
+        when(groupRepository.findByIdForUpdate(GROUP_ID)).thenReturn(Optional.of(group));
         authenticateAs(user(OTHER_ID, "other-user"));
 
         assertThatThrownBy(() -> gameSessionService.startSessionWithSongs(
@@ -1543,7 +1545,7 @@ class GameSessionServiceTest {
     @Test
     void startSessionWithSongsDiscardsThePoolWhenLockingFails() {
         Group group = groupWithTwoConnectedMembers();
-        when(groupRepository.findById(GROUP_ID)).thenReturn(Optional.of(group));
+        when(groupRepository.findByIdForUpdate(GROUP_ID)).thenReturn(Optional.of(group));
         List<Long> songIds = catalogPool(STARTABLE_POOL_SIZE);
         doThrow(new ConflictException("Group already locked")).when(groupService).startGameSession(GROUP_ID);
 
@@ -1593,6 +1595,23 @@ class GameSessionServiceTest {
     }
 
     @Test
+    void startSelectsPreparedTierUsingOnlyTheCurrentlyConnectedPlayers() {
+        Group group = groupWithTwoConnectedMembers();
+        group.setDifficultyTier(DifficultyTier.HARD);
+        Member disconnected = memberOf(group, user(DISCONNECTED_USER_ID, "disconnected"), false, Instant.now());
+        disconnected.setConnected(false);
+        when(groupRepository.findById(GROUP_ID)).thenReturn(Optional.of(group));
+        List<Song> prepared = new ArrayList<>(catalogPool(PREPARED_POOL_SIZE).stream().map(songsById::get).toList());
+        when(difficultySelector.selectPreparedInternational(DifficultyTier.HARD, PREPARED_POOL_SIZE)).thenReturn(prepared);
+
+        GameSession session = gameSessionService.startSession(GROUP_ID);
+
+        assertThat(session.getDifficultyTier()).isEqualTo(DifficultyTier.HARD);
+        assertThat(session.getPlayers()).hasSize(2);
+        verify(difficultySelector).selectPreparedInternational(DifficultyTier.HARD, PREPARED_POOL_SIZE);
+    }
+
+    @Test
     void startSessionUsesAStagedPoolInsteadOfGroupPlaylists() {
         Group group = groupWithTwoConnectedMembers();
         when(groupRepository.findById(GROUP_ID)).thenReturn(Optional.of(group));
@@ -1612,7 +1631,7 @@ class GameSessionServiceTest {
     @Test
     void startCustomSessionFromPlaylistUsesAccessibleSongs() {
         Group group = groupWithTwoConnectedMembers();
-        when(groupRepository.findById(GROUP_ID)).thenReturn(Optional.of(group));
+        when(groupRepository.findByIdForUpdate(GROUP_ID)).thenReturn(Optional.of(group));
         Playlist playlist = new Playlist();
         List<Long> songIds = catalogPool(STARTABLE_POOL_SIZE);
         songIds.forEach(songId -> playlist.getSongs().add(songsById.get(songId)));
@@ -1628,7 +1647,7 @@ class GameSessionServiceTest {
     @Test
     void startCustomSessionRejectsBothSourcesAtOnce() {
         Group group = groupWithTwoConnectedMembers();
-        when(groupRepository.findById(GROUP_ID)).thenReturn(Optional.of(group));
+        when(groupRepository.findByIdForUpdate(GROUP_ID)).thenReturn(Optional.of(group));
 
         assertThatThrownBy(() -> gameSessionService.startCustomSession(
                         GROUP_ID, new StartCustomSessionRequest(CUSTOM_PLAYLIST_ID, PASTED_PLAYLIST_LINK)))
@@ -1639,7 +1658,7 @@ class GameSessionServiceTest {
     @Test
     void startCustomSessionRejectsMissingSources() {
         Group group = groupWithTwoConnectedMembers();
-        when(groupRepository.findById(GROUP_ID)).thenReturn(Optional.of(group));
+        when(groupRepository.findByIdForUpdate(GROUP_ID)).thenReturn(Optional.of(group));
 
         assertThatThrownBy(() -> gameSessionService.startCustomSession(
                         GROUP_ID, new StartCustomSessionRequest(null, "  ")))
@@ -1650,7 +1669,7 @@ class GameSessionServiceTest {
     @Test
     void startCustomSessionFromLinkSkipsVideosWithNoCatalogSong() {
         Group group = groupWithTwoConnectedMembers();
-        when(groupRepository.findById(GROUP_ID)).thenReturn(Optional.of(group));
+        when(groupRepository.findByIdForUpdate(GROUP_ID)).thenReturn(Optional.of(group));
         lenient().when(songRepository.findByYoutubeId(anyString())).thenReturn(List.of());
         List<Long> songIds = catalogPool(STARTABLE_POOL_SIZE);
         List<String> pastedVideoIds = new ArrayList<>();
@@ -1670,7 +1689,7 @@ class GameSessionServiceTest {
     @Test
     void startCustomSessionFromLinkConflictsWhenNothingMatchesTheCatalog() {
         Group group = groupWithTwoConnectedMembers();
-        when(groupRepository.findById(GROUP_ID)).thenReturn(Optional.of(group));
+        when(groupRepository.findByIdForUpdate(GROUP_ID)).thenReturn(Optional.of(group));
         lenient().when(songRepository.findByYoutubeId(anyString())).thenReturn(List.of());
         when(playlistExpansionService.expandPlaylist(PASTED_PLAYLIST_LINK)).thenReturn(List.of("unknown-video"));
 

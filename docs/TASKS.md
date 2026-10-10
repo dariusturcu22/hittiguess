@@ -18,9 +18,13 @@ Stories that would write an abuse-visibility event (story 41's flagged-injection
 
 ## Story 30: Difficulty-tuned game session generation
 
-Completed generation, selection, public-playlist, and lobby integration work is recorded in [ARCHIVE.md](ARCHIVE.md#story-30-completed-backend-implementation). Personalized training, retraining, monitoring, and their tests remain open. The historical-data conflict in the documentation audit remains unresolved.
+Core history and prepared global difficulty are implemented. The completed tasks and tests are in [ARCHIVE.md](ARCHIVE.md#game-history-and-prepared-global-difficulty).
 
-- [ ] Train the personalized collaborative-filtering model on accumulated `Guess` data (story 10) once there's enough of it to evaluate (scaffolded: `PersonalizedDifficultyPredictor` is the plug point, `AggregateBaselinePredictor` is the shipped baseline; blocked until real play accumulates enough guesses to train and beat the baseline, likely months of casual play at the target scale)
+### Personalized difficulty, deferred
+
+Completed generation, selection, public-playlist, and lobby integration work is recorded in [ARCHIVE.md](ARCHIVE.md#story-30-completed-backend-implementation). Personalized training, retraining, monitoring, and their tests remain open. The historical-data conflict is resolved by the implemented core-history and analytics-research boundary in SYSTEM_REFERENCE.md.
+
+- [ ] Train the personalized collaborative-filtering model on retained analytics research observations once there's enough of it to evaluate (scaffolded: `PersonalizedDifficultyPredictor` is the plug point, `AggregateBaselinePredictor` is the shipped baseline; blocked until real play accumulates enough guesses to train and beat the baseline, likely months of casual play at the target scale)
 - [ ] Add a scheduled retraining job for the personalized model
 - [ ] Add a monitoring check comparing the personalized model's prediction accuracy against the simple aggregate baseline; if the personalized model stops beating the baseline, that's the signal it's stale and needs retraining, not just a fixed schedule
 
@@ -31,18 +35,16 @@ Tests:
 
 ## Story 34: First-party usage analytics
 
-Story 42 owns the explicit domain boundary this story reads and writes against: the transactional `GameSession`/`Round`/`Guess` rows this story's game-history task reads a summary from stay in the core database and purge exactly as story 10 specifies; only the compact event/summary data this story writes goes in story 33's separate analytics store. Depends on story 33's store existing, and also on the events it instruments actually existing: story 10 (game session, no `GameSession` model exists yet), story 17 (reports, no `SongReport` entity exists yet), and story 27 (rate limiting, only a narrow one-in-flight-request-per-user concurrency gate exists today on `/api/metadata/song`, not the general per-user/per-IP time-window limiter this depends on for login/register or other endpoints). Login and playlist-creation events can be instrumented once story 33 lands, independent of the others. Event scope is deliberately count/aggregate-based, not behavioral click-tracking: usage stats for the project's own understanding (games played, session length, playlists created, songs submitted, login activity), and abuse-visibility signals that turn existing enforcement into something reviewable (rate-limit-exceeded events from stories 13/27, report submissions from story 17, failed login attempts), not a new detection mechanism of its own.
+Core stores user-visible game summaries, statistics, and prepared difficulty scores. Analytics stores internal usage and research observations with a 365-day raw-event retention window. The analytics store, sessions, reports, and rate limiting already exist; instrumentation and the internal dashboard remain unfinished. History backend work belongs to story 30 and its frontend belongs to story 28.
 
 - [ ] Instrument game session start/end (with the per-game summary), login, playlist creation, and song submission events to write to the analytics store; the game-session half depends on story 10, the rest can start once story 33 lands
 - [ ] Instrument rate-limit-exceeded, report-submitted, and failed-login-attempt events, for abuse visibility, not enforcement; depends on stories 13/27/17 actually shipping their enforcement first, none of which exist yet
 - [ ] Build a simple internal dashboard or query surface over the collected events, including a simple way to flag a user who's crossed a rate-limit or report threshold repeatedly
-- [ ] Build a per-user game history page in the frontend, querying the current user's own game-summary events from the analytics store; the transactional `GameSession`/`Round`/`Guess` rows still purge exactly as story 10 already specifies, this reads only from the separate analytics store
 - [ ] No third-party trackers, matches this story's own scope and the "First-party usage analytics" framing
 
 Tests:
 - [ ] Integration test: each instrumented event type produces the expected record in the analytics store
 - [ ] Integration test: the dashboard/query surface returns correct aggregates for known event data
-- [ ] Integration test: a user's game history page returns only their own game summaries, not other users'
 
 Consent notice, transferred from story 37:
 
@@ -56,6 +58,12 @@ Completed submission-classification work is recorded in [ARCHIVE.md](ARCHIVE.md#
   - Deferred: tuning how a source non-match lowers confidence needs real submission data to set the weighting without over-rejecting niche tracks, the same data-tuning dependency story 30 carries; the classifier ships without it rather than guessing a threshold
 - [ ] Still-uncertain cases after all of the above route to manual review, not a hard reject, the same "escalate, don't guess" principle already set for artist/title verification
   - Deferred: this manual-review tier depends on the source-match secondary signal above to define "still uncertain" without a threshold; deferred with it. A confident non-music or compilation verdict rejects, and a genuine no-answer song still reaches story 18's MANUAL_ENTRY route downstream
+
+## Docs: Remaining audit reconciliation
+
+- [ ] Recheck unresolved audit findings against merged code and reviewed source-of-truth decisions
+- [ ] Archive completed clusters while retaining missing features and uncompleted acceptance checks
+- [ ] Validate remaining claims, documentation links, and task references
 
 ## Fix: Verified catalog embedding indexing
 
@@ -122,6 +130,8 @@ Tests:
 - [x] Unit tests for pagination and the rate limit, including boundary values
 
 ## Story 28: UI redesign
+
+The completed history pages and difficulty start flow are in [ARCHIVE.md](ARCHIVE.md#game-history-and-difficulty-frontend).
 
 ### Deferred account and legal requirements
 

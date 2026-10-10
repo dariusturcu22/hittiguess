@@ -89,6 +89,7 @@ import java.util.stream.Collectors;
 @Transactional
 public class GameSessionService {
 
+    private static final int DIFFICULTY_POOL_HEADROOM = 3;
     private static final int MINIMUM_PLAYERS = 2;
     private static final int ACTIVE_PLAYER_TURN_TIMEOUT_SECONDS = 90;
     private static final int AUTO_ABANDON_MINUTES = 10;
@@ -137,11 +138,14 @@ public class GameSessionService {
 
         List<Song> songPool = pendingPool.take(groupId)
                 .map(this::resolvePoolSongs)
-                .orElseGet(() -> defaultSongPool(group));
+                .orElseGet(() -> group.getDifficultyTier() == null ? defaultSongPool(group)
+                        : difficultySelector.selectPreparedInternational(group.getDifficultyTier(),
+                        connectedMembers.size() * group.getWinConditionCardCount() * DIFFICULTY_POOL_HEADROOM));
         requireEnoughSongs(songPool.size(), connectedMembers.size(), group.getWinConditionCardCount());
 
         GameSession session = new GameSession();
         session.setGroupId(groupId);
+        session.setDifficultyTier(group.getDifficultyTier());
         session.setStatus(SessionStatus.IN_PROGRESS);
         session.setDjMode(group.getDjMode());
         session.setWinConditionCardCount(group.getWinConditionCardCount());
@@ -193,10 +197,7 @@ public class GameSessionService {
         return savedSession;
     }
 
-    // Difficulty-Based generation preview for the admin's review step: scores the
-    // internationally known verified catalog for the group's connected members and
-    // returns the requested tier's set without starting anything. The confirmation
-    // call is startSessionWithSongs below, validated again on the way in.
+    // Compatibility preview endpoint. The lobby persists its tier and selects songs at Start.
     public List<GeneratedSongPreviewDTO> generateDifficultySet(Long groupId, GenerateDifficultySetRequest request) {
         Group group = findGroup(groupId);
         requireGroupAdmin(group);
@@ -219,7 +220,8 @@ public class GameSessionService {
 
     // Confirms a reviewed Difficulty-Based set into a session start.
     public GroupDetailDTO startSessionWithSongs(Long groupId, StartSessionWithSongsRequest request) {
-        Group group = findGroup(groupId);
+        Group group = groupRepository.findByIdForUpdate(groupId)
+                .orElseThrow(() -> new ResourceNotFoundException(ResourceType.GROUP, groupId));
         requireGroupAdmin(group);
         if (request == null || request.songIds() == null || request.songIds().isEmpty()
                 || request.songIds().stream().anyMatch(songId -> songId == null)) {
@@ -228,13 +230,15 @@ public class GameSessionService {
         }
 
         List<Long> songIds = request.songIds().stream().distinct().toList();
+        group.setDifficultyTier(null);
         return startWithStagedPool(group, songIds);
     }
 
     // Custom-mode start from exactly one source: an accessible playlist by id, or a
     // YouTube playlist link or id pasted directly.
     public GroupDetailDTO startCustomSession(Long groupId, StartCustomSessionRequest request) {
-        Group group = findGroup(groupId);
+        Group group = groupRepository.findByIdForUpdate(groupId)
+                .orElseThrow(() -> new ResourceNotFoundException(ResourceType.GROUP, groupId));
         requireGroupAdmin(group);
         boolean hasPlaylistId = request != null && request.playlistId() != null;
         boolean hasPlaylistLink = request != null && request.playlistLink() != null && !request.playlistLink().isBlank();
@@ -246,6 +250,7 @@ public class GameSessionService {
         List<Long> songIds = hasPlaylistId
                 ? poolFromPlaylist(request.playlistId())
                 : poolFromPlaylistLink(request.playlistLink());
+        group.setDifficultyTier(null);
         return startWithStagedPool(group, songIds);
     }
 
@@ -370,6 +375,10 @@ public class GameSessionService {
                 .map(player -> player.getUser().getId())
                 .collect(Collectors.toSet());
         resultsStore.store(session.getGroupId(), results, playerUserIds);
+        String endingReason = session.getPlayers().stream().anyMatch(player -> player.hasWon(session.getWinConditionCardCount()))
+                ? org.dariusturcu.backend.history.GameHistoryService.TARGET_REACHED
+                : org.dariusturcu.backend.history.GameHistoryService.SONGS_EXHAUSTED;
+        eventPublisher.publishEvent(new org.dariusturcu.backend.history.GameCompleted(session, results, endingReason));
         eventPublisher.publishEvent(new SessionBroadcastEvent(SessionEventType.SESSION_ENDED, session.getId(), results));
 
         Long groupId = session.getGroupId();
@@ -380,6 +389,8 @@ public class GameSessionService {
 
     public void abandonSession(Long sessionId) {
         GameSession session = getSession(sessionId);
+        eventPublisher.publishEvent(new org.dariusturcu.backend.history.GameCompleted(session, buildResults(session),
+                org.dariusturcu.backend.history.GameHistoryService.INTERRUPTED));
         session.setStatus(SessionStatus.ABANDONED);
         gameSessionRepository.save(session);
         eventPublisher.publishEvent(new SessionBroadcastEvent(SessionEventType.SESSION_ENDED, session.getId(), null));
@@ -640,6 +651,14 @@ public class GameSessionService {
         GameSession session = round.getSession();
         Player activePlayer = round.getActivePlayer();
         Player cardWinner = null;
+        round.setTimelineCardCount(activePlayer.getTimeline().size());
+        int validInsertionSlots = 0;
+        for (int insertionPosition = 0; insertionPosition <= activePlayer.getTimeline().size(); insertionPosition++) {
+            if (isPlacementCorrect(activePlayer, insertionPosition, round.getSong().getReleaseYear())) {
+                validInsertionSlots++;
+            }
+        }
+        round.setValidInsertionSlotCount(validInsertionSlots);
 
         if (Boolean.TRUE.equals(round.getPlacementCorrect())) {
             activePlayer.insertCardAt(PlayerCard.of(round.getSong()), round.getPlacedPosition());
@@ -652,6 +671,7 @@ public class GameSessionService {
                     .findFirst()
                     .orElse(null);
             if (winningBet != null) {
+                winningBet.setWon(true);
                 Player bettor = winningBet.getPlayer();
                 int insertionIndex = correctInsertionIndex(bettor, round.getSong().getReleaseYear());
                 bettor.insertCardAt(PlayerCard.of(round.getSong()), insertionIndex);
@@ -667,6 +687,7 @@ public class GameSessionService {
             playerRepository.save(cardWinner);
         }
 
+        eventPublisher.publishEvent(new org.dariusturcu.backend.research.ScoredTurn(savedRound));
         publishRoundEvent(SessionEventType.ROUND_SCORED, session, savedRound);
 
         long remainingActivePlayers = session.getPlayers().stream()

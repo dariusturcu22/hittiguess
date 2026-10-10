@@ -120,7 +120,7 @@ class PersonalDataExportIntegrationTest {
                 SongRepository songRepository,
                 SavedPlaylistRepository savedPlaylistRepository) {
             return new UserService(userRepository, playlistRepository, userMapper, playlistMapper,
-                    playlistMembershipRepository, playlistBanRepository, songRepository, savedPlaylistRepository);
+                    playlistMembershipRepository, playlistBanRepository, songRepository, savedPlaylistRepository, org.mockito.Mockito.mock(org.springframework.context.ApplicationEventPublisher.class));
         }
 
         @Bean
@@ -129,7 +129,7 @@ class PersonalDataExportIntegrationTest {
                 PlaylistMembershipRepository playlistMembershipRepository,
                 SongRepository songRepository,
                 SongMapper songMapper) {
-            return new PersonalDataExportService(userRepository, playlistMembershipRepository, songRepository, songMapper);
+            return new PersonalDataExportService(userRepository, playlistMembershipRepository, songRepository, songMapper, org.mockito.Mockito.mock(org.dariusturcu.backend.history.GameHistoryService.class), org.mockito.Mockito.mock(org.dariusturcu.backend.research.SongResearchService.class));
         }
     }
 

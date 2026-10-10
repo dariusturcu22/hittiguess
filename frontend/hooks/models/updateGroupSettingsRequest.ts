@@ -11,4 +11,5 @@ export interface UpdateGroupSettingsRequest {
   djMode?: UpdateGroupSettingsRequestDjMode;
   winConditionCardCount?: number;
   fixedDjMemberId?: number;
+  difficultyTier?: "EASY" | "MEDIUM" | "HARD";
 }

@@ -28,7 +28,7 @@ A working multiplayer game where:
 4. Scoring works correctly, the DJ role can be fixed or rotating depending on group settings, and the game ends with a winner.
 5. Playlists exist across genres, moods, and eras, and are trustworthy, meaning the years are correct.
 6. Users can submit songs, either by pasting a link or searching by artist, title, or keyword. The pipeline finds good YouTube sources and verifies metadata automatically.
-7. Players can voice chat and text chat with their session directly in the game, for as long as the session lasts, without relying on a separate app like Discord.
+7. Players can voice chat and text chat with their group before, during, and between games, without relying on a separate app like Discord.
 8. The UI is clean, fast, and works well on desktop; mobile support is a goal, not yet guaranteed to match the desktop experience.
 9. Physical cards can be printed, cut out, and scanned to play a hybrid physical and digital game.
 
@@ -36,7 +36,7 @@ A working multiplayer game where:
 
 - Broad music coverage: mainstream and niche music are both first-class, not an afterthought.
 - AI-assisted metadata pipeline: multi-source verification (YouTube, MusicBrainz, Discogs, Wikidata) synthesized by an LLM, with community reporting to catch errors.
-- Online multiplayer that works: playback is fully compliant with YouTube's API policies by construction, and voice and text chat are built in for the session, no separate app needed.
+- Online multiplayer that works: playback is fully compliant with YouTube's API policies by construction, and voice and text chat are built in for the group, no separate app needed.
 - Community-maintained database: users can submit songs, report incorrect years, and add sources. The database improves through play.
 
 ## Built to a professional standard, not just a working one

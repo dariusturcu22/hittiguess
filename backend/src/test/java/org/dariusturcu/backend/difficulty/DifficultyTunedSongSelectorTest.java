@@ -42,7 +42,7 @@ class DifficultyTunedSongSelectorTest {
 
     @BeforeEach
     void setUp() {
-        difficultyTunedSongSelector = new DifficultyTunedSongSelector(
+        difficultyTunedSongSelector = new DifficultyTunedSongSelector(org.mockito.Mockito.mock(org.dariusturcu.backend.difficulty.PreparedDifficultyService.class),
                 songRepository,
                 roundRepository,
                 songDifficultyScorer,

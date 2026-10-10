@@ -156,6 +156,7 @@ class GameSessionLifecycleIntegrationTest {
         }
     }
 
+    @org.springframework.context.annotation.Import({org.dariusturcu.backend.history.HistoryDataSourceConfig.class, org.dariusturcu.backend.history.GameHistoryService.class})
     @Configuration
     @EnableAutoConfiguration(exclude = OAuth2ClientAutoConfiguration.class)
     @EntityScan("org.dariusturcu.backend.model")
@@ -215,14 +216,14 @@ class GameSessionLifecycleIntegrationTest {
 
         @Bean
         DifficultyTunedSongSelector difficultySelector(SongRepository songRepository, RoundRepository roundRepository) {
-            return new DifficultyTunedSongSelector(
+            return new DifficultyTunedSongSelector(org.mockito.Mockito.mock(org.dariusturcu.backend.difficulty.PreparedDifficultyService.class),
                     songRepository, roundRepository, new SongDifficultyScorer(), new DifficultyBand(),
                     new GroupDifficultyStrategy(), new AggregateBaselinePredictor());
         }
 
         @Bean
         PlaylistExpansionService playlistExpansionService() {
-            return new PlaylistExpansionService(RestClient.create());
+            return org.mockito.Mockito.mock(PlaylistExpansionService.class);
         }
 
         @Bean
@@ -283,6 +284,8 @@ class GameSessionLifecycleIntegrationTest {
     private PlayerRepository playerRepository;
     @Autowired
     private RoundRepository roundRepository;
+    @Autowired
+    private org.dariusturcu.backend.history.GameHistoryService history;
     @Autowired
     private SessionResultsStore resultsStore;
 
@@ -386,6 +389,9 @@ class GameSessionLifecycleIntegrationTest {
         });
         assertThat(results.get().mostArtistsGuessed()).hasSize(2);
         assertThat(results.get().mostTitlesGuessed()).hasSize(2);
+        var participantUserId = resultsStore.get(groupId).orElseThrow().playerUserIds().iterator().next();
+        assertThat(history.export(participantUserId)).hasSize(1);
+        assertThat(history.export(participantUserId).getFirst().participants()).hasSize(2);
 
         Group groupAfter = groupRepository.findById(groupId).orElseThrow();
         assertThat(groupAfter.getStatus()).isEqualTo(GroupStatus.OPEN);

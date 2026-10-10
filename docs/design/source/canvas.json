@@ -1088,6 +1088,78 @@
       "h": 900,
       "title": "Lobby AdminTransfer, light",
       "page": "page-1"
+    },
+    {
+      "file": "GameSessionTokenEarnedDark.dc.html",
+      "x": 0,
+      "y": 39380,
+      "w": 1440,
+      "h": 900,
+      "title": "Gameplay TokenEarned, dark",
+      "page": "page-1"
+    },
+    {
+      "file": "GameSessionIncorrectGuessDark.dc.html",
+      "x": 0,
+      "y": 40580,
+      "w": 1440,
+      "h": 900,
+      "title": "Gameplay IncorrectGuess, dark",
+      "page": "page-1"
+    },
+    {
+      "file": "GameSessionTokenEarnedLight.dc.html",
+      "x": 1700,
+      "y": 39380,
+      "w": 1440,
+      "h": 900,
+      "title": "Gameplay TokenEarned, light",
+      "page": "page-1"
+    },
+    {
+      "file": "GameSessionIncorrectGuessLight.dc.html",
+      "x": 1700,
+      "y": 40580,
+      "w": 1440,
+      "h": 900,
+      "title": "Gameplay IncorrectGuess, light",
+      "page": "page-1"
+    },
+    {
+      "file": "GameHistoryDark.dc.html",
+      "x": 0,
+      "y": 43000,
+      "w": 1440,
+      "h": 900,
+      "title": "Game history, dark",
+      "page": "page-1"
+    },
+    {
+      "file": "GameHistoryDetailDark.dc.html",
+      "x": 0,
+      "y": 44200,
+      "w": 1440,
+      "h": 900,
+      "title": "Game history detail, dark",
+      "page": "page-1"
+    },
+    {
+      "file": "GameHistoryLight.dc.html",
+      "x": 1700,
+      "y": 43000,
+      "w": 1440,
+      "h": 900,
+      "title": "Game history, light",
+      "page": "page-1"
+    },
+    {
+      "file": "GameHistoryDetailLight.dc.html",
+      "x": 1700,
+      "y": 44200,
+      "w": 1440,
+      "h": 900,
+      "title": "Game history detail, light",
+      "page": "page-1"
     }
   ],
   "annotations": [

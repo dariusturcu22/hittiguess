@@ -29,13 +29,13 @@ Every rate-limited request the core service rejects, whichever limiter caught it
 | POST | `/auth/2fa/disable` | `AuthController`, authenticated, requires current password or a valid code, story 50 |
 | POST | `/auth/2fa/verify` | `AuthController`, rate-limited, completes a two-factor login, story 50 |
 | GET | `/api/enums/countries` | `EnumController` |
-| GET | `/api/playlists/{playlistId}/export/info` | `ExportController`, `paperSize` query param (`A4`/`LETTER`, default `A4`) |
+| GET | `/api/playlists/{playlistId}/export/info` | `ExportController`, `paperSize` query param (`A4`, `LETTER`, `LEGAL`, `A3`, `A5`, `TABLOID`; default `A4`) |
 | GET | `/api/playlists/{playlistId}/export/qr` | `ExportController`, same `paperSize` query param |
 | GET | `/api/playlists/{playlistId}` | `PlaylistController`, requires `canRead` |
 | PATCH | `/api/playlists/{playlistId}` | `PlaylistController`, owner only |
 | GET | `/api/playlists/{playlistId}/songs/{songId}` | `PlaylistController`, requires `canRead` |
-| POST | `/api/playlists/{playlistId}/songs` | `PlaylistController`, requires `canWrite` |
-| PATCH | `/api/playlists/{playlistId}/songs/{songId}` | `PlaylistController`, requires `canWrite` |
+| POST | `/api/playlists/{playlistId}/songs` | `PlaylistController`, requires write access to the destination playlist |
+| PATCH | `/api/playlists/{playlistId}/songs/{songId}` | `PlaylistController`, requires write access to every playlist containing the shared song |
 | DELETE | `/api/playlists/{playlistId}/songs/{songId}` | `PlaylistController`, requires `canDelete` |
 | GET | `/api/playlists/{playlistId}/members` | `PlaylistController`, requires `canRead`, story 46 |
 | PATCH | `/api/playlists/{playlistId}/members/{userId}` | `PlaylistController`, owner only, updates a member's grants, story 46 |
@@ -52,7 +52,7 @@ Every rate-limited request the core service rejects, whichever limiter caught it
 | GET | `/api/users/{userId}` | `UserController` |
 | PATCH | `/api/users/me` | `UserController` |
 | DELETE | `/api/users/me` | `UserController`, story 37 fixed the FK violation and playlist-orphaning bugs formerly logged in `TASKS.md`'s Bug fixes section |
-| GET | `/api/users/me/export` | `UserController`, `PersonalDataExportService`, GDPR personal-data export: account fields, every playlist membership, every submitted song, story 37, distinct from `ExportController`'s playlist-content PDFs |
+| GET | `/api/users/me/export` | `UserController`, `PersonalDataExportService`, GDPR personal-data export: account fields, every playlist membership, every submitted song, retained core game history, and the account's research observations, story 37, distinct from `ExportController`'s playlist-content PDFs |
 | POST | `/api/users/me/playlists` | `UserController` |
 | GET | `/api/users/me/playlists` | `UserController` |
 | POST | `/api/users/me/playlists/{playlistInviteCode}` | `UserController`, optional body carries a per-playlist display name and avatar, rejects a banned user, story 46 |
@@ -70,7 +70,7 @@ Every rate-limited request the core service rejects, whichever limiter caught it
 | GET | `/api/groups/active` | `GroupController`, the caller's current active group, story 39 |
 | GET | `/api/groups/{groupId}` | `GroupController`, story 39 |
 | PATCH | `/api/groups/{groupId}/settings` | `GroupController`, admin only, story 39 |
-| POST | `/api/groups/{groupId}/start-session` | `GroupController`, admin only, locks the group to new members, story 39 |
+| POST | `/api/groups/{groupId}/start-session` | `GroupController`, admin only while open; locks the group and generates from the saved tier at Start or uses Custom playlists, story 39 |
 | POST | `/api/groups/{groupId}/session/generate` | `GroupController`, admin only, generates a difficulty-tuned song set for review without starting anything, story 30 |
 | POST | `/api/groups/{groupId}/session/start-with-songs` | `GroupController`, admin only, starts a game session from the reviewed song ids, locks the group to new members, story 30 |
 | POST | `/api/groups/{groupId}/session/start-custom` | `GroupController`, admin only, starts a game session from an accessible playlist or a pasted playlist link, locks the group to new members, story 30 |
@@ -81,10 +81,18 @@ Every rate-limited request the core service rejects, whichever limiter caught it
 | POST | `/api/groups/{groupId}/voice/join` | `GroupController`, sets the caller's `isInVoice` presence flag and broadcasts voice presence on the group's voice topic, story 39 and story 12 |
 | POST | `/api/groups/{groupId}/voice/leave` | `GroupController`, clears the `isInVoice` presence flag and broadcasts voice presence, story 39 and story 12 |
 | GET | `/api/groups/{groupId}/voice/turn-credentials` | `GroupController`, member only, the ICE server list a client feeds `RTCPeerConnection`, STUN always, Cloudflare TURN only when a key is configured, story 12 |
+| GET | `/api/sessions/groups/{groupId}/active` | Current group member; returns the active session if present |
+| GET | `/api/groups/invites/{inviteCode}/preview` | Invite preview with group-specific member names and avatars |
+| POST | `/api/groups/{groupId}/members/{memberId}/remove` | Admin only while open; blocks rejoin and closes removed member sockets |
+| GET | `/api/groups/{groupId}/chat/messages` | Group member only; bounded recent chat history |
+| GET | `/api/playlists/{playlistId}/export/duplex` | Read access; alternating information and QR pages for duplex printing |
 | GET | `/api/sessions/{sessionId}` | `GameSessionController`, story 10 |
 | GET | `/api/sessions/{sessionId}/link-out` | `GameSessionController`, the current round's YouTube watch URL for the round's DJ only, refused after reveal, story 9 |
 | GET | `/api/sessions/{sessionId}/guess-state` | `GameSessionController`, the calling player's artist and title guessing state for the current turn: artists credited, artists guessed, whether artist guessing or the title is closed, and whether the turn's token was earned |
 | GET | `/api/sessions/groups/{groupId}/results` | `GameSessionController`, a completed session's downloadable results export, story 10 |
+| GET | `/api/users/me/history` | Participant-only paginated core history; page defaults to 0 and pageSize to 20, maximum 100 |
+| GET | `/api/users/me/history/{summaryId}` | Original participant only, including after group expiry; outsiders receive 404 |
+| GET | `/api/users/me/statistics` | Core history totals; interrupted games are separate and never wins |
 | POST | `/api/admin/catalog-seeding/enqueue` | `AdminCatalogSeedingController`, admin only via `AdminAccessGuard`, body is `AdminCatalogSeedingRequest` (`playlistLink`, `youtubeIds`, both nullable), expands a submitted playlist link through the AI microservice and merges it with any submitted IDs or links before enqueueing whatever the catalog does not already have, story 40 |
 | GET | `/api/admin/catalog-seeding/status` | `AdminCatalogSeedingController`, admin only, the backlog view (pending, done, failed counts), plus the newest rechecks of provisional answers with their provisional and patient years and whether a drain is running, story 40 |
 | POST | `/api/admin/catalog-seeding/drain` | `AdminCatalogSeedingController`, admin only, starts a backlog drain in the background instead of waiting for the daily sweep; 409 while a drain is already running |
@@ -130,7 +138,7 @@ Story 39's group endpoints, story 10's game-session endpoints, story 40's admin 
 | `/app/sessions/{sessionId}/bet` | `GameActionController` | Place a bet after the active player's guess locks, story 10 |
 | `/app/sessions/{sessionId}/skip-betting` | `GameActionController` | Skip the betting window, story 10 |
 
-Story 30's Difficulty-Based-generation and Custom-mode session-start endpoints (`/session/generate`, `/session/start-with-songs`, `/session/start-custom`) are live and listed above. Story 9's link-out endpoint is live and listed above. Story 13's group text chat has also shipped (`V14__add_chat_messages`, member-only STOMP send and REST history), though its routes aren't itemized in the tables above. Story 12's voice signaling relay is live as a STOMP mapping on `/app/groups/{groupId}/voice/signal`, which forwards one WebRTC offer, answer, or ICE candidate onto the group's `/topic/groups/{groupId}/voice` topic for member-to-member routing; story 28 now implements the WebRTC mesh and gameplay clients that use it. Visual, representative-state, route smoke, and accessibility verification remain open. This table lists the REST surface live on `dev` today.
+Story 30's Difficulty-Based-generation and Custom-mode session-start endpoints (`/session/generate`, `/session/start-with-songs`, `/session/start-custom`) are live and listed above. Story 9's link-out endpoint is live and listed above. Story 13's group text chat has also shipped (`V14__add_chat_messages`, member-only STOMP send and REST history), with its history route listed above. Story 12's voice signaling relay is live as a STOMP mapping on `/app/groups/{groupId}/voice/signal`, which forwards one WebRTC offer, answer, or ICE candidate onto the group's `/topic/groups/{groupId}/voice` topic for member-to-member routing; story 28 now implements the WebRTC mesh and gameplay clients that use it. Visual, representative-state, route smoke, and accessibility verification remain open. This table lists the REST surface live on `dev` today.
 
 ## Entity model
 
@@ -244,17 +252,17 @@ PlaylistImportJobItem
 
 Tracks a playlist-scoped background YouTube import (story 47) so a user can keep browsing while it resolves; the playlist detail view reads the active job to render pending songs greyed out (V24). Each item moves from `PENDING` (waiting for a free slot) through `IDENTIFYING` and `DATING` (its two fast-tier stages) to `RESOLVED`, `ALREADY_KNOWN`, or `UNRESOLVED`, and a resolved song joins the playlist the moment it settles.
 
-Schema changes go through Flyway migrations in `backend/src/main/resources/db/migration/`, not Hibernate's `ddl-auto`, which is set to `validate`. Migrations on `dev` run through V36: V28 records accepted two-factor time steps and login failures, V29 adds betting skips, V30 adds placement deadlines, V31 and V32 persist session results, V33 records import quota usage, V34 records removed group users, V35 adds full-pass round numbers, and V36 adds a backlog row's origin and its provisional and patient years. V26 adds the playlist description and V27 adds raw video-info fields to playlist-import job items.
+Schema changes go through Flyway migrations in `backend/src/main/resources/db/migration/`, not Hibernate's `ddl-auto`, which is set to `validate`. Core migrations run through V40: V37 replaces playlist invite codes, V38 stores playlist creation time and song duration, V39 indexes due durations, and V40 adds history, prepared difficulty, and research delivery. Earlier migrations include V28 records accepted two-factor time steps and login failures, V29 adds betting skips, V30 adds placement deadlines, V31 and V32 persist session results, V33 records import quota usage, V34 records removed group users, V35 adds full-pass round numbers, and V36 adds a backlog row's origin and its provisional and patient years. V26 adds the playlist description and V27 adds raw video-info fields to playlist-import job items.
 
-### Planned (not yet code, target shape per ARCHITECTURE.md and TASKS.md)
+### Prepared difficulty and retained history
 
-Listed here so the entity picture is in one place; each is still greenfield work under its own story.
+These tables are read through JDBC. Their fields and retention rules are described in the game history section below.
 
-- `SongDifficulty` aggregate view or table (story 30): not built as an entity. Story 30's backend computes the per-song play-derived difficulty signal on the fly through `RoundRepository.aggregatePlacementStatsBySong`, a grouped aggregate query over scored rounds, so no stored table or view exists
+- `SongDifficulty` (story 30): prepared core scores in `song_difficulty`, read through JDBC. Background calculation uses durable analytics aggregates. The compatibility preview route still supports the older temporary-round selector; the lobby Start path reads prepared scores.
 
 ### Analytics store (story 33)
 
-A separate database from the transactional one above, not JPA-mapped: its own Flyway history under `db/analytics-migration`, its own `DataSource`/`JdbcTemplate` wired in `AnalyticsDataSourceConfig` (`org.dariusturcu.backend.analytics`). One table, `analytics_events`:
+A separate database from the transactional one above, not JPA-mapped: its own Flyway history under `db/analytics-migration`, its own `DataSource`/`JdbcTemplate` wired in `AnalyticsDataSourceConfig` (`org.dariusturcu.backend.analytics`). `analytics_events` stores general usage events:
 
 ```
 analytics_events
@@ -264,7 +272,7 @@ analytics_events
   └── payload (jsonb, one typed record per AnalyticsEventType)
 ```
 
-`AnalyticsEventType` values: `GAME_SESSION_STARTED`, `GAME_SESSION_ENDED`, `LOGIN`, `PLAYLIST_CREATED`, `SONG_SUBMITTED`, `RATE_LIMIT_EXCEEDED`, `REPORT_SUBMITTED`, `FAILED_LOGIN_ATTEMPT`, each with its own payload record in the same package. `AnalyticsEventRecorder.recordEvent(AnalyticsEventType, Object)` is the write API; nothing calls it yet, story 34 instruments the real event-producing call sites. `AnalyticsRetentionService.purgeExpiredEvents()`, swept daily by `AnalyticsRetentionSweeper`, deletes events older than `analytics.retention.days` (180 by default).
+`AnalyticsEventType` values: `GAME_SESSION_STARTED`, `GAME_SESSION_ENDED`, `LOGIN`, `PLAYLIST_CREATED`, `SONG_SUBMITTED`, `RATE_LIMIT_EXCEEDED`, `REPORT_SUBMITTED`, `FAILED_LOGIN_ATTEMPT`, each with its own payload record in the same package. `AnalyticsEventRecorder.recordEvent(AnalyticsEventType, Object)` is the write API; nothing calls it yet, story 34 instruments the real event-producing call sites. `AnalyticsRetentionService.purgeExpiredEvents()`, swept daily by `AnalyticsRetentionSweeper`, deletes events older than `analytics.retention.days` (365 by default).
 
 ## State diagrams
 
@@ -299,7 +307,7 @@ stateDiagram-v2
     Deleted --> [*]
 ```
 
-A group can cycle through `Lobby` → `InSession` → `Lobby` any number of times before being deleted. `GameSession` itself is ephemeral within `InSession`: purged entirely once it ends or is abandoned, except for a downloadable results export on a normal end.
+A group can cycle through `Lobby` → `InSession` → `Lobby` any number of times before being deleted. `GameSession` itself is ephemeral within `InSession`: purged entirely once it ends or is abandoned, while compact participant-only history survives both completion and abandonment. The latest normal completion also remains available as the group results export.
 
 ### Admin catalog backlog item (story 40)
 
@@ -314,3 +322,28 @@ stateDiagram-v2
 ```
 
 A `PendingImport` row can also be created indirectly, as a recheck: a user import resolves a song on the fast tier (origin `FAST_TIER_RECHECK`), or a user adds a song by hand (origin `USER_ADD_RECHECK`), and the row is queued at low priority with that provisional year so the patient pipeline re-verifies it afterward. The drain records the patient year on the row (V36), and the admin backlog shows both years side by side. Admin seeds carry origin `ADMIN_SEED`.
+
+
+## Game history and difficulty data
+
+Core owns both migration histories. V40 creates the core history, prepared difficulty, research identity mapping, and delivery queue. Analytics V2 creates observations, anonymous aggregates, retry deduplication, and deleted-identity tombstones. Game history preserves one summary before temporary session rows are purged. The existing group results export still retains only the latest completed game for each group.
+
+| Database | Entity | Fields |
+| --- | --- | --- |
+| Core | GameSummary | id, sourceSessionId (unique), groupName snapshot, startedAt, endedAt, mode, difficultyTier (null for Custom), winTargetCards, participantCount, turnsPlayed, endingReason, rulesVersion |
+| Core | GameParticipantSummary | id, gameSummaryId, userId (nullable after deletion), displayName snapshot, participationStatus, finalCardCount, cardRank, artistRank, titleRank, isWinner, placementAttempts, correctPlacements, titleAttempts, correctTitles, artistAttempts, correctArtists, betsPlaced, betsWon |
+| Core | SongDifficulty | songId, score, tier, placementSampleCount, calculationVersion, calculatedAt, samplingKey |
+| Analytics | SongPlayObservation | eventId (unique), occurredAt, songId, researchPlayerId, gameCorrelationId, placementOutcome, timelineCardCount, validInsertionSlotCount, titleAttempted, titleCorrect, artistAttempts, correctArtists, requestedDifficultyTier (null for Custom), rulesVersion |
+| Analytics | SongDifficultyAggregate | songId, rulesVersion, timelineSizeBand, placementAttempts, correctPlacements, titleAttempts, correctTitles, artistAttempts, correctArtists, updatedAt |
+
+Game summaries exclude song lists, final timelines, raw guesses, chat, and voice. Only original participants can read them, including departed players and after group expiry. Ties remain ties. Interrupted games do not count as competitive wins. Duration derives from the timestamps; user-visible totals derive from core history. Account deletion clears account links and names from shared summaries, removes research identity, and removes summaries once no account-linked participants remain. History has no age-based expiry while a participant account remains.
+
+Raw analytics events and observations expire after 365 days. Anonymous song aggregates survive raw-observation expiry and contain no player identity. Observation delivery and aggregation are retry-safe; skipped turns do not count as incorrect attempts. Pseudonymous research identities remain account-linked data requiring deletion handling. The core delivery queue commits scored-turn observations with gameplay before temporary rows are purged. A worker delivers up to 50 observations every 30 seconds; analytics commits the observation, deduplication key, and aggregate together before core acknowledges delivery. Expired queued raw observations are removed independently of analytics availability. Account deletion removes the core identity mapping and queues analytics anonymization; tombstones also anonymize late deliveries.
+
+Difficulty calculation runs every six hours and publishes prepared scores to core. Cold starts use the popularity proxy. Session starts select from the tier and sampling-key index using a random pivot, wrap around when needed, and shuffle the selected pool, preserving the last successful scores during analytics failures. Confirm stores the selected tier only; Start generates a session pool with connected player count multiplied by win target cards multiplied by three. The generated pool is not saved as a playlist or displayed for review. International eligibility retains the current verified-status and five-sitelink rules. Insufficient eligible songs produce an explicit error. Personalized ML training remains deferred.
+
+Playlist invites are eight uppercase letters with collision checks; older stored codes may use earlier formats. Group join codes are four uppercase letters. All three print modes accept A4, LETTER, LEGAL, A3, A5, and TABLOID. Shared-song metadata editing is limited to UNVERIFIED and MANUAL_ENTRY and requires write access to every containing playlist.
+
+Transport turns and full-pass rounds are separate: `RoundDTO.turnNumber` advances for each player's turn; `roundNumber` advances after a full pass. `RoundDTO` includes placement, countdown, betting, and reveal deadlines, accepted bets, eligible skip-voter IDs, and reveal-only artist, title, year, and color. `GuessStateDTO` exposes the caller's progressive artist state and one-shot title state. Guess feedback is private; revealed song metadata is public only after reveal.
+
+`PlayerCard` stores a player's timeline card while a session is active. `StoredSessionResults` stores the latest normal result per group with the original participant account IDs for access control. `GameSummary` and `GameParticipantSummary` retain compact history independently of those temporary rows and group membership.

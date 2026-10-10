@@ -23,6 +23,9 @@ import java.util.List;
 @Table(name = "game_sessions")
 public class GameSession {
 
+    @Enumerated(EnumType.STRING)
+    private org.dariusturcu.backend.difficulty.DifficultyTier difficultyTier;
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
