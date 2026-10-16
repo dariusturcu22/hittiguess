@@ -45,10 +45,7 @@ public class PipelineStageConfig {
         return stageExecutor(concurrency);
     }
 
-    /**
-     * One thread per concurrency slot of every metadata stage plus headroom for a slot that is
-     * still returning its thread, so a slow AI call in one stage never delays another stage.
-     */
+    /** Spare threads accept handoffs before the previous slot thread returns. */
     public static ThreadPoolTaskExecutor stageExecutor(StageConcurrency concurrency) {
         int threads = concurrency.totalMetadataLimit() + EXECUTOR_HEADROOM_THREADS;
         ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();

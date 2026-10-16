@@ -45,11 +45,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-/**
- * Runs the dispatcher on real threads against Postgres with an AI client that sleeps like a
- * slow provider, comparing the parallel, burst, and wake-up behavior with the earlier one job
- * per stage per poll.
- */
+/** Real stage threads and persisted queues use a slow fake provider. */
 @Testcontainers
 @SpringBootTest(classes = PipelineStageDispatcherIntegrationTest.TestConfig.class)
 class PipelineStageDispatcherIntegrationTest {
@@ -66,7 +62,10 @@ class PipelineStageDispatcherIntegrationTest {
     private static final Duration CHECK_PAUSE = Duration.ofMillis(20);
     private static final int SINGLE_SLOT = 1;
     private static final int SINGLE_JOB_BURST = 1;
-    // The parallel run must take under a third of the earlier behavior's time.
+    private static final int INITIAL_QUERY_COUNT = 1;
+    private static final int IDLE_BOUNDARY_QUERY_COUNT = 2;
+    private static final int POST_WAKE_QUERY_COUNT = 3;
+    private static final int CHECKED_ACTIVE_INTERVALS = 3;
     private static final long REQUIRED_SPEEDUP = 3;
 
     @Container
@@ -149,8 +148,23 @@ class PipelineStageDispatcherIntegrationTest {
         return dispatcher;
     }
 
-    private PipelineStageDispatcher earlierBehavior() {
-        return dispatcher(StageConcurrency.uniform(SINGLE_SLOT), SINGLE_JOB_BURST, new StageWakeUps(), SHORT_POLL);
+    private Duration drainOneJobPerPoll() throws InterruptedException {
+        StageConcurrency concurrency = StageConcurrency.uniform(SINGLE_SLOT);
+        PipelineStageWorker worker = new PipelineStageWorker(engine, payloads, stages, completion, usage, settings,
+                concurrency, SINGLE_JOB_BURST);
+        ThreadPoolTaskScheduler scheduler = new ThreadPoolTaskScheduler();
+        scheduler.setPoolSize(concurrency.totalMetadataLimit());
+        scheduler.initialize();
+        schedulers.add(scheduler);
+        startRuns("earlier");
+        long startedAt = System.nanoTime();
+        var tasks = HttpAiStageClient.PATHS.keySet().stream()
+                .map(stage -> scheduler.scheduleWithFixedDelay(() -> worker.work(stage), SHORT_POLL)).toList();
+        try {
+            return timeUntilRunsFinish(SONG_COUNT, startedAt);
+        } finally {
+            tasks.forEach(task -> task.cancel(false));
+        }
     }
 
     private PipelineStageDispatcher currentBehavior(Duration pollInterval) {
@@ -186,7 +200,7 @@ class PipelineStageDispatcherIntegrationTest {
 
     @Test
     void parallelSlotsBurstsAndWakeUpsFinishSongsMuchFasterThanOneJobPerPoll() throws Exception {
-        Duration earlier = drainWith(earlierBehavior(), "earlier");
+        Duration earlier = drainOneJobPerPoll();
         assertThat(stages.mostConcurrentCalls(PipelineStage.YOUTUBE_METADATA)).isEqualTo(SINGLE_SLOT);
         core.execute("TRUNCATE songs, pipeline_runs RESTART IDENTITY CASCADE");
         stages.reset();
@@ -201,6 +215,18 @@ class PipelineStageDispatcherIntegrationTest {
                 .isGreaterThan(SINGLE_SLOT).isLessThanOrEqualTo(StageConcurrency.DEFAULT_YOUTUBE_METADATA_LIMIT);
         assertThat(stages.mostConcurrentCalls(PipelineStage.MUSICBRAINZ))
                 .isLessThanOrEqualTo(StageConcurrency.DEFAULT_SOURCE_LIMIT);
+    }
+
+    @Test
+    void exhaustedBurstsContinueBeforeTheNextPoll() throws Exception {
+        PipelineStageDispatcher dispatcher = dispatcher(StageConcurrency.uniform(SINGLE_SLOT), SINGLE_JOB_BURST,
+                engineWakeUps, LONG_POLL);
+        startRuns("bursts");
+        long startedAt = System.nanoTime();
+        dispatcher.start();
+
+        assertThat(timeUntilRunsFinish(SONG_COUNT, startedAt)).isLessThan(WAKE_UP_BOUND);
+        assertThat(songs.count()).isEqualTo(SONG_COUNT);
     }
 
     @Test
@@ -224,7 +250,7 @@ class PipelineStageDispatcherIntegrationTest {
         MutableClock clock = new MutableClock(java.time.Instant.now());
         PipelineStageDispatcher dispatcher = new PipelineStageDispatcher(worker, countingEngine, new StageWakeUps(),
                 StageConcurrency.defaults(), mock(org.springframework.scheduling.TaskScheduler.class), Runnable::run,
-                SHORT_POLL, LONG_POLL, clock);
+                SHORT_POLL, Duration.ofSeconds(PipelineStageDispatcher.DEFAULT_IDLE_POLL_INTERVAL_SECONDS), clock);
         dispatcher.start();
 
         dispatcher.poll();
@@ -232,16 +258,19 @@ class PipelineStageDispatcherIntegrationTest {
         dispatcher.poll();
         clock.advance(SHORT_POLL);
         dispatcher.poll();
-        org.mockito.Mockito.verify(countingEngine, org.mockito.Mockito.times(1)).stagesWithDueWork();
+        org.mockito.Mockito.verify(countingEngine, org.mockito.Mockito.times(INITIAL_QUERY_COUNT)).stagesWithDueWork();
 
-        clock.advance(LONG_POLL);
+        clock.advance(Duration.ofSeconds(PipelineStageDispatcher.DEFAULT_IDLE_POLL_INTERVAL_SECONDS).minus(SHORT_POLL.multipliedBy(CHECKED_ACTIVE_INTERVALS)));
         dispatcher.poll();
-        org.mockito.Mockito.verify(countingEngine, org.mockito.Mockito.times(2)).stagesWithDueWork();
+        org.mockito.Mockito.verify(countingEngine, org.mockito.Mockito.times(INITIAL_QUERY_COUNT)).stagesWithDueWork();
+        clock.advance(SHORT_POLL);
+        dispatcher.poll();
+        org.mockito.Mockito.verify(countingEngine, org.mockito.Mockito.times(IDLE_BOUNDARY_QUERY_COUNT)).stagesWithDueWork();
 
         dispatcher.wake(PipelineStage.MUSICBRAINZ);
         clock.advance(SHORT_POLL);
         dispatcher.poll();
-        org.mockito.Mockito.verify(countingEngine, org.mockito.Mockito.times(3)).stagesWithDueWork();
+        org.mockito.Mockito.verify(countingEngine, org.mockito.Mockito.times(POST_WAKE_QUERY_COUNT)).stagesWithDueWork();
         dispatcher.stop();
     }
 

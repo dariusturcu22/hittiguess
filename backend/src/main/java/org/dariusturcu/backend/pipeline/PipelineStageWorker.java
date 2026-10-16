@@ -12,15 +12,12 @@ import tools.jackson.databind.JsonNode;
 import java.util.Optional;
 import java.util.UUID;
 
-/**
- * Runs stage jobs in the calling thread: lease within the stage's concurrency limit, call the AI
- * stage, and report the outcome to the engine. {@link PipelineStageDispatcher} decides when and
- * on how many threads this runs.
- */
+/** Stage slots lease within the shared concurrency limit and run bounded bursts. */
 @Component
 @ConditionalOnProperty(name = "pipeline.stages.enabled", havingValue = "true")
 public class PipelineStageWorker {
     public static final int DEFAULT_BURST_LIMIT = 20;
+    private static final int MINIMUM_BURST_LIMIT = 1;
     private static final Logger LOGGER = LoggerFactory.getLogger(PipelineStageWorker.class);
     private static final Runnable NOTHING_AFTER_LEASE = () -> { };
     private final PipelineJobService engine;
@@ -43,7 +40,7 @@ public class PipelineStageWorker {
             PipelineCompletionService completion, ApiUsageService usage, PipelineSettings settings,
             StageConcurrency concurrency,
             @Value("${pipeline.stages.burst-limit:" + DEFAULT_BURST_LIMIT + "}") int burstLimit) {
-        if (burstLimit < 1) {
+        if (burstLimit < MINIMUM_BURST_LIMIT) {
             throw new IllegalArgumentException("The burst limit must be at least one job");
         }
         this.engine = engine;
@@ -56,10 +53,7 @@ public class PipelineStageWorker {
         this.burstLimit = burstLimit;
     }
 
-    /**
-     * Checks cheaply for due work, then runs due jobs of the stage back to back. Returns how many
-     * jobs it ran.
-     */
+    /** Checks for due work before leasing a burst. */
     public int work(PipelineStage stage) {
         try {
             if (!engine.hasDueWork(stage)) {
@@ -72,12 +66,7 @@ public class PipelineStageWorker {
         return drain(stage, NOTHING_AFTER_LEASE);
     }
 
-    /**
-     * Leases and runs jobs of the stage one after another, without waiting between them, until none
-     * is due, the concurrency limit is reached, or the burst limit is used up, so one caller cannot
-     * hold its thread forever. {@code afterLease} runs after each successful lease and before the
-     * AI call, which lets the dispatcher start another slot while this one is busy.
-     */
+    /** The lease callback starts another slot before a potentially slow AI call. */
     public int drain(PipelineStage stage, Runnable afterLease) {
         int processed = 0;
         while (processed < burstLimit) {

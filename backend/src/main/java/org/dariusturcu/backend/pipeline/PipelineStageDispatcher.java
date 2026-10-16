@@ -21,19 +21,12 @@ import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.Semaphore;
 
-/**
- * Starts stage work on a bounded executor. Each metadata stage gets as many slots as its
- * concurrency limit; a slot runs {@link PipelineStageWorker#drain} and, whenever it leases a job,
- * starts the next free slot of its stage, so parallel work grows only while jobs are due. Slots
- * start on a wake-up from {@link StageWakeUps} or on the poll, which checks every stage with one
- * query. After a poll that found nothing, with no wake-up since, the poll reads the database only
- * once per idle interval so a serverless database can sleep.
- */
+/** Committed wake-ups and idle-aware polling dispatch bounded stage bursts on separate worker threads. */
 @Component
 @ConditionalOnProperty(name = "pipeline.stages.enabled", havingValue = "true")
 public class PipelineStageDispatcher implements SmartLifecycle, StageWakeUps.Listener {
     public static final long DEFAULT_POLL_INTERVAL_SECONDS = 5;
-    public static final long DEFAULT_IDLE_POLL_INTERVAL_SECONDS = 15;
+    public static final long DEFAULT_IDLE_POLL_INTERVAL_SECONDS = Duration.ofMinutes(10).toSeconds();
     // Retries further out than this are left to the poll instead of holding a timer each.
     public static final Duration MAXIMUM_SCHEDULED_WAKE_DELAY = Duration.ofMinutes(10);
     private static final Logger LOGGER = LoggerFactory.getLogger(PipelineStageDispatcher.class);
@@ -58,7 +51,7 @@ public class PipelineStageDispatcher implements SmartLifecycle, StageWakeUps.Lis
             StageConcurrency concurrency, @Qualifier("pipelineStageScheduler") TaskScheduler scheduler,
             @Qualifier("pipelineStageExecutor") Executor executor,
             @Value("${pipeline.stages.interval-seconds:" + DEFAULT_POLL_INTERVAL_SECONDS + "}") long pollIntervalSeconds,
-            @Value("${pipeline.stages.idle-interval-seconds:" + DEFAULT_IDLE_POLL_INTERVAL_SECONDS + "}")
+            @Value("${pipeline.stages.idle-interval-seconds:#{T(org.dariusturcu.backend.pipeline.PipelineStageDispatcher).DEFAULT_IDLE_POLL_INTERVAL_SECONDS}}")
             long idlePollIntervalSeconds) {
         this(worker, engine, wakeUps, concurrency, scheduler, executor, Duration.ofSeconds(pollIntervalSeconds),
                 Duration.ofSeconds(idlePollIntervalSeconds), Clock.systemUTC());
@@ -176,14 +169,19 @@ public class PipelineStageDispatcher implements SmartLifecycle, StageWakeUps.Lis
     }
 
     private void runSlot(PipelineStage stage, Semaphore stageSlots) {
+        boolean processedWork = false;
         try {
-            if (worker.drain(stage, () -> startSlot(stage)) > 0) {
+            processedWork = worker.drain(stage, () -> startSlot(stage)) > 0;
+            if (processedWork) {
                 lastPollFoundWork = true;
             }
         } catch (RuntimeException failure) {
             LOGGER.warn("Pipeline stage {} slot stopped: {}", stage, failure.getClass().getSimpleName());
         } finally {
             stageSlots.release();
+            if (processedWork) {
+                startSlot(stage);
+            }
         }
     }
 }

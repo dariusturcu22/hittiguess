@@ -7,13 +7,7 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 import java.time.Instant;
 import java.util.concurrent.atomic.AtomicReference;
 
-/**
- * Tells this process's stage dispatcher that jobs of a stage became available, so it leases them
- * without waiting for its next poll. A signal raised inside a transaction is delivered only after
- * that transaction commits, because the jobs are invisible to other connections before then.
- * Signals are hints: with no dispatcher registered they are dropped, and the poll still finds
- * the work.
- */
+/** In-process hints are delivered after commit; polling recovers missed signals. */
 @Component
 public class StageWakeUps {
 

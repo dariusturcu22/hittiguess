@@ -9,12 +9,7 @@ import java.util.EnumMap;
 import java.util.Locale;
 import java.util.Map;
 
-/**
- * How many jobs of each metadata stage may be in progress at once, across every core process.
- * Each limit is read from {@code pipeline.stages.concurrency.<stage>}, the stage name in lower
- * case with hyphens. The AI service paces each external source itself, so a limit above one
- * only lets slow calls overlap; it never raises a source's request rate.
- */
+/** Concurrency limits apply across core processes; the AI service still controls source request pace. */
 @Component
 public class StageConcurrency {
     public static final String PROPERTY_PREFIX = "pipeline.stages.concurrency.";
