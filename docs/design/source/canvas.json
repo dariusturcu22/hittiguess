@@ -1187,6 +1187,15 @@
       "h": 900,
       "title": "Admin: song detail, dark",
       "page": "page-1"
+    },
+    {
+      "file": "AdminQueueStageDark.dc.html",
+      "x": 0,
+      "y": 34304,
+      "w": 1440,
+      "h": 900,
+      "title": "Admin: single stage queue, dark",
+      "page": "page-1"
     }
   ],
   "annotations": [

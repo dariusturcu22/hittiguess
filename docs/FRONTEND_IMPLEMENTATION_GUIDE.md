@@ -63,6 +63,7 @@ The admin rail group (Dashboard, Backfill queue, Song catalog, Reports) appears 
 | --- | --- |
 | `/admin` | `AdminDashboardDark.dc.html` |
 | `/admin/backfill-queue` | `AdminBackfillQueueDark.dc.html` (overview tab), `AdminBackfillQueueSongsDark.dc.html` (songs tab) |
+| `/admin/backfill-queue/[stage]` | `AdminQueueStageDark.dc.html` (one stage's own queue, drawn for MusicBrainz) |
 | `/admin/songs` | `AdminSongCatalogDark.dc.html`, `AdminSongDetailDark.dc.html` (detail drawer) |
 | `/admin/reports` | `AdminReportQueueDark.dc.html`, `AdminReportQueueLight.dc.html` |
 

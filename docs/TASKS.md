@@ -86,7 +86,7 @@ Admin API:
 
 - [ ] `/api/users/me` returns the account role; remove the 403 probe in the admin layout
 - [ ] Dashboard endpoint: counts of verified songs, songs needing review (NEEDS_REVIEW, UNVERIFIED, and MANUAL_ENTRY), songs with errors, and songs queued now; YouTube units used against the daily 10,000-unit default with its midnight Pacific reset; LLM and embedding usage with estimated cost for today and the month; per-queue depth
-- [ ] Queue endpoint: waiting, in progress, done, and failed counts per stage, current pace, cooldown state, average response time, estimated time to drain, and the list of songs still needing work
+- [ ] Queue endpoint: waiting, in progress, done, and failed counts per stage, current pace, cooldown state, average response time, estimated time to drain, and the list of songs still needing work; a per-stage job list with lane (user import or backfill), attempts, next attempt, and last error
 - [ ] Controls: pause and resume per queue and for the whole backlog; retry, retry all, and discard failed items; cancel a batch; run one YouTube ID now at top priority; re-run the pipeline for one song
 - [ ] Batches: each submitted playlist or ID list is a batch with progress, skipped duplicates, and an estimate
 - [ ] Song catalog endpoint: server-side search by title or artist with a minimum of three characters, 25 results per page, and a trigram index so a search never scans the whole table; each row has title, artists, release year, status (processing, in queue, verified, needs review, error), pipeline (fast or full, from the queue origin), date added, and added by (admin seed when empty)
@@ -95,7 +95,7 @@ Admin API:
 Frontend:
 
 - [ ] Admin section in the sidebar in its own accent color with Dashboard, Backfill queue, Song catalog, and Reports, visible only to admins
-- [ ] Dashboard, backfill queue (per-queue panel, batches, failed items with reasons, song list), song catalog (debounced search, pagination), and song detail drawer
+- [ ] Dashboard, backfill queue (per-queue panel, a page per stage queue, batches, failed items with reasons, song list), song catalog (debounced search, pagination), and song detail drawer
 - [ ] Design dark and light mockups for the admin sidebar section, dashboard, backfill queue, song catalog, and song detail; replace the catalog backlog mockup and its 400-song quota figure; validate source and canvas equality
 
 Tests:
