@@ -32,13 +32,17 @@ type LoginFormValues = z.infer<typeof LoginFormSchema>;
 
 const AUTH_INPUT_CLASSES = "h-auto px-4 py-[13px] text-sm placeholder:text-icon-muted";
 
+const ACCOUNT_EXISTS_ERROR_CODE = "account_exists";
+const ACCOUNT_EXISTS_MESSAGE = "An account with this email already exists. Log in with your password instead.";
+const GOOGLE_SIGN_IN_FAILED_MESSAGE = "Google sign-in failed. Try again or use email and password.";
+
 function OAuthErrorToast() {
   const searchParams = useSearchParams();
 
   useEffect(() => {
     const error = searchParams.get("error");
     if (error) {
-      toast.error("Google sign-in failed. Try again or use email and password.");
+      toast.error(error === ACCOUNT_EXISTS_ERROR_CODE ? ACCOUNT_EXISTS_MESSAGE : GOOGLE_SIGN_IN_FAILED_MESSAGE);
     }
   }, [searchParams]);
 

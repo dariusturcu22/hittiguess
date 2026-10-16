@@ -94,6 +94,20 @@ describe("LoginPage", () => {
     await waitFor(() => expect(loginPush).toHaveBeenCalledWith("/playlists"));
   });
 
+  it("explains that the email already has a password account after a Google sign-in is refused", async () => {
+    loginSearchParams = new URLSearchParams("error=account_exists");
+    render(<LoginPage />);
+    await waitFor(() => expect(toastError).toHaveBeenCalledWith(
+      "An account with this email already exists. Log in with your password instead."));
+  });
+
+  it("shows the generic Google failure message for any other sign-in error", async () => {
+    loginSearchParams = new URLSearchParams("error=oauth2_failed");
+    render(<LoginPage />);
+    await waitFor(() => expect(toastError).toHaveBeenCalledWith(
+      "Google sign-in failed. Try again or use email and password."));
+  });
+
   it("carries the return target on the Google link", () => {
     loginSearchParams = new URLSearchParams("returnTo=/groups/join/abc123");
     render(<LoginPage />);
