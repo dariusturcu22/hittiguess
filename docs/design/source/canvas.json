@@ -658,17 +658,8 @@
       "page": "page-1"
     },
     {
-      "file": "AdminCatalogBacklogDark.dc.html",
-      "x": 0,
-      "y": 31304,
-      "w": 1440,
-      "h": 900,
-      "title": "Admin: catalog backlog, dark",
-      "page": "page-1"
-    },
-    {
       "file": "AdminReportQueueDark.dc.html",
-      "x": 1580,
+      "x": 7900,
       "y": 31304,
       "w": 1440,
       "h": 900,
@@ -775,17 +766,8 @@
       "page": "page-1"
     },
     {
-      "file": "AdminCatalogBacklogLight.dc.html",
-      "x": 3160,
-      "y": 31304,
-      "w": 1440,
-      "h": 900,
-      "title": "Admin: catalog backlog, light",
-      "page": "page-1"
-    },
-    {
       "file": "AdminReportQueueLight.dc.html",
-      "x": 4740,
+      "x": 11060,
       "y": 31304,
       "w": 1440,
       "h": 900,
@@ -1159,6 +1141,114 @@
       "w": 1440,
       "h": 900,
       "title": "Game history detail, light",
+      "page": "page-1"
+    },
+    {
+      "file": "AdminDashboardDark.dc.html",
+      "x": 6320,
+      "y": 31304,
+      "w": 1440,
+      "h": 900,
+      "title": "Admin: dashboard, dark",
+      "page": "page-1"
+    },
+    {
+      "file": "AdminDashboardLight.dc.html",
+      "x": 9480,
+      "y": 31304,
+      "w": 1440,
+      "h": 900,
+      "title": "Admin: dashboard, light",
+      "page": "page-1"
+    },
+    {
+      "file": "AdminBackfillQueueDark.dc.html",
+      "x": 6320,
+      "y": 32304,
+      "w": 1440,
+      "h": 900,
+      "title": "Admin: backfill queue overview, dark",
+      "page": "page-1"
+    },
+    {
+      "file": "AdminBackfillQueueLight.dc.html",
+      "x": 9480,
+      "y": 32304,
+      "w": 1440,
+      "h": 900,
+      "title": "Admin: backfill queue overview, light",
+      "page": "page-1"
+    },
+    {
+      "file": "AdminBackfillQueueSongsDark.dc.html",
+      "x": 7900,
+      "y": 32304,
+      "w": 1440,
+      "h": 900,
+      "title": "Admin: backfill queue songs, dark",
+      "page": "page-1"
+    },
+    {
+      "file": "AdminBackfillQueueSongsLight.dc.html",
+      "x": 11060,
+      "y": 32304,
+      "w": 1440,
+      "h": 900,
+      "title": "Admin: backfill queue songs, light",
+      "page": "page-1"
+    },
+    {
+      "file": "AdminSongCatalogDark.dc.html",
+      "x": 6320,
+      "y": 33304,
+      "w": 1440,
+      "h": 900,
+      "title": "Admin: song catalog, dark",
+      "page": "page-1"
+    },
+    {
+      "file": "AdminSongCatalogLight.dc.html",
+      "x": 9480,
+      "y": 33304,
+      "w": 1440,
+      "h": 900,
+      "title": "Admin: song catalog, light",
+      "page": "page-1"
+    },
+    {
+      "file": "AdminSongDetailDark.dc.html",
+      "x": 7900,
+      "y": 33304,
+      "w": 1440,
+      "h": 900,
+      "title": "Admin: song detail, dark",
+      "page": "page-1"
+    },
+    {
+      "file": "AdminSongDetailLight.dc.html",
+      "x": 11060,
+      "y": 33304,
+      "w": 1440,
+      "h": 900,
+      "title": "Admin: song detail, light",
+      "page": "page-1"
+    },
+    {
+      "file": "AdminQueueStageDark.dc.html",
+      "x": 6320,
+      "y": 34304,
+      "w": 1440,
+      "h": 900,
+      "title": "Admin: single stage queue, dark",
+      "page": "page-1"
+    },
+    {
+      "file": "AdminQueueStageLight.dc.html",
+      "x": 9480,
+      "y": 34304,
+      "w": 1440,
+      "h": 900,
+      "title": "Admin: single stage queue, light",
       "page": "page-1"
     }
   ],

@@ -55,12 +55,19 @@ Grouped by where each maps in the app. "Route" is the real or planned path under
 | `/playlists/[playlistId]/edit` | `EditPlaylistDark.dc.html`, `EditPlaylistLight.dc.html` |
 | Import flow: `/playlists/[playlistId]/import`, `/playlists/[playlistId]/import/youtube`, `/playlists/[playlistId]/import/from-playlist`, `/playlists/[playlistId]/import/from-playlist/[sourceId]` | `ImportChooseSourceDark.dc.html`, `ImportChooseSourceLight.dc.html`, `ImportPlaylistLinkDark.dc.html`, `ImportPlaylistLinkLight.dc.html`, `ImportFromPlaylistSelectDark.dc.html`, `ImportFromPlaylistSelectLight.dc.html`, `ImportFromPlaylistConfirmDark.dc.html`, `ImportFromPlaylistConfirmLight.dc.html`, `ImportPlaylistProcessingDark.dc.html`, `ImportPlaylistProcessingLight.dc.html`, `ImportProgressDark.dc.html`, `ImportProgressLight.dc.html` |
 
-### Admin (routes implemented, story 17/40, gated on the `ADMIN` role)
+### Admin (story 17/40 routes implemented, story 51 console in design, gated on the `ADMIN` role)
+
+The admin rail group (Dashboard, Backfill queue, Song catalog, Reports) appears in every admin mockup, in the admin accent color, below the shared rail icons. Story 51 routes have dark and light mockups.
 
 | Route (proposed) | Mockup files |
 | --- | --- |
-| `/admin/catalog-backlog` | `AdminCatalogBacklogDark.dc.html`, `AdminCatalogBacklogLight.dc.html` |
+| `/admin` | `AdminDashboardDark.dc.html`, `AdminDashboardLight.dc.html` |
+| `/admin/backfill-queue` | `AdminBackfillQueueDark.dc.html`, `AdminBackfillQueueLight.dc.html` (overview tab), `AdminBackfillQueueSongsDark.dc.html`, `AdminBackfillQueueSongsLight.dc.html` (songs tab) |
+| `/admin/backfill-queue/[stage]` | `AdminQueueStageDark.dc.html`, `AdminQueueStageLight.dc.html` (one stage's own queue, drawn for MusicBrainz) |
+| `/admin/songs` | `AdminSongCatalogDark.dc.html`, `AdminSongCatalogLight.dc.html`, `AdminSongDetailDark.dc.html`, `AdminSongDetailLight.dc.html` (detail drawer) |
 | `/admin/reports` | `AdminReportQueueDark.dc.html`, `AdminReportQueueLight.dc.html` |
+
+The implemented `/admin/catalog-backlog` route is replaced by `/admin/backfill-queue` when story 51 ships.
 
 ### Gameplay (routes implemented, stories 9/10/11/12/13/39)
 
