@@ -282,7 +282,7 @@ describe("AppSidebar admin group", () => {
 
     expect(screen.getByText("ADMIN")).toBeInTheDocument();
     expect(screen.getByLabelText("Admin: Dashboard")).toHaveAttribute("href", "/admin");
-    expect(screen.getByLabelText("Admin: Backfill queue")).toHaveAttribute("href", "/admin/catalog-backlog");
+    expect(screen.getByLabelText("Admin: Backfill queue")).toHaveAttribute("href", "/admin/backfill-queue");
     expect(screen.getByLabelText("Admin: Song catalog")).toHaveAttribute("href", "/admin/songs");
     expect(screen.getByLabelText("Admin: Reports")).toHaveAttribute("href", "/admin/reports");
     expect(screen.getByTitle("Admin: Reports")).toBeInTheDocument();

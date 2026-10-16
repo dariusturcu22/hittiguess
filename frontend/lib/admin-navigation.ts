@@ -10,7 +10,7 @@ const ADMIN_DASHBOARD_HREF = "/admin";
 
 export const ADMIN_NAVIGATION_ITEMS: AdminNavigationItem[] = [
   { label: "Dashboard", href: ADMIN_DASHBOARD_HREF, icon: LayoutDashboard },
-  { label: "Backfill queue", href: "/admin/catalog-backlog", icon: Layers },
+  { label: "Backfill queue", href: "/admin/backfill-queue", icon: Layers },
   { label: "Song catalog", href: "/admin/songs", icon: Database },
   { label: "Reports", href: "/admin/reports", icon: Flag },
 ];

@@ -1,8 +1,27 @@
-import { act, fireEvent, render, screen, within } from "@testing-library/react";
+import {
+  act,
+  fireEvent,
+  render as renderComponent,
+  screen,
+  within,
+} from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+
+function render(component: React.ReactNode) {
+  return renderComponent(
+    <QueryClientProvider client={new QueryClient()}>
+      {component}
+    </QueryClientProvider>,
+  );
+}
+
 import SongCatalogPage from "./page";
-import { CATALOG_PAGE_SIZE, SEARCH_DEBOUNCE_MILLISECONDS } from "./song-catalog-presentation";
+import {
+  CATALOG_PAGE_SIZE,
+  SEARCH_DEBOUNCE_MILLISECONDS,
+} from "./song-catalog-presentation";
 
 interface CatalogParams {
   query?: string;
@@ -35,7 +54,14 @@ vi.mock("@/hooks/generated/admin-song-catalog/admin-song-catalog", () => ({
   },
 }));
 
-const COUNTS = { all: 60, verified: 40, needsReview: 12, inQueue: 5, processing: 2, error: 1 };
+const COUNTS = {
+  all: 60,
+  verified: 40,
+  needsReview: 12,
+  inQueue: 5,
+  processing: 2,
+  error: 1,
+};
 const TOTAL_SONGS = 60;
 const TOTAL_PAGES = 3;
 const SONG_ID = 12;
@@ -81,7 +107,9 @@ function lastCatalogParams(): CatalogParams {
 }
 
 function typeSearch(text: string) {
-  fireEvent.change(screen.getByLabelText("Search title or artist"), { target: { value: text } });
+  fireEvent.change(screen.getByLabelText("Search title or artist"), {
+    target: { value: text },
+  });
 }
 
 describe("SongCatalogPage", () => {
@@ -90,7 +118,11 @@ describe("SongCatalogPage", () => {
     catalogHook.calls = [];
     catalogHook.options = [];
     catalogHook.refetch.mockReset();
-    catalogHook.result = { data: catalogPage([VERIFIED_SONG, QUEUED_ITEM]), isLoading: false, isError: false };
+    catalogHook.result = {
+      data: catalogPage([VERIFIED_SONG, QUEUED_ITEM]),
+      isLoading: false,
+      isError: false,
+    };
     detailHook.songIds = [];
     detailHook.result = { data: undefined, isLoading: true, isError: false };
   });
@@ -102,9 +134,18 @@ describe("SongCatalogPage", () => {
   it("requests the first unfiltered page and keeps previous data while typing", () => {
     render(<SongCatalogPage />);
 
-    expect(lastCatalogParams()).toEqual({ query: undefined, status: undefined, page: 0, size: CATALOG_PAGE_SIZE });
-    expect(catalogHook.options[0]).toEqual({ query: { placeholderData: expect.any(Function) } });
-    expect(screen.getByText(/Search runs after 3 characters and a short pause/)).toBeInTheDocument();
+    expect(lastCatalogParams()).toEqual({
+      query: undefined,
+      status: undefined,
+      page: 0,
+      size: CATALOG_PAGE_SIZE,
+    });
+    expect(catalogHook.options[0]).toEqual({
+      query: { placeholderData: expect.any(Function) },
+    });
+    expect(
+      screen.getByText(/Search runs after 3 characters and a short pause/),
+    ).toBeInTheDocument();
   });
 
   it("renders song rows and queue items with their fallbacks", () => {
@@ -126,12 +167,25 @@ describe("SongCatalogPage", () => {
   it("shows each status chip with its count", () => {
     render(<SongCatalogPage />);
 
-    const chips = within(screen.getByRole("group", { name: "Filter by status" }));
-    expect(chips.getByRole("button", { name: "All 60" })).toHaveAttribute("aria-pressed", "true");
-    expect(chips.getByRole("button", { name: "Verified 40" })).toBeInTheDocument();
-    expect(chips.getByRole("button", { name: "Needs review 12" })).toBeInTheDocument();
-    expect(chips.getByRole("button", { name: "In queue 5" })).toBeInTheDocument();
-    expect(chips.getByRole("button", { name: "Processing 2" })).toBeInTheDocument();
+    const chips = within(
+      screen.getByRole("group", { name: "Filter by status" }),
+    );
+    expect(chips.getByRole("button", { name: "All 60" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    expect(
+      chips.getByRole("button", { name: "Verified 40" }),
+    ).toBeInTheDocument();
+    expect(
+      chips.getByRole("button", { name: "Needs review 12" }),
+    ).toBeInTheDocument();
+    expect(
+      chips.getByRole("button", { name: "In queue 5" }),
+    ).toBeInTheDocument();
+    expect(
+      chips.getByRole("button", { name: "Processing 2" }),
+    ).toBeInTheDocument();
     expect(chips.getByRole("button", { name: "Error 1" })).toBeInTheDocument();
   });
 
@@ -179,8 +233,13 @@ describe("SongCatalogPage", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Needs review 12" }));
 
-    expect(lastCatalogParams()).toMatchObject({ status: "NEEDS_REVIEW", page: 0 });
-    expect(screen.getByRole("button", { name: "Needs review 12" })).toHaveAttribute("aria-pressed", "true");
+    expect(lastCatalogParams()).toMatchObject({
+      status: "NEEDS_REVIEW",
+      page: 0,
+    });
+    expect(
+      screen.getByRole("button", { name: "Needs review 12" }),
+    ).toHaveAttribute("aria-pressed", "true");
   });
 
   it("resets to the first page when the search changes", () => {
@@ -243,13 +302,23 @@ describe("SongCatalogPage", () => {
 
     const drawer = within(screen.getByRole("dialog", { name: "Song detail" }));
     expect(detailHook.songIds).toContain(SONG_ID);
-    expect(drawer.getByText("Year 2019, fast pipeline, added Oct 15, 2026 by mara.k")).toBeInTheDocument();
-    expect(drawer.getByText(/Fast-tier import recheck, failed\. No usable metadata/)).toBeInTheDocument();
+    expect(
+      drawer.getByText(
+        "Year 2019, fast pipeline, added Oct 15, 2026 by mara.k",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      drawer.getByText(/Fast-tier import recheck, failed\. No usable metadata/),
+    ).toBeInTheDocument();
     expect(drawer.getByText("medium")).toBeInTheDocument();
-    expect(drawer.queryByText("What each source found")).not.toBeInTheDocument();
+    expect(
+      drawer.queryByText("What each source found"),
+    ).not.toBeInTheDocument();
 
     fireEvent.click(drawer.getByRole("button", { name: "Close song detail" }));
-    expect(screen.queryByRole("dialog", { name: "Song detail" })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("dialog", { name: "Song detail" }),
+    ).not.toBeInTheDocument();
   });
 
   it("does not open a drawer for a queue item without a song", () => {
@@ -257,7 +326,9 @@ describe("SongCatalogPage", () => {
 
     fireEvent.click(screen.getByText("yt: pQ9sXw1LmB4"));
 
-    expect(screen.queryByRole("dialog", { name: "Song detail" })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("dialog", { name: "Song detail" }),
+    ).not.toBeInTheDocument();
   });
 
   it("shows an empty state when nothing matches", () => {
@@ -285,7 +356,9 @@ describe("SongCatalogPage", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Retry" }));
 
-    expect(screen.getByText("Couldn't load the song catalog.")).toBeInTheDocument();
+    expect(
+      screen.getByText("Couldn't load the song catalog."),
+    ).toBeInTheDocument();
     expect(catalogHook.refetch).toHaveBeenCalled();
   });
 });
