@@ -35,6 +35,11 @@ logger = logging.getLogger(__name__)
 STRUCTURED_SOURCE_WORKER_COUNT = 3
 EMPTY_SOURCE_RESULT: list = []
 
+MUSICBRAINZ_SOURCE = "musicbrainz"
+DISCOGS_SOURCE = "discogs"
+WIKIDATA_SOURCE = "wikidata"
+STRUCTURED_SOURCE_MODULES = {MUSICBRAINZ_SOURCE: musicbrainz, DISCOGS_SOURCE: discogs, WIKIDATA_SOURCE: wikidata}
+
 SUCCESS_STATUS = "SUCCESS"
 REJECTED_STATUS = "REJECTED"
 ERROR_STATUS = "ERROR"
@@ -74,6 +79,23 @@ def _run_precheck(youtube_data: dict[str, object]) -> SubmissionPreCheckResult:
     return extract_structured(prompt, SubmissionPreCheckResult)
 
 
+@dataclass(frozen=True)
+class SourceStageResult:
+    """One source's answer: its candidates as the source module returns them and the
+    earliest year among them, the value the lock check compares. sitelinks_count is
+    only looked up for Wikidata."""
+
+    candidates: list[dict]
+    earliest_year: int | None
+    sitelinks_count: int | None = None
+
+
+def _source_query(title: str, main_artists: list[str]) -> tuple[str, str]:
+    """Sources are queried without a featured-artist suffix on the title, and take the
+    main artists as one display string."""
+    return strip_featured_artist_suffix(title), " & ".join(main_artists)
+
+
 def _fetch_source(source_search, title: str, artist: str) -> object:
     try:
         return source_search(title, artist)
@@ -82,22 +104,55 @@ def _fetch_source(source_search, title: str, artist: str) -> object:
         return EMPTY_SOURCE_RESULT
 
 
-def _gather_structured_sources(title: str, artist: str) -> dict[str, list[dict]]:
-    """Fetches the three structured sources (MusicBrainz, Discogs, Wikidata)
+def _track_sitelinks_count(wikidata_candidates: list[dict]) -> int | None:
+    track_entity_id = wikidata_candidates[0].get("entity_id") if wikidata_candidates else None
+    return wikidata.get_sitelinks_count(track_entity_id) if track_entity_id else None
+
+
+def run_structured_source_stage(
+    source_name: str, title: str, main_artists: list[str], *, raise_on_failure: bool = False
+) -> SourceStageResult:
+    """Queries one structured source (MusicBrainz, Discogs, or Wikidata) for the
+    precheck's title and main artists. A failing source counts as one with no
+    candidates, unless raise_on_failure is set, in which case its error propagates."""
+    source_query_title, display_artists = _source_query(title, main_artists)
+    source_module = STRUCTURED_SOURCE_MODULES[source_name]
+    if raise_on_failure:
+        candidates = source_module.search_or_raise(source_query_title, display_artists)
+    else:
+        candidates = _fetch_source(source_module.search, source_query_title, display_artists)
+    sitelinks_count = _track_sitelinks_count(candidates) if source_name == WIKIDATA_SOURCE else None
+    return SourceStageResult(
+        candidates=candidates, earliest_year=_extract_earliest_year(candidates), sitelinks_count=sitelinks_count
+    )
+
+
+def run_wikipedia_stage(title: str, main_artists: list[str], *, raise_on_failure: bool = False) -> list[dict]:
+    """Fetches Wikipedia's lead-section entries, the input the reconciliation stage's
+    extraction call reads. Only needed when the structured sources do not agree."""
+    source_query_title, display_artists = _source_query(title, main_artists)
+    if raise_on_failure:
+        return wikipedia.search_or_raise(source_query_title, display_artists)
+    return wikipedia.search(source_query_title, display_artists)
+
+
+def structured_sources_agree(
+    musicbrainz_year: int | None, discogs_year: int | None, wikidata_year: int | None
+) -> bool:
+    return _all_three_agree(musicbrainz_year, discogs_year, wikidata_year)
+
+
+def _gather_structured_sources(title: str, main_artists: list[str]) -> dict[str, SourceStageResult]:
+    """Runs the three structured source stages (MusicBrainz, Discogs, Wikidata)
     concurrently in a thread pool. This is the first gather in the story 18
     pipeline, run before the lock check. Wikipedia is not fetched here: it is
     conditional on the lock not being met and is fetched separately afterward.
     Each source resolves through a per-source guard so one source raising does
     not sink the others."""
-    source_searches = {
-        "musicbrainz": musicbrainz.search,
-        "discogs": discogs.search,
-        "wikidata": wikidata.search,
-    }
     with ThreadPoolExecutor(max_workers=STRUCTURED_SOURCE_WORKER_COUNT) as executor:
         pending = {
-            source_name: executor.submit(_fetch_source, source_search, title, artist)
-            for source_name, source_search in source_searches.items()
+            source_name: executor.submit(run_structured_source_stage, source_name, title, main_artists)
+            for source_name in STRUCTURED_SOURCE_MODULES
         }
         return {source_name: future.result() for source_name, future in pending.items()}
 
@@ -144,32 +199,23 @@ def _check_for_duplicate(title: str, artist: str) -> SongMetadataResult | None:
     return _build_duplicate_match_result(best_match)
 
 
-def _run_verification_pipeline(
-    title: str, main_artists: list[str], color: str, featured_artists: list[str]
+def run_reconciliation_stage(
+    title: str,
+    main_artists: list[str],
+    featured_artists: list[str],
+    color: str,
+    musicbrainz_candidates: list[dict],
+    discogs_candidates: list[dict],
+    wikidata_candidates: list[dict],
+    wikipedia_entries: list[dict],
+    sitelinks_count: int | None,
 ) -> SongMetadataResult:
-    """Runs story 18's lock-or-LLM verification pipeline: query MusicBrainz,
-    Discogs, and Wikidata always (free, deterministic, zero LLM cost); if
-    all three agree exactly, lock with no further LLM call; otherwise fetch
-    Wikipedia and run four-source reconciliation. title, main artists, and
-    color already came from the shared precheck call that ran once before
-    content-safety evaluation, not from a separate display-synthesis call.
-    Structured sources and LLM prompts take the artists as one display
-    string; the result keeps them as a list."""
-    display_artists = " & ".join(main_artists)
-    source_query_title = strip_featured_artist_suffix(title)
-    structured_candidates = _gather_structured_sources(source_query_title, display_artists)
-    musicbrainz_candidates = structured_candidates["musicbrainz"]
-    discogs_candidates = structured_candidates["discogs"]
-    wikidata_candidates = structured_candidates["wikidata"]
-
-    musicbrainz_year = _extract_earliest_year(musicbrainz_candidates)
-    discogs_year = _extract_earliest_year(discogs_candidates)
-    wikidata_year = _extract_earliest_year(wikidata_candidates)
-
-    wikipedia_entries: list[dict] = []
-    if not _all_three_agree(musicbrainz_year, discogs_year, wikidata_year):
-        wikipedia_entries = wikipedia.search(source_query_title, display_artists)
-
+    """The finishing step of story 18's lock-or-LLM verification: when the three
+    structured sources agree exactly, locks with no LLM call; otherwise reads
+    Wikipedia with the extraction call and runs four-source reconciliation.
+    title, main artists, and color come from the precheck call, not from a
+    separate display-synthesis call."""
+    source_query_title, display_artists = _source_query(title, main_artists)
     release_year, confidence, route = evaluate_lock(
         source_query_title,
         display_artists,
@@ -179,9 +225,6 @@ def _run_verification_pipeline(
         wikipedia_entries,
     )
     verification_status = route_to_verification_status(route)
-
-    track_entity_id = wikidata_candidates[0].get("entity_id") if wikidata_candidates else None
-    sitelinks_count = wikidata.get_sitelinks_count(track_entity_id) if track_entity_id else None
 
     source_label = {
         VerificationRoute.LOCKED: LOCKED_SOURCE_LABEL,
@@ -223,6 +266,42 @@ def _run_verification_pipeline(
     )
 
 
+def _run_verification_pipeline(
+    title: str, main_artists: list[str], color: str, featured_artists: list[str]
+) -> SongMetadataResult:
+    """Runs story 18's lock-or-LLM verification pipeline from its stages: the three
+    structured sources always (free, deterministic, zero LLM cost), Wikipedia only
+    when they do not agree exactly, then the reconciliation stage."""
+    structured_results = _gather_structured_sources(title, main_artists)
+    musicbrainz_result = structured_results[MUSICBRAINZ_SOURCE]
+    discogs_result = structured_results[DISCOGS_SOURCE]
+    wikidata_result = structured_results[WIKIDATA_SOURCE]
+
+    wikipedia_entries: list[dict] = []
+    if not structured_sources_agree(
+        musicbrainz_result.earliest_year, discogs_result.earliest_year, wikidata_result.earliest_year
+    ):
+        wikipedia_entries = run_wikipedia_stage(title, main_artists)
+
+    return run_reconciliation_stage(
+        title,
+        main_artists,
+        featured_artists,
+        color,
+        musicbrainz_result.candidates,
+        discogs_result.candidates,
+        wikidata_result.candidates,
+        wikipedia_entries,
+        wikidata_result.sitelinks_count,
+    )
+
+
+def finish_resolution(result: SongMetadataResult, duration_seconds: int | None) -> MetadataResolveResponse:
+    """The successful response for a verified result, carrying the submitted upload's duration."""
+    result = result.model_copy(update={"duration_seconds": duration_seconds})
+    return MetadataResolveResponse(status=SUCCESS_STATUS, model=settings.deepinfra_model, content=result)
+
+
 class InvalidPlaylistLinkError(Exception):
     """Raised when a submitted playlist link or id does not parse to a valid
     YouTube playlist id."""
@@ -258,14 +337,13 @@ class IdentifiedSubmission:
     duration_seconds: int | None = None
 
 
-def identify_submission(youtube_url: str) -> MetadataResolveResponse | IdentifiedSubmission:
-    """The first pass every submission takes, shared by the full pipeline and the fast
-    tier: the YouTube fetch, the non-music hard filter, the verified-duplicate check,
-    and the combined pre-check LLM call with its content-safety gate. Returns a final
-    response when the submission is rejected or matches a verified song, and the clean
-    title, artists, and color otherwise. Raises on an unexpected failure; callers turn
-    that into an ERROR response."""
-    youtube_data = youtube.fetch_youtube_metadata(youtube_url)
+def identify_from_youtube_data(youtube_data: dict[str, object]) -> MetadataResolveResponse | IdentifiedSubmission:
+    """The first stage every submission takes once its YouTube metadata is fetched,
+    shared by the full pipeline, the stage endpoints, and the fast tier: the non-music
+    hard filter, the verified-duplicate check, and the combined pre-check LLM call
+    with its content-safety gate. Returns a final response when the submission is
+    rejected or matches a verified song, and the clean title, artists, and color
+    otherwise. Raises when the precheck call fails."""
     category_id = str(youtube_data.get("category_id", "unknown"))
     duration_seconds = youtube_data.get("duration_seconds")
 
@@ -308,6 +386,13 @@ def identify_submission(youtube_url: str) -> MetadataResolveResponse | Identifie
     )
 
 
+def identify_submission(youtube_url: str) -> MetadataResolveResponse | IdentifiedSubmission:
+    """identify_from_youtube_data on a fresh YouTube fetch. A failed fetch falls back
+    to unknown defaults. Raises on an unexpected failure; callers turn that into an
+    ERROR response."""
+    return identify_from_youtube_data(youtube.fetch_youtube_metadata(youtube_url))
+
+
 def resolve_metadata(youtube_url: str) -> MetadataResolveResponse:
     try:
         identified = identify_submission(youtube_url)
@@ -317,8 +402,7 @@ def resolve_metadata(youtube_url: str) -> MetadataResolveResponse:
         result = _run_verification_pipeline(
             identified.title, identified.main_artists, identified.color, identified.featured_artists
         )
-        result = result.model_copy(update={"duration_seconds": identified.duration_seconds})
-        return MetadataResolveResponse(status=SUCCESS_STATUS, model=settings.deepinfra_model, content=result)
+        return finish_resolution(result, identified.duration_seconds)
     except Exception as pipeline_error:
         logger.warning("Metadata pipeline failed: %s", pipeline_error)
         return MetadataResolveResponse(status=ERROR_STATUS, model=settings.deepinfra_model, content=None)
