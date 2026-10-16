@@ -12,6 +12,9 @@
     body { margin: 0; }
     .navicon { width: 46px; height: 46px; border-radius: 14px; display: flex; align-items: center; justify-content: center; cursor: pointer; color: #6c7086; }
     .navicon.admin-active { background: rgba(231,130,132,0.18); color: #e78284; box-shadow: 0 0 0 2px #e78284; }
+    .navicon.admin { width: 42px; height: 42px; color: #e78284; opacity: 0.72; }
+    .navicon.admin-active { opacity: 1; background: rgba(231,130,132,0.18); box-shadow: 0 0 0 2px #e78284; }
+    .divider.admin { background: rgba(231,130,132,0.4); margin: 12px auto 8px; }
     .divider { width: 32px; height: 2px; background: #313244; border-radius: 2px; margin: 14px auto; flex-shrink: 0; }
     .tier-chip { font-family: 'Bungee', sans-serif; font-size: 9px; padding: 4px 9px; border-radius: 100px; white-space: nowrap; flex-shrink: 0; }
     .queue-row { display: flex; align-items: center; gap: 14px; padding: 13px 18px; border-bottom: 2px solid #1e1e2e; cursor: pointer; }
@@ -31,7 +34,7 @@
 </helmet>
 <div style="width: 1440px; height: 900px; background: #1e1e2e; font-family: 'Space Grotesk', sans-serif; box-sizing: border-box; color: #cdd6f4; display: flex; overflow: hidden; position: relative;">
 
-  <div style="width: 76px; flex-shrink: 0; background: #11111b; display: flex; flex-direction: column; align-items: center; padding: 20px 0; box-sizing: border-box; border-right: 3px solid #313244;">
+    <div style="width: 76px; flex-shrink: 0; background: #11111b; display: flex; flex-direction: column; align-items: center; padding: 20px 0; box-sizing: border-box; border-right: 3px solid #313244;">
     <div style="display: flex; align-items: center; gap: 2px; height: 22px;">
       <div style="background: #a6e3a1; width: 5px; height: 10px; border-radius: 100px;"></div>
       <div style="background: #a6e3a1; width: 5px; height: 20px; border-radius: 100px;"></div>
@@ -55,9 +58,13 @@
     <div class="navicon" title="Group lobby">
       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
     </div>
-    <div class="divider"></div>
-    <div class="navicon admin-active" title="Admin: report review queue">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l8 4v6c0 5-3.5 8.5-8 10-4.5-1.5-8-5-8-10V6l8-4z"></path></svg>
+    <div class="divider admin"></div>
+    <div style="font-family: 'Bungee', sans-serif; font-size: 8px; color: #e78284; letter-spacing: 1px; margin-bottom: 8px;">ADMIN</div>
+    <div style="display: flex; flex-direction: column; gap: 8px;">
+      <div class="navicon admin" title="Admin: dashboard"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9" rx="1.5"></rect><rect x="14" y="3" width="7" height="5" rx="1.5"></rect><rect x="14" y="12" width="7" height="9" rx="1.5"></rect><rect x="3" y="16" width="7" height="5" rx="1.5"></rect></svg></div>
+      <div class="navicon admin" title="Admin: backfill queue"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l9 4.5-9 4.5-9-4.5z"></path><path d="M3 12l9 4.5 9-4.5"></path><path d="M3 16.5L12 21l9-4.5"></path></svg></div>
+      <div class="navicon admin" title="Admin: song catalog"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="8" ry="3"></ellipse><path d="M4 5v6c0 1.66 3.58 3 8 3s8-1.34 8-3V5"></path><path d="M4 11v6c0 1.66 3.58 3 8 3s8-1.34 8-3v-6"></path></svg></div>
+      <div class="navicon admin admin-active" title="Admin: reports"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 22V4"></path><path d="M4 4h13l-2 4 2 4H4"></path></svg></div>
     </div>
     <div style="flex: 1;"></div>
     <div class="navicon" title="Theme">
