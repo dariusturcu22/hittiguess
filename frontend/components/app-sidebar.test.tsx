@@ -345,11 +345,11 @@ describe("AppSidebar on short screens", () => {
   const TAILWIND_SPACING_PX = 4;
 
   function smallestSizePx(className: string) {
-    const arbitrarySizes = [...className.matchAll(/(?:size|h|w)-\[(?<pixels>\d+)px\]/g)].map(
-      (match) => Number(match.groups?.pixels),
+    const arbitrarySizes = [...className.matchAll(/(?:size|h|w)-\[\d+px\]/g)].map(
+      ([matchedClass]) => Number(matchedClass.replace(/\D/g, "")),
     );
-    const scaleSizes = [...className.matchAll(/size-(?<steps>\d+)(?![\w[])/g)].map(
-      (match) => Number(match.groups?.steps) * TAILWIND_SPACING_PX,
+    const scaleSizes = [...className.matchAll(/size-\d+(?![\w[])/g)].map(
+      ([matchedClass]) => Number(matchedClass.replace(/\D/g, "")) * TAILWIND_SPACING_PX,
     );
     return Math.min(...arbitrarySizes, ...scaleSizes);
   }

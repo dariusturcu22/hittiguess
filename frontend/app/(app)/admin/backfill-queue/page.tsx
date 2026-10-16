@@ -110,7 +110,7 @@ function BatchList() {
   const feedback = useAdminMutationFeedback();
   const cancel = useCancelBatch({ mutation: feedback });
   return (
-    <section className={`${panelClass} flex min-w-0 flex-1 flex-col`}>
+    <section className={`${panelClass} flex min-w-0 flex-1 flex-col @max-4xl:h-[360px] @max-4xl:flex-none`}>
       <h2 className="px-5 py-3.5 font-display text-sm">Batches</h2>
       <QueryState
         loading={query.isLoading}
@@ -226,7 +226,7 @@ function EnqueueForm({ enabled }: { enabled: boolean }) {
   return (
     <section
       id="add-to-backlog"
-      className={`${panelClass} flex w-[clamp(300px,36%,420px)] shrink-0 flex-col px-5 py-[18px] @max-3xl:w-full`}
+      className={`${panelClass} flex w-[clamp(300px,36%,420px)] shrink-0 flex-col px-5 py-[18px] @max-4xl:w-full`}
     >
       <h2 className="mb-4 font-display text-sm">Add to backlog</h2>
       <label
@@ -516,7 +516,7 @@ export default function BackfillQueuePage() {
             />
             {query.data && (
               <>
-                <div className="mb-5 grid shrink-0 grid-cols-7 gap-3.5 @max-6xl:grid-cols-4 @max-3xl:grid-cols-2">
+                <div className="mb-5 grid shrink-0 grid-cols-7 gap-3.5 @max-6xl:grid-cols-4 @max-4xl:grid-cols-2">
                   {STAGES.map((stage) => {
                     const queue = query.data.stages?.find(
                       (item) => item.stage === stage.id,
@@ -524,7 +524,7 @@ export default function BackfillQueuePage() {
                     return queue && <StageCard key={stage.id} stage={queue} />;
                   })}
                 </div>
-                <div className="flex min-h-[250px] flex-1 gap-6 @max-3xl:flex-col">
+                <div className="flex min-h-[250px] flex-1 gap-6 @max-4xl:flex-col">
                   <BatchList />
                   <EnqueueForm enabled={query.data.stagesEnabled === true} />
                 </div>

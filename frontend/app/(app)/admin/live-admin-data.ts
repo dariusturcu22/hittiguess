@@ -8,9 +8,7 @@ const JUST_NOW_SECONDS = 2;
 
 export const UPDATED_AGO_TICK_MILLISECONDS = 1_000;
 
-// Live admin data refetches on its interval while the tab is visible and again
-// as soon as the window regains focus. The previous page stays on screen while
-// the next one loads, so numbers never flash empty between refreshes.
+// Previous data stays visible during polling and page changes.
 export function livePollingQueryOptions(refetchIntervalMilliseconds: number) {
   return {
     refetchInterval: refetchIntervalMilliseconds,

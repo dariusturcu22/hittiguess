@@ -26,9 +26,7 @@ import {
 
 const ACTIVE_IMPORT_REFRESH_MILLISECONDS = 5_000;
 
-// The rail is drawn for 900 px of height. The short and very-short height steps
-// tighten sizes and gaps so every icon fits a laptop screen, while every target
-// stays at least 36 px; the middle section scrolls only as the last resort.
+// Height steps keep rail controls reachable before scrolling is needed.
 const RAIL_DIVIDER_CLASSES =
   "w-8 h-0.5 my-3.5 short:my-2.5 very-short:my-1.5 shrink-0 rounded-full bg-sidebar-border";
 

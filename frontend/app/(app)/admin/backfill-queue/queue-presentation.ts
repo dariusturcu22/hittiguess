@@ -6,6 +6,7 @@ export const DEFAULT_MAXIMUM_FAILED_TRIES = 6;
 
 const DONE_STATUS = "DONE";
 const FAILED_STATUS = "FAILED";
+const WAITING_STATUS = "WAITING";
 
 type JobTries = Pick<QueueJobDTO, "status" | "retrying" | "attempts" | "maxAttempts" | "lastError">;
 
@@ -23,7 +24,7 @@ function timesText(count: number) {
 
 export function jobTriesText(job: JobTries) {
   const { failedTries, maximumFailedTries } = failedTriesOf(job);
-  if (job.retrying) {
+  if (job.status === WAITING_STATUS && failedTries > 0) {
     return `Retry ${failedTries} of ${maximumFailedTries}`;
   }
   if (job.status === FAILED_STATUS) {
@@ -36,5 +37,8 @@ export function jobTriesText(job: JobTries) {
 }
 
 export function visibleFailureReason(job: JobTries) {
-  return job.status === DONE_STATUS ? undefined : job.lastError;
+  const { failedTries } = failedTriesOf(job);
+  return job.status === FAILED_STATUS || (job.status === WAITING_STATUS && failedTries > 0)
+    ? job.lastError
+    : undefined;
 }

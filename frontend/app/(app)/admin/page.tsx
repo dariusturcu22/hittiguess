@@ -25,7 +25,7 @@ import {
 
 const STAT_TILE_SKELETON_COUNT = 4;
 
-const STAT_TILE_GRID_CLASSES = "grid grid-cols-4 gap-5 @max-4xl:gap-3.5 @max-3xl:grid-cols-2";
+const STAT_TILE_GRID_CLASSES = "grid grid-cols-4 gap-5 @max-4xl:gap-3.5 @max-4xl:grid-cols-2";
 
 const USAGE_CARD_GRID_CLASSES = "grid grid-cols-2 gap-5 @max-5xl:grid-cols-1";
 

@@ -14,8 +14,7 @@ export const SEARCH_HINT =
 
 export type CatalogColumnKey = "title" | "artist" | "year" | "status" | "pipeline" | "added" | "addedBy";
 
-// Low priority columns are dropped first as the table card narrows, so the
-// table condenses instead of overflowing; the song drawer still shows them.
+// Hidden columns remain available in the song drawer.
 export type CatalogColumnPriority = "essential" | "medium" | "low";
 
 export interface CatalogColumn {
@@ -31,8 +30,7 @@ const COLUMN_VISIBILITY_CLASS: Record<CatalogColumnPriority, string> = {
   low: "hidden @6xl:block",
 };
 
-// At the mockup width every column has its drawn width; below it the title
-// and artist columns share the space left by the fixed columns.
+
 export const CATALOG_COLUMNS: CatalogColumn[] = [
   { key: "title", label: "Title", priority: "essential", sizeClassName: "min-w-0 flex-[3] @6xl:w-[270px] @6xl:flex-none" },
   { key: "artist", label: "Artist", priority: "essential", sizeClassName: "min-w-0 flex-[2] @6xl:w-[210px] @6xl:flex-none" },

@@ -43,7 +43,9 @@ function historyEntryText(entry: AdminQueueHistoryEntryDTO): string {
     parts.push(`full pipeline year ${entry.patientYear}`);
   }
   const summary = parts.join(", ");
-  return entry.failureReason ? `${summary}. ${entry.failureReason}` : summary;
+  return entry.status === "FAILED" && entry.failureReason
+    ? `${summary}. ${entry.failureReason}`
+    : summary;
 }
 
 function StoredValueRow({

@@ -21,6 +21,9 @@ import { SongPipelineActions } from "../songs/song-pipeline-actions";
 import { SourceFindings } from "../songs/source-findings";
 import type { AdminSongDetailDTO } from "@/hooks/models/adminSongDetailDTO";
 
+const ONE_FAILED_TRY = 1;
+const TWO_FAILED_TRIES = 2;
+
 const state = vi.hoisted(() => ({
   queues: {} as Record<string, unknown>,
   runs: {} as Record<string, unknown>,
@@ -165,7 +168,7 @@ beforeEach(() => {
           title: "Test song",
           status: "WAITING",
           retrying: true,
-          attempts: 1,
+          attempts: ONE_FAILED_TRY,
           maxAttempts: 5,
           lastError: "Timeout",
           lane: "USER_IMPORT",
@@ -611,6 +614,7 @@ describe("live queue data", () => {
 });
 
 describe("retry display", () => {
+
   it("states how often a finished job was retried and hides its old failure", () => {
     state.runs = {
       data: {
@@ -623,7 +627,7 @@ describe("retry display", () => {
               {
                 stage: "DISCOGS",
                 status: "DONE",
-                attempts: 1,
+                attempts: ONE_FAILED_TRY,
                 lastError: "Timeout",
               },
             ],
@@ -649,7 +653,7 @@ describe("retry display", () => {
             runId: 1,
             title: "Done song",
             status: "DONE",
-            attempts: 2,
+            attempts: TWO_FAILED_TRIES,
             lastError: "Old error",
           },
           {
@@ -658,7 +662,7 @@ describe("retry display", () => {
             title: "Waiting song",
             status: "WAITING",
             retrying: true,
-            attempts: 2,
+            attempts: TWO_FAILED_TRIES,
             lastError: "Timeout",
           },
         ],

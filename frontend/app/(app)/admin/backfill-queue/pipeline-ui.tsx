@@ -39,11 +39,7 @@ export { STAGES } from "./pipeline-stages";
 import { STAGES } from "./pipeline-stages";
 export const panelClass =
   "rounded-[16px] border-[3px] border-border-strong bg-card shadow-lg";
-// Admin pages are the one scroll container of the content area. A table card
-// may fill the height left over at the mockup size, but keeps a minimum height,
-// so on short screens the page scrolls instead of squeezing or clipping it.
-// Size containment keeps a long table from stretching its card past the
-// leftover height; the rows scroll inside the card under a sticky header.
+// Minimum card heights preserve page scrolling on short screens.
 export const pageClass =
   "@container relative flex h-full min-w-0 flex-1 flex-col overflow-y-auto overflow-x-hidden scrollbar-thin-visible bg-dotted px-14 pt-10 pb-9 max-xl:px-8 short:pt-8 short:pb-7";
 export const scrollingTableCardClass =

@@ -121,7 +121,8 @@ describe("AdminDashboardPage", () => {
   it("refreshes every 10 seconds while visible, on focus, and keeps the previous data while refetching", () => {
     render(<AdminDashboardPage />);
 
-    const options = dashboardHook.options[0] as {
+    const [firstOptions] = dashboardHook.options;
+    const options = firstOptions as {
       query: {
         refetchInterval: number;
         refetchIntervalInBackground: boolean;
