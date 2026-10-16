@@ -16,6 +16,32 @@ This account never exists in Production. The seeder itself is disabled by a Spri
 
 `CONTRIBUTING.md` links to this setup guide for the local-stack commands and test-account details.
 
+## Running the backend on Windows
+
+Starting the core service on Windows, with `./mvnw spring-boot:run` or any test that boots a Spring context, can fail at startup with `java.io.IOException: Unable to establish loopback connection` caused by `SocketException: Invalid argument: connect`. It comes from the JDK's own networking on Windows, not from the project, and `-Djava.net.preferIPv4Stack=true` does not fix it. The same failure stops `BackendApplicationTests` and `CsrfSecurityTest` locally; CI on Linux runs them.
+
+Run the service in WSL instead. Unit tests that do not start Spring, such as mapper and service tests, run normally on Windows.
+
+1. Use a WSL 2 Ubuntu distribution with JDK 25 installed (for example Amazon Corretto in `~/.jdks`). The repository is reachable from WSL at `/mnt/c/Users/<name>/Documents/hittiguess`.
+2. Start the Postgres containers on Windows with `make db`. WSL reaches them on `localhost:5500` and `localhost:5501`.
+3. From `backend/` in WSL, set `JAVA_HOME` to the Linux JDK explicitly, because the Windows `JAVA_HOME` leaks into WSL and breaks `mvnw`. Load `.env` with its carriage returns removed:
+
+```
+export JAVA_HOME="$HOME/.jdks/<jdk-25-directory>"
+set -a
+source <(tr -d '\r' < .env)
+set +a
+export JAVA_HOME="$HOME/.jdks/<jdk-25-directory>"
+./mvnw spring-boot:run
+```
+
+4. The first start downloads dependencies and takes more than a minute. Check `http://localhost:8080/v3/api-docs` from inside WSL.
+5. Depending on the WSL networking mode, Windows may not reach port 8080 of the WSL process. For tools that need the API from Windows, such as the client generator, save the spec from WSL (`curl localhost:8080/v3/api-docs -o openapi.json`) and point the tool at the file.
+
+### Regenerating the API client
+
+`npm run api:gen` in `frontend/` generates `hooks/generated`, `hooks/models`, and `hooks/zod` from the running backend's spec. The generator version is pinned by `package-lock.json`. Run `npm ci` in `frontend/` first: an older installed `orval` generates different code and rewrites well over a hundred unrelated files. With the pinned version the diff contains only real contract changes.
+
 ## Running the Playwright end-to-end suite
 
 The `frontend/e2e` suite runs against a real, running backend and frontend,
