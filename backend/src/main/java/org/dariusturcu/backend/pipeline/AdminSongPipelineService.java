@@ -44,7 +44,7 @@ public class AdminSongPipelineService {
         if (runIds.isEmpty()) { return new Findings(null, null); }
         List<PipelineJob> results = jobs.jobsOfRun(runIds.getFirst());
         List<SourceFindingDTO> sources = results.stream().map(job -> new SourceFindingDTO(job.stage(), job.status(),
-                job.resultJson() == null ? null : mapper.readerForMapOf(Object.class).readValue(job.resultJson()), job.failureReason())).toList();
+                job.resultJson() == null ? null : mapper.readerForMapOf(Object.class).readValue(job.resultJson()), PipelineJobFailures.visibleReason(job))).toList();
         String reason = results.stream().filter(job -> job.stage() == PipelineStage.LLM_RECONCILIATION
                         || job.stage() == PipelineStage.YOUTUBE_METADATA).map(PipelineJob::resultJson)
                 .filter(java.util.Objects::nonNull).map(mapper::readTree).map(this::reason)
