@@ -5,6 +5,7 @@
  * OpenAPI spec version: v0
  */
 import type { PlaylistSummaryDTO } from './playlistSummaryDTO';
+import type { UserDetailDTORole } from './userDetailDTORole';
 
 export interface UserDetailDTO {
   id?: number;
@@ -12,5 +13,6 @@ export interface UserDetailDTO {
   email?: string;
   imageUrl?: string;
   provider?: string;
+  role?: UserDetailDTORole;
   playlists?: PlaylistSummaryDTO[];
 }
