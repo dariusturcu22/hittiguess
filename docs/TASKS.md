@@ -103,17 +103,26 @@ Pipeline and data:
 
 Admin API:
 
+- [x] Queue API: stage state, counts, pace, cooldown, response averages, estimates, paged jobs, and paged runs with stage progress for the Songs tab
+- [x] Control API: stage and global pause/resume, run retry/discard/bump, retry all failed, batch list/cancel, enqueue, and run one now
+- [x] Batch reporting: additive skipped-duplicate count column and enqueue response batch ID, with migration and duplicate-reporting tests
+- [x] Song controls: per-source findings and review reason in detail, rerun, year/status update, and catalog delete with playlist and alternate-ID cleanup
+- [x] Dashboard API: backward-compatible stage queues, paused-stage banner reasons, and YouTube reserve fields
+- [x] Queue/control tests: service units, admin/user/validation MockMvc coverage, and real-row Testcontainers checks for every control
+- [x] Regenerate the frontend API client from the local backend spec and commit only intended additions separately
+- [x] Queue API documentation: request/response contracts and completed task boxes
+
 - [x] `/api/users/me` returns the account role; remove the 403 probe in the admin layout
 - [x] Usage endpoint: `GET /api/admin/usage` returns YouTube units against the daily limit with the next midnight Pacific reset, and DeepInfra and OpenAI calls, tokens, and estimated cost for the UTC day and month, backed by the daily usage table
 - [x] Dashboard endpoint v1: `GET /api/admin/dashboard` returns the catalog counts (verified, needs review, in queue, processing, error, total), queue totals (waiting and in progress across every origin), and the usage view with YouTube units against the daily 10,000-unit default with its midnight Pacific reset and LLM and embedding usage with estimated cost for today and the month
-- [ ] Dashboard endpoint, per-queue depth: waiting, in progress, and failed per stage queue, once the stage queues exist
-- [ ] Queue endpoint: waiting, in progress, done, and failed counts per stage, current pace, cooldown state, average response time, estimated time to drain, and the list of songs still needing work; a per-stage job list with lane (user import or backfill), attempts, next attempt, and last error
+- [x] Dashboard endpoint, per-queue depth: waiting, in progress, and failed per stage queue, once the stage queues exist
+- [x] Queue endpoint: waiting, in progress, done, and failed counts per stage, current pace, cooldown state, average response time, estimated time to drain, and the list of songs still needing work; a per-stage job list with lane (user import or backfill), attempts, next attempt, and last error
 - [x] Control service methods: pause and resume per stage, retry and discard a failed run, cancel a batch, and bump a run above every waiting job; integration tests
-- [ ] Controls endpoints: pause and resume per queue and for the whole backlog; retry, retry all, and discard failed items; cancel a batch; run one YouTube ID now at top priority; re-run the pipeline for one song
-- [ ] Batches: each submitted playlist or ID list is a batch with progress, skipped duplicates, and an estimate
+- [x] Controls endpoints: pause and resume per queue and for the whole backlog; retry, retry all, and discard failed items; cancel a batch; run one YouTube ID now at top priority; re-run the pipeline for one song
+- [x] Batches: each submitted playlist or ID list is a batch with progress, skipped duplicates, and an estimate
 - [x] Song catalog endpoint: server-side search by title or artist with a minimum of three characters, 25 results per page, and a trigram index so a search never scans the whole table; each row has title, artists, release year, status (processing, in queue, verified, needs review, error), pipeline (fast or full, from the queue origin), date added, and added by (admin seed when empty)
 - [x] Song detail endpoint, read only: the catalog fields, stored verification status, confidence, and sitelinks, open report count, and the queue history for its YouTube ID
-- [ ] Song detail additions once the stage queues exist: what each source found, why the song is verified or needs review, and the actions to set year or status, re-run, or delete
+- [x] Song detail additions once the stage queues exist: what each source found, why the song is verified or needs review, and the actions to set year or status, re-run, or delete
 
 Frontend:
 

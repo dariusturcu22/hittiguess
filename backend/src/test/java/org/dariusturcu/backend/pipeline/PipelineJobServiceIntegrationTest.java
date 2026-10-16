@@ -392,7 +392,7 @@ class PipelineJobServiceIntegrationTest {
         assertThat(jdbcTemplate.queryForMap("SELECT paused, paused_reason FROM stage_controls WHERE stage = ?",
                 PipelineStage.YOUTUBE_METADATA.name()))
                 .containsEntry("paused", true)
-                .containsEntry("paused_reason", PipelineJobService.KEY_REJECTED_PAUSE_REASON);
+                .containsEntry("paused_reason", PipelineJobService.KEY_REJECTED_PAUSE_REASON + ": " + KEY_REASON);
         assertThat(service.leaseNext(PipelineStage.YOUTUBE_METADATA, WORKER, LEASE)).isEmpty();
     }
 

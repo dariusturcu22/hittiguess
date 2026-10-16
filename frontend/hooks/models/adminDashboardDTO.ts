@@ -7,9 +7,11 @@
 import type { AdminUsageDTO } from './adminUsageDTO';
 import type { DashboardQueueDTO } from './dashboardQueueDTO';
 import type { DashboardSongCountsDTO } from './dashboardSongCountsDTO';
+import type { QueueOverviewDTO } from './queueOverviewDTO';
 
 export interface AdminDashboardDTO {
   songs: DashboardSongCountsDTO;
   queue: DashboardQueueDTO;
   usage: AdminUsageDTO;
+  pipeline?: QueueOverviewDTO;
 }

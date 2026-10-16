@@ -37,12 +37,13 @@ class HttpAiStageClientTest {
     @Test
     void providerErrorsKeepTheirClassificationWithoutStoringProviderMessages() {
         var error = MAPPER.readTree("""
-                {"providerHint":"API_KEY_PROVIDER","cause":"HTTP_ERROR","upstreamStatus":401,
+                {"provider":"DEEPINFRA","providerHint":"API_KEY_PROVIDER","cause":"HTTP_ERROR","upstreamStatus":401,
                  "message":"https://provider.test/?key=secret"}
                 """);
         AiStageFailure failure = HttpAiStageClient.mapFailure(HttpStatus.BAD_GATEWAY.value(), error);
         assertThat(failure.classification()).isEqualTo(FailureClassifier.KEY_REJECTED);
         assertThat(failure.getMessage()).doesNotContain("secret", "provider.test");
+        assertThat(failure.getMessage()).contains("DEEPINFRA");
         assertThat(failure.retryAfter()).isNull();
     }
 

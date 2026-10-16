@@ -52,4 +52,19 @@ class AdminDashboardServiceTest {
         assertThat(dashboard.queue().inProgress()).isEqualTo(IN_PROGRESS_ROWS);
         assertThat(dashboard.usage()).isSameAs(usage);
     }
+
+    @Test
+    void theDashboardIncludesQueueControlsAndReserveDataWithoutReplacingExistingFields() {
+        var pipeline = mock(org.dariusturcu.backend.pipeline.AdminPipelineService.class);
+        var queues = new org.dariusturcu.backend.model.admin.QueueOverviewDTO(java.util.List.of(), true,
+                WAITING_ROWS, org.dariusturcu.backend.pipeline.PipelineSettings.DEFAULT_YOUTUBE_RESERVE_UNITS, true);
+        when(pipeline.queues()).thenReturn(queues);
+        when(adminSongCatalogService.catalogCounts()).thenReturn(new AdminCatalogCountsDTO(
+                ALL_COUNT, VERIFIED_COUNT, NEEDS_REVIEW_COUNT, IN_QUEUE_COUNT, PROCESSING_COUNT, ERROR_COUNT));
+        when(catalogRepository.countQueue()).thenReturn(new AdminSongCatalogRepository.QueueCounts(WAITING_ROWS, IN_PROGRESS_ROWS));
+        var dashboard = new AdminDashboardService(adminSongCatalogService, catalogRepository, apiUsageService, pipeline).dashboard();
+        assertThat(dashboard.pipeline()).isSameAs(queues);
+        assertThat(dashboard.songs().total()).isEqualTo(ALL_COUNT);
+        assertThat(dashboard.queue().waiting()).isEqualTo(WAITING_ROWS);
+    }
 }

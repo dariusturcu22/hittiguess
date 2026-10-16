@@ -56,6 +56,15 @@ public class PipelineJobRepository {
                 timestamp(now), batchId);
     }
 
+    public void recordSkippedDuplicates(long batchId, int count) {
+        core.update("UPDATE import_batches SET skipped_duplicates = ? WHERE id = ?", count, batchId);
+    }
+
+    public boolean lockCancelledBatch(long batchId) {
+        return Boolean.TRUE.equals(core.queryForObject(
+                "SELECT cancelled_at IS NOT NULL FROM import_batches WHERE id = ? FOR UPDATE", Boolean.class, batchId));
+    }
+
     // Serializes run creation for one YouTube ID until the transaction ends.
     public void lockVideo(String youtubeId) {
         core.queryForObject("SELECT 1 FROM (SELECT pg_advisory_xact_lock(hashtext(?))) AS acquired", Integer.class,

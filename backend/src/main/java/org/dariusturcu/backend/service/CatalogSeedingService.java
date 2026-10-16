@@ -286,6 +286,7 @@ public class CatalogSeedingService {
                 duplicates.add(youtubeId);
             }
         }
-        return new EnqueueResultDTO(enqueued, knownIds, duplicates);
+        pipeline.recordSkippedDuplicates(batch, knownIds.size() + duplicates.size());
+        return new EnqueueResultDTO(enqueued, knownIds, duplicates, batch);
     }
 }

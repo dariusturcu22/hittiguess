@@ -10,5 +10,9 @@ import org.dariusturcu.backend.model.usage.AdminUsageDTO;
 public record AdminDashboardDTO(
         @NotNull DashboardSongCountsDTO songs,
         @NotNull DashboardQueueDTO queue,
-        @NotNull AdminUsageDTO usage) {
+        @NotNull AdminUsageDTO usage,
+        QueueOverviewDTO pipeline) {
+    public AdminDashboardDTO(DashboardSongCountsDTO songs, DashboardQueueDTO queue, AdminUsageDTO usage) {
+        this(songs, queue, usage, null);
+    }
 }
