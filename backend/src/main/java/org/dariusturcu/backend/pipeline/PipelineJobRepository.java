@@ -160,26 +160,31 @@ public class PipelineJobRepository {
 
     public Optional<PipelineJob> leaseNextWaiting(PipelineStage stage, String leaseOwner, Instant leaseExpiresAt,
                                                   Instant now) {
-        return core.query("""
-                WITH candidate AS (
-                    SELECT job.id AS candidate_id FROM pipeline_jobs job
-                    JOIN pipeline_runs run ON run.id = job.run_id
-                    WHERE job.stage = ? AND job.status = ? AND job.next_attempt_at <= ? AND run.status = ?
-                        AND NOT EXISTS (SELECT FROM stage_controls control
-                            WHERE control.stage = job.stage AND control.paused)
-                    ORDER BY (job.lane = ?) DESC, job.priority DESC, job.created_at, job.id
-                    LIMIT 1
-                    FOR UPDATE OF job SKIP LOCKED
-                )
-                UPDATE pipeline_jobs job
-                SET status = ?, lease_owner = ?, lease_expires_at = ?, started_at = COALESCE(job.started_at, ?),
-                    updated_at = ?
-                FROM candidate WHERE job.id = candidate.candidate_id
-                RETURNING\s""" + JOB_COLUMNS, JOB_MAPPER,
-                stage.name(), PipelineJobStatus.WAITING.name(), timestamp(now), PipelineRunStatus.ACTIVE.name(),
-                PipelineLane.USER_IMPORT.name(), PipelineJobStatus.IN_PROGRESS.name(), leaseOwner,
-                timestamp(leaseExpiresAt), timestamp(now), timestamp(now)).stream().findFirst();
+        return core.query(LEASE_NEXT_SQL, JOB_MAPPER, stage.name(), timestamp(now),
+                PipelineJobStatus.IN_PROGRESS.name(), leaseOwner, timestamp(leaseExpiresAt), timestamp(now),
+                timestamp(now)).stream().findFirst();
     }
+
+    // The waiting status and the user-import lane are literals, not parameters, so the planner can
+    // match the partial lease-order index on every execution, including generic prepared plans.
+    static final String LEASE_NEXT_SQL = """
+            WITH candidate AS (
+                SELECT job.id AS candidate_id FROM pipeline_jobs job
+                JOIN pipeline_runs run ON run.id = job.run_id
+                WHERE job.stage = ? AND job.status = '%1$s' AND job.next_attempt_at <= ? AND run.status = '%2$s'
+                    AND NOT EXISTS (SELECT FROM stage_controls control
+                        WHERE control.stage = job.stage AND control.paused)
+                ORDER BY (job.lane = '%3$s') DESC, job.priority DESC, job.created_at, job.id
+                LIMIT 1
+                FOR UPDATE OF job SKIP LOCKED
+            )
+            UPDATE pipeline_jobs job
+            SET status = ?, lease_owner = ?, lease_expires_at = ?, started_at = COALESCE(job.started_at, ?),
+                updated_at = ?
+            FROM candidate WHERE job.id = candidate.candidate_id
+            RETURNING %4$s
+            """.formatted(PipelineJobStatus.WAITING.name(), PipelineRunStatus.ACTIVE.name(),
+            PipelineLane.USER_IMPORT.name(), JOB_COLUMNS);
 
     public void markJobDone(long jobId, String resultJson, Instant now) {
         core.update("""
