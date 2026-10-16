@@ -22,6 +22,8 @@ public interface PendingImportRepository extends JpaRepository<PendingImport, Lo
 
     List<PendingImport> findTop7ByOrderByEnqueuedAtDesc();
 
+    List<PendingImport> findByYoutubeIdOrderByEnqueuedAtAscIdAsc(String youtubeId);
+
     List<PendingImport> findTop50ByOriginInOrderByEnqueuedAtDesc(Collection<PendingImportOrigin> origins);
 
     @Query("""
