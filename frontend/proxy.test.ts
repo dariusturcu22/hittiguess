@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import proxy from "./proxy";
 
@@ -15,6 +15,8 @@ const PUBLIC_ROUTES_WITHOUT_A_SESSION = [
   "/groups/join/abc123",
 ];
 
+const PROTECTED_ROUTES = ["/playlists", "/sessions/abc"];
+
 function requestFor(pathname: string, cookieHeader?: string): NextRequest {
   return new NextRequest(new Request(`http://localhost:3000${pathname}`, {
     headers: cookieHeader ? { cookie: cookieHeader } : undefined,
@@ -22,6 +24,10 @@ function requestFor(pathname: string, cookieHeader?: string): NextRequest {
 }
 
 describe("proxy middleware", () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
   it.each(PUBLIC_ROUTES_WITHOUT_A_SESSION)(
     "lets a logged-out request through to %s",
     (pathname) => {
@@ -31,15 +37,27 @@ describe("proxy middleware", () => {
     },
   );
 
-  it("redirects a logged-out request to a protected route to /login", () => {
-    const response = proxy(requestFor("/playlists"));
+  it.each(PROTECTED_ROUTES)("redirects a logged-out request to %s to /login", (pathname) => {
+    const response = proxy(requestFor(pathname));
 
     expect(response.headers.get("location")).toBe("http://localhost:3000/login");
   });
 
-  it("lets a request with a session through to a protected route", () => {
-    const response = proxy(requestFor("/playlists", "session_hint=1"));
+  it.each(PROTECTED_ROUTES)("lets a request with a session through to %s", (pathname) => {
+    const response = proxy(requestFor(pathname, "session_hint=1"));
 
     expect(response.headers.get("location")).toBeNull();
   });
+
+  it.each(["/login", "/register", ...PROTECTED_ROUTES])(
+    "never redirects %s to a closed-beta screen, even with the retired gate variables set",
+    (pathname) => {
+      vi.stubEnv("NEXT_PUBLIC_CLOSED_BETA", "true");
+      vi.stubEnv("BETA_ACCESS_PASSWORD", "retired-tester-code");
+
+      const location = proxy(requestFor(pathname)).headers.get("location");
+
+      expect(location ?? "").not.toContain("closed-beta");
+    },
+  );
 });
