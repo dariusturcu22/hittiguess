@@ -6,6 +6,7 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
 import org.springframework.web.client.RestClient;
 
@@ -16,6 +17,8 @@ import java.time.Duration;
 public class PipelineStageConfig {
     private static final Duration CONNECT_TIMEOUT = Duration.ofSeconds(10);
     private static final Duration READ_TIMEOUT = Duration.ofMinutes(4);
+    static final int SCHEDULER_THREADS = 2;
+    static final int EXECUTOR_HEADROOM_THREADS = 2;
 
     @Bean(defaultCandidate = false)
     public RestClient pipelineStageRestClient(@Value("${ai.service.base-url}") String baseUrl,
@@ -28,11 +31,32 @@ public class PipelineStageConfig {
                 .requestInterceptor(correlation).requestFactory(requests).build();
     }
 
+    // Only polls and wake-up timers run here; stage calls run on the executor.
     @Bean
     public ThreadPoolTaskScheduler pipelineStageScheduler() {
         ThreadPoolTaskScheduler scheduler = new ThreadPoolTaskScheduler();
-        scheduler.setPoolSize(HttpAiStageClient.PATHS.size());
-        scheduler.setThreadNamePrefix("pipeline-stage-");
+        scheduler.setPoolSize(SCHEDULER_THREADS);
+        scheduler.setThreadNamePrefix("pipeline-poll-");
         return scheduler;
+    }
+
+    @Bean
+    public ThreadPoolTaskExecutor pipelineStageExecutor(StageConcurrency concurrency) {
+        return stageExecutor(concurrency);
+    }
+
+    /**
+     * One thread per concurrency slot of every metadata stage plus headroom for a slot that is
+     * still returning its thread, so a slow AI call in one stage never delays another stage.
+     */
+    public static ThreadPoolTaskExecutor stageExecutor(StageConcurrency concurrency) {
+        int threads = concurrency.totalMetadataLimit() + EXECUTOR_HEADROOM_THREADS;
+        ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
+        executor.setCorePoolSize(threads);
+        executor.setMaxPoolSize(threads);
+        executor.setQueueCapacity(threads);
+        executor.setThreadNamePrefix("pipeline-stage-");
+        executor.initialize();
+        return executor;
     }
 }
