@@ -5,6 +5,7 @@
  * OpenAPI spec version: v0
  */
 import type { PipelineRunDTO } from './pipelineRunDTO';
+import type { PipelineRunPageDTOCounts } from './pipelineRunPageDTOCounts';
 
 export interface PipelineRunPageDTO {
   items?: PipelineRunDTO[];
@@ -12,4 +13,5 @@ export interface PipelineRunPageDTO {
   size?: number;
   totalElements?: number;
   totalPages?: number;
+  counts?: PipelineRunPageDTOCounts;
 }

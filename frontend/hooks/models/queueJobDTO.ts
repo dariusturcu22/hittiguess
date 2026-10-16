@@ -25,4 +25,5 @@ export interface QueueJobDTO {
   lastError?: string;
   failingStage?: QueueJobDTOFailingStage;
   priority?: number;
+  artists?: string[];
 }
