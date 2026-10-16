@@ -36,6 +36,7 @@ import java.util.stream.Collectors;
 public class AdminPipelineService {
     public static final int PAGE_SIZE = 25;
     public static final int FIRST_PAGE = 0;
+    public static final String DONE_TODAY_FILTER = "DONE_TODAY";
     public static final String RETRYING_FILTER = "RETRYING";
     private static final long MILLISECONDS_PER_SECOND = 1000;
     private static final String ADMIN_PAUSE_REASON = "Paused by an admin";
@@ -80,17 +81,24 @@ public class AdminPipelineService {
     }
 
     public PipelineRunPageDTO runs(PipelineRunStatus status, PipelineLane lane, Integer page) {
+        return runs(status, lane, null, page);
+    }
+
+    public PipelineRunPageDTO runs(PipelineRunStatus status, PipelineLane lane, RunQueueState state, Integer page) {
         int resolvedPage = page(page);
-        long total = repository.runCount(status, lane);
-        List<PipelineRunDTO> items = repository.runIds(status, lane, PAGE_SIZE, (long) resolvedPage * PAGE_SIZE).stream()
+        Map<RunQueueState, Long> counts = repository.runCounts(status, lane);
+        long total = state == null ? counts.values().stream().mapToLong(Long::longValue).sum() : counts.get(state);
+        List<PipelineRunDTO> items = repository.runIds(status, lane, state, PAGE_SIZE, (long) resolvedPage * PAGE_SIZE).stream()
                 .map(runId -> run(engine.findRun(runId).orElseThrow())).toList();
-        return new PipelineRunPageDTO(items, resolvedPage, PAGE_SIZE, total, pages(total));
+        return new PipelineRunPageDTO(items, resolvedPage, PAGE_SIZE, total, pages(total), counts);
     }
 
     public PipelineRunDTO run(PipelineRun run) {
         List<QueueJobDTO> jobs = repository.jobsOfRun(run.id());
         String title = jobs.stream().map(QueueJobDTO::title).filter(java.util.Objects::nonNull).findFirst().orElse(run.youtubeId());
-        return new PipelineRunDTO(run.id(), run.youtubeId(), title, run.lane(), run.status(), run.provisionalYear(), run.createdAt(), run.finishedAt(), jobs);
+        List<String> artists = jobs.stream().map(QueueJobDTO::artists).filter(names -> !names.isEmpty()).findFirst().orElse(List.of());
+        return new PipelineRunDTO(run.id(), run.youtubeId(), title, run.lane(), run.status(), run.provisionalYear(), run.createdAt(), run.finishedAt(), jobs,
+                run.batchId(), repository.batchLabel(run.batchId()), artists);
     }
 
     public ImportBatchPageDTO batches(Integer page) {
@@ -122,8 +130,10 @@ public class AdminPipelineService {
     @Transactional
     public PipelineControlResultDTO retry(long runId) {
         requireRun(runId);
-        if (!engine.retryFailed(runId)) { throw new ConflictException("The run cannot be retried in its current state"); }
-        return new PipelineControlResultDTO(1);
+        if (engine.retryFailed(runId)) { return new PipelineControlResultDTO(1); }
+        int waiting = engine.retryWaiting(runId);
+        if (waiting == 0) { throw new ConflictException("The run cannot be retried in its current state"); }
+        return new PipelineControlResultDTO(waiting);
     }
 
     @Transactional
@@ -141,8 +151,14 @@ public class AdminPipelineService {
 
     @Transactional
     public PipelineControlResultDTO retryAll() {
+        return retryAll(null);
+    }
+
+    @Transactional
+    public PipelineControlResultDTO retryAll(String stageName) {
         int retried = 0;
-        for (Long runId : repository.failedRunIds()) { if (engine.retryFailed(runId)) { retried++; } }
+        PipelineStage stage = stageName == null ? null : stage(stageName);
+        for (Long runId : repository.failedRunIds(stage)) { if (engine.retryFailed(runId)) { retried++; } }
         return new PipelineControlResultDTO(retried);
     }
 
@@ -192,7 +208,7 @@ public class AdminPipelineService {
     static String status(String value) {
         if (value == null || value.isBlank()) { return null; }
         String normalized = value.toUpperCase(Locale.ROOT);
-        if (RETRYING_FILTER.equals(normalized)) { return normalized; }
+        if (RETRYING_FILTER.equals(normalized) || DONE_TODAY_FILTER.equals(normalized)) { return normalized; }
         try { return PipelineJobStatus.valueOf(normalized).name(); }
         catch (IllegalArgumentException invalid) { throw new IllegalArgumentException("Unknown job status"); }
     }

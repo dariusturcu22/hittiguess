@@ -230,6 +230,12 @@ public class PipelineJobService {
         });
     }
 
+    public int retryWaiting(long runId) {
+        return inTransaction(() -> repository.lockRun(runId)
+                .filter(run -> run.status() == PipelineRunStatus.ACTIVE)
+                .map(run -> repository.retryWaitingJobs(run.id(), clock.instant())).orElse(0));
+    }
+
     /** Cancels an active or failed run and its waiting jobs. Returns false for a finished run. */
     public boolean discardRun(long runId) {
         return inTransaction(() -> {

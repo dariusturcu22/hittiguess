@@ -55,6 +55,10 @@ export const PauseStageResponse = zod.unknown()
 /**
  * @summary Retry all failed runs that have no other active run for the same video
  */
+export const RetryFailedRunsQueryParams = zod.object({
+  "stage": zod.string().optional()
+})
+
 export const RetryFailedRunsResponse = zod.unknown()
 
 /**
@@ -101,6 +105,7 @@ export const CancelBatchResponse = zod.unknown()
 export const RunsQueryParams = zod.object({
   "status": zod.string().optional(),
   "lane": zod.string().optional(),
+  "state": zod.string().optional(),
   "page": zod.int().optional()
 })
 

@@ -8,5 +8,6 @@
 export type RunsParams = {
 status?: string;
 lane?: string;
+state?: string;
 page?: number;
 };

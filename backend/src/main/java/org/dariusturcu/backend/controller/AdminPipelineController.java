@@ -8,6 +8,7 @@ import org.dariusturcu.backend.model.song.EnqueueResultDTO;
 import org.dariusturcu.backend.pipeline.AdminPipelineService;
 import org.dariusturcu.backend.pipeline.PipelineLane;
 import org.dariusturcu.backend.pipeline.PipelineRunStatus;
+import org.dariusturcu.backend.pipeline.RunQueueState;
 import org.dariusturcu.backend.security.AdminAccessGuard;
 import org.springframework.web.bind.annotation.*;
 
@@ -39,9 +40,10 @@ public class AdminPipelineController {
     @GetMapping("/runs")
     @Operation(summary = "Pipeline songs with their stage progress, filtered by run status and lane, 25 per page")
     public PipelineRunPageDTO runs(@RequestParam(required = false) String status,
-            @RequestParam(required = false) String lane, @RequestParam(required = false) Integer page) {
+            @RequestParam(required = false) String lane, @RequestParam(required = false) String state,
+            @RequestParam(required = false) Integer page) {
         access.requireAdmin();
-        return pipeline.runs(parse(PipelineRunStatus.class, status), parse(PipelineLane.class, lane), page);
+        return pipeline.runs(parse(PipelineRunStatus.class, status), parse(PipelineLane.class, lane), parse(RunQueueState.class, state), page);
     }
 
     @PostMapping("/queues/{stage}/pause")
@@ -74,7 +76,9 @@ public class AdminPipelineController {
 
     @PostMapping("/queues/retry-failed")
     @Operation(summary = "Retry all failed runs that have no other active run for the same video")
-    public PipelineControlResultDTO retryFailedRuns() { access.requireAdmin(); return pipeline.retryAll(); }
+    public PipelineControlResultDTO retryFailedRuns(@RequestParam(required = false) String stage) {
+        access.requireAdmin(); return pipeline.retryAll(stage);
+    }
 
     @GetMapping("/batches")
     @Operation(summary = "Import batches with progress, skipped duplicates, and drain estimates, 25 per page")

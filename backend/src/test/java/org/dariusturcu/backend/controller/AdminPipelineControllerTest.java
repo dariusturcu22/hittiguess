@@ -120,7 +120,7 @@ class AdminPipelineControllerTest {
     void invalidStageStatusPageAndEnumsUseStandardBadRequestBodies() throws Exception {
         authenticate(Role.ADMIN);
         for (String path : List.of("/api/admin/queues/unknown/jobs", "/api/admin/queues/musicbrainz/jobs?status=unknown",
-                "/api/admin/queues/musicbrainz/jobs?page=-1", "/api/admin/runs?status=unknown", "/api/admin/runs?lane=unknown",
+                "/api/admin/queues/musicbrainz/jobs?page=-1", "/api/admin/runs?status=unknown", "/api/admin/runs?lane=unknown", "/api/admin/runs?state=unknown",
                 "/api/admin/batches?page=-1", "/api/admin/runs?page=bad")) {
             mvc.perform(get(path)).andExpect(status().isBadRequest()).andExpect(jsonPath("$.status").value(400))
                     .andExpect(jsonPath("$.message").exists()).andExpect(jsonPath("$.timestamp").exists());

@@ -68,7 +68,7 @@ Both Neon projects are provisioned. Core owns schema migrations; AI connects onl
 
 ## Story 51: Admin console and parallel source pipeline
 
-The admin area becomes a console with its own sidebar section, a dashboard, a backfill queue, a song catalog, and the report queue. Backfill and user imports run through seven persisted queues, one per stage: YouTube metadata, MusicBrainz, Discogs, Wikidata, Wikipedia, LLM reconciliation, and embedding. Each queue works at its own pace, and a song is finalized once every stage it needs is done. Wikipedia is queued for a song only when MusicBrainz, Discogs, and Wikidata disagree. Frontend screens wait for approved mockups. LLM usage has no limit and is tracked with an estimated cost from the official prices. The daily 200-song drain cap is removed.
+The admin area becomes a console with its own sidebar section, a dashboard, a backfill queue, a song catalog, and the report queue. Backfill and user imports run through seven persisted queues, one per stage: YouTube metadata, MusicBrainz, Discogs, Wikidata, Wikipedia, LLM reconciliation, and embedding. Each queue works at its own pace, and a song is finalized once every stage it needs is done. Wikipedia is queued for a song only when MusicBrainz, Discogs, and Wikidata disagree. The admin screens use approved dark and light mockups. LLM usage has no limit and is tracked with an estimated cost from the official prices. The stage path has no daily 200-song drain cap; the legacy path remains behind the default-off cutover flag.
 
 Pipeline and data:
 
@@ -126,20 +126,35 @@ Admin API:
 
 Frontend:
 
-- [ ] Admin section in the sidebar in its own accent color with Dashboard, Backfill queue, Song catalog, and Reports, visible only to admins
+- [x] Backfill pages: overview stage cards, batches, enqueue and run-now forms, and a Songs tab with real progress and run controls
+- [x] Page API support: artist and batch fields, global run-state filters/counts, read-only embedding progress, immediate waiting retries, and stage-scoped retry-all; backend tests and regenerated bindings
+- [x] Stage page: stage counts, pace samples, paged jobs, status filters, pause/resume, and retry failed work
+- [x] Dashboard completion: queue table, rejected-key pause reasons with Resume, and user reserve figures
+- [x] Song drawer completion: source findings, review reason, rerun, year/status edits, and confirmed deletion
+- [x] Navigation: Backfill queue rail entry, stage routes, and redirect from the old catalog-backlog route
+- [x] Admin page tests: each screen and action, confirmation dialogs, loading/empty/error states, mutation failures, and accessible controls
+- [x] Admin visual verification: real local backend, approved mockups at 1440x900 in light and dark themes, including the song drawer
+- [x] Admin page docs: content requirements, implementation guide, and checked tasks for verified work
+
+- [x] Admin section in the sidebar in its own accent color with Dashboard, Backfill queue, Song catalog, and Reports, visible only to admins
 - [x] Song catalog page (debounced search, status filters, pagination) and read-only song detail drawer
 - [x] Dashboard page v1 at `/admin`: catalog count tiles, YouTube quota with reset countdown, and AI usage with estimated cost, refreshed every 30 seconds
-- [ ] Dashboard queue table, rejected-key banner and reserve figures, and the backfill queue (per-queue panel, a page per stage queue, batches, failed items with reasons, song list)
+- [x] Dashboard queue table, rejected-key banner and reserve figures, and the backfill queue (per-queue panel, a page per stage queue, batches, failed items with reasons, song list)
 - [x] Design dark and light mockups for the admin sidebar section, dashboard, backfill queue, song catalog, and song detail; replace the catalog backlog mockup and its 400-song quota figure; validate source and canvas equality
 
 Tests:
 
 - [x] Unit tests: failure classification, retry backoff, and the stage dependency rules including the conditional Wikipedia stage
-- [ ] Unit tests: status and pipeline derivation, cost estimation, and the YouTube reserve rule
+- [x] Unit tests: status and pipeline derivation, cost estimation, and the YouTube reserve rule
 - [x] Integration tests: job leasing under concurrent workers and user-import priority in the job engine
-- [ ] Integration tests: restart recovery, usage counters, role in `/api/users/me`, the dashboard, queue, and catalog endpoints, minimum search length, page size, and search index use, and admin-only access
-- [ ] Frontend unit and browser tests: admin sidebar visibility by role, dashboard figures, per-queue panel, pause and retry actions, catalog search limits, and detail drawer
-- [ ] Update `ARCHITECTURE.md`, `SYSTEM_REFERENCE.md`, `FRONTEND_CONTENT.md`, and `FRONTEND_IMPLEMENTATION_GUIDE.md` for the new endpoints, queues, and screens
+- [x] Integration tests: restart recovery, usage counters, role in `/api/users/me`, the dashboard, queue, and catalog endpoints, minimum search length, page size, and search index use, and admin-only access
+- [x] Frontend unit and browser tests: admin sidebar visibility by role, dashboard figures, per-queue panel, pause and retry actions, catalog search limits, and detail drawer
+- [x] Update `ARCHITECTURE.md`, `SYSTEM_REFERENCE.md`, `FRONTEND_CONTENT.md`, and `FRONTEND_IMPLEMENTATION_GUIDE.md` for the new endpoints, queues, and screens
+
+Production and cleanup:
+
+- [ ] Owner confirmation that the enabled stage pipeline passes a small real playlist in production; earlier stacked branches merged into dev
+- [ ] Cleanup after that confirmation: remove the old sequential drain and flag, retain pending-import history, update docs, run all required tests, and archive completed tasks
 
 Later, once the console exists: an audit log of admin actions, catalog health checks (duplicates, missing embeddings, missing durations), a list of safety rejections, and a catalog CSV export.
 

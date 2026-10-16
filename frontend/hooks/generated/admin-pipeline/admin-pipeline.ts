@@ -34,6 +34,7 @@ import type {
   PipelineRunPageDTO,
   QueueJobPageDTO,
   QueueOverviewDTO,
+  RetryFailedRunsParams,
   RunNowRequest,
   RunsParams
 } from '../../models';
@@ -389,13 +390,14 @@ export const usePauseStage = <TError = unknown,
  * @summary Retry all failed runs that have no other active run for the same video
  */
 export const retryFailedRuns = (
-
+    params?: RetryFailedRunsParams,
  options?: SecondParameter<typeof customInstance>,signal?: AbortSignal
 ) => {
 
 
       return customInstance<PipelineControlResultDTO>(
-      {url: `/api/admin/queues/retry-failed`, method: 'POST', signal
+      {url: `/api/admin/queues/retry-failed`, method: 'POST',
+        params, signal
     },
       options);
     }
@@ -406,8 +408,8 @@ export const retryFailedRuns = (
 export const getRetryFailedRunsMutationKey = () => ['retryFailedRuns'] as const;
 
 export const getRetryFailedRunsMutationOptions = <TError = unknown,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof retryFailedRuns>>, TError,void, TContext>, request?: SecondParameter<typeof customInstance>}
-): UseMutationOptions<Awaited<ReturnType<typeof retryFailedRuns>>, TError,void, TContext> => {
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof retryFailedRuns>>, TError,RetryFailedRunsMutationVariables, TContext>, request?: SecondParameter<typeof customInstance>}
+): UseMutationOptions<Awaited<ReturnType<typeof retryFailedRuns>>, TError,RetryFailedRunsMutationVariables, TContext> => {
 
 const mutationKey = getRetryFailedRunsMutationKey();
 const {mutation: mutationOptions, request: requestOptions} = options ?
@@ -419,10 +421,10 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
 
 
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof retryFailedRuns>>, void> = () => {
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof retryFailedRuns>>, RetryFailedRunsMutationVariables> = (props) => {
+          const {params} = props ?? {};
 
-
-          return  retryFailedRuns(requestOptions)
+          return  retryFailedRuns(params,requestOptions)
         }
 
 
@@ -435,17 +437,17 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
     export type RetryFailedRunsMutationResult = NonNullable<Awaited<ReturnType<typeof retryFailedRuns>>>
 
     export type RetryFailedRunsMutationError = unknown
-
+    export type RetryFailedRunsMutationVariables = {params?: RetryFailedRunsParams}
 
     /**
  * @summary Retry all failed runs that have no other active run for the same video
  */
 export const useRetryFailedRuns = <TError = unknown,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof retryFailedRuns>>, TError,void, TContext>, request?: SecondParameter<typeof customInstance>}
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof retryFailedRuns>>, TError,RetryFailedRunsMutationVariables, TContext>, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof retryFailedRuns>>,
         TError,
-        void,
+        RetryFailedRunsMutationVariables,
         TContext
       > => {
       return useMutation(getRetryFailedRunsMutationOptions(options), queryClient);

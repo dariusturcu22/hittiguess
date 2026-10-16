@@ -18,4 +18,7 @@ export interface PipelineRunDTO {
   queuedAt?: string;
   finishedAt?: string;
   jobs?: QueueJobDTO[];
+  batchId?: number;
+  batchLabel?: string;
+  artists?: string[];
 }
