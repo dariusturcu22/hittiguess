@@ -157,6 +157,8 @@ Similarity matching requires a stored embedding. Core migration V41 queues verif
 
 The admin catalog backlog drains through the patient pipeline on its schedule or an explicit run-now action. Admin origin grants no special verification status. User imports identify videos concurrently and resolve provisional years through the fast tier; songs appear as they settle and are queued for patient rechecks. A verified duplicate reuses the existing song without another year lookup. The patient drain yields to immediate user work. Review queue for reports: built, story 17, ranked by a five-tier priority order (converging reports first, then non-converging reports, then confirmed-but-unreported cards, then unconfirmed cards, `VERIFIED` cards with no report never appear).
 
+A persisted job engine for the stage pipeline exists in core (story 51, V44): import batches, one run per YouTube ID, one job per stage, leasing with `FOR UPDATE SKIP LOCKED`, lazy lease reclaim, retry backoff, failure classification, per-stage pause, and the stage dependency rules. It is not wired in yet; the backlog drain and user imports above still process songs.
+
 ## Deployment
 
 Beta runs the frontend on Vercel and both backend containers in one Azure Container Apps Consumption environment. The Spring core has external HTTPS and WebSocket ingress. The FastAPI AI service has internal-only ingress and is reached through the environment's service discovery. Both apps scale from zero, but the Spring core is capped at one replica until the STOMP broker, presence registries, and session caches move out of process.

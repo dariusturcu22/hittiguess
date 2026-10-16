@@ -72,13 +72,18 @@ The admin area becomes a console with its own sidebar section, a dashboard, a ba
 
 Pipeline and data:
 
-- [ ] Core migration: per-stage job table (song or video, batch, stage, status, attempts, lease, next attempt, result, failing stage, real failure reason) and batch table
-- [ ] Stage workers lease jobs from their own queue at the source's pace; pace and cooldown state survive restarts; the leased-job pattern of the embedding queue is the template
-- [ ] Join step: when every stage a song needs is done, run reconciliation, save the song, and queue its embedding; handle Wikipedia being added after the first three sources answer
+- [x] Core migration (V44): per-stage job table (video run, batch, stage, status, attempts, lease, next attempt, result, failing stage, real failure reason), batch table, runs with one active run per YouTube ID, and per-stage pause controls; constraints covered by the engine integration tests
+- [x] Job engine leasing: one job per call per stage with `FOR UPDATE SKIP LOCKED`, user imports first, then priority, then age, with retry backoff; the leased-job pattern of the embedding queue is the template; covered by concurrent-worker integration tests
+- [ ] Stage workers lease jobs from their own queue at the source's pace; pace and cooldown state survive restarts
+- [x] Stage dependency rules: the three sources run in parallel after YouTube metadata; agreeing years skip Wikipedia and reconciliation; Wikipedia is added after the first three sources answer otherwise; the run is marked ready to save and its embedding queued; unit-tested transition table and both paths in integration tests
+- [ ] Join step: save the song when its run is ready to save, before its embedding job runs
 - [ ] User imports use the same queues with priority over the backlog, replacing the drain pause in `MetadataPriorityCoordinator`
-- [ ] Classify failures as transient (outage, rejected key, rate limit, timeout, shutdown) or permanent (video unavailable, no usable metadata); transient failures retry with backoff and an attempt count and never mark the song failed; store the real reason and failing stage
-- [ ] A rejected or exhausted API key pauses its stage and raises a dashboard banner instead of failing queued songs
-- [ ] Reclaim jobs whose lease expired; a restart or redeploy resumes work without waiting for the daily timer
+- [x] Engine failure handling: classify failures as transient (outage, rejected key, rate limit, timeout, shutdown) or permanent (video unavailable, no usable metadata); transient failures retry with backoff and an attempt count; the real reason and failing stage are stored on the job; unit and integration tests
+- [ ] Stage workers report failures through the engine, so a transient error never marks a song failed
+- [x] Engine: a rejected API key pauses its stage and returns the job without using an attempt or failing the run; integration test
+- [ ] Real provider calls report rejected or exhausted keys, and a paused stage raises a dashboard banner
+- [x] Engine: jobs whose lease expired are reclaimed inside each lease call, and a lost lease counts as an attempt; integration tests
+- [ ] A restart or redeploy resumes work without waiting for the daily timer
 - [ ] Remove the daily drain cap; the backlog stops when remaining YouTube units fall below a reserve kept for user imports
 - [x] The AI service records YouTube units and LLM tokens per call; cost estimates use the official per-unit prices kept as named constants with the date they were read
 
@@ -89,7 +94,8 @@ Admin API:
 - [x] Dashboard endpoint v1: `GET /api/admin/dashboard` returns the catalog counts (verified, needs review, in queue, processing, error, total), queue totals (waiting and in progress across every origin), and the usage view with YouTube units against the daily 10,000-unit default with its midnight Pacific reset and LLM and embedding usage with estimated cost for today and the month
 - [ ] Dashboard endpoint, per-queue depth: waiting, in progress, and failed per stage queue, once the stage queues exist
 - [ ] Queue endpoint: waiting, in progress, done, and failed counts per stage, current pace, cooldown state, average response time, estimated time to drain, and the list of songs still needing work; a per-stage job list with lane (user import or backfill), attempts, next attempt, and last error
-- [ ] Controls: pause and resume per queue and for the whole backlog; retry, retry all, and discard failed items; cancel a batch; run one YouTube ID now at top priority; re-run the pipeline for one song
+- [x] Control service methods: pause and resume per stage, retry and discard a failed run, cancel a batch, and bump a run above every waiting job; integration tests
+- [ ] Controls endpoints: pause and resume per queue and for the whole backlog; retry, retry all, and discard failed items; cancel a batch; run one YouTube ID now at top priority; re-run the pipeline for one song
 - [ ] Batches: each submitted playlist or ID list is a batch with progress, skipped duplicates, and an estimate
 - [x] Song catalog endpoint: server-side search by title or artist with a minimum of three characters, 25 results per page, and a trigram index so a search never scans the whole table; each row has title, artists, release year, status (processing, in queue, verified, needs review, error), pipeline (fast or full, from the queue origin), date added, and added by (admin seed when empty)
 - [x] Song detail endpoint, read only: the catalog fields, stored verification status, confidence, and sitelinks, open report count, and the queue history for its YouTube ID
@@ -105,8 +111,10 @@ Frontend:
 
 Tests:
 
-- [ ] Unit tests: failure classification, retry backoff, join rules including the conditional Wikipedia stage, status and pipeline derivation, cost estimation, and the YouTube reserve rule
-- [ ] Integration tests: job leasing under concurrent workers, restart recovery, user-import priority, usage counters, role in `/api/users/me`, the dashboard, queue, and catalog endpoints, minimum search length, page size, and search index use, and admin-only access
+- [x] Unit tests: failure classification, retry backoff, and the stage dependency rules including the conditional Wikipedia stage
+- [ ] Unit tests: status and pipeline derivation, cost estimation, and the YouTube reserve rule
+- [x] Integration tests: job leasing under concurrent workers and user-import priority in the job engine
+- [ ] Integration tests: restart recovery, usage counters, role in `/api/users/me`, the dashboard, queue, and catalog endpoints, minimum search length, page size, and search index use, and admin-only access
 - [ ] Frontend unit and browser tests: admin sidebar visibility by role, dashboard figures, per-queue panel, pause and retry actions, catalog search limits, and detail drawer
 - [ ] Update `ARCHITECTURE.md`, `SYSTEM_REFERENCE.md`, `FRONTEND_CONTENT.md`, and `FRONTEND_IMPLEMENTATION_GUIDE.md` for the new endpoints, queues, and screens
 
