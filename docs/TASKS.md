@@ -72,6 +72,12 @@ The admin area becomes a console with its own sidebar section, a dashboard, a ba
 
 Pipeline and data:
 
+- [x] AI stage endpoints: internal authentication, video identification and precheck verdict, source candidates and earliest years, reconciliation, and sanitized provider errors
+- [x] AI stage equivalence tests: agreeing years, disagreement, empty source, precheck rejection, and YouTube failure; existing AI tests remain passing
+- [x] Persisted source pacing: V45 stage rows, atomic slot reservations, cooldowns, response averages, in-memory fallback, and stage-only 30-second wait cap with retryAfterSeconds
+- [x] Pacing tests: SQL, fallback, wait cap, concurrent increasing reservations, and core Testcontainers migration coverage
+- [x] AI stage documentation: endpoint contracts, error and retry bodies, pacing table, architecture, and decision entry
+
 - [x] Core migration (V44): per-stage job table (video run, batch, stage, status, attempts, lease, next attempt, result, failing stage, real failure reason), batch table, runs with one active run per YouTube ID, and per-stage pause controls; constraints covered by the engine integration tests
 - [x] Job engine leasing: one job per call per stage with `FOR UPDATE SKIP LOCKED`, user imports first, then priority, then age, with retry backoff; the leased-job pattern of the embedding queue is the template; covered by concurrent-worker integration tests
 - [ ] Stage workers lease jobs from their own queue at the source's pace; pace and cooldown state survive restarts
