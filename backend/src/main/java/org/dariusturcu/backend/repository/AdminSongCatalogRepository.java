@@ -166,15 +166,23 @@ public class AdminSongCatalogRepository {
     }
 
     public List<AdminCatalogRow> findPage(String searchText, CatalogSongStatus status, int pageSize, long offset) {
+        return core.query(pageSql(searchText, status), (resultSet, rowNumber) -> toRow(resultSet),
+                pageParameters(searchText, status, pageSize, offset));
+    }
+
+    static String pageSql(String searchText, CatalogSongStatus status) {
+        return PAGE_QUERY.formatted(songFilter(searchText), queueFilter(searchText),
+                status == null ? NO_FILTER : STATUS_FILTER);
+    }
+
+    static Object[] pageParameters(String searchText, CatalogSongStatus status, int pageSize, long offset) {
         List<Object> parameters = new ArrayList<>(searchParameters(searchText));
         if (status != null) {
             parameters.add(status.name());
         }
         parameters.add(pageSize);
         parameters.add(offset);
-        String sql = PAGE_QUERY.formatted(songFilter(searchText), queueFilter(searchText),
-                status == null ? NO_FILTER : STATUS_FILTER);
-        return core.query(sql, (resultSet, rowNumber) -> toRow(resultSet), parameters.toArray());
+        return parameters.toArray();
     }
 
     public Map<CatalogSongStatus, Long> countByStatus(String searchText) {
