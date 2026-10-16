@@ -1,5 +1,7 @@
 export * from './admin-catalog-seeding/admin-catalog-seeding';
+export * from './admin-song-catalog/admin-song-catalog';
 export * from './admin-song-report-review/admin-song-report-review';
+export * from './admin-usage/admin-usage';
 export * from './authentication-management/authentication-management';
 export * from './bulk-import/bulk-import';
 export * from './community-song-reports/community-song-reports';

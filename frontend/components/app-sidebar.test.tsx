@@ -265,6 +265,7 @@ describe("AppSidebar admin group", () => {
 
     expect(screen.queryByText("ADMIN")).not.toBeInTheDocument();
     expect(screen.queryByLabelText("Admin: Backfill queue")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Admin: Song catalog")).not.toBeInTheDocument();
     expect(screen.queryByLabelText("Admin: Reports")).not.toBeInTheDocument();
   });
 
@@ -274,12 +275,13 @@ describe("AppSidebar admin group", () => {
     expect(screen.queryByText("ADMIN")).not.toBeInTheDocument();
   });
 
-  it("shows the label and both links for an admin account", () => {
+  it("shows the label and every admin link for an admin account", () => {
     currentUserRole = "ADMIN";
     renderSidebar();
 
     expect(screen.getByText("ADMIN")).toBeInTheDocument();
     expect(screen.getByLabelText("Admin: Backfill queue")).toHaveAttribute("href", "/admin/catalog-backlog");
+    expect(screen.getByLabelText("Admin: Song catalog")).toHaveAttribute("href", "/admin/songs");
     expect(screen.getByLabelText("Admin: Reports")).toHaveAttribute("href", "/admin/reports");
     expect(screen.getByTitle("Admin: Reports")).toBeInTheDocument();
   });
@@ -293,11 +295,21 @@ describe("AppSidebar admin group", () => {
     expect(screen.getByLabelText("Admin: Backfill queue")).not.toHaveAttribute("aria-current");
   });
 
+  it("marks the song catalog link active on its route", () => {
+    currentUserRole = "ADMIN";
+    currentPathname = "/admin/songs";
+    renderSidebar();
+
+    expect(screen.getByLabelText("Admin: Song catalog")).toHaveAttribute("aria-current", "page");
+    expect(screen.getByLabelText("Admin: Reports")).not.toHaveAttribute("aria-current");
+  });
+
   it("marks nothing active outside the admin routes", () => {
     currentUserRole = "ADMIN";
     renderSidebar();
 
     expect(screen.getByLabelText("Admin: Reports")).not.toHaveAttribute("aria-current");
     expect(screen.getByLabelText("Admin: Backfill queue")).not.toHaveAttribute("aria-current");
+    expect(screen.getByLabelText("Admin: Song catalog")).not.toHaveAttribute("aria-current");
   });
 });

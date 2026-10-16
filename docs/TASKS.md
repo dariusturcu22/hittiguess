@@ -72,7 +72,7 @@ The admin area becomes a console with its own sidebar section, a dashboard, a ba
 
 Pipeline and data:
 
-- [ ] Core migration: per-stage job table (song or video, batch, stage, status, attempts, lease, next attempt, result, failing stage, real failure reason), batch table, and `songs.created_at` (existing songs backfilled from their earliest queue or membership row, otherwise unknown)
+- [ ] Core migration: per-stage job table (song or video, batch, stage, status, attempts, lease, next attempt, result, failing stage, real failure reason) and batch table
 - [ ] Stage workers lease jobs from their own queue at the source's pace; pace and cooldown state survive restarts; the leased-job pattern of the embedding queue is the template
 - [ ] Join step: when every stage a song needs is done, run reconciliation, save the song, and queue its embedding; handle Wikipedia being added after the first three sources answer
 - [ ] User imports use the same queues with priority over the backlog, replacing the drain pause in `MetadataPriorityCoordinator`
@@ -90,13 +90,15 @@ Admin API:
 - [ ] Queue endpoint: waiting, in progress, done, and failed counts per stage, current pace, cooldown state, average response time, estimated time to drain, and the list of songs still needing work; a per-stage job list with lane (user import or backfill), attempts, next attempt, and last error
 - [ ] Controls: pause and resume per queue and for the whole backlog; retry, retry all, and discard failed items; cancel a batch; run one YouTube ID now at top priority; re-run the pipeline for one song
 - [ ] Batches: each submitted playlist or ID list is a batch with progress, skipped duplicates, and an estimate
-- [ ] Song catalog endpoint: server-side search by title or artist with a minimum of three characters, 25 results per page, and a trigram index so a search never scans the whole table; each row has title, artists, release year, status (processing, in queue, verified, needs review, error), pipeline (fast or full, from the queue origin), date added, and added by (admin seed when empty)
-- [ ] Song detail endpoint: what each source found, why the song is verified or needs review, and the actions to set year or status, re-run, or delete
+- [x] Song catalog endpoint: server-side search by title or artist with a minimum of three characters, 25 results per page, and a trigram index so a search never scans the whole table; each row has title, artists, release year, status (processing, in queue, verified, needs review, error), pipeline (fast or full, from the queue origin), date added, and added by (admin seed when empty)
+- [x] Song detail endpoint, read only: the catalog fields, stored verification status, confidence, and sitelinks, open report count, and the queue history for its YouTube ID
+- [ ] Song detail additions once the stage queues exist: what each source found, why the song is verified or needs review, and the actions to set year or status, re-run, or delete
 
 Frontend:
 
 - [ ] Admin section in the sidebar in its own accent color with Dashboard, Backfill queue, Song catalog, and Reports, visible only to admins
-- [ ] Dashboard, backfill queue (per-queue panel, a page per stage queue, batches, failed items with reasons, song list), song catalog (debounced search, pagination), and song detail drawer
+- [x] Song catalog page (debounced search, status filters, pagination) and read-only song detail drawer
+- [ ] Dashboard and backfill queue (per-queue panel, a page per stage queue, batches, failed items with reasons, song list)
 - [x] Design dark and light mockups for the admin sidebar section, dashboard, backfill queue, song catalog, and song detail; replace the catalog backlog mockup and its 400-song quota figure; validate source and canvas equality
 
 Tests:
