@@ -127,7 +127,7 @@ Resolved metadata carries ordered `main_artists` and `featured_artists`, verific
 
 ### AI stage contracts (story 51)
 
-All six stage endpoints require `X-Internal-Api-Key`. Stage request and response fields use camelCase, except the nested or final `MetadataResolveResponse`, which keeps the snake_case fields used by `/metadata/resolve`. These endpoints do not yet have core workers calling them.
+All six stage endpoints require `X-Internal-Api-Key`. Stage request and response fields use camelCase, except the nested or final `MetadataResolveResponse`, which keeps the snake_case fields used by `/metadata/resolve`. Core workers call these endpoints when `pipeline.stages.enabled` is true.
 
 | POST path | Request | Successful response |
 |---|---|---|
@@ -406,7 +406,7 @@ Estimated cost is computed on read in `ApiUsagePricing` from the stored tokens a
 
 ## Stage pipeline job engine (story 51)
 
-Core V44 owns four tables. Nothing calls the engine yet; the existing backlog drain, user imports, and AI endpoints still process songs as before.
+Core V44 owns four tables. The engine processes admin backlog and patient rechecks when `pipeline.stages.enabled` is true. The property reads `PIPELINE_STAGES_ENABLED` and defaults to false. With the flag off the existing drain remains active, and stage worker, client, and scheduler beans are absent. With it on, both old drain entry points are disabled, and the daily song cap does not apply.
 
 Core V45 adds `stage_pace`: `stage` (primary key), `next_slot_at`, nullable `cooldown_until`, `current_delay_ms`, nullable `avg_response_ms`, and `updated_at`. Seeded stages are `YOUTUBE_METADATA`, `MUSICBRAINZ`, `DISCOGS`, `WIKIDATA`, and `WIKIPEDIA`. Delay and response times cannot be negative. The AI service updates rows but never creates or migrates the table.
 
@@ -436,8 +436,24 @@ stateDiagram-v2
     Sources --> WIKIPEDIA: years differ, a year is missing, or a source did not answer
     WIKIPEDIA --> LLM_RECONCILIATION
     LLM_RECONCILIATION --> ReadyToSave
-    ReadyToSave --> EMBEDDING: ready_to_save_at set
-    EMBEDDING --> [*]: run DONE
+    ReadyToSave --> Saved: song persistence and run DONE in one transaction
+    Saved --> [*]
 ```
 
-The three source jobs are created together and run in parallel; the decision waits until all three are terminal. `StageDependencies` holds these rules, reading `earliestYear` (an integer or null) from each source job's result. New jobs inherit the priority of the job that finished before them. Cancelling a batch cancels its active runs and their waiting jobs; a job already in progress finishes as `CANCELLED` and its result is dropped. Retrying a failed run requeues its failed jobs with fresh attempts, unless another run of the same YouTube ID is active. Discarding cancels a run, bumping raises a run's unfinished jobs above every waiting job, and `stageCounts` reads waiting, in progress, done since the start of the UTC day, failed, and retrying jobs for every stage in one query.
+The three source jobs are created together and run in parallel; the decision waits until all three are terminal. `StageDependencies` holds these rules, reading `earliestYear` (an integer or null) from each source job's result. New jobs inherit the priority of the job that finished before them. Cancelling a batch cancels its active runs and their waiting jobs; a job already in progress finishes as `CANCELLED` and its result is dropped. Retrying a failed run requeues its failed jobs with fresh attempts, unless another run of the same YouTube ID is active. Discarding cancels a run, bumping raises a run's unfinished jobs above every waiting job, and `stageCounts` reads metadata job counts plus the V41 embedding queue depth and retry count. No new `EMBEDDING` job is created in the engine; that stage value remains for compatibility and reporting.
+
+`PipelineStageWorker` schedules one method per metadata stage on a six-thread scheduler, with `pipeline.stages.interval-seconds` defaulting to 5. Each idle tick performs only an indexed due-work check, including expired leases. A busy tick uses `leaseExclusive`, which locks the stage control row and refuses another lease while that stage has an in-progress job. Stage requests have a ten-second connect timeout, a four-minute read timeout, and five-minute job leases. The AI service owns source pacing. Local 429 pace deferrals use `reschedule` without changing attempts; upstream provider errors use the existing classifier, and internal authentication failures pause the stage.
+
+Only YouTube backfill leases check the remaining daily units through `ApiUsageService`. The configurable reserve is `pipeline.youtube.reserve-units`, from `PIPELINE_YOUTUBE_RESERVE_UNITS`, default 1,500. Exactly the reserve still permits a backfill lease; values below it allow only user-lane YouTube jobs. Other stages continue processing already-fetched videos. User rechecks carry their provisional year and promote an active backfill run to the user lane when necessary. Admin enqueue records a playlist or ID batch; known songs and already-active runs are skipped in its response.
+
+`PipelineCompletionService` completes the last needed stage, constructs the final metadata (locally for an exact three-source lock), calls `SongCatalogService.persist`, records the patient year in recheck history, and marks the run `DONE` in one transaction. A save failure rolls everything back and returns the last stage to retry. Verified duplicates finish from the YouTube stage; rejected prechecks fail the run without creating source jobs. V41's database triggers schedule verified embeddings after the song transaction commits.
+
+With the flag on, the catalog list, counts, detail status, pipeline labels, and queue history read runs and jobs. A latest failed run appears as an error when no run is active. The dashboard's waiting total includes the metadata jobs and the V41 embedding queue; embedding has no separate engine in-progress count. With the flag off, catalog and queue reads retain their `pending_imports` behavior.
+
+### Stage cutover production verification
+
+Production activation requires the owner's approval. The first run should use one small playlist after the queue controls and pages are available. Record the initial catalog totals, YouTube usage, and queue depths before enabling the flag. Check that only the stage workers process new work and the manual legacy drain returns a conflict. Follow one agreeing song through its three source jobs and verify that Wikipedia and reconciliation are skipped; follow one disagreement through Wikipedia and reconciliation. Each video must produce one saved song, and verified saves must enter and leave the V41 embedding queue.
+
+Watch AI logs for provider failures, rate limits, and database pacing fallback warnings; watch core logs for postponed stages and lost leases. In the admin pages, check attempts, next-attempt times, real failure reasons, pause reasons, batch progress, catalog status, and the patient's year. A retry must retain the provisional song and never create a duplicate. A rejected key must pause its stage with no added attempt, and a local pace deferral must move the next attempt without increasing attempts. Restart recovery should reclaim an expired lease without a daily sweep. Watch YouTube remaining units and confirm that only the backfill YouTube lane stops below the reserve.
+
+After the small playlist completes, compare the catalog and usage totals with the submitted IDs and skipped duplicates. Leave the flag off for wider traffic until these checks pass. Rollback uses the flag off after in-flight work stops; queued stage rows remain persisted for later resumption. Cleanup of the old drain requires a separate confirmation that production verification succeeded.
