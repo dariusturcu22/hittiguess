@@ -114,6 +114,7 @@ export * from './updateUserRequest';
 export * from './uploadOwnAvatarBody';
 export * from './uploadPlaylistCoverBody';
 export * from './userDetailDTO';
+export * from './userDetailDTORole';
 export * from './userSummaryDTO';
 export * from './verifiedSongsParams';
 export * from './verifyEmailRequest';

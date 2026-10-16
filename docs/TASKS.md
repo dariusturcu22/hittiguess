@@ -84,7 +84,7 @@ Pipeline and data:
 
 Admin API:
 
-- [ ] `/api/users/me` returns the account role; remove the 403 probe in the admin layout
+- [x] `/api/users/me` returns the account role; remove the 403 probe in the admin layout
 - [ ] Dashboard endpoint: counts of verified songs, songs needing review (NEEDS_REVIEW, UNVERIFIED, and MANUAL_ENTRY), songs with errors, and songs queued now; YouTube units used against the daily 10,000-unit default with its midnight Pacific reset; LLM and embedding usage with estimated cost for today and the month; per-queue depth
 - [ ] Queue endpoint: waiting, in progress, done, and failed counts per stage, current pace, cooldown state, average response time, estimated time to drain, and the list of songs still needing work; a per-stage job list with lane (user import or backfill), attempts, next attempt, and last error
 - [ ] Controls: pause and resume per queue and for the whole backlog; retry, retry all, and discard failed items; cancel a batch; run one YouTube ID now at top priority; re-run the pipeline for one song

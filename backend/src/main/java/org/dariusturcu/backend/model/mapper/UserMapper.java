@@ -26,6 +26,7 @@ public class UserMapper {
                 user.getEmail(),
                 user.getImageUrl(),
                 user.getAuthProvider().name(),
+                user.getRole(),
                 playlists
         );
     }
