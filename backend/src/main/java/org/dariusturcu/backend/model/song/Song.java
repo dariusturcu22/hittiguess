@@ -12,6 +12,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 
 @Entity
 @Getter
@@ -79,4 +80,14 @@ public class Song {
     @ManyToOne
     @JoinColumn(name = "added_by")
     private User addedBy;
+
+    @Column(updatable = false)
+    private Instant createdAt;
+
+    @PrePersist
+    void recordCreationTime() {
+        if (createdAt == null) {
+            createdAt = Instant.now().truncatedTo(ChronoUnit.MICROS);
+        }
+    }
 }
