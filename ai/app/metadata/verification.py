@@ -11,6 +11,8 @@ from app.config import settings
 from app.metadata.llm import extract_structured, synthesize_with_model
 from app.metadata.prompts import build_four_sources_prompt, build_wikipedia_extraction_prompt
 from app.metadata.schemas import LlmExtractionResult
+from app.metadata.stages.errors import StageFailure
+from app.metadata.stages.schemas import StageProvider
 
 logger = logging.getLogger(__name__)
 
@@ -84,6 +86,8 @@ def evaluate_lock(
     discogs_candidates: list[dict],
     wikidata_candidates: list[dict],
     wikipedia_entries: list[dict],
+    *,
+    raise_on_failure: bool = False,
 ) -> tuple[int | None, str, VerificationRoute]:
     """Runs the full lock-or-LLM decision for one song.
 
@@ -100,7 +104,7 @@ def evaluate_lock(
     if _all_three_agree(musicbrainz_year, discogs_year, wikidata_year):
         return musicbrainz_year, "high", VerificationRoute.LOCKED
 
-    extraction_result = _run_wikipedia_extraction(title, artist, wikipedia_entries)
+    extraction_result = _run_wikipedia_extraction(title, artist, wikipedia_entries, raise_on_failure=raise_on_failure)
     wikipedia_year = extraction_result.release_year if extraction_result else None
     wikipedia_confidence = extraction_result.confidence if extraction_result else None
 
@@ -127,6 +131,7 @@ def evaluate_lock(
         wikidata_candidates,
         wikipedia_year,
         wikipedia_confidence,
+        raise_on_failure=raise_on_failure,
     )
     if reconciliation_result is None or reconciliation_result.release_year is None:
         return None, "low", VerificationRoute.MANUAL_REVIEW
@@ -151,15 +156,19 @@ def _run_wikipedia_extraction(
     title: str,
     artist: str,
     wikipedia_entries: list[dict],
+    *,
+    raise_on_failure: bool = False,
 ) -> LlmExtractionResult | None:
     """Runs the dedicated reading-comprehension extraction pass over
     Wikipedia's article prose. Only called when the three structured
-    sources didn't lock. Any failure is swallowed so the pipeline can
-    still attempt reconciliation with whatever structured data exists."""
+    sources didn't lock. Resolve tolerates failures; stage calls propagate them
+    with the provider so core can retry."""
     try:
         extraction_prompt = build_wikipedia_extraction_prompt(title, artist, wikipedia_entries)
         return extract_structured(extraction_prompt, LlmExtractionResult)
     except Exception as extraction_error:
+        if raise_on_failure:
+            raise StageFailure(StageProvider.DEEPINFRA, extraction_error) from extraction_error
         logger.warning("Wikipedia extraction failed for %r by %r: %s", title, artist, extraction_error)
         return None
 
@@ -172,10 +181,13 @@ def _run_four_source_reconciliation(
     wikidata_candidates: list[dict],
     wikipedia_year: int | None,
     wikipedia_confidence: str | None,
+    *,
+    raise_on_failure: bool = False,
 ) -> LlmExtractionResult | None:
     """Runs the four-source reconciliation call that decides among
     conflicting or partial structured-source candidates. Only called when
-    the three structured sources didn't lock. Any failure is swallowed."""
+    the three structured sources didn't lock. Resolve tolerates failures; stage
+    calls propagate them with the provider so core can retry."""
     try:
         reconciliation_prompt = build_four_sources_prompt(
             title,
@@ -188,6 +200,8 @@ def _run_four_source_reconciliation(
         )
         return synthesize_with_model(reconciliation_prompt, settings.reconciliation_model, LlmExtractionResult)
     except Exception as reconciliation_error:
+        if raise_on_failure:
+            raise StageFailure(StageProvider.OPENAI, reconciliation_error) from reconciliation_error
         logger.warning(
             "Four-source reconciliation failed for %r by %r: %s", title, artist, reconciliation_error
         )

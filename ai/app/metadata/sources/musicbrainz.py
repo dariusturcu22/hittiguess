@@ -1,7 +1,9 @@
+import time
 from urllib.parse import quote
 
 from app.metadata.sources.http_retry import get_with_backoff
-from app.metadata.sources.pacing import RequestPacer
+from app.metadata.sources.pace_state import STAGE_MUSICBRAINZ
+from app.metadata.sources.pacing import PersistedRequestPacer
 from app.metadata.sources.util import METADATA_SOURCE_USER_AGENT, escape_lucene
 from app.observability.error_reporting import report_source_failure
 
@@ -34,7 +36,7 @@ class _AdaptiveRateLimiter:
         self.baseline_delay_seconds = baseline_delay_seconds
         self.delay_seconds = baseline_delay_seconds
         self.consecutive_successes = 0
-        self._pacer = RequestPacer()
+        self._pacer = PersistedRequestPacer(STAGE_MUSICBRAINZ)
 
     def wait(self) -> None:
         self._pacer.wait(self.delay_seconds)
@@ -44,6 +46,9 @@ class _AdaptiveRateLimiter:
         if self.consecutive_successes >= SUCCESS_STREAK_BEFORE_EASING and self.delay_seconds > self.baseline_delay_seconds:
             self.delay_seconds = max(self.baseline_delay_seconds, self.delay_seconds - EASE_STEP_SECONDS)
             self.consecutive_successes = 0
+
+    def record_response_time(self, elapsed_seconds: float) -> None:
+        self._pacer.record_response_time(elapsed_seconds)
 
     def record_failure(self) -> None:
         self.consecutive_successes = 0
@@ -56,12 +61,14 @@ _rate_limiter = _AdaptiveRateLimiter()
 
 def _get(url: str) -> dict:
     _rate_limiter.wait()
+    request_started_at = time.monotonic()
     response = get_with_backoff(
         url,
         headers={"User-Agent": METADATA_SOURCE_USER_AGENT},
         timeout=REQUEST_TIMEOUT_SECONDS,
         on_retry=_rate_limiter.record_failure,
     )
+    _rate_limiter.record_response_time(time.monotonic() - request_started_at)
     _rate_limiter.record_success()
     return response.json()
 
@@ -123,25 +130,30 @@ def _candidates_from_groups(release_groups: list[dict], query_label: str) -> lis
     return candidates
 
 
-def search(title: str, artist: str, album: str | None = None) -> list[dict]:
+def search_or_raise(title: str, artist: str, album: str | None = None) -> list[dict]:
     """Queries the submitted track and, when given, its parent album,
     release-group by release-group, so the caller can take the earliest
     valid year across both rather than trusting whichever query's top
     result happens to be a reissue (see docs/DECISIONS.md's 2026-09
     "Metadata pipeline call/reconcile shape" entry). Returns every
     candidate found, not just the selected best one, so downstream
-    reconciliation can see the full picture a single pick would hide."""
+    reconciliation can see the full picture a single pick would hide. A failed request raises."""
+    candidates: list[dict] = []
+
+    track_groups = search_release_group(title, artist).get("release-groups", [])
+    candidates += _candidates_from_groups(track_groups, "track")
+
+    if album:
+        album_groups = search_release_group(album, artist).get("release-groups", [])
+        candidates += _candidates_from_groups(album_groups, "album")
+
+    return candidates
+
+
+def search(title: str, artist: str, album: str | None = None) -> list[dict]:
+    """search_or_raise, reporting a failure and returning nothing instead of raising."""
     try:
-        candidates: list[dict] = []
-
-        track_groups = search_release_group(title, artist).get("release-groups", [])
-        candidates += _candidates_from_groups(track_groups, "track")
-
-        if album:
-            album_groups = search_release_group(album, artist).get("release-groups", [])
-            candidates += _candidates_from_groups(album_groups, "album")
-
-        return candidates
+        return search_or_raise(title, artist, album)
     except Exception as musicbrainz_error:
         report_source_failure(SOURCE_NAME, musicbrainz_error, title, artist)
         return []

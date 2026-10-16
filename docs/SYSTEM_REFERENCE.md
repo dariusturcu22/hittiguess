@@ -125,6 +125,33 @@ Resolved metadata carries ordered `main_artists` and `featured_artists`, verific
 | GET | `/health` | Unauthenticated, story 38 |
 | GET | `/metrics` | Prometheus scrape format via `prometheus-fastapi-instrumentator`, gated by `X-Internal-Api-Key`. |
 
+### AI stage contracts (story 51)
+
+All six stage endpoints require `X-Internal-Api-Key`. Stage request and response fields use camelCase, except the nested or final `MetadataResolveResponse`, which keeps the snake_case fields used by `/metadata/resolve`. These endpoints do not yet have core workers calling them.
+
+| POST path | Request | Successful response |
+|---|---|---|
+| `/stages/youtube-metadata` | `{youtubeId}` (video ID or link) | `{outcome, video, title, artists, featuredArtists, color, rejectionReason, rejectionDetail, result}`. `video` contains `videoTitle`, `channelTitle`, `durationSeconds`, and `categoryId`. `outcome` is `IDENTIFIED`, `REJECTED`, or `DUPLICATE`. Identified results carry the accepted precheck's identity; rejection carries its reason. Rejected and duplicate outcomes carry the final response in `result`; identified results leave it null. |
+| `/stages/musicbrainz` | `{title, artists, youtubeId?}` | `{candidates, earliestYear}` |
+| `/stages/discogs` | Same source request | `{candidates, earliestYear}` |
+| `/stages/wikidata` | Same source request | `{candidates, earliestYear, sitelinksCount}` |
+| `/stages/wikipedia` | Same source request | `{candidates, earliestYear}`. Candidates contain lead-section extracts; `earliestYear` is null because structured LLM extraction happens during reconciliation. |
+| `/stages/llm-reconcile` | `{title, artists, featuredArtists?, color, video, musicbrainzCandidates?, discogsCandidates?, wikidataCandidates?, wikipediaCandidates?, sitelinksCount?, youtubeId?}` | The final `MetadataResolveResponse`, including the submitted video's duration. Three matching structured years return the locked result without Wikipedia extraction or reconciliation calls. |
+
+Source candidates use the same curated fields as resolve. `earliestYear` is always present and is null when no structured year exists. Wikidata's optional sitelinks count remains null if that auxiliary lookup fails. Source requests remove featured-artist suffixes from titles and join main artists with ` & `, matching resolve. Reconciliation retains the Wikipedia-assisted lock and manual-entry paths. Missing candidate lists default to empty lists; missing sitelinks default to null.
+
+Stage failures return `{stage, provider, providerHint, cause, upstreamStatus, message}`. `provider` is `YOUTUBE`, `MUSICBRAINZ`, `DISCOGS`, `WIKIDATA`, `WIKIPEDIA`, `DEEPINFRA`, or `OPENAI`, or null for an unattributed internal failure. `providerHint` matches core's `FailureClassifier`: `YOUTUBE_VIDEO_LOOKUP`, `API_KEY_PROVIDER`, or `KEYLESS_PROVIDER`. `upstreamStatus` is the provider's HTTP status, or null without a response. Error messages are fixed text and contain no exception text, keys, or request URLs.
+
+| Cause | HTTP status |
+|---|---|
+| `HTTP_ERROR` | 502, with the actual status in `upstreamStatus` |
+| `TIMEOUT` | 504 |
+| `CONNECTION_ERROR` | 503 |
+| `NO_USABLE_METADATA` | 422, for an invalid or missing YouTube video |
+| `OTHER` | 500 |
+
+Pace deferral is a separate 429 response: `{stage, retryAfterSeconds, message}`, with a matching `Retry-After` header. The delay is rounded up to whole seconds, with a minimum of one second. A source slot more than 30 seconds away is not reserved. Core must reschedule this response without charging an attempt. Provider rate limits instead return `HTTP_ERROR` with `upstreamStatus: 429`. Resolve retains its uncapped pace waits and best-effort fallbacks, while stage reconciliation propagates DeepInfra extraction and OpenAI reconciliation failures.
+
 ### Correlation id (story 38)
 
 Both services accept and echo an `X-Request-Id` header on every request: the core service's `CorrelationIdFilter` and the AI microservice's `CorrelationIdMiddleware` reuse an incoming value or generate one, attach it to the active OpenTelemetry span as a `request.id` attribute, include it in every structured log line emitted while handling that request, and echo it back on the response. The core service's `CorrelationIdPropagatingInterceptor` forwards the current request's id onto the outgoing RestClient call to the AI microservice, so one user action stays traceable across both services' logs and correlates with a single trace.
@@ -380,6 +407,10 @@ Estimated cost is computed on read in `ApiUsagePricing` from the stored tokens a
 ## Stage pipeline job engine (story 51)
 
 Core V44 owns four tables. Nothing calls the engine yet; the existing backlog drain, user imports, and AI endpoints still process songs as before.
+
+Core V45 adds `stage_pace`: `stage` (primary key), `next_slot_at`, nullable `cooldown_until`, `current_delay_ms`, nullable `avg_response_ms`, and `updated_at`. Seeded stages are `YOUTUBE_METADATA`, `MUSICBRAINZ`, `DISCOGS`, `WIKIDATA`, and `WIKIPEDIA`. Delay and response times cannot be negative. The AI service updates rows but never creates or migrates the table.
+
+Slot reservation is one atomic `UPDATE` returning the reserved timestamp and wait. Capped reservations update only when the next slot is within the cap; a rejected reservation reads the current wait without advancing the slot. Holds move both the next slot and cooldown forward. YouTube has no added spacing interval and still honors persisted cooldowns. Other source intervals retain their existing rate policies. A database failure or missing row logs a warning and uses the in-memory pacer; unavailable stores are retried after 30 seconds. Each successful measured response updates an exponential moving average in milliseconds on a background writer, with a newest-sample weight of 0.2.
 
 - `import_batches`: `id`, `kind` (`ADMIN_PLAYLIST`, `ADMIN_IDS`, `USER_IMPORT`), `label`, `source_link`, `created_by` (nullable user, set null when the account is deleted), `created_at`, `cancelled_at`.
 - `pipeline_runs`: one YouTube ID's journey through the stages. `id`, `youtube_id`, `batch_id`, `lane` (`USER_IMPORT`, `BACKFILL`), `status` (`ACTIVE`, `DONE`, `FAILED`, `CANCELLED`), `origin` (the `PendingImportOrigin` values `ADMIN_SEED`, `FAST_TIER_RECHECK`, `USER_ADD_RECHECK`), `provisional_year`, `created_at`, `ready_to_save_at`, `finished_at`. The partial unique index `pipeline_runs_one_active_per_video` allows one `ACTIVE` run per YouTube ID, and `startRun` takes a transaction advisory lock on the ID, so a concurrent start returns the run already active.

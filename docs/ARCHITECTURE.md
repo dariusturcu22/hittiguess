@@ -77,6 +77,10 @@ Quota note: YouTube's `search.list` costs 100 units per call against a 100-call 
 
 The combined precheck already runs before source agreement is evaluated. Exact agreement avoids year reconciliation, not all LLM use. Duplicate reuse can return before the precheck; no separate injection detector runs before every LLM call.
 
+The internal `/stages` endpoints expose the same identification, source lookup, and reconciliation functions as `/metadata/resolve`. Stage calls return provider failures for core to classify and retry; resolve retains its best-effort source and LLM fallbacks. Core workers are not connected yet. YouTube identification can finish with a rejection or verified duplicate before any source jobs are needed.
+
+Core migration V45 owns `stage_pace`, shared by AI processes for source slot reservations and cooldowns. An atomic update reserves each slot, then the caller sleeps outside the database. A stage call returns 429 with `retryAfterSeconds` when a pace wait exceeds 30 seconds, reserving no slot; resolve waits without that cap. Database failures log a warning and fall back to in-memory pacing. Response-time averages are recorded in the background, and usage recording stays at the existing provider call sites.
+
 A successful single-song preview is remembered in memory for ten minutes, keyed by authenticated user and submitted YouTube ID. Confirmation can reuse that result when the submitted title, main artists, and year still match. Expired or missing previews require another lookup. This cache does not delay verified catalog insertion, share results between users, or implement the dropped global pipeline cache.
 
 ### Group (core service)

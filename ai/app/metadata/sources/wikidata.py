@@ -1,10 +1,12 @@
+import time
 from functools import lru_cache
 
 import httpx
 
 from app.config import settings
 from app.metadata.sources.http_retry import get_with_backoff
-from app.metadata.sources.pacing import RequestPacer
+from app.metadata.sources.pace_state import STAGE_WIKIDATA, PaceWaitTooLong
+from app.metadata.sources.pacing import PersistedRequestPacer
 from app.metadata.sources.mediawiki_auth import build_authenticated_client
 from app.metadata.sources.util import METADATA_SOURCE_USER_AGENT
 from app.observability.error_reporting import report_source_failure
@@ -37,11 +39,12 @@ def _delay_seconds() -> float:
     return 60 / (limit_per_minute * RATE_LIMIT_TARGET_UTILIZATION)
 
 
-_pacer = RequestPacer()
+_pacer = PersistedRequestPacer(STAGE_WIKIDATA)
 
 
 def _get(params: dict) -> dict:
     _pacer.wait(_delay_seconds())
+    request_started_at = time.monotonic()
     response = get_with_backoff(
         API_URL,
         params=params,
@@ -49,6 +52,7 @@ def _get(params: dict) -> dict:
         timeout=REQUEST_TIMEOUT_SECONDS,
         client=_client(),
     )
+    _pacer.record_response_time(time.monotonic() - request_started_at)
     return response.json()
 
 
@@ -92,6 +96,8 @@ def get_sitelinks_count(entity_id: str) -> int | None:
         entity = _get({"action": "wbgetentities", "ids": entity_id, "props": "sitelinks", "format": "json"})["entities"][
             entity_id
         ]
+    except PaceWaitTooLong:
+        raise
     except Exception:
         return None
     sitelinks = entity.get("sitelinks")
@@ -172,29 +178,34 @@ def _resolve_candidate(entity_id: str, description: str | None, query_label: str
     }, entity
 
 
-def search(title: str, artist: str) -> list[dict]:
+def search_or_raise(title: str, artist: str) -> list[dict]:
     """Looks up the track, then its parent album via the resolved entity's
     own P361 claim when present, so both a track-level and an album-level
     release date can be compared without guessing the album's title (see
     docs/DECISIONS.md's 2026-09 "Metadata pipeline call/reconcile shape"
     entry). Returns every candidate found, not just the earliest, so
     downstream reconciliation can see the full picture a single pick would
-    hide."""
+    hide. A failed request raises."""
+    matches = search_entity(title).get("search", [])
+    best_match = pick_best_match(matches, artist)
+    if best_match is None:
+        return []
+
+    track_candidate, track_entity = _resolve_candidate(best_match["id"], best_match.get("description"), "track")
+    candidates = [track_candidate]
+
+    album_entity_id = get_part_of(track_entity)
+    if album_entity_id:
+        album_candidate, _ = _resolve_candidate(album_entity_id, None, "album")
+        candidates.append(album_candidate)
+
+    return candidates
+
+
+def search(title: str, artist: str) -> list[dict]:
+    """search_or_raise, reporting a failure and returning nothing instead of raising."""
     try:
-        matches = search_entity(title).get("search", [])
-        best_match = pick_best_match(matches, artist)
-        if best_match is None:
-            return []
-
-        track_candidate, track_entity = _resolve_candidate(best_match["id"], best_match.get("description"), "track")
-        candidates = [track_candidate]
-
-        album_entity_id = get_part_of(track_entity)
-        if album_entity_id:
-            album_candidate, _ = _resolve_candidate(album_entity_id, None, "album")
-            candidates.append(album_candidate)
-
-        return candidates
+        return search_or_raise(title, artist)
     except Exception as wikidata_error:
         report_source_failure(SOURCE_NAME, wikidata_error, title, artist)
         return []

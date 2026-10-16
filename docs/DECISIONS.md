@@ -1166,3 +1166,9 @@ The AI service records every YouTube Data API request, chat completion, and embe
 ## 2026-10-16 | The stage pipeline job engine reclaims leases lazily and pauses a stage on a rejected key
 
 Expired leases are reclaimed inside each lease call for that stage, with no scheduler polling the job tables, because every extra query keeps the serverless database awake. A lost lease counts as a failed attempt, so a job that keeps crashing its worker still gives up after the maximum attempts. A rejected API key pauses the whole stage and returns the job to its queue without using an attempt or failing the run, since every job of that stage would fail the same way until the key is fixed. Only one active run may exist per YouTube ID, enforced by a partial unique index and an advisory lock on the ID when a run starts.
+
+## 2026-10-16 | AI stages share resolve functions and persist source pacing
+
+The internal stage endpoints share identification, source lookup, and reconciliation functions with resolve. Stage calls propagate provider failures with a sanitized cause, provider, and upstream status so core can retry outages and pause rejected keys. Resolve keeps its existing best-effort fallbacks. Wikipedia returns lead text and a null earliest year; structured extraction stays in reconciliation to preserve the existing call sequence and usage accounting. Exact three-source agreement still skips Wikipedia extraction and reconciliation.
+
+Core owns V45's `stage_pace` table. AI processes reserve source slots through one atomic update and sleep outside the database, keeping reservations and cooldowns across restarts. Stage calls defer pace waits over 30 seconds with 429 and `retryAfterSeconds`, reserving nothing; resolve keeps waiting. Database outages fall back to in-memory pacing with a warning and a 30-second database retry window. Response-time averages are written in the background. Core workers and queue cutover remain separate work.

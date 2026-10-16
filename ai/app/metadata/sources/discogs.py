@@ -1,8 +1,11 @@
+import time
+
 import httpx
 
 from app.config import settings
 from app.metadata.sources.http_retry import get_with_backoff
-from app.metadata.sources.pacing import RequestPacer
+from app.metadata.sources.pace_state import STAGE_DISCOGS
+from app.metadata.sources.pacing import PersistedRequestPacer
 from app.metadata.sources.util import METADATA_SOURCE_USER_AGENT
 from app.observability.error_reporting import report_source_failure
 
@@ -38,10 +41,13 @@ class DiscogsRateLimiter:
         self.starting_delay_seconds = 60 / (DISCOGS_DOCUMENTED_LIMIT_PER_MINUTE * target_utilization)
         self.delay_seconds = self.starting_delay_seconds
         self.last_observed_utilization: float | None = None
-        self._pacer = RequestPacer()
+        self._pacer = PersistedRequestPacer(STAGE_DISCOGS)
 
     def wait(self) -> None:
         self._pacer.wait(self.delay_seconds)
+
+    def record_response_time(self, elapsed_seconds: float) -> None:
+        self._pacer.record_response_time(elapsed_seconds)
 
     def record_response(self, response: httpx.Response) -> None:
         limit = response.headers.get("X-Discogs-Ratelimit")
@@ -70,12 +76,14 @@ def _auth_header() -> str:
 
 def _get(url: str, params: dict | None = None) -> dict:
     _rate_limiter.wait()
+    request_started_at = time.monotonic()
     response = get_with_backoff(
         url,
         params=params,
         headers={"User-Agent": METADATA_SOURCE_USER_AGENT, "Authorization": _auth_header()},
         timeout=REQUEST_TIMEOUT_SECONDS,
     )
+    _rate_limiter.record_response_time(time.monotonic() - request_started_at)
     _rate_limiter.record_response(response)
     return response.json()
 
@@ -160,21 +168,26 @@ def _candidates_for_query(title: str, artist: str, query_label: str) -> list[dic
     return candidates
 
 
-def search(title: str, artist: str, album: str | None = None) -> list[dict]:
+def search_or_raise(title: str, artist: str, album: str | None = None) -> list[dict]:
     """Queries the submitted track and, when given, its parent album, so
     the caller can take the earliest valid year across both rather than
     trusting whichever query's top result happens to be a reissue (see
     docs/DECISIONS.md's 2026-09 "Metadata pipeline call/reconcile shape"
     entry). Returns every candidate found, both master-based and
     masterless, not just a single selected best one, so downstream
-    reconciliation can see the full picture a single pick would hide."""
+    reconciliation can see the full picture a single pick would hide. A failed request raises."""
+    candidates = _candidates_for_query(title, artist, "track")
+
+    if album:
+        candidates += _candidates_for_query(album, artist, "album")
+
+    return candidates
+
+
+def search(title: str, artist: str, album: str | None = None) -> list[dict]:
+    """search_or_raise, reporting a failure and returning nothing instead of raising."""
     try:
-        candidates = _candidates_for_query(title, artist, "track")
-
-        if album:
-            candidates += _candidates_for_query(album, artist, "album")
-
-        return candidates
+        return search_or_raise(title, artist, album)
     except Exception as discogs_error:
         report_source_failure(SOURCE_NAME, discogs_error, title, artist)
         return []

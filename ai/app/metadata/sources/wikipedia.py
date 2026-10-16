@@ -1,10 +1,12 @@
+import time
 from functools import lru_cache
 
 import httpx
 
 from app.config import settings
 from app.metadata.sources.http_retry import get_with_backoff
-from app.metadata.sources.pacing import RequestPacer
+from app.metadata.sources.pace_state import STAGE_WIKIPEDIA
+from app.metadata.sources.pacing import PersistedRequestPacer
 from app.metadata.sources.mediawiki_auth import build_authenticated_client
 from app.metadata.sources.util import METADATA_SOURCE_USER_AGENT
 from app.observability.error_reporting import report_source_failure
@@ -36,11 +38,12 @@ def _delay_seconds() -> float:
     return 60 / (limit_per_minute * RATE_LIMIT_TARGET_UTILIZATION)
 
 
-_pacer = RequestPacer()
+_pacer = PersistedRequestPacer(STAGE_WIKIPEDIA)
 
 
 def _get(params: dict) -> dict:
     _pacer.wait(_delay_seconds())
+    request_started_at = time.monotonic()
     response = get_with_backoff(
         API_URL,
         params=params,
@@ -48,6 +51,7 @@ def _get(params: dict) -> dict:
         timeout=REQUEST_TIMEOUT_SECONDS,
         client=_client(),
     )
+    _pacer.record_response_time(time.monotonic() - request_started_at)
     return response.json()
 
 
@@ -146,27 +150,32 @@ def _find_and_extract(query_title: str, artist: str, query_label: str) -> dict |
     return {"query": query_label, "page_title": selected["title"], "extract": extract}
 
 
-def search(title: str, artist: str, album: str | None = None) -> list[dict]:
+def search_or_raise(title: str, artist: str, album: str | None = None) -> list[dict]:
     """Looks up the track's own article and, when given, its parent
     album's, the same track-vs-album comparison MusicBrainz and Wikidata
     already do (see docs/DECISIONS.md's 2026-09 "Metadata pipeline
     call/reconcile shape" entry). Unlike those sources, Wikipedia has no
     structured release-year field: this returns each matched article's
     lead-section prose as-is, a dedicated LLM extraction pass (story 18)
-    turns that into a year, not anything in this module."""
+    turns that into a year, not anything in this module. A failed request raises."""
+    entries = []
+
+    track_entry = _find_and_extract(title, artist, "track")
+    if track_entry:
+        entries.append(track_entry)
+
+    if album:
+        album_entry = _find_and_extract(album, artist, "album")
+        if album_entry:
+            entries.append(album_entry)
+
+    return entries
+
+
+def search(title: str, artist: str, album: str | None = None) -> list[dict]:
+    """search_or_raise, reporting a failure and returning nothing instead of raising."""
     try:
-        entries = []
-
-        track_entry = _find_and_extract(title, artist, "track")
-        if track_entry:
-            entries.append(track_entry)
-
-        if album:
-            album_entry = _find_and_extract(album, artist, "album")
-            if album_entry:
-                entries.append(album_entry)
-
-        return entries
+        return search_or_raise(title, artist, album)
     except Exception as wikipedia_error:
         report_source_failure(SOURCE_NAME, wikipedia_error, title, artist)
         return []
