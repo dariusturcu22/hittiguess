@@ -9,4 +9,5 @@ export interface EnqueueResultDTO {
   enqueuedYoutubeIds?: string[];
   skippedAlreadyKnownYoutubeIds?: string[];
   skippedAlreadyQueuedYoutubeIds?: string[];
+  batchId?: number;
 }

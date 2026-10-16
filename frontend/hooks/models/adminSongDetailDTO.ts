@@ -9,6 +9,7 @@ import type { AdminSongDetailDTOAddedByKind } from './adminSongDetailDTOAddedByK
 import type { AdminSongDetailDTOPipeline } from './adminSongDetailDTOPipeline';
 import type { AdminSongDetailDTOStatus } from './adminSongDetailDTOStatus';
 import type { AdminSongDetailDTOVerificationStatus } from './adminSongDetailDTOVerificationStatus';
+import type { SourceFindingDTO } from './sourceFindingDTO';
 
 export interface AdminSongDetailDTO {
   songId: number;
@@ -26,4 +27,6 @@ export interface AdminSongDetailDTO {
   wikidataSitelinksCount?: number;
   openReportCount: number;
   queueHistory: AdminQueueHistoryEntryDTO[];
+  sourceFindings?: SourceFindingDTO[];
+  reviewReason?: string;
 }
