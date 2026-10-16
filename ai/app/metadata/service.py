@@ -209,6 +209,8 @@ def run_reconciliation_stage(
     wikidata_candidates: list[dict],
     wikipedia_entries: list[dict],
     sitelinks_count: int | None,
+    *,
+    raise_on_failure: bool = False,
 ) -> SongMetadataResult:
     """The finishing step of story 18's lock-or-LLM verification: when the three
     structured sources agree exactly, locks with no LLM call; otherwise reads
@@ -223,6 +225,7 @@ def run_reconciliation_stage(
         discogs_candidates,
         wikidata_candidates,
         wikipedia_entries,
+        raise_on_failure=raise_on_failure,
     )
     verification_status = route_to_verification_status(route)
 

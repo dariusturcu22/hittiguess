@@ -12,7 +12,7 @@ from app.metadata.sources.util import (
     parse_iso8601_duration_seconds,
 )
 from app.metadata.sources.pace_state import STAGE_YOUTUBE_METADATA
-from app.metadata.sources.pacing import record_stage_response_time
+from app.metadata.sources.pacing import PersistedRequestPacer
 from app.observability.error_reporting import report_source_failure
 from app.usage import recorder as usage_recorder
 from app.usage.recorder import OPERATION_YOUTUBE_PLAYLIST_ITEMS_LIST, OPERATION_YOUTUBE_VIDEOS_LIST
@@ -21,6 +21,8 @@ SOURCE_NAME = "youtube"
 VIDEO_DURATIONS_ENDPOINT = "https://www.googleapis.com/youtube/v3/videos"
 VIDEO_DURATIONS_PART = "contentDetails"
 VIDEO_LOOKUP_TIMEOUT_SECONDS = 5.0
+VIDEO_LOOKUP_INTERVAL_SECONDS = 0.0
+_metadata_pacer = PersistedRequestPacer(STAGE_YOUTUBE_METADATA)
 
 
 class PlaylistFetchError(Exception):
@@ -58,16 +60,17 @@ def _fetch_video_metadata(video_id: str | None) -> dict[str, str] | None:
     failed request raises."""
     api_url = build_youtube_api_url(video_id, settings.youtube_api_key)
 
+    _metadata_pacer.wait(VIDEO_LOOKUP_INTERVAL_SECONDS)
     request_started_at = time.monotonic()
-    response = _youtube_get(OPERATION_YOUTUBE_VIDEOS_LIST, api_url, timeout=5.0)
-    record_stage_response_time(STAGE_YOUTUBE_METADATA, time.monotonic() - request_started_at)
+    response = _youtube_get(OPERATION_YOUTUBE_VIDEOS_LIST, api_url, timeout=VIDEO_LOOKUP_TIMEOUT_SECONDS)
+    _metadata_pacer.record_response_time(time.monotonic() - request_started_at)
     response.raise_for_status()
     items = response.json().get("items", [])
 
     if not items:
         return None
 
-    first_item = items[0]
+    first_item = next(iter(items))
     snippet = first_item.get("snippet", {})
     content_details = first_item.get("contentDetails", {})
     published_at = snippet.get("publishedAt", "unknown")

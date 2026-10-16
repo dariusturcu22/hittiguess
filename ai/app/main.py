@@ -3,6 +3,7 @@ from prometheus_fastapi_instrumentator import Instrumentator
 
 from app.metadata.fast_tier_router import router as fast_tier_router
 from app.metadata.router import router as metadata_router
+from app.metadata.stages.router import router as stages_router
 from app.observability.logging_config import configure_logging
 from app.observability.request_context import CorrelationIdMiddleware
 from app.observability.sentry import init_sentry
@@ -26,6 +27,7 @@ app.add_middleware(CorrelationIdMiddleware)
 app.include_router(metadata_router)
 app.include_router(fast_tier_router)
 app.include_router(catalog_router)
+app.include_router(stages_router)
 
 setup_tracing(app)
 # Only the Alloy scraper reads metrics, sending the same internal key the backend uses.
