@@ -7,6 +7,8 @@ os.environ.setdefault("DISCOGS_CONSUMER_SECRET", "test-discogs-secret")
 os.environ.setdefault("INTERNAL_SERVICE_API_KEY", "test-internal-key")
 os.environ.setdefault("DEEPINFRA_API_KEY", "test-deepinfra-key")
 os.environ.setdefault("DATABASE_URL", "postgresql://test:test@localhost:5432/test")
+# An empty DSN keeps importing the app from initializing Sentry with a local .env's DSN.
+os.environ.setdefault("SENTRY_DSN", "")
 
 import pytest
 
