@@ -12,13 +12,23 @@ vi.mock("next/link", () => ({
     href,
     className,
     title,
+    "aria-label": ariaLabel,
+    "aria-current": ariaCurrent,
   }: {
     children: ReactNode;
     href: string;
     className?: string;
     title?: string;
+    "aria-label"?: string;
+    "aria-current"?: "page";
   }) => (
-    <a href={typeof href === "string" ? href : "#"} className={className} title={title}>
+    <a
+      href={typeof href === "string" ? href : "#"}
+      className={className}
+      title={title}
+      aria-label={ariaLabel}
+      aria-current={ariaCurrent}
+    >
       {children}
     </a>
   ),
@@ -59,6 +69,12 @@ let activeImportResponse: { data?: unknown; isError: boolean } = { isError: true
 
 vi.mock("@/hooks/generated/playlist-import-jobs/playlist-import-jobs", () => ({
   useActiveImport: () => activeImportResponse,
+}));
+
+let currentUserRole: string | undefined;
+
+vi.mock("@/hooks/generated/user-management/user-management", () => ({
+  useGetCurrentUser: () => ({ data: currentUserRole ? { role: currentUserRole } : undefined }),
 }));
 
 vi.mock("@/components/nav-user", () => ({
@@ -232,5 +248,56 @@ describe("AppSidebar lobby menu", () => {
     fireEvent.click(screen.getByRole("button", { name: "Create a lobby" }));
 
     expect(routerPush).toHaveBeenCalledWith("/groups/5");
+  });
+});
+
+describe("AppSidebar admin group", () => {
+  beforeEach(() => {
+    currentPathname = "/playlists";
+    currentUserRole = undefined;
+    activeMembership = undefined;
+    activeImportResponse = { isError: true };
+  });
+
+  it("hides the admin group for a regular account", () => {
+    currentUserRole = "USER";
+    renderSidebar();
+
+    expect(screen.queryByText("ADMIN")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Admin: Backfill queue")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Admin: Reports")).not.toBeInTheDocument();
+  });
+
+  it("hides the admin group while the account is unknown", () => {
+    renderSidebar();
+
+    expect(screen.queryByText("ADMIN")).not.toBeInTheDocument();
+  });
+
+  it("shows the label and both links for an admin account", () => {
+    currentUserRole = "ADMIN";
+    renderSidebar();
+
+    expect(screen.getByText("ADMIN")).toBeInTheDocument();
+    expect(screen.getByLabelText("Admin: Backfill queue")).toHaveAttribute("href", "/admin/catalog-backlog");
+    expect(screen.getByLabelText("Admin: Reports")).toHaveAttribute("href", "/admin/reports");
+    expect(screen.getByTitle("Admin: Reports")).toBeInTheDocument();
+  });
+
+  it("marks only the link matching the pathname as active", () => {
+    currentUserRole = "ADMIN";
+    currentPathname = "/admin/reports";
+    renderSidebar();
+
+    expect(screen.getByLabelText("Admin: Reports")).toHaveAttribute("aria-current", "page");
+    expect(screen.getByLabelText("Admin: Backfill queue")).not.toHaveAttribute("aria-current");
+  });
+
+  it("marks nothing active outside the admin routes", () => {
+    currentUserRole = "ADMIN";
+    renderSidebar();
+
+    expect(screen.getByLabelText("Admin: Reports")).not.toHaveAttribute("aria-current");
+    expect(screen.getByLabelText("Admin: Backfill queue")).not.toHaveAttribute("aria-current");
   });
 });

@@ -13,6 +13,9 @@ import { getGetActiveMembershipQueryKey, useCreateGroup, useGetActiveMembership,
 import { LobbyLauncher, joinCodeErrorMessage } from "@/components/lobby-launcher";
 import { getGetPlaylistQueryKey } from "@/hooks/generated/playlist-management/playlist-management";
 import { useActiveImport } from "@/hooks/generated/playlist-import-jobs/playlist-import-jobs";
+import { useGetCurrentUser } from "@/hooks/generated/user-management/user-management";
+import { UserDetailDTORole } from "@/hooks/models";
+import { ADMIN_NAVIGATION_ITEMS, isAdminNavigationItemActive } from "@/lib/admin-navigation";
 import {
   PLAYLIST_IMPORT_STARTED_EVENT_NAME,
   clearActiveImportJob,
@@ -24,6 +27,15 @@ import {
 const ACTIVE_IMPORT_REFRESH_MILLISECONDS = 5_000;
 
 const RAIL_DIVIDER_CLASSES = "w-8 h-0.5 my-3.5 shrink-0 rounded-full bg-sidebar-border";
+
+const ADMIN_RAIL_DIVIDER_CLASSES = "w-8 h-0.5 mt-3 mb-2 shrink-0 rounded-full bg-destructive/40";
+
+const ADMIN_RAIL_ICON_BASE_CLASSES =
+  "flex h-[42px] w-[42px] items-center justify-center rounded-[14px] text-destructive transition-opacity";
+
+const ADMIN_RAIL_ICON_ACTIVE_CLASSES = "bg-destructive/15 ring-2 ring-destructive";
+
+const ADMIN_RAIL_ICON_INACTIVE_CLASSES = "opacity-70 hover:opacity-100";
 
 const RAIL_ICON_BASE_CLASSES =
   "flex h-[46px] w-[46px] items-center justify-center rounded-[14px]";
@@ -121,6 +133,8 @@ export function AppSidebar() {
   });
   const createGroup = useCreateGroup();
   const joinGroup = useJoinGroup();
+  const { data: currentUser } = useGetCurrentUser({ query: { retry: false } });
+  const isAdmin = currentUser?.role === UserDetailDTORole.ADMIN;
   const [isLobbyMenuOpen, setIsLobbyMenuOpen] = React.useState(false);
   const [joinError, setJoinError] = React.useState("");
   const activeImportQuery = useActiveImport(activeImport?.playlistId ?? 0, {
@@ -265,6 +279,32 @@ export function AppSidebar() {
         >
           <GroupLobbyIcon />
         </Link>
+      ) : null}
+
+      {isAdmin ? (
+        <>
+          <div className={ADMIN_RAIL_DIVIDER_CLASSES} />
+          <div className="mb-2 font-display text-[8px] tracking-[1px] text-destructive">ADMIN</div>
+          <nav aria-label="Admin" className="flex flex-col gap-2.5">
+            {ADMIN_NAVIGATION_ITEMS.map((item) => {
+              const isActive = isAdminNavigationItemActive(item, pathname);
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  aria-label={`Admin: ${item.label}`}
+                  aria-current={isActive ? "page" : undefined}
+                  title={`Admin: ${item.label}`}
+                  className={`${ADMIN_RAIL_ICON_BASE_CLASSES} ${
+                    isActive ? ADMIN_RAIL_ICON_ACTIVE_CLASSES : ADMIN_RAIL_ICON_INACTIVE_CLASSES
+                  }`}
+                >
+                  <item.icon className="size-5" aria-hidden="true" />
+                </Link>
+              );
+            })}
+          </nav>
+        </>
       ) : null}
 
       {activeImport && !activeImportQuery.isError ? (
