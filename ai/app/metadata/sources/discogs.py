@@ -160,21 +160,26 @@ def _candidates_for_query(title: str, artist: str, query_label: str) -> list[dic
     return candidates
 
 
-def search(title: str, artist: str, album: str | None = None) -> list[dict]:
+def search_or_raise(title: str, artist: str, album: str | None = None) -> list[dict]:
     """Queries the submitted track and, when given, its parent album, so
     the caller can take the earliest valid year across both rather than
     trusting whichever query's top result happens to be a reissue (see
     docs/DECISIONS.md's 2026-09 "Metadata pipeline call/reconcile shape"
     entry). Returns every candidate found, both master-based and
     masterless, not just a single selected best one, so downstream
-    reconciliation can see the full picture a single pick would hide."""
+    reconciliation can see the full picture a single pick would hide. A failed request raises."""
+    candidates = _candidates_for_query(title, artist, "track")
+
+    if album:
+        candidates += _candidates_for_query(album, artist, "album")
+
+    return candidates
+
+
+def search(title: str, artist: str, album: str | None = None) -> list[dict]:
+    """search_or_raise, reporting a failure and returning nothing instead of raising."""
     try:
-        candidates = _candidates_for_query(title, artist, "track")
-
-        if album:
-            candidates += _candidates_for_query(album, artist, "album")
-
-        return candidates
+        return search_or_raise(title, artist, album)
     except Exception as discogs_error:
         report_source_failure(SOURCE_NAME, discogs_error, title, artist)
         return []

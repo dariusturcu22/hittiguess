@@ -123,25 +123,30 @@ def _candidates_from_groups(release_groups: list[dict], query_label: str) -> lis
     return candidates
 
 
-def search(title: str, artist: str, album: str | None = None) -> list[dict]:
+def search_or_raise(title: str, artist: str, album: str | None = None) -> list[dict]:
     """Queries the submitted track and, when given, its parent album,
     release-group by release-group, so the caller can take the earliest
     valid year across both rather than trusting whichever query's top
     result happens to be a reissue (see docs/DECISIONS.md's 2026-09
     "Metadata pipeline call/reconcile shape" entry). Returns every
     candidate found, not just the selected best one, so downstream
-    reconciliation can see the full picture a single pick would hide."""
+    reconciliation can see the full picture a single pick would hide. A failed request raises."""
+    candidates: list[dict] = []
+
+    track_groups = search_release_group(title, artist).get("release-groups", [])
+    candidates += _candidates_from_groups(track_groups, "track")
+
+    if album:
+        album_groups = search_release_group(album, artist).get("release-groups", [])
+        candidates += _candidates_from_groups(album_groups, "album")
+
+    return candidates
+
+
+def search(title: str, artist: str, album: str | None = None) -> list[dict]:
+    """search_or_raise, reporting a failure and returning nothing instead of raising."""
     try:
-        candidates: list[dict] = []
-
-        track_groups = search_release_group(title, artist).get("release-groups", [])
-        candidates += _candidates_from_groups(track_groups, "track")
-
-        if album:
-            album_groups = search_release_group(album, artist).get("release-groups", [])
-            candidates += _candidates_from_groups(album_groups, "album")
-
-        return candidates
+        return search_or_raise(title, artist, album)
     except Exception as musicbrainz_error:
         report_source_failure(SOURCE_NAME, musicbrainz_error, title, artist)
         return []

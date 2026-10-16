@@ -172,29 +172,34 @@ def _resolve_candidate(entity_id: str, description: str | None, query_label: str
     }, entity
 
 
-def search(title: str, artist: str) -> list[dict]:
+def search_or_raise(title: str, artist: str) -> list[dict]:
     """Looks up the track, then its parent album via the resolved entity's
     own P361 claim when present, so both a track-level and an album-level
     release date can be compared without guessing the album's title (see
     docs/DECISIONS.md's 2026-09 "Metadata pipeline call/reconcile shape"
     entry). Returns every candidate found, not just the earliest, so
     downstream reconciliation can see the full picture a single pick would
-    hide."""
+    hide. A failed request raises."""
+    matches = search_entity(title).get("search", [])
+    best_match = pick_best_match(matches, artist)
+    if best_match is None:
+        return []
+
+    track_candidate, track_entity = _resolve_candidate(best_match["id"], best_match.get("description"), "track")
+    candidates = [track_candidate]
+
+    album_entity_id = get_part_of(track_entity)
+    if album_entity_id:
+        album_candidate, _ = _resolve_candidate(album_entity_id, None, "album")
+        candidates.append(album_candidate)
+
+    return candidates
+
+
+def search(title: str, artist: str) -> list[dict]:
+    """search_or_raise, reporting a failure and returning nothing instead of raising."""
     try:
-        matches = search_entity(title).get("search", [])
-        best_match = pick_best_match(matches, artist)
-        if best_match is None:
-            return []
-
-        track_candidate, track_entity = _resolve_candidate(best_match["id"], best_match.get("description"), "track")
-        candidates = [track_candidate]
-
-        album_entity_id = get_part_of(track_entity)
-        if album_entity_id:
-            album_candidate, _ = _resolve_candidate(album_entity_id, None, "album")
-            candidates.append(album_candidate)
-
-        return candidates
+        return search_or_raise(title, artist)
     except Exception as wikidata_error:
         report_source_failure(SOURCE_NAME, wikidata_error, title, artist)
         return []
