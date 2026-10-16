@@ -77,15 +77,15 @@ function DetailBody({
     <>
       <div className="mb-[18px] flex items-start justify-between">
         <div className="min-w-0 pr-8">
-          <h2 className="font-display text-[22px] text-accent">
+          <h2 className="break-words font-display text-[22px] text-accent">
             {detail.title ?? detail.youtubeId}
           </h2>
-          <div className="mt-[3px] text-[13px] text-muted-foreground">
+          <div className="mt-[3px] break-words text-[13px] text-muted-foreground">
             {artistNames}
           </div>
         </div>
       </div>
-      <div className="mb-[18px] flex items-center gap-2.5">
+      <div className="mb-[18px] flex flex-wrap items-center gap-2.5">
         <StatusPill status={detail.status} />
         <span className="text-xs text-muted-foreground">
           {detailMetaLine(detail)}
@@ -188,7 +188,7 @@ export function SongDetailDrawer({
     <aside
       role="dialog"
       aria-label="Song detail"
-      className="absolute inset-y-0 right-0 z-10 box-border flex w-[520px] flex-col overflow-y-auto border-l-[3px] border-border-strong bg-surface-sunken px-7 pt-7 pb-6 shadow-[-8px_0_0_var(--shadow-color)]"
+      className="absolute inset-y-0 right-0 z-10 box-border flex w-[min(520px,100%)] flex-col overflow-y-auto overflow-x-hidden scrollbar-thin-visible border-l-[3px] border-border-strong bg-surface-sunken px-7 pt-7 pb-6 shadow-[-8px_0_0_var(--shadow-color)] short:pt-6 short:pb-5 max-xl:px-6"
     >
       <button
         ref={closeButton}

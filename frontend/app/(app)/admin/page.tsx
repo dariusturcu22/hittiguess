@@ -1,8 +1,13 @@
 "use client";
 
 import React from "react";
-import { QueueTable, RejectedKeyBanners } from "./backfill-queue/pipeline-ui";
-import { keepPreviousData } from "@tanstack/react-query";
+import {
+  pageClass,
+  QueueTable,
+  RejectedKeyBanners,
+  UpdatedAgo,
+} from "./backfill-queue/pipeline-ui";
+import { livePollingQueryOptions } from "./live-admin-data";
 
 import { Skeleton } from "@/components/shadcn/skeleton";
 import { useDashboard } from "@/hooks/generated/admin-dashboard/admin-dashboard";
@@ -20,6 +25,10 @@ import {
 
 const STAT_TILE_SKELETON_COUNT = 4;
 
+const STAT_TILE_GRID_CLASSES = "grid grid-cols-4 gap-5 @max-4xl:gap-3.5 @max-3xl:grid-cols-2";
+
+const USAGE_CARD_GRID_CLASSES = "grid grid-cols-2 gap-5 @max-5xl:grid-cols-1";
+
 function StatTile({
   label,
   value,
@@ -32,8 +41,8 @@ function StatTile({
   description: string;
 }) {
   return (
-    <div className="box-border flex-1 rounded-[16px] border-[3px] border-border-strong bg-card px-[22px] py-[18px] shadow-lg">
-      <div className="mb-2 text-[11px] font-semibold uppercase tracking-[0.5px] text-muted-foreground">
+    <div className="box-border min-w-0 rounded-[16px] border-[3px] border-border-strong bg-card px-[22px] py-[18px] shadow-lg">
+      <div className="mb-2 truncate text-[11px] font-semibold uppercase tracking-[0.5px] text-muted-foreground">
         {label}
       </div>
       <div
@@ -78,20 +87,17 @@ function ProviderFigure({
 function DashboardSkeleton() {
   return (
     <div data-testid="dashboard-skeleton" className="flex flex-col gap-5">
-      <div className="flex gap-5">
+      <div className={STAT_TILE_GRID_CLASSES}>
         {Array.from(
           { length: STAT_TILE_SKELETON_COUNT },
           (_unused, tileIndex) => (
-            <Skeleton
-              key={tileIndex}
-              className="h-[124px] flex-1 rounded-[16px]"
-            />
+            <Skeleton key={tileIndex} className="h-[124px] rounded-[16px]" />
           ),
         )}
       </div>
-      <div className="flex gap-5">
-        <Skeleton className="h-[170px] flex-1 rounded-[16px]" />
-        <Skeleton className="h-[170px] flex-1 rounded-[16px]" />
+      <div className={USAGE_CARD_GRID_CLASSES}>
+        <Skeleton className="h-[170px] rounded-[16px]" />
+        <Skeleton className="h-[170px] rounded-[16px]" />
       </div>
     </div>
   );
@@ -103,11 +109,9 @@ export default function AdminDashboardPage() {
     isLoading,
     isError,
     refetch,
+    dataUpdatedAt,
   } = useDashboard({
-    query: {
-      refetchInterval: DASHBOARD_REFRESH_INTERVAL_MILLISECONDS,
-      placeholderData: keepPreviousData,
-    },
+    query: livePollingQueryOptions(DASHBOARD_REFRESH_INTERVAL_MILLISECONDS),
   });
 
   const [nowMilliseconds, setNowMilliseconds] = React.useState(() =>
@@ -132,19 +136,25 @@ export default function AdminDashboardPage() {
   );
 
   return (
-    <div className="relative flex h-full min-w-0 flex-1 flex-col box-border overflow-y-auto bg-dotted px-14 pt-10 pb-9">
-      <div className="mb-5 shrink-0">
-        <div className="mb-1 flex items-center gap-2.5">
-          <h1 className="font-display text-[30px] leading-[1.2] text-accent [text-shadow:3px_3px_0_var(--text-shadow-on-page)]">
-            Dashboard
-          </h1>
-          <span className="inline-flex rounded-full bg-destructive/15 px-[11px] py-[5px] font-display text-[10px] text-destructive">
-            ADMIN
-          </span>
+    <div className={`${pageClass} box-border`}>
+      <div className="mb-5 flex shrink-0 flex-wrap items-end justify-between gap-x-5 gap-y-2">
+        <div className="min-w-0">
+          <div className="mb-1 flex items-center gap-2.5">
+            <h1 className="font-display text-[30px] leading-[1.2] text-accent [text-shadow:3px_3px_0_var(--text-shadow-on-page)]">
+              Dashboard
+            </h1>
+            <span className="inline-flex rounded-full bg-destructive/15 px-[11px] py-[5px] font-display text-[10px] text-destructive">
+              ADMIN
+            </span>
+          </div>
+          <p className="text-[13px] text-muted-foreground">
+            How the catalog and its metadata pipeline are doing right now.
+          </p>
         </div>
-        <p className="text-[13px] text-muted-foreground">
-          How the catalog and its metadata pipeline are doing right now.
-        </p>
+        <UpdatedAgo
+          updatedAt={dataUpdatedAt}
+          refreshFailed={isError && Boolean(dashboard)}
+        />
       </div>
 
       {isLoading ? (
@@ -167,7 +177,7 @@ export default function AdminDashboardPage() {
           {dashboard?.pipeline?.stages && (
             <RejectedKeyBanners stages={dashboard.pipeline.stages} />
           )}
-          <div className="mb-[18px] flex shrink-0 gap-5">
+          <div className={`mb-[18px] shrink-0 ${STAT_TILE_GRID_CLASSES}`}>
             <StatTile
               label="Fully verified"
               value={songs?.verified ?? 0}
@@ -194,9 +204,9 @@ export default function AdminDashboardPage() {
             />
           </div>
 
-          <div className="flex shrink-0 gap-5">
-            <section className="box-border flex-1 rounded-[16px] border-[3px] border-border-strong bg-card px-[22px] py-[18px] shadow-lg">
-              <div className="mb-3 flex items-baseline justify-between">
+          <div className={`shrink-0 ${USAGE_CARD_GRID_CLASSES}`}>
+            <section className="box-border min-w-0 rounded-[16px] border-[3px] border-border-strong bg-card px-[22px] py-[18px] shadow-lg">
+              <div className="mb-3 flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
                 <h2 className="font-display text-sm text-card-foreground">
                   YouTube Data API
                 </h2>
@@ -238,8 +248,8 @@ export default function AdminDashboardPage() {
               )}
             </section>
 
-            <section className="box-border flex-1 rounded-[16px] border-[3px] border-border-strong bg-card px-[22px] py-[18px] shadow-lg">
-              <div className="mb-3 flex items-baseline justify-between">
+            <section className="box-border min-w-0 rounded-[16px] border-[3px] border-border-strong bg-card px-[22px] py-[18px] shadow-lg">
+              <div className="mb-3 flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
                 <h2 className="font-display text-sm text-card-foreground">
                   AI usage
                 </h2>
@@ -247,7 +257,7 @@ export default function AdminDashboardPage() {
                   no cap, tracked with estimated cost
                 </span>
               </div>
-              <div className="flex gap-7">
+              <div className="flex flex-wrap gap-x-7 gap-y-3">
                 <ProviderFigure
                   label="LLM, DeepInfra"
                   usage={usage?.deepInfra}

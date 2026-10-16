@@ -7,10 +7,16 @@ import { useSearchCatalog } from "@/hooks/generated/admin-song-catalog/admin-son
 import type { AdminCatalogSongDTO } from "@/hooks/models/adminCatalogSongDTO";
 import { Skeleton } from "@/components/shadcn/skeleton";
 
+import {
+  pageClass,
+  scrollingTableCardClass,
+} from "../backfill-queue/pipeline-ui";
 import { SongDetailDrawer } from "./song-detail-drawer";
 import {
   addedByLabel,
+  CATALOG_COLUMNS,
   CATALOG_PAGE_SIZE,
+  catalogColumnClassName,
   type CatalogStatus,
   effectiveSearchText,
   FIRST_PAGE,
@@ -26,17 +32,7 @@ import {
 
 const SKELETON_ROW_COUNT = 8;
 
-const COLUMN_CLASSES = {
-  title: "w-[270px] shrink-0 min-w-0",
-  artist: "w-[210px] shrink-0 min-w-0",
-  year: "w-[70px] shrink-0",
-  status: "w-[130px] shrink-0",
-  pipeline: "w-[90px] shrink-0",
-  added: "w-[120px] shrink-0",
-  addedBy: "flex-1 min-w-0",
-};
-
-const ROW_CLASSES = "flex w-full items-center gap-[14px] px-5 py-2.5 border-b-2 border-background last:border-b-0 text-left";
+const ROW_CLASSES = "flex w-full items-center gap-[14px] px-5 py-2.5 border-b-2 border-background last:border-b-0 text-left @max-4xl:gap-2.5 @max-4xl:px-4";
 
 function StatusPill({ status }: { status: AdminCatalogSongDTO["status"] }) {
   const { label, pillClassName } = presentStatus(status);
@@ -72,9 +68,11 @@ function CatalogRowCells({ song }: { song: AdminCatalogSongDTO }) {
   const hasTitle = Boolean(song.title);
   return (
     <>
-      <span className={COLUMN_CLASSES.title}>
+      <span className={catalogColumnClassName("title")}>
         {hasTitle ? (
-          <span className="block truncate text-[13px] font-semibold text-card-foreground">{song.title}</span>
+          <span className="block truncate text-[13px] font-semibold text-card-foreground" title={song.title}>
+            {song.title}
+          </span>
         ) : (
           <>
             <span className="block truncate text-[13px] text-card-foreground">yt: {song.youtubeId}</span>
@@ -82,22 +80,25 @@ function CatalogRowCells({ song }: { song: AdminCatalogSongDTO }) {
           </>
         )}
       </span>
-      <span className={`${COLUMN_CLASSES.artist} truncate text-[13px] text-muted-foreground`}>
+      <span
+        className={`${catalogColumnClassName("artist")} truncate text-[13px] text-muted-foreground`}
+        title={song.artists.join(", ") || undefined}
+      >
         {song.artists.length > 0 ? song.artists.join(", ") : "unknown"}
       </span>
-      <span className={`${COLUMN_CLASSES.year} text-[13px] text-card-foreground`}>
+      <span className={`${catalogColumnClassName("year")} text-[13px] text-card-foreground`}>
         {song.releaseYear ?? <span className="text-icon-muted">pending</span>}
       </span>
-      <span className={COLUMN_CLASSES.status}>
+      <span className={catalogColumnClassName("status")}>
         <StatusPill status={song.status} />
       </span>
-      <span className={`${COLUMN_CLASSES.pipeline} text-xs text-muted-foreground`}>
+      <span className={`${catalogColumnClassName("pipeline")} text-xs text-muted-foreground`}>
         {pipelineLabel(song.pipeline)}
       </span>
-      <span className={`${COLUMN_CLASSES.added} text-xs text-muted-foreground`}>
+      <span className={`${catalogColumnClassName("added")} text-xs text-muted-foreground`}>
         {formatCatalogDate(song.createdAt)}
       </span>
-      <span className={`${COLUMN_CLASSES.addedBy} truncate text-xs text-muted-foreground`}>
+      <span className={`${catalogColumnClassName("addedBy")} truncate text-xs text-muted-foreground`}>
         {addedByLabel(song.addedBy, song.addedByKind)}
       </span>
     </>
@@ -175,7 +176,8 @@ export default function SongCatalogPage() {
   }
 
   return (
-    <div className="relative flex h-full min-w-0 flex-1 flex-col box-border bg-dotted px-14 pt-10 pb-9">
+    <div className="relative flex h-full min-w-0 flex-1">
+    <div className={`${pageClass} box-border`}>
       <div className="mb-5 shrink-0">
         <div className="mb-1 flex items-center gap-2.5">
           <h1 className="font-display text-[30px] text-accent [text-shadow:3px_3px_0_var(--text-shadow-on-page)]">
@@ -188,8 +190,8 @@ export default function SongCatalogPage() {
         <p className="text-[13px] text-muted-foreground">Every song with its status, pipeline, and who added it.</p>
       </div>
 
-      <div className="mb-3.5 flex shrink-0 items-center gap-3.5">
-        <label className="box-border flex w-[460px] items-center gap-2.5 rounded-md border-2 border-secondary bg-background px-4 py-3">
+      <div className="mb-3.5 flex shrink-0 flex-wrap items-center gap-x-3.5 gap-y-2">
+        <label className="box-border flex w-full max-w-[460px] items-center focus-within:border-accent gap-2.5 rounded-md border-2 border-secondary bg-background px-4 py-3">
           <SearchIcon />
           <input
             type="search"
@@ -203,7 +205,7 @@ export default function SongCatalogPage() {
         <span className="text-[11px] text-icon-muted">{SEARCH_HINT}</span>
       </div>
 
-      <div className="mb-3.5 flex shrink-0 gap-2" role="group" aria-label="Filter by status">
+      <div className="mb-3.5 flex shrink-0 flex-wrap gap-2" role="group" aria-label="Filter by status">
         {STATUS_FILTERS.map((filter) => {
           const isActive = statusFilter === filter.status;
           const count = catalogPage?.counts?.[filter.countKey];
@@ -226,18 +228,16 @@ export default function SongCatalogPage() {
         })}
       </div>
 
-      <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-[16px] border-[3px] border-border-strong bg-card shadow-lg box-border">
-        <div className="flex shrink-0 items-center gap-[14px] border-b-2 border-background px-5 py-2.5 text-[10px] font-semibold uppercase tracking-[0.5px] text-icon-muted">
-          <span className={COLUMN_CLASSES.title}>Title</span>
-          <span className={COLUMN_CLASSES.artist}>Artist</span>
-          <span className={COLUMN_CLASSES.year}>Year</span>
-          <span className={COLUMN_CLASSES.status}>Status</span>
-          <span className={COLUMN_CLASSES.pipeline}>Pipeline</span>
-          <span className={COLUMN_CLASSES.added}>Added</span>
-          <span className={COLUMN_CLASSES.addedBy}>Added by</span>
+      <div className={`${scrollingTableCardClass} rounded-[16px] border-[3px] border-border-strong bg-card shadow-lg box-border`}>
+        <div className="flex shrink-0 items-center gap-[14px] border-b-2 border-background px-5 py-2.5 text-[10px] font-semibold uppercase tracking-[0.5px] text-icon-muted @max-4xl:gap-2.5 @max-4xl:px-4">
+          {CATALOG_COLUMNS.map((column) => (
+            <span key={column.key} className={catalogColumnClassName(column.key)}>
+              {column.label}
+            </span>
+          ))}
         </div>
 
-        <div className="min-h-0 flex-1 overflow-y-auto">
+        <div className="min-h-0 flex-1 overflow-y-auto scrollbar-thin-visible contain-size">
           {isLoading ? (
             <div data-testid="song-catalog-skeleton" className="flex flex-col gap-2 px-5 py-3">
               {Array.from({ length: SKELETON_ROW_COUNT }, (_unused, rowIndex) => (
@@ -269,7 +269,7 @@ export default function SongCatalogPage() {
           )}
         </div>
 
-        <div className="flex shrink-0 items-center justify-between border-t-2 border-background px-5 py-2.5 text-[11px] text-icon-muted">
+        <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-t-2 border-background px-5 py-2.5 text-[11px] text-icon-muted">
           <span>{showingRangeText(shownPage, items.length, totalElements)}</span>
           <span className="flex gap-2.5">
             <button
@@ -292,6 +292,7 @@ export default function SongCatalogPage() {
         </div>
       </div>
 
+    </div>
       {selectedSongId != null ? <SongDetailDrawer songId={selectedSongId} onClose={closeDrawer} /> : null}
     </div>
   );

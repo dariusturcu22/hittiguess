@@ -118,15 +118,35 @@ describe("AdminDashboardPage", () => {
     expect(screen.queryByText("Queues")).not.toBeInTheDocument();
   });
 
-  it("refreshes every 30 seconds and keeps the previous data while refetching", () => {
+  it("refreshes every 10 seconds while visible, on focus, and keeps the previous data while refetching", () => {
     render(<AdminDashboardPage />);
 
     const options = dashboardHook.options[0] as {
-      query: { refetchInterval: number; placeholderData: unknown };
+      query: {
+        refetchInterval: number;
+        refetchIntervalInBackground: boolean;
+        refetchOnWindowFocus: boolean;
+        placeholderData: unknown;
+      };
     };
     expect(options.query.refetchInterval).toBe(DASHBOARD_REFRESH_INTERVAL_MILLISECONDS);
-    expect(DASHBOARD_REFRESH_INTERVAL_MILLISECONDS).toBe(30_000);
+    expect(DASHBOARD_REFRESH_INTERVAL_MILLISECONDS).toBe(10_000);
+    expect(options.query.refetchIntervalInBackground).toBe(false);
+    expect(options.query.refetchOnWindowFocus).toBe(true);
     expect(typeof options.query.placeholderData).toBe("function");
+  });
+
+  it("shows how long ago the numbers were updated", () => {
+    const TEN_SECONDS_MILLISECONDS = 10_000;
+    dashboardHook.result = {
+      data: dashboardWith(),
+      isLoading: false,
+      isError: false,
+      dataUpdatedAt: Date.parse(NOW) - TEN_SECONDS_MILLISECONDS,
+    };
+    render(<AdminDashboardPage />);
+
+    expect(screen.getByTestId("updated-ago")).toHaveTextContent("Updated 10s ago");
   });
 
   it("shows a loading skeleton before the first response", () => {

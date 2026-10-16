@@ -5,6 +5,11 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* Viewport height steps for layouts drawn at 900 px of height, such as the
+   rail. Declared in this order so very-short wins where both apply. */
+@custom-variant short (@media (max-height: 860px));
+@custom-variant very-short (@media (max-height: 700px));
+
 html {
   scrollbar-gutter: auto;
   scrollbar-width: none;
@@ -27,6 +32,19 @@ html {
 }
 
 .dark .global-scrollbar-thumb { background: rgba(166,173,200,.55); }
+
+/* Inner scroll areas whose overflow is not obvious from the layout, such as
+   admin tables and pages, show a thin scrollbar. Setting scrollbar-width
+   makes the browser ignore the hidden ::-webkit-scrollbar rule above. */
+@utility scrollbar-thin-visible {
+  scrollbar-width: thin;
+  scrollbar-color: var(--icon-muted) transparent;
+}
+
+/* Scroll areas that keep the global hidden scrollbar in every browser. */
+@utility scrollbar-hidden {
+  scrollbar-width: none;
+}
 
 html.theme-transition,
 html.theme-transition * {

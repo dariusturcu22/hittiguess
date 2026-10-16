@@ -16,7 +16,7 @@ export default function AdminLayout({
 
   if (isLoading) {
     return (
-      <div className="flex-1 min-w-0 bg-dotted flex items-center justify-center">
+      <div className="flex h-full flex-1 min-w-0 bg-dotted flex items-center justify-center">
         <span className="text-muted-foreground">Checking admin access...</span>
       </div>
     );
@@ -24,7 +24,7 @@ export default function AdminLayout({
 
   if (currentUser?.role !== UserDetailDTORole.ADMIN) {
     return (
-      <div className="flex-1 min-w-0 bg-dotted flex items-center justify-center px-14">
+      <div className="flex h-full flex-1 min-w-0 bg-dotted flex items-center justify-center px-14">
         <div className="max-w-[420px] text-center">
           <h1 className="font-display text-2xl text-accent mb-3 [text-shadow:3px_3px_0_var(--text-shadow-on-page)]">
             Admins only

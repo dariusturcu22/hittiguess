@@ -83,9 +83,9 @@ function SignalRow({
   emphasisClassName?: string;
 }) {
   return (
-    <div className="flex items-center justify-between py-[9px] border-b border-secondary text-[12.5px] last:border-b-0">
+    <div className="flex items-center justify-between gap-3 py-[9px] border-b border-secondary text-[12.5px] last:border-b-0">
       <span className="text-muted-foreground">{label}</span>
-      <span className={`font-bold text-card-foreground ${emphasisClassName ?? ""}`}>
+      <span className={`text-right font-bold text-card-foreground ${emphasisClassName ?? ""}`}>
         {value}
       </span>
     </div>
@@ -160,9 +160,9 @@ function ReportDetail({
   }
 
   return (
-    <div className="flex-1 min-w-0 bg-card border-[3px] border-border-strong rounded-xl shadow-lg box-border px-[30px] py-[26px] overflow-y-auto">
-      <div className="flex items-center gap-[10px] mb-1">
-        <div className="font-display text-[22px] text-card-foreground">
+    <div className="flex-1 min-w-0 bg-card border-[3px] border-border-strong rounded-xl shadow-lg box-border px-[30px] py-[26px] overflow-y-auto scrollbar-thin-visible contain-size @max-3xl:contain-none max-xl:px-6 max-xl:py-5">
+      <div className="flex flex-wrap items-center gap-[10px] mb-1">
+        <div className="min-w-0 break-words font-display text-[22px] text-card-foreground">
           {item.songTitle}
         </div>
         <TierChip tier={item.priorityTier} />
@@ -248,7 +248,7 @@ function ReportDetail({
         </select>
       </div>
 
-      <div className="flex gap-3">
+      <div className="flex flex-wrap gap-3">
         <button
           type="button"
           onClick={handleResolve}
@@ -281,8 +281,8 @@ export default function ReportQueuePage() {
     items.find((item) => item.songId === selectedSongId) ?? items[0] ?? null;
 
   return (
-    <div className="flex-1 min-w-0 box-border bg-dotted flex flex-col px-14 pt-11 pb-10">
-      <div className="flex items-center gap-[10px] mb-1">
+    <div className="@container relative flex h-full min-w-0 flex-1 flex-col box-border overflow-y-auto overflow-x-hidden scrollbar-thin-visible bg-dotted px-14 pt-11 pb-10 max-xl:px-8 short:pt-8 short:pb-7">
+      <div className="flex flex-wrap items-center gap-[10px] mb-1">
         <h1 className="font-display text-3xl text-accent [text-shadow:3px_3px_0_var(--text-shadow-on-page)]">
           Report review queue
         </h1>
@@ -296,8 +296,8 @@ export default function ReportQueuePage() {
       </p>
 
       {isLoading ? (
-        <div className="flex gap-6 flex-1 min-h-0" data-testid="report-queue-skeleton">
-          <Skeleton className="w-[500px] shrink-0 rounded-xl" />
+        <div className="flex gap-6 flex-1 min-h-[440px]" data-testid="report-queue-skeleton">
+          <Skeleton className="w-[clamp(320px,42%,500px)] shrink-0 rounded-xl" />
           <Skeleton className="flex-1 min-w-0 rounded-xl" />
         </div>
       ) : isError ? (
@@ -307,9 +307,9 @@ export default function ReportQueuePage() {
           The review queue is empty. Nothing needs attention right now.
         </div>
       ) : (
-        <div className="flex gap-6 flex-1 min-h-0 animate-in fade-in-0 duration-200">
-          <div className="w-[500px] shrink-0 bg-card border-[3px] border-border-strong rounded-xl shadow-lg box-border overflow-hidden flex flex-col">
-            <div className="flex-1 min-h-0 overflow-y-auto">
+        <div className="flex gap-6 flex-1 min-h-[440px] animate-in fade-in-0 duration-200 @max-3xl:flex-col">
+          <div className="w-[clamp(320px,42%,500px)] shrink-0 bg-card border-[3px] border-border-strong rounded-xl shadow-lg box-border overflow-hidden flex flex-col @max-3xl:max-h-[360px] @max-3xl:w-full">
+            <div className="flex-1 min-h-0 overflow-y-auto scrollbar-thin-visible contain-size">
               {items.map((item) => (
                 <QueueRow
                   key={item.songId}

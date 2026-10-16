@@ -24,19 +24,34 @@ import {
 import type { QueueStageDTO } from "@/hooks/models/queueStageDTO";
 import type { QueueJobDTO } from "@/hooks/models/queueJobDTO";
 
-export const PIPELINE_REFRESH_MS = 15_000;
+import {
+  formatUpdatedAgo,
+  isAdminQueryKey,
+  UPDATED_AGO_TICK_MILLISECONDS,
+} from "../live-admin-data";
+export { BACKFILL_QUEUE_REFRESH_INTERVAL_MILLISECONDS } from "./queue-presentation";
 export const PAGE_SIZE = 25;
 const MILLISECONDS_PER_SECOND = 1000;
 const SECONDS_PER_MINUTE = 60;
 const MINUTES_PER_HOUR = 60;
 const RESPONSE_TIME_DECIMAL_PLACES = 1;
-const ADMIN_QUERY_PREFIX = "/api/admin/";
 export { STAGES } from "./pipeline-stages";
 import { STAGES } from "./pipeline-stages";
 export const panelClass =
   "rounded-[16px] border-[3px] border-border-strong bg-card shadow-lg";
+// Admin pages are the one scroll container of the content area. A table card
+// may fill the height left over at the mockup size, but keeps a minimum height,
+// so on short screens the page scrolls instead of squeezing or clipping it.
+// Size containment keeps a long table from stretching its card past the
+// leftover height; the rows scroll inside the card under a sticky header.
 export const pageClass =
-  "relative flex h-full min-w-0 flex-1 flex-col overflow-y-auto bg-dotted px-14 pt-10 pb-9";
+  "@container relative flex h-full min-w-0 flex-1 flex-col overflow-y-auto overflow-x-hidden scrollbar-thin-visible bg-dotted px-14 pt-10 pb-9 max-xl:px-8 short:pt-8 short:pb-7";
+export const scrollingTableCardClass =
+  "flex min-h-[340px] flex-1 flex-col overflow-hidden";
+export const tableScrollAreaClass =
+  "min-h-0 flex-1 overflow-auto scrollbar-thin-visible contain-size";
+export const stickyTableHeadClass =
+  "sticky top-0 z-[1] bg-card text-[10px] uppercase text-icon-muted shadow-[inset_0_-2px_0_var(--color-border)]";
 export const inputClass =
   "w-full rounded-[13px] border-2 border-border bg-background px-3 py-2 text-xs outline-none focus-visible:ring-2 focus-visible:ring-accent";
 export function count(value?: number | null) {
@@ -73,12 +88,7 @@ export function useAdminMutationFeedback() {
   return {
     async onSuccess() {
       await cache.invalidateQueries({
-        predicate(query) {
-          const [path] = query.queryKey;
-          return (
-            typeof path === "string" && path.startsWith(ADMIN_QUERY_PREFIX)
-          );
-        },
+        predicate: (query) => isAdminQueryKey(query.queryKey),
       });
       toast.success("Saved");
     },
@@ -121,6 +131,35 @@ export function SmallButton({
     />
   );
 }
+export function UpdatedAgo({
+  updatedAt,
+  refreshFailed = false,
+}: {
+  updatedAt?: number;
+  refreshFailed?: boolean;
+}) {
+  const [nowMilliseconds, setNowMilliseconds] = React.useState(() =>
+    Date.now(),
+  );
+  React.useEffect(() => {
+    const tickTimer = window.setInterval(
+      () => setNowMilliseconds(Date.now()),
+      UPDATED_AGO_TICK_MILLISECONDS,
+    );
+    return () => window.clearInterval(tickTimer);
+  }, []);
+  const updatedText = formatUpdatedAgo(updatedAt, nowMilliseconds);
+  if (!updatedText) return null;
+  return (
+    <span
+      data-testid="updated-ago"
+      title={updatedAt ? new Date(updatedAt).toLocaleTimeString() : undefined}
+      className={`whitespace-nowrap text-[11px] ${refreshFailed ? "text-destructive" : "text-icon-muted"}`}
+    >
+      {refreshFailed ? `Refresh failed. ${updatedText}` : updatedText}
+    </span>
+  );
+}
 export function PageHeader({
   title,
   subtitle,
@@ -131,10 +170,10 @@ export function PageHeader({
   children?: React.ReactNode;
 }) {
   return (
-    <header className="mb-5 flex shrink-0 items-start justify-between gap-5">
-      <div>
-        <div className="mb-1 flex items-center gap-2.5">
-          <h1 className="font-display text-[30px] leading-[1.2] text-accent [text-shadow:3px_3px_0_var(--text-shadow-on-page)]">
+    <header className="mb-5 flex shrink-0 flex-wrap items-start justify-between gap-x-5 gap-y-3">
+      <div className="min-w-0">
+        <div className="mb-1 flex flex-wrap items-center gap-2.5">
+          <h1 className="min-w-0 font-display text-[30px] leading-[1.2] text-accent [text-shadow:3px_3px_0_var(--text-shadow-on-page)]">
             {title}
           </h1>
           <span className="rounded-full bg-destructive/15 px-[11px] py-[5px] font-display text-[10px] text-destructive">
@@ -143,7 +182,7 @@ export function PageHeader({
         </div>
         <p className="text-[13px] text-muted-foreground">{subtitle}</p>
       </div>
-      <div className="flex gap-2.5">{children}</div>
+      <div className="flex flex-wrap items-center gap-2.5">{children}</div>
     </header>
   );
 }
@@ -326,7 +365,7 @@ export function Pagination({
   const first = total ? page * PAGE_SIZE + 1 : 0;
   const last = Math.min((page + 1) * PAGE_SIZE, total ?? 0);
   return (
-    <footer className="mt-auto flex items-center justify-between border-t-2 border-background px-5 py-2.5 text-[11px] text-icon-muted">
+    <footer className="mt-auto flex shrink-0 flex-wrap items-center justify-between gap-2 border-t-2 border-background px-5 py-2.5 text-[11px] text-icon-muted">
       <span>
         Showing {first} to {last} of {count(total ?? 0)}
       </span>
@@ -378,35 +417,37 @@ export function StageChips({ jobs }: { jobs?: QueueJobDTO[] }) {
     </div>
   );
 }
+const QUEUE_TABLE_CELL_CLASS = "px-5 py-[10px] @max-5xl:px-3";
+const QUEUE_TABLE_COLUMNS = [
+  { label: "Stage", widthClass: "w-[190px] @max-5xl:w-[150px]" },
+  { label: "State", widthClass: "w-[135px] @max-5xl:w-[125px]" },
+  { label: "Waiting", widthClass: "w-[105px] @max-5xl:w-[85px]" },
+  { label: "In progress", widthClass: "w-[105px] @max-5xl:w-[100px]" },
+  { label: "Failed", widthClass: "w-[105px] @max-5xl:w-[75px]" },
+  { label: "Pace", widthClass: "" },
+];
 export function QueueTable({ stages }: { stages: QueueStageDTO[] }) {
   return (
-    <section className={`${panelClass} mt-[18px] flex min-h-0 flex-1 flex-col`}>
-      <div className="flex items-center justify-between px-5 py-3.5">
+    <section className={`${panelClass} mt-[18px] flex shrink-0 flex-col`}>
+      <div className="flex flex-wrap items-center justify-between gap-2 px-5 py-3.5">
         <h2 className="font-display text-sm">Queues</h2>
         <Link
           href="/admin/backfill-queue"
-          className="text-xs font-semibold text-accent"
+          className="rounded text-xs font-semibold text-accent focus-visible:ring-2 focus-visible:ring-accent"
         >
           Open backfill queue →
         </Link>
       </div>
-      <div className="overflow-auto">
-        <table className="w-full table-fixed text-left text-xs">
-          <thead className="border-b-2 border-border bg-card text-[10px] uppercase text-icon-muted">
+      <div className="overflow-x-auto scrollbar-thin-visible">
+        <table className="w-full min-w-[620px] table-fixed text-left text-xs">
+          <thead className={stickyTableHeadClass}>
             <tr>
-              {[
-                "Stage",
-                "State",
-                "Waiting",
-                "In progress",
-                "Failed",
-                "Pace",
-              ].map((label) => (
+              {QUEUE_TABLE_COLUMNS.map((column) => (
                 <th
-                  key={label}
-                  className="px-5 py-[10px] font-semibold first:w-[190px] [&:nth-child(2)]:w-[135px] [&:nth-child(3)]:w-[105px] [&:nth-child(4)]:w-[105px] [&:nth-child(5)]:w-[105px]"
+                  key={column.label}
+                  className={`${QUEUE_TABLE_CELL_CLASS} font-semibold ${column.widthClass}`}
                 >
-                  {label}
+                  {column.label}
                 </th>
               ))}
             </tr>
@@ -419,24 +460,25 @@ export function QueueTable({ stages }: { stages: QueueStageDTO[] }) {
                 key={stage.stage}
                 className="border-b-2 border-background last:border-0"
               >
-                <td className="px-5 py-[10px] font-semibold first:w-[190px] [&:nth-child(2)]:w-[135px] [&:nth-child(3)]:w-[105px] [&:nth-child(4)]:w-[105px] [&:nth-child(5)]:w-[105px]">
+                <td className={`${QUEUE_TABLE_CELL_CLASS} truncate font-semibold`}>
                   <Link
+                    className="rounded hover:text-accent focus-visible:ring-2 focus-visible:ring-accent"
                     href={`/admin/backfill-queue/${STAGES.find((item) => item.id === stage.stage)?.slug}`}
                   >
                     {stageLabel(stage.stage)}
                   </Link>
                 </td>
-                <td className="px-5 py-[10px]">
+                <td className={QUEUE_TABLE_CELL_CLASS}>
                   <StatePill state={stage.state} />
                 </td>
-                <td className="px-5 py-[10px]">{count(stage.waiting)}</td>
-                <td className="px-5 py-[10px] text-blue">
+                <td className={QUEUE_TABLE_CELL_CLASS}>{count(stage.waiting)}</td>
+                <td className={`${QUEUE_TABLE_CELL_CLASS} text-blue`}>
                   {count(stage.inProgress)}
                 </td>
-                <td className="px-5 py-[10px] text-destructive">
+                <td className={`${QUEUE_TABLE_CELL_CLASS} text-destructive`}>
                   {count(stage.failed)}
                 </td>
-                <td className="px-5 py-[10px] text-muted-foreground">
+                <td className={`${QUEUE_TABLE_CELL_CLASS} truncate text-muted-foreground`}>
                   {responseTime(stage.currentDelayMs)} interval,{" "}
                   {responseTime(stage.averageResponseMs)} avg
                 </td>
@@ -461,12 +503,12 @@ export function RejectedKeyBanners({ stages }: { stages: QueueStageDTO[] }) {
           <div
             role="alert"
             key={stage.stage}
-            className="mb-[18px] flex items-center gap-3 rounded-[14px] border-2 border-destructive/30 bg-destructive/15 px-4 py-2.5 text-[13px]"
+            className="mb-[18px] flex shrink-0 flex-wrap items-center gap-3 rounded-[14px] border-2 border-destructive/30 bg-destructive/15 px-4 py-2.5 text-[13px]"
           >
             <span aria-hidden="true" className="text-lg text-destructive">
               ⚠
             </span>
-            <p className="flex-1">
+            <p className="min-w-0 flex-1">
               {stageLabel(stage.stage)} is paused. {stage.pausedReason}
             </p>
             <div>
