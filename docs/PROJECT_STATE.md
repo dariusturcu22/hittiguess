@@ -15,6 +15,7 @@
 | 38 | Production observability configuration and delivery verification | Ready |
 | 41 | Source-match confidence and uncertain-case review | Deferred until submission data supports tuning |
 | 47 | Remaining mockup reconciliation during the visual pass | Ready |
+| 51 | Admin console, seven-queue parallel source pipeline, usage and cost tracking | Ready; screens wait for approved mockups |
 
 The main game, catalog/import pipeline, participant history/statistics, prepared global difficulty, and automatic embedding indexing are implemented. Live deployment, media, and visual acceptance remain unfinished checks, not absent implementations.
 
