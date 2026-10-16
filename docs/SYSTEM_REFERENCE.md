@@ -97,6 +97,8 @@ Every rate-limited request the core service rejects, whichever limiter caught it
 | GET | `/api/admin/catalog-seeding/status` | `AdminCatalogSeedingController`, admin only, the backlog view (pending, done, failed counts), plus the newest rechecks of provisional answers with their provisional and patient years and whether a drain is running, story 40 |
 | POST | `/api/admin/catalog-seeding/drain` | `AdminCatalogSeedingController`, admin only, starts a backlog drain in the background instead of waiting for the daily sweep; 409 while a drain is already running |
 | GET | `/api/admin/usage` | `AdminUsageController`, admin only via `AdminAccessGuard`, returns `AdminUsageDTO`: `youtube` (`unitsUsedToday`, `dailyLimit`, `unitsRemaining`, `quotaDay`, `resetsAt` as the next midnight Pacific), `deepInfra` and `openAi` (each with `today` and `month` holding `calls`, `inputTokens`, `outputTokens`, `estimatedCostUsd`), `estimatedCostTodayUsd`, `estimatedCostMonthUsd`, and `pricesVerifiedOn`; the daily limit defaults to 10,000 units and is set by `usage.youtube.daily-quota-units`, story 51 |
+| GET | `/api/admin/songs` | `AdminSongCatalogController`, admin only via `AdminAccessGuard`, the song catalog: every song plus every admin-seeded backlog item whose YouTube ID has no song yet, newest `createdAt` first with unknown dates last. Optional `query` (trimmed; 400 when shorter than 3 characters) matches song title or artist name by case-insensitive substring with LIKE wildcards escaped, or an exact YouTube ID; optional `status` (`CatalogSongStatus`) filters rows; `page` is 0-based (400 when negative) and `size` defaults to 25 and must be 1 to 25 (400 otherwise, never clamped). Returns `AdminCatalogPageDTO`: `items`, `page`, `size`, `totalElements`, `totalPages`, and `counts` (`all`, `verified`, `needsReview`, `inQueue`, `processing`, `error`, following the search text and ignoring the status filter). Each item is `AdminCatalogSongDTO`: `id` (`song:<id>` or `import:<id>`), `songId` (null for a backlog item), `youtubeId`, `title`, `artists`, `releaseYear` (null when unresolved), `status`, `pipeline`, `createdAt`, `addedBy` (username or null), and `addedByKind`, story 51 |
+| GET | `/api/admin/songs/{songId}` | `AdminSongCatalogController`, admin only, read-only `AdminSongDetailDTO`: the catalog row fields, the stored `verificationStatus`, `confidence`, and `wikidataSitelinksCount`, `openReportCount`, and `queueHistory` with every `pending_imports` row for the song's YouTube ID oldest first (`origin`, `status`, `enqueuedAt`, `processedAt`, `provisionalYear`, `patientYear`, `failureReason`); 404 for an unknown song. Per-source findings are not stored, so the detail has none, story 51 |
 | POST | `/api/bulk-import` | `BulkImportController`, any authenticated user, immediate on-the-spot resolution of `BulkImportRequest` (`playlistLink`, `videoIdsOrLinks`), a submitted playlist link is expanded through the AI microservice and merged with any submitted IDs or links, never shares the admin backlog's queue, story 40 |
 | GET | `/api/ground-truth/songs` | `GroundTruthController`, public, paged verified `(artist, title, releaseYear)` triples with no YouTube-sourced fields, general rate limit applies, story 35 |
 | POST | `/api/songs/{songId}/reports` | `SongReportController`, any authenticated user reports a song's metadata with a message, suggested correct year, and sources, one report per user per song, story 17 |
@@ -225,8 +227,10 @@ Song
   ├── playlists: Set<Playlist>  (@ManyToMany, mappedBy "songs"; a song can belong to more than one
   │     playlist since story 15, and to zero, a song is a standalone catalog entity independent of
   │     any playlist, see DECISIONS.md's 2026-09 "Song deletion reversed" entry)
-  └── addedBy: User       (@ManyToOne, nullable since story 37, no inverse mapping; cleared, not blocked
-        or cascaded, when the submitting account is deleted)
+  ├── addedBy: User       (@ManyToOne, nullable since story 37, no inverse mapping; cleared, not blocked
+  │     or cascaded, when the submitting account is deleted)
+  └── createdAt (nullable timestamptz, V43, set on persist and defaulting to now() for raw inserts;
+        songs that predate V43 take their oldest pending_imports row, otherwise stay null as unknown)
 
 SongArtist
   ├── id, name, role (MAIN/FEATURED), displayOrder
@@ -323,6 +327,17 @@ stateDiagram-v2
 ```
 
 A `PendingImport` row can also be created indirectly, as a recheck: a user import resolves a song on the fast tier (origin `FAST_TIER_RECHECK`), or a user adds a song by hand (origin `USER_ADD_RECHECK`), and the row is queued at low priority with that provisional year so the patient pipeline re-verifies it afterward. The drain records the patient year on the row (V36), and the admin backlog shows both years side by side. Admin seeds carry origin `ADMIN_SEED`.
+
+### Admin song catalog row (story 51)
+
+`CatalogSongRules` defines how each `/api/admin/songs` row is described; the list query repeats the status rule in SQL so it can filter and count by status.
+
+- Status: a song with an active backlog row for its YouTube ID shows that row, `PROCESSING` before `PENDING` (`IN_QUEUE`). Without one, a `VERIFIED` song is `VERIFIED`, and `NEEDS_REVIEW`, `UNVERIFIED`, and `MANUAL_ENTRY` songs are `NEEDS_REVIEW`. A backlog item with no song is `PROCESSING`, `IN_QUEUE`, or `ERROR` once it failed.
+- Backlog items without a song: only `ADMIN_SEED` rows in `PENDING`, `PROCESSING`, or `FAILED` whose YouTube ID has no song, one row per YouTube ID, preferring the processing row, then the pending row, then the newest failed one. Its `createdAt` is the oldest of those rows. Recheck rows always belong to a saved song and never appear on their own.
+- Pipeline: `FAST` while a recheck row (`FAST_TIER_RECHECK` or `USER_ADD_RECHECK`) is not `DONE`; `FULL` when the latest backlog row is an `ADMIN_SEED` or a recheck row is `DONE`; `UNKNOWN` otherwise.
+- Added by: `USER` with the username when the song names an account; `ADMIN_SEED` with a null username when it does not and an admin seed row exists for its YouTube ID; `UNKNOWN` otherwise. Backlog items without a song are always `ADMIN_SEED`.
+
+V43 adds the `pg_trgm` extension with trigram GIN indexes `songs_title_trgm_idx` and `song_artists_name_trgm_idx` for the substring search, `songs_youtube_id_idx` for the exact ID match, `pending_imports_youtube_id_idx` for each song's backlog rows, and `songs_created_at_idx`.
 
 
 ## Game history and difficulty data
