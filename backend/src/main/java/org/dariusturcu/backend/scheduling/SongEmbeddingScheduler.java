@@ -15,6 +15,7 @@ import java.util.concurrent.TimeUnit;
 @Slf4j
 public class SongEmbeddingScheduler {
     static final String INDEX_NEXT_PATH = "/catalog/index-next";
+    static final int BURST_LIMIT = 20;
     static final String DUE_WORK_QUERY = "SELECT EXISTS (SELECT FROM song_embedding_queue WHERE available_at <= now())";
     static final String STAGED_DUE_WORK_QUERY = """
             SELECT EXISTS (SELECT FROM song_embedding_queue WHERE available_at <= now()
@@ -41,11 +42,21 @@ public class SongEmbeddingScheduler {
             scheduler = "catalogEmbeddingTaskScheduler")
     public void indexNext() {
         try {
-            if (Boolean.TRUE.equals(jdbcTemplate.queryForObject(settings.enabled() ? STAGED_DUE_WORK_QUERY : DUE_WORK_QUERY, Boolean.class))) {
-                aiServiceRestClient.post().uri(INDEX_NEXT_PATH).retrieve().toBodilessEntity();
+            if (!Boolean.TRUE.equals(jdbcTemplate.queryForObject(settings.enabled() ? STAGED_DUE_WORK_QUERY : DUE_WORK_QUERY, Boolean.class))) {
+                return;
+            }
+            // Keeps indexing while songs are being stored, so a playlist does not wait one interval per song.
+            for (int indexed = 0; indexed < BURST_LIMIT; indexed++) {
+                IndexingOutcome outcome = aiServiceRestClient.post().uri(INDEX_NEXT_PATH).retrieve().body(IndexingOutcome.class);
+                if (outcome == null || !outcome.indexed()) {
+                    return;
+                }
             }
         } catch (RuntimeException failure) {
             log.warn("Catalog embedding indexing postponed: {}", failure.getClass().getSimpleName());
         }
+    }
+
+    record IndexingOutcome(boolean indexed) {
     }
 }
