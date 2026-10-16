@@ -4,6 +4,7 @@
  * OpenAPI definition
  * OpenAPI spec version: v0
  */
+import type { UpdateGroupSettingsRequestDifficultyTier } from './updateGroupSettingsRequestDifficultyTier';
 import type { UpdateGroupSettingsRequestDjMode } from './updateGroupSettingsRequestDjMode';
 
 export interface UpdateGroupSettingsRequest {
@@ -11,5 +12,5 @@ export interface UpdateGroupSettingsRequest {
   djMode?: UpdateGroupSettingsRequestDjMode;
   winConditionCardCount?: number;
   fixedDjMemberId?: number;
-  difficultyTier?: "EASY" | "MEDIUM" | "HARD";
+  difficultyTier?: UpdateGroupSettingsRequestDifficultyTier;
 }

@@ -4,9 +4,10 @@
  * OpenAPI definition
  * OpenAPI spec version: v0
  */
+import type { GameSummary } from './gameSummary';
 import type { PlaylistMembershipExportDTO } from './playlistMembershipExportDTO';
 import type { SongDTO } from './songDTO';
-import type { GameSummary, SongPlayObservation } from '../game-history';
+import type { SongPlayObservation } from './songPlayObservation';
 
 export interface PersonalDataExportDTO {
   id?: number;

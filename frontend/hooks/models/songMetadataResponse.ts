@@ -17,4 +17,5 @@ export interface SongMetadataResponse {
   verificationStatus?: string;
   sitelinksCount?: number;
   durationSeconds?: number;
+  canonicalSongId?: number;
 }

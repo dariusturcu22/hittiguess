@@ -4,8 +4,8 @@
  * OpenAPI definition
  * OpenAPI spec version: v0
  */
-import type { SongDTO } from './songDTO';
 import type { PlaylistMemberDTO } from './playlistMemberDTO';
+import type { SongDTO } from './songDTO';
 
 export interface PlaylistDetailDTO {
   id: number;

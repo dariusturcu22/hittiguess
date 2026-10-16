@@ -4,6 +4,7 @@
  * OpenAPI definition
  * OpenAPI spec version: v0
  */
+import type { GroupDetailDTODifficultyTier } from './groupDetailDTODifficultyTier';
 import type { GroupDetailDTODjMode } from './groupDetailDTODjMode';
 import type { GroupDetailDTOStatus } from './groupDetailDTOStatus';
 import type { MemberDTO } from './memberDTO';
@@ -20,5 +21,5 @@ export interface GroupDetailDTO {
   playlists?: PlaylistSummaryDTO[];
   members?: MemberDTO[];
   expiresAt?: string;
-  difficultyTier?: "EASY" | "MEDIUM" | "HARD";
+  difficultyTier?: GroupDetailDTODifficultyTier;
 }
