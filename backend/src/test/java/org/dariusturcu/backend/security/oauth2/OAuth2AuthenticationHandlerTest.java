@@ -156,4 +156,17 @@ class OAuth2AuthenticationHandlerTest {
 
         assertThat(response.getRedirectedUrl()).isEqualTo(REDIRECT_URI + "?error=oauth2_failed");
     }
+
+    @Test
+    void failureForAnExistingPasswordAccountRedirectsWithItsOwnCode() throws Exception {
+        OAuth2AuthenticationFailureHandler handler = new OAuth2AuthenticationFailureHandler();
+        ReflectionTestUtils.setField(handler, "redirectUri", REDIRECT_URI);
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        handler.onAuthenticationFailure(
+                new MockHttpServletRequest(), response,
+                new OAuth2AuthenticationException(new OAuth2Error(CustomOAuth2UserService.ACCOUNT_EXISTS_ERROR_CODE)));
+
+        assertThat(response.getRedirectedUrl()).isEqualTo(REDIRECT_URI + "?error=account_exists");
+    }
 }

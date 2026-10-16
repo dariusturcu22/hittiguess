@@ -15,6 +15,8 @@ import java.util.Optional;
 
 @Service
 public class CustomOAuth2UserService extends DefaultOAuth2UserService {
+    public static final String ACCOUNT_EXISTS_ERROR_CODE = "account_exists";
+
     private final UserRepository userRepository;
 
     public CustomOAuth2UserService(UserRepository userRepository) {
@@ -57,7 +59,7 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
 
         if (userRepository.existsUserByEmail(oAuth2UserInfo.getEmail())) {
             throw new OAuth2AuthenticationException(
-                    new OAuth2Error("account_exists"),
+                    new OAuth2Error(ACCOUNT_EXISTS_ERROR_CODE),
                     "An account with this email already exists, log in with your password instead"
             );
         }
