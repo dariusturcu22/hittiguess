@@ -60,6 +60,17 @@ class PipelineJobServiceIntegrationTest {
     private static final int CONCURRENT_JOB_COUNT = 40;
     private static final long WAIT_SECONDS = 60;
     private static final int STAGE_LIMIT = 3;
+    private static final long ONE_JOB = 1;
+    private static final long BOTH_JOBS = 2;
+    private static final long THREE_JOBS = 3;
+    private static final Duration RECENT_FINISH = Duration.ofMinutes(5);
+    private static final Duration OLDER_FINISH = Duration.ofMinutes(30);
+    private static final Duration OUTSIDE_FINISH = Duration.ofMinutes(90);
+    private static final Duration SHORT_JOB = Duration.ofSeconds(2);
+    private static final Duration LONG_JOB = Duration.ofSeconds(20);
+    private static final Duration NO_WAIT = Duration.ZERO;
+    private static final Duration SHORT_WAIT = Duration.ofSeconds(3);
+    private static final Duration LONG_WAIT = Duration.ofSeconds(9);
     private static final int SINGLE_SLOT = 1;
     private static final Duration SIMULATED_WORK = Duration.ofMillis(20);
     private static final Duration LEASE_RETRY_PAUSE = Duration.ofMillis(5);
@@ -704,15 +715,90 @@ class PipelineJobServiceIntegrationTest {
 
         assertThat(countsByStage).hasSize(PipelineStage.values().length);
         assertThat(countsByStage.get(PipelineStage.YOUTUBE_METADATA))
-                .isEqualTo(new StageCounts(PipelineStage.YOUTUBE_METADATA, false, 2, 1, 1, 1, 1));
+                .isEqualTo(new StageCounts(PipelineStage.YOUTUBE_METADATA, false, 2, 1, 1, 1, 1, 1));
         assertThat(countsByStage.get(PipelineStage.MUSICBRAINZ))
-                .isEqualTo(new StageCounts(PipelineStage.MUSICBRAINZ, false, 1, 0, 0, 0, 0));
+                .isEqualTo(new StageCounts(PipelineStage.MUSICBRAINZ, false, 1, 0, 0, 0, 0, 1));
         assertThat(countsByStage.get(PipelineStage.EMBEDDING))
-                .isEqualTo(new StageCounts(PipelineStage.EMBEDDING, false, 0, 0, 0, 0, 0));
+                .isEqualTo(new StageCounts(PipelineStage.EMBEDDING, false, 0, 0, 0, 0, 0, 0));
 
         clock.advance(ONE_DAY);
         assertThat(service.stageCounts().stream()
                 .filter(counts -> counts.stage() == PipelineStage.YOUTUBE_METADATA)
                 .findFirst().orElseThrow().doneToday()).isZero();
     }
+
+    private StageCounts countsOf(PipelineStage stage) {
+        return service.stageCounts().stream().filter(counts -> counts.stage() == stage).findFirst().orElseThrow();
+    }
+
+    @Test
+    void expiredLeasesCountAsWaitingAndDiscardedFailuresAndSkippedJobsDoNotCount() {
+        startBackfill(VIDEO_ID);
+        startBackfill(OTHER_VIDEO_ID);
+        lease(PipelineStage.YOUTUBE_METADATA);
+        clock.advance(PAST_THE_LEASE);
+        StageCounts withExpiredLease = countsOf(PipelineStage.YOUTUBE_METADATA);
+        assertThat(withExpiredLease.inProgress()).isZero();
+        assertThat(withExpiredLease.waiting()).isEqualTo(BOTH_JOBS);
+        assertThat(withExpiredLease.waitingDue()).isEqualTo(BOTH_JOBS);
+        assertThat(withExpiredLease.retrying()).isEqualTo(ONE_JOB);
+
+        PipelineJob failing = lease(PipelineStage.YOUTUBE_METADATA);
+        service.failPermanent(failing.id(), WORKER, GONE_REASON);
+        StageCounts withFailure = countsOf(PipelineStage.YOUTUBE_METADATA);
+        assertThat(withFailure.failed()).isEqualTo(ONE_JOB);
+        assertThat(withFailure.waiting()).isEqualTo(ONE_JOB);
+        assertThat(withFailure.waitingDue()).isZero();
+        service.discardRun(failing.runId());
+        assertThat(countsOf(PipelineStage.YOUTUBE_METADATA).failed()).isZero();
+
+        PipelineRun agreeing = startBackfill(THIRD_VIDEO_ID);
+        PipelineJob youtube = lease(PipelineStage.YOUTUBE_METADATA);
+        assertThat(youtube.runId()).isEqualTo(agreeing.id());
+        service.complete(youtube.id(), WORKER, EMPTY_RESULT);
+        completeNext(PipelineStage.MUSICBRAINZ, yearResult(AGREED_YEAR));
+        completeNext(PipelineStage.DISCOGS, yearResult(AGREED_YEAR));
+        completeNext(PipelineStage.WIKIDATA, yearResult(AGREED_YEAR));
+        assertThat(job(agreeing.id(), PipelineStage.WIKIPEDIA).status()).isEqualTo(PipelineJobStatus.SKIPPED);
+        assertThat(countsOf(PipelineStage.WIKIPEDIA).doneToday()).isZero();
+        assertThat(countsOf(PipelineStage.MUSICBRAINZ).doneToday()).isEqualTo(ONE_JOB);
+    }
+
+    @Test
+    void stageTimingsAverageRecentDoneJobsAndCountTheThroughputWindow() {
+        insertDoneJob(startBackfill(VIDEO_ID).id(), START.minus(RECENT_FINISH), SHORT_JOB, SHORT_WAIT);
+        insertDoneJob(startBackfill(OTHER_VIDEO_ID).id(), START.minus(RECENT_FINISH), LONG_JOB, NO_WAIT);
+        insertDoneJob(startBackfill(THIRD_VIDEO_ID).id(), START.minus(OLDER_FINISH), LONG_JOB, LONG_WAIT);
+        PipelineRun outsideRun = startBackfill("timingOld01");
+        insertDoneJob(outsideRun.id(), START.minus(OUTSIDE_FINISH), LONG_JOB, NO_WAIT);
+        jdbcTemplate.update("""
+                INSERT INTO pipeline_jobs (run_id, stage, lane, status, max_attempts, created_at, finished_at, updated_at)
+                VALUES (?, 'DISCOGS', 'BACKFILL', 'SKIPPED', ?, ?, ?, ?)
+                """, outsideRun.id(), PipelineJobService.DEFAULT_MAX_ATTEMPTS, timestamp(START), timestamp(START),
+                timestamp(START));
+
+        StageTimings timings = service.stageTimings().get(PipelineStage.MUSICBRAINZ);
+        assertThat(timings.finishedInDurationWindow()).isEqualTo(THREE_JOBS);
+        assertThat(timings.finishedInThroughputWindow()).isEqualTo(BOTH_JOBS);
+        assertThat(timings.averageDurationMs())
+                .isEqualTo((SHORT_JOB.toMillis() + LONG_JOB.toMillis() + LONG_JOB.toMillis()) / THREE_JOBS);
+        assertThat(timings.averageQueueWaitMs()).isEqualTo((SHORT_WAIT.toMillis() + LONG_WAIT.toMillis()) / THREE_JOBS);
+        assertThat(service.stageTimings().get(PipelineStage.DISCOGS)).isEqualTo(StageTimings.none(PipelineStage.DISCOGS));
+    }
+
+    private void insertDoneJob(long runId, Instant finishedAt, Duration duration, Duration wait) {
+        Instant startedAt = finishedAt.minus(duration);
+        Instant dueAt = startedAt.minus(wait);
+        jdbcTemplate.update("""
+                INSERT INTO pipeline_jobs (run_id, stage, lane, status, max_attempts, next_attempt_at, created_at,
+                    started_at, finished_at, updated_at)
+                VALUES (?, 'MUSICBRAINZ', 'BACKFILL', 'DONE', ?, ?, ?, ?, ?, ?)
+                """, runId, PipelineJobService.DEFAULT_MAX_ATTEMPTS, timestamp(dueAt), timestamp(dueAt),
+                timestamp(startedAt), timestamp(finishedAt), timestamp(finishedAt));
+    }
+
+    private static OffsetDateTime timestamp(Instant instant) {
+        return instant.atOffset(java.time.ZoneOffset.UTC);
+    }
 }
+

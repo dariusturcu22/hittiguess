@@ -15,9 +15,10 @@ import java.util.List;
 
 @Repository
 public class AdminPipelineRepository {
+    /** A stage's control row with its stage_pace row, when the stage calls a paced source. */
     public record Pace(PipelineStage stage, boolean paused, String reason, Instant cooldownUntil,
-                       Integer delayMs, Integer averageMs) { }
-    public record StageDepth(PipelineStage stage, long waiting) { }
+                       Integer delayMs, Integer sourceRequestMs) { }
+    public record StageDepth(PipelineStage stage, long remaining) { }
 
     private static final String JOB_ROWS = """
             SELECT job.*, run.youtube_id,
@@ -36,21 +37,17 @@ public class AdminPipelineRepository {
                 WHEN EXISTS (SELECT FROM pipeline_jobs retry WHERE retry.run_id = run.id AND retry.status = 'WAITING' AND retry.attempts > 0) THEN 'RETRYING'
                 ELSE 'WAITING' END
             """;
+    private static final int CURRENT_TRY = 1;
     private final JdbcTemplate core;
 
     public AdminPipelineRepository(@Qualifier("coreJdbcTemplate") JdbcTemplate core) { this.core = core; }
 
     public List<Pace> pace() {
         return core.query("""
-                WITH timings AS (
-                    SELECT stage, round(avg(EXTRACT(EPOCH FROM finished_at - started_at) * 1000))::int AS average_ms
-                    FROM pipeline_jobs WHERE status = 'DONE' AND finished_at >= now() - interval '1 day'
-                        AND started_at IS NOT NULL GROUP BY stage
-                )
                 SELECT control.stage, control.paused, control.paused_reason, pace.cooldown_until,
-                    pace.current_delay_ms, COALESCE(pace.avg_response_ms, timings.average_ms) AS avg_response_ms
+                    pace.current_delay_ms, pace.avg_response_ms
                 FROM stage_controls control LEFT JOIN stage_pace pace ON pace.stage = control.stage
-                LEFT JOIN timings ON timings.stage = control.stage ORDER BY control.stage
+                ORDER BY control.stage
                 """, (row, number) -> new Pace(PipelineStage.valueOf(row.getString("stage")), row.getBoolean("paused"),
                 row.getString("paused_reason"), instant(row, "cooldown_until"), row.getObject("current_delay_ms", Integer.class),
                 row.getObject("avg_response_ms", Integer.class)));
@@ -60,8 +57,8 @@ public class AdminPipelineRepository {
         if (stage == PipelineStage.EMBEDDING) { return embeddingCount(status); }
         List<Object> parameters = new ArrayList<>(List.of(stage.name()));
         String filter = statusFilter(status, parameters);
-        return core.queryForObject("SELECT count(*) FROM pipeline_jobs job WHERE job.stage = ?" + filter,
-                Long.class, parameters.toArray());
+        return core.queryForObject("SELECT count(*) FROM pipeline_jobs job JOIN pipeline_runs run ON run.id = job.run_id"
+                + " WHERE job.stage = ?" + filter, Long.class, parameters.toArray());
     }
 
     public List<QueueJobDTO> jobs(PipelineStage stage, String status, int size, long offset) {
@@ -162,12 +159,13 @@ public class AdminPipelineRepository {
                 row.getLong("failed"), row.getLong("cancelled"), row.getInt("skipped_duplicates"), null), size, offset);
     }
 
-    public List<StageDepth> batchWaitingDepth(long batchId) {
+    public List<StageDepth> batchRemainingDepth(long batchId) {
         return core.query("""
-                SELECT job.stage, count(*) AS waiting FROM pipeline_jobs job
+                SELECT job.stage, count(*) AS remaining FROM pipeline_jobs job
                 JOIN pipeline_runs run ON run.id = job.run_id
-                WHERE run.batch_id = ? AND run.status = 'ACTIVE' AND job.status = 'WAITING' GROUP BY job.stage
-                """, (row, number) -> new StageDepth(PipelineStage.valueOf(row.getString("stage")), row.getLong("waiting")), batchId);
+                WHERE run.batch_id = ? AND run.status = 'ACTIVE' AND job.status IN ('WAITING', 'IN_PROGRESS')
+                GROUP BY job.stage
+                """, (row, number) -> new StageDepth(PipelineStage.valueOf(row.getString("stage")), row.getLong("remaining")), batchId);
     }
 
     private static String runFilter(PipelineRunStatus status, PipelineLane lane, List<Object> parameters) {
@@ -177,43 +175,70 @@ public class AdminPipelineRepository {
         return filter;
     }
 
+    // Filters match the stage counts: waiting and retrying cover active runs only, failed covers
+    // runs that are still failed, and done today starts at the UTC midnight.
     private static String statusFilter(String status, List<Object> parameters) {
         if (status == null) { return ""; }
-        if (AdminPipelineService.DONE_TODAY_FILTER.equals(status)) { return " AND job.status = 'DONE' AND job.finished_at >= date_trunc('day', now())"; }
-        if (AdminPipelineService.RETRYING_FILTER.equals(status)) { return " AND job.status = 'WAITING' AND job.attempts > 0"; }
+        if (AdminPipelineService.DONE_TODAY_FILTER.equals(status)) {
+            return " AND job.status = 'DONE' AND job.finished_at >= date_trunc('day', now() AT TIME ZONE 'UTC') AT TIME ZONE 'UTC'";
+        }
+        if (AdminPipelineService.RETRYING_FILTER.equals(status)) { return " AND job.status = 'WAITING' AND job.attempts > 0 AND run.status = 'ACTIVE'"; }
+        if (PipelineJobStatus.WAITING.name().equals(status)) { return " AND job.status = 'WAITING' AND run.status = 'ACTIVE'"; }
+        if (PipelineJobStatus.FAILED.name().equals(status)) { return " AND job.status = 'FAILED' AND run.status = 'FAILED'"; }
         parameters.add(status);
         return " AND job.status = ?";
     }
 
-    private long embeddingCount(String status) {
-        if (status != null && !status.equals(PipelineJobStatus.WAITING.name()) && !status.equals(AdminPipelineService.RETRYING_FILTER)) {
-            return 0;
-        }
-        return core.queryForObject("SELECT count(*) FROM song_embedding_queue"
-                + (AdminPipelineService.RETRYING_FILTER.equals(status) ? " WHERE attempts > 0" : ""), Long.class);
+    private static final String EMBEDDING_CLAIMED = "(queue.claimed_at IS NOT NULL AND queue.available_at > now())";
+
+    private static String embeddingFilter(String status) {
+        if (status == null) { return ""; }
+        if (AdminPipelineService.RETRYING_FILTER.equals(status)) { return " WHERE NOT " + EMBEDDING_CLAIMED + " AND queue.attempts > 0"; }
+        if (PipelineJobStatus.WAITING.name().equals(status)) { return " WHERE NOT " + EMBEDDING_CLAIMED; }
+        return " WHERE " + EMBEDDING_CLAIMED;
     }
 
+    private static boolean embeddingQueueHolds(String status) {
+        return status == null || status.equals(PipelineJobStatus.WAITING.name()) || status.equals(AdminPipelineService.RETRYING_FILTER)
+                || status.equals(PipelineJobStatus.IN_PROGRESS.name());
+    }
+
+    private long embeddingCount(String status) {
+        if (!embeddingQueueHolds(status)) { return 0; }
+        return core.queryForObject("SELECT count(*) FROM song_embedding_queue queue" + embeddingFilter(status), Long.class);
+    }
+
+    // A V41 claim adds to attempts before the work runs, so a claimed row has one try that has not failed.
     private List<QueueJobDTO> embeddingJobs(String status, int size, long offset) {
         if (embeddingCount(status) == 0) { return List.of(); }
         return core.query("""
                 SELECT queue.song_id, queue.attempts, queue.available_at, song.youtube_id, song.title,
+                    """ + EMBEDDING_CLAIMED + """
+                     AS claimed,
                     ARRAY(SELECT name FROM song_artists WHERE song_id = song.id ORDER BY display_order) AS artist_names
                 FROM song_embedding_queue queue JOIN songs song ON song.id = queue.song_id
-                """ + (AdminPipelineService.RETRYING_FILTER.equals(status) ? " WHERE queue.attempts > 0" : "")
-                + " ORDER BY queue.available_at, queue.song_id LIMIT ? OFFSET ?",
-                (row, number) -> new QueueJobDTO(row.getLong("song_id"), null, row.getString("youtube_id"), row.getString("title"),
-                        null, PipelineStage.EMBEDDING, PipelineJobStatus.WAITING, row.getInt("attempts") > 0, null,
-                        row.getInt("attempts"), null, instant(row, "available_at"), null, null, 0, artists(row)), size, offset);
+                """ + embeddingFilter(status) + " ORDER BY queue.available_at, queue.song_id LIMIT ? OFFSET ?",
+                (row, number) -> {
+                    boolean claimed = row.getBoolean("claimed");
+                    int failedTries = claimed ? row.getInt("attempts") - CURRENT_TRY : row.getInt("attempts");
+                    return new QueueJobDTO(row.getLong("song_id"), null, row.getString("youtube_id"), row.getString("title"),
+                            null, PipelineStage.EMBEDDING, claimed ? PipelineJobStatus.IN_PROGRESS : PipelineJobStatus.WAITING,
+                            !claimed && failedTries > 0, null, row.getInt("attempts"), null, instant(row, "available_at"), null,
+                            null, 0, artists(row), failedTries, null);
+                }, size, offset);
     }
 
     private static QueueJobDTO job(ResultSet row, int number) throws SQLException {
         var status = PipelineJobStatus.valueOf(row.getString("status"));
-        String failureStage = row.getString("failure_stage");
+        int failedTries = row.getInt("attempts");
+        boolean failureVisible = PipelineJobFailures.visible(status, failedTries);
+        String failureStage = failureVisible ? row.getString("failure_stage") : null;
         return new QueueJobDTO(row.getLong("id"), row.getLong("run_id"), row.getString("youtube_id"), row.getString("title"),
                 PipelineLane.valueOf(row.getString("lane")), PipelineStage.valueOf(row.getString("stage")), status,
-                status == PipelineJobStatus.WAITING && row.getInt("attempts") > 0, instant(row, "created_at"), row.getInt("attempts"),
-                row.getInt("max_attempts"), instant(row, "next_attempt_at"), row.getString("failure_reason"),
-                failureStage == null ? null : PipelineStage.valueOf(failureStage), row.getInt("priority"), artists(row));
+                status == PipelineJobStatus.WAITING && failedTries > 0, instant(row, "created_at"), failedTries,
+                row.getInt("max_attempts"), instant(row, "next_attempt_at"), failureVisible ? row.getString("failure_reason") : null,
+                failureStage == null ? null : PipelineStage.valueOf(failureStage), row.getInt("priority"), artists(row),
+                failedTries, row.getInt("max_attempts"));
     }
 
     private static List<String> artists(ResultSet row) throws SQLException {

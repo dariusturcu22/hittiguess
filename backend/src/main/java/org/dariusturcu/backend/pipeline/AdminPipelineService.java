@@ -19,11 +19,13 @@ import org.dariusturcu.backend.model.song.PendingImportOrigin;
 import org.dariusturcu.backend.service.ApiUsageService;
 import org.dariusturcu.backend.service.CatalogSeedingService;
 import org.dariusturcu.backend.util.YoutubeLinkParser;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.EnumMap;
 import java.util.List;
@@ -38,7 +40,6 @@ public class AdminPipelineService {
     public static final int FIRST_PAGE = 0;
     public static final String DONE_TODAY_FILTER = "DONE_TODAY";
     public static final String RETRYING_FILTER = "RETRYING";
-    private static final long MILLISECONDS_PER_SECOND = 1000;
     private static final String ADMIN_PAUSE_REASON = "Paused by an admin";
 
     private final AdminPipelineRepository repository;
@@ -46,29 +47,58 @@ public class AdminPipelineService {
     private final PipelineSettings settings;
     private final ApiUsageService usage;
     private final CatalogSeedingService seeding;
+    private final StageConcurrency concurrency;
 
     public AdminPipelineService(AdminPipelineRepository repository, PipelineJobService engine, PipelineSettings settings,
             ApiUsageService usage, CatalogSeedingService seeding) {
+        this(repository, engine, settings, usage, seeding, StageConcurrency.defaults());
+    }
+
+    @Autowired
+    public AdminPipelineService(AdminPipelineRepository repository, PipelineJobService engine, PipelineSettings settings,
+            ApiUsageService usage, CatalogSeedingService seeding, StageConcurrency concurrency) {
         this.repository = repository;
         this.engine = engine;
         this.settings = settings;
         this.usage = usage;
         this.seeding = seeding;
+        this.concurrency = concurrency;
     }
 
     public QueueOverviewDTO queues() {
         Map<PipelineStage, StageCounts> counts = engine.stageCounts().stream().collect(Collectors.toMap(StageCounts::stage, Function.identity()));
+        Map<PipelineStage, StageTimings> timings = engine.stageTimings();
         Instant now = Instant.now();
+        List<DrainEstimate.StageEstimate> estimates = new ArrayList<>();
         List<QueueStageDTO> stages = repository.pace().stream().map(pace -> {
             StageCounts count = counts.get(pace.stage());
+            StageTimings timing = timings.getOrDefault(pace.stage(), StageTimings.none(pace.stage()));
             QueueState state = pace.paused() ? QueueState.PAUSED
                     : pace.cooldownUntil() != null && pace.cooldownUntil().isAfter(now) ? QueueState.COOLING_DOWN : QueueState.RUNNING;
+            long remainingJobs = count.waiting() + count.inProgress();
+            Long drainSeconds = DrainEstimate.seconds(drainInputs(pace, remainingJobs, timing, now));
+            estimates.add(new DrainEstimate.StageEstimate(remainingJobs, drainSeconds));
             return new QueueStageDTO(pace.stage(), state, count.waiting(), count.inProgress(), count.retrying(),
-                    pace.stage() == PipelineStage.EMBEDDING ? null : count.doneToday(), count.failed(), pace.delayMs(),
-                    pace.cooldownUntil(), pace.averageMs(), pace.paused() ? null : estimateWithCooldown(count.waiting(), pace, now), pace.reason());
+                    count.doneToday(), count.failed(), pace.delayMs(), pace.cooldownUntil(),
+                    milliseconds(timing.averageDurationMs()), drainSeconds, pace.reason(), count.waitingDue(),
+                    count.waiting() - count.waitingDue(), milliseconds(timing.averageQueueWaitMs()),
+                    DrainEstimate.measuredJobsPerMinute(timing.finishedInThroughputWindow()), pace.sourceRequestMs(),
+                    concurrency.limit(pace.stage()), timing.finishedInDurationWindow());
         }).toList();
         long remaining = usage.youtubeUnitsRemaining();
-        return new QueueOverviewDTO(stages, settings.enabled(), remaining, settings.youtubeReserveUnits(), remaining < settings.youtubeReserveUnits());
+        return new QueueOverviewDTO(stages, settings.enabled(), remaining, settings.youtubeReserveUnits(),
+                remaining < settings.youtubeReserveUnits(), DrainEstimate.overall(estimates));
+    }
+
+    private DrainEstimate.Inputs drainInputs(AdminPipelineRepository.Pace pace, long remainingJobs, StageTimings timing, Instant now) {
+        Duration cooldown = pace.cooldownUntil() == null || !pace.cooldownUntil().isAfter(now)
+                ? Duration.ZERO : Duration.between(now, pace.cooldownUntil());
+        return new DrainEstimate.Inputs(remainingJobs, concurrency.limit(pace.stage()), timing.averageDurationMs(),
+                timing.finishedInThroughputWindow(), pace.delayMs(), pace.paused(), cooldown);
+    }
+
+    private static Integer milliseconds(Long value) {
+        return value == null ? null : Math.toIntExact(Math.min(value, Integer.MAX_VALUE));
     }
 
     public QueueJobPageDTO jobs(String stageName, String statusName, Integer page) {
@@ -106,8 +136,14 @@ public class AdminPipelineService {
         long total = repository.batchCount();
         Map<PipelineStage, AdminPipelineRepository.Pace> pace = repository.pace().stream()
                 .collect(Collectors.toMap(AdminPipelineRepository.Pace::stage, Function.identity()));
+        Map<PipelineStage, StageTimings> timings = engine.stageTimings();
+        Instant now = Instant.now();
         List<ImportBatchDTO> items = repository.batches(PAGE_SIZE, (long) resolvedPage * PAGE_SIZE).stream().map(batch -> {
-            Long estimate = batchEstimate(repository.batchWaitingDepth(batch.id()), pace);
+            Long estimate = DrainEstimate.overall(repository.batchRemainingDepth(batch.id()).stream()
+                    .map(depth -> new DrainEstimate.StageEstimate(depth.remaining(), DrainEstimate.seconds(drainInputs(
+                            pace.get(depth.stage()), depth.remaining(),
+                            timings.getOrDefault(depth.stage(), StageTimings.none(depth.stage())), now))))
+                    .toList());
             return new ImportBatchDTO(batch.id(), batch.kind(), batch.label(), batch.sourceLink(), batch.createdAt(), batch.cancelledAt(),
                     batch.total(), batch.waiting(), batch.inProgress(), batch.done(), batch.failed(), batch.cancelled(), batch.skippedDuplicates(), estimate);
         }).toList();
@@ -221,30 +257,4 @@ public class AdminPipelineService {
 
     private static int pages(long total) { return (int) ((total + PAGE_SIZE - 1) / PAGE_SIZE); }
 
-    static Long estimate(long waiting, Integer delayMs, Integer averageMs) {
-        if (waiting == 0) { return 0L; }
-        if (delayMs == null && averageMs == null) { return null; }
-        long perJobMs = Math.max(delayMs == null ? 0 : delayMs, averageMs == null ? 0 : averageMs);
-        if (perJobMs == 0) { return null; }
-        return (waiting * perJobMs + MILLISECONDS_PER_SECOND - 1) / MILLISECONDS_PER_SECOND;
-    }
-
-    private static Long batchEstimate(List<AdminPipelineRepository.StageDepth> depths,
-            Map<PipelineStage, AdminPipelineRepository.Pace> pace) {
-        long total = 0;
-        for (var depth : depths) {
-            var sourcePace = pace.get(depth.stage());
-            Long estimate = sourcePace.paused() ? null : estimateWithCooldown(depth.waiting(), sourcePace, Instant.now());
-            if (estimate == null) { return null; }
-            total += estimate;
-        }
-        return total;
-    }
-
-    private static Long estimateWithCooldown(long waiting, AdminPipelineRepository.Pace pace, Instant now) {
-        Long processing = estimate(waiting, pace.delayMs(), pace.averageMs());
-        if (processing == null || waiting == 0 || pace.cooldownUntil() == null || !pace.cooldownUntil().isAfter(now)) { return processing; }
-        long cooldownMs = Duration.between(now, pace.cooldownUntil()).toMillis();
-        return processing + (cooldownMs + MILLISECONDS_PER_SECOND - 1) / MILLISECONDS_PER_SECOND;
-    }
 }

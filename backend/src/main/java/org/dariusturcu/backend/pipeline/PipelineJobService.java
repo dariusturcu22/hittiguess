@@ -72,10 +72,6 @@ public class PipelineJobService {
         return maxAttempts;
     }
 
-    public Clock clock() {
-        return clock;
-    }
-
     public long createBatch(ImportBatchKind kind, String label, String sourceLink, Long createdBy) {
         return inTransaction(() -> repository.insertBatch(kind, label, sourceLink, createdBy, clock.instant()));
     }
@@ -306,10 +302,29 @@ public class PipelineJobService {
         });
     }
 
-    /** Per stage: waiting, in progress, done since the start of the UTC day, failed, and retrying. */
+    /** Per stage, the counts {@link StageCounts} defines; the embedding row reads the V41 queue. */
     public List<StageCounts> stageCounts() {
-        return inTransaction(() -> repository.stageCounts(clock.instant().truncatedTo(ChronoUnit.DAYS)).stream()
-                .map(counts -> counts.stage() == PipelineStage.EMBEDDING ? repository.embeddingCounts() : counts).toList());
+        Instant now = clock.instant();
+        Instant startOfToday = now.truncatedTo(ChronoUnit.DAYS);
+        return inTransaction(() -> repository.stageCounts(now, startOfToday).stream()
+                .map(counts -> counts.stage() == PipelineStage.EMBEDDING
+                        ? repository.embeddingCounts(now, startOfToday) : counts).toList());
+    }
+
+    /** Per stage, timings of work that finished within {@link DrainEstimate}'s measurement windows. */
+    public Map<PipelineStage, StageTimings> stageTimings() {
+        Instant now = clock.instant();
+        Instant durationWindowStart = now.minus(DrainEstimate.DURATION_WINDOW);
+        Instant throughputWindowStart = now.minus(DrainEstimate.THROUGHPUT_WINDOW);
+        return inTransaction(() -> {
+            Map<PipelineStage, StageTimings> timings = new java.util.EnumMap<>(PipelineStage.class);
+            for (PipelineStage stage : PipelineStage.values()) {
+                timings.put(stage, StageTimings.none(stage));
+            }
+            timings.putAll(repository.stageTimings(durationWindowStart, throughputWindowStart));
+            timings.put(PipelineStage.EMBEDDING, repository.embeddingTimings(durationWindowStart, throughputWindowStart));
+            return timings;
+        });
     }
 
     public Optional<PipelineRun> findRun(long runId) {

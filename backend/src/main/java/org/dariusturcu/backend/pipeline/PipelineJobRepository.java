@@ -31,6 +31,8 @@ public class PipelineJobRepository {
 
     private static final String VIDEO_LOCK_KEY_PREFIX = "pipeline-run:";
     private static final String ID_COLUMN = "id";
+    private static final long NO_FAILURES = 0;
+    private static final int MILLISECONDS_PER_SECOND = 1000;
     private static final String RUN_COLUMNS = """
             id, youtube_id, batch_id, lane, status, origin, provisional_year, created_at, ready_to_save_at,
             finished_at""";
@@ -324,32 +326,100 @@ public class PipelineJobRepository {
                 paused, paused ? reason : null, paused ? timestamp(now) : null, stage.name());
     }
 
-    public List<StageCounts> stageCounts(Instant startOfToday) {
+    // An in-progress job whose lease expired counts as queued again: the next lease reclaims it as a failed try.
+    public List<StageCounts> stageCounts(Instant now, Instant startOfToday) {
         return core.query("""
+                WITH classified AS (
+                    SELECT job.stage, job.status, job.attempts, job.next_attempt_at, job.finished_at,
+                        run.status AS run_status,
+                        job.status = 'IN_PROGRESS' AND job.lease_expires_at < ? AS lease_expired
+                    FROM pipeline_jobs job JOIN pipeline_runs run ON run.id = job.run_id
+                    WHERE job.status IN ('WAITING', 'IN_PROGRESS', 'FAILED')
+                        OR (job.status = 'DONE' AND job.finished_at >= ?)
+                )
                 SELECT control.stage, control.paused,
-                    count(job.id) FILTER (WHERE job.status = ? AND run.status = ?) AS waiting,
-                    count(job.id) FILTER (WHERE job.status = ?) AS in_progress,
-                    count(job.id) FILTER (WHERE job.status = ? AND job.finished_at >= ?) AS done_today,
-                    count(job.id) FILTER (WHERE job.status = ?) AS failed,
-                    count(job.id) FILTER (WHERE job.status = ? AND run.status = ? AND job.attempts > 0) AS retrying
+                    count(classified.stage) FILTER (WHERE classified.run_status = 'ACTIVE'
+                        AND (classified.status = 'WAITING' OR classified.lease_expired)) AS waiting,
+                    count(classified.stage) FILTER (WHERE classified.run_status = 'ACTIVE'
+                        AND ((classified.status = 'WAITING' AND classified.next_attempt_at <= ?)
+                            OR classified.lease_expired)) AS waiting_due,
+                    count(classified.stage) FILTER (WHERE classified.status = 'IN_PROGRESS'
+                        AND NOT classified.lease_expired) AS in_progress,
+                    count(classified.stage) FILTER (WHERE classified.status = 'DONE') AS done_today,
+                    count(classified.stage) FILTER (WHERE classified.status = 'FAILED'
+                        AND classified.run_status = 'FAILED') AS failed,
+                    count(classified.stage) FILTER (WHERE classified.run_status = 'ACTIVE'
+                        AND ((classified.status = 'WAITING' AND classified.attempts > 0)
+                            OR classified.lease_expired)) AS retrying
                 FROM stage_controls control
-                LEFT JOIN pipeline_jobs job ON job.stage = control.stage
-                LEFT JOIN pipeline_runs run ON run.id = job.run_id
+                LEFT JOIN classified ON classified.stage = control.stage
                 GROUP BY control.stage, control.paused
                 """, (resultSet, rowNumber) -> new StageCounts(
                         PipelineStage.valueOf(resultSet.getString("stage")), resultSet.getBoolean("paused"),
                         resultSet.getLong("waiting"), resultSet.getLong("in_progress"),
-                        resultSet.getLong("done_today"), resultSet.getLong("failed"), resultSet.getLong("retrying")),
-                PipelineJobStatus.WAITING.name(), PipelineRunStatus.ACTIVE.name(),
-                PipelineJobStatus.IN_PROGRESS.name(), PipelineJobStatus.DONE.name(), timestamp(startOfToday),
-                PipelineJobStatus.FAILED.name(), PipelineJobStatus.WAITING.name(), PipelineRunStatus.ACTIVE.name());
+                        resultSet.getLong("done_today"), resultSet.getLong("failed"), resultSet.getLong("retrying"),
+                        resultSet.getLong("waiting_due")),
+                timestamp(now), timestamp(startOfToday), timestamp(now));
     }
 
-    public StageCounts embeddingCounts() {
+    /**
+     * The V41 embedding queue in the same terms. A row claimed by the executor, with its claim
+     * not yet expired, is in progress; every other row is waiting. Retrying rows have been
+     * claimed before without a stored embedding. The queue retries without limit, so nothing
+     * ever counts as failed. Done today counts songs whose embedding was stored since the start
+     * of the UTC day.
+     */
+    public StageCounts embeddingCounts(Instant now, Instant startOfToday) {
         return core.queryForObject("""
-                SELECT count(*) AS waiting, count(*) FILTER (WHERE attempts > 0) AS retrying FROM song_embedding_queue
-                """, (row, number) -> new StageCounts(PipelineStage.EMBEDDING, false,
-                row.getLong("waiting"), 0, 0, 0, row.getLong("retrying")));
+                SELECT (SELECT paused FROM stage_controls WHERE stage = 'EMBEDDING') AS paused,
+                    count(*) FILTER (WHERE claimed_at IS NULL OR available_at <= ?) AS waiting,
+                    count(*) FILTER (WHERE available_at <= ?) AS waiting_due,
+                    count(*) FILTER (WHERE claimed_at IS NOT NULL AND available_at > ?) AS in_progress,
+                    count(*) FILTER (WHERE (claimed_at IS NULL OR available_at <= ?) AND attempts > 0) AS retrying,
+                    (SELECT count(*) FROM songs WHERE embedding_stored_at >= ? AND embedding IS NOT NULL) AS done_today
+                FROM song_embedding_queue
+                """, (row, number) -> new StageCounts(PipelineStage.EMBEDDING, row.getBoolean("paused"),
+                row.getLong("waiting"), row.getLong("in_progress"), row.getLong("done_today"), NO_FAILURES,
+                row.getLong("retrying"), row.getLong("waiting_due")),
+                timestamp(now), timestamp(now), timestamp(now), timestamp(now), timestamp(startOfToday));
+    }
+
+    /** Timings of every metadata stage from jobs that finished done since the given instants. */
+    public Map<PipelineStage, StageTimings> stageTimings(Instant durationWindowStart, Instant throughputWindowStart) {
+        Map<PipelineStage, StageTimings> timingsByStage = new EnumMap<>(PipelineStage.class);
+        Instant earliestStart = durationWindowStart.isBefore(throughputWindowStart) ? durationWindowStart : throughputWindowStart;
+        core.query("""
+                SELECT stage,
+                    round(avg(EXTRACT(EPOCH FROM finished_at - started_at) * %1$d)
+                        FILTER (WHERE finished_at >= ?))::bigint AS average_duration_ms,
+                    round(avg(GREATEST(EXTRACT(EPOCH FROM started_at - next_attempt_at), 0) * %1$d)
+                        FILTER (WHERE finished_at >= ?))::bigint AS average_wait_ms,
+                    count(*) FILTER (WHERE finished_at >= ?) AS finished_in_duration_window,
+                    count(*) FILTER (WHERE finished_at >= ?) AS finished_in_throughput_window
+                FROM pipeline_jobs
+                WHERE status = 'DONE' AND started_at IS NOT NULL AND finished_at >= ?
+                GROUP BY stage
+                """.formatted(MILLISECONDS_PER_SECOND), row -> {
+            PipelineStage stage = PipelineStage.valueOf(row.getString("stage"));
+            timingsByStage.put(stage, new StageTimings(stage, row.getObject("average_duration_ms", Long.class),
+                    row.getObject("average_wait_ms", Long.class), row.getLong("finished_in_duration_window"),
+                    row.getLong("finished_in_throughput_window")));
+        }, timestamp(durationWindowStart), timestamp(durationWindowStart), timestamp(durationWindowStart),
+                timestamp(throughputWindowStart), timestamp(earliestStart));
+        return timingsByStage;
+    }
+
+    /** Embedding timings from stored embeddings; songs embedded before V47 carry no times. */
+    public StageTimings embeddingTimings(Instant durationWindowStart, Instant throughputWindowStart) {
+        return core.queryForObject("""
+                SELECT round(avg(EXTRACT(EPOCH FROM embedding_stored_at - embedding_started_at) * %1$d)
+                        FILTER (WHERE embedding_started_at IS NOT NULL))::bigint AS average_duration_ms,
+                    count(*) AS finished_in_duration_window,
+                    count(*) FILTER (WHERE embedding_stored_at >= ?) AS finished_in_throughput_window
+                FROM songs WHERE embedding IS NOT NULL AND embedding_stored_at >= ?
+                """.formatted(MILLISECONDS_PER_SECOND), (row, number) -> new StageTimings(PipelineStage.EMBEDDING, row.getObject("average_duration_ms", Long.class),
+                null, row.getLong("finished_in_duration_window"), row.getLong("finished_in_throughput_window")),
+                timestamp(throughputWindowStart), timestamp(durationWindowStart));
     }
 
     private long insertReturningId(String sql, Object... arguments) {
