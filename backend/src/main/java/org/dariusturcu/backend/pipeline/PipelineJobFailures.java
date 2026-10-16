@@ -1,11 +1,6 @@
 package org.dariusturcu.backend.pipeline;
 
-/**
- * When a job's stored failure fields describe its current state. They do only for a failed job
- * and for a waiting job that has failed at least once and will retry. A finished, skipped, or
- * cancelled job, or one waiting only on a pace deferral, reports no failure, even when rows
- * written before completion cleared those fields still hold them.
- */
+/** Failure details are visible only on failed jobs and waiting retries. */
 public final class PipelineJobFailures {
     private static final String VISIBLE_CONDITION = "(%1$s.status = 'FAILED' OR (%1$s.status = 'WAITING' AND %1$s.attempts > 0))";
 

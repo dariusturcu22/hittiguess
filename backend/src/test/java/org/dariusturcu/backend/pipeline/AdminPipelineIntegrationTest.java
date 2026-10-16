@@ -319,6 +319,34 @@ class AdminPipelineIntegrationTest {
     }
 
     @Test
+    void expiredLeaseFiltersMatchTheQueueCounts() {
+        start(VIDEO);
+        lease();
+        core.update("UPDATE pipeline_jobs SET lease_expires_at = now() - interval '1 second'");
+
+        var youtube = stageOf(PipelineStage.YOUTUBE_METADATA);
+        assertThat(admin.jobs("youtube-metadata", "WAITING", null).totalElements()).isEqualTo(youtube.waiting());
+        assertThat(admin.jobs("youtube-metadata", "RETRYING", null).totalElements()).isEqualTo(youtube.retrying());
+        assertThat(admin.jobs("youtube-metadata", "IN_PROGRESS", null).totalElements()).isEqualTo(youtube.inProgress()).isZero();
+    }
+
+    @Test
+    void runEmbeddingProgressDistinguishesTheCurrentClaimFromFailedTries() {
+        PipelineRun run = start(VIDEO);
+        long songId = verifiedSong(VIDEO);
+        core.update("UPDATE pipeline_runs SET status = 'DONE', finished_at = now() WHERE id = ?", run.id());
+        core.update("UPDATE song_embedding_queue SET attempts = attempts + 1, available_at = now() + interval '5 minutes' WHERE song_id = ?", songId);
+
+        assertThat(admin.run(engine.findRun(run.id()).orElseThrow()).jobs())
+                .filteredOn(job -> job.stage() == PipelineStage.EMBEDDING).singleElement().satisfies(job -> {
+                    assertThat(job.status()).isEqualTo(PipelineJobStatus.IN_PROGRESS);
+                    assertThat(job.retrying()).isFalse();
+                    assertThat(job.failedTries()).isZero();
+                    assertThat(job.maxTries()).isNull();
+                });
+    }
+
+    @Test
     void runNowAndSongRerunBypassKnownSongFilteringAndBumpPriority() {
         long song = song(VIDEO);
         var first = transaction(() -> admin.runNow(VIDEO));

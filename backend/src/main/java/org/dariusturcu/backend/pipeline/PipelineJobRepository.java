@@ -362,13 +362,7 @@ public class PipelineJobRepository {
                 timestamp(now), timestamp(startOfToday), timestamp(now));
     }
 
-    /**
-     * The V41 embedding queue in the same terms. A row claimed by the executor, with its claim
-     * not yet expired, is in progress; every other row is waiting. Retrying rows have been
-     * claimed before without a stored embedding. The queue retries without limit, so nothing
-     * ever counts as failed. Done today counts songs whose embedding was stored since the start
-     * of the UTC day.
-     */
+    /** V41 retries indefinitely; claimed rows count as in progress until their lease expires. */
     public StageCounts embeddingCounts(Instant now, Instant startOfToday) {
         return core.queryForObject("""
                 SELECT (SELECT paused FROM stage_controls WHERE stage = 'EMBEDDING') AS paused,

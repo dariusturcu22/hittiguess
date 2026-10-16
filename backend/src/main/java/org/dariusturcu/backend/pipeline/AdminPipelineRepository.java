@@ -75,7 +75,9 @@ public class AdminPipelineRepository {
         List<QueueJobDTO> jobs = new ArrayList<>(core.query(JOB_ROWS + " WHERE job.run_id = ? ORDER BY job.id", AdminPipelineRepository::job, runId));
         jobs.addAll(core.query("""
                 SELECT song.id, song.youtube_id, song.title, run.lane, queue.attempts, queue.available_at,
+                    queue.claimed_at IS NOT NULL AND queue.available_at > now() AS claimed,
                     CASE WHEN song.verification_status <> 'VERIFIED' THEN 'SKIPPED'
+                        WHEN queue.claimed_at IS NOT NULL AND queue.available_at > now() THEN 'IN_PROGRESS'
                         WHEN queue.song_id IS NOT NULL OR song.embedding IS NULL THEN 'WAITING' ELSE 'DONE' END AS status,
                     ARRAY(SELECT name FROM song_artists WHERE song_id = song.id ORDER BY display_order) AS artist_names
                 FROM pipeline_runs run JOIN LATERAL (
@@ -84,9 +86,15 @@ public class AdminPipelineRepository {
                     ORDER BY known.id LIMIT 1
                 ) song ON true LEFT JOIN song_embedding_queue queue ON queue.song_id = song.id
                 WHERE run.id = ? AND run.status = 'DONE'
-                """, (row, number) -> new QueueJobDTO(row.getLong("id"), runId, row.getString("youtube_id"), row.getString("title"),
-                PipelineLane.valueOf(row.getString("lane")), PipelineStage.EMBEDDING, PipelineJobStatus.valueOf(row.getString("status")),
-                row.getInt("attempts") > 0, null, row.getInt("attempts"), null, instant(row, "available_at"), null, null, 0, artists(row)), runId));
+                """, (row, number) -> {
+            boolean claimed = row.getBoolean("claimed");
+            int failedTries = claimed ? row.getInt("attempts") - CURRENT_TRY : row.getInt("attempts");
+            return new QueueJobDTO(row.getLong("id"), runId, row.getString("youtube_id"), row.getString("title"),
+                    PipelineLane.valueOf(row.getString("lane")), PipelineStage.EMBEDDING,
+                    PipelineJobStatus.valueOf(row.getString("status")), !claimed && failedTries > 0,
+                    null, row.getInt("attempts"), null, instant(row, "available_at"), null, null, 0, artists(row),
+                    failedTries, null);
+        }, runId));
         return jobs;
     }
 
@@ -182,8 +190,17 @@ public class AdminPipelineRepository {
         if (AdminPipelineService.DONE_TODAY_FILTER.equals(status)) {
             return " AND job.status = 'DONE' AND job.finished_at >= date_trunc('day', now() AT TIME ZONE 'UTC') AT TIME ZONE 'UTC'";
         }
-        if (AdminPipelineService.RETRYING_FILTER.equals(status)) { return " AND job.status = 'WAITING' AND job.attempts > 0 AND run.status = 'ACTIVE'"; }
-        if (PipelineJobStatus.WAITING.name().equals(status)) { return " AND job.status = 'WAITING' AND run.status = 'ACTIVE'"; }
+        if (AdminPipelineService.RETRYING_FILTER.equals(status)) {
+            return " AND run.status = 'ACTIVE' AND ((job.status = 'WAITING' AND job.attempts > 0)"
+                    + " OR (job.status = 'IN_PROGRESS' AND job.lease_expires_at < now()))";
+        }
+        if (PipelineJobStatus.WAITING.name().equals(status)) {
+            return " AND run.status = 'ACTIVE' AND (job.status = 'WAITING'"
+                    + " OR (job.status = 'IN_PROGRESS' AND job.lease_expires_at < now()))";
+        }
+        if (PipelineJobStatus.IN_PROGRESS.name().equals(status)) {
+            return " AND job.status = 'IN_PROGRESS' AND job.lease_expires_at >= now()";
+        }
         if (PipelineJobStatus.FAILED.name().equals(status)) { return " AND job.status = 'FAILED' AND run.status = 'FAILED'"; }
         parameters.add(status);
         return " AND job.status = ?";

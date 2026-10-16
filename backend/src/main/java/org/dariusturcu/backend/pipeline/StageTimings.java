@@ -1,12 +1,6 @@
 package org.dariusturcu.backend.pipeline;
 
-/**
- * Measured timing of one stage from its recently finished work. averageDurationMs is the mean
- * time from lease to finish of jobs that finished done in the duration window, and
- * averageQueueWaitMs the mean time those jobs spent due before their lease; both are null
- * without a sample. finishedInThroughputWindow counts jobs that finished done in the shorter
- * throughput window.
- */
+/** Duration and due-queue wait use recent DONE jobs; throughput uses a shorter completion window. */
 public record StageTimings(
         PipelineStage stage,
         Long averageDurationMs,
