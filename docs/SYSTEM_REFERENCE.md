@@ -376,3 +376,37 @@ Internal `POST /catalog/index-next` requires `X-Internal-Api-Key` and returns `{
 Core V42 owns `api_usage_daily`: `usage_date`, `provider` (`YOUTUBE`, `DEEPINFRA`, `OPENAI`), `operation` (`videos.list`, `playlistItems.list`, `chat_completion`, `embeddings`), `call_count`, `quota_units` (YouTube quota units, 0 for other providers), `input_tokens`, `output_tokens`, `created_at`, and `updated_at`, unique on (`usage_date`, `provider`, `operation`). The AI service upserts one increment per call from a background thread, adding to the day's counters. YouTube rows use the Pacific date because the YouTube quota resets at midnight Pacific time; other providers use the UTC date. Every YouTube request that receives a response counts its quota units, whatever the status. Chat and embedding calls record the token counts from the response's usage field, or zero tokens when it has none. A failed write is logged by exception type and dropped, and never affects the pipeline.
 
 Estimated cost is computed on read in `ApiUsagePricing` from the stored tokens and named per-million-token price constants, with the date the prices were read; it is never stored, so a corrected price also corrects past figures. The month is the current UTC calendar month.
+
+## Stage pipeline job engine (story 51)
+
+Core V44 owns four tables. Nothing calls the engine yet; the existing backlog drain, user imports, and AI endpoints still process songs as before.
+
+- `import_batches`: `id`, `kind` (`ADMIN_PLAYLIST`, `ADMIN_IDS`, `USER_IMPORT`), `label`, `source_link`, `created_by` (nullable user, set null when the account is deleted), `created_at`, `cancelled_at`.
+- `pipeline_runs`: one YouTube ID's journey through the stages. `id`, `youtube_id`, `batch_id`, `lane` (`USER_IMPORT`, `BACKFILL`), `status` (`ACTIVE`, `DONE`, `FAILED`, `CANCELLED`), `origin` (the `PendingImportOrigin` values `ADMIN_SEED`, `FAST_TIER_RECHECK`, `USER_ADD_RECHECK`), `provisional_year`, `created_at`, `ready_to_save_at`, `finished_at`. The partial unique index `pipeline_runs_one_active_per_video` allows one `ACTIVE` run per YouTube ID, and `startRun` takes a transaction advisory lock on the ID, so a concurrent start returns the run already active.
+- `pipeline_jobs`: one stage of one run. `id`, `run_id`, `stage`, `lane` (copied from the run), `status` (`WAITING`, `IN_PROGRESS`, `DONE`, `FAILED`, `SKIPPED`, `CANCELLED`), `attempts`, `max_attempts`, `priority` (higher first), `next_attempt_at`, `lease_owner`, `lease_expires_at`, `result` (JSON), `failure_kind` (`TRANSIENT`, `PERMANENT`), `failure_stage`, `failure_reason`, `created_at`, `started_at`, `finished_at`, `updated_at`, unique on (`run_id`, `stage`). The partial index `pipeline_jobs_waiting_lease_order` serves the lease order and `pipeline_jobs_in_progress_lease_expiry` serves lease reclaim.
+- `stage_controls`: one seeded row per stage with `paused`, `paused_reason`, and `paused_at`.
+
+Stages are `YOUTUBE_METADATA`, `MUSICBRAINZ`, `DISCOGS`, `WIKIDATA`, `WIKIPEDIA`, `LLM_RECONCILIATION`, and `EMBEDDING`. Every status column has a CHECK constraint listing its values.
+
+`PipelineJobService.leaseNext(stage, owner, duration)` first reclaims the stage's expired leases, then leases one due `WAITING` job of an active run with `FOR UPDATE SKIP LOCKED`, user imports first, then higher priority, then oldest. A paused stage leases nothing. There is no background reclaim poll. A lost lease counts as a failed attempt. Completing or failing a job requires the caller to still hold its lease. Row locks are always taken on the run before the job.
+
+A transient failure retries after a backoff of 30 seconds doubling per attempt, capped at 30 minutes, shortened by up to 20% of jitter. After `pipeline.job.max-attempts` attempts (default 6) the job fails with the reason `Gave up after N attempts: <reason>` and the run fails. A transient failure with a rejected key puts the job back in its queue without using an attempt and pauses the stage with the reason `API key rejected`. A permanent failure fails the job and the run at once. `FailureClassifier` treats 408, 425, 429, 5xx, timeouts, connection errors, and unknown errors as transient; 400, 401, and 403 from a provider that takes an API key as a transient rejected key; and 404 or 410 from a YouTube video lookup and no usable metadata as permanent.
+
+```mermaid
+stateDiagram-v2
+    [*] --> YOUTUBE_METADATA
+    YOUTUBE_METADATA --> Sources: done
+    state Sources {
+        MUSICBRAINZ
+        DISCOGS
+        WIKIDATA
+    }
+    Sources --> ReadyToSave: all three answered with the same earliest year, Wikipedia and LLM skipped
+    Sources --> WIKIPEDIA: years differ, a year is missing, or a source did not answer
+    WIKIPEDIA --> LLM_RECONCILIATION
+    LLM_RECONCILIATION --> ReadyToSave
+    ReadyToSave --> EMBEDDING: ready_to_save_at set
+    EMBEDDING --> [*]: run DONE
+```
+
+The three source jobs are created together and run in parallel; the decision waits until all three are terminal. `StageDependencies` holds these rules, reading `earliestYear` (an integer or null) from each source job's result. New jobs inherit the priority of the job that finished before them. Cancelling a batch cancels its active runs and their waiting jobs; a job already in progress finishes as `CANCELLED` and its result is dropped. Retrying a failed run requeues its failed jobs with fresh attempts, unless another run of the same YouTube ID is active. Discarding cancels a run, bumping raises a run's unfinished jobs above every waiting job, and `stageCounts` reads waiting, in progress, done since the start of the UTC day, failed, and retrying jobs for every stage in one query.
