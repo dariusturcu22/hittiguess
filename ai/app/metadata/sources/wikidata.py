@@ -1,10 +1,12 @@
+import time
 from functools import lru_cache
 
 import httpx
 
 from app.config import settings
 from app.metadata.sources.http_retry import get_with_backoff
-from app.metadata.sources.pacing import RequestPacer
+from app.metadata.sources.pace_state import STAGE_WIKIDATA, PaceWaitTooLong
+from app.metadata.sources.pacing import PersistedRequestPacer
 from app.metadata.sources.mediawiki_auth import build_authenticated_client
 from app.metadata.sources.util import METADATA_SOURCE_USER_AGENT
 from app.observability.error_reporting import report_source_failure
@@ -37,11 +39,12 @@ def _delay_seconds() -> float:
     return 60 / (limit_per_minute * RATE_LIMIT_TARGET_UTILIZATION)
 
 
-_pacer = RequestPacer()
+_pacer = PersistedRequestPacer(STAGE_WIKIDATA)
 
 
 def _get(params: dict) -> dict:
     _pacer.wait(_delay_seconds())
+    request_started_at = time.monotonic()
     response = get_with_backoff(
         API_URL,
         params=params,
@@ -49,6 +52,7 @@ def _get(params: dict) -> dict:
         timeout=REQUEST_TIMEOUT_SECONDS,
         client=_client(),
     )
+    _pacer.record_response_time(time.monotonic() - request_started_at)
     return response.json()
 
 
@@ -92,6 +96,8 @@ def get_sitelinks_count(entity_id: str) -> int | None:
         entity = _get({"action": "wbgetentities", "ids": entity_id, "props": "sitelinks", "format": "json"})["entities"][
             entity_id
         ]
+    except PaceWaitTooLong:
+        raise
     except Exception:
         return None
     sitelinks = entity.get("sitelinks")

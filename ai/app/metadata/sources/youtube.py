@@ -1,3 +1,5 @@
+import time
+
 import httpx
 
 from app.config import settings
@@ -9,6 +11,8 @@ from app.metadata.sources.util import (
     extract_youtube_video_id,
     parse_iso8601_duration_seconds,
 )
+from app.metadata.sources.pace_state import STAGE_YOUTUBE_METADATA
+from app.metadata.sources.pacing import record_stage_response_time
 from app.observability.error_reporting import report_source_failure
 from app.usage import recorder as usage_recorder
 from app.usage.recorder import OPERATION_YOUTUBE_PLAYLIST_ITEMS_LIST, OPERATION_YOUTUBE_VIDEOS_LIST
@@ -54,7 +58,9 @@ def _fetch_video_metadata(video_id: str | None) -> dict[str, str] | None:
     failed request raises."""
     api_url = build_youtube_api_url(video_id, settings.youtube_api_key)
 
+    request_started_at = time.monotonic()
     response = _youtube_get(OPERATION_YOUTUBE_VIDEOS_LIST, api_url, timeout=5.0)
+    record_stage_response_time(STAGE_YOUTUBE_METADATA, time.monotonic() - request_started_at)
     response.raise_for_status()
     items = response.json().get("items", [])
 
