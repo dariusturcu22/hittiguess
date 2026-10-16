@@ -2455,3 +2455,11 @@ M01 adds the away-turn banner and one sound per turn across reconnects. M02 adds
 - [x] Move historical audit evidence into ARCHIVE.md and consolidate remaining work into standard files
 - [x] Delete standalone audit and remaining-work files and update all references
 - [x] Validate local documentation links, archive completed tasks, and check the final diff
+
+## Release: Closed-beta removal verification
+
+- [x] Review the gate removal, authentication coverage, documentation, and branch diff
+- [x] Run frontend unit tests, TypeScript checks, lint, and a production build
+- [x] Verify the combined frontend changes in a temporary integration worktree before publication
+
+The beta-removal branch passes 381 frontend tests, TypeScript, and a production build. Lint reports only three existing warnings. The combined pipeline, responsive-layout, and beta-removal frontend passes 410 tests across 65 files.
