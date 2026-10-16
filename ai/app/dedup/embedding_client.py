@@ -1,5 +1,6 @@
 from app.clients.openai_client import client
 from app.config import settings
+from app.usage import recorder as usage_recorder
 
 
 EMBEDDING_REQUEST_TIMEOUT_SECONDS = 60.0
@@ -10,5 +11,6 @@ def generate_embedding(text: str) -> list[float]:
     response = client.with_options(timeout=EMBEDDING_REQUEST_TIMEOUT_SECONDS, max_retries=EMBEDDING_IMMEDIATE_RETRIES).embeddings.create(
         model=settings.embedding_model, input=text
     )
+    usage_recorder.record_embeddings(response)
     (single_embedding_result,) = response.data
     return single_embedding_result.embedding

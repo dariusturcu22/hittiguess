@@ -72,7 +72,7 @@ The admin area becomes a console with its own sidebar section, a dashboard, a ba
 
 Pipeline and data:
 
-- [ ] Core migration: per-stage job table (song or video, batch, stage, status, attempts, lease, next attempt, result, failing stage, real failure reason), batch table, daily usage table (YouTube units, LLM and embedding calls and tokens per provider), and `songs.created_at` (existing songs backfilled from their earliest queue or membership row, otherwise unknown)
+- [ ] Core migration: per-stage job table (song or video, batch, stage, status, attempts, lease, next attempt, result, failing stage, real failure reason), batch table, and `songs.created_at` (existing songs backfilled from their earliest queue or membership row, otherwise unknown)
 - [ ] Stage workers lease jobs from their own queue at the source's pace; pace and cooldown state survive restarts; the leased-job pattern of the embedding queue is the template
 - [ ] Join step: when every stage a song needs is done, run reconciliation, save the song, and queue its embedding; handle Wikipedia being added after the first three sources answer
 - [ ] User imports use the same queues with priority over the backlog, replacing the drain pause in `MetadataPriorityCoordinator`
@@ -80,11 +80,12 @@ Pipeline and data:
 - [ ] A rejected or exhausted API key pauses its stage and raises a dashboard banner instead of failing queued songs
 - [ ] Reclaim jobs whose lease expired; a restart or redeploy resumes work without waiting for the daily timer
 - [ ] Remove the daily drain cap; the backlog stops when remaining YouTube units fall below a reserve kept for user imports
-- [ ] The AI service records YouTube units and LLM tokens per call; cost estimates use the official per-unit prices kept as named constants with the date they were read
+- [x] The AI service records YouTube units and LLM tokens per call; cost estimates use the official per-unit prices kept as named constants with the date they were read
 
 Admin API:
 
 - [x] `/api/users/me` returns the account role; remove the 403 probe in the admin layout
+- [x] Usage endpoint: `GET /api/admin/usage` returns YouTube units against the daily limit with the next midnight Pacific reset, and DeepInfra and OpenAI calls, tokens, and estimated cost for the UTC day and month, backed by the daily usage table
 - [ ] Dashboard endpoint: counts of verified songs, songs needing review (NEEDS_REVIEW, UNVERIFIED, and MANUAL_ENTRY), songs with errors, and songs queued now; YouTube units used against the daily 10,000-unit default with its midnight Pacific reset; LLM and embedding usage with estimated cost for today and the month; per-queue depth
 - [ ] Queue endpoint: waiting, in progress, done, and failed counts per stage, current pace, cooldown state, average response time, estimated time to drain, and the list of songs still needing work; a per-stage job list with lane (user import or backfill), attempts, next attempt, and last error
 - [ ] Controls: pause and resume per queue and for the whole backlog; retry, retry all, and discard failed items; cancel a batch; run one YouTube ID now at top priority; re-run the pipeline for one song
