@@ -158,17 +158,17 @@ Production and cleanup:
 
 Production fixes from the first enabled playlist (throughput and admin metrics):
 
-- [ ] Stage workers keep leasing due jobs in a bounded burst instead of one job per tick
-- [ ] Per-stage concurrency limits replace the exclusive lease, configurable per stage, on a bounded executor sized to the limits
-- [ ] In-process wake-ups start a stage as soon as its jobs are created or become due, with a longer idle poll
-- [ ] Queue metrics from `pipeline_jobs`: average job duration, average queue wait, throughput, source request time
-- [ ] Drain estimates per stage from measured throughput, concurrency, and source pace, plus an overall estimate
-- [ ] Embedding row filled from the V41 queue, with a migration recording claim and storage times
-- [ ] Count definitions checked and documented: expired leases, failed jobs of discarded runs, the UTC day
-- [ ] Finished jobs clear their failure fields, and read paths hide stale failure data on finished jobs
-- [ ] AI service logs transient upstream failures as warnings without the error reporter, and serves enough concurrent stage calls
-- [ ] Tests: drain and metric formulas, concurrency limit under parallel workers, burst, wake-ups, metric queries, throughput with a slow fake AI client, stale failure data, AI log levels
-- [ ] Update `SYSTEM_REFERENCE.md`, `ARCHITECTURE.md`, and `DECISIONS.md`
+- [x] Stage workers keep leasing due jobs in a bounded burst instead of one job per tick
+- [x] Per-stage concurrency limits replace the exclusive lease, configurable per stage, on a bounded executor sized to the limits
+- [x] In-process wake-ups start a stage as soon as its jobs are created or become due, with a longer idle poll
+- [x] Queue metrics from `pipeline_jobs`: average job duration, average queue wait, throughput, source request time
+- [x] Drain estimates per stage from measured throughput, concurrency, and source pace, plus an overall estimate
+- [x] Embedding row filled from the V41 queue, with a migration recording claim and storage times
+- [x] Count definitions checked and documented: expired leases, failed jobs of discarded runs, the UTC day
+- [x] Finished jobs clear their failure fields, and read paths hide stale failure data on finished jobs
+- [x] AI service logs transient upstream failures as warnings without the error reporter, and serves enough concurrent stage calls
+- [x] Tests: drain and metric formulas, concurrency limit under parallel workers, burst, wake-ups, metric queries, throughput with a slow fake AI client, stale failure data, AI log levels
+- [x] Update `SYSTEM_REFERENCE.md`, `ARCHITECTURE.md`, and `DECISIONS.md`
 
 Later, once the console exists: an audit log of admin actions, catalog health checks (duplicates, missing embeddings, missing durations), a list of safety rejections, and a catalog CSV export.
 

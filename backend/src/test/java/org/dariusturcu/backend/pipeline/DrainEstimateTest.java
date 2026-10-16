@@ -25,11 +25,8 @@ class DrainEstimateTest {
     private static final Duration NO_COOLDOWN = Duration.ZERO;
     private static final Duration COOLDOWN = Duration.ofMillis(90_500);
     private static final long COOLDOWN_CEILING_SECONDS = 91;
-    // Four slots at twenty seconds per job finish twelve jobs a minute, so six take thirty seconds.
     private static final long SIX_JOBS_AT_TWELVE_PER_MINUTE_SECONDS = 30;
-    // Thirty jobs in ten minutes is three a minute, so six take two minutes.
     private static final long SIX_JOBS_AT_THREE_PER_MINUTE_SECONDS = 120;
-    // A 1.5-second pace allows forty jobs a minute, so ten take fifteen seconds.
     private static final long TEN_JOBS_AT_FORTY_PER_MINUTE_SECONDS = 15;
     private static final long SHORT_ESTIMATE = 40;
     private static final long LONG_ESTIMATE = 300;

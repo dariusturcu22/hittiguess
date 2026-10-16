@@ -3,14 +3,7 @@ package org.dariusturcu.backend.pipeline;
 import java.time.Duration;
 import java.util.List;
 
-/**
- * How long a stage needs to finish the jobs it holds now. Throughput is the larger of the
- * measured rate over {@link #THROUGHPUT_WINDOW}, used once at least {@link #MINIMUM_MEASURED_JOBS}
- * jobs finished in it, and the modelled rate of the stage's concurrency limit divided by its
- * average job duration. A paced source can never go faster than one job per pace interval. A
- * remaining cooldown is added on top. Without any basis for a rate, and while the stage is
- * paused, the estimate is unknown (null) rather than a guess.
- */
+/** Drain estimates use measured completions or duration and concurrency, capped by source pace. */
 public final class DrainEstimate {
     public static final Duration DURATION_WINDOW = Duration.ofMinutes(60);
     public static final Duration THROUGHPUT_WINDOW = Duration.ofMinutes(10);
