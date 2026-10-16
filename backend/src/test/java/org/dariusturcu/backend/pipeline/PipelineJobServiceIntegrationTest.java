@@ -801,4 +801,3 @@ class PipelineJobServiceIntegrationTest {
         return instant.atOffset(java.time.ZoneOffset.UTC);
     }
 }
-
