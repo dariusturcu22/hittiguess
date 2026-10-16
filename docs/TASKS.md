@@ -4,13 +4,6 @@ Only unfinished work belongs here. [PROJECT_STATE.md](PROJECT_STATE.md) defines 
 
 Frontend implementation and tests belong to story 28. Feature work requires a Ready story and tasks checked against current code. Story 34 replaces the existing abuse-event log stubs with analytics writes; it does not change enforcement.
 
-## Fix: Responsive admin screens
-
-- [ ] Review and finish responsive rails, cards, tables, and song drawer while preserving the approved 1440x900 mockups
-- [ ] Verify queue and dashboard polling, action invalidation, and clear retry history with focused unit tests
-- [ ] Browser verification against the local backend: all seven screen states at eight viewports in both themes, with screenshots reviewed
-- [ ] Document responsive behavior and run the frontend unit suite, TypeScript check, and lint
-
 ## Release: Reconnect recovery
 
 - [ ] Recover session, private guess, DJ link-out, group membership, chat history, and completed-session state after events missed during disconnection
