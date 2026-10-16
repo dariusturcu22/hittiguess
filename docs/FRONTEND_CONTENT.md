@@ -97,6 +97,10 @@ The backlog, song catalog, and report routes exist and require the ADMIN role.
 
 Data: pending count, how many processed today, remaining daily drain quota and recent provisional/patient rechecks (story 40). Actions: submit a YouTube playlist link or a raw list of video IDs to bulk-enqueue into the backlog; the batch YouTube-ID lookup runs first so already-known songs are never enqueued, this view doesn't need to show that filtering step, only its result.
 
+### Dashboard (story 51)
+
+Data: counts of fully verified songs, songs needing review, songs with errors, and songs in the queue with how many are in progress and how many are waiting; the YouTube Data API units used today against the daily limit, with a progress bar and the time left until the midnight Pacific reset; and AI usage today, with calls and tokens for the LLM (DeepInfra) and for embeddings (OpenAI), plus the estimated cost for today and the month. LLM usage has no cap, so the cost is shown as an estimate. The figures refresh on their own every 30 seconds. Actions: retry when loading fails. The per-queue table, the rejected-key banner, and the reserve-for-users figures come with the pipeline work.
+
 ### Song catalog (story 51)
 
 Data: every song plus every queued or failed admin seed that has no song yet, newest first, 25 per page, with title (or the YouTube ID and a note that the title is not resolved yet), artists, release year (or pending), status (verified, needs review, in queue, processing, error), pipeline (fast, full, or unknown), date added (or unknown), and who added it (a username, admin seed, or unknown). Filter chips show each status with its count for the current search. Actions: search title or artist once at least 3 characters are typed, or paste an exact YouTube ID; filter by status; page through results; open a song's read-only detail with its status, year, pipeline, date and adder, stored verification status, confidence, Wikidata sitelinks, open report count, and its queue history. Per-source findings, review reasons, and the set year, set status, re-run, and delete actions come with the pipeline work.
