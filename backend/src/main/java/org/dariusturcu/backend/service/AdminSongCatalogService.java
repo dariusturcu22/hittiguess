@@ -11,7 +11,6 @@ import org.dariusturcu.backend.model.song.AdminSongDetailDTO;
 import org.dariusturcu.backend.model.song.CatalogSongStatus;
 import org.dariusturcu.backend.model.song.PendingImport;
 import org.dariusturcu.backend.model.song.PendingImportOrigin;
-import org.dariusturcu.backend.model.song.PendingImportStatus;
 import org.dariusturcu.backend.model.song.Song;
 import org.dariusturcu.backend.model.song.SongArtist;
 import org.dariusturcu.backend.model.song.SongReportStatus;
@@ -25,8 +24,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
-import java.util.stream.Collectors;
 
 /**
  * The admin song catalog list and the read-only song detail. Search text is trimmed and must be
@@ -134,10 +131,8 @@ public class AdminSongCatalogService {
                 .orElseThrow(() -> new ResourceNotFoundException(ResourceType.SONG, songId));
         List<PendingImport> queueRows = song.getYoutubeId() == null
                 ? List.of()
+                : catalogRepository.usesStagePipeline() ? catalogRepository.pipelineHistory(song.getYoutubeId())
                 : pendingImportRepository.findByYoutubeIdOrderByEnqueuedAtAscIdAsc(song.getYoutubeId());
-        Set<PendingImportStatus> queueStatuses = queueRows.stream()
-                .map(PendingImport::getStatus)
-                .collect(Collectors.toSet());
         boolean hasAdminSeedRow = queueRows.stream()
                 .anyMatch(queueRow -> queueRow.getOrigin() == PendingImportOrigin.ADMIN_SEED);
         String addedByUsername = song.getAddedBy() == null ? null : song.getAddedBy().getUsername();
@@ -148,8 +143,7 @@ public class AdminSongCatalogService {
                 song.getTitle(),
                 song.getArtists().stream().map(SongArtist::getName).toList(),
                 song.getReleaseYear() == UNRESOLVED_RELEASE_YEAR ? null : song.getReleaseYear(),
-                CatalogSongRules.songStatus(song.getVerificationStatus(),
-                        CatalogSongRules.activeQueueStatus(queueStatuses)),
+                CatalogSongRules.songStatus(song.getVerificationStatus(), queueRows, catalogRepository.usesStagePipeline()),
                 CatalogSongRules.pipeline(queueRows),
                 song.getCreatedAt(),
                 addedByUsername,
