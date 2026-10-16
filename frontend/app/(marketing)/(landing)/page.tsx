@@ -1,10 +1,8 @@
-import { cookies } from "next/headers";
 import Link from "next/link";
 import { Button } from "@/components/shadcn/button";
 import { LogoBars } from "@/components/logo";
 import { LandingHeader } from "./landing-header";
 import { LandingAuthRedirect } from "./landing-auth-redirect";
-import { BETA_ACCESS_COOKIE, CLOSED_BETA_ENABLED, hasBetaAccess } from "@/lib/beta-access";
 import "./landing.css";
 
 const ROUND_STEPS = [
@@ -17,11 +15,10 @@ const ROUND_STEPS = [
 function StartAction() {
   return <Button asChild className="landing-action"><Link href="/register">Start a session</Link></Button>;
 }
-export default async function LandingPage() {
-  const callsApi = !CLOSED_BETA_ENABLED || hasBetaAccess((await cookies()).get(BETA_ACCESS_COOKIE)?.value);
+export default function LandingPage() {
   return (
     <div className="landing-page">
-      {callsApi ? <LandingAuthRedirect /> : null}
+      <LandingAuthRedirect />
       <section className="landing-hero landing-dots">
         <div className="hero-circle" aria-hidden="true" />
         <LandingHeader />
