@@ -245,6 +245,13 @@ public class PipelineJobRepository {
                 reason, timestamp(now), jobId);
     }
 
+    public int retryWaitingJobs(long runId, Instant now) {
+        return core.update("""
+                UPDATE pipeline_jobs SET next_attempt_at = ?, updated_at = ?
+                WHERE run_id = ? AND status = 'WAITING' AND failure_kind = 'TRANSIENT'
+                """, timestamp(now), timestamp(now), runId);
+    }
+
     public void markJobFailed(long jobId, int attempts, FailureKind failureKind, String reason, Instant now) {
         core.update("""
                 UPDATE pipeline_jobs SET status = ?, attempts = ?, lease_expires_at = NULL, failure_kind = ?,

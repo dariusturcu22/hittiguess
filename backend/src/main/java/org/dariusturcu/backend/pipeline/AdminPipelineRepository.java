@@ -21,11 +21,20 @@ public class AdminPipelineRepository {
 
     private static final String JOB_ROWS = """
             SELECT job.*, run.youtube_id,
-                COALESCE(song.title, identification.result ->> 'title', run.youtube_id) AS title
+                COALESCE(song.title, identification.result ->> 'title', run.youtube_id) AS title,
+                ARRAY(SELECT jsonb_array_elements_text(COALESCE(
+                    (SELECT jsonb_agg(artist.name ORDER BY artist.display_order) FROM song_artists artist WHERE artist.song_id = song.id),
+                    identification.result -> 'artists', '[]'::jsonb))) AS artist_names
             FROM pipeline_jobs job
             JOIN pipeline_runs run ON run.id = job.run_id
-            LEFT JOIN LATERAL (SELECT title FROM songs WHERE youtube_id = run.youtube_id ORDER BY id LIMIT 1) song ON true
+            LEFT JOIN LATERAL (SELECT id, title FROM songs WHERE youtube_id = run.youtube_id ORDER BY id LIMIT 1) song ON true
             LEFT JOIN pipeline_jobs identification ON identification.run_id = run.id AND identification.stage = 'YOUTUBE_METADATA'
+            """;
+    private static final String RUN_STATE = """
+            CASE WHEN run.status <> 'ACTIVE' THEN run.status
+                WHEN EXISTS (SELECT FROM pipeline_jobs running WHERE running.run_id = run.id AND running.status = 'IN_PROGRESS') THEN 'IN_PROGRESS'
+                WHEN EXISTS (SELECT FROM pipeline_jobs retry WHERE retry.run_id = run.id AND retry.status = 'WAITING' AND retry.attempts > 0) THEN 'RETRYING'
+                ELSE 'WAITING' END
             """;
     private final JdbcTemplate core;
 
@@ -62,20 +71,40 @@ public class AdminPipelineRepository {
         parameters.add(size);
         parameters.add(offset);
         return core.query(JOB_ROWS + " WHERE job.stage = ?" + filter
-                + " ORDER BY job.created_at DESC, job.id DESC LIMIT ? OFFSET ?", AdminPipelineRepository::job, parameters.toArray());
+                + " ORDER BY CASE WHEN run.lane = 'USER_IMPORT' THEN 0 ELSE 1 END, job.priority DESC, job.next_attempt_at, job.id LIMIT ? OFFSET ?", AdminPipelineRepository::job, parameters.toArray());
     }
 
     public List<QueueJobDTO> jobsOfRun(long runId) {
-        return core.query(JOB_ROWS + " WHERE job.run_id = ? ORDER BY job.id", AdminPipelineRepository::job, runId);
+        List<QueueJobDTO> jobs = new ArrayList<>(core.query(JOB_ROWS + " WHERE job.run_id = ? ORDER BY job.id", AdminPipelineRepository::job, runId));
+        jobs.addAll(core.query("""
+                SELECT song.id, song.youtube_id, song.title, run.lane, queue.attempts, queue.available_at,
+                    CASE WHEN song.verification_status <> 'VERIFIED' THEN 'SKIPPED'
+                        WHEN queue.song_id IS NOT NULL OR song.embedding IS NULL THEN 'WAITING' ELSE 'DONE' END AS status,
+                    ARRAY(SELECT name FROM song_artists WHERE song_id = song.id ORDER BY display_order) AS artist_names
+                FROM pipeline_runs run JOIN LATERAL (
+                    SELECT known.* FROM songs known WHERE known.youtube_id = run.youtube_id OR EXISTS (
+                        SELECT FROM alternate_youtube_ids alternate WHERE alternate.song_id = known.id AND alternate.youtube_id = run.youtube_id)
+                    ORDER BY known.id LIMIT 1
+                ) song ON true LEFT JOIN song_embedding_queue queue ON queue.song_id = song.id
+                WHERE run.id = ? AND run.status = 'DONE'
+                """, (row, number) -> new QueueJobDTO(row.getLong("id"), runId, row.getString("youtube_id"), row.getString("title"),
+                PipelineLane.valueOf(row.getString("lane")), PipelineStage.EMBEDDING, PipelineJobStatus.valueOf(row.getString("status")),
+                row.getInt("attempts") > 0, null, row.getInt("attempts"), null, instant(row, "available_at"), null, null, 0, artists(row)), runId));
+        return jobs;
     }
 
-    public List<Long> runIds(PipelineRunStatus status, PipelineLane lane, int size, long offset) {
+    public String batchLabel(Long batchId) {
+        return batchId == null ? null : core.queryForObject("SELECT label FROM import_batches WHERE id = ?", String.class, batchId);
+    }
+
+    public List<Long> runIds(PipelineRunStatus status, PipelineLane lane, RunQueueState state, int size, long offset) {
         List<Object> parameters = new ArrayList<>();
         String filter = runFilter(status, lane, parameters);
+        if (state != null) { filter += " AND (" + RUN_STATE + ") = ?"; parameters.add(state.name()); }
         parameters.add(size);
         parameters.add(offset);
-        return core.queryForList("SELECT id FROM pipeline_runs WHERE true" + filter
-                + " ORDER BY created_at DESC, id DESC LIMIT ? OFFSET ?", Long.class, parameters.toArray());
+        return core.queryForList("SELECT run.id FROM pipeline_runs run WHERE true" + filter
+                + " ORDER BY run.created_at DESC, run.id DESC LIMIT ? OFFSET ?", Long.class, parameters.toArray());
     }
 
     public long runCount(PipelineRunStatus status, PipelineLane lane) {
@@ -84,8 +113,29 @@ public class AdminPipelineRepository {
                 Long.class, parameters.toArray());
     }
 
+    public java.util.Map<RunQueueState, Long> runCounts(PipelineRunStatus status, PipelineLane lane) {
+        var counts = new java.util.EnumMap<RunQueueState, Long>(RunQueueState.class);
+        java.util.Arrays.stream(RunQueueState.values()).forEach(state -> counts.put(state, 0L));
+        List<Object> parameters = new ArrayList<>();
+        String filter = runFilter(status, lane, parameters);
+        core.query("SELECT " + RUN_STATE + " AS queue_state, count(*) AS total FROM pipeline_runs run WHERE true"
+                + filter + " GROUP BY queue_state", row -> {
+            counts.put(RunQueueState.valueOf(row.getString("queue_state")), row.getLong("total"));
+        }, parameters.toArray());
+        return counts;
+    }
+
     public List<Long> failedRunIds() {
-        return core.queryForList("SELECT id FROM pipeline_runs WHERE status = 'FAILED' ORDER BY id", Long.class);
+        return failedRunIds(null);
+    }
+
+    public List<Long> failedRunIds(PipelineStage stage) {
+        if (stage == null) { return core.queryForList("SELECT id FROM pipeline_runs WHERE status = 'FAILED' ORDER BY id", Long.class); }
+        return core.queryForList("""
+                SELECT run.id FROM pipeline_runs run WHERE run.status = 'FAILED'
+                    AND EXISTS (SELECT FROM pipeline_jobs job WHERE job.run_id = run.id AND job.stage = ? AND job.status = 'FAILED')
+                ORDER BY run.id
+                """, Long.class, stage.name());
     }
 
     public long batchCount() { return core.queryForObject("SELECT count(*) FROM import_batches", Long.class); }
@@ -129,6 +179,7 @@ public class AdminPipelineRepository {
 
     private static String statusFilter(String status, List<Object> parameters) {
         if (status == null) { return ""; }
+        if (AdminPipelineService.DONE_TODAY_FILTER.equals(status)) { return " AND job.status = 'DONE' AND job.finished_at >= date_trunc('day', now())"; }
         if (AdminPipelineService.RETRYING_FILTER.equals(status)) { return " AND job.status = 'WAITING' AND job.attempts > 0"; }
         parameters.add(status);
         return " AND job.status = ?";
@@ -145,13 +196,14 @@ public class AdminPipelineRepository {
     private List<QueueJobDTO> embeddingJobs(String status, int size, long offset) {
         if (embeddingCount(status) == 0) { return List.of(); }
         return core.query("""
-                SELECT queue.song_id, queue.attempts, queue.available_at, song.youtube_id, song.title
+                SELECT queue.song_id, queue.attempts, queue.available_at, song.youtube_id, song.title,
+                    ARRAY(SELECT name FROM song_artists WHERE song_id = song.id ORDER BY display_order) AS artist_names
                 FROM song_embedding_queue queue JOIN songs song ON song.id = queue.song_id
                 """ + (AdminPipelineService.RETRYING_FILTER.equals(status) ? " WHERE queue.attempts > 0" : "")
                 + " ORDER BY queue.available_at, queue.song_id LIMIT ? OFFSET ?",
                 (row, number) -> new QueueJobDTO(row.getLong("song_id"), null, row.getString("youtube_id"), row.getString("title"),
                         null, PipelineStage.EMBEDDING, PipelineJobStatus.WAITING, row.getInt("attempts") > 0, null,
-                        row.getInt("attempts"), null, instant(row, "available_at"), null, null, 0), size, offset);
+                        row.getInt("attempts"), null, instant(row, "available_at"), null, null, 0, artists(row)), size, offset);
     }
 
     private static QueueJobDTO job(ResultSet row, int number) throws SQLException {
@@ -161,7 +213,12 @@ public class AdminPipelineRepository {
                 PipelineLane.valueOf(row.getString("lane")), PipelineStage.valueOf(row.getString("stage")), status,
                 status == PipelineJobStatus.WAITING && row.getInt("attempts") > 0, instant(row, "created_at"), row.getInt("attempts"),
                 row.getInt("max_attempts"), instant(row, "next_attempt_at"), row.getString("failure_reason"),
-                failureStage == null ? null : PipelineStage.valueOf(failureStage), row.getInt("priority"));
+                failureStage == null ? null : PipelineStage.valueOf(failureStage), row.getInt("priority"), artists(row));
+    }
+
+    private static List<String> artists(ResultSet row) throws SQLException {
+        var array = row.getArray("artist_names");
+        return array == null ? List.of() : List.of((String[]) array.getArray());
     }
 
     static Instant instant(ResultSet row, String column) throws SQLException {

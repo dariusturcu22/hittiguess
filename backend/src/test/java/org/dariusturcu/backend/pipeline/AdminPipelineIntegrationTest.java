@@ -299,4 +299,61 @@ class AdminPipelineIntegrationTest {
         assertThat(transaction(admin::retryAll).affected()).isZero();
         assertThatThrownBy(() -> transaction(() -> admin.retry(job.runId()))).isInstanceOf(ConflictException.class);
     }
+    @Test
+    void runStateCountsRemainGlobalWhenThePageIsFiltered() {
+        PipelineRun waiting = start(VIDEO);
+        PipelineRun retrying = start(OTHER_VIDEO);
+        transaction(() -> admin.bump(retrying.id()));
+        engine.failTransient(lease().id(), OWNER, "Timeout", false);
+        var page = admin.runs(null, null, RunQueueState.RETRYING, null);
+        assertThat(page.items()).singleElement().satisfies(run -> assertThat(run.id()).isEqualTo(retrying.id()));
+        assertThat(page.totalElements()).isEqualTo(1);
+        assertThat(page.counts()).containsEntry(RunQueueState.WAITING, 1L).containsEntry(RunQueueState.RETRYING, 1L);
+        assertThat(admin.runs(null, null, RunQueueState.WAITING, null).items()).singleElement()
+                .satisfies(run -> assertThat(run.id()).isEqualTo(waiting.id()));
+        transaction(() -> admin.retry(retrying.id()));
+        assertThat(engine.jobsOfRun(retrying.id())).singleElement().satisfies(job -> {
+            assertThat(job.attempts()).isEqualTo(1);
+            assertThat(job.nextAttemptAt()).isBeforeOrEqualTo(Instant.now());
+        });
+    }
+
+    @Test
+    void runRowsIncludeBatchArtistsAndReadOnlyEmbeddingProgress() {
+        var batch = transaction(() -> admin.enqueue(new AdminCatalogSeedingRequest(null, List.of(VIDEO))));
+        long song = song(VIDEO);
+        core.update("INSERT INTO song_artists (song_id, name, role, display_order) VALUES (?, 'Artist', 'MAIN', 0)", song);
+        var run = admin.runs(null, null, null).items().getFirst();
+        assertThat(run.batchId()).isEqualTo(batch.batchId());
+        assertThat(run.batchLabel()).isNotBlank();
+        assertThat(run.artists()).containsExactly("Artist");
+        core.update("UPDATE pipeline_runs SET status = 'DONE', finished_at = now() WHERE id = ?", run.id());
+        assertThat(admin.runs(null, null, null).items().getFirst().jobs()).anySatisfy(job -> {
+            assertThat(job.stage()).isEqualTo(PipelineStage.EMBEDDING);
+            assertThat(job.status()).isEqualTo(PipelineJobStatus.SKIPPED);
+        });
+        assertThat(core.queryForObject("SELECT count(*) FROM pipeline_jobs WHERE stage = 'EMBEDDING'", Long.class)).isZero();
+    }
+
+    @Test
+    void stageScopedRetryLeavesOtherStagesFailed() {
+        PipelineRun run = start(VIDEO);
+        engine.failPermanent(lease().id(), OWNER, "Unavailable");
+        assertThat(transaction(() -> admin.retryAll("musicbrainz")).affected()).isZero();
+        assertThat(engine.findRun(run.id()).orElseThrow().status()).isEqualTo(PipelineRunStatus.FAILED);
+        assertThat(transaction(() -> admin.retryAll("youtube-metadata")).affected()).isEqualTo(1);
+    }
+
+    @Test
+    void doneTodayFilterExcludesPreviousDaysAndWaitingRowsFollowLeasePriority() {
+        start(VIDEO);
+        PipelineRun priority = start(OTHER_VIDEO);
+        transaction(() -> admin.bump(priority.id()));
+        assertThat(admin.jobs("youtube-metadata", "WAITING", null).items().getFirst().runId()).isEqualTo(priority.id());
+        engine.complete(lease().id(), OWNER, "{\"outcome\":\"IDENTIFIED\",\"title\":\"Song\"}");
+        assertThat(admin.jobs("youtube-metadata", "DONE_TODAY", null).totalElements()).isEqualTo(1);
+        core.update("UPDATE pipeline_jobs SET finished_at = now() - interval '2 days' WHERE status = 'DONE'");
+        assertThat(admin.jobs("youtube-metadata", "DONE_TODAY", null).totalElements()).isZero();
+    }
+
 }
