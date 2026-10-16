@@ -70,7 +70,7 @@ function DetailBody({ detail }: { detail: AdminSongDetailDTO }) {
       </div>
 
       <div className="mb-2 font-display text-xs text-card-foreground">Stored values</div>
-      <div className="mb-4 rounded-[12px] bg-card px-3.5 py-2.5 text-xs">
+      <div className="mb-4 rounded-[12px] bg-background px-3.5 dark:bg-card py-2.5 text-xs">
         <StoredValueRow label="YouTube ID" value={detail.youtubeId} />
         <StoredValueRow label="Verification status" value={detail.verificationStatus} />
         <StoredValueRow label="Confidence" value={detail.confidence ?? "none"} />

@@ -175,7 +175,7 @@ export default function SongCatalogPage() {
   }
 
   return (
-    <div className="relative flex min-w-0 flex-1 flex-col box-border bg-dotted px-14 pt-10 pb-9">
+    <div className="relative flex h-full min-w-0 flex-1 flex-col box-border bg-dotted px-14 pt-10 pb-9">
       <div className="mb-5 shrink-0">
         <div className="mb-1 flex items-center gap-2.5">
           <h1 className="font-display text-[30px] text-accent [text-shadow:3px_3px_0_var(--text-shadow-on-page)]">
