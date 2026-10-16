@@ -8,7 +8,9 @@ public enum ResourceType {
     PLAYLIST_MEMBER("Playlist member"),
     SAVED_PLAYLIST("Saved playlist"),
     GROUP("Group"),
-    MEMBER("Member");
+    MEMBER("Member"),
+    PIPELINE_RUN("Pipeline run"),
+    IMPORT_BATCH("Import batch");
 
     private final String displayName;
 

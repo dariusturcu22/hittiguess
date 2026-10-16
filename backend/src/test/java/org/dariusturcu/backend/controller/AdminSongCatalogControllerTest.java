@@ -112,6 +112,8 @@ class AdminSongCatalogControllerTest {
                 .andExpect(jsonPath("$.songId").value(SONG_ID))
                 .andExpect(jsonPath("$.status").value(CatalogSongStatus.NEEDS_REVIEW.name()))
                 .andExpect(jsonPath("$.pipeline").value(CatalogPipeline.FAST.name()))
+                .andExpect(jsonPath("$.sourceFindings").doesNotExist())
+                .andExpect(jsonPath("$.reviewReason").doesNotExist())
                 .andExpect(jsonPath("$.openReportCount").value(2));
     }
 

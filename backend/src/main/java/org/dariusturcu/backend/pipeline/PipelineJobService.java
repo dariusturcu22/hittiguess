@@ -57,6 +57,13 @@ public class PipelineJobService {
         return inTransaction(() -> repository.insertBatch(kind, label, sourceLink, createdBy, clock.instant()));
     }
 
+    public void recordSkippedDuplicates(long batchId, int count) {
+        inTransaction(() -> {
+            repository.recordSkippedDuplicates(batchId, count);
+            return null;
+        });
+    }
+
     /**
      * Starts a run with its YouTube metadata job, or returns the run already active for the
      * same YouTube ID. Later stages are created as results arrive.
@@ -127,7 +134,7 @@ public class PipelineJobService {
             if (keyRejected && leased.run().status() != PipelineRunStatus.CANCELLED) {
                 PipelineJob job = leased.job();
                 repository.scheduleRetry(jobId, job.attempts(), now, reason, now);
-                repository.setStagePaused(job.stage(), true, KEY_REJECTED_PAUSE_REASON, now);
+                repository.setStagePaused(job.stage(), true, KEY_REJECTED_PAUSE_REASON + ": " + reason, now);
                 return null;
             }
             recordTransientFailure(leased, reason, now);
@@ -204,6 +211,11 @@ public class PipelineJobService {
      */
     public boolean retryFailed(long runId) {
         return inTransaction(() -> {
+            Optional<PipelineRun> existing = repository.findRun(runId);
+            if (existing.isEmpty() || (existing.get().batchId() != null
+                    && repository.lockCancelledBatch(existing.get().batchId()))) {
+                return false;
+            }
             Optional<PipelineRun> lockedRun = repository.lockRun(runId);
             if (lockedRun.isEmpty() || lockedRun.get().status() != PipelineRunStatus.FAILED) {
                 return false;

@@ -1,6 +1,8 @@
 package org.dariusturcu.backend.model.song;
 
 import jakarta.validation.constraints.NotNull;
+import com.fasterxml.jackson.annotation.JsonInclude;
+import org.dariusturcu.backend.model.admin.SourceFindingDTO;
 
 import java.time.Instant;
 import java.util.List;
@@ -25,5 +27,14 @@ public record AdminSongDetailDTO(
         String confidence,
         Integer wikidataSitelinksCount,
         @NotNull Long openReportCount,
-        @NotNull List<AdminQueueHistoryEntryDTO> queueHistory) {
+        @NotNull List<AdminQueueHistoryEntryDTO> queueHistory,
+        @JsonInclude(JsonInclude.Include.NON_NULL) List<SourceFindingDTO> sourceFindings,
+        @JsonInclude(JsonInclude.Include.NON_NULL) String reviewReason) {
+    public AdminSongDetailDTO(Long songId, String youtubeId, String title, List<String> artists, Integer releaseYear,
+            CatalogSongStatus status, CatalogPipeline pipeline, Instant createdAt, String addedBy,
+            CatalogAddedByKind addedByKind, VerificationStatus verificationStatus, String confidence,
+            Integer wikidataSitelinksCount, Long openReportCount, List<AdminQueueHistoryEntryDTO> queueHistory) {
+        this(songId, youtubeId, title, artists, releaseYear, status, pipeline, createdAt, addedBy, addedByKind,
+                verificationStatus, confidence, wikidataSitelinksCount, openReportCount, queueHistory, null, null);
+    }
 }

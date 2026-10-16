@@ -15,6 +15,7 @@ import java.util.Map;
 @Component
 @ConditionalOnProperty(name = "pipeline.stages.enabled", havingValue = "true")
 public class HttpAiStageClient implements AiStageClient {
+    private enum Provider { YOUTUBE, MUSICBRAINZ, DISCOGS, WIKIDATA, WIKIPEDIA, DEEPINFRA, OPENAI }
     static final Map<PipelineStage, String> PATHS = Map.of(
             PipelineStage.YOUTUBE_METADATA, "/stages/youtube-metadata",
             PipelineStage.MUSICBRAINZ, "/stages/musicbrainz",
@@ -73,10 +74,15 @@ public class HttpAiStageClient implements AiStageClient {
             FailureClassifier.FailureCause cause = FailureClassifier.FailureCause.valueOf(body.path("cause").asText());
             FailureClassifier.ProviderHint provider = FailureClassifier.ProviderHint.valueOf(body.path("providerHint").asText());
             Integer upstreamStatus = body.path("upstreamStatus").isNumber() ? body.path("upstreamStatus").asInt() : null;
-            String reason = cause.name() + (upstreamStatus == null ? "" : " (HTTP " + upstreamStatus + ")");
+            String reason = providerName(body) + " " + cause.name() + (upstreamStatus == null ? "" : " (HTTP " + upstreamStatus + ")");
             return new AiStageFailure(reason, FailureClassifier.classify(upstreamStatus, cause, provider), null);
-        } catch (IllegalArgumentException unknownContract) {
+        } catch (RuntimeException unknownContract) {
             return new AiStageFailure(UNKNOWN_FAILURE, FailureClassifier.TRANSIENT, null);
         }
+    }
+
+    private static String providerName(JsonNode body) {
+        try { return Provider.valueOf(body.path("provider").asText()).name(); }
+        catch (RuntimeException unknownProvider) { return "Provider"; }
     }
 }

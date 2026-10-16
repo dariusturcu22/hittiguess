@@ -1,6 +1,7 @@
 package org.dariusturcu.backend.service;
 
-import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.dariusturcu.backend.pipeline.AdminSongPipelineService;
 import org.dariusturcu.backend.exception.ResourceNotFoundException;
 import org.dariusturcu.backend.exception.ResourceType;
 import org.dariusturcu.backend.model.song.AdminCatalogCountsDTO;
@@ -31,7 +32,6 @@ import java.util.Map;
  * most {@value #MAXIMUM_PAGE_SIZE} rows; a larger size is rejected rather than clamped.
  */
 @Service
-@RequiredArgsConstructor
 public class AdminSongCatalogService {
 
     public static final int MINIMUM_SEARCH_LENGTH = 3;
@@ -46,6 +46,22 @@ public class AdminSongCatalogService {
     private final SongRepository songRepository;
     private final PendingImportRepository pendingImportRepository;
     private final SongReportRepository songReportRepository;
+    private final AdminSongPipelineService pipeline;
+
+    public AdminSongCatalogService(AdminSongCatalogRepository catalogRepository, SongRepository songRepository,
+            PendingImportRepository pendingImportRepository, SongReportRepository songReportRepository) {
+        this(catalogRepository, songRepository, pendingImportRepository, songReportRepository, null);
+    }
+
+    @Autowired
+    public AdminSongCatalogService(AdminSongCatalogRepository catalogRepository, SongRepository songRepository,
+            PendingImportRepository pendingImportRepository, SongReportRepository songReportRepository, AdminSongPipelineService pipeline) {
+        this.catalogRepository = catalogRepository;
+        this.songRepository = songRepository;
+        this.pendingImportRepository = pendingImportRepository;
+        this.songReportRepository = songReportRepository;
+        this.pipeline = pipeline;
+    }
 
     /**
      * Returns the trimmed search text, or null when there is none to apply.
@@ -136,6 +152,7 @@ public class AdminSongCatalogService {
         boolean hasAdminSeedRow = queueRows.stream()
                 .anyMatch(queueRow -> queueRow.getOrigin() == PendingImportOrigin.ADMIN_SEED);
         String addedByUsername = song.getAddedBy() == null ? null : song.getAddedBy().getUsername();
+        var findings = pipeline == null ? new AdminSongPipelineService.Findings(null, null) : pipeline.findings(songId);
 
         return new AdminSongDetailDTO(
                 song.getId(),
@@ -152,7 +169,7 @@ public class AdminSongCatalogService {
                 song.getConfidence(),
                 song.getWikidataSitelinksCount(),
                 songReportRepository.countBySongIdAndStatus(song.getId(), SongReportStatus.OPEN),
-                queueRows.stream().map(AdminSongCatalogService::toHistoryEntry).toList());
+                queueRows.stream().map(AdminSongCatalogService::toHistoryEntry).toList(), findings.sources(), findings.reviewReason());
     }
 
     private static AdminCatalogSongDTO toCatalogSong(AdminCatalogRow row) {
