@@ -66,16 +66,46 @@ Both Neon projects are provisioned. Core owns schema migrations; AI connects onl
 - [ ] Merge existing catalog duplicates and add unique songs(youtube_id) and active pending_imports indexes
 - [ ] Integration tests: cleanup preserves playlist/alternate-ID links and indexes reject concurrent duplicates
 
-## Admin catalog seeding redesign, requirements pending
+## Story 51: Admin console and parallel source pipeline
 
-Both the seeding behavior and the admin page change. The owner supplies the requirements; these tasks are the confirmed starting points and the story stays Needs Definition until the breakdown is checked against the code.
+The admin area becomes a console with its own sidebar section, a dashboard, a backfill queue, a song catalog, and the report queue. Backfill and user imports run through seven persisted queues, one per stage: YouTube metadata, MusicBrainz, Discogs, Wikidata, Wikipedia, LLM reconciliation, and embedding. Each queue works at its own pace, and a song is finalized once every stage it needs is done. Wikipedia is queued for a song only when MusicBrainz, Discogs, and Wikidata disagree. Frontend screens wait for approved mockups. LLM usage has no limit and is tracked with an estimated cost from the official prices. The daily 200-song drain cap is removed.
 
-- [ ] Classify pipeline failures as transient (service outage, rejected key, rate limit, timeout, shutdown mid-item) or permanent (video unavailable, no usable metadata); a transient failure leaves the item pending with a retry delay and attempt count instead of marking it failed
-- [ ] Store the real failure reason and failing stage on each failed item; show it in the admin view
-- [ ] Add a retry action for failed items; failed rows are never picked up again today, and the status diagram in SYSTEM_REFERENCE.md describes a retry that does not exist
-- [ ] Resume interrupted work after a restart or redeploy without waiting for the daily timer; the drain currently also starts at every application boot because the daily timer fires immediately
-- [ ] Redesign the admin catalog page and its enqueue/drain flow from the owner's requirements (per-playlist progress, status detail, daily quota visibility)
-- [ ] Unit and integration tests: transient versus permanent classification, retry limits, interrupted-item recovery, retry action, and the status endpoint
+Pipeline and data:
+
+- [ ] Core migration: per-stage job table (song or video, batch, stage, status, attempts, lease, next attempt, result, failing stage, real failure reason), batch table, daily usage table (YouTube units, LLM and embedding calls and tokens per provider), and `songs.created_at` (existing songs backfilled from their earliest queue or membership row, otherwise unknown)
+- [ ] Stage workers lease jobs from their own queue at the source's pace; pace and cooldown state survive restarts; the leased-job pattern of the embedding queue is the template
+- [ ] Join step: when every stage a song needs is done, run reconciliation, save the song, and queue its embedding; handle Wikipedia being added after the first three sources answer
+- [ ] User imports use the same queues with priority over the backlog, replacing the drain pause in `MetadataPriorityCoordinator`
+- [ ] Classify failures as transient (outage, rejected key, rate limit, timeout, shutdown) or permanent (video unavailable, no usable metadata); transient failures retry with backoff and an attempt count and never mark the song failed; store the real reason and failing stage
+- [ ] A rejected or exhausted API key pauses its stage and raises a dashboard banner instead of failing queued songs
+- [ ] Reclaim jobs whose lease expired; a restart or redeploy resumes work without waiting for the daily timer
+- [ ] Remove the daily drain cap; the backlog stops when remaining YouTube units fall below a reserve kept for user imports
+- [ ] The AI service records YouTube units and LLM tokens per call; cost estimates use the official per-unit prices kept as named constants with the date they were read
+
+Admin API:
+
+- [ ] `/api/users/me` returns the account role; remove the 403 probe in the admin layout
+- [ ] Dashboard endpoint: counts of verified songs, songs needing review (NEEDS_REVIEW, UNVERIFIED, and MANUAL_ENTRY), songs with errors, and songs queued now; YouTube units used against the daily 10,000-unit default with its midnight Pacific reset; LLM and embedding usage with estimated cost for today and the month; per-queue depth
+- [ ] Queue endpoint: waiting, in progress, done, and failed counts per stage, current pace, cooldown state, average response time, estimated time to drain, and the list of songs still needing work
+- [ ] Controls: pause and resume per queue and for the whole backlog; retry, retry all, and discard failed items; cancel a batch; run one YouTube ID now at top priority; re-run the pipeline for one song
+- [ ] Batches: each submitted playlist or ID list is a batch with progress, skipped duplicates, and an estimate
+- [ ] Song catalog endpoint: server-side search by title or artist with a minimum of three characters, 25 results per page, and a trigram index so a search never scans the whole table; each row has title, artists, release year, status (processing, in queue, verified, needs review, error), pipeline (fast or full, from the queue origin), date added, and added by (admin seed when empty)
+- [ ] Song detail endpoint: what each source found, why the song is verified or needs review, and the actions to set year or status, re-run, or delete
+
+Frontend:
+
+- [ ] Admin section in the sidebar in its own accent color with Dashboard, Backfill queue, Song catalog, and Reports, visible only to admins
+- [ ] Dashboard, backfill queue (per-queue panel, batches, failed items with reasons, song list), song catalog (debounced search, pagination), and song detail drawer
+- [ ] Design dark and light mockups for the admin sidebar section, dashboard, backfill queue, song catalog, and song detail; replace the catalog backlog mockup and its 400-song quota figure; validate source and canvas equality
+
+Tests:
+
+- [ ] Unit tests: failure classification, retry backoff, join rules including the conditional Wikipedia stage, status and pipeline derivation, cost estimation, and the YouTube reserve rule
+- [ ] Integration tests: job leasing under concurrent workers, restart recovery, user-import priority, usage counters, role in `/api/users/me`, the dashboard, queue, and catalog endpoints, minimum search length, page size, and search index use, and admin-only access
+- [ ] Frontend unit and browser tests: admin sidebar visibility by role, dashboard figures, per-queue panel, pause and retry actions, catalog search limits, and detail drawer
+- [ ] Update `ARCHITECTURE.md`, `SYSTEM_REFERENCE.md`, `FRONTEND_CONTENT.md`, and `FRONTEND_IMPLEMENTATION_GUIDE.md` for the new endpoints, queues, and screens
+
+Later, once the console exists: an audit log of admin actions, catalog health checks (duplicates, missing embeddings, missing durations), a list of safety rejections, and a catalog CSV export.
 
 ## Story 34: Usage analytics, definition required
 

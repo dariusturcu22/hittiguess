@@ -1152,3 +1152,9 @@ Core owns a versioned embedding queue and database triggers so every verified ca
 Decision: The backend stays on Azure Container Apps with scale-to-zero while the free trial credit lasts, about three weeks from this date. It then moves to one fixed-price Hetzner server. Vercel and both Neon projects stay unchanged.
 
 Why: A measured cold start after scale-to-zero is about 35 seconds, and Azure's usage-based pricing costs more than the project wants to pay for an always-on replica. The trial credit covers the beta period at no cost, and a fixed monthly price on Hetzner avoids a variable bill afterward. The C1-only JIT setting shortened Spring startup by under a second on Azure's single vCPU, so most of the cold start is Azure scheduling and cannot be tuned away in the app.
+
+## 2026-10-16 | Backfill and user imports run through seven persisted stage queues
+
+Each metadata stage (YouTube metadata, MusicBrainz, Discogs, Wikidata, Wikipedia, LLM reconciliation, embedding) has its own persisted queue and workers that lease jobs at the stage's own pace. A song is finalized when every stage it needs has finished. Wikipedia is queued only when MusicBrainz, Discogs, and Wikidata disagree. Core owns the job tables; the AI service workers lease from them. The earlier design resolved one song at a time through a single synchronous call, kept source pacing in process memory, and marked a song failed on any upstream error, so one slow source idled the others, a restart lost partial work, and an outage permanently failed songs.
+
+Transient upstream errors retry with backoff and never fail a song; permanent errors store their real reason and stage. LLM usage has no cap and is tracked with an estimated cost from official prices. The fixed daily drain cap is replaced by the real YouTube quota with a reserve for user imports.

@@ -9,6 +9,6 @@
 5. Finish the desktop dark/light visual/state pass, mockup reconciliation, accessibility, and focused test gaps. Mobile scope covers only the landing page.
 6. Validate capacity/admission, resource limits, cold-start behavior, Neon boundaries/idle wake, backups, production observability, and the Hetzner migration.
 
-Catalog uniqueness and concurrent-gather priority are backend follow-ups. Optional deployment reviewers, Joined-tab wording, and removed-item motion remain in TASKS.md.
+Story 51 (admin console and the parallel source pipeline) follows the production access checks. Catalog uniqueness and concurrent-gather priority are backend follow-ups. Optional deployment reviewers, Joined-tab wording, and removed-item motion remain in TASKS.md.
 
 Later work includes usage analytics after definition; account/legal views; personalized difficulty after sufficient data; safety-confidence tuning; gather timeout; curated evidence storage; and Flutter link-out. Genre enrichment and Topic-upload upgrades are dropped.
