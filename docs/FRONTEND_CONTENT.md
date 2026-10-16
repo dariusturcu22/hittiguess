@@ -91,19 +91,29 @@ Data, on a normal session end: the main card-count ranking (winner and placement
 
 ## Admin views
 
-The backlog, song catalog, and report routes exist and require the ADMIN role.
+The dashboard, backfill queue, song catalog, and report routes require the ADMIN role. Their rail entries share the admin accent color. `/admin/catalog-backlog` redirects to `/admin/backfill-queue`.
 
-### Catalog backlog status
+### Backfill queue (`/admin/backfill-queue`)
 
-Data: pending count, how many processed today, remaining daily drain quota and recent provisional/patient rechecks (story 40). Actions: submit a YouTube playlist link or a raw list of video IDs to bulk-enqueue into the backlog; the batch YouTube-ID lookup runs first so already-known songs are never enqueued, this view doesn't need to show that filtering step, only its result.
+The Overview tab shows seven stage cards with state, waiting, in-progress, done-today and failed counts, response average, drain estimate, and the real pause or cooldown reason. Each card has Pause or Resume and Open. The pipeline has Pause all and Resume all. Batches have progress, duplicate skips, estimates, pagination, and confirmed cancellation. The enqueue form accepts one playlist link or video IDs separated by whitespace or commas. Run one now accepts one video and puts it first in the backfill lane. Enqueue and run-now controls are disabled while the stage flag is off.
+
+The Songs tab shows title, artists, video ID, batch, seven stage chips, actual failure reasons, retry times and attempts, and run controls. Filters use global counts for All, In progress, Waiting, Retrying, and Failed. Bump raises waiting priority; Retry advances a waiting retry without resetting its attempts or restarts a failed run with fresh attempts; Discard requires confirmation. Runs and batches use pages of 25. Arrow keys, Home, and End move between tabs.
+
+### Stage queue (`/admin/backfill-queue/[stage]`)
+
+Each stage page shows its state and totals, response average, request interval, drain estimate, and paged jobs with lane, queued time, attempts, retry time, priority, and real errors. Filters distinguish In progress, Waiting, Retrying, Failed, and Done today. Retry all failed requires confirmation and applies only to the displayed stage. Pause and Resume operate on that stage. The pace chart collects one response-average sample per minute while the page is open, keeping the latest 20 samples. It shows a collecting state before the first sample and never invents historical data.
+
+Embedding progress comes from the existing executor. Its retained queue has no done-today history, lane, enqueue time, or hard attempt limit. Unknown figures are labeled Unknown or Unavailable. Metadata runs have no separate embedding job. Queue data refreshes every 15 seconds. Loading, empty, retryable error, pending mutation, and failure-toast states are explicit. Successful mutations invalidate admin queries.
 
 ### Dashboard (story 51)
 
-Data: counts of fully verified songs, songs needing review, songs with errors, and songs in the queue with how many are in progress and how many are waiting; the YouTube Data API units used today against the daily limit, with a progress bar and the time left until the midnight Pacific reset; and AI usage today, with calls and tokens for the LLM (DeepInfra) and for embeddings (OpenAI), plus the estimated cost for today and the month. LLM usage has no cap, so the cost is shown as an estimate. The figures refresh on their own every 30 seconds. Actions: retry when loading fails. The per-queue table, the rejected-key banner, and the reserve-for-users figures come with the pipeline work.
+The dashboard shows catalog counts, queue totals, YouTube units against the daily limit with the midnight Pacific reset, and DeepInfra and OpenAI calls, tokens, and estimated costs for today and the month. The YouTube card shows the configured user-import reserve and whether backfill is waiting for quota. A rejected-key banner names the affected stage, shows its stored reason, and offers Resume. The queue table shows all seven stages in pipeline order, including state, waiting, in-progress and failed counts, pace, and links to stage pages. Figures refresh every 30 seconds. No per-lane usage split is shown because the usage API does not provide one.
 
 ### Song catalog (story 51)
 
-Data: every song plus every queued or failed admin seed that has no song yet, newest first, 25 per page, with title (or the YouTube ID and a note that the title is not resolved yet), artists, release year (or pending), status (verified, needs review, in queue, processing, error), pipeline (fast, full, or unknown), date added (or unknown), and who added it (a username, admin seed, or unknown). Filter chips show each status with its count for the current search. Actions: search title or artist once at least 3 characters are typed, or paste an exact YouTube ID; filter by status; page through results; open a song's read-only detail with its status, year, pipeline, date and adder, stored verification status, confidence, Wikidata sitelinks, open report count, and its queue history. Per-source findings, review reasons, and the set year, set status, re-run, and delete actions come with the pipeline work.
+The catalog shows every song plus queued or failed admin seeds that have no song yet, newest first, 25 per page. Rows include title, artists, year, status, pipeline, date and adder, with explicit unknown or pending values. Search starts after three characters and a short pause; an exact video ID is also accepted. Status chips carry counts for the current search.
+
+The detail drawer shows metadata, per-source findings and earliest years from the latest run, the structured review reason when available, stored values in an expandable section, and queue history. Source sections are omitted without a run. Re-run pipeline, Set year, Set status, and Delete each require confirmation. Invalid years stay in the dialog with feedback; server errors keep confirmations open. Deleting removes playlist links and unfinished work, closes the drawer, and refreshes catalog data. Songs referenced by game rows cannot be deleted. The close control receives focus, Escape closes the drawer outside a confirmation, and focus returns to the previous control.
 
 ### Report review queue (story 17)
 

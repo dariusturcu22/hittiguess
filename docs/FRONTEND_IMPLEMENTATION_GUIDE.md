@@ -55,7 +55,7 @@ Grouped by where each maps in the app. "Route" is the real or planned path under
 | `/playlists/[playlistId]/edit` | `EditPlaylistDark.dc.html`, `EditPlaylistLight.dc.html` |
 | Import flow: `/playlists/[playlistId]/import`, `/playlists/[playlistId]/import/youtube`, `/playlists/[playlistId]/import/from-playlist`, `/playlists/[playlistId]/import/from-playlist/[sourceId]` | `ImportChooseSourceDark.dc.html`, `ImportChooseSourceLight.dc.html`, `ImportPlaylistLinkDark.dc.html`, `ImportPlaylistLinkLight.dc.html`, `ImportFromPlaylistSelectDark.dc.html`, `ImportFromPlaylistSelectLight.dc.html`, `ImportFromPlaylistConfirmDark.dc.html`, `ImportFromPlaylistConfirmLight.dc.html`, `ImportPlaylistProcessingDark.dc.html`, `ImportPlaylistProcessingLight.dc.html`, `ImportProgressDark.dc.html`, `ImportProgressLight.dc.html` |
 
-### Admin (story 17/40 routes implemented, story 51 console in design, gated on the `ADMIN` role)
+### Admin (console routes implemented, gated on the `ADMIN` role)
 
 The admin rail group (Dashboard, Backfill queue, Song catalog, Reports) appears in every admin mockup, in the admin accent color, below the shared rail icons. Story 51 routes have dark and light mockups.
 
@@ -67,7 +67,11 @@ The admin rail group (Dashboard, Backfill queue, Song catalog, Reports) appears 
 | `/admin/songs` | `AdminSongCatalogDark.dc.html`, `AdminSongCatalogLight.dc.html`, `AdminSongDetailDark.dc.html`, `AdminSongDetailLight.dc.html` (detail drawer) |
 | `/admin/reports` | `AdminReportQueueDark.dc.html`, `AdminReportQueueLight.dc.html` |
 
-The implemented `/admin/catalog-backlog` route is replaced by `/admin/backfill-queue` when story 51 ships.
+`/admin/catalog-backlog` redirects to `/admin/backfill-queue`. Stage slugs are `youtube-metadata`, `musicbrainz`, `discogs`, `wikidata`, `wikipedia`, `llm-reconciliation`, and `embedding`.
+
+The overview, Songs tab, stage page, dashboard, and detail drawer have rendered comparisons at 1440x900 in both themes against their approved source files, using an isolated local backend and database. The layout retains the 76px rail, seven-card row, 420px enqueue panel, 410px pace card, hard shadows, and 520px drawer. Live data determines counts and row contents. Unknown embedding history and timing remain explicit. The pace chart starts empty and collects samples during the visit because the API has no historical series. The reserve display has no fabricated usage split. The stage flag remains off during local verification; enqueue and run-now are disabled, and rerun failures remain visible in their confirmations. Component tests cover the enabled enqueue and run-now paths, while backend integration tests cover their real-row behavior.
+
+The generated hooks supply every read and mutation. Queue pages refresh every 15 seconds, the dashboard every 30 seconds. Mutations invalidate admin queries and show success or failure feedback. Destructive actions use accessible confirmation dialogs. The source and review sections use actual job results; stored metadata stays available in an expandable section.
 
 ### Gameplay (routes implemented, stories 9/10/11/12/13/39)
 
