@@ -1,4 +1,5 @@
 export * from './admin-catalog-seeding/admin-catalog-seeding';
+export * from './admin-dashboard/admin-dashboard';
 export * from './admin-song-catalog/admin-song-catalog';
 export * from './admin-song-report-review/admin-song-report-review';
 export * from './admin-usage/admin-usage';
