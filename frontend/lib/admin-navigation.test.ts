@@ -3,8 +3,9 @@ import { describe, expect, it } from "vitest";
 import { ADMIN_NAVIGATION_ITEMS, isAdminNavigationItemActive } from "./admin-navigation";
 
 describe("ADMIN_NAVIGATION_ITEMS", () => {
-  it("lists the song catalog before reports, matching the admin rail order", () => {
+  it("lists the dashboard first, then the rest of the admin rail in order", () => {
     expect(ADMIN_NAVIGATION_ITEMS.map((item) => item.label)).toEqual([
+      "Dashboard",
       "Backfill queue",
       "Song catalog",
       "Reports",
@@ -21,5 +22,18 @@ describe("ADMIN_NAVIGATION_ITEMS", () => {
     expect(isAdminNavigationItemActive(songCatalogItem, "/admin/songs")).toBe(true);
     expect(isAdminNavigationItemActive(songCatalogItem, "/admin/reports")).toBe(false);
     expect(isAdminNavigationItemActive(songCatalogItem, null)).toBe(false);
+  });
+
+  it("treats the dashboard as active on the admin root only, not on other admin routes", () => {
+    const dashboardItem = ADMIN_NAVIGATION_ITEMS.find((item) => item.href === "/admin");
+    expect(dashboardItem).toBeDefined();
+    if (!dashboardItem) {
+      return;
+    }
+
+    expect(isAdminNavigationItemActive(dashboardItem, "/admin")).toBe(true);
+    expect(isAdminNavigationItemActive(dashboardItem, "/admin/songs")).toBe(false);
+    expect(isAdminNavigationItemActive(dashboardItem, "/admin/reports")).toBe(false);
+    expect(isAdminNavigationItemActive(dashboardItem, null)).toBe(false);
   });
 });
