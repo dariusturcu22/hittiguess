@@ -1,30 +1,18 @@
 "use client";
 
 import React from "react";
-import type { AxiosError } from "axios";
 
-import { useBacklogStatus } from "@/hooks/generated/admin-catalog-seeding/admin-catalog-seeding";
+import { useGetCurrentUser } from "@/hooks/generated/user-management/user-management";
+import { UserDetailDTORole } from "@/hooks/models";
 
-const FORBIDDEN_STATUS = 403;
-
-// The current-user DTO (/api/users/me) does not expose the account role, so the
-// frontend cannot read ADMIN directly. The admin endpoints are role-guarded
-// server-side, so this layout uses the backlog-status endpoint as an access
-// probe: a 403 means the account is not an admin and the admin section renders
-// an access-denied state instead of its pages. The backend guard is the real
-// boundary; this only mirrors its verdict in the UI. The clean replacement is
-// to expose role on /api/users/me and gate on that instead of probing.
 export default function AdminLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const { isLoading, isError, error } = useBacklogStatus({
+  const { data: currentUser, isLoading } = useGetCurrentUser({
     query: { retry: false },
   });
-
-  const forbidden =
-    isError && (error as AxiosError | undefined)?.response?.status === FORBIDDEN_STATUS;
 
   if (isLoading) {
     return (
@@ -34,7 +22,7 @@ export default function AdminLayout({
     );
   }
 
-  if (forbidden) {
+  if (currentUser?.role !== UserDetailDTORole.ADMIN) {
     return (
       <div className="flex-1 min-w-0 bg-dotted flex items-center justify-center px-14">
         <div className="max-w-[420px] text-center">
