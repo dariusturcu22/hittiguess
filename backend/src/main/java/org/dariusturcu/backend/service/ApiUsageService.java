@@ -70,6 +70,10 @@ public class ApiUsageService {
                 ApiUsagePricing.PRICES_VERIFIED_ON);
     }
 
+    public long youtubeUnitsRemaining() {
+        return youtubeQuota(clock.instant()).unitsRemaining();
+    }
+
     private YoutubeQuotaUsageDTO youtubeQuota(Instant now) {
         LocalDate quotaDay = UsageQuotaDay.usageDate(UsageProvider.YOUTUBE, now);
         long unitsUsedToday = apiUsageRepository.quotaUnitsOn(UsageProvider.YOUTUBE, quotaDay);

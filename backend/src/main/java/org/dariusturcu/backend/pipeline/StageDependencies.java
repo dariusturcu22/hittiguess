@@ -10,7 +10,7 @@ import java.util.Set;
  * Once all three are terminal, exactly agreeing earliest years skip Wikipedia and the LLM
  * reconciliation; any disagreement, missing year, or source that did not finish queues
  * Wikipedia, then the reconciliation. Finishing the reconciliation, or skipping it, makes the
- * run ready to save and queues its embedding; the finished embedding ends the run.
+ * run ready to save. Core saves the song and ends the run; V41 executes embeddings.
  */
 public final class StageDependencies {
 
@@ -76,8 +76,7 @@ public final class StageDependencies {
 
     private static StageTransition readyToSave(Set<PipelineStage> stagesToSkip,
                                                Map<PipelineStage, StageJobState> jobsByStage) {
-        return new StageTransition(missingStages(List.of(PipelineStage.EMBEDDING), jobsByStage),
-                stagesToSkip, true, false);
+        return new StageTransition(Set.of(), stagesToSkip, true, false);
     }
 
     private static Set<PipelineStage> missingStages(List<PipelineStage> stages,

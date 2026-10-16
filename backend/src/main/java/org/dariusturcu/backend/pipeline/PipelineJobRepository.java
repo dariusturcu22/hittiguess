@@ -67,6 +67,14 @@ public class PipelineJobRepository {
                 RUN_MAPPER, youtubeId, PipelineRunStatus.ACTIVE.name()).stream().findFirst();
     }
 
+    public PipelineRun promoteToUserLane(PipelineRun run, PendingImportOrigin origin, Integer provisionalYear) {
+        core.update("UPDATE pipeline_runs SET lane = ?, origin = ?, provisional_year = ? WHERE id = ?",
+                PipelineLane.USER_IMPORT.name(), origin.name(), provisionalYear, run.id());
+        core.update("UPDATE pipeline_jobs SET lane = ? WHERE run_id = ?",
+                PipelineLane.USER_IMPORT.name(), run.id());
+        return findRun(run.id()).orElseThrow();
+    }
+
     public PipelineRun insertRun(String youtubeId, PipelineLane lane, PendingImportOrigin origin, Long batchId,
                                  Integer provisionalYear, Instant now) {
         long runId = insertReturningId("""
@@ -160,7 +168,30 @@ public class PipelineJobRepository {
 
     public Optional<PipelineJob> leaseNextWaiting(PipelineStage stage, String leaseOwner, Instant leaseExpiresAt,
                                                   Instant now) {
-        return core.query(LEASE_NEXT_SQL, JOB_MAPPER, stage.name(), timestamp(now),
+        return leaseNextWaiting(stage, leaseOwner, leaseExpiresAt, now, true);
+    }
+
+    public boolean hasDueWork(PipelineStage stage, Instant now) {
+        return Boolean.TRUE.equals(core.queryForObject("""
+                SELECT EXISTS (SELECT FROM pipeline_jobs job
+                    JOIN pipeline_runs run ON run.id = job.run_id
+                    WHERE job.stage = ? AND run.status = 'ACTIVE'
+                        AND ((job.status = 'WAITING' AND job.next_attempt_at <= ?)
+                            OR (job.status = 'IN_PROGRESS' AND job.lease_expires_at < ?))
+                        AND NOT EXISTS (SELECT FROM stage_controls WHERE stage = job.stage AND paused))
+                """, Boolean.class, stage.name(), timestamp(now), timestamp(now)));
+    }
+
+    public boolean stageIsBusy(PipelineStage stage) {
+        core.queryForObject("SELECT stage FROM stage_controls WHERE stage = ? FOR UPDATE", String.class, stage.name());
+        return Boolean.TRUE.equals(core.queryForObject(
+                "SELECT EXISTS (SELECT FROM pipeline_jobs WHERE stage = ? AND status = 'IN_PROGRESS')",
+                Boolean.class, stage.name()));
+    }
+
+    public Optional<PipelineJob> leaseNextWaiting(PipelineStage stage, String leaseOwner, Instant leaseExpiresAt,
+                                                  Instant now, boolean allowBackfill) {
+        return core.query(LEASE_NEXT_SQL, JOB_MAPPER, stage.name(), timestamp(now), allowBackfill,
                 PipelineJobStatus.IN_PROGRESS.name(), leaseOwner, timestamp(leaseExpiresAt), timestamp(now),
                 timestamp(now)).stream().findFirst();
     }
@@ -172,6 +203,7 @@ public class PipelineJobRepository {
                 SELECT job.id AS candidate_id FROM pipeline_jobs job
                 JOIN pipeline_runs run ON run.id = job.run_id
                 WHERE job.stage = ? AND job.status = '%1$s' AND job.next_attempt_at <= ? AND run.status = '%2$s'
+                    AND (? OR job.lane = '%3$s')
                     AND NOT EXISTS (SELECT FROM stage_controls control
                         WHERE control.stage = job.stage AND control.paused)
                 ORDER BY (job.lane = '%3$s') DESC, job.priority DESC, job.created_at, job.id
@@ -276,6 +308,13 @@ public class PipelineJobRepository {
                 PipelineJobStatus.WAITING.name(), PipelineRunStatus.ACTIVE.name(),
                 PipelineJobStatus.IN_PROGRESS.name(), PipelineJobStatus.DONE.name(), timestamp(startOfToday),
                 PipelineJobStatus.FAILED.name(), PipelineJobStatus.WAITING.name(), PipelineRunStatus.ACTIVE.name());
+    }
+
+    public StageCounts embeddingCounts() {
+        return core.queryForObject("""
+                SELECT count(*) AS waiting, count(*) FILTER (WHERE attempts > 0) AS retrying FROM song_embedding_queue
+                """, (row, number) -> new StageCounts(PipelineStage.EMBEDDING, false,
+                row.getLong("waiting"), 0, 0, 0, row.getLong("retrying")));
     }
 
     private long insertReturningId(String sql, Object... arguments) {
