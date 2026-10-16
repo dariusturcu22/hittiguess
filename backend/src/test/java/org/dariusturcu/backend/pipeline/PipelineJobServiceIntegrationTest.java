@@ -30,6 +30,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -58,6 +59,10 @@ class PipelineJobServiceIntegrationTest {
     private static final int CONCURRENT_CALLERS = 8;
     private static final int CONCURRENT_JOB_COUNT = 40;
     private static final long WAIT_SECONDS = 60;
+    private static final int STAGE_LIMIT = 3;
+    private static final int SINGLE_SLOT = 1;
+    private static final Duration SIMULATED_WORK = Duration.ofMillis(20);
+    private static final Duration LEASE_RETRY_PAUSE = Duration.ofMillis(5);
     private static final String WORKER = "worker-a";
     private static final String OTHER_WORKER = "worker-b";
     private static final String VIDEO_ID = "videoOne001";
@@ -165,12 +170,113 @@ class PipelineJobServiceIntegrationTest {
     }
 
     @Test
-    void concurrentExclusiveLeasesAllowOnlyOneInProgressJobPerStage() throws Exception {
+    void concurrentLimitedLeasesStopAtTheStageConcurrencyLimit() throws Exception {
+        IntStream.range(0, CONCURRENT_JOB_COUNT).forEach(index -> startBackfill("limitVideo" + index));
+        List<Optional<PipelineJob>> leases = runConcurrently(CONCURRENT_CALLERS,
+                () -> service.leaseWithinLimit(PipelineStage.YOUTUBE_METADATA, WORKER, true, STAGE_LIMIT));
+        assertThat(leases.stream().filter(Optional::isPresent).toList()).hasSize(STAGE_LIMIT);
+        assertThat(service.leaseWithinLimit(PipelineStage.YOUTUBE_METADATA, OTHER_WORKER, true, STAGE_LIMIT)).isEmpty();
+    }
+
+    @Test
+    void parallelWorkersNeverExceedTheLimitWhileDrainingEveryJob() throws Exception {
+        IntStream.range(0, CONCURRENT_JOB_COUNT).forEach(index -> startBackfill("drainVideo" + index));
+        AtomicInteger inFlight = new AtomicInteger();
+        AtomicInteger mostInFlight = new AtomicInteger();
+        AtomicInteger mostInProgressRows = new AtomicInteger();
+        List<Integer> completedPerWorker = runConcurrently(CONCURRENT_CALLERS, () -> {
+            int completed = 0;
+            Optional<PipelineJob> leased;
+            while ((leased = leaseWhenFree()).isPresent()) {
+                mostInFlight.accumulateAndGet(inFlight.incrementAndGet(), Math::max);
+                mostInProgressRows.accumulateAndGet(jdbcTemplate.queryForObject(
+                        "SELECT count(*) FROM pipeline_jobs WHERE stage = 'YOUTUBE_METADATA' AND status = 'IN_PROGRESS'",
+                        Integer.class), Math::max);
+                Thread.sleep(SIMULATED_WORK.toMillis());
+                inFlight.decrementAndGet();
+                service.complete(leased.get().id(), WORKER, EMPTY_RESULT);
+                completed++;
+            }
+            return completed;
+        });
+
+        assertThat(completedPerWorker.stream().mapToInt(Integer::intValue).sum()).isEqualTo(CONCURRENT_JOB_COUNT);
+        assertThat(mostInFlight.get()).isLessThanOrEqualTo(STAGE_LIMIT);
+        assertThat(mostInProgressRows.get()).isLessThanOrEqualTo(STAGE_LIMIT);
+        assertThat(mostInFlight.get()).isGreaterThan(1);
+    }
+
+    // Retries a refused lease while due jobs remain, the way a waiting worker slot would.
+    private Optional<PipelineJob> leaseWhenFree() throws InterruptedException {
+        while (true) {
+            Optional<PipelineJob> leased = service.leaseWithinLimit(PipelineStage.YOUTUBE_METADATA, WORKER, true, STAGE_LIMIT);
+            if (leased.isPresent() || !service.hasDueWork(PipelineStage.YOUTUBE_METADATA)) {
+                return leased;
+            }
+            Thread.sleep(LEASE_RETRY_PAUSE.toMillis());
+        }
+    }
+
+    @Test
+    void anExpiredLeaseDoesNotCountAgainstTheLimit() {
         startBackfill(VIDEO_ID);
         startBackfill(OTHER_VIDEO_ID);
-        List<Optional<PipelineJob>> leases = runConcurrently(CONCURRENT_CALLERS,
-                () -> service.leaseExclusive(PipelineStage.YOUTUBE_METADATA, WORKER, true));
-        assertThat(leases.stream().filter(Optional::isPresent).toList()).hasSize(1);
+        service.leaseWithinLimit(PipelineStage.YOUTUBE_METADATA, WORKER, true, SINGLE_SLOT).orElseThrow();
+        assertThat(service.leaseWithinLimit(PipelineStage.YOUTUBE_METADATA, OTHER_WORKER, true, SINGLE_SLOT)).isEmpty();
+        clock.advance(PAST_THE_LEASE);
+        assertThat(service.leaseWithinLimit(PipelineStage.YOUTUBE_METADATA, OTHER_WORKER, true, SINGLE_SLOT)).isPresent();
+    }
+
+    @Test
+    void completingARetriedJobClearsItsFailureButKeepsItsFailedTries() {
+        PipelineRun run = startBackfill(VIDEO_ID);
+        service.failTransient(lease(PipelineStage.YOUTUBE_METADATA).id(), WORKER, TIMEOUT_REASON, false);
+        clock.advance(PAST_ANY_BACKOFF);
+        service.complete(lease(PipelineStage.YOUTUBE_METADATA).id(), WORKER, EMPTY_RESULT);
+
+        PipelineJob finished = job(run.id(), PipelineStage.YOUTUBE_METADATA);
+        assertThat(finished.status()).isEqualTo(PipelineJobStatus.DONE);
+        assertThat(finished.attempts()).isEqualTo(1);
+        assertThat(finished.failureKind()).isNull();
+        assertThat(finished.failureReason()).isNull();
+        assertThat(finished.failureStage()).isNull();
+    }
+
+    @Test
+    void wakeUpsNameTheStagesWhoseJobsBecameAvailableAfterCommit() {
+        RecordingWakeUps listener = new RecordingWakeUps();
+        StageWakeUps wakeUps = new StageWakeUps();
+        wakeUps.register(listener);
+        service = new PipelineJobService(repository, transactionManager, PipelineJobService.DEFAULT_MAX_ATTEMPTS, clock,
+                new RetryBackoff(() -> 0.0), wakeUps);
+
+        PipelineRun run = startBackfill(VIDEO_ID);
+        assertThat(listener.woken).containsExactly(PipelineStage.YOUTUBE_METADATA);
+        service.complete(lease(PipelineStage.YOUTUBE_METADATA).id(), WORKER, EMPTY_RESULT);
+        assertThat(listener.woken).containsExactlyInAnyOrder(PipelineStage.YOUTUBE_METADATA, PipelineStage.MUSICBRAINZ,
+                PipelineStage.DISCOGS, PipelineStage.WIKIDATA);
+        service.failTransient(lease(PipelineStage.MUSICBRAINZ).id(), WORKER, TIMEOUT_REASON, false);
+        assertThat(listener.dueAt).containsOnlyKeys(PipelineStage.MUSICBRAINZ);
+        assertThat(listener.dueAt.get(PipelineStage.MUSICBRAINZ)).isAfter(START);
+
+        listener.woken.clear();
+        new TransactionTemplate(transactionManager).executeWithoutResult(status -> {
+            startBackfill(OTHER_VIDEO_ID);
+            status.setRollbackOnly();
+        });
+        assertThat(listener.woken).isEmpty();
+        assertThat(service.findRun(run.id())).isPresent();
+    }
+
+    private static final class RecordingWakeUps implements StageWakeUps.Listener {
+        final List<PipelineStage> woken = new CopyOnWriteArrayList<>();
+        final Map<PipelineStage, Instant> dueAt = new java.util.concurrent.ConcurrentHashMap<>();
+
+        @Override
+        public void wake(PipelineStage stage) { woken.add(stage); }
+
+        @Override
+        public void wakeAt(PipelineStage stage, Instant due) { dueAt.put(stage, due); }
     }
 
     @Test

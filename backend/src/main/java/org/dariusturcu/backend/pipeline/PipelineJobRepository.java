@@ -16,9 +16,11 @@ import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.EnumMap;
+import java.util.EnumSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 
 /**
  * SQL for the stage pipeline tables. Every timestamp comes from the caller, so the service's
@@ -191,11 +193,27 @@ public class PipelineJobRepository {
                 """, Boolean.class, stage.name(), timestamp(now), timestamp(now)));
     }
 
-    public boolean stageIsBusy(PipelineStage stage) {
+    // One indexed read for every stage, so an idle poll costs a single round trip.
+    public Set<PipelineStage> stagesWithDueWork(Instant now) {
+        Set<PipelineStage> dueStages = EnumSet.noneOf(PipelineStage.class);
+        core.query("""
+                SELECT DISTINCT job.stage FROM pipeline_jobs job
+                JOIN pipeline_runs run ON run.id = job.run_id
+                WHERE job.status IN ('WAITING', 'IN_PROGRESS') AND run.status = 'ACTIVE'
+                    AND ((job.status = 'WAITING' AND job.next_attempt_at <= ?)
+                        OR (job.status = 'IN_PROGRESS' AND job.lease_expires_at < ?))
+                    AND NOT EXISTS (SELECT FROM stage_controls WHERE stage = job.stage AND paused)
+                """, row -> {
+            dueStages.add(PipelineStage.valueOf(row.getString("stage")));
+        }, timestamp(now), timestamp(now));
+        return dueStages;
+    }
+
+    // Holds the stage control row lock until the transaction ends, so the count stays true for the lease that follows.
+    public long lockStageAndCountInProgress(PipelineStage stage) {
         core.queryForObject("SELECT stage FROM stage_controls WHERE stage = ? FOR UPDATE", String.class, stage.name());
-        return Boolean.TRUE.equals(core.queryForObject(
-                "SELECT EXISTS (SELECT FROM pipeline_jobs WHERE stage = ? AND status = 'IN_PROGRESS')",
-                Boolean.class, stage.name()));
+        return core.queryForObject("SELECT count(*) FROM pipeline_jobs WHERE stage = ? AND status = 'IN_PROGRESS'",
+                Long.class, stage.name());
     }
 
     public Optional<PipelineJob> leaseNextWaiting(PipelineStage stage, String leaseOwner, Instant leaseExpiresAt,
@@ -220,8 +238,7 @@ public class PipelineJobRepository {
                 FOR UPDATE OF job SKIP LOCKED
             )
             UPDATE pipeline_jobs job
-            SET status = ?, lease_owner = ?, lease_expires_at = ?, started_at = COALESCE(job.started_at, ?),
-                updated_at = ?
+            SET status = ?, lease_owner = ?, lease_expires_at = ?, started_at = ?, updated_at = ?
             FROM candidate WHERE job.id = candidate.candidate_id
             RETURNING %4$s
             """.formatted(PipelineJobStatus.WAITING.name(), PipelineRunStatus.ACTIVE.name(),
@@ -230,7 +247,7 @@ public class PipelineJobRepository {
     public void markJobDone(long jobId, String resultJson, Instant now) {
         core.update("""
                 UPDATE pipeline_jobs SET status = ?, result = CAST(? AS jsonb), lease_expires_at = NULL,
-                    finished_at = ?, updated_at = ?
+                    failure_kind = NULL, failure_stage = NULL, failure_reason = NULL, finished_at = ?, updated_at = ?
                 WHERE id = ?
                 """, PipelineJobStatus.DONE.name(), resultJson, timestamp(now), timestamp(now), jobId);
     }
@@ -245,11 +262,12 @@ public class PipelineJobRepository {
                 reason, timestamp(now), jobId);
     }
 
-    public int retryWaitingJobs(long runId, Instant now) {
-        return core.update("""
+    public List<PipelineStage> retryWaitingJobs(long runId, Instant now) {
+        return core.query("""
                 UPDATE pipeline_jobs SET next_attempt_at = ?, updated_at = ?
                 WHERE run_id = ? AND status = 'WAITING' AND failure_kind = 'TRANSIENT'
-                """, timestamp(now), timestamp(now), runId);
+                RETURNING stage
+                """, (row, number) -> PipelineStage.valueOf(row.getString("stage")), timestamp(now), timestamp(now), runId);
     }
 
     public void markJobFailed(long jobId, int attempts, FailureKind failureKind, String reason, Instant now) {
@@ -278,14 +296,15 @@ public class PipelineJobRepository {
         }
     }
 
-    public void resetFailedJobs(long runId, int maxAttempts, Instant now) {
-        core.update("""
+    public List<PipelineStage> resetFailedJobs(long runId, int maxAttempts, Instant now) {
+        return core.query("""
                 UPDATE pipeline_jobs SET status = ?, attempts = 0, max_attempts = ?, next_attempt_at = ?,
                     lease_owner = NULL, lease_expires_at = NULL, failure_kind = NULL, failure_stage = NULL,
                     failure_reason = NULL, started_at = NULL, finished_at = NULL, updated_at = ?
                 WHERE run_id = ? AND status = ?
-                """, PipelineJobStatus.WAITING.name(), maxAttempts, timestamp(now), timestamp(now), runId,
-                PipelineJobStatus.FAILED.name());
+                RETURNING stage
+                """, (row, number) -> PipelineStage.valueOf(row.getString("stage")), PipelineJobStatus.WAITING.name(),
+                maxAttempts, timestamp(now), timestamp(now), runId, PipelineJobStatus.FAILED.name());
     }
 
     // Moves the run's unfinished jobs above every job now waiting; jobs the run creates later

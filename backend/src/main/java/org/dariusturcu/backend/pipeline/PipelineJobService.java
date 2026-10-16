@@ -14,6 +14,7 @@ import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.function.Supplier;
 
 /**
@@ -37,20 +38,42 @@ public class PipelineJobService {
     private final int maxAttempts;
     private final Clock clock;
     private final RetryBackoff retryBackoff;
+    private final StageWakeUps wakeUps;
+
+    public PipelineJobService(PipelineJobRepository repository, PlatformTransactionManager transactionManager,
+                              int maxAttempts) {
+        this(repository, transactionManager, maxAttempts, new StageWakeUps());
+    }
 
     @Autowired
     public PipelineJobService(PipelineJobRepository repository, PlatformTransactionManager transactionManager,
-                              @Value("${pipeline.job.max-attempts:" + DEFAULT_MAX_ATTEMPTS + "}") int maxAttempts) {
-        this(repository, transactionManager, maxAttempts, Clock.systemUTC(), new RetryBackoff());
+                              @Value("${pipeline.job.max-attempts:" + DEFAULT_MAX_ATTEMPTS + "}") int maxAttempts,
+                              StageWakeUps wakeUps) {
+        this(repository, transactionManager, maxAttempts, Clock.systemUTC(), new RetryBackoff(), wakeUps);
     }
 
     PipelineJobService(PipelineJobRepository repository, PlatformTransactionManager transactionManager,
                        int maxAttempts, Clock clock, RetryBackoff retryBackoff) {
+        this(repository, transactionManager, maxAttempts, clock, retryBackoff, new StageWakeUps());
+    }
+
+    PipelineJobService(PipelineJobRepository repository, PlatformTransactionManager transactionManager,
+                       int maxAttempts, Clock clock, RetryBackoff retryBackoff, StageWakeUps wakeUps) {
         this.repository = repository;
         this.transaction = new TransactionTemplate(transactionManager);
         this.maxAttempts = maxAttempts;
         this.clock = clock;
         this.retryBackoff = retryBackoff;
+        this.wakeUps = wakeUps;
+    }
+
+    /** The most failed tries a job gets before it fails for good; a successful try is not counted. */
+    public int maxAttempts() {
+        return maxAttempts;
+    }
+
+    public Clock clock() {
+        return clock;
     }
 
     public long createBatch(ImportBatchKind kind, String label, String sourceLink, Long createdBy) {
@@ -83,6 +106,7 @@ public class PipelineJobService {
             PipelineRun run = repository.insertRun(youtubeId, lane, origin, batchId, provisionalYear, now);
             repository.insertJob(run.id(), PipelineStage.YOUTUBE_METADATA, lane, PipelineJobStatus.WAITING,
                     DEFAULT_PRIORITY, maxAttempts, now);
+            wakeUps.wake(PipelineStage.YOUTUBE_METADATA);
             return run;
         });
     }
@@ -146,13 +170,24 @@ public class PipelineJobService {
         return repository.hasDueWork(stage, clock.instant());
     }
 
-    public Optional<PipelineJob> leaseExclusive(PipelineStage stage, String owner, boolean allowBackfill) {
+    public Set<PipelineStage> stagesWithDueWork() {
+        return repository.stagesWithDueWork(clock.instant());
+    }
+
+    /**
+     * Leases the stage's next due job unless {@code concurrencyLimit} jobs of the stage are already
+     * in progress. The count is taken under the stage control row lock, so concurrent callers in
+     * any process never exceed the limit together. Expired leases are reclaimed first and do not
+     * count.
+     */
+    public Optional<PipelineJob> leaseWithinLimit(PipelineStage stage, String owner, boolean allowBackfill,
+                                                  int concurrencyLimit) {
         return inTransaction(() -> {
             Instant now = clock.instant();
             for (Long jobId : repository.expiredLeaseJobIds(stage, now)) {
                 reclaimExpiredLease(jobId, now);
             }
-            if (repository.stageIsBusy(stage)) {
+            if (repository.lockStageAndCountInProgress(stage) >= concurrencyLimit) {
                 return Optional.empty();
             }
             return repository.leaseNextWaiting(stage, owner, now.plus(DEFAULT_LEASE_DURATION), now, allowBackfill);
@@ -170,6 +205,7 @@ public class PipelineJobService {
                 repository.markJobCancelled(jobId, now);
             } else {
                 repository.scheduleRetry(jobId, leased.job().attempts(), now.plus(delay), "Source pace deferred", now);
+                wakeUps.wakeAt(leased.job().stage(), now.plus(delay));
             }
             return null;
         });
@@ -224,7 +260,7 @@ public class PipelineJobService {
             if (repository.findActiveRun(lockedRun.get().youtubeId()).isPresent()) {
                 return false;
             }
-            repository.resetFailedJobs(runId, maxAttempts, clock.instant());
+            repository.resetFailedJobs(runId, maxAttempts, clock.instant()).forEach(wakeUps::wake);
             repository.reactivateRun(runId);
             return true;
         });
@@ -233,7 +269,11 @@ public class PipelineJobService {
     public int retryWaiting(long runId) {
         return inTransaction(() -> repository.lockRun(runId)
                 .filter(run -> run.status() == PipelineRunStatus.ACTIVE)
-                .map(run -> repository.retryWaitingJobs(run.id(), clock.instant())).orElse(0));
+                .map(run -> {
+                    List<PipelineStage> retriedStages = repository.retryWaitingJobs(run.id(), clock.instant());
+                    retriedStages.forEach(wakeUps::wake);
+                    return retriedStages.size();
+                }).orElse(0));
     }
 
     /** Cancels an active or failed run and its waiting jobs. Returns false for a finished run. */
@@ -259,6 +299,9 @@ public class PipelineJobService {
     public void setStagePaused(PipelineStage stage, boolean paused, String reason) {
         inTransaction(() -> {
             repository.setStagePaused(stage, paused, reason, clock.instant());
+            if (!paused) {
+                wakeUps.wake(stage);
+            }
             return null;
         });
     }
@@ -311,7 +354,9 @@ public class PipelineJobService {
         }
         int attempts = job.attempts() + 1;
         if (attempts < job.maxAttempts()) {
-            repository.scheduleRetry(job.id(), attempts, now.plus(retryBackoff.delayAfter(attempts)), reason, now);
+            Instant nextAttemptAt = now.plus(retryBackoff.delayAfter(attempts));
+            repository.scheduleRetry(job.id(), attempts, nextAttemptAt, reason, now);
+            wakeUps.wakeAt(job.stage(), nextAttemptAt);
             return;
         }
         repository.markJobFailed(job.id(), attempts, FailureKind.TRANSIENT,
@@ -336,6 +381,7 @@ public class PipelineJobService {
         for (PipelineStage stage : transition.stagesToCreate()) {
             repository.insertJob(run.id(), stage, run.lane(), PipelineJobStatus.WAITING, finishedJob.priority(),
                     maxAttempts, now);
+            wakeUps.wake(stage);
         }
         if (transition.readyToSave()) {
             repository.markRunReadyToSave(run.id(), now);
