@@ -147,6 +147,13 @@ public class AdminSongCatalogRepository {
             SELECT catalog_status, count(*) AS row_count FROM catalog GROUP BY catalog_status
             """;
 
+    private static final String QUEUE_COUNT_QUERY = """
+            SELECT
+                count(*) FILTER (WHERE status = 'PENDING') AS waiting,
+                count(*) FILTER (WHERE status = 'PROCESSING') AS in_progress
+            FROM pending_imports
+            """;
+
     private final JdbcTemplate core;
 
     public AdminSongCatalogRepository(@Qualifier("coreJdbcTemplate") JdbcTemplate core) {
@@ -194,6 +201,15 @@ public class AdminSongCatalogRepository {
                     resultSet.getLong("row_count"));
         }, searchParameters(searchText).toArray());
         return counts;
+    }
+
+    /** Queue rows waiting and being processed, across every origin. */
+    public QueueCounts countQueue() {
+        return core.queryForObject(QUEUE_COUNT_QUERY, (resultSet, rowNumber) -> new QueueCounts(
+                resultSet.getLong("waiting"), resultSet.getLong("in_progress")));
+    }
+
+    public record QueueCounts(long waiting, long inProgress) {
     }
 
     private static String songFilter(String searchText) {

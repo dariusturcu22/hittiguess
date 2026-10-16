@@ -264,6 +264,7 @@ describe("AppSidebar admin group", () => {
     renderSidebar();
 
     expect(screen.queryByText("ADMIN")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Admin: Dashboard")).not.toBeInTheDocument();
     expect(screen.queryByLabelText("Admin: Backfill queue")).not.toBeInTheDocument();
     expect(screen.queryByLabelText("Admin: Song catalog")).not.toBeInTheDocument();
     expect(screen.queryByLabelText("Admin: Reports")).not.toBeInTheDocument();
@@ -280,6 +281,7 @@ describe("AppSidebar admin group", () => {
     renderSidebar();
 
     expect(screen.getByText("ADMIN")).toBeInTheDocument();
+    expect(screen.getByLabelText("Admin: Dashboard")).toHaveAttribute("href", "/admin");
     expect(screen.getByLabelText("Admin: Backfill queue")).toHaveAttribute("href", "/admin/catalog-backlog");
     expect(screen.getByLabelText("Admin: Song catalog")).toHaveAttribute("href", "/admin/songs");
     expect(screen.getByLabelText("Admin: Reports")).toHaveAttribute("href", "/admin/reports");
@@ -302,6 +304,16 @@ describe("AppSidebar admin group", () => {
 
     expect(screen.getByLabelText("Admin: Song catalog")).toHaveAttribute("aria-current", "page");
     expect(screen.getByLabelText("Admin: Reports")).not.toHaveAttribute("aria-current");
+    expect(screen.getByLabelText("Admin: Dashboard")).not.toHaveAttribute("aria-current");
+  });
+
+  it("marks the dashboard link active on the admin root only", () => {
+    currentUserRole = "ADMIN";
+    currentPathname = "/admin";
+    renderSidebar();
+
+    expect(screen.getByLabelText("Admin: Dashboard")).toHaveAttribute("aria-current", "page");
+    expect(screen.getByLabelText("Admin: Song catalog")).not.toHaveAttribute("aria-current");
   });
 
   it("marks nothing active outside the admin routes", () => {
@@ -311,5 +323,6 @@ describe("AppSidebar admin group", () => {
     expect(screen.getByLabelText("Admin: Reports")).not.toHaveAttribute("aria-current");
     expect(screen.getByLabelText("Admin: Backfill queue")).not.toHaveAttribute("aria-current");
     expect(screen.getByLabelText("Admin: Song catalog")).not.toHaveAttribute("aria-current");
+    expect(screen.getByLabelText("Admin: Dashboard")).not.toHaveAttribute("aria-current");
   });
 });

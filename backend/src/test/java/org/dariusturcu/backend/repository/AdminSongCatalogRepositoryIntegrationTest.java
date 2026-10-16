@@ -38,6 +38,8 @@ class AdminSongCatalogRepositoryIntegrationTest {
     private static final long FIRST_OFFSET = 0;
     private static final long THIRD_PAGE_OFFSET = 8;
     private static final long CATALOG_ROW_COUNT = 9;
+    private static final long WAITING_QUEUE_ROWS = 4;
+    private static final long IN_PROGRESS_QUEUE_ROWS = 1;
 
     private static final String BARBIE_GIRL = "Barbie Girl";
     private static final String QUEUED_ONLY_ID = "queued-only-id";
@@ -212,6 +214,24 @@ class AdminSongCatalogRepositoryIntegrationTest {
                 .containsEntry(CatalogSongStatus.PROCESSING, 1L)
                 .containsEntry(CatalogSongStatus.ERROR, 1L);
         assertThat(counts.values().stream().mapToLong(Long::longValue).sum()).isEqualTo(CATALOG_ROW_COUNT);
+    }
+
+    @Test
+    void queueCountsCoverPendingAndProcessingRowsOfEveryOrigin() {
+        AdminSongCatalogRepository.QueueCounts queueCounts = repository.countQueue();
+
+        assertThat(queueCounts.waiting()).isEqualTo(WAITING_QUEUE_ROWS);
+        assertThat(queueCounts.inProgress()).isEqualTo(IN_PROGRESS_QUEUE_ROWS);
+    }
+
+    @Test
+    void queueCountsAreZeroWhenTheQueueIsEmpty() {
+        jdbcTemplate.execute("TRUNCATE pending_imports RESTART IDENTITY CASCADE");
+
+        AdminSongCatalogRepository.QueueCounts queueCounts = repository.countQueue();
+
+        assertThat(queueCounts.waiting()).isZero();
+        assertThat(queueCounts.inProgress()).isZero();
     }
 
     @Test

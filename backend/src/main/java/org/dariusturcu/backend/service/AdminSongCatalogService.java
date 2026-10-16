@@ -108,14 +108,24 @@ public class AdminSongCatalogService {
                 .toList();
         int totalPages = (int) ((totalElements + pageSize - 1) / pageSize);
 
-        AdminCatalogCountsDTO counts = new AdminCatalogCountsDTO(
+        return new AdminCatalogPageDTO(items, resolvedPage, pageSize, totalElements, totalPages,
+                toCounts(countsByStatus));
+    }
+
+    /** Counts for the whole catalog, with no search text or status filter. */
+    public AdminCatalogCountsDTO catalogCounts() {
+        return toCounts(catalogRepository.countByStatus(null));
+    }
+
+    private static AdminCatalogCountsDTO toCounts(Map<CatalogSongStatus, Long> countsByStatus) {
+        long allCount = countsByStatus.values().stream().mapToLong(Long::longValue).sum();
+        return new AdminCatalogCountsDTO(
                 allCount,
                 countsByStatus.get(CatalogSongStatus.VERIFIED),
                 countsByStatus.get(CatalogSongStatus.NEEDS_REVIEW),
                 countsByStatus.get(CatalogSongStatus.IN_QUEUE),
                 countsByStatus.get(CatalogSongStatus.PROCESSING),
                 countsByStatus.get(CatalogSongStatus.ERROR));
-        return new AdminCatalogPageDTO(items, resolvedPage, pageSize, totalElements, totalPages, counts);
     }
 
     @Transactional(readOnly = true)
