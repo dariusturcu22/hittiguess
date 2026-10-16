@@ -4,6 +4,7 @@ export * from './authentication-management/authentication-management';
 export * from './bulk-import/bulk-import';
 export * from './community-song-reports/community-song-reports';
 export * from './enums/enums';
+export * from './game-history-controller/game-history-controller';
 export * from './game-session/game-session';
 export * from './ground-truth-data/ground-truth-data';
 export * from './group-chat/group-chat';
