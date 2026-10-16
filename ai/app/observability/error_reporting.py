@@ -21,8 +21,7 @@ def _upstream_status(error: Exception) -> int | None:
 
 
 def is_transient_upstream_failure(error: Exception) -> bool:
-    """A rate limit, a server error, a timeout, or a failed connection: the provider is busy or
-    briefly unreachable and the same call is expected to succeed on a retry."""
+    """Provider overload and connection failures can succeed on retry."""
     if isinstance(error, (httpx.TimeoutException, httpx.TransportError)):
         return True
     if isinstance(error, (openai.APITimeoutError, openai.APIConnectionError)):
@@ -46,11 +45,7 @@ def _warn_transient(message: str, subject: str, error: Exception, extra: dict[st
 
 
 def report_source_failure(source_name: str, error: Exception, title: str, artist: str) -> None:
-    """Surfaces a single metadata source's fetch failure distinctly, rather than
-    letting it disappear into the pipeline's generic swallowed error response. A
-    transient upstream failure is a warning without a trace and is not sent to Sentry,
-    since the caller retries it; anything else is an error with its trace.
-    sentry_sdk.capture_exception is a no-op when no DSN has been configured."""
+    """Transient source failures warn without capture; unexpected failures retain their trace."""
     extra = {"source": source_name, "song_title": title, "song_artist": artist}
     if is_transient_upstream_failure(error):
         _warn_transient("Metadata source fetch failed", source_name, error, extra)
@@ -60,9 +55,7 @@ def report_source_failure(source_name: str, error: Exception, title: str, artist
 
 
 def report_openai_failure(error: Exception) -> None:
-    """Surfaces an OpenAI synthesis call failure distinctly, rather than letting
-    it disappear into the pipeline's generic swallowed error response. Transient
-    upstream failures are warnings, as for report_source_failure."""
+    """LLM failures follow the same reporting rule as source failures."""
     if is_transient_upstream_failure(error):
         _warn_transient("OpenAI synthesis call failed", OPENAI_SUBJECT, error, {})
         return

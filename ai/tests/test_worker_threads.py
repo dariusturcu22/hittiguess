@@ -10,9 +10,8 @@ from app.config import settings
 from app.main import WORKER_THREAD_LIMIT, app
 from app.metadata import service
 
-CONCURRENT_CALLS = 6
+CONCURRENT_CALLS = 15
 SIMULATED_SOURCE_SECONDS = 0.3
-# Six serial calls take 1.8 seconds; parallel ones finish well under half of that.
 PARALLEL_BOUND_SECONDS = CONCURRENT_CALLS * SIMULATED_SOURCE_SECONDS / 2
 HTTP_OK = 200
 SOURCE_BODY = {"title": "Test Song", "artists": ["Test Artist"], "youtubeId": "abcdefghijk"}

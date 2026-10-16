@@ -26,11 +26,7 @@ def require_internal_api_key_configured(internal_api_key: str) -> None:
 
 require_internal_api_key_configured(settings.internal_service_api_key)
 
-# Every route is a sync handler, so each open request holds one AnyIO worker thread while it
-# sleeps on a source's pace or an LLM call. AnyIO's default of 40 threads is shared by all
-# routes; core alone can hold about 30 calls open at once (its stage slots, both fast-tier
-# pools, and the embedding scheduler), so the limit is raised to keep health checks, metrics,
-# and user imports from queueing behind slow stage calls.
+# Sync stage calls share worker threads with imports and health checks while waiting on providers.
 WORKER_THREAD_LIMIT = 100
 
 

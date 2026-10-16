@@ -88,7 +88,8 @@ def test_a_rate_limit_warning_names_the_upstream_status_and_never_the_request_ur
             SOURCE_NAME, _httpx_status_error(HTTP_TOO_MANY_REQUESTS), title="Song", artist="Artist"
         )
 
-    formatted = JsonLineFormatter().format(caplog.records[0])
+    (record,) = caplog.records
+    formatted = JsonLineFormatter().format(record)
     assert str(HTTP_TOO_MANY_REQUESTS) in formatted
     assert SECRET_KEY_VALUE not in formatted
     assert PROVIDER_URL not in formatted
@@ -102,7 +103,8 @@ def test_an_error_trace_still_has_its_secrets_redacted(mocker, caplog):
             SOURCE_NAME, _httpx_status_error(HTTP_UNAUTHORIZED), title="Song", artist="Artist"
         )
 
-    formatted = JsonLineFormatter().format(caplog.records[0])
+    (record,) = caplog.records
+    formatted = JsonLineFormatter().format(record)
     assert "api.example.com" in formatted
     assert SECRET_KEY_VALUE not in formatted
 
