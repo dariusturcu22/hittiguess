@@ -38,6 +38,10 @@ export JAVA_HOME="$HOME/.jdks/<jdk-25-directory>"
 4. The first start downloads dependencies and takes more than a minute. Check `http://localhost:8080/v3/api-docs` from inside WSL.
 5. Depending on the WSL networking mode, Windows may not reach port 8080 of the WSL process. For tools that need the API from Windows, such as the client generator, save the spec from WSL (`curl localhost:8080/v3/api-docs -o openapi.json`) and point the tool at the file.
 
+### Regenerating the API client
+
+`npm run api:gen` in `frontend/` generates `hooks/generated`, `hooks/models`, and `hooks/zod` from the running backend's spec. The generator version is pinned by `package-lock.json`. Run `npm ci` in `frontend/` first: an older installed `orval` generates different code and rewrites well over a hundred unrelated files. With the pinned version the diff contains only real contract changes.
+
 ## Running the Playwright end-to-end suite
 
 The `frontend/e2e` suite runs against a real, running backend and frontend,
