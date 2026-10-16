@@ -165,6 +165,15 @@ class PipelineJobServiceIntegrationTest {
     }
 
     @Test
+    void concurrentExclusiveLeasesAllowOnlyOneInProgressJobPerStage() throws Exception {
+        startBackfill(VIDEO_ID);
+        startBackfill(OTHER_VIDEO_ID);
+        List<Optional<PipelineJob>> leases = runConcurrently(CONCURRENT_CALLERS,
+                () -> service.leaseExclusive(PipelineStage.YOUTUBE_METADATA, WORKER, true));
+        assertThat(leases.stream().filter(Optional::isPresent).toList()).hasSize(1);
+    }
+
+    @Test
     void theSchemaRejectsUnknownStatusesAndASecondActiveRunForOneVideo() {
         PipelineRun run = startBackfill(VIDEO_ID);
 
@@ -182,7 +191,7 @@ class PipelineJobServiceIntegrationTest {
                 .execute(status -> {
                     jdbcTemplate.execute("SET LOCAL enable_seqscan = off");
                     return jdbcTemplate.queryForList("EXPLAIN " + PipelineJobRepository.LEASE_NEXT_SQL, String.class,
-                            PipelineStage.YOUTUBE_METADATA.name(), OffsetDateTime.now(),
+                            PipelineStage.YOUTUBE_METADATA.name(), OffsetDateTime.now(), true,
                             PipelineJobStatus.IN_PROGRESS.name(), WORKER, OffsetDateTime.now(), OffsetDateTime.now(),
                             OffsetDateTime.now());
                 });
@@ -438,7 +447,6 @@ class PipelineJobServiceIntegrationTest {
         assertThat(run(run.id()).status()).isEqualTo(PipelineRunStatus.ACTIVE);
         assertThat(service.leaseNext(PipelineStage.WIKIPEDIA, WORKER, LEASE)).isEmpty();
         assertThat(service.leaseNext(PipelineStage.LLM_RECONCILIATION, WORKER, LEASE)).isEmpty();
-        completeNext(PipelineStage.EMBEDDING, EMPTY_RESULT);
 
         assertThat(statusesByStage(run.id())).isEqualTo(Map.of(
                 PipelineStage.YOUTUBE_METADATA, PipelineJobStatus.DONE,
@@ -446,15 +454,14 @@ class PipelineJobServiceIntegrationTest {
                 PipelineStage.DISCOGS, PipelineJobStatus.DONE,
                 PipelineStage.WIKIDATA, PipelineJobStatus.DONE,
                 PipelineStage.WIKIPEDIA, PipelineJobStatus.SKIPPED,
-                PipelineStage.LLM_RECONCILIATION, PipelineJobStatus.SKIPPED,
-                PipelineStage.EMBEDDING, PipelineJobStatus.DONE));
+                PipelineStage.LLM_RECONCILIATION, PipelineJobStatus.SKIPPED));
         assertThat(service.jobsOfRun(run.id())).allSatisfy(job -> assertThat(job.lane()).isEqualTo(PipelineLane.USER_IMPORT));
-        assertThat(run(run.id()).status()).isEqualTo(PipelineRunStatus.DONE);
+        assertThat(run(run.id()).status()).isEqualTo(PipelineRunStatus.ACTIVE);
         assertThat(job(run.id(), PipelineStage.WIKIDATA).resultJson()).contains(String.valueOf(AGREED_YEAR));
     }
 
     @Test
-    void disagreeingSourcesRunAllSevenStages() {
+    void disagreeingSourcesRunAllMetadataStagesAndWaitForPersistence() {
         PipelineRun run = startBackfill(VIDEO_ID);
 
         completeNext(PipelineStage.YOUTUBE_METADATA, EMPTY_RESULT);
@@ -465,11 +472,10 @@ class PipelineJobServiceIntegrationTest {
         completeNext(PipelineStage.WIKIPEDIA, yearResult(AGREED_YEAR));
         completeNext(PipelineStage.LLM_RECONCILIATION, yearResult(AGREED_YEAR));
         assertThat(run(run.id()).readyToSaveAt()).isNotNull();
-        completeNext(PipelineStage.EMBEDDING, EMPTY_RESULT);
 
-        assertThat(statusesByStage(run.id())).hasSize(PipelineStage.values().length)
+        assertThat(statusesByStage(run.id())).hasSize(HttpAiStageClient.PATHS.size())
                 .allSatisfy((stage, status) -> assertThat(status).isEqualTo(PipelineJobStatus.DONE));
-        assertThat(run(run.id()).status()).isEqualTo(PipelineRunStatus.DONE);
+        assertThat(run(run.id()).status()).isEqualTo(PipelineRunStatus.ACTIVE);
     }
 
     @Test

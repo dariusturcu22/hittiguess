@@ -72,6 +72,14 @@ The admin area becomes a console with its own sidebar section, a dashboard, a ba
 
 Pipeline and data:
 
+- [x] Cutover: authenticated AI stage client with provider failure mapping, per-stage scheduled workers, cheap due-work checks, and no-attempt pace rescheduling
+- [x] Cutover: transactional ready-run persistence, patient-year recording, and V41 embedding execution without engine embedding jobs
+- [x] Cutover: admin batches and user rechecks enqueue runs behind pipeline.stages.enabled, default false; old drain disabled only on the new path
+- [x] Cutover: user-lane priority, configurable YouTube reserve, and flag-aware catalog and dashboard reads
+- [x] Cutover unit tests: worker decisions, stage payloads, error mapping, reserve behavior, and dependency transitions
+- [x] Cutover integration tests: agreeing and disagreeing years, retry and key pause, permanent failure, lease recovery, lane priority, reserve, atomic save and duplicates, and flag-off behavior
+- [x] Cutover docs: flag behavior, stage and embedding contracts, decision entry, and small-playlist production verification plan
+
 - [x] AI stage endpoints: internal authentication, video identification and precheck verdict, source candidates and earliest years, reconciliation, and sanitized provider errors
 - [x] AI stage equivalence tests: agreeing years, disagreement, empty source, precheck rejection, and YouTube failure; existing AI tests remain passing
 - [x] Persisted source pacing: V45 stage rows, atomic slot reservations, cooldowns, response averages, in-memory fallback, and stage-only 30-second wait cap with retryAfterSeconds
@@ -80,17 +88,17 @@ Pipeline and data:
 
 - [x] Core migration (V44): per-stage job table (video run, batch, stage, status, attempts, lease, next attempt, result, failing stage, real failure reason), batch table, runs with one active run per YouTube ID, and per-stage pause controls; constraints covered by the engine integration tests
 - [x] Job engine leasing: one job per call per stage with `FOR UPDATE SKIP LOCKED`, user imports first, then priority, then age, with retry backoff; the leased-job pattern of the embedding queue is the template; covered by concurrent-worker integration tests
-- [ ] Stage workers lease jobs from their own queue at the source's pace; pace and cooldown state survive restarts
-- [x] Stage dependency rules: the three sources run in parallel after YouTube metadata; agreeing years skip Wikipedia and reconciliation; Wikipedia is added after the first three sources answer otherwise; the run is marked ready to save and its embedding queued; unit-tested transition table and both paths in integration tests
-- [ ] Join step: save the song when its run is ready to save, before its embedding job runs
-- [ ] User imports use the same queues with priority over the backlog, replacing the drain pause in `MetadataPriorityCoordinator`
+- [x] Stage workers lease jobs from their own queue at the source's pace; pace and cooldown state survive restarts
+- [x] Stage dependency rules: the three sources run in parallel after YouTube metadata; agreeing years skip Wikipedia and reconciliation; Wikipedia is added after the first three sources answer otherwise; the run is marked ready to save without an engine embedding job; unit-tested transition table and both paths in integration tests
+- [x] Join step: save the ready song and finish its run in one transaction; V41 triggers queue verified embeddings
+- [x] User imports use the same queues with priority over the backlog, replacing the drain pause in `MetadataPriorityCoordinator`
 - [x] Engine failure handling: classify failures as transient (outage, rejected key, rate limit, timeout, shutdown) or permanent (video unavailable, no usable metadata); transient failures retry with backoff and an attempt count; the real reason and failing stage are stored on the job; unit and integration tests
-- [ ] Stage workers report failures through the engine, so a transient error never marks a song failed
+- [x] Stage workers report failures through the engine, so a transient error never marks a song failed
 - [x] Engine: a rejected API key pauses its stage and returns the job without using an attempt or failing the run; integration test
 - [ ] Real provider calls report rejected or exhausted keys, and a paused stage raises a dashboard banner
 - [x] Engine: jobs whose lease expired are reclaimed inside each lease call, and a lost lease counts as an attempt; integration tests
-- [ ] A restart or redeploy resumes work without waiting for the daily timer
-- [ ] Remove the daily drain cap; the backlog stops when remaining YouTube units fall below a reserve kept for user imports
+- [x] A restart or redeploy resumes work without waiting for the daily timer
+- [x] Remove the daily drain cap on the stage path; the backlog stops when remaining YouTube units fall below a reserve kept for user imports
 - [x] The AI service records YouTube units and LLM tokens per call; cost estimates use the official per-unit prices kept as named constants with the date they were read
 
 Admin API:

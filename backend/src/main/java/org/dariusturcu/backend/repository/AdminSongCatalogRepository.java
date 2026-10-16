@@ -3,6 +3,8 @@ package org.dariusturcu.backend.repository;
 import org.dariusturcu.backend.model.song.CatalogSongStatus;
 import org.dariusturcu.backend.model.song.PendingImportOrigin;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.dariusturcu.backend.pipeline.PipelineSettings;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
 
@@ -58,6 +60,7 @@ public class AdminSongCatalogRepository {
                     CASE
                         WHEN queue_facts.processing THEN 'PROCESSING'
                         WHEN queue_facts.pending THEN 'IN_QUEUE'
+                        WHEN %s AND latest_queue_row.status = 'FAILED' THEN 'ERROR'
                         WHEN song.verification_status = 'VERIFIED' THEN 'VERIFIED'
                         ELSE 'NEEDS_REVIEW'
                     END AS catalog_status,
@@ -82,7 +85,7 @@ public class AdminSongCatalogRepository {
                     WHERE queue.youtube_id = song.youtube_id
                 ) queue_facts ON true
                 LEFT JOIN LATERAL (
-                    SELECT queue.origin
+                    SELECT queue.origin, queue.status
                     FROM pending_imports queue
                     WHERE queue.youtube_id = song.youtube_id
                     ORDER BY queue.enqueued_at DESC, queue.id DESC
@@ -155,9 +158,33 @@ public class AdminSongCatalogRepository {
             """;
 
     private final JdbcTemplate core;
+    private final PipelineSettings settings;
+
+    private static final String PIPELINE_QUEUE_SOURCE = """
+            (SELECT run.id, run.youtube_id, run.origin, run.created_at AT TIME ZONE 'UTC' AS enqueued_at,
+                run.finished_at AS processed_at, run.provisional_year,
+                (SELECT patient_year FROM pending_imports history
+                    WHERE history.youtube_id = run.youtube_id AND history.origin = run.origin
+                    AND history.enqueued_at >= run.created_at AT TIME ZONE 'UTC'
+                    AND history.enqueued_at <= COALESCE(run.finished_at, now()) AT TIME ZONE 'UTC'
+                    ORDER BY history.id DESC LIMIT 1) AS patient_year,
+                (SELECT failure_reason FROM pipeline_jobs failure WHERE failure.run_id = run.id
+                    AND failure.failure_reason IS NOT NULL ORDER BY failure.updated_at DESC LIMIT 1) AS failure_reason,
+                CASE WHEN run.status = 'FAILED' THEN 'FAILED'
+                    WHEN run.status = 'DONE' THEN 'DONE'
+                    WHEN EXISTS (SELECT FROM pipeline_jobs job WHERE job.run_id = run.id AND job.status = 'IN_PROGRESS')
+                        THEN 'PROCESSING' ELSE 'PENDING' END AS status
+             FROM pipeline_runs run WHERE run.status <> 'CANCELLED')
+            """;
 
     public AdminSongCatalogRepository(@Qualifier("coreJdbcTemplate") JdbcTemplate core) {
+        this(core, new PipelineSettings(false, PipelineSettings.DEFAULT_YOUTUBE_RESERVE_UNITS));
+    }
+
+    @Autowired
+    public AdminSongCatalogRepository(@Qualifier("coreJdbcTemplate") JdbcTemplate core, PipelineSettings settings) {
         this.core = core;
+        this.settings = settings;
     }
 
     /**
@@ -173,12 +200,13 @@ public class AdminSongCatalogRepository {
     }
 
     public List<AdminCatalogRow> findPage(String searchText, CatalogSongStatus status, int pageSize, long offset) {
-        return core.query(pageSql(searchText, status), (resultSet, rowNumber) -> toRow(resultSet),
+        return core.query(queueSource(PAGE_QUERY.formatted(settings.enabled(), songFilter(searchText), queueFilter(searchText),
+                        status == null ? NO_FILTER : STATUS_FILTER)), (resultSet, rowNumber) -> toRow(resultSet),
                 pageParameters(searchText, status, pageSize, offset));
     }
 
     static String pageSql(String searchText, CatalogSongStatus status) {
-        return PAGE_QUERY.formatted(songFilter(searchText), queueFilter(searchText),
+        return PAGE_QUERY.formatted(false, songFilter(searchText), queueFilter(searchText),
                 status == null ? NO_FILTER : STATUS_FILTER);
     }
 
@@ -195,7 +223,7 @@ public class AdminSongCatalogRepository {
     public Map<CatalogSongStatus, Long> countByStatus(String searchText) {
         Map<CatalogSongStatus, Long> counts = new EnumMap<>(CatalogSongStatus.class);
         Arrays.stream(CatalogSongStatus.values()).forEach(status -> counts.put(status, 0L));
-        String sql = COUNT_QUERY.formatted(songFilter(searchText), queueFilter(searchText));
+        String sql = queueSource(COUNT_QUERY.formatted(settings.enabled(), songFilter(searchText), queueFilter(searchText)));
         core.query(sql, resultSet -> {
             counts.put(CatalogSongStatus.valueOf(resultSet.getString("catalog_status")),
                     resultSet.getLong("row_count"));
@@ -205,11 +233,46 @@ public class AdminSongCatalogRepository {
 
     /** Queue rows waiting and being processed, across every origin. */
     public QueueCounts countQueue() {
+        if (settings.enabled()) {
+            return core.queryForObject("""
+                    SELECT count(*) FILTER (WHERE job.status = 'WAITING')
+                            + (SELECT count(*) FROM song_embedding_queue) AS waiting,
+                        count(*) FILTER (WHERE job.status = 'IN_PROGRESS') AS in_progress
+                    FROM pipeline_jobs job JOIN pipeline_runs run ON run.id = job.run_id WHERE run.status = 'ACTIVE'
+                    """, (row, number) -> new QueueCounts(row.getLong("waiting"), row.getLong("in_progress")));
+        }
         return core.queryForObject(QUEUE_COUNT_QUERY, (resultSet, rowNumber) -> new QueueCounts(
                 resultSet.getLong("waiting"), resultSet.getLong("in_progress")));
     }
 
     public record QueueCounts(long waiting, long inProgress) {
+    }
+
+    private String queueSource(String sql) {
+        return settings.enabled() ? sql.replace("pending_imports queue", PIPELINE_QUEUE_SOURCE + " queue") : sql;
+    }
+
+    public boolean usesStagePipeline() {
+        return settings.enabled();
+    }
+
+    public List<org.dariusturcu.backend.model.song.PendingImport> pipelineHistory(String youtubeId) {
+        return core.query("SELECT * FROM " + PIPELINE_QUEUE_SOURCE + " queue WHERE youtube_id = ? ORDER BY id",
+                (row, number) -> {
+                    var history = new org.dariusturcu.backend.model.song.PendingImport();
+                    history.setId(row.getLong("id"));
+                    history.setYoutubeId(youtubeId);
+                    history.setOrigin(PendingImportOrigin.valueOf(row.getString("origin")));
+                    history.setStatus(org.dariusturcu.backend.model.song.PendingImportStatus.valueOf(row.getString("status")));
+                    history.setEnqueuedAt(row.getObject("enqueued_at", java.time.LocalDateTime.class)
+                            .toInstant(java.time.ZoneOffset.UTC));
+                    var processedAt = row.getTimestamp("processed_at");
+                    history.setProcessedAt(processedAt == null ? null : processedAt.toInstant());
+                    history.setProvisionalYear(row.getObject("provisional_year", Integer.class));
+                    history.setPatientYear(row.getObject("patient_year", Integer.class));
+                    history.setFailureReason(row.getString("failure_reason"));
+                    return history;
+                }, youtubeId);
     }
 
     private static String songFilter(String searchText) {

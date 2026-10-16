@@ -67,6 +67,9 @@ public class PipelineJobService {
             repository.lockVideo(youtubeId);
             Optional<PipelineRun> activeRun = repository.findActiveRun(youtubeId);
             if (activeRun.isPresent()) {
+                if (lane == PipelineLane.USER_IMPORT && activeRun.get().lane() == PipelineLane.BACKFILL) {
+                    return repository.promoteToUserLane(activeRun.get(), origin, provisionalYear);
+                }
                 return activeRun.get();
             }
             Instant now = clock.instant();
@@ -92,6 +95,10 @@ public class PipelineJobService {
     }
 
     public void complete(long jobId, String leaseOwner, String resultJson) {
+        complete(jobId, leaseOwner, resultJson, false);
+    }
+
+    public void complete(long jobId, String leaseOwner, String resultJson, boolean finalResult) {
         inTransaction(() -> {
             LeasedJob leased = lockLeasedJob(jobId, leaseOwner);
             Instant now = clock.instant();
@@ -100,7 +107,9 @@ public class PipelineJobService {
                 return null;
             }
             repository.markJobDone(jobId, resultJson, now);
-            if (leased.run().status() == PipelineRunStatus.ACTIVE) {
+            if (finalResult) {
+                repository.markRunReadyToSave(leased.run().id(), now);
+            } else if (leased.run().status() == PipelineRunStatus.ACTIVE) {
                 applyDependencies(leased.run(), leased.job(), now);
             }
             return null;
@@ -122,6 +131,39 @@ public class PipelineJobService {
                 return null;
             }
             recordTransientFailure(leased, reason, now);
+            return null;
+        });
+    }
+
+    public boolean hasDueWork(PipelineStage stage) {
+        return repository.hasDueWork(stage, clock.instant());
+    }
+
+    public Optional<PipelineJob> leaseExclusive(PipelineStage stage, String owner, boolean allowBackfill) {
+        return inTransaction(() -> {
+            Instant now = clock.instant();
+            for (Long jobId : repository.expiredLeaseJobIds(stage, now)) {
+                reclaimExpiredLease(jobId, now);
+            }
+            if (repository.stageIsBusy(stage)) {
+                return Optional.empty();
+            }
+            return repository.leaseNextWaiting(stage, owner, now.plus(DEFAULT_LEASE_DURATION), now, allowBackfill);
+        });
+    }
+
+    public void reschedule(long jobId, String owner, Duration delay) {
+        if (delay.isNegative()) {
+            throw new IllegalArgumentException("Reschedule delay cannot be negative");
+        }
+        inTransaction(() -> {
+            LeasedJob leased = lockLeasedJob(jobId, owner);
+            Instant now = clock.instant();
+            if (leased.run().status() == PipelineRunStatus.CANCELLED) {
+                repository.markJobCancelled(jobId, now);
+            } else {
+                repository.scheduleRetry(jobId, leased.job().attempts(), now.plus(delay), "Source pace deferred", now);
+            }
             return null;
         });
     }
@@ -205,7 +247,8 @@ public class PipelineJobService {
 
     /** Per stage: waiting, in progress, done since the start of the UTC day, failed, and retrying. */
     public List<StageCounts> stageCounts() {
-        return inTransaction(() -> repository.stageCounts(clock.instant().truncatedTo(ChronoUnit.DAYS)));
+        return inTransaction(() -> repository.stageCounts(clock.instant().truncatedTo(ChronoUnit.DAYS)).stream()
+                .map(counts -> counts.stage() == PipelineStage.EMBEDDING ? repository.embeddingCounts() : counts).toList());
     }
 
     public Optional<PipelineRun> findRun(long runId) {

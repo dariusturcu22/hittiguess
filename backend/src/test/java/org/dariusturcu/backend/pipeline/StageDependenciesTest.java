@@ -39,7 +39,7 @@ class StageDependenciesTest {
         return jobs;
     }
 
-    private static final StageTransition SKIP_TO_SAVE = new StageTransition(Set.of(PipelineStage.EMBEDDING),
+    private static final StageTransition SKIP_TO_SAVE = new StageTransition(Set.of(),
             Set.of(PipelineStage.WIKIPEDIA, PipelineStage.LLM_RECONCILIATION), true, false);
     private static final StageTransition QUEUE_WIKIPEDIA =
             new StageTransition(Set.of(PipelineStage.WIKIPEDIA), Set.of(), false, false);
@@ -61,7 +61,7 @@ class StageDependenciesTest {
     }
 
     @Test
-    void threeAgreeingYearsSkipWikipediaAndReconciliationAndQueueTheEmbedding() {
+    void threeAgreeingYearsSkipWikipediaAndReconciliationWithoutAnEmbeddingJob() {
         Map<PipelineStage, StageJobState> jobs =
                 withSources(doneWithYear(AGREED_YEAR), doneWithYear(AGREED_YEAR), doneWithYear(AGREED_YEAR));
 
@@ -131,14 +131,14 @@ class StageDependenciesTest {
     }
 
     @Test
-    void finishedReconciliationMakesTheRunReadyToSaveAndQueuesTheEmbedding() {
+    void finishedReconciliationMakesTheRunReadyToSaveWithoutAnEmbeddingJob() {
         Map<PipelineStage, StageJobState> jobs =
                 withSources(doneWithYear(AGREED_YEAR), doneWithYear(OTHER_YEAR), doneWithYear(AGREED_YEAR));
         jobs.put(PipelineStage.WIKIPEDIA, DONE_WITHOUT_YEAR);
         jobs.put(PipelineStage.LLM_RECONCILIATION, DONE_WITHOUT_YEAR);
 
         assertThat(StageDependencies.afterStageFinished(PipelineStage.LLM_RECONCILIATION, jobs))
-                .isEqualTo(new StageTransition(Set.of(PipelineStage.EMBEDDING), Set.of(), true, false));
+                .isEqualTo(new StageTransition(Set.of(), Set.of(), true, false));
     }
 
     @Test

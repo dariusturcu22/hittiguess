@@ -12,6 +12,13 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
+import org.dariusturcu.backend.pipeline.PipelineJobService;
+import org.dariusturcu.backend.pipeline.PipelineSettings;
+import org.dariusturcu.backend.pipeline.PipelineLane;
+import org.dariusturcu.backend.pipeline.ImportBatchKind;
+import org.dariusturcu.backend.pipeline.PipelineRun;
+import org.dariusturcu.backend.pipeline.PipelineRunStatus;
+import org.dariusturcu.backend.model.song.PendingImportOrigin;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.core.task.SyncTaskExecutor;
 
@@ -44,6 +51,8 @@ class CatalogSeedingServiceTest {
     private PlaylistExpansionService playlistExpansionService;
     @Mock
     private SongRepository songRepository;
+    @Mock
+    private PipelineJobService pipeline;
 
     private CatalogSeedingService catalogSeedingService;
 
@@ -115,5 +124,49 @@ class CatalogSeedingServiceTest {
             assertThat(queueItem.youtubeId()).isEqualTo(PLAIN_VIDEO_ID);
             assertThat(queueItem.status()).isEqualTo(PendingImportStatus.PROCESSING);
         });
+    }
+
+    private CatalogSeedingService stagedService() {
+        return new CatalogSeedingService(pendingImportRepository, youtubeIdLookupService, pendingImportProcessor,
+                new MetadataPriorityCoordinator(), playlistExpansionService, songRepository, new SyncTaskExecutor(),
+                DAILY_DRAIN_QUOTA, new PipelineSettings(true, PipelineSettings.DEFAULT_YOUTUBE_RESERVE_UNITS), pipeline);
+    }
+
+    @Test
+    void flagOnEnqueueCreatesABatchAndReportsRunsAlreadyQueuedElsewhere() {
+        long batchId = 41;
+        long otherBatchId = 42;
+        when(youtubeIdLookupService.partitionKnownAndUnknown(anyCollection()))
+                .thenReturn(new YoutubeIdLookupResult(Set.of(), Set.of(EXTRA_VIDEO_ID, PLAIN_VIDEO_ID)));
+        when(pipeline.createBatch(ImportBatchKind.ADMIN_IDS, "Admin catalog seed", null, null)).thenReturn(batchId);
+        when(pipeline.startRun(EXTRA_VIDEO_ID, PipelineLane.BACKFILL, PendingImportOrigin.ADMIN_SEED, batchId, null))
+                .thenReturn(new PipelineRun(batchId, EXTRA_VIDEO_ID, batchId, PipelineLane.BACKFILL,
+                        PipelineRunStatus.ACTIVE, PendingImportOrigin.ADMIN_SEED, null, java.time.Instant.now(), null, null));
+        when(pipeline.startRun(PLAIN_VIDEO_ID, PipelineLane.BACKFILL, PendingImportOrigin.ADMIN_SEED, batchId, null))
+                .thenReturn(new PipelineRun(otherBatchId, PLAIN_VIDEO_ID, otherBatchId, PipelineLane.BACKFILL,
+                        PipelineRunStatus.ACTIVE, PendingImportOrigin.ADMIN_SEED, null, java.time.Instant.now(), null, null));
+
+        var result = stagedService().enqueue(Set.of(EXTRA_VIDEO_ID, PLAIN_VIDEO_ID));
+
+        assertThat(result.enqueuedYoutubeIds()).containsExactly(EXTRA_VIDEO_ID);
+        assertThat(result.skippedAlreadyQueuedYoutubeIds()).containsExactly(PLAIN_VIDEO_ID);
+        org.mockito.Mockito.verifyNoInteractions(pendingImportRepository);
+    }
+
+    @Test
+    void flagOnRechecksCarryTheirProvisionalYearInTheUserLaneAndKeepHistory() {
+        int provisionalYear = 2001;
+        stagedService().enqueuePatientRecheck(PLAIN_VIDEO_ID, PendingImportOrigin.FAST_TIER_RECHECK, provisionalYear);
+        org.mockito.Mockito.verify(pipeline).startRun(PLAIN_VIDEO_ID, PipelineLane.USER_IMPORT,
+                PendingImportOrigin.FAST_TIER_RECHECK, null, provisionalYear);
+        org.mockito.Mockito.verify(pendingImportRepository).save(org.mockito.ArgumentMatchers.any(PendingImport.class));
+    }
+
+    @Test
+    void flagOnBlocksBothLegacyDrainEntryPointsWithoutReadingTheOldQueue() {
+        assertThat(stagedService().drainBacklog()).isZero();
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> stagedService().startDrainNow())
+                .isInstanceOf(org.dariusturcu.backend.exception.ConflictException.class);
+        org.mockito.Mockito.verifyNoInteractions(pendingImportProcessor, pendingImportRepository);
     }
 }

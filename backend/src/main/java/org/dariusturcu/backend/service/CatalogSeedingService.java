@@ -16,6 +16,12 @@ import org.dariusturcu.backend.repository.SongRepository;
 import org.dariusturcu.backend.util.SongArtistFormatter;
 import org.dariusturcu.backend.util.YoutubeLinkParser;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.dariusturcu.backend.pipeline.ImportBatchKind;
+import org.dariusturcu.backend.pipeline.PipelineJobService;
+import org.dariusturcu.backend.pipeline.PipelineLane;
+import org.dariusturcu.backend.pipeline.PipelineRun;
+import org.dariusturcu.backend.pipeline.PipelineSettings;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.task.TaskExecutor;
 import org.springframework.data.domain.Limit;
@@ -62,6 +68,8 @@ public class CatalogSeedingService {
     private final AtomicBoolean isDraining = new AtomicBoolean(false);
 
     private final long dailyDrainQuota;
+    private final PipelineSettings pipelineSettings;
+    private final PipelineJobService pipeline;
 
     public CatalogSeedingService(
             PendingImportRepository pendingImportRepository,
@@ -72,6 +80,18 @@ public class CatalogSeedingService {
             SongRepository songRepository,
             @Qualifier("backlogDrainExecutor") TaskExecutor backlogDrainExecutor,
             @Value("${catalog.seeding.daily-drain-quota}") long dailyDrainQuota) {
+        this(pendingImportRepository, youtubeIdLookupService, pendingImportProcessor, metadataPriorityCoordinator,
+                playlistExpansionService, songRepository, backlogDrainExecutor, dailyDrainQuota,
+                new PipelineSettings(false, PipelineSettings.DEFAULT_YOUTUBE_RESERVE_UNITS), null);
+    }
+
+    @Autowired
+    public CatalogSeedingService(PendingImportRepository pendingImportRepository,
+            YoutubeIdLookupService youtubeIdLookupService, PendingImportProcessor pendingImportProcessor,
+            MetadataPriorityCoordinator metadataPriorityCoordinator, PlaylistExpansionService playlistExpansionService,
+            SongRepository songRepository, @Qualifier("backlogDrainExecutor") TaskExecutor backlogDrainExecutor,
+            @Value("${catalog.seeding.daily-drain-quota}") long dailyDrainQuota,
+            PipelineSettings pipelineSettings, PipelineJobService pipeline) {
         this.pendingImportRepository = pendingImportRepository;
         this.youtubeIdLookupService = youtubeIdLookupService;
         this.pendingImportProcessor = pendingImportProcessor;
@@ -80,6 +100,8 @@ public class CatalogSeedingService {
         this.songRepository = songRepository;
         this.backlogDrainExecutor = backlogDrainExecutor;
         this.dailyDrainQuota = dailyDrainQuota;
+        this.pipelineSettings = pipelineSettings;
+        this.pipeline = pipeline;
     }
 
     /**
@@ -91,16 +113,24 @@ public class CatalogSeedingService {
     public EnqueueResultDTO enqueue(AdminCatalogSeedingRequest request) {
         List<String> parsedYoutubeIds = YoutubeLinkParser.parseAllVideoIds(request.youtubeIds());
         List<String> mergedYoutubeIds = playlistExpansionService.expandAndMerge(request.playlistLink(), parsedYoutubeIds);
-        return enqueue(mergedYoutubeIds);
+        return enqueueSubmitted(mergedYoutubeIds, request.playlistLink());
     }
 
     @Transactional
     public EnqueueResultDTO enqueue(Collection<String> submittedYoutubeIds) {
+        return enqueueSubmitted(submittedYoutubeIds, null);
+    }
+
+    private EnqueueResultDTO enqueueSubmitted(Collection<String> submittedYoutubeIds, String playlistLink) {
         // Overlapping submissions would otherwise each see nothing queued and each queue every ID.
         songRepository.acquireTransactionLock(ENQUEUE_LOCK_KEY);
         YoutubeIdLookupResult lookupResult = youtubeIdLookupService.partitionKnownAndUnknown(submittedYoutubeIds);
         Set<String> alreadyKnownIds = lookupResult.knownYoutubeIds();
         Set<String> candidateIds = lookupResult.unknownYoutubeIds();
+
+        if (pipelineSettings.enabled()) {
+            return enqueueRuns(candidateIds, alreadyKnownIds, playlistLink);
+        }
 
         Set<String> alreadyQueuedIds = new LinkedHashSet<>(
                 pendingImportRepository.findYoutubeIdsAlreadyQueued(candidateIds, ACTIVE_BACKLOG_STATUSES));
@@ -128,6 +158,9 @@ public class CatalogSeedingService {
      */
     @Transactional
     public PendingImport enqueuePatientRecheck(String youtubeId, PendingImportOrigin origin, Integer provisionalYear) {
+        if (pipelineSettings.enabled()) {
+            pipeline.startRun(youtubeId, PipelineLane.USER_IMPORT, origin, null, provisionalYear);
+        }
         PendingImport pendingImport = new PendingImport();
         pendingImport.setYoutubeId(youtubeId);
         pendingImport.setStatus(PendingImportStatus.PENDING);
@@ -182,6 +215,9 @@ public class CatalogSeedingService {
      * rate-limit budget. Returns how many items it resolved this run.
      */
     public int drainBacklog() {
+        if (pipelineSettings.enabled()) {
+            return 0;
+        }
         if (!isDraining.compareAndSet(false, true)) {
             return 0;
         }
@@ -195,6 +231,9 @@ public class CatalogSeedingService {
     // The admin's run-now action: starts a drain in the background instead of waiting
     // for the daily sweep. Returns false when a drain is already running.
     public boolean startDrainNow() {
+        if (pipelineSettings.enabled()) {
+            throw new org.dariusturcu.backend.exception.ConflictException("The stage pipeline replaces the backlog drain");
+        }
         if (isDraining.get()) {
             return false;
         }
@@ -230,5 +269,23 @@ public class CatalogSeedingService {
     private long processedTodayCount() {
         return pendingImportRepository.countByStatusAndProcessedAtAfter(
                 PendingImportStatus.DONE, Instant.now().truncatedTo(ChronoUnit.DAYS));
+    }
+
+    private EnqueueResultDTO enqueueRuns(Set<String> candidates, Set<String> knownIds, String playlistLink) {
+        Set<String> enqueued = new LinkedHashSet<>();
+        Set<String> duplicates = new LinkedHashSet<>();
+        ImportBatchKind kind = playlistLink == null || playlistLink.isBlank()
+                ? ImportBatchKind.ADMIN_IDS : ImportBatchKind.ADMIN_PLAYLIST;
+        long batch = pipeline.createBatch(kind, "Admin catalog seed", playlistLink, null);
+        for (String youtubeId : candidates) {
+            PipelineRun run = pipeline.startRun(youtubeId, PipelineLane.BACKFILL,
+                    PendingImportOrigin.ADMIN_SEED, batch, null);
+            if (java.util.Objects.equals(run.batchId(), batch)) {
+                enqueued.add(youtubeId);
+            } else {
+                duplicates.add(youtubeId);
+            }
+        }
+        return new EnqueueResultDTO(enqueued, knownIds, duplicates);
     }
 }

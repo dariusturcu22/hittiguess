@@ -68,6 +68,17 @@ public final class CatalogSongRules {
                 : CatalogSongStatus.NEEDS_REVIEW;
     }
 
+    public static CatalogSongStatus songStatus(VerificationStatus verificationStatus,
+            Collection<PendingImport> rows, boolean stagePipeline) {
+        Set<PendingImportStatus> statuses = EnumSet.noneOf(PendingImportStatus.class);
+        rows.forEach(row -> statuses.add(row.getStatus()));
+        PendingImportStatus activeStatus = activeQueueStatus(statuses);
+        boolean latestFailed = rows.stream().max(ENQUEUE_ORDER)
+                .map(row -> row.getStatus() == PendingImportStatus.FAILED).orElse(false);
+        return stagePipeline && activeStatus == null && latestFailed
+                ? CatalogSongStatus.ERROR : songStatus(verificationStatus, activeStatus);
+    }
+
     public static CatalogSongStatus queueItemStatus(PendingImportStatus queueStatus) {
         return switch (queueStatus) {
             case PROCESSING -> CatalogSongStatus.PROCESSING;

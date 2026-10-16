@@ -10,6 +10,8 @@ import org.springframework.stereotype.Component;
 // the drain logic lives in CatalogSeedingService.drainBacklog() so it is testable by
 // calling it directly, and this component only wires it to the daily fixed-rate trigger.
 @Component
+@org.springframework.boot.autoconfigure.condition.ConditionalOnProperty(
+        name = "pipeline.stages.enabled", havingValue = "false", matchIfMissing = true)
 @RequiredArgsConstructor
 public class BacklogDrainSweeper {
 
