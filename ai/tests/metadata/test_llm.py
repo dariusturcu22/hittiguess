@@ -8,6 +8,7 @@ from pydantic import BaseModel
 from app.clients.deepinfra_client import client as deepinfra_client
 from app.clients.openai_client import client
 from app.metadata import llm
+from app.usage.recorder import PROVIDER_DEEPINFRA, PROVIDER_OPENAI
 from app.metadata.schemas import LlmExtractionResult, SongMetadataResult, SubmissionPreCheckResult
 
 
@@ -179,3 +180,34 @@ def test_synthesize_with_model_reraises_and_reports_an_api_failure(mocker):
         llm.synthesize_with_model("some prompt", "gpt-5-nano", _ReconciliationSchema)
 
     report_mock.assert_called_once_with(api_error)
+
+
+def test_each_completed_chat_call_records_its_provider_usage(mocker):
+    record_mock = mocker.patch("app.metadata.llm.usage_recorder.record_chat_completion")
+    expected = _WikipediaExtractionResult(release_year=1999, confidence="high")
+    deepinfra_completion = _mock_completion(expected)
+    openai_completion = _mock_completion(_ReconciliationSchema(release_year=1991, confidence="high", reasoning="Agree."))
+    mocker.patch.object(deepinfra_client.chat.completions, "parse", return_value=deepinfra_completion)
+    mocker.patch.object(client.chat.completions, "parse", return_value=openai_completion)
+
+    llm.extract_structured("some prompt", _WikipediaExtractionResult)
+    llm.synthesize_with_model("some prompt", "gpt-5-nano", _ReconciliationSchema)
+
+    assert [recorded_call.args for recorded_call in record_mock.call_args_list] == [
+        (PROVIDER_DEEPINFRA, deepinfra_completion),
+        (PROVIDER_OPENAI, openai_completion),
+    ]
+
+
+def test_tool_call_fallback_records_only_the_completed_call(mocker):
+    record_mock = mocker.patch("app.metadata.llm.usage_recorder.record_chat_completion")
+    mocker.patch.object(deepinfra_client.chat.completions, "parse", side_effect=_response_format_not_supported_error())
+    expected = _WikipediaExtractionResult(release_year=1999, confidence="high")
+    tool_completion = MagicMock(choices=[MagicMock(message=MagicMock(
+        tool_calls=[MagicMock(function=MagicMock(arguments=expected.model_dump_json()))]
+    ))])
+    mocker.patch.object(deepinfra_client.chat.completions, "create", return_value=tool_completion)
+
+    llm.extract_structured("some prompt", _WikipediaExtractionResult)
+
+    record_mock.assert_called_once_with(PROVIDER_DEEPINFRA, tool_completion)

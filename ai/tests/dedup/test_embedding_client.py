@@ -28,3 +28,14 @@ def test_generate_embedding_uses_the_configured_embedding_model(mocker):
         timeout=embedding_client.EMBEDDING_REQUEST_TIMEOUT_SECONDS,
         max_retries=embedding_client.EMBEDDING_IMMEDIATE_RETRIES,
     )
+
+
+def test_generate_embedding_records_the_embedding_usage(mocker):
+    mock_response = MagicMock(data=[MagicMock(embedding=[0.0])])
+    mocker.patch.object(client, "with_options", return_value=client)
+    mocker.patch.object(client.embeddings, "create", return_value=mock_response)
+    record_mock = mocker.patch("app.dedup.embedding_client.usage_recorder.record_embeddings")
+
+    embedding_client.generate_embedding("some text")
+
+    record_mock.assert_called_once_with(mock_response)

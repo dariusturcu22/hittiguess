@@ -4,6 +4,7 @@ import respx
 from httpx import Response
 
 from app.metadata.sources import youtube
+from app.usage.recorder import OPERATION_YOUTUBE_PLAYLIST_ITEMS_LIST, OPERATION_YOUTUBE_VIDEOS_LIST
 
 VIDEO_API_HOST = "https://www.googleapis.com/youtube/v3/videos"
 PLAYLIST_ITEMS_API_HOST = "https://www.googleapis.com/youtube/v3/playlistItems"
@@ -173,3 +174,37 @@ def test_fetch_video_titles_and_channels_skips_a_failed_batch_without_raising():
     video_info = youtube.fetch_video_titles_and_channels(["video-one"])
 
     assert video_info == {}
+
+
+SUCCESS_STATUS = 200
+QUOTA_EXCEEDED_STATUS = 403
+
+
+@respx.mock
+@pytest.mark.parametrize("status_code", [SUCCESS_STATUS, QUOTA_EXCEEDED_STATUS])
+def test_every_answered_youtube_request_records_its_quota(mocker, status_code):
+    record_mock = mocker.patch("app.metadata.sources.youtube.usage_recorder.record_youtube_request")
+    respx.get(url__startswith=VIDEO_API_HOST).mock(return_value=Response(status_code, json={"items": []}))
+    respx.get(url__startswith=PLAYLIST_ITEMS_API_HOST).mock(return_value=Response(status_code, json={"items": []}))
+
+    youtube.fetch_youtube_metadata("https://youtube.com/watch?v=dQw4w9WgXcQ")
+    youtube.fetch_video_titles_and_channels(["dQw4w9WgXcQ"])
+    try:
+        youtube.fetch_playlist_video_ids("PLsample")
+    except youtube.PlaylistFetchError:
+        pass
+
+    recorded_operations = [recorded_call.args[0] for recorded_call in record_mock.call_args_list]
+    assert recorded_operations == [
+        OPERATION_YOUTUBE_VIDEOS_LIST, OPERATION_YOUTUBE_VIDEOS_LIST, OPERATION_YOUTUBE_PLAYLIST_ITEMS_LIST
+    ]
+
+
+@respx.mock
+def test_a_youtube_request_without_a_response_records_nothing(mocker):
+    record_mock = mocker.patch("app.metadata.sources.youtube.usage_recorder.record_youtube_request")
+    respx.get(url__startswith=VIDEO_API_HOST).mock(side_effect=httpx.ConnectTimeout("timed out"))
+
+    youtube.fetch_youtube_metadata("https://youtube.com/watch?v=dQw4w9WgXcQ")
+
+    record_mock.assert_not_called()
