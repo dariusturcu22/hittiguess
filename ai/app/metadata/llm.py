@@ -7,6 +7,8 @@ from app.clients.deepinfra_client import client as deepinfra_client
 from app.clients.openai_client import client
 from app.config import settings
 from app.observability.error_reporting import report_openai_failure
+from app.usage import recorder as usage_recorder
+from app.usage.recorder import PROVIDER_DEEPINFRA, PROVIDER_OPENAI
 
 # Non-zero temperature produces real run-to-run answer variance on close
 # extraction calls, not just wording differences in a reasoning field.
@@ -33,6 +35,7 @@ def synthesize_with_model(prompt: str, model: str, response_model: type[Response
     except Exception as openai_error:
         report_openai_failure(openai_error)
         raise
+    usage_recorder.record_chat_completion(PROVIDER_OPENAI, completion)
 
     parsed = completion.choices[0].message.parsed
     if parsed is None:
@@ -62,6 +65,7 @@ def _extract_via_tool_call(prompt: str, response_model: type[ResponseModel]) -> 
         tools=[tool],
         tool_choice={"type": "function", "function": {"name": EXTRACTION_TOOL_NAME}},
     )
+    usage_recorder.record_chat_completion(PROVIDER_DEEPINFRA, completion)
     tool_calls = completion.choices[0].message.tool_calls
     if not tool_calls:
         raise ValueError(f"{settings.deepinfra_model} did not call {EXTRACTION_TOOL_NAME} via forced tool use")
@@ -87,6 +91,7 @@ def extract_structured(prompt: str, response_model: type[ResponseModel]) -> Resp
         if RESPONSE_FORMAT_NOT_SUPPORTED_MESSAGE in error_message:
             return _extract_via_tool_call(prompt, response_model)
         raise
+    usage_recorder.record_chat_completion(PROVIDER_DEEPINFRA, completion)
 
     parsed = completion.choices[0].message.parsed
     if parsed is None:

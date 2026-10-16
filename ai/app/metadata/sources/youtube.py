@@ -10,6 +10,8 @@ from app.metadata.sources.util import (
     parse_iso8601_duration_seconds,
 )
 from app.observability.error_reporting import report_source_failure
+from app.usage import recorder as usage_recorder
+from app.usage.recorder import OPERATION_YOUTUBE_PLAYLIST_ITEMS_LIST, OPERATION_YOUTUBE_VIDEOS_LIST
 
 SOURCE_NAME = "youtube"
 VIDEO_DURATIONS_ENDPOINT = "https://www.googleapis.com/youtube/v3/videos"
@@ -21,6 +23,16 @@ class PlaylistFetchError(Exception):
     """Raised when the first page of a playlist fetch fails, so a caller can
     distinguish a real API or lookup failure from a playlist that simply has
     no items (which is not an error and yields an empty list instead)."""
+
+
+def _youtube_get(operation: str, url: str, **request_options) -> httpx.Response:
+    """Sends one YouTube Data API request and counts its quota once a response
+    arrives, whatever the status, since YouTube charges failed requests too."""
+    response = httpx.get(url, **request_options)
+    usage_recorder.record_youtube_request(operation)
+    return response
+
+
 UNKNOWN_DEFAULTS = {
     "channel_title": "unknown",
     "video_title": "unknown",
@@ -38,7 +50,7 @@ def fetch_youtube_metadata(url: str) -> dict[str, str]:
         video_id = extract_youtube_video_id(url)
         api_url = build_youtube_api_url(video_id, settings.youtube_api_key)
 
-        response = httpx.get(api_url, timeout=5.0)
+        response = _youtube_get(OPERATION_YOUTUBE_VIDEOS_LIST, api_url, timeout=5.0)
         response.raise_for_status()
         items = response.json().get("items", [])
 
@@ -78,7 +90,7 @@ def fetch_playlist_video_ids(playlist_id: str) -> list[str]:
     while True:
         api_url = build_youtube_playlist_items_api_url(playlist_id, settings.youtube_api_key, page_token)
         try:
-            response = httpx.get(api_url, timeout=5.0)
+            response = _youtube_get(OPERATION_YOUTUBE_PLAYLIST_ITEMS_LIST, api_url, timeout=5.0)
             response.raise_for_status()
             page_payload = response.json()
         except Exception as playlist_page_error:
@@ -115,7 +127,7 @@ def fetch_video_titles_and_channels(video_ids: list[str]) -> dict[str, dict[str,
         chunk = video_ids[chunk_start:chunk_start + YOUTUBE_VIDEOS_BATCH_SIZE]
         api_url = build_youtube_videos_batch_api_url(chunk, settings.youtube_api_key)
         try:
-            response = httpx.get(api_url, timeout=5.0)
+            response = _youtube_get(OPERATION_YOUTUBE_VIDEOS_LIST, api_url, timeout=5.0)
             response.raise_for_status()
             payload = response.json()
         except Exception as video_batch_error:
@@ -137,7 +149,8 @@ def fetch_video_titles_and_channels(video_ids: list[str]) -> dict[str, dict[str,
 
 def fetch_video_durations(video_ids: list[str]) -> dict[str, int | None]:
     unique_video_ids = list(dict.fromkeys(video_ids))
-    response = httpx.get(
+    response = _youtube_get(
+        OPERATION_YOUTUBE_VIDEOS_LIST,
         VIDEO_DURATIONS_ENDPOINT,
         params={"part": VIDEO_DURATIONS_PART, "id": ",".join(unique_video_ids), "key": settings.youtube_api_key},
         timeout=VIDEO_LOOKUP_TIMEOUT_SECONDS,
