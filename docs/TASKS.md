@@ -96,7 +96,7 @@ Frontend:
 
 - [ ] Admin section in the sidebar in its own accent color with Dashboard, Backfill queue, Song catalog, and Reports, visible only to admins
 - [ ] Dashboard, backfill queue (per-queue panel, a page per stage queue, batches, failed items with reasons, song list), song catalog (debounced search, pagination), and song detail drawer
-- [ ] Design dark and light mockups for the admin sidebar section, dashboard, backfill queue, song catalog, and song detail; replace the catalog backlog mockup and its 400-song quota figure; validate source and canvas equality
+- [x] Design dark and light mockups for the admin sidebar section, dashboard, backfill queue, song catalog, and song detail; replace the catalog backlog mockup and its 400-song quota figure; validate source and canvas equality
 
 Tests:
 
