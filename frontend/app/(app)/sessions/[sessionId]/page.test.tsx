@@ -55,6 +55,7 @@ const MID_GAME_SESSION = {
 type MockGameSession = Omit<typeof MID_GAME_SESSION, "currentRound"> & { currentRound: Record<string, unknown> | null };
 
 let mockSessionData: MockGameSession | null = MID_GAME_SESSION;
+let mockSessionIsLoading = false;
 let mockCurrentUserId = ACTIVE_USER_ID;
 
 function withRound(round: Record<string, unknown>): MockGameSession {
@@ -80,7 +81,7 @@ vi.mock("@/hooks/generated/game-session/game-session", () => ({
   }),
   useGetSession: () => ({
     data: mockSessionData,
-    isLoading: false,
+    isLoading: mockSessionIsLoading,
     isError: !mockSessionData,
   }),
   useGetGuessState: () => ({ data: mockGuessState }),
@@ -156,6 +157,7 @@ describe("GameSessionPage", () => {
     mockGuessState = undefined;
     routerReplace.mockClear();
     mockSessionData = MID_GAME_SESSION;
+    mockSessionIsLoading = false;
     mockCurrentUserId = ACTIVE_USER_ID;
     window.sessionStorage.clear();
   });
@@ -477,5 +479,97 @@ describe("GameSessionPage", () => {
 
     expect(await screen.findByText("Your timeline will appear when the round starts.")).toBeVisible();
     expect(screen.queryByRole("button", { name: "Your card. Choose a timeline position." })).toBeNull();
+  });
+});
+
+describe("GameSessionPage viewport layout", () => {
+  beforeAll(() => {
+    vi.spyOn(window.navigator, "userAgent", "get").mockReturnValue("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/140.0 Safari/537.36");
+  });
+
+  beforeEach(() => {
+    mockSessionData = MID_GAME_SESSION;
+    mockSessionIsLoading = false;
+    mockCurrentUserId = ACTIVE_USER_ID;
+    mockGuessState = undefined;
+    window.sessionStorage.clear();
+  });
+
+  it("pins the game root to the viewport without page scrolling", async () => {
+    await renderPage();
+    const root = screen.getByRole("main");
+
+    expect(root.className).toContain("h-full");
+    expect(root.className).toContain("overflow-hidden");
+    expect(root.className).not.toContain("min-h-full");
+    expect(root.className).not.toContain("min-h-[680px]");
+  });
+
+  it("centres the loading state inside the viewport", async () => {
+    mockSessionIsLoading = true;
+    await renderPage();
+
+    const root = screen.getByRole("main");
+    expect(root.className).toContain("h-full");
+    expect(root.className).toContain("overflow-hidden");
+    expect(root.className).not.toContain("min-h-[720px]");
+    expect(screen.getByLabelText("Loading game session")).toBeVisible();
+  });
+
+  it("centres the ended state inside the viewport", async () => {
+    mockSessionData = null;
+    await renderPage();
+
+    const root = screen.getByRole("main");
+    expect(root.className).toContain("h-full");
+    expect(root.className).toContain("overflow-hidden");
+    expect(root.className).not.toContain("min-h-[720px]");
+  });
+
+  it("drops the stage floor and scales the timeline offsets on short screens", async () => {
+    const view = render(<GameSessionPage params={SESSION_PARAMS} />);
+    await screen.findByText("Your turn");
+
+    const stage = screen.getByRole("region", { name: "Game stage" });
+    expect(stage.className).toContain("flex-1");
+    expect(stage.className).not.toContain("min-h-[680px]");
+
+    const timelineLabel = view.container.querySelector('[class*="bottom-[calc(50%+98px)]"]');
+    expect(timelineLabel?.className).toContain("short:bottom-[calc(50%+86px)]");
+    expect(timelineLabel?.className).toContain("very-short:bottom-[calc(50%+68px)]");
+
+    const aboveTimeline = view.container.querySelector('[class*="bottom-[calc(50%+132px)]"]');
+    expect(aboveTimeline?.className).toContain("short:bottom-[calc(50%+116px)]");
+    expect(aboveTimeline?.className).toContain("very-short:bottom-[calc(50%+92px)]");
+
+    const belowTimeline = view.container.querySelector('[class*="top-[calc(50%+148px)]"]');
+    expect(belowTimeline?.className).toContain("short:top-[calc(50%+130px)]");
+    expect(belowTimeline?.className).toContain("very-short:top-[calc(50%+102px)]");
+  });
+
+  it("scales the timeline cards, the guess pills, and the token pile on short screens", async () => {
+    await renderPage();
+
+    expect(screen.getByText("Torn").closest("article")?.className).toContain("very-short:size-[116px]");
+
+    const guessPill = screen.getByRole("textbox", { name: "Guess the artist" }).closest("label");
+    expect(guessPill?.className).toContain("short:h-[46px]");
+    expect(guessPill?.className).toContain("very-short:h-[40px]");
+
+    expect(screen.getByLabelText("Your tokens: 0").className).toContain("very-short:gap-1.5");
+  });
+
+  it("scales the round intro on short screens", async () => {
+    mockSessionData = { ...withRound({ roundNumber: 1, turnNumber: 1 }), currentRoundNumber: 1 };
+    const view = render(<GameSessionPage params={SESSION_PARAMS} />);
+    await screen.findByText("First DJ");
+
+    const intro = view.container.querySelector('[class*="absolute inset-0 z-40"]');
+    expect(intro?.className).toContain("short:gap-6");
+    expect(intro?.className).toContain("very-short:gap-4");
+
+    const ring = view.container.querySelector('[class*="size-[130px]"]');
+    expect(ring?.className).toContain("short:size-[110px]");
+    expect(ring?.className).toContain("very-short:size-[92px]");
   });
 });
