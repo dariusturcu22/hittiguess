@@ -1,6 +1,7 @@
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { publishTabAudioError, publishTabAudioSharing } from "@/hooks/use-local-audio-stream";
 import GameSessionPage from "./page";
 
 let roundEventHandler: ((event: { type: string; payload?: Record<string, unknown> }) => void) | undefined;
@@ -134,6 +135,10 @@ async function renderPage() {
 }
 
 describe("GameSessionPage", () => {
+  beforeAll(() => {
+    vi.spyOn(window.navigator, "userAgent", "get").mockReturnValue("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/140.0 Safari/537.36");
+  });
+
   beforeEach(() => {
     placeCard.mockClear();
     previewPlacement.mockClear();
@@ -304,34 +309,42 @@ describe("GameSessionPage", () => {
     expect(screen.queryByText("Alex guessed the artist and the title")).toBeNull();
   });
 
-  it("shows the DJ the song card and a real YouTube link", async () => {
+  it("asks the DJ to share audio before the YouTube link appears", async () => {
     mockCurrentUserId = DJ_USER_ID;
+    const shareRequests = vi.fn();
+    window.addEventListener("session-start-audio-share", shareRequests);
+    await renderPage();
+
+    expect(screen.queryByRole("link", { name: "Open on YouTube to play" })).toBeNull();
+    expect(screen.getByText("Levitating")).toBeVisible();
+    expect(screen.getByText("You're the DJ")).toBeVisible();
+    expect(screen.queryByPlaceholderText("Guess the artist")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Share your audio first" }));
+
+    expect(shareRequests).toHaveBeenCalledOnce();
+    window.removeEventListener("session-start-audio-share", shareRequests);
+  });
+
+  it("shows a failed audio share next to the share button", async () => {
+    mockCurrentUserId = DJ_USER_ID;
+    await renderPage();
+
+    act(() => publishTabAudioError("No audio was shared."));
+
+    expect(screen.getByRole("alert")).toHaveTextContent("No audio was shared.");
+    act(() => publishTabAudioError(null));
+  });
+
+  it("shows the DJ a real YouTube link that opens in a new tab once the audio is shared", async () => {
+    mockCurrentUserId = DJ_USER_ID;
+    act(() => publishTabAudioSharing(true));
     await renderPage();
 
     const link = await screen.findByRole("link", { name: "Open on YouTube to play" });
     expect(link).toHaveAttribute("href", WATCH_URL);
     expect(link).toHaveAttribute("target", "_blank");
-    expect(screen.getByText("Levitating")).toBeVisible();
-    expect(screen.getByText("You're the DJ")).toBeVisible();
-    expect(screen.queryByPlaceholderText("Guess the artist")).toBeNull();
-  });
-
-  it("starts the audio share and opens YouTube in its own window from one click", async () => {
-    mockCurrentUserId = DJ_USER_ID;
-    const shareRequests = vi.fn();
-    const youtubeWindow = { opener: window };
-    const openWindow = vi.spyOn(window, "open").mockReturnValue(youtubeWindow as unknown as Window);
-    window.addEventListener("session-start-audio-share", shareRequests);
-    await renderPage();
-
-    fireEvent.click(await screen.findByRole("link", { name: "Open on YouTube to play" }));
-
-    expect(shareRequests).toHaveBeenCalledOnce();
-    expect(openWindow).toHaveBeenCalledWith(WATCH_URL, "hittiguess-youtube", expect.stringContaining("popup"));
-    expect(youtubeWindow.opener).toBeNull();
-    expect(screen.getByRole("button", { name: "Pick the YouTube window to share its audio" })).toBeVisible();
-    window.removeEventListener("session-start-audio-share", shareRequests);
-    openWindow.mockRestore();
+    expect(screen.getByText("Sharing your audio with the group")).toBeVisible();
+    act(() => publishTabAudioSharing(false));
   });
 
   it("shows spectators the live placement preview", async () => {

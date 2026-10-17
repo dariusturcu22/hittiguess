@@ -29,7 +29,7 @@ const MICROPHONE_NOT_FOUND_MESSAGE = "No microphone was found. You can still lis
 const MICROPHONE_START_FAILED_MESSAGE = "Could not start the microphone. You can still listen.";
 const TAB_AUDIO_UNSUPPORTED_MESSAGE = "This browser can't share tab audio.";
 const TAB_AUDIO_INSECURE_CONTEXT_MESSAGE = "Sharing audio needs the game open over HTTPS.";
-const TAB_AUDIO_MISSING_MESSAGE = "No audio was shared. Pick the YouTube tab and turn on tab audio.";
+const TAB_AUDIO_MISSING_MESSAGE = "No audio was shared. Choose Entire screen and turn on Share system audio, or choose the YouTube tab and turn on Share tab audio.";
 const TAB_AUDIO_FAILED_MESSAGE = "Couldn't share tab audio.";
 
 interface VoiceSignal { type: string; senderUserId: number; targetMemberUserId: number; payload: string; }
@@ -39,6 +39,7 @@ interface AudioMixer {
   destination: MediaStreamAudioDestinationNode;
   microphoneSource: MediaStreamAudioSourceNode | null;
   tabSource: MediaStreamAudioSourceNode | null;
+  tabGain: GainNode | null;
 }
 
 interface AudioContextWindow extends Window {
@@ -46,7 +47,7 @@ interface AudioContextWindow extends Window {
 }
 
 // Chromium-only display-media hints: exclude the game tab itself from the picker and
-// offer system audio, so the DJ picks the YouTube tab (or the whole system's audio).
+// offer system audio, so the DJ shares the whole screen's audio (or the YouTube tab's).
 interface DisplayAudioConstraints extends DisplayMediaStreamOptions {
   selfBrowserSurface?: "exclude" | "include";
   systemAudio?: "exclude" | "include";
@@ -90,7 +91,7 @@ function createAudioMixer(): AudioMixer | null {
   if (!Context) return null;
   const context = new Context();
   void context.resume().catch(() => {});
-  return { context, destination: context.createMediaStreamDestination(), microphoneSource: null, tabSource: null };
+  return { context, destination: context.createMediaStreamDestination(), microphoneSource: null, tabSource: null, tabGain: null };
 }
 
 interface VoiceMeshOptions {
@@ -118,6 +119,9 @@ export function useVoiceMesh(groupId: number, currentUserId: number | undefined,
   const peersReference = useRef(new Map<number, RTCPeerConnection>());
   const pendingCandidatesReference = useRef(new Map<number, RTCIceCandidateInit[]>());
   const remoteAudioReference = useRef(new Map<number, HTMLAudioElement>());
+  const remoteStreamsReference = useRef(new Map<number, MediaStream>());
+  const visualizerUserIdReference = useRef<number | undefined>(undefined);
+  const isBroadcastingTabAudioReference = useRef(false);
   const statusChannelsReference = useRef(new Map<number, RTCDataChannel>());
   const localStatusReference = useRef<VoiceStatus>({ isMuted: false, isDeafened: false, isSpeaking: false });
   const [memberStatuses, setMemberStatuses] = useState<Record<number, VoiceStatus>>({});
@@ -189,6 +193,15 @@ export function useVoiceMesh(groupId: number, currentUserId: number | undefined,
     });
   }, [outgoingTrack]);
 
+  // The card's bars follow the song: the DJ's own shared audio while this player is
+  // broadcasting it, otherwise the audio arriving from the current DJ. The microphone
+  // never drives them, so talking does not move the bars.
+  const publishVisualizerStream = useCallback(() => {
+    const visualizerUserId = visualizerUserIdReference.current;
+    const remoteStream = visualizerUserId === undefined ? undefined : remoteStreamsReference.current.get(visualizerUserId);
+    publishLocalAudioStream(isBroadcastingTabAudioReference.current ? tabStreamReference.current : remoteStream ?? null);
+  }, []);
+
   const applyRemoteAudioMuting = useCallback(() => {
     remoteAudioReference.current.forEach((audio, userId) => {
       audio.muted = isDeafenedReference.current || silencedUserIdsReference.current.has(userId);
@@ -213,7 +226,9 @@ export function useVoiceMesh(groupId: number, currentUserId: number | undefined,
     pendingCandidatesReference.current.delete(targetMemberUserId);
     remoteAudioReference.current.get(targetMemberUserId)?.pause();
     remoteAudioReference.current.delete(targetMemberUserId);
-  }, []);
+    remoteStreamsReference.current.delete(targetMemberUserId);
+    publishVisualizerStream();
+  }, [publishVisualizerStream]);
 
   const createPeer = useCallback((targetMemberUserId: number, isOfferer: boolean) => {
     const existingPeer = peersReference.current.get(targetMemberUserId);
@@ -245,6 +260,8 @@ export function useVoiceMesh(groupId: number, currentUserId: number | undefined,
         void sinkableAudio.setSinkId(speakerDeviceId).catch(() => {});
       }
       remoteAudioReference.current.set(targetMemberUserId, audio);
+      remoteStreamsReference.current.set(targetMemberUserId, remoteStream);
+      publishVisualizerStream();
       void audio.play().catch(() => {});
     };
     peer.onconnectionstatechange = () => {
@@ -255,7 +272,7 @@ export function useVoiceMesh(groupId: number, currentUserId: number | undefined,
     };
     peersReference.current.set(targetMemberUserId, peer);
     return peer;
-  }, [bindStatusChannel, closePeer, outgoingTrack, sendSignal, speakerDeviceId, turnCredentialsQuery.data?.iceServers]);
+  }, [bindStatusChannel, closePeer, outgoingTrack, publishVisualizerStream, sendSignal, speakerDeviceId, turnCredentialsQuery.data?.iceServers]);
 
   // A candidate can arrive before the offer or answer it belongs to; it waits here until
   // the peer has a remote description to attach it to.
@@ -314,6 +331,7 @@ export function useVoiceMesh(groupId: number, currentUserId: number | undefined,
     const peers = peersReference.current;
     const statusChannels = statusChannelsReference.current;
     const remoteAudio = remoteAudioReference.current;
+    const remoteStreams = remoteStreamsReference.current;
     const client = new Client({
       brokerURL: websocketUrl(),
       reconnectDelay: RECONNECT_DELAY_MILLISECONDS,
@@ -349,6 +367,7 @@ export function useVoiceMesh(groupId: number, currentUserId: number | undefined,
       setMemberStatuses({});
       remoteAudio.forEach((audio) => audio.pause());
       remoteAudio.clear();
+      remoteStreams.clear();
       void client.deactivate();
     };
   }, [currentUserId, groupId, isInVoice]);
@@ -371,10 +390,6 @@ export function useVoiceMesh(groupId: number, currentUserId: number | undefined,
       sendSignal(OFFER_SIGNAL, memberUserId, offer);
     });
   }, [createPeer, currentUserId, hasOutgoingAudio, isInVoice, isSignalConnected, peerResetCount, sendSignal, voiceMembers]);
-
-  const publishVisualizerStream = useCallback(() => {
-    publishLocalAudioStream(tabStreamReference.current ?? microphoneStreamReference.current);
-  }, []);
 
   // Always leaves the player able to listen: a missing or refused microphone still sets
   // up the outgoing (silent) track, and the result only reports whether talking works.
@@ -413,7 +428,11 @@ export function useVoiceMesh(groupId: number, currentUserId: number | undefined,
     tabStreamReference.current?.getTracks().forEach((track) => track.stop());
     tabStreamReference.current = null;
     mixerReference.current?.tabSource?.disconnect();
-    if (mixerReference.current) mixerReference.current.tabSource = null;
+    mixerReference.current?.tabGain?.disconnect();
+    if (mixerReference.current) {
+      mixerReference.current.tabSource = null;
+      mixerReference.current.tabGain = null;
+    }
     setIsSharingTabAudio(false);
     publishTabAudioSharing(false);
     publishVisualizerStream();
@@ -445,7 +464,10 @@ export function useVoiceMesh(groupId: number, currentUserId: number | undefined,
       tabStreamReference.current = tabStream;
       if (mixer) {
         mixer.tabSource = mixer.context.createMediaStreamSource(tabStream);
-        mixer.tabSource.connect(mixer.destination);
+        mixer.tabGain = mixer.context.createGain();
+        mixer.tabGain.gain.setValueAtTime(isBroadcastingTabAudioReference.current ? 1 : 0, mixer.context.currentTime);
+        mixer.tabSource.connect(mixer.tabGain);
+        mixer.tabGain.connect(mixer.destination);
       } else {
         microphoneStreamReference.current = tabStream;
       }
@@ -462,6 +484,21 @@ export function useVoiceMesh(groupId: number, currentUserId: number | undefined,
     }
   }, [ensureMixer, publishVisualizerStream, refreshOutgoingTrack, stopTabAudio]);
 
+  // The capture stays alive for the whole match, but its audio reaches the mix, and so
+  // the other players, only while this player is the DJ with the song still hidden.
+  const setTabAudioBroadcasting = useCallback((isBroadcasting: boolean) => {
+    isBroadcastingTabAudioReference.current = isBroadcasting;
+    const tabGain = mixerReference.current?.tabGain;
+    tabGain?.gain.setValueAtTime(isBroadcasting ? 1 : 0, tabGain.context.currentTime);
+    publishVisualizerStream();
+  }, [publishVisualizerStream]);
+
+  // Whose incoming audio drives the card's bars: the current DJ's, or nobody's.
+  const setVisualizerUserId = useCallback((userId: number | undefined) => {
+    visualizerUserIdReference.current = userId;
+    publishVisualizerStream();
+  }, [publishVisualizerStream]);
+
   const stopVoice = useCallback(() => {
     stopTabAudio();
     microphoneStreamReference.current?.getTracks().forEach((track) => track.stop());
@@ -476,6 +513,8 @@ export function useVoiceMesh(groupId: number, currentUserId: number | undefined,
     peersReference.current.clear();
     remoteAudioReference.current.forEach((audio) => audio.pause());
     remoteAudioReference.current.clear();
+    remoteStreamsReference.current.clear();
+    isBroadcastingTabAudioReference.current = false;
     void mixerReference.current?.context.close().catch(() => {});
     mixerReference.current = null;
     setHasOutgoingAudio(false);
@@ -517,6 +556,8 @@ export function useVoiceMesh(groupId: number, currentUserId: number | undefined,
     startMicrophone,
     startTabAudio,
     stopTabAudio,
+    setTabAudioBroadcasting,
+    setVisualizerUserId,
     stopVoice,
     toggleMute,
     toggleDeafen,

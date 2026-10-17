@@ -8,6 +8,8 @@ const joinVoice = vi.fn();
 const startMicrophone = vi.fn(async () => true);
 const startTabAudio = vi.fn(async () => true);
 const setSilencedUserIds = vi.fn();
+const setTabAudioBroadcasting = vi.fn();
+const setVisualizerUserId = vi.fn();
 let sessionData: unknown = undefined;
 const toggleMute = vi.fn();
 const toggleDeafen = vi.fn();
@@ -53,6 +55,9 @@ vi.mock("@/hooks/use-voice-mesh", () => ({
     startMicrophone,
     startTabAudio,
     stopTabAudio: vi.fn(),
+    setTabAudioBroadcasting,
+    setVisualizerUserId,
+    tabAudioErrorMessage: null,
     stopVoice: vi.fn(),
     setSilencedUserIds,
     toggleMute,
@@ -82,6 +87,8 @@ describe("AppVoiceSidebar", () => {
     startMicrophone.mockResolvedValue(true);
     startTabAudio.mockClear();
     setSilencedUserIds.mockClear();
+    setTabAudioBroadcasting.mockClear();
+    setVisualizerUserId.mockClear();
     toggleMute.mockClear();
     toggleDeafen.mockClear();
   });
@@ -205,5 +212,36 @@ describe("AppVoiceSidebar", () => {
     render(<AppVoiceSidebar />);
 
     expect(setSilencedUserIds).toHaveBeenLastCalledWith([22]);
+  });
+
+  it("broadcasts the shared audio only to the group while the DJ's song is hidden", () => {
+    sessionData = {
+      players: [{ id: 1, userId: 11 }, { id: 2, userId: 22 }],
+      currentRound: { activePlayerId: 2, djPlayerId: 1, status: "AWAITING_PLACEMENT" },
+    };
+    const { unmount } = render(<AppVoiceSidebar />);
+
+    expect(setTabAudioBroadcasting).toHaveBeenLastCalledWith(true);
+    expect(setVisualizerUserId).toHaveBeenLastCalledWith(undefined);
+    unmount();
+
+    sessionData = {
+      players: [{ id: 1, userId: 11 }, { id: 2, userId: 22 }],
+      currentRound: { activePlayerId: 2, djPlayerId: 1, status: "REVEALED" },
+    };
+    render(<AppVoiceSidebar />);
+
+    expect(setTabAudioBroadcasting).toHaveBeenLastCalledWith(false);
+  });
+
+  it("never broadcasts for a player who is not the DJ and follows the DJ's audio for the card", () => {
+    sessionData = {
+      players: [{ id: 1, userId: 11 }, { id: 2, userId: 22 }],
+      currentRound: { activePlayerId: 1, djPlayerId: 2, status: "AWAITING_PLACEMENT" },
+    };
+    render(<AppVoiceSidebar />);
+
+    expect(setTabAudioBroadcasting).toHaveBeenLastCalledWith(false);
+    expect(setVisualizerUserId).toHaveBeenLastCalledWith(22);
   });
 });

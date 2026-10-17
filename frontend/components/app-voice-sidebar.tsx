@@ -10,7 +10,7 @@ import { useGetActiveSessionForGroup, useGetSession } from "@/hooks/generated/ga
 import { useGetCurrentUser } from "@/hooks/generated/user-management/user-management";
 import { shouldSilenceDjForActivePlayer, useVoiceMesh } from "@/hooks/use-voice-mesh";
 import { useAudioDevices } from "@/hooks/use-audio-devices";
-import { DJ_AUDIO_SHARE_EVENT } from "@/hooks/use-local-audio-stream";
+import { DJ_AUDIO_SHARE_EVENT, publishTabAudioError } from "@/hooks/use-local-audio-stream";
 import { Button } from "@/components/shadcn/button";
 import { VoiceSettingsPopup } from "@/components/voice-settings-popup";
 import { VoiceMemberList } from "@/components/voice-member-list";
@@ -53,7 +53,7 @@ export function AppVoiceSidebar() {
     speakerDeviceId,
     onPresenceChange: refreshVoicePresence,
   });
-  const { setSilencedUserIds, startTabAudio, stopTabAudio } = voiceMesh;
+  const { setSilencedUserIds, setTabAudioBroadcasting, setVisualizerUserId, startTabAudio } = voiceMesh;
   const microphoneMessage = voiceMesh.microphoneErrorMessage
     ?? ((microphoneError || voiceMesh.microphoneError) ? "Microphone permission is needed." : null);
 
@@ -79,9 +79,17 @@ export function AppVoiceSidebar() {
   useEffect(() => {
     setSilencedUserIds(isSilencingDj && djUserId !== undefined ? [djUserId] : []);
   }, [djUserId, isSilencingDj, setSilencedUserIds]);
+  // The shared audio goes out only during this player's own turn as DJ and only until the
+  // reveal; everyone else's card follows the DJ's incoming audio.
+  const isRoundSongHidden = session?.currentRound?.status !== "REVEALED" && session?.currentRound?.status !== "SCORED";
   useEffect(() => {
-    if (!isCurrentDj) stopTabAudio();
-  }, [isCurrentDj, stopTabAudio]);
+    setTabAudioBroadcasting(isCurrentDj && isRoundSongHidden);
+    setVisualizerUserId(isCurrentDj ? undefined : djUserId);
+  }, [djUserId, isCurrentDj, isRoundSongHidden, setTabAudioBroadcasting, setVisualizerUserId]);
+  const { tabAudioErrorMessage } = voiceMesh;
+  useEffect(() => {
+    publishTabAudioError(tabAudioErrorMessage);
+  }, [tabAudioErrorMessage]);
 
   const { isSignalConnected } = voiceMesh;
   const { mutate: announceJoin } = joinVoice;
