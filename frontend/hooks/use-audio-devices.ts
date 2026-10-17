@@ -16,6 +16,9 @@ const MICROPHONE_STORAGE_KEY = "hittiguess-microphone-device-id";
 const SPEAKER_STORAGE_KEY = "hittiguess-speaker-device-id";
 const MICROPHONE_VOLUME_STORAGE_KEY = "hittiguess-microphone-volume";
 const SPEAKER_VOLUME_STORAGE_KEY = "hittiguess-speaker-volume";
+const NOISE_GATE_SENSITIVITY_STORAGE_KEY = "hittiguess-noise-gate-sensitivity";
+const RNNOISE_ENABLED_STORAGE_KEY = "hittiguess-rnnoise-enabled";
+const SONG_VOLUME_STORAGE_KEY = "hittiguess-song-volume";
 const EMPTY_LISTS: DeviceLists = { microphones: [], speakers: [] };
 
 // Percentages. The microphone can be boosted to double for a quiet device; the speaker
@@ -23,12 +26,23 @@ const EMPTY_LISTS: DeviceLists = { microphones: [], speakers: [] };
 export const DEFAULT_VOLUME_PERCENT = 100;
 export const MAX_MICROPHONE_VOLUME_PERCENT = 200;
 export const MAX_SPEAKER_VOLUME_PERCENT = 100;
+export const MAX_SONG_VOLUME_PERCENT = 100;
+
+// The noise gate threshold runs from barely responsive to aggressive. The default sits in
+// the middle so speech passes while steady background noise is cut.
+export const MIN_NOISE_GATE_SENSITIVITY = 0;
+export const MAX_NOISE_GATE_SENSITIVITY = 100;
+export const DEFAULT_NOISE_GATE_SENSITIVITY = 50;
+export const DEFAULT_RNNOISE_ENABLED = true;
 
 export interface AudioSelection {
   microphoneDeviceId: string | undefined;
   speakerDeviceId: string | undefined;
   microphoneVolume: number;
   speakerVolume: number;
+  noiseGateSensitivity: number;
+  isRnnoiseEnabled: boolean;
+  songVolume: number;
 }
 
 const SERVER_SELECTION: AudioSelection = {
@@ -36,6 +50,9 @@ const SERVER_SELECTION: AudioSelection = {
   speakerDeviceId: undefined,
   microphoneVolume: DEFAULT_VOLUME_PERCENT,
   speakerVolume: DEFAULT_VOLUME_PERCENT,
+  noiseGateSensitivity: DEFAULT_NOISE_GATE_SENSITIVITY,
+  isRnnoiseEnabled: DEFAULT_RNNOISE_ENABLED,
+  songVolume: DEFAULT_VOLUME_PERCENT,
 };
 
 let cachedLists: DeviceLists = EMPTY_LISTS;
@@ -98,9 +115,26 @@ export function clampVolume(value: number, maximum: number): number {
   return Math.min(maximum, Math.max(0, Math.round(value)));
 }
 
+export function clampNoiseGateSensitivity(value: number): number {
+  if (!Number.isFinite(value)) return DEFAULT_NOISE_GATE_SENSITIVITY;
+  return Math.min(MAX_NOISE_GATE_SENSITIVITY, Math.max(MIN_NOISE_GATE_SENSITIVITY, Math.round(value)));
+}
+
 function storedVolume(key: string, maximum: number): number {
   const stored = typeof window === "undefined" ? null : window.localStorage.getItem(key);
   return stored === null ? DEFAULT_VOLUME_PERCENT : clampVolume(Number(stored), maximum);
+}
+
+function storedNoiseGateSensitivity(key: string): number {
+  const stored = typeof window === "undefined" ? null : window.localStorage.getItem(key);
+  return stored === null ? DEFAULT_NOISE_GATE_SENSITIVITY : clampNoiseGateSensitivity(Number(stored));
+}
+
+function storedBoolean(key: string, fallback: boolean): boolean {
+  const stored = typeof window === "undefined" ? null : window.localStorage.getItem(key);
+  if (stored === "true") return true;
+  if (stored === "false") return false;
+  return fallback;
 }
 
 function persistValue(key: string, value: string | undefined) {
@@ -126,6 +160,9 @@ function readSelection(): AudioSelection {
     speakerDeviceId: storedDeviceId(SPEAKER_STORAGE_KEY),
     microphoneVolume: storedVolume(MICROPHONE_VOLUME_STORAGE_KEY, MAX_MICROPHONE_VOLUME_PERCENT),
     speakerVolume: storedVolume(SPEAKER_VOLUME_STORAGE_KEY, MAX_SPEAKER_VOLUME_PERCENT),
+    noiseGateSensitivity: storedNoiseGateSensitivity(NOISE_GATE_SENSITIVITY_STORAGE_KEY),
+    isRnnoiseEnabled: storedBoolean(RNNOISE_ENABLED_STORAGE_KEY, DEFAULT_RNNOISE_ENABLED),
+    songVolume: storedVolume(SONG_VOLUME_STORAGE_KEY, MAX_SONG_VOLUME_PERCENT),
   };
   return currentSelection;
 }
@@ -155,7 +192,7 @@ export function resetAudioSelection() {
 // persists in local storage so it survives reloads.
 export function useAudioDevices() {
   const { microphones, speakers } = useSyncExternalStore(subscribeLists, snapshotLists, snapshotListsServer);
-  const { microphoneDeviceId, speakerDeviceId, microphoneVolume, speakerVolume } = useSyncExternalStore(
+  const { microphoneDeviceId, speakerDeviceId, microphoneVolume, speakerVolume, noiseGateSensitivity, isRnnoiseEnabled, songVolume } = useSyncExternalStore(
     subscribeSelection,
     readSelection,
     () => SERVER_SELECTION,
@@ -189,6 +226,20 @@ export function useAudioDevices() {
     updateSelection({ speakerVolume: volume }, SPEAKER_VOLUME_STORAGE_KEY, String(volume));
   }, []);
 
+  const setNoiseGateSensitivity = useCallback((sensitivity: number) => {
+    const clampedSensitivity = clampNoiseGateSensitivity(sensitivity);
+    updateSelection({ noiseGateSensitivity: clampedSensitivity }, NOISE_GATE_SENSITIVITY_STORAGE_KEY, String(clampedSensitivity));
+  }, []);
+
+  const setRnnoiseEnabled = useCallback((enabled: boolean) => {
+    updateSelection({ isRnnoiseEnabled: enabled }, RNNOISE_ENABLED_STORAGE_KEY, String(enabled));
+  }, []);
+
+  const setSongVolume = useCallback((percent: number) => {
+    const volume = clampVolume(percent, MAX_SONG_VOLUME_PERCENT);
+    updateSelection({ songVolume: volume }, SONG_VOLUME_STORAGE_KEY, String(volume));
+  }, []);
+
   return {
     microphones,
     speakers,
@@ -196,10 +247,16 @@ export function useAudioDevices() {
     speakerDeviceId,
     microphoneVolume,
     speakerVolume,
+    noiseGateSensitivity,
+    isRnnoiseEnabled,
+    songVolume,
     selectMicrophone,
     selectSpeaker,
     setMicrophoneVolume,
     setSpeakerVolume,
+    setNoiseGateSensitivity,
+    setRnnoiseEnabled,
+    setSongVolume,
     refreshDevices: loadDeviceLists,
   };
 }
