@@ -63,37 +63,84 @@ Visual:
 
 A second production playtest found the game borderline playable but buggy: the song only reaches players who joined voice, voice and music degrade each other, the game screens scroll, and several lobby and playlist problems. Every item was checked against the code before it was written here.
 
-Separate song stream and audio quality:
+Five branches off `dev`, one PR each, in this order: `feat/song-stream-and-voice-quality` (A), `fix/no-scroll-game-ui` (B), `fix/lobby-chat-playlist-ui` (C), `fix/invite-join` (D), `fix/game-song-list` (E). Each PR carries its own tests and docs.
+
+### Part A: separate song stream and voice quality (branch `feat/song-stream-and-voice-quality`)
 
 - [x] Song mesh: a second set of peer connections per game session, signalled over STOMP and keyed by the session, that every player joins automatically as a listener with no microphone and no voice join; backend relay limited to the session's players
+  - [x] Backend `SongSignalingController` (`@MessageMapping("/sessions/{sessionId}/song/signal")`), `SessionDestinations.songSignalQueue(sessionId)` as `/queue/sessions/{sessionId}/song-signal`, authorization through `PlayerRepository.existsBySessionIdAndUserId` for sender and target, relay through `convertAndSendToUser`; the group TURN credentials endpoint is reused
+  - [x] Backend tests: a non-player is rejected, a player of another session is rejected, the relay reaches only the target
+  - [x] Frontend song hook: one persistent `sendrecv` connection per pair for the whole session, the lower user id offers, the sender track swaps with `replaceTrack` when the DJ changes, and a fresh offer after a peer failure like voice's `peerResetCount`; a player who reloads or joins mid-session recovers
 - [x] The DJ's captured audio is attached to the song connections only during the DJ's own turn until the reveal and is detached (`replaceTrack(null)`) at all other times, not muted; the share prompt still appears once per match
+  - [x] The capture stays alive for the whole match, is used directly as the sender track, and is tapped by the visualizer only, never routed through the voice mixer
+  - [ ] Attaching at turn start produces no audible glitch: check for a start-up delay and pre-attach shortly before the song starts if there is one
+  - [x] Tests: attach and detach on turn changes, one share per match, no renegotiation when the DJ changes
 - [x] Remove all song and tab audio from the voice mesh; voice carries only the microphone; lock-in silences only the song stream for the active player, never the DJ's voice
+  - [x] Remove the tab mixer, `startTabAudio`, `setTabAudioBroadcasting`, `isSharingTabAudio`, and the tab error plumbing from `use-voice-mesh.ts`; voice never changes the song's quality or routing and never needs a voice join
+  - [x] Keep the `shouldSilenceDjForActivePlayer` semantics (`COUNTDOWN`, `BETTING`, `REVEALED`, `SCORED`) and retarget them from the DJ's incoming audio element to the song element
+  - [x] Tests: the voice hook carries no tab code, lock-in mutes only the song element
 - [x] Song quality: capture with echo cancellation, noise suppression, and auto gain off, `contentHint` music, stereo Opus at 128 kbps with a single constant for the bitrate; document the bandwidth maths
+  - [x] SDP munging in both directions (`stereo=1; sprop-stereo=1`, `maxaveragebitrate=128000`, `useinbandfec=1`, `maxplaybackrate=48000`) plus `RTCRtpSender.setParameters` max bitrate taken from one named constant, so 192 kbps is a one-line change
+  - [x] Document roughly bitrate x listeners for DJ upload in `ARCHITECTURE.md`
 - [x] Voice quality: explicit echo cancellation, noise suppression, and auto gain, a noise gate with a sensitivity slider, and an RNNoise filter toggle with a fallback; a Windows tip about call ducking in the voice settings
+  - [x] Open the microphone with `echoCancellation: true`, `noiseSuppression: true`, `autoGainControl: true`, `channelCount: 1`, `contentHint` speech, and cap the sender at about 40 kbps
+  - [x] Add `@sapphi-red/web-noise-suppressor`, pinned to an exact version at least two weeks old after a licence check, default on, and fall back to the plain constraints when the worklet fails
+  - [x] Persist the gate sensitivity and the filter toggle in the shared audio-device store; the Windows tip is a collapsible hint shown only on Windows
+  - [x] Tests: the explicit constraints, the gate threshold with attack and release, the RNNoise fallback
 - [x] Song volume slider, reachable from the voice settings and from the game page, independent of the speaker volume and working without joining voice
+  - [x] Tests: the volume store and the game-page control
 - [x] Visualizer rewrite: the song stream only, log-spaced bands, dB scaling, smoothing, 16 to 24 bars, clean rendering with no stray pixels
+  - [x] `fftSize` 2048, `smoothingTimeConstant` about 0.8, `minDecibels` about -90, `maxDecibels` about -10, 40 Hz to 16 kHz log bands from the context sample rate, a gentle spectral tilt, per-bar attack and release, heights from dB values
+  - [ ] Canvas rendering with `devicePixelRatio` handling, a static resting state when there is no audio, and `prefers-reduced-motion` respected; check the card border and background at several zoom levels in a real browser
+  - [x] Tests: the band maths (log spacing, tilt, smoothing) against a fake analyser
 - [x] Stop the screen capture when the session ends, the player leaves the game or the group, the page unloads, or the share bar is stopped
+  - [x] Stop all tracks and detach the song sender on each of those events; a route change inside the app does not stop the capture
+  - [x] Tests: one per stop path
 - [ ] Let Firefox and Safari try the share prompt on desktop, log the result of each attempt (browser, surface, audio track count) to the console and Sentry, keep the old gating behind one flag; record the findings here
+  - [x] The frontend has no Sentry SDK today: add `@sentry/nextjs`, initialise it from a DSN environment variable, and record each share outcome as a breadcrumb alongside the `console.info` line
+  - [x] When no audio track comes back, show the browser name with a retry and keep the round moving; the message tells players the DJ has no audio
+  - [ ] Collect a Firefox and a Safari result, then decide whether to restore the skip
 - [x] The voice rail lists who is in the call before a player joins, on the lobby and the session page
+  - [x] Hide the rail only when the user is in no group; keep the Join button at the bottom
+- [x] Handle autoplay blocked on a listener: a small "Click to enable sound" affordance on the session page and a retry on the first user gesture
+- [ ] Manual, for the owner: two real Chrome windows with system audio, one DJ and one listener who never joined voice; a Firefox and a Safari attempt; report the results here
 
-Game screens and lobby:
+### Part B: no-scroll game screens (branch `fix/no-scroll-game-ui`)
 
 - [ ] The group lobby, loading screens, and every round phase fit the viewport with no scrolling; website pages keep scrolling; checked at 1366x768, 1440x900, 1920x1080, and 125% and 150% zoom
-- [ ] Settings opens with the same gap above the footer buttons as the chat
-- [ ] Chat: stable avatar color per sender, 24-hour time, newest message at the bottom, taller panel
-- [ ] Playlist options popup in one compact row with Confirm inline; remove the "Songs are selected when the session starts" line
-- [ ] Left sidebar icons spaced slightly wider than now, not as wide as before
+  - [ ] Wrap the two game routes with `h-full overflow-hidden` and keep `results` scrollable; a `sessions/[sessionId]/layout.tsx` would also wrap `results`, so either wrap inside each page root or reset `results` in its own layout
+  - [ ] Remove the `min-h-[720px]`, `min-h-[680px]`, and `min-h-[480px]` values and scale content with `short:`/`very-short:` variants, `clamp()`, or container queries; the timeline, tokens, buttons, and cards stay visible and usable
+  - [ ] The round subtitle stays clear of the DJ/guessing card at every listed size
+  - [ ] Lobby popups may scroll inside their own panel only when their content genuinely exceeds it
+- [ ] Assert against the real scroll container (the `(app)` layout's `overflow-y-auto` div), not `documentElement`, which `h-screen overflow-hidden` already clips
+- [ ] Playwright: lobby with 1 and 8 members, each lobby popup open, round intro, guessing, betting, reveal, between-rounds loading, and game over, at all listed sizes
 
-Joining and playlists:
+### Part C: lobby, chat, and playlist-selection UI (branch `fix/lobby-chat-playlist-ui`)
+
+- [ ] Settings opens with the same gap above the footer buttons as the chat, anchored to the same footer wrapper
+- [ ] Chat: stable avatar color per sender from `senderId`, 24-hour time with `hourCycle: "h23"`, newest message at the bottom, and a taller panel
+  - [ ] Reverse the newest-first history in the client without changing the API contract, auto-scroll to the bottom on open and on each new message, and stay put when the reader has scrolled up
+- [ ] Playlist options popup in one compact row with Confirm inline (Easy, Medium, Hard, divider, Custom, Confirm), a smaller footprint than `w-[480px]`, and the "Songs are selected when the session starts" line removed; keep the error alert
+- [ ] Left sidebar icons spaced slightly wider than now, not as wide as before (`RAIL_GROUP_GAP_CLASSES` around `gap-5`, scaling down for `short`/`very-short`), fitting at 1366x768 and 150% zoom without scrolling the rail
+- [ ] Tests: extend `group-chat-overlay.test.tsx` and the lobby page tests for the new chat, popup, and rail behaviour
+
+### Part D: invite link and joining (branch `fix/invite-join`)
 
 - [ ] Joining a group the user already belongs to returns that group; joining while in another group gives a clear message with a leave option; the join page shows the server's real message and says invalid only for a missing code
+  - [ ] Reorder `joinGroup`: resolve the group first, then branch on the caller's membership (`memberRepository.findByUser`); the same group returns the detail with no new member and no `MEMBER_JOINED` event, a different group gives a "leave it first" 409
+  - [ ] Join page: read the server message for 409 and keep "That invite link isn't valid." for 404 only; the leave-and-retry button uses the cached active membership for the other group's id
+- [ ] A group deleted when its last member left is a plain 404 today, so the link is dead with no way to say "this group has ended" unless a tombstone is added; keep the generic wording and note it
+- [ ] Tests: backend idempotent join, cross-group 409, and the existing removed and full cases; frontend join page cases for each message; update `docs/SYSTEM_REFERENCE.md` if the endpoint description changes
+
+### Part E: playlist generation for a game (branch `fix/game-song-list`)
+
 - [ ] At Start, build the game's song list once for both difficulty and custom: remove duplicates by normalized artist and title, shuffle, and keep it only in the session
+  - [ ] Normalized key: lowercase, strip diacritics and punctuation, drop bracketed and dash-suffixed qualifiers; keep the first occurrence; share one normalization for both paths
+  - [ ] Inject `Random` so the shuffle is deterministic under test
 - [ ] Reproduce why Easy, Medium, and Hard did not generate a playlist, fix the cause, and show a clear message when a start fails
-
-Tests:
-
-- [ ] Unit tests for the song hook, the voice hook, the noise gate, the visualizer bands, and the stop conditions; backend tests for song signalling authorization, idempotent join, duplicate removal, and shuffling; Playwright checks for no scrolling at the listed sizes and a two-context song delivery test
-- [ ] Manual run: two real Chrome windows with system audio, one DJ and one listener who never joined voice; a Firefox and a Safari attempt; report the results here
+  - [ ] Run the core locally in WSL against throwaway Postgres; check that the tier persists, how many verified songs exist per tier, and where the start fails
+  - [ ] The likely cause is a tier band holding fewer verified `sitelinks >= 5` rows than `players * win cards * headroom`, which fails the start with a 409; widen the sampling or surface the real message, and report the local counts per tier
+- [ ] Tests: normalization units, deterministic shuffle, tier and custom integration including no duplicates and two starts differing in order, and an assert that no playlist rows are created
 
 ## Story 7: Production hosting
 
