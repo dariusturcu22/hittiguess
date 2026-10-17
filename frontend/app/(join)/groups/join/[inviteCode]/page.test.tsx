@@ -7,11 +7,13 @@ import JoinGroupPage from "./page";
 
 const INVITE_PARAMS = Promise.resolve({ inviteCode: "WXYZ" });
 const joinMutate = vi.fn();
+const leaveGroupMutate = vi.fn();
 let currentUserState: { data?: { id: number; username: string }; isLoading: boolean; isError: boolean } = {
   data: undefined,
   isLoading: false,
   isError: true,
 };
+let activeMembershipState: { data?: { id: number } } = { data: undefined };
 
 vi.mock("next/link", () => ({
   default: ({ children, href }: { children: ReactNode; href: string }) => <a href={href}>{children}</a>,
@@ -29,7 +31,9 @@ vi.mock("@/hooks/generated/user-management/user-management", () => ({
 
 vi.mock("@/hooks/generated/group-management/group-management", () => ({
   getGetActiveMembershipQueryKey: () => ["active-membership"],
+  useGetActiveMembership: () => activeMembershipState,
   useJoinGroup: () => ({ mutate: joinMutate, isPending: false }),
+  useLeaveGroup: () => ({ mutate: leaveGroupMutate, isPending: false }),
 }));
 
 vi.mock("@/hooks/use-group-invite-preview", () => ({
@@ -55,8 +59,10 @@ async function renderPage() {
 describe("JoinGroupPage", () => {
   beforeEach(() => {
     joinMutate.mockReset();
+    leaveGroupMutate.mockReset();
     routerPush.mockReset();
     currentUserState = { data: undefined, isLoading: false, isError: true };
+    activeMembershipState = { data: undefined };
     groupPreviewState = { data: { memberCount: 3, members: [] }, isError: false };
   });
 
@@ -91,6 +97,55 @@ describe("JoinGroupPage", () => {
     fireEvent.click(screen.getByRole("button", { name: "Join group" }));
 
     expect(await screen.findByText(avatarUrlMessage)).toBeVisible();
+  });
+
+  it("shows the server's conflict message and retries the join after leaving the current group", async () => {
+    const conflictMessage = "You are already in a group. Leave it first, then join this one.";
+    const currentGroupId = 42;
+    currentUserState = { data: { id: 11, username: "player" }, isLoading: false, isError: false };
+    activeMembershipState = { data: { id: currentGroupId } };
+    joinMutate.mockImplementation((_args, options) =>
+      options?.onError?.({ response: { status: 409, data: { message: conflictMessage } } }),
+    );
+    leaveGroupMutate.mockImplementation((_args, options) => options?.onSuccess?.());
+    await renderPage();
+
+    fireEvent.change(screen.getByRole("textbox"), { target: { value: "Star" } });
+    fireEvent.click(screen.getByRole("button", { name: "Join group" }));
+
+    expect(await screen.findByText(conflictMessage)).toBeVisible();
+
+    fireEvent.click(screen.getByRole("button", { name: "Leave your current group and join this one" }));
+
+    await waitFor(() => expect(leaveGroupMutate).toHaveBeenCalledWith({ groupId: currentGroupId }, expect.anything()));
+    const [retryPayload] = joinMutate.mock.lastCall ?? [];
+    expect(retryPayload.data).toMatchObject({ inviteCode: "WXYZ", displayName: "Star" });
+  });
+
+  it("keeps the invalid-link wording for a missing invite code and offers no leave action", async () => {
+    currentUserState = { data: { id: 11, username: "player" }, isLoading: false, isError: false };
+    activeMembershipState = { data: { id: 42 } };
+    joinMutate.mockImplementation((_args, options) =>
+      options?.onError?.({ response: { status: 404, data: { message: "No group matches that invite code" } } }),
+    );
+    await renderPage();
+
+    fireEvent.click(screen.getByRole("button", { name: "Join group" }));
+
+    expect(await screen.findByText("That invite link isn't valid.")).toBeVisible();
+    expect(screen.queryByRole("button", { name: "Leave your current group and join this one" })).toBeNull();
+  });
+
+  it("follows the success path when reopening an invite for a group you already belong to", async () => {
+    currentUserState = { data: { id: 11, username: "player" }, isLoading: false, isError: false };
+    activeMembershipState = { data: { id: 7 } };
+    joinMutate.mockImplementation((_args, options) => options?.onSuccess?.({ id: 7 }));
+    await renderPage();
+
+    fireEvent.click(screen.getByRole("button", { name: "Join group" }));
+
+    await waitFor(() => expect(routerPush).toHaveBeenCalledWith("/groups/7"));
+    expect(screen.queryByRole("button", { name: "Leave your current group and join this one" })).toBeNull();
   });
 
   it("shows an invalid screen for a dead invite instead of the join form", async () => {

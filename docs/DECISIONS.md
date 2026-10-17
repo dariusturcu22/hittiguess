@@ -1248,3 +1248,27 @@ Why: the earlier skip was based on documentation, not on a test in those browser
 Decision: `GET /api/groups/{groupId}/chat/messages` keeps returning its most-recent page newest-first. The chat panel renders that page oldest-first so the newest message sits at the bottom, and scrolls to the bottom when it opens and when a message arrives, holding the reader's own position once they have scrolled up. Each sender keeps one avatar color derived from their sender id, and times render on a 24-hour clock.
 
 Why: the endpoint's order is its paging contract, so the display order belongs in the client. Reading chat means answering the newest line, which belongs next to the input box. A color keyed on the render index reassigned every avatar each time a message arrived, so one sender appeared as several people.
+
+## 2026-10-18 | Joining a group the caller already belongs to is idempotent
+
+Decision: `POST /api/groups/join` returns the target group when the caller is already a member of it, without adding a second membership or publishing a join event. A caller who is a member of a different group gets a 409 that says to leave it first, and the join page offers to leave that group and retry. The join page shows the server's own message for every 409 and reserves "That invite link isn't valid." for a missing code. A group deleted when its last member left has no row, so its link is a plain 404.
+
+Why: the second playtest had a player still a member after a closed tab open the same link in a second browser and see an invalid-link screen. Membership survives a closed tab by design, so that block was the membership, and its 409 message was hidden behind the invalid-link wording. A rejoin of the group the caller is already in has nothing to reject.
+
+## 2026-10-18 | The game's song list is built and deduplicated at session start
+
+Decision: at Start, the difficulty path and the custom path both build the game's song list once. Duplicates are removed by a normalized artist and title key, the list is shuffled, and the starting cards and the round queue are dealt from it. The list belongs to the session and is never saved as a playlist.
+
+Why: the custom path dealt starting cards from an unshuffled, entity-distinct list, so two games on the same playlist opened identically, and the same artist and title can exist as more than one song row. The loading screen between the lobby and the first round already masks the work, so generation stays at Start rather than moving into the lobby.
+
+## 2026-10-18 | Game screens fit the viewport and do not scroll
+
+Decision: the group lobby, the loading screens, and every round phase fill the viewport and never scroll, and their content sizes to the available height instead of a fixed minimum. Playlists, the editor, import, explore, history, admin, auth, and results keep normal scrolling.
+
+Why: the second playtest found the DJ and guessing card covering the round subtitle and the footer actions pushed off screen at laptop heights, because each game screen forced a minimum height taller than the viewport. A play area that has to be scrolled hides part of the board.
+
+## 2026-10-18 | The frontend reports to Sentry
+
+Decision: the frontend adds the Sentry SDK and initialises it from a DSN environment variable, recording share-outcome breadcrumbs alongside console logs. Initialisation is skipped when the variable is absent, so no DSN is committed.
+
+Why: the share-outcome logging asks for a breadcrumb, and Sentry covers only the backend and the AI service today, so the frontend has no place to put one.

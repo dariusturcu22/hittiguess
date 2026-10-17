@@ -20,10 +20,17 @@ export function youtubeLinkOutHref(watchUrl: string, userAgent: string): string 
   return `intent://${intentPath}#Intent;package=${YOUTUBE_ANDROID_PACKAGE};scheme=https;S.browser_fallback_url=${fallbackUrl};end`;
 }
 
+// Firefox and Safari are documented as returning no audio track from a screen share, but
+// that was never tested against them. They are allowed to try until a real test in each
+// browser says otherwise; flipping this to false restores the Chromium-only gating.
+export const ALLOW_ALL_DESKTOP_BROWSERS_AS_DJ = true;
+
 // Only desktop Chromium browsers (Chrome, Edge, Opera, Brave) return an audio track from a
 // screen share; Firefox and Safari return none, so those players cannot DJ. Phones hand
 // playback to the YouTube app and play it out loud in the room instead.
 export function canShareTabAudio(userAgent: string): boolean {
-  if (MOBILE_USER_AGENT_PATTERN.test(userAgent) || NON_CAPTURING_USER_AGENT_PATTERN.test(userAgent)) return false;
+  if (MOBILE_USER_AGENT_PATTERN.test(userAgent)) return false;
+  if (ALLOW_ALL_DESKTOP_BROWSERS_AS_DJ) return true;
+  if (NON_CAPTURING_USER_AGENT_PATTERN.test(userAgent)) return false;
   return CHROMIUM_USER_AGENT_PATTERN.test(userAgent);
 }

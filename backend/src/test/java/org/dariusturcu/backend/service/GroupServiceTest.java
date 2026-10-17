@@ -57,6 +57,7 @@ import static org.mockito.Mockito.when;
 class GroupServiceTest {
 
     private static final String UNKNOWN_JOIN_CODE = "ZZZZ";
+    private static final long FIRST_FILLER_USER_ID = 1000L;
 
     @Mock
     private GroupRepository groupRepository;
@@ -186,17 +187,25 @@ class GroupServiceTest {
     }
 
     @Test
-    void joinGroupRejectsAUserAlreadyInAGroup() {
-        when(memberRepository.existsByUser(otherUser)).thenReturn(true);
+    void joinGroupRejectsAUserWhoAlreadyBelongsToADifferentGroup() {
+        Group group = groupWithAdmin();
+        Group otherGroup = new Group();
+        otherGroup.setId(20L);
+        Member membershipInOtherGroup = memberOf(otherGroup, otherUser, false, Instant.now());
+        when(groupRepository.findByInviteCodeForUpdate("invite-code")).thenReturn(Optional.of(group));
+        when(memberRepository.findByUser(otherUser)).thenReturn(Optional.of(membershipInOtherGroup));
         authenticateAs(otherUser);
 
-        assertThatThrownBy(() -> groupService.joinGroup(new JoinGroupRequest("some-code", null, null, null)))
-                .isInstanceOf(ConflictException.class);
+        assertThatThrownBy(() -> groupService.joinGroup(new JoinGroupRequest("invite-code", null, null, null)))
+                .isInstanceOf(ConflictException.class)
+                .hasMessage("You are already in a group. Leave it first, then join this one.");
+        assertThat(group.getMembers()).hasSize(1);
+        verify(groupRepository, never()).save(any());
+        verify(eventPublisher, never()).publishEvent(any());
     }
 
     @Test
     void joinGroupRejectsWhenBothCodesAreGiven() {
-        when(memberRepository.existsByUser(otherUser)).thenReturn(false);
         authenticateAs(otherUser);
 
         assertThatThrownBy(() -> groupService.joinGroup(new JoinGroupRequest("invite", "JOIN", null, null)))
@@ -205,7 +214,6 @@ class GroupServiceTest {
 
     @Test
     void joinGroupRejectsWhenNeitherCodeIsGiven() {
-        when(memberRepository.existsByUser(otherUser)).thenReturn(false);
         authenticateAs(otherUser);
 
         assertThatThrownBy(() -> groupService.joinGroup(new JoinGroupRequest(null, null, null, null)))
@@ -237,7 +245,6 @@ class GroupServiceTest {
     void joinGroupByJoinCodeRejectsAGroupThatAlreadyStartedASession() {
         Group group = groupWithAdmin();
         group.setStatus(GroupStatus.LOCKED);
-        when(memberRepository.existsByUser(otherUser)).thenReturn(false);
         when(groupRepository.findByJoinCodeForUpdate("ABCD")).thenReturn(Optional.of(group));
         authenticateAs(otherUser);
 
@@ -248,7 +255,6 @@ class GroupServiceTest {
     @Test
     void joinGroupByInviteLinkAddsAMemberDefaultingToAccountIdentity() {
         Group group = groupWithAdmin();
-        when(memberRepository.existsByUser(otherUser)).thenReturn(false);
         when(groupRepository.findByInviteCodeForUpdate("invite-code")).thenReturn(Optional.of(group));
         authenticateAs(otherUser);
 
@@ -257,6 +263,41 @@ class GroupServiceTest {
         assertThat(result.members()).hasSize(2);
         assertThat(result.members().get(1).displayName()).isEqualTo("other-user");
         assertThat(result.members().get(1).isAdmin()).isFalse();
+    }
+
+    @Test
+    void rejoiningTheCallersOwnGroupReturnsTheDetailWithoutAddingAMemberOrPublishingAnEvent() {
+        Group group = groupWithAdmin();
+        Member adminMember = group.getMembers().getFirst();
+        when(groupRepository.findByInviteCodeForUpdate("invite-code")).thenReturn(Optional.of(group));
+        when(memberRepository.findByUser(adminUser)).thenReturn(Optional.of(adminMember));
+
+        GroupDetailDTO result = groupService.joinGroup(new JoinGroupRequest("invite-code", null, null, null));
+
+        assertThat(result.members()).hasSize(1);
+        assertThat(group.getMembers()).hasSize(1);
+        verify(groupRepository, never()).save(any());
+        verify(eventPublisher, never()).publishEvent(any());
+    }
+
+    @Test
+    void joinGroupRejectsAFullGroup() {
+        Group group = groupWithAdmin();
+        int remainingSlots = Group.MAX_MEMBERS - group.getMembers().size();
+        for (int fillerNumber = 0; fillerNumber < remainingSlots; fillerNumber++) {
+            User filler = new User();
+            filler.setId(FIRST_FILLER_USER_ID + fillerNumber);
+            filler.setUsername("filler-" + fillerNumber);
+            memberOf(group, filler, false, Instant.now());
+        }
+        when(groupRepository.findByInviteCodeForUpdate("invite-code")).thenReturn(Optional.of(group));
+        authenticateAs(otherUser);
+
+        assertThatThrownBy(() -> groupService.joinGroup(new JoinGroupRequest("invite-code", null, null, null)))
+                .isInstanceOf(ConflictException.class)
+                .hasMessageContaining("full");
+        assertThat(group.getMembers()).hasSize(Group.MAX_MEMBERS);
+        verify(eventPublisher, never()).publishEvent(any());
     }
 
     @Test
@@ -631,7 +672,6 @@ class GroupServiceTest {
     @Test
     void joinGroupPublishesAMemberJoinedEvent() {
         Group group = groupWithAdmin();
-        when(memberRepository.existsByUser(otherUser)).thenReturn(false);
         when(groupRepository.findByInviteCodeForUpdate("invite-code")).thenReturn(Optional.of(group));
         authenticateAs(otherUser);
 

@@ -3,22 +3,18 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Headphones, Loader2, Mic, MicOff, Phone, PhoneOff, Settings } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
-import { usePathname } from "next/navigation";
 
 import { getGetActiveMembershipQueryKey, getGetGroupQueryKey, useGetActiveMembership, useJoinVoice, useLeaveVoice, useReportAudioCapability } from "@/hooks/generated/group-management/group-management";
-import { useGetActiveSessionForGroup, useGetSession } from "@/hooks/generated/game-session/game-session";
 import { useGetCurrentUser } from "@/hooks/generated/user-management/user-management";
-import { shouldSilenceDjForActivePlayer, useVoiceMesh } from "@/hooks/use-voice-mesh";
+import { useVoiceMesh } from "@/hooks/use-voice-mesh";
 import { useAudioDevices } from "@/hooks/use-audio-devices";
-import { DJ_AUDIO_SHARE_EVENT, publishTabAudioError } from "@/hooks/use-local-audio-stream";
 import { Button } from "@/components/shadcn/button";
 import { canShareTabAudio } from "@/lib/youtube-link-out";
 import { VoiceSettingsPopup } from "@/components/voice-settings-popup";
 import { VoiceMemberList } from "@/components/voice-member-list";
 
-const LOBBY_PATH_PATTERN = /^\/groups\/\d+/;
 // Matches the left sidebar's width in every state, in a call or not.
-const RAIL_CLASSES = "flex w-[76px] shrink-0 flex-col items-center border-l-[3px] border-sidebar-border bg-sidebar py-5";
+const RAIL_CLASSES = "flex h-full min-h-0 w-[76px] shrink-0 flex-col items-center border-l-[3px] border-sidebar-border bg-sidebar py-5 short:py-4 very-short:py-3";
 
 
 export function AppVoiceSidebar() {
@@ -35,17 +31,11 @@ export function AppVoiceSidebar() {
   // members send the moment they hear about it have somewhere to land.
   const [isJoiningCall, setIsJoiningCall] = useState(false);
   const isJoinRequestSentReference = useRef(false);
-  const pathname = usePathname();
   const { microphoneDeviceId, speakerDeviceId, microphoneVolume, speakerVolume } = useAudioDevices();
   const activeGroup = activeMembershipQuery.data;
   const groupId = activeGroup?.id;
-  // Only a locked group has a running game; asking an open group for one just returns a 404.
-  const activeSessionQuery = useGetActiveSessionForGroup(groupId ?? 0, { query: { enabled: groupId !== undefined && activeGroup?.status === "LOCKED", retry: false } });
-  const activeSessionId = activeSessionQuery.data?.id;
-  const sessionQuery = useGetSession(activeSessionId ?? 0, { query: { enabled: activeSessionId !== undefined, retry: false } });
   const currentMember = activeGroup?.members?.find((member) => member.userId === currentUserQuery.data?.id);
   const isInVoice = Boolean(currentMember?.isInVoice);
-  const isOnLobbyPage = LOBBY_PATH_PATTERN.test(pathname);
   // Tells the server once per group whether this browser can capture audio, so the DJ
   // rotation skips a player who could not share the song (Firefox, Safari, phones).
   const reportedGroupReference = useRef<number | undefined>(undefined);
@@ -66,51 +56,16 @@ export function AppVoiceSidebar() {
     speakerVolume,
     onPresenceChange: refreshVoicePresence,
   });
-  const { setSilencedUserIds, setTabAudioBroadcasting, setVisualizerUserId, startTabAudio } = voiceMesh;
   const microphoneMessage = voiceMesh.microphoneErrorMessage
     ?? ((microphoneError || voiceMesh.microphoneError) ? "Microphone permission is needed." : null);
 
   // Leaving the group while in the call (Leave game, Leave lobby, being removed) ends the
-  // call's audio too, so no microphone or shared-audio capture outlives the membership.
+  // call's audio too, so no microphone capture outlives the membership.
   const { stopVoice } = voiceMesh;
   const hasGroup = activeGroup !== undefined;
   useEffect(() => {
     if (!hasGroup && !activeMembershipQuery.isLoading) stopVoice();
   }, [activeMembershipQuery.isLoading, hasGroup, stopVoice]);
-
-  // The DJ's "Share YouTube audio" click reaches here as a window event, since the
-  // session view and this sidebar share no props. The capture starts first, inside the
-  // click's user activation, and joins the voice room for a DJ who wasn't in it yet.
-  useEffect(() => {
-    function shareDjTabAudio() {
-      if (!groupId) return;
-      void startTabAudio().then((isShared) => {
-        if (isShared && !isInVoice) setIsJoiningCall(true);
-      });
-    }
-    window.addEventListener(DJ_AUDIO_SHARE_EVENT, shareDjTabAudio);
-    return () => window.removeEventListener(DJ_AUDIO_SHARE_EVENT, shareDjTabAudio);
-  });
-
-  const session = sessionQuery.data;
-  const currentPlayerId = session?.players?.find((player) => player.userId === currentUserQuery.data?.id)?.id;
-  const djUserId = session?.players?.find((player) => player.id === session.currentRound?.djPlayerId)?.userId;
-  const isSilencingDj = shouldSilenceDjForActivePlayer(session?.currentRound, currentPlayerId);
-  const isCurrentDj = currentPlayerId !== undefined && currentPlayerId === session?.currentRound?.djPlayerId;
-  useEffect(() => {
-    setSilencedUserIds(isSilencingDj && djUserId !== undefined ? [djUserId] : []);
-  }, [djUserId, isSilencingDj, setSilencedUserIds]);
-  // The shared audio goes out only during this player's own turn as DJ and only until the
-  // reveal; everyone else's card follows the DJ's incoming audio.
-  const isRoundSongHidden = session?.currentRound?.status !== "REVEALED" && session?.currentRound?.status !== "SCORED";
-  useEffect(() => {
-    setTabAudioBroadcasting(isCurrentDj && isRoundSongHidden);
-    setVisualizerUserId(isCurrentDj ? undefined : djUserId);
-  }, [djUserId, isCurrentDj, isRoundSongHidden, setTabAudioBroadcasting, setVisualizerUserId]);
-  const { tabAudioErrorMessage } = voiceMesh;
-  useEffect(() => {
-    publishTabAudioError(tabAudioErrorMessage);
-  }, [tabAudioErrorMessage]);
 
   const { isSignalConnected, isVoiceStarted } = voiceMesh;
   const { mutate: announceJoin } = joinVoice;
@@ -169,12 +124,12 @@ export function AppVoiceSidebar() {
 
   if (!activeGroup) return null;
 
-  // Outside a call the sidebar exists only on the group lobby page, with the join action
-  // at the top. In a call it stays everywhere until the call ends. There is no collapse
-  // control.
-  if (!isInVoice && !isOnLobbyPage) return null;
+  const memberList = <VoiceMemberList members={voiceMembers} currentUserId={currentUserQuery.data?.id} localStatus={voiceMesh.localStatus} memberStatuses={voiceMesh.memberStatuses} />;
+  const joinButton = <Button type="button" variant="outline" size="icon-lg" title="Join call" aria-label="Join call" onClick={joinCall} disabled={isJoiningCall} className="rounded-full border-dashed border-primary text-primary">{isJoiningCall ? <Loader2 className="size-4 animate-spin" /> : <Phone className="size-[19px]" />}</Button>;
 
-  if (!isInVoice) return <aside aria-label="Voice sidebar" className={RAIL_CLASSES}><Button type="button" variant="outline" size="icon-lg" title="Join call" aria-label="Join call" onClick={joinCall} disabled={isJoiningCall} className="rounded-full border-dashed border-primary text-primary">{isJoiningCall ? <Loader2 className="size-4 animate-spin" /> : <Phone className="size-[19px]" />}</Button>{microphoneMessage ? <p className="mt-2 text-center text-[9px] text-destructive">{microphoneMessage}</p> : null}{voiceMesh.tabAudioError ? <p className="mt-2 text-center text-[9px] text-destructive">{voiceMesh.tabAudioErrorMessage}</p> : null}</aside>;
+  // Outside a call the rail still lists who is in one, so a player can see whether anyone
+  // is around before joining. It is hidden only when the user is in no group.
+  if (!isInVoice) return <aside aria-label="Voice sidebar" className={RAIL_CLASSES}>{memberList}<div className="flex-1" />{microphoneMessage ? <p className="mb-2 text-center text-[9px] text-destructive">{microphoneMessage}</p> : null}<div className="flex shrink-0 flex-col items-center gap-2.5">{joinButton}</div></aside>;
 
-  return <aside aria-label="Voice sidebar" className={`relative ${RAIL_CLASSES}`}><VoiceMemberList members={voiceMembers} currentUserId={currentUserQuery.data?.id} localStatus={voiceMesh.localStatus} memberStatuses={voiceMesh.memberStatuses} /><div className="flex-1" />{microphoneMessage ? <p className="mb-2 text-center text-[9px] text-destructive">{microphoneMessage}</p> : null}{voiceMesh.tabAudioError ? <p className="mb-2 text-center text-[9px] text-destructive">{voiceMesh.tabAudioErrorMessage}</p> : null}<div className="flex shrink-0 flex-col items-center gap-2.5">{isInVoice ? <><Button type="button" variant="ghost" size="icon-lg" title="Mute" aria-label="Mute" aria-pressed={voiceMesh.isMuted} onClick={toggleMute} className="rounded-xl bg-card text-card-foreground">{voiceMesh.isMuted ? <MicOff className="size-[19px]" /> : <Mic className="size-[19px]" />}</Button><Button type="button" variant="ghost" size="icon-lg" title="Deafen" aria-label="Deafen" aria-pressed={voiceMesh.isDeafened} onClick={toggleDeafen} className={`rounded-xl ${voiceMesh.isDeafened ? "bg-primary text-primary-foreground" : "bg-card text-card-foreground"}`}><Headphones className="size-[19px]" /></Button><Button type="button" variant="ghost" size="icon-lg" title="Voice settings" aria-label="Voice settings" onClick={() => setIsSettingsOpen((currentValue) => !currentValue)} className={`rounded-xl ${isSettingsOpen ? "bg-primary text-primary-foreground" : "bg-card text-card-foreground"}`}><Settings className="size-[19px]" /></Button><div className="my-1 h-0.5 w-8 bg-sidebar-border" /><Button type="button" variant="destructive" size="icon-lg" title="Leave voice" aria-label="Leave voice" onClick={leaveCall} disabled={leaveVoice.isPending} className="rounded-xl">{leaveVoice.isPending ? <Loader2 className="size-4 animate-spin" /> : <PhoneOff className="size-[19px]" />}</Button></> : <Button type="button" variant="outline" size="icon-lg" title="Join call" aria-label="Join call" onClick={joinCall} disabled={isJoiningCall} className="rounded-full border-dashed border-primary text-primary">{isJoiningCall ? <Loader2 className="size-4 animate-spin" /> : <Phone className="size-[19px]" />}</Button>}</div>{isSettingsOpen ? <VoiceSettingsPopup onClose={() => setIsSettingsOpen(false)} /> : null}</aside>;
+  return <aside aria-label="Voice sidebar" className={`relative ${RAIL_CLASSES}`}>{memberList}<div className="flex-1" />{microphoneMessage ? <p className="mb-2 text-center text-[9px] text-destructive">{microphoneMessage}</p> : null}<div className="flex shrink-0 flex-col items-center gap-2.5">{isInVoice ? <><Button type="button" variant="ghost" size="icon-lg" title="Mute" aria-label="Mute" aria-pressed={voiceMesh.isMuted} onClick={toggleMute} className="rounded-xl bg-card text-card-foreground">{voiceMesh.isMuted ? <MicOff className="size-[19px]" /> : <Mic className="size-[19px]" />}</Button><Button type="button" variant="ghost" size="icon-lg" title="Deafen" aria-label="Deafen" aria-pressed={voiceMesh.isDeafened} onClick={toggleDeafen} className={`rounded-xl ${voiceMesh.isDeafened ? "bg-primary text-primary-foreground" : "bg-card text-card-foreground"}`}><Headphones className="size-[19px]" /></Button><Button type="button" variant="ghost" size="icon-lg" title="Voice settings" aria-label="Voice settings" onClick={() => setIsSettingsOpen((currentValue) => !currentValue)} className={`rounded-xl ${isSettingsOpen ? "bg-primary text-primary-foreground" : "bg-card text-card-foreground"}`}><Settings className="size-[19px]" /></Button><div className="my-1 h-0.5 w-8 bg-sidebar-border" /><Button type="button" variant="destructive" size="icon-lg" title="Leave voice" aria-label="Leave voice" onClick={leaveCall} disabled={leaveVoice.isPending} className="rounded-xl">{leaveVoice.isPending ? <Loader2 className="size-4 animate-spin" /> : <PhoneOff className="size-[19px]" />}</Button></> : joinButton}</div>{isSettingsOpen ? <VoiceSettingsPopup onClose={() => setIsSettingsOpen(false)} /> : null}</aside>;
 }

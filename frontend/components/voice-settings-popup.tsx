@@ -3,7 +3,9 @@
 import { useEffect, useRef, useState } from "react";
 
 import { Button } from "@/components/shadcn/button";
-import { MAX_MICROPHONE_VOLUME_PERCENT, MAX_SPEAKER_VOLUME_PERCENT, useAudioDevices } from "@/hooks/use-audio-devices";
+import { MAX_MICROPHONE_VOLUME_PERCENT, MAX_NOISE_GATE_SENSITIVITY, MAX_SONG_VOLUME_PERCENT, MAX_SPEAKER_VOLUME_PERCENT, MIN_NOISE_GATE_SENSITIVITY, useAudioDevices } from "@/hooks/use-audio-devices";
+
+const WINDOWS_USER_AGENT_MARKER = "Windows";
 
 const TEST_TONE_FREQUENCY_HERTZ = 440;
 const TEST_TONE_GAIN = 0.2;
@@ -40,7 +42,7 @@ function audioContextConstructor(): typeof AudioContext | undefined {
   return window.AudioContext ?? (window as AudioContextWindow).webkitAudioContext;
 }
 
-function VolumeSlider({ label, value, maximum, onChange }: { label: string; value: number; maximum: number; onChange: (percent: number) => void }) {
+function VolumeSlider({ label, value, maximum, minimum = 0, onChange }: { label: string; value: number; maximum: number; minimum?: number; onChange: (percent: number) => void }) {
   return (
     <label className="flex flex-col gap-1.5 text-[13px] text-muted-foreground">
       <span className="flex items-center justify-between">
@@ -49,7 +51,7 @@ function VolumeSlider({ label, value, maximum, onChange }: { label: string; valu
       </span>
       <input
         type="range"
-        min={0}
+        min={minimum}
         max={maximum}
         step={5}
         value={value}
@@ -68,15 +70,22 @@ export function VoiceSettingsPopup({ onClose }: { onClose: () => void }) {
     speakerDeviceId,
     microphoneVolume,
     speakerVolume,
+    noiseGateSensitivity,
+    isRnnoiseEnabled,
+    songVolume,
     selectMicrophone,
     selectSpeaker,
     setMicrophoneVolume,
     setSpeakerVolume,
+    setNoiseGateSensitivity,
+    setRnnoiseEnabled,
+    setSongVolume,
     refreshDevices,
   } = useAudioDevices();
   const [microphoneLevel, setMicrophoneLevel] = useState(0);
   const [isTestingMicrophone, setIsTestingMicrophone] = useState(false);
   const [microphoneTestError, setMicrophoneTestError] = useState<string | null>(null);
+  const isWindows = typeof navigator !== "undefined" && navigator.userAgent.includes(WINDOWS_USER_AGENT_MARKER);
   const microphoneTestReference = useRef<{
     stream?: MediaStream;
     animationFrame?: number;
@@ -226,6 +235,16 @@ export function VoiceSettingsPopup({ onClose }: { onClose: () => void }) {
           </p>
         ) : null}
         <VolumeSlider label="Microphone volume" value={microphoneVolume} maximum={MAX_MICROPHONE_VOLUME_PERCENT} onChange={setMicrophoneVolume} />
+        <VolumeSlider label="Noise gate sensitivity" value={noiseGateSensitivity} maximum={MAX_NOISE_GATE_SENSITIVITY} minimum={MIN_NOISE_GATE_SENSITIVITY} onChange={setNoiseGateSensitivity} />
+        <label className="flex items-center gap-2 text-[13px] text-muted-foreground">
+          <input
+            type="checkbox"
+            checked={isRnnoiseEnabled}
+            onChange={(event) => setRnnoiseEnabled(event.target.checked)}
+            className="size-4 accent-primary"
+          />
+          Noise reduction (RNNoise)
+        </label>
         {isTestingMicrophone ? (
           <div
             className="h-2 overflow-hidden rounded-full bg-secondary"
@@ -262,6 +281,13 @@ export function VoiceSettingsPopup({ onClose }: { onClose: () => void }) {
           </span>
         </label>
         <VolumeSlider label="Speaker volume" value={speakerVolume} maximum={MAX_SPEAKER_VOLUME_PERCENT} onChange={setSpeakerVolume} />
+        <VolumeSlider label="Song volume" value={songVolume} maximum={MAX_SONG_VOLUME_PERCENT} onChange={setSongVolume} />
+        {isWindows ? (
+          <details className="text-[12px] text-muted-foreground">
+            <summary className="cursor-pointer font-semibold text-foreground">Windows lowers other sounds during calls</summary>
+            <p className="mt-1.5">Windows can lower other sounds when it detects a call. To stop that, open Sound settings, the Communications tab, and choose &ldquo;Do nothing&rdquo;. The web app cannot change this setting.</p>
+          </details>
+        ) : null}
       </div>
     </section>
   );

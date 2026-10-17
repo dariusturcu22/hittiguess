@@ -34,6 +34,13 @@ const CURRENT_USER_API_PATH = "/api/users/me";
 const LINK_OUT_API_PATH = `/api/sessions/${GAMEPLAY_SESSION_ID}/link-out`;
 // A short window, about what a 900px-tall screen shows at 150% zoom.
 const SHORT_VIEWPORT = { width: 1280, height: 600 };
+const DESKTOP_VIEWPORTS = [
+  { width: 1366, height: 768 },
+  { width: 1440, height: 900 },
+  { width: 1920, height: 1080 },
+];
+const APP_SCROLL_CONTAINER_SELECTOR = ".bg-dotted";
+const LOBBY_FOOTER_ACTIONS = ["Start game", "Leave lobby"];
 const PLAYER_ID = 10;
 const DJ_ID = 20;
 
@@ -53,6 +60,15 @@ interface PlaylistResponse {
 
 function apiUrl(path: string): string {
   return `${API_BASE_URL}${path}`;
+}
+
+// The (app) layout wraps every page in a single scroll container. A game route that fits
+// the viewport leaves its scrollHeight at the container's own clientHeight.
+async function appScrollMeasurements(page: Page): Promise<{ scrollHeight: number; clientHeight: number }> {
+  return page.locator(APP_SCROLL_CONTAINER_SELECTOR).first().evaluate((element) => ({
+    scrollHeight: element.scrollHeight,
+    clientHeight: element.clientHeight,
+  }));
 }
 
 async function csrfHeaders(page: Page): Promise<Record<string, string>> {
@@ -205,8 +221,38 @@ test("lobby keeps its footer actions on screen in a short or zoomed window", asy
     await page.setViewportSize(SHORT_VIEWPORT);
     await expect(page.getByRole("heading", { name: "Group Lobby" })).toBeVisible();
 
-    for (const footerAction of ["Start game", "Leave lobby"]) {
+    for (const footerAction of LOBBY_FOOTER_ACTIONS) {
       await expect(page.getByRole("button", { name: footerAction })).toBeInViewport({ ratio: 1 });
+    }
+  } finally {
+    if (groupId !== undefined) {
+      await leaveGroup(page, groupId);
+    }
+    await page.context().close();
+  }
+});
+
+test("lobby fits every desktop viewport without vertical scrolling", async ({ browser }) => {
+  const page = await login(browser, ADMIN_ACCOUNT);
+  let groupId: number | undefined;
+
+  try {
+    const group = await createGroupFromSidebar(page);
+    groupId = group.id;
+
+    for (const viewport of DESKTOP_VIEWPORTS) {
+      await page.setViewportSize(viewport);
+      await expect(page.getByRole("heading", { name: "Group Lobby" })).toBeVisible();
+
+      const measurements = await appScrollMeasurements(page);
+      expect(
+        measurements.scrollHeight,
+        `${viewport.width}x${viewport.height}`,
+      ).toBeLessThanOrEqual(measurements.clientHeight);
+
+      for (const footerAction of LOBBY_FOOTER_ACTIONS) {
+        await expect(page.getByRole("button", { name: footerAction })).toBeInViewport({ ratio: 1 });
+      }
     }
   } finally {
     if (groupId !== undefined) {
@@ -320,6 +366,57 @@ test("gameplay shell renders placement, betting, and DJ link-out states", async 
     await page.goto(`/sessions/${GAMEPLAY_SESSION_ID}`);
     await expect(page.getByRole("button", { name: "Share your audio first" })).toBeVisible();
     await expect(page.getByRole("link", { name: "Open on YouTube to play" })).toHaveCount(0);
+  } finally {
+    await page.context().close();
+  }
+});
+
+test("gameplay session fits every desktop viewport without vertical scrolling", async ({ browser }) => {
+  const page = await login(browser, ADMIN_ACCOUNT);
+  const player = {
+    id: PLAYER_ID,
+    userId: PLAYER_ID,
+    displayName: "Player one",
+    tokenCount: 2,
+    timeline: [{ songId: 100, title: "Anchor", releaseYear: 1999, position: 0 }],
+  };
+  const dj = {
+    id: DJ_ID,
+    userId: DJ_ID,
+    displayName: "DJ two",
+    tokenCount: 1,
+    timeline: [{ songId: 200, title: "Second anchor", releaseYear: 2004, position: 0 }],
+  };
+  const baseSession = {
+    id: GAMEPLAY_SESSION_ID,
+    groupId: RESULTS_GROUP_ID,
+    status: "IN_PROGRESS",
+    djMode: "ROTATING",
+    winConditionCardCount: 5,
+    currentRoundNumber: 4,
+  };
+
+  try {
+    await page.route(`**${CURRENT_USER_API_PATH}`, (route) => route.fulfill({ json: { id: PLAYER_ID } }));
+    await page.route(`**${GAMEPLAY_SESSION_API_PATH}`, (route) => route.fulfill({ json: {
+      ...baseSession,
+      players: [player, dj],
+      currentRound: { roundNumber: 4, turnNumber: 2, activePlayerId: PLAYER_ID, djPlayerId: DJ_ID, status: "AWAITING_PLACEMENT" },
+    } }));
+
+    for (const viewport of DESKTOP_VIEWPORTS) {
+      await page.setViewportSize(viewport);
+      await page.goto(`/sessions/${GAMEPLAY_SESSION_ID}`);
+      await expect(page.getByRole("button", { name: "Your card. Choose a timeline position." })).toBeVisible();
+
+      const measurements = await appScrollMeasurements(page);
+      expect(
+        measurements.scrollHeight,
+        `${viewport.width}x${viewport.height}`,
+      ).toBeLessThanOrEqual(measurements.clientHeight);
+
+      await expect(page.getByRole("button", { name: "Leave game" })).toBeInViewport({ ratio: 1 });
+    }
   } finally {
     await page.context().close();
   }
