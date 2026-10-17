@@ -12,6 +12,43 @@ export const FIRST_PAGE = 0;
 export const SEARCH_HINT =
   "Search runs after 3 characters and a short pause. Results come 25 at a time.";
 
+export type CatalogColumnKey = "title" | "artist" | "year" | "status" | "pipeline" | "added" | "addedBy";
+
+// Hidden columns remain available in the song drawer.
+export type CatalogColumnPriority = "essential" | "medium" | "low";
+
+export interface CatalogColumn {
+  key: CatalogColumnKey;
+  label: string;
+  priority: CatalogColumnPriority;
+  sizeClassName: string;
+}
+
+const COLUMN_VISIBILITY_CLASS: Record<CatalogColumnPriority, string> = {
+  essential: "",
+  medium: "hidden @4xl:block",
+  low: "hidden @6xl:block",
+};
+
+
+export const CATALOG_COLUMNS: CatalogColumn[] = [
+  { key: "title", label: "Title", priority: "essential", sizeClassName: "min-w-0 flex-[3] @6xl:w-[270px] @6xl:flex-none" },
+  { key: "artist", label: "Artist", priority: "essential", sizeClassName: "min-w-0 flex-[2] @6xl:w-[210px] @6xl:flex-none" },
+  { key: "year", label: "Year", priority: "essential", sizeClassName: "w-[70px] shrink-0 @max-4xl:w-[56px]" },
+  { key: "status", label: "Status", priority: "essential", sizeClassName: "w-[130px] shrink-0" },
+  { key: "pipeline", label: "Pipeline", priority: "medium", sizeClassName: "w-[90px] shrink-0" },
+  { key: "added", label: "Added", priority: "essential", sizeClassName: "w-[120px] shrink-0 @max-4xl:w-[96px]" },
+  { key: "addedBy", label: "Added by", priority: "low", sizeClassName: "min-w-0 flex-1" },
+];
+
+export function catalogColumnClassName(key: CatalogColumnKey) {
+  const column = CATALOG_COLUMNS.find((candidate) => candidate.key === key);
+  if (!column) {
+    return "";
+  }
+  return `${column.sizeClassName} ${COLUMN_VISIBILITY_CLASS[column.priority]}`.trim();
+}
+
 export interface StatusPresentation {
   label: string;
   pillClassName: string;

@@ -11,10 +11,18 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import BackfillQueuePage, { RunList } from "./page";
 import { StageQueuePage } from "./[stage]/stage-queue-page";
-import { RunActions, STAGES, RejectedKeyBanners } from "./pipeline-ui";
+import {
+  BACKFILL_QUEUE_REFRESH_INTERVAL_MILLISECONDS,
+  RunActions,
+  STAGES,
+  RejectedKeyBanners,
+} from "./pipeline-ui";
 import { SongPipelineActions } from "../songs/song-pipeline-actions";
 import { SourceFindings } from "../songs/source-findings";
 import type { AdminSongDetailDTO } from "@/hooks/models/adminSongDetailDTO";
+
+const ONE_FAILED_TRY = 1;
+const TWO_FAILED_TRIES = 2;
 
 const state = vi.hoisted(() => ({
   queues: {} as Record<string, unknown>,
@@ -22,6 +30,7 @@ const state = vi.hoisted(() => ({
   jobs: {} as Record<string, unknown>,
   batches: {} as Record<string, unknown>,
   params: {} as Record<string, unknown>,
+  options: {} as Record<string, unknown>,
   calls: vi.fn(),
   refetch: vi.fn(),
   fail: false,
@@ -60,16 +69,24 @@ function mutation(
   };
 }
 vi.mock("@/hooks/generated/admin-pipeline/admin-pipeline", () => ({
-  useQueues: () => ({ ...state.queues, refetch: state.refetch }),
-  useRuns: (params: unknown) => {
+  useQueues: (options: unknown) => {
+    state.options.queues = options;
+    return { ...state.queues, refetch: state.refetch };
+  },
+  useRuns: (params: unknown, options: unknown) => {
     state.params.runs = params;
+    state.options.runs = options;
     return { ...state.runs, refetch: state.refetch };
   },
-  useJobs: (stage: string, params: unknown) => {
+  useJobs: (stage: string, params: unknown, options: unknown) => {
     state.params.jobs = { stage, ...(params as object) };
+    state.options.jobs = options;
     return { ...state.jobs, refetch: state.refetch };
   },
-  useBatches: () => ({ ...state.batches, refetch: state.refetch }),
+  useBatches: (_params: unknown, options: unknown) => {
+    state.options.batches = options;
+    return { ...state.batches, refetch: state.refetch };
+  },
   usePauseStage: (options: never) => mutation("pauseStage", options),
   useResumeStage: (options: never) => mutation("resumeStage", options),
   usePausePipeline: (options: never) => mutation("pauseAll", options),
@@ -109,6 +126,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   state.fail = false;
   state.params = {};
+  state.options = {};
   state.queues = {
     data: {
       stagesEnabled: true,
@@ -150,7 +168,7 @@ beforeEach(() => {
           title: "Test song",
           status: "WAITING",
           retrying: true,
-          attempts: 1,
+          attempts: ONE_FAILED_TRY,
           maxAttempts: 5,
           lastError: "Timeout",
           lane: "USER_IMPORT",
@@ -270,7 +288,7 @@ describe("backfill pages", () => {
   it("shows stage details and scopes retry-all to the stage", async () => {
     render(<StageQueuePage stage="musicbrainz" />);
     expect(screen.getByText("User import")).toBeInTheDocument();
-    expect(screen.getByText("1/5")).toBeInTheDocument();
+    expect(screen.getByText("Retry 1 of 5")).toBeInTheDocument();
     expect(
       screen.getByText("Collecting one sample per minute"),
     ).toBeInTheDocument();
@@ -481,4 +499,181 @@ it("collects actual response samples during the visit", () => {
   } finally {
     vi.useRealTimers();
   }
+});
+
+type InvalidateFilters = {
+  predicate?: (query: { queryKey: readonly unknown[] }) => boolean;
+};
+function expectAdminQueriesInvalidated(invalidate: {
+  mock: { calls: unknown[][] };
+}) {
+  const [filters] = (invalidate.mock.calls.at(-1) ?? []) as [
+    InvalidateFilters?,
+  ];
+  expect(filters?.predicate?.({ queryKey: ["/api/admin/queues"] })).toBe(true);
+  expect(
+    filters?.predicate?.({
+      queryKey: ["/api/admin/queues/MUSICBRAINZ/jobs", { page: 0 }],
+    }),
+  ).toBe(true);
+  expect(filters?.predicate?.({ queryKey: ["/api/admin/dashboard"] })).toBe(
+    true,
+  );
+  expect(filters?.predicate?.({ queryKey: ["/api/playlists"] })).toBe(false);
+}
+
+describe("live queue data", () => {
+  it.each(["queues", "batches"] as const)(
+    "polls %s on the overview every five seconds and refetches on focus",
+    (key) => {
+      render(<BackfillQueuePage />);
+      expect(state.options[key]).toMatchObject({
+        query: {
+          refetchInterval: BACKFILL_QUEUE_REFRESH_INTERVAL_MILLISECONDS,
+          refetchIntervalInBackground: false,
+          refetchOnWindowFocus: true,
+        },
+      });
+      expect(BACKFILL_QUEUE_REFRESH_INTERVAL_MILLISECONDS).toBe(5_000);
+    },
+  );
+  it("polls the songs tab and the stage page every five seconds and keeps previous data", () => {
+    render(<RunList />);
+    render(<StageQueuePage stage="musicbrainz" />);
+    for (const key of ["runs", "jobs", "queues"]) {
+      const options = state.options[key] as {
+        query: { refetchInterval: number; placeholderData: unknown };
+      };
+      expect(options.query.refetchInterval).toBe(
+        BACKFILL_QUEUE_REFRESH_INTERVAL_MILLISECONDS,
+      );
+      expect(typeof options.query.placeholderData).toBe("function");
+    }
+  });
+  it("invalidates admin queries after pausing and resuming a stage and the pipeline", async () => {
+    const paused = render(<BackfillQueuePage />);
+    for (const name of ["Pause MusicBrainz", "Pause all"]) {
+      paused.invalidate.mockClear();
+      fireEvent.click(screen.getByRole("button", { name }));
+      await waitFor(() => expect(paused.invalidate).toHaveBeenCalled());
+      expectAdminQueriesInvalidated(paused.invalidate);
+    }
+    paused.unmount();
+    state.queues = {
+      data: { stages: [{ stage: "MUSICBRAINZ", state: "PAUSED" }] },
+    };
+    const resumed = render(<BackfillQueuePage />);
+    for (const name of ["Resume MusicBrainz", "Resume all"]) {
+      resumed.invalidate.mockClear();
+      fireEvent.click(screen.getByRole("button", { name }));
+      await waitFor(() => expect(resumed.invalidate).toHaveBeenCalled());
+      expectAdminQueriesInvalidated(resumed.invalidate);
+    }
+  });
+  it("invalidates admin queries after enqueue, run now, and batch cancel", async () => {
+    const { invalidate } = render(<BackfillQueuePage />);
+    const input = screen.getByLabelText("Playlist link or YouTube IDs");
+    fireEvent.change(input, { target: { value: "dQw4w9WgXcQ" } });
+    fireEvent.click(
+      within(document.getElementById("add-to-backlog")!).getByRole("button", {
+        name: "Add to backlog",
+      }),
+    );
+    await waitFor(() => expect(invalidate).toHaveBeenCalled());
+    expectAdminQueriesInvalidated(invalidate);
+    invalidate.mockClear();
+    fireEvent.change(input, { target: { value: "dQw4w9WgXcQ" } });
+    fireEvent.click(screen.getByRole("button", { name: "Run one now" }));
+    await waitFor(() => expect(invalidate).toHaveBeenCalled());
+    expectAdminQueriesInvalidated(invalidate);
+    invalidate.mockClear();
+    fireEvent.click(screen.getByRole("button", { name: "Cancel batch" }));
+    await confirm();
+    expect(state.calls).toHaveBeenCalledWith("cancel", { id: 4 });
+    expectAdminQueriesInvalidated(invalidate);
+  });
+  it("invalidates admin queries after bump, retry, discard, and retry all failed", async () => {
+    const active = render(<RunActions id={RUN_ID} status="ACTIVE" retrying />);
+    for (const name of ["Bump", "Retry"]) {
+      active.invalidate.mockClear();
+      fireEvent.click(screen.getByRole("button", { name }));
+      await waitFor(() => expect(active.invalidate).toHaveBeenCalled());
+      expectAdminQueriesInvalidated(active.invalidate);
+    }
+    active.unmount();
+    const failed = render(<RunActions id={RUN_ID} status="FAILED" />);
+    fireEvent.click(screen.getByRole("button", { name: "Discard" }));
+    await confirm();
+    expectAdminQueriesInvalidated(failed.invalidate);
+    failed.unmount();
+    const stagePage = render(<StageQueuePage stage="musicbrainz" />);
+    fireEvent.click(screen.getByRole("button", { name: "Retry all failed" }));
+    await confirm();
+    expectAdminQueriesInvalidated(stagePage.invalidate);
+  });
+});
+
+describe("retry display", () => {
+
+  it("states how often a finished job was retried and hides its old failure", () => {
+    state.runs = {
+      data: {
+        items: [
+          {
+            id: RUN_ID,
+            title: "Saved song",
+            status: "DONE",
+            jobs: [
+              {
+                stage: "DISCOGS",
+                status: "DONE",
+                attempts: ONE_FAILED_TRY,
+                lastError: "Timeout",
+              },
+            ],
+          },
+        ],
+        totalElements: 1,
+        totalPages: 1,
+        counts: {},
+      },
+    };
+    render(<RunList />);
+    expect(
+      screen.getByText("Metadata saved. Discogs retried once."),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("Timeout")).not.toBeInTheDocument();
+  });
+  it("shows the stage job's retry progress and hides failures on done jobs", () => {
+    state.jobs = {
+      data: {
+        items: [
+          {
+            id: 1,
+            runId: 1,
+            title: "Done song",
+            status: "DONE",
+            attempts: TWO_FAILED_TRIES,
+            lastError: "Old error",
+          },
+          {
+            id: 2,
+            runId: 2,
+            title: "Waiting song",
+            status: "WAITING",
+            retrying: true,
+            attempts: TWO_FAILED_TRIES,
+            lastError: "Timeout",
+          },
+        ],
+        totalElements: 2,
+        totalPages: 1,
+      },
+    };
+    render(<StageQueuePage stage="musicbrainz" />);
+    expect(screen.getByText("Retried 2 times")).toBeInTheDocument();
+    expect(screen.queryByText("Old error")).not.toBeInTheDocument();
+    expect(screen.getByText("Retry 2 of 6")).toBeInTheDocument();
+    expect(screen.getByText("Timeout")).toBeInTheDocument();
+  });
 });
