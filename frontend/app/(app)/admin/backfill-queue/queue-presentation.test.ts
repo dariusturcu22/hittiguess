@@ -38,6 +38,12 @@ describe("jobTriesText", () => {
 });
 
 describe("failedTriesOf", () => {
+  it("prefers failedTries and maxTries over attempts and maxAttempts", () => {
+    expect(
+      failedTriesOf({ failedTries: TWO_FAILED_TRIES, maxTries: CUSTOM_MAXIMUM_TRIES, attempts: ONE_FAILED_TRY, maxAttempts: DEFAULT_MAXIMUM_FAILED_TRIES }),
+    ).toEqual({ failedTries: TWO_FAILED_TRIES, maximumFailedTries: CUSTOM_MAXIMUM_TRIES });
+  });
+
   it("reads failed tries from attempts and falls back to the default maximum", () => {
     expect(failedTriesOf({ attempts: THREE_FAILED_TRIES })).toEqual({
       failedTries: THREE_FAILED_TRIES,

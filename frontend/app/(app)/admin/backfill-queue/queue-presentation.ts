@@ -8,13 +8,17 @@ const DONE_STATUS = "DONE";
 const FAILED_STATUS = "FAILED";
 const WAITING_STATUS = "WAITING";
 
-type JobTries = Pick<QueueJobDTO, "status" | "retrying" | "attempts" | "maxAttempts" | "lastError">;
+type JobTries = Pick<
+  QueueJobDTO,
+  "status" | "retrying" | "failedTries" | "maxTries" | "attempts" | "maxAttempts" | "lastError"
+>;
 
-// The backend counts failed tries in attempts; a successful try does not add to it.
+// Failed tries come from failedTries and maxTries; attempts and maxAttempts carry the same
+// numbers for older responses. A successful try never adds to the count.
 export function failedTriesOf(job: JobTries) {
   return {
-    failedTries: job.attempts ?? 0,
-    maximumFailedTries: job.maxAttempts ?? DEFAULT_MAXIMUM_FAILED_TRIES,
+    failedTries: job.failedTries ?? job.attempts ?? 0,
+    maximumFailedTries: job.maxTries ?? job.maxAttempts ?? DEFAULT_MAXIMUM_FAILED_TRIES,
   };
 }
 
