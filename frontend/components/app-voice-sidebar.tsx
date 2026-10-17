@@ -36,7 +36,7 @@ export function AppVoiceSidebar() {
   const [isJoiningCall, setIsJoiningCall] = useState(false);
   const isJoinRequestSentReference = useRef(false);
   const pathname = usePathname();
-  const { microphoneDeviceId, speakerDeviceId } = useAudioDevices();
+  const { microphoneDeviceId, speakerDeviceId, microphoneVolume, speakerVolume } = useAudioDevices();
   const activeGroup = activeMembershipQuery.data;
   const groupId = activeGroup?.id;
   const activeSessionQuery = useGetActiveSessionForGroup(groupId ?? 0, { query: { enabled: groupId !== undefined, retry: false } });
@@ -61,6 +61,8 @@ export function AppVoiceSidebar() {
   const voiceMesh = useVoiceMesh(groupId ?? 0, currentUserQuery.data?.id, voiceMembers, isInVoice || isJoiningCall, {
     microphoneDeviceId,
     speakerDeviceId,
+    microphoneVolume,
+    speakerVolume,
     onPresenceChange: refreshVoicePresence,
   });
   const { setSilencedUserIds, setTabAudioBroadcasting, setVisualizerUserId, startTabAudio } = voiceMesh;

@@ -19,6 +19,7 @@ const ANSWER_SIGNAL = "ANSWER";
 const CANDIDATE_SIGNAL = "CANDIDATE";
 const VOICE_PRESENCE_CHANGED_EVENT = "VOICE_PRESENCE_CHANGED";
 const AUDIO_KIND = "audio";
+const PERCENT = 100;
 const SEND_AND_RECEIVE = "sendrecv";
 const NOT_ALLOWED_ERROR_NAME = "NotAllowedError";
 const NOT_FOUND_ERROR_NAME = "NotFoundError";
@@ -38,6 +39,7 @@ interface AudioMixer {
   context: AudioContext;
   destination: MediaStreamAudioDestinationNode;
   microphoneSource: MediaStreamAudioSourceNode | null;
+  microphoneGain: GainNode | null;
   tabSource: MediaStreamAudioSourceNode | null;
   tabGain: GainNode | null;
 }
@@ -91,12 +93,16 @@ function createAudioMixer(): AudioMixer | null {
   if (!Context) return null;
   const context = new Context();
   void context.resume().catch(() => {});
-  return { context, destination: context.createMediaStreamDestination(), microphoneSource: null, tabSource: null, tabGain: null };
+  return { context, destination: context.createMediaStreamDestination(), microphoneSource: null, microphoneGain: null, tabSource: null, tabGain: null };
 }
 
 interface VoiceMeshOptions {
   microphoneDeviceId?: string;
   speakerDeviceId?: string;
+  // Percentages from the voice settings: the microphone's gain on the outgoing mix and
+  // the volume of everyone else's incoming audio.
+  microphoneVolume?: number;
+  speakerVolume?: number;
   onPresenceChange?: () => void;
 }
 
@@ -106,7 +112,9 @@ interface VoiceMeshOptions {
 // either input never needs a renegotiation, and a player with no microphone still
 // joins as a listener.
 export function useVoiceMesh(groupId: number, currentUserId: number | undefined, voiceMembers: MemberDTO[], isInVoice: boolean, options: VoiceMeshOptions = {}) {
-  const { microphoneDeviceId, speakerDeviceId, onPresenceChange } = options;
+  const { microphoneDeviceId, speakerDeviceId, microphoneVolume = 100, speakerVolume = 100, onPresenceChange } = options;
+  const microphoneVolumeReference = useRef(microphoneVolume);
+  const speakerVolumeReference = useRef(speakerVolume);
   const onPresenceChangeReference = useRef(onPresenceChange);
   useEffect(() => {
     onPresenceChangeReference.current = onPresenceChange;
@@ -202,6 +210,17 @@ export function useVoiceMesh(groupId: number, currentUserId: number | undefined,
     publishLocalAudioStream(isBroadcastingTabAudioReference.current ? tabStreamReference.current : remoteStream ?? null);
   }, []);
 
+  useEffect(() => {
+    speakerVolumeReference.current = speakerVolume;
+    remoteAudioReference.current.forEach((audio) => { audio.volume = speakerVolume / PERCENT; });
+  }, [speakerVolume]);
+
+  useEffect(() => {
+    microphoneVolumeReference.current = microphoneVolume;
+    const mixer = mixerReference.current;
+    mixer?.microphoneGain?.gain.setValueAtTime(microphoneVolume / PERCENT, mixer.context.currentTime);
+  }, [microphoneVolume]);
+
   const applyRemoteAudioMuting = useCallback(() => {
     remoteAudioReference.current.forEach((audio, userId) => {
       audio.muted = isDeafenedReference.current || silencedUserIdsReference.current.has(userId);
@@ -255,6 +274,7 @@ export function useVoiceMesh(groupId: number, currentUserId: number | undefined,
       const audio = remoteAudioReference.current.get(targetMemberUserId) ?? new Audio();
       audio.srcObject = remoteStream;
       audio.muted = isDeafenedReference.current || silencedUserIdsReference.current.has(targetMemberUserId);
+      audio.volume = speakerVolumeReference.current / PERCENT;
       const sinkableAudio = audio as HTMLAudioElement & { setSinkId?: (deviceId: string) => Promise<void> };
       if (speakerDeviceId && typeof sinkableAudio.setSinkId === "function") {
         void sinkableAudio.setSinkId(speakerDeviceId).catch(() => {});
@@ -408,8 +428,12 @@ export function useVoiceMesh(groupId: number, currentUserId: number | undefined,
       setMicrophoneStream(microphoneStream);
       if (mixer) {
         mixer.microphoneSource?.disconnect();
+        mixer.microphoneGain?.disconnect();
         mixer.microphoneSource = mixer.context.createMediaStreamSource(microphoneStream);
-        mixer.microphoneSource.connect(mixer.destination);
+        mixer.microphoneGain = mixer.context.createGain();
+        mixer.microphoneGain.gain.setValueAtTime(microphoneVolumeReference.current / PERCENT, mixer.context.currentTime);
+        mixer.microphoneSource.connect(mixer.microphoneGain);
+        mixer.microphoneGain.connect(mixer.destination);
       }
       publishVisualizerStream();
       refreshOutgoingTrack();
