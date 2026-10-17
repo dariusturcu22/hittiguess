@@ -169,13 +169,13 @@ A persisted job engine for the stage pipeline exists in core (story 51, V44): im
 
 ## Deployment
 
-Beta runs the frontend on Vercel and both backend containers in one Azure Container Apps Consumption environment. The Spring core has external HTTPS and WebSocket ingress. The FastAPI AI service has internal-only ingress and is reached through the environment's service discovery. Both apps scale from zero, but the Spring core is capped at one replica until the STOMP broker, presence registries, and session caches move out of process.
+Beta runs the frontend on Vercel and both backend containers in one Azure Container Apps Consumption environment. The Spring core has external HTTPS and WebSocket ingress. The FastAPI AI service has internal-only ingress and is reached through the environment's service discovery. Both apps run exactly one always-on replica (minimum and maximum 1), and the Spring core stays capped at one replica until the STOMP broker, presence registries, and session caches move out of process.
 
 - Database: two new Neon projects are the production data host. Neon suspends idle compute after five minutes and wakes it on the next query, so the Spring connection pool retires idle connections before Neon closes them. The transactional Postgres+pgvector project is shared by the core and AI services. A separate analytics Postgres project holds only append-heavy event data.
 - Frontend: Next.js on Vercel.
 - Health probes: both apps run HTTP startup, liveness, and readiness probes. Core uses `/actuator/health/readiness` for startup and readiness and `/actuator/health/liveness` for liveness on port 8080; the AI service uses `/health` on port 8000. `scripts/azure/apply-health-probes.ps1` applies them and `scripts/azure/create-container-apps.ps1` calls it after creating the apps.
-- Cost guardrails: Consumption plan only, no Azure Database for PostgreSQL, virtual network, private endpoint, Container Registry, dedicated workload profile, or Azure log ingestion. Azure budget alerts trigger a shutdown workflow before the whole-deployment cost ceiling is reached.
-- Migration path: Azure hosts the backend while the free trial credit lasts, then the two backend containers and a reverse proxy move to one fixed-price Hetzner server. Vercel and both Neon projects stay unchanged. Scale-to-zero on Azure costs a first-request wait of about 35 seconds (about 19 s for Azure to start the container, 13 s for Spring, 3 s for probes).
+- Cost guardrails: Consumption plan only, no Azure Database for PostgreSQL, virtual network, private endpoint, Container Registry, dedicated workload profile, or Azure log ingestion. A $20 monthly Azure budget sends email alerts, and the Log Analytics workspace is capped at 0.25 GB per day with 30-day retention. An automatic shutdown Action Group is not set up yet.
+- Migration path: Azure hosts the backend while the free trial credit lasts, then the two backend containers and a reverse proxy move to one fixed-price Hetzner server. Vercel and both Neon projects stay unchanged. Scale-to-zero was measured at a first-request wait of about 35 seconds (about 19 s for Azure to start the container, 13 s for Spring, 3 s for probes), so both apps keep one always-on replica instead.
 
 ## Data flow: adding a song
 

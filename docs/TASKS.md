@@ -25,23 +25,22 @@ Frontend implementation and tests belong to story 28. Feature work requires a Re
 ## Release: Multiplayer acceptance
 
 - [ ] Verify live Cloudflare credentials and force TURN relay; add backend integration coverage if HTTP-boundary tests leave gaps
-- [ ] Two-client HTTPS test: full game, round advancement, current DJ link-out, voice join/leave and delivery, tab-audio capture, reconnect, and results
-- [ ] Record the final multi-device LAN full-game and voice playtest
+- [x] Two-client HTTPS test: full game, round advancement, current DJ link-out, voice join/leave and delivery, tab-audio capture, reconnect, and results
 
 ## Story 7: Production hosting
 
 Azure Container Apps hosts core and AI in one EU environment. Vercel hosts the frontend. Core stays single-replica because game and STOMP state are process-local. The whole-deployment ceiling is $20/month.
 
-- [ ] Restrict the new YouTube API key to the YouTube Data API; confirm the exposed key's log lines have aged out of Log Analytics
-- [ ] Disable or cap Log Analytics ingestion/retention; add anomaly alerts, a resource-group budget, and a $12 shutdown Action Group
+- [x] Restrict the new YouTube API key to the YouTube Data API; the exposed key is deleted
+- [ ] Add anomaly alerts and a $12 shutdown Action Group; the Log Analytics daily cap (0.25 GB, 30-day retention) and the $20 budget with email alerts are in place
 - [ ] Cost-control test: alerts and shutdown against an isolated resource group
 - [ ] Load-test core/AI CPU, memory, WebSockets, and game-action latency; validate resource limits and add a tested active-game admission limit with a clear busy response
-- [ ] Test the throughput limit of the C1-only JIT setting under game load; Azure stays on scale-to-zero for the trial
-- [ ] Verify Vercel root frontend, production branch dev, domain, API origin, and shared auth cookies
-- [ ] Verify real Google login and ordinary signup, verification, login, and password-reset delivery; configure the Resend domain and sender
+- [ ] Test the throughput limit of the C1-only JIT setting under game load; both Azure apps run one always-on replica
+- [x] Verify Vercel root frontend, production branch dev, domain, API origin, and shared auth cookies
+- [ ] Verify password-reset email delivery in production; Google login, signup, verification, login, and the Resend domain and sender are working
 - [x] Add HTTP liveness/readiness probes to both apps
 - [ ] Deployment smoke test: health, HTTPS API, WSS STOMP, protected-route session_hint cookie, and internal core-to-AI requests
-- [ ] Production two-device acceptance: login, import, full game, reconnect, voice, DJ audio, and results
+- [ ] Production two-device acceptance: login, import, full game, reconnect, voice, DJ audio, and results; fix the issues found in the live demo first
 - [ ] Plan the move to one Hetzner server before the Azure trial credit ends: document the deployment, rehearse it in isolation, and prepare DNS cutover and rollback
 - [ ] Optional: decide whether production deployments require GitHub environment reviewers
 
