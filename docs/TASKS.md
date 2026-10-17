@@ -36,7 +36,7 @@ DJ audio (the most important batch):
 - [ ] Find why a Chrome DJ's shared audio is not heard by other players: log the display-capture result (surface type, audio track present), the outgoing track state, and the receiving peer's incoming track and playback state in a two-Chrome run
 - [ ] Share once per match: a DJ who has not yet shared is asked for the screen share with system audio first, and only then does the Open on YouTube button appear; the share stays alive for the rest of the match, so later rounds do not ask again
 - [ ] Share the DJ's audio only during that player's own DJ turn: outside it the captured audio is not mixed into the voice stream and nobody receives it, and the audio stops when the DJ locks in; only the current DJ's audio is sent to the other players, never to the DJ; unit tests for the gating
-- [ ] Detect browsers that cannot capture audio (Firefox, Safari) before a round and exclude them from DJ rotation or show a clear notice; decide the rule with the owner
+- [ ] Detect browsers that cannot capture audio (Firefox, Safari), report the capability to the server when a player joins, and skip those players in DJ rotation; they still play and guess, and see a short notice explaining why; a rotation with no capable player shows the group a clear message; unit and backend integration tests
 - [ ] Open the YouTube link in a new tab of the same browser window, not a popup window
 - [ ] Simplify the DJ view: one primary action, short instructions, no duplicated controls
 - [ ] The card's sound wave moves for every player from the DJ's audio and ignores voice chat; the DJ's own wave follows the shared audio
