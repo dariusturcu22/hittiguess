@@ -24,7 +24,7 @@ Frontend implementation and tests belong to story 28. Feature work requires a Re
 
 ## Release: Multiplayer acceptance
 
-- [ ] Set VOICE_TURN_CLOUDFLARE_KEY_ID and VOICE_TURN_CLOUDFLARE_API_TOKEN on core (neither is set in production, so voice credentials are STUN-only), then verify them and force TURN relay; add backend integration coverage if HTTP-boundary tests leave gaps
+- [ ] Verify the production Cloudflare TURN credentials (both variables are set on core) with two devices on different networks and force TURN relay; add backend integration coverage if HTTP-boundary tests leave gaps
 - [x] Two-client HTTPS test: full game, round advancement, current DJ link-out, voice join/leave and delivery, tab-audio capture, reconnect, and results
 
 ## Story 7: Production hosting
@@ -56,7 +56,7 @@ Both Neon projects are provisioned. Core owns schema migrations; AI connects onl
 
 ## Story 38: Production observability
 
-- [ ] Configure production TURN, Grafana, and Sentry secrets (core has no SENTRY_DSN or GRAFANA_CLOUD_* variable and the AI service has no SENTRY_DSN); adapt Alloy scraping, import the dashboard, and add core uptime monitoring
+- [ ] Production Sentry and OpenTelemetry settings are set on both apps; remaining: metrics through a Grafana Alloy container (core's `/actuator/prometheus` needs a login, so expose it on an internal-only management port first), import the dashboard, and add core uptime monitoring
 - [ ] Verify real metrics, logs, traces, and error delivery; add a credential-gated delivery integration test without secret output
 
 ## Backend follow-ups

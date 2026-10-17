@@ -1212,3 +1212,9 @@ A Container Apps YAML update replaces the whole container, so a file that lists 
 Decision: both Container Apps run with minimum and maximum replicas of 1 instead of scaling to zero. This supersedes the scale-to-zero choice in the 2026-10 hosting entry for the rest of the Azure trial; the move to a fixed-price server afterward is unchanged.
 
 Why: the measured cold start of about 35 seconds is too slow for the first player of a session, and the trial credit covers the always-on cost. Core could not scale beyond one replica anyway because game and STOMP state are process-local.
+
+## 2026-10-17 | Production reuses the local Sentry, Grafana, and Cloudflare credentials
+
+Decision: the production Container Apps use the same Sentry projects, Grafana Cloud stack, and Cloudflare TURN key as local development. `scripts/azure/set-observability-secrets.ps1` copies them from the local `.env` files into Container Apps secrets and verifies each stored secret against the file value. Metrics stay off in production until an Alloy container and an internal-only metrics port exist.
+
+Why: none of the three services needs a separate key per environment, and a second set of accounts adds setup without isolating anything the environment tag does not already separate. Core's `/actuator/prometheus` requires authentication, so an Alloy scraper cannot reach it today, and exposing it publicly would be a security change that belongs in its own story.
