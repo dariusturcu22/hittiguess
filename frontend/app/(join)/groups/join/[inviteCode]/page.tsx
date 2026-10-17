@@ -15,15 +15,50 @@ import { useGetCurrentUser } from "@/hooks/generated/user-management/user-manage
 import { useGroupInvitePreview } from "@/hooks/use-group-invite-preview";
 import {
   getGetActiveMembershipQueryKey,
+  useGetActiveMembership,
   useJoinGroup,
+  useLeaveGroup,
 } from "@/hooks/generated/group-management/group-management";
 
 interface PageProps {
   params: Promise<{ inviteCode: string }>;
 }
 
+interface JoinFailure {
+  status: number;
+  message: string;
+}
+
+interface JoinErrorBody {
+  message?: string;
+  displayName?: string;
+  avatarUrl?: string;
+}
+
 const BAD_REQUEST_STATUS = 400;
+const NOT_FOUND_STATUS = 404;
+const CONFLICT_STATUS = 409;
 const DISPLAY_NAME_MAX_LENGTH = 30;
+const INVALID_INVITE_MESSAGE = "That invite link isn't valid.";
+const GENERIC_JOIN_ERROR_MESSAGE = "Something went wrong. Try again.";
+
+// A caller who belongs to another group is refused by the cross-group check before
+// the removed, started, and full checks, so a conflict only carries a leave
+// action when the caller has a membership to leave.
+function joinFailureFromError(joinError: unknown): JoinFailure {
+  const response = (joinError as AxiosError<JoinErrorBody>).response;
+  const status = response?.status;
+  if (status === BAD_REQUEST_STATUS) {
+    const identityProblem = response?.data?.displayName ?? response?.data?.avatarUrl;
+    if (identityProblem) {
+      return { status, message: identityProblem };
+    }
+  }
+  if (status === CONFLICT_STATUS) {
+    return { status, message: response?.data?.message ?? GENERIC_JOIN_ERROR_MESSAGE };
+  }
+  return { status: status ?? NOT_FOUND_STATUS, message: INVALID_INVITE_MESSAGE };
+}
 
 export default function JoinGroupPage({ params }: PageProps) {
   const { inviteCode } = use(params);
@@ -35,12 +70,17 @@ export default function JoinGroupPage({ params }: PageProps) {
     request: { skipAuthRedirect: true },
   });
   const { mutate: joinGroup, isPending } = useJoinGroup();
+  const { mutate: leaveGroup, isPending: isLeavingGroup } = useLeaveGroup();
+  const { data: activeMembership } = useGetActiveMembership({
+    query: { enabled: Boolean(currentUser), retry: false },
+    request: { skipAuthRedirect: true },
+  });
   const { data: invitePreview, isError: isInvitePreviewError } = useGroupInvitePreview(inviteCode);
 
   const [displayName, setDisplayName] = useState("");
   const [avatarUrl, setAvatarUrl] = useState("");
   const [isEditingIdentity, setIsEditingIdentity] = useState(false);
-  const [error, setError] = useState("");
+  const [joinFailure, setJoinFailure] = useState<JoinFailure | null>(null);
 
   React.useEffect(() => {
     if (currentUser?.username && !displayName) {
@@ -54,8 +94,7 @@ export default function JoinGroupPage({ params }: PageProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentUser]);
 
-  const handleJoin = () => {
-    setError("");
+  const submitJoin = () => {
     const trimmedName = displayName.trim();
     const changedFromAccountName =
       trimmedName && trimmedName !== currentUser?.username;
@@ -77,13 +116,36 @@ export default function JoinGroupPage({ params }: PageProps) {
           });
           router.push(`/groups/${group.id}`);
         },
-        onError: (joinError) => {
-          const response = (joinError as AxiosError<Record<string, string | undefined>>).response;
-          const identityProblem = response?.status === BAD_REQUEST_STATUS
-            ? response.data?.displayName ?? response.data?.avatarUrl
-            : undefined;
-          setError(identityProblem ?? "That invite link isn't valid.");
+        onError: (joinError) => setJoinFailure(joinFailureFromError(joinError)),
+      },
+    );
+  };
+
+  const handleJoin = () => {
+    if (!inviteCode.trim()) {
+      setJoinFailure({ status: NOT_FOUND_STATUS, message: INVALID_INVITE_MESSAGE });
+      return;
+    }
+    setJoinFailure(null);
+    submitJoin();
+  };
+
+  const handleLeaveAndRetry = () => {
+    const currentGroupId = activeMembership?.id;
+    if (currentGroupId === undefined) {
+      return;
+    }
+    leaveGroup(
+      { groupId: currentGroupId },
+      {
+        onSuccess: () => {
+          queryClient.invalidateQueries({
+            queryKey: getGetActiveMembershipQueryKey(),
+          });
+          setJoinFailure(null);
+          submitJoin();
         },
+        onError: (leaveError) => setJoinFailure(joinFailureFromError(leaveError)),
       },
     );
   };
@@ -203,8 +265,19 @@ export default function JoinGroupPage({ params }: PageProps) {
           </p>
         </div>
 
-        {error && (
-          <p className="mb-4 text-sm text-destructive">{error}</p>
+        {joinFailure && (
+          <p className="mb-4 text-sm text-destructive">{joinFailure.message}</p>
+        )}
+
+        {joinFailure?.status === CONFLICT_STATUS && activeMembership?.id !== undefined && (
+          <Button
+            variant="secondary"
+            className="mb-4 w-full"
+            onClick={handleLeaveAndRetry}
+            disabled={isLeavingGroup}
+          >
+            {isLeavingGroup ? "Leaving..." : "Leave your current group and join this one"}
+          </Button>
         )}
 
         {isCurrentUserError && !isCurrentUserLoading ? (
@@ -218,7 +291,7 @@ export default function JoinGroupPage({ params }: PageProps) {
           <Button
             className="mb-4 w-full"
             onClick={handleJoin}
-            disabled={isPending || isCurrentUserLoading}
+            disabled={isPending || isCurrentUserLoading || isLeavingGroup}
           >
             {isPending ? "Joining..." : "Join group"}
           </Button>
