@@ -14,5 +14,6 @@ public enum SessionEventType {
     REVEAL_TRIGGERED,
     ROUND_SCORED,
     NEXT_ROUND,
+    PLAYER_LEFT,
     SESSION_ENDED
 }

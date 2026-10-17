@@ -67,6 +67,14 @@ export function AppVoiceSidebar() {
   const microphoneMessage = voiceMesh.microphoneErrorMessage
     ?? ((microphoneError || voiceMesh.microphoneError) ? "Microphone permission is needed." : null);
 
+  // Leaving the group while in the call (Leave game, Leave lobby, being removed) ends the
+  // call's audio too, so no microphone or shared-audio capture outlives the membership.
+  const { stopVoice } = voiceMesh;
+  const hasGroup = activeGroup !== undefined;
+  useEffect(() => {
+    if (!hasGroup && !activeMembershipQuery.isLoading) stopVoice();
+  }, [activeMembershipQuery.isLoading, hasGroup, stopVoice]);
+
   // The DJ's "Share YouTube audio" click reaches here as a window event, since the
   // session view and this sidebar share no props. The capture starts first, inside the
   // click's user activation, and joins the voice room for a DJ who wasn't in it yet.

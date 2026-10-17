@@ -8,6 +8,15 @@ import * as zod from 'zod';
 
 
 /**
+ * @summary Leave a running game session, the game continues without the calling player
+ */
+export const LeaveSessionParams = zod.object({
+  "sessionId": zod.int()
+})
+
+export const LeaveSessionResponse = zod.unknown()
+
+/**
  * @summary Get the current state of a game session, must be a player in it
  */
 export const GetSessionParams = zod.object({
