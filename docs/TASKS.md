@@ -65,16 +65,16 @@ A second production playtest found the game borderline playable but buggy: the s
 
 Separate song stream and audio quality:
 
-- [ ] Song mesh: a second set of peer connections per game session, signalled over STOMP and keyed by the session, that every player joins automatically as a listener with no microphone and no voice join; backend relay limited to the session's players
-- [ ] The DJ's captured audio is attached to the song connections only during the DJ's own turn until the reveal and is detached (`replaceTrack(null)`) at all other times, not muted; the share prompt still appears once per match
-- [ ] Remove all song and tab audio from the voice mesh; voice carries only the microphone; lock-in silences only the song stream for the active player, never the DJ's voice
-- [ ] Song quality: capture with echo cancellation, noise suppression, and auto gain off, `contentHint` music, stereo Opus at 128 kbps with a single constant for the bitrate; document the bandwidth maths
-- [ ] Voice quality: explicit echo cancellation, noise suppression, and auto gain, a noise gate with a sensitivity slider, and an RNNoise filter toggle with a fallback; a Windows tip about call ducking in the voice settings
-- [ ] Song volume slider, reachable from the voice settings and from the game page, independent of the speaker volume and working without joining voice
-- [ ] Visualizer rewrite: the song stream only, log-spaced bands, dB scaling, smoothing, 16 to 24 bars, clean rendering with no stray pixels
-- [ ] Stop the screen capture when the session ends, the player leaves the game or the group, the page unloads, or the share bar is stopped
+- [x] Song mesh: a second set of peer connections per game session, signalled over STOMP and keyed by the session, that every player joins automatically as a listener with no microphone and no voice join; backend relay limited to the session's players
+- [x] The DJ's captured audio is attached to the song connections only during the DJ's own turn until the reveal and is detached (`replaceTrack(null)`) at all other times, not muted; the share prompt still appears once per match
+- [x] Remove all song and tab audio from the voice mesh; voice carries only the microphone; lock-in silences only the song stream for the active player, never the DJ's voice
+- [x] Song quality: capture with echo cancellation, noise suppression, and auto gain off, `contentHint` music, stereo Opus at 128 kbps with a single constant for the bitrate; document the bandwidth maths
+- [x] Voice quality: explicit echo cancellation, noise suppression, and auto gain, a noise gate with a sensitivity slider, and an RNNoise filter toggle with a fallback; a Windows tip about call ducking in the voice settings
+- [x] Song volume slider, reachable from the voice settings and from the game page, independent of the speaker volume and working without joining voice
+- [x] Visualizer rewrite: the song stream only, log-spaced bands, dB scaling, smoothing, 16 to 24 bars, clean rendering with no stray pixels
+- [x] Stop the screen capture when the session ends, the player leaves the game or the group, the page unloads, or the share bar is stopped
 - [ ] Let Firefox and Safari try the share prompt on desktop, log the result of each attempt (browser, surface, audio track count) to the console and Sentry, keep the old gating behind one flag; record the findings here
-- [ ] The voice rail lists who is in the call before a player joins, on the lobby and the session page
+- [x] The voice rail lists who is in the call before a player joins, on the lobby and the session page
 
 Game screens and lobby:
 
