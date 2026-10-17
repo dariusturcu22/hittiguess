@@ -33,7 +33,7 @@ const RAIL_DIVIDER_CLASSES =
 const ADMIN_RAIL_DIVIDER_CLASSES =
   "w-8 h-0.5 mt-3 mb-2 short:mt-2.5 short:mb-1.5 very-short:mt-1.5 shrink-0 rounded-full bg-destructive/40";
 
-const RAIL_GROUP_GAP_CLASSES = "gap-3.5 short:gap-2.5 very-short:gap-1.5";
+const RAIL_GROUP_GAP_CLASSES = "gap-5 short:gap-3.5 very-short:gap-2.5";
 
 const ADMIN_RAIL_GROUP_GAP_CLASSES = "gap-2.5 short:gap-1.5 very-short:gap-1";
 
