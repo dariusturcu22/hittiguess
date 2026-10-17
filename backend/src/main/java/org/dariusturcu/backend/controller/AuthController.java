@@ -29,8 +29,10 @@ import org.dariusturcu.backend.service.AuthService;
 import org.dariusturcu.backend.service.TwoFactorService;
 import org.dariusturcu.backend.util.CookieUtil;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
 
 @RestController
 @RequiredArgsConstructor
@@ -38,6 +40,9 @@ import org.springframework.web.bind.annotation.*;
 @Tag(name = "Authentication Management")
 
 public class AuthController {
+    static final String REFRESH_TOKEN_COOKIE_NAME = "refresh_token";
+    static final String NO_REFRESH_TOKEN_MESSAGE = "No refresh token present";
+
     private final AuthService authService;
     private final TwoFactorService twoFactorService;
     private final CookieUtil cookieUtil;
@@ -153,8 +158,8 @@ public class AuthController {
             HttpServletRequest request,
             HttpServletResponse response
     ) {
-        String refreshToken = cookieUtil.extractFromCookies(request, "refresh_token")
-                .orElseThrow(() -> new RuntimeException("No refresh token present"));
+        String refreshToken = cookieUtil.extractFromCookies(request, REFRESH_TOKEN_COOKIE_NAME)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, NO_REFRESH_TOKEN_MESSAGE));
 
         AuthResult result = authService.refreshTokens(refreshToken);
         setTokenCookies(response, result);
