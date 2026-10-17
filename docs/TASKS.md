@@ -68,17 +68,17 @@ Both Neon projects are provisioned. Core owns schema migrations; AI connects onl
 
 ## Story 51: Admin console and parallel source pipeline
 
-The admin area becomes a console with its own sidebar section, a dashboard, a backfill queue, a song catalog, and the report queue. Backfill and user imports run through seven persisted queues, one per stage: YouTube metadata, MusicBrainz, Discogs, Wikidata, Wikipedia, LLM reconciliation, and embedding. Each queue works at its own pace, and a song is finalized once every stage it needs is done. Wikipedia is queued for a song only when MusicBrainz, Discogs, and Wikidata disagree. The admin screens use approved dark and light mockups. LLM usage has no limit and is tracked with an estimated cost from the official prices. The stage path has no daily 200-song drain cap; the legacy path remains behind the default-off cutover flag.
+The admin area becomes a console with its own sidebar section, a dashboard, a backfill queue, a song catalog, and the report queue. Backfill and user imports run through seven persisted queues, one per stage: YouTube metadata, MusicBrainz, Discogs, Wikidata, Wikipedia, LLM reconciliation, and embedding. Each queue works at its own pace, and a song is finalized once every stage it needs is done. Wikipedia is queued for a song only when MusicBrainz, Discogs, and Wikidata disagree. The admin screens use approved dark and light mockups. LLM usage has no limit and is tracked with an estimated cost from the official prices. The stage path has no daily 200-song drain cap. The sequential drain and cutover flag are removed after the owner confirmed the production playlist test.
 
 Pipeline and data:
 
 - [x] Cutover: authenticated AI stage client with provider failure mapping, per-stage scheduled workers, cheap due-work checks, and no-attempt pace rescheduling
 - [x] Cutover: transactional ready-run persistence, patient-year recording, and V41 embedding execution without engine embedding jobs
-- [x] Cutover: admin batches and user rechecks enqueue runs behind pipeline.stages.enabled, default false; old drain disabled only on the new path
-- [x] Cutover: user-lane priority, configurable YouTube reserve, and flag-aware catalog and dashboard reads
+- [x] Admin batches and user rechecks always enqueue stage runs; the sequential drain and cutover flag are removed
+- [x] User-lane priority, configurable YouTube reserve, and run-based catalog and dashboard reads
 - [x] Cutover unit tests: worker decisions, stage payloads, error mapping, reserve behavior, and dependency transitions
-- [x] Cutover integration tests: agreeing and disagreeing years, retry and key pause, permanent failure, lease recovery, lane priority, reserve, atomic save and duplicates, and flag-off behavior
-- [x] Cutover docs: flag behavior, stage and embedding contracts, decision entry, and small-playlist production verification plan
+- [x] Cutover integration tests: agreeing and disagreeing years, retry and key pause, permanent failure, lease recovery, lane priority, reserve, atomic save and duplicates, and unconditional stage bean registration
+- [x] Pipeline docs: unconditional stages, embedding contracts, decision entry, and production verification
 
 - [x] AI stage endpoints: internal authentication, video identification and precheck verdict, source candidates and earliest years, reconciliation, and sanitized provider errors
 - [x] AI stage equivalence tests: agreeing years, disagreement, empty source, precheck rejection, and YouTube failure; existing AI tests remain passing
@@ -131,7 +131,7 @@ Frontend:
 - [x] Stage page: stage counts, pace samples, paged jobs, status filters, pause/resume, and retry failed work
 - [x] Dashboard completion: queue table, rejected-key pause reasons with Resume, and user reserve figures
 - [x] Song drawer completion: source findings, review reason, rerun, year/status edits, and confirmed deletion
-- [x] Navigation: Backfill queue rail entry, stage routes, and redirect from the old catalog-backlog route
+- [x] Navigation: Backfill queue rail entry and stage routes; obsolete catalog-backlog route removed
 - [x] Admin page tests: each screen and action, confirmation dialogs, loading/empty/error states, mutation failures, and accessible controls
 - [x] Admin visual verification: real local backend, approved mockups at 1440x900 in light and dark themes, including the song drawer
 - [x] Admin page docs: content requirements, implementation guide, and checked tasks for verified work
@@ -153,8 +153,8 @@ Tests:
 
 Production and cleanup:
 
-- [ ] Owner confirmation that the enabled stage pipeline passes a small real playlist in production; earlier stacked branches merged into dev
-- [ ] Cleanup after that confirmation: remove the old sequential drain and flag, retain pending-import history, update docs, run all required tests, and archive completed tasks
+- [x] Owner confirmation that the enabled stage pipeline passes a small real playlist in production; earlier stacked branches merged into dev
+- [x] Cleanup after that confirmation: remove the old sequential drain and flag, retain pending-import history, update docs, run all required tests, and archive completed tasks
 
 Production fixes from the first enabled playlist (throughput and admin metrics):
 

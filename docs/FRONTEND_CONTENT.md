@@ -91,11 +91,11 @@ Data, on a normal session end: the main card-count ranking (winner and placement
 
 ## Admin views
 
-The dashboard, backfill queue, song catalog, and report routes require the ADMIN role. Their rail entries share the admin accent color. `/admin/catalog-backlog` redirects to `/admin/backfill-queue`.
+The dashboard, backfill queue, song catalog, and report routes require the ADMIN role. Their rail entries share the admin accent color. The backfill queue is available at `/admin/backfill-queue`; the obsolete `/admin/catalog-backlog` route is removed.
 
 ### Backfill queue (`/admin/backfill-queue`)
 
-The Overview tab shows seven stage cards with state, waiting, in-progress, done-today and failed counts, response average, drain estimate, and the real pause or cooldown reason. Each card has Pause or Resume and Open. The pipeline has Pause all and Resume all. Batches have progress, duplicate skips, estimates, pagination, and confirmed cancellation. The enqueue form accepts one playlist link or video IDs separated by whitespace or commas. Run one now accepts one video and puts it first in the backfill lane. Enqueue and run-now controls are disabled while the stage flag is off.
+The Overview tab shows seven stage cards with state, waiting, in-progress, done-today and failed counts, response average, drain estimate, and the real pause or cooldown reason. Each card has Pause or Resume and Open. The pipeline has Pause all and Resume all. Batches have progress, duplicate skips, estimates, pagination, and confirmed cancellation. The enqueue form accepts one playlist link or video IDs separated by whitespace or commas. Run one now accepts one video and puts it first in the backfill lane. Enqueue and run-now controls always use the stage pipeline.
 
 The Songs tab shows title, artists, video ID, batch, seven stage chips, actual failure reasons, retry times and attempts, and run controls. Filters use global counts for All, In progress, Waiting, Retrying, and Failed. Bump raises waiting priority; Retry advances a waiting retry without resetting its attempts or restarts a failed run with fresh attempts; Discard requires confirmation. Runs and batches use pages of 25. Arrow keys, Home, and End move between tabs.
 
