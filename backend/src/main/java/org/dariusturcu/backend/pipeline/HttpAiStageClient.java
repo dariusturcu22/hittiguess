@@ -1,7 +1,6 @@
 package org.dariusturcu.backend.pipeline;
 
 import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.client.ResourceAccessException;
@@ -13,7 +12,6 @@ import java.time.Duration;
 import java.util.Map;
 
 @Component
-@ConditionalOnProperty(name = "pipeline.stages.enabled", havingValue = "true")
 public class HttpAiStageClient implements AiStageClient {
     private enum Provider { YOUTUBE, MUSICBRAINZ, DISCOGS, WIKIDATA, WIKIPEDIA, DEEPINFRA, OPENAI }
     static final Map<PipelineStage, String> PATHS = Map.of(

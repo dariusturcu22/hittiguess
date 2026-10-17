@@ -58,8 +58,9 @@ class AdminSongCatalogServiceTest {
     private final SongRepository songRepository = mock(SongRepository.class);
     private final PendingImportRepository pendingImportRepository = mock(PendingImportRepository.class);
     private final SongReportRepository songReportRepository = mock(SongReportRepository.class);
+    private final org.dariusturcu.backend.pipeline.AdminSongPipelineService pipeline = mock(org.dariusturcu.backend.pipeline.AdminSongPipelineService.class);
     private final AdminSongCatalogService service = new AdminSongCatalogService(catalogRepository,
-            songRepository, pendingImportRepository, songReportRepository);
+            songRepository, pendingImportRepository, songReportRepository, pipeline);
 
     private static Map<CatalogSongStatus, Long> sampleCounts() {
         Map<CatalogSongStatus, Long> counts = new EnumMap<>(CatalogSongStatus.class);
@@ -158,9 +159,11 @@ class AdminSongCatalogServiceTest {
         recheck.setStatus(PendingImportStatus.PENDING);
         recheck.setEnqueuedAt(ENQUEUED_AT);
         when(songRepository.findById(SONG_ID)).thenReturn(Optional.of(song));
+        when(catalogRepository.pipelineHistory(YOUTUBE_ID)).thenReturn(List.of(recheck));
         when(pendingImportRepository.findByYoutubeIdOrderByEnqueuedAtAscIdAsc(YOUTUBE_ID)).thenReturn(List.of(recheck));
         when(songReportRepository.countBySongIdAndStatus(SONG_ID, SongReportStatus.OPEN)).thenReturn(OPEN_REPORTS);
 
+        when(pipeline.findings(SONG_ID)).thenReturn(new org.dariusturcu.backend.pipeline.AdminSongPipelineService.Findings(null, null));
         AdminSongDetailDTO detail = service.detail(SONG_ID);
 
         assertThat(detail.status()).isEqualTo(CatalogSongStatus.IN_QUEUE);
@@ -172,6 +175,33 @@ class AdminSongCatalogServiceTest {
         assertThat(detail.openReportCount()).isEqualTo(OPEN_REPORTS);
         assertThat(detail.queueHistory()).singleElement()
                 .satisfies(entry -> assertThat(entry.origin()).isEqualTo(PendingImportOrigin.FAST_TIER_RECHECK));
+    }
+
+    @Test
+    void retainedHistoryWithoutARunDoesNotSetTheCurrentCatalogState() {
+        Song song = new Song();
+        song.setId(SONG_ID);
+        song.setYoutubeId(YOUTUBE_ID);
+        song.setVerificationStatus(VerificationStatus.VERIFIED);
+        PendingImport legacyHistory = new PendingImport();
+        legacyHistory.setId(SONG_ID);
+        legacyHistory.setOrigin(PendingImportOrigin.ADMIN_SEED);
+        legacyHistory.setStatus(PendingImportStatus.PENDING);
+        legacyHistory.setEnqueuedAt(ENQUEUED_AT);
+        when(songRepository.findById(SONG_ID)).thenReturn(Optional.of(song));
+        when(catalogRepository.pipelineHistory(YOUTUBE_ID)).thenReturn(List.of());
+        when(pendingImportRepository.findByYoutubeIdOrderByEnqueuedAtAscIdAsc(YOUTUBE_ID))
+                .thenReturn(List.of(legacyHistory));
+        when(pipeline.findings(SONG_ID)).thenReturn(new org.dariusturcu.backend.pipeline.AdminSongPipelineService.Findings(null, null));
+
+        AdminSongDetailDTO detail = service.detail(SONG_ID);
+
+        assertThat(detail.status()).isEqualTo(CatalogSongStatus.VERIFIED);
+        assertThat(detail.pipeline()).isEqualTo(CatalogPipeline.UNKNOWN);
+        assertThat(detail.queueHistory()).singleElement().satisfies(entry -> {
+            assertThat(entry.origin()).isEqualTo(PendingImportOrigin.ADMIN_SEED);
+            assertThat(entry.status()).isEqualTo(PendingImportStatus.PENDING);
+        });
     }
 
     @Test

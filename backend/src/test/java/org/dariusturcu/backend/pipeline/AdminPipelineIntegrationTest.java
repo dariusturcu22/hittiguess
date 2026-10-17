@@ -10,15 +10,12 @@ import org.dariusturcu.backend.repository.PendingImportRepository;
 import org.dariusturcu.backend.repository.SongRepository;
 import org.dariusturcu.backend.service.ApiUsageService;
 import org.dariusturcu.backend.service.CatalogSeedingService;
-import org.dariusturcu.backend.service.MetadataPriorityCoordinator;
-import org.dariusturcu.backend.service.PendingImportProcessor;
 import org.dariusturcu.backend.service.PlaylistExpansionService;
 import org.dariusturcu.backend.service.YoutubeIdLookupService;
 import org.flywaydb.core.Flyway;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.springframework.core.task.SyncTaskExecutor;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.datasource.DriverManagerDataSource;
 import org.springframework.jdbc.support.JdbcTransactionManager;
@@ -55,13 +52,12 @@ class AdminPipelineIntegrationTest {
     private static final int SOURCE_DELAY_MS = 1500;
     private static final int SOURCE_RESPONSE_MS = 250;
     private static final long COOLDOWN_SECONDS = java.time.Duration.ofHours(1).toSeconds();
-    private static final long LEGACY_DRAIN_QUOTA = 200;
     private static final int EMBEDDING_DIMENSIONS = 1536;
     private static final double EMBEDDING_COMPONENT = 0.1;
     private static final int JOB_DURATION_MS = 20_000;
     private static final int QUEUE_WAIT_MS = 5_000;
     private static final String STALE_REASON = "DEEPINFRA HTTP_ERROR (HTTP 429)";
-    private static final PipelineSettings SETTINGS = new PipelineSettings(true, PipelineSettings.DEFAULT_YOUTUBE_RESERVE_UNITS);
+    private static final PipelineSettings SETTINGS = new PipelineSettings(PipelineSettings.DEFAULT_YOUTUBE_RESERVE_UNITS);
 
     @Container
     static final PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("pgvector/pgvector:pg18");
@@ -101,9 +97,8 @@ class AdminPipelineIntegrationTest {
         });
         var expansion = mock(PlaylistExpansionService.class);
         when(expansion.expandAndMerge(any(), any())).thenAnswer(invocation -> invocation.getArgument(1));
-        var seeding = new CatalogSeedingService(mock(PendingImportRepository.class), lookup, mock(PendingImportProcessor.class),
-                new MetadataPriorityCoordinator(), expansion, mock(SongRepository.class), new SyncTaskExecutor(), LEGACY_DRAIN_QUOTA,
-                SETTINGS, engine);
+        var seeding = new CatalogSeedingService(mock(PendingImportRepository.class), lookup,
+                expansion, mock(SongRepository.class), engine);
         admin = new AdminPipelineService(repository, engine, SETTINGS, usage, seeding);
         songs = new AdminSongPipelineService(core, jobRepository, engine, admin, JsonMapper.builder().build());
     }
@@ -291,7 +286,7 @@ class AdminPipelineIntegrationTest {
                 .singleElement().satisfies(job -> assertThat(job.lastError()).isNull());
         assertThat(songs.findings(songId).sources()).singleElement()
                 .satisfies(finding -> assertThat(finding.failureReason()).isNull());
-        var catalog = new org.dariusturcu.backend.repository.AdminSongCatalogRepository(core, SETTINGS);
+        var catalog = new org.dariusturcu.backend.repository.AdminSongCatalogRepository(core);
         assertThat(catalog.pipelineHistory(VIDEO)).singleElement()
                 .satisfies(history -> assertThat(history.getFailureReason()).isNull());
 
@@ -426,7 +421,7 @@ class AdminPipelineIntegrationTest {
         core.update("UPDATE songs SET verification_status = 'VERIFIED' WHERE id = ?", song);
         var builder = org.springframework.web.client.RestClient.builder().baseUrl("http://ai.test");
         var server = org.springframework.test.web.client.MockRestServiceServer.bindTo(builder).build();
-        var scheduler = new org.dariusturcu.backend.scheduling.SongEmbeddingScheduler(core, builder.build(), SETTINGS);
+        var scheduler = new org.dariusturcu.backend.scheduling.SongEmbeddingScheduler(core, builder.build());
         transaction(() -> admin.pause("embedding", true));
         scheduler.indexNext();
         server.expect(org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo("http://ai.test/catalog/index-next"))

@@ -22,8 +22,6 @@ public class SchedulingConfig {
     private static final int FAST_TIER_DATING_CONCURRENCY = 8;
     private static final String FAST_TIER_IDENTIFY_THREAD_NAME_PREFIX = "fast-tier-identify-";
     private static final String FAST_TIER_DATING_THREAD_NAME_PREFIX = "fast-tier-dating-";
-    private static final int BACKLOG_DRAIN_POOL_SIZE = 1;
-    private static final String BACKLOG_DRAIN_THREAD_NAME_PREFIX = "backlog-drain-";
     private static final int EMBEDDING_SCHEDULER_POOL_SIZE = 1;
     private static final String EMBEDDING_THREAD_NAME_PREFIX = "catalog-embedding-";
 
@@ -58,13 +56,6 @@ public class SchedulingConfig {
     @Bean
     public TaskExecutor fastTierDatingExecutor() {
         return fixedPool(FAST_TIER_DATING_CONCURRENCY, FAST_TIER_DATING_THREAD_NAME_PREFIX);
-    }
-
-    // Runs an admin-requested backlog drain off the request thread; the drain is long
-    // and strictly one item at a time, so it gets its own single worker.
-    @Bean
-    public TaskExecutor backlogDrainExecutor() {
-        return fixedPool(BACKLOG_DRAIN_POOL_SIZE, BACKLOG_DRAIN_THREAD_NAME_PREFIX);
     }
 
     private static ThreadPoolTaskExecutor fixedPool(int poolSize, String threadNamePrefix) {

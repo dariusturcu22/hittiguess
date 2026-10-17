@@ -57,7 +57,6 @@ class FastTierImportRunnerTest {
     @Mock
     private CatalogSeedingService catalogSeedingService;
 
-    private final MetadataPriorityCoordinator metadataPriorityCoordinator = new MetadataPriorityCoordinator();
     private final User importingUser = new User();
     private final RecordingListener listener = new RecordingListener();
     private FastTierImportRunner runner;
@@ -93,7 +92,7 @@ class FastTierImportRunnerTest {
     @BeforeEach
     void setUp() {
         runner = new FastTierImportRunner(songMetadataService, songResolutionService, catalogSeedingService,
-                metadataPriorityCoordinator, new SimpleAsyncTaskExecutor(), new SimpleAsyncTaskExecutor());
+                new SimpleAsyncTaskExecutor(), new SimpleAsyncTaskExecutor());
         lenient().when(songResolutionService.persistFastTierAnswer(anyString(), any(), any(), any()))
                 .thenAnswer(invocation -> songWithYear(FAST_TIER_YEAR));
     }
@@ -175,7 +174,6 @@ class FastTierImportRunnerTest {
         runner.resolveAll(List.of(FIRST_VIDEO_ID), importingUser, listener);
 
         verify(catalogSeedingService).enqueuePatientRecheck(FIRST_VIDEO_ID, PendingImportOrigin.FAST_TIER_RECHECK, FAST_TIER_YEAR);
-        assertThat(metadataPriorityCoordinator.isOnTheSpotTrafficActive()).isFalse();
     }
 
     @Test

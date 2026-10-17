@@ -80,7 +80,6 @@ class PipelineCutoverIntegrationTest {
         properties.add("spring.datasource.username", postgres::getUsername);
         properties.add("spring.datasource.password", postgres::getPassword);
         properties.add("spring.flyway.enabled", () -> false);
-        properties.add("pipeline.stages.enabled", () -> true);
     }
 
     @BeforeAll
@@ -278,15 +277,12 @@ class PipelineCutoverIntegrationTest {
 
     @Test
     void catalogAndDashboardReadRunJobsOnlyOnTheNewPath() {
-        var repository = new org.dariusturcu.backend.repository.AdminSongCatalogRepository(core,
-                new PipelineSettings(true, PipelineSettings.DEFAULT_YOUTUBE_RESERVE_UNITS));
+        var repository = new org.dariusturcu.backend.repository.AdminSongCatalogRepository(core);
         PipelineRun run = start(VIDEO_ID);
         assertThat(repository.findPage(null, null, 25, 0)).singleElement().satisfies(row -> {
             assertThat(row.status()).isEqualTo(org.dariusturcu.backend.model.song.CatalogSongStatus.IN_QUEUE);
             assertThat(row.latestQueueOrigin()).isEqualTo(PendingImportOrigin.ADMIN_SEED);
         });
-        assertThat(new org.dariusturcu.backend.repository.AdminSongCatalogRepository(core).findPage(null, null, 25, 0))
-                .isEmpty();
         assertThat(repository.countQueue().waiting()).isEqualTo(1);
         stages.failure = new AiStageFailure("Gone", FailureClassifier.PERMANENT, null);
         worker.work(PipelineStage.YOUTUBE_METADATA);
@@ -308,8 +304,7 @@ class PipelineCutoverIntegrationTest {
         sources();
         assertThat(core.queryForObject("SELECT patient_year FROM pending_imports", Integer.class)).isEqualTo(YEAR);
         assertThat(core.queryForObject("SELECT status FROM pending_imports", String.class)).isEqualTo("DONE");
-        var repository = new org.dariusturcu.backend.repository.AdminSongCatalogRepository(core,
-                new PipelineSettings(true, PipelineSettings.DEFAULT_YOUTUBE_RESERVE_UNITS));
+        var repository = new org.dariusturcu.backend.repository.AdminSongCatalogRepository(core);
         assertThat(repository.pipelineHistory(VIDEO_ID)).singleElement().satisfies(history ->
                 assertThat(history.getPatientYear()).isEqualTo(YEAR));
     }

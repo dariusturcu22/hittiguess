@@ -1,6 +1,5 @@
 package org.dariusturcu.backend.service;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.dariusturcu.backend.pipeline.AdminSongPipelineService;
 import org.dariusturcu.backend.exception.ResourceNotFoundException;
 import org.dariusturcu.backend.exception.ResourceType;
@@ -23,8 +22,10 @@ import org.dariusturcu.backend.repository.SongRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Stream;
 
 /**
  * The admin song catalog list and the read-only song detail. Search text is trimmed and must be
@@ -48,12 +49,6 @@ public class AdminSongCatalogService {
     private final SongReportRepository songReportRepository;
     private final AdminSongPipelineService pipeline;
 
-    public AdminSongCatalogService(AdminSongCatalogRepository catalogRepository, SongRepository songRepository,
-            PendingImportRepository pendingImportRepository, SongReportRepository songReportRepository) {
-        this(catalogRepository, songRepository, pendingImportRepository, songReportRepository, null);
-    }
-
-    @Autowired
     public AdminSongCatalogService(AdminSongCatalogRepository catalogRepository, SongRepository songRepository,
             PendingImportRepository pendingImportRepository, SongReportRepository songReportRepository, AdminSongPipelineService pipeline) {
         this.catalogRepository = catalogRepository;
@@ -147,12 +142,11 @@ public class AdminSongCatalogService {
                 .orElseThrow(() -> new ResourceNotFoundException(ResourceType.SONG, songId));
         List<PendingImport> queueRows = song.getYoutubeId() == null
                 ? List.of()
-                : catalogRepository.usesStagePipeline() ? catalogRepository.pipelineHistory(song.getYoutubeId())
-                : pendingImportRepository.findByYoutubeIdOrderByEnqueuedAtAscIdAsc(song.getYoutubeId());
+                : catalogRepository.pipelineHistory(song.getYoutubeId());
         boolean hasAdminSeedRow = queueRows.stream()
                 .anyMatch(queueRow -> queueRow.getOrigin() == PendingImportOrigin.ADMIN_SEED);
         String addedByUsername = song.getAddedBy() == null ? null : song.getAddedBy().getUsername();
-        var findings = pipeline == null ? new AdminSongPipelineService.Findings(null, null) : pipeline.findings(songId);
+        var findings = pipeline.findings(songId);
 
         return new AdminSongDetailDTO(
                 song.getId(),
@@ -160,7 +154,7 @@ public class AdminSongCatalogService {
                 song.getTitle(),
                 song.getArtists().stream().map(SongArtist::getName).toList(),
                 song.getReleaseYear() == UNRESOLVED_RELEASE_YEAR ? null : song.getReleaseYear(),
-                CatalogSongRules.songStatus(song.getVerificationStatus(), queueRows, catalogRepository.usesStagePipeline()),
+                CatalogSongRules.songStatusFromRuns(song.getVerificationStatus(), queueRows),
                 CatalogSongRules.pipeline(queueRows),
                 song.getCreatedAt(),
                 addedByUsername,
@@ -169,7 +163,19 @@ public class AdminSongCatalogService {
                 song.getConfidence(),
                 song.getWikidataSitelinksCount(),
                 songReportRepository.countBySongIdAndStatus(song.getId(), SongReportStatus.OPEN),
-                queueRows.stream().map(AdminSongCatalogService::toHistoryEntry).toList(), findings.sources(), findings.reviewReason());
+                history(song.getYoutubeId(), queueRows), findings.sources(), findings.reviewReason());
+    }
+
+    private List<AdminQueueHistoryEntryDTO> history(String youtubeId, List<PendingImport> runs) {
+        List<PendingImport> retainedRows = youtubeId == null ? List.of()
+                : pendingImportRepository.findByYoutubeIdOrderByEnqueuedAtAscIdAsc(youtubeId).stream()
+                        .filter(history -> runs.stream().noneMatch(run -> run.getOrigin() == history.getOrigin()
+                                && !history.getEnqueuedAt().isBefore(run.getEnqueuedAt())
+                                && (run.getProcessedAt() == null || !history.getEnqueuedAt().isAfter(run.getProcessedAt()))))
+                        .toList();
+        return Stream.concat(runs.stream(), retainedRows.stream())
+                .sorted(Comparator.comparing(PendingImport::getEnqueuedAt))
+                .map(AdminSongCatalogService::toHistoryEntry).toList();
     }
 
     private static AdminCatalogSongDTO toCatalogSong(AdminCatalogRow row) {

@@ -15,10 +15,11 @@ import java.util.Set;
 
 /**
  * How an admin catalog row's status, pipeline, and added-by kind follow from a song's stored
- * verification status and the backlog rows for its YouTube ID.
+ * verification status and the pipeline runs for its YouTube ID.
  *
  * <p>Status: an active backlog row wins, PROCESSING before PENDING (shown as IN_QUEUE). Without
- * one, a VERIFIED song is VERIFIED and every other verification status is NEEDS_REVIEW. A
+ * one, the latest failed run means ERROR; otherwise a VERIFIED song is VERIFIED and every
+ * other verification status is NEEDS_REVIEW. A
  * backlog item with no song is PROCESSING, IN_QUEUE, or, once it failed, ERROR.
  *
  * <p>Pipeline: FAST while a recheck row (FAST_TIER_RECHECK or USER_ADD_RECHECK) is not DONE;
@@ -68,14 +69,14 @@ public final class CatalogSongRules {
                 : CatalogSongStatus.NEEDS_REVIEW;
     }
 
-    public static CatalogSongStatus songStatus(VerificationStatus verificationStatus,
-            Collection<PendingImport> rows, boolean stagePipeline) {
+    public static CatalogSongStatus songStatusFromRuns(VerificationStatus verificationStatus,
+            Collection<PendingImport> rows) {
         Set<PendingImportStatus> statuses = EnumSet.noneOf(PendingImportStatus.class);
         rows.forEach(row -> statuses.add(row.getStatus()));
         PendingImportStatus activeStatus = activeQueueStatus(statuses);
         boolean latestFailed = rows.stream().max(ENQUEUE_ORDER)
                 .map(row -> row.getStatus() == PendingImportStatus.FAILED).orElse(false);
-        return stagePipeline && activeStatus == null && latestFailed
+        return activeStatus == null && latestFailed
                 ? CatalogSongStatus.ERROR : songStatus(verificationStatus, activeStatus);
     }
 

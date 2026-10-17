@@ -5,7 +5,6 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.SmartLifecycle;
 import org.springframework.scheduling.TaskScheduler;
 import org.springframework.stereotype.Component;
@@ -23,7 +22,6 @@ import java.util.concurrent.Semaphore;
 
 /** Committed wake-ups and idle-aware polling dispatch bounded stage bursts on separate worker threads. */
 @Component
-@ConditionalOnProperty(name = "pipeline.stages.enabled", havingValue = "true")
 public class PipelineStageDispatcher implements SmartLifecycle, StageWakeUps.Listener {
     public static final long DEFAULT_POLL_INTERVAL_SECONDS = 5;
     public static final long DEFAULT_IDLE_POLL_INTERVAL_SECONDS = Duration.ofMinutes(10).toSeconds();

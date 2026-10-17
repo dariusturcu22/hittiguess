@@ -44,7 +44,7 @@ class AdminPipelineControllerTest {
     private final AdminPipelineRepository repository = mock(AdminPipelineRepository.class);
     private final CatalogSeedingService seeding = mock(CatalogSeedingService.class);
     private final AdminPipelineService pipeline = new AdminPipelineService(repository, engine,
-            new PipelineSettings(true, PipelineSettings.DEFAULT_YOUTUBE_RESERVE_UNITS), mock(ApiUsageService.class), seeding);
+            new PipelineSettings(PipelineSettings.DEFAULT_YOUTUBE_RESERVE_UNITS), mock(ApiUsageService.class), seeding);
     private final AdminSongPipelineService songs = spy(new AdminSongPipelineService(mock(org.springframework.jdbc.core.JdbcTemplate.class),
             mock(PipelineJobRepository.class), engine, pipeline, JsonMapper.builder().build()));
     private final MockMvc mvc = MockMvcBuilders.standaloneSetup(new AdminPipelineController(pipeline, new AdminAccessGuard()),

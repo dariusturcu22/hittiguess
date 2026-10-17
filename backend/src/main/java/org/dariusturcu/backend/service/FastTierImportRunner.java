@@ -50,7 +50,6 @@ public class FastTierImportRunner {
     private final SongMetadataService songMetadataService;
     private final SongResolutionService songResolutionService;
     private final CatalogSeedingService catalogSeedingService;
-    private final MetadataPriorityCoordinator metadataPriorityCoordinator;
     private final TaskExecutor identifyExecutor;
     private final TaskExecutor datingExecutor;
     // The full pipeline's endpoint allows 30 calls a minute across the whole backend and
@@ -61,13 +60,11 @@ public class FastTierImportRunner {
             SongMetadataService songMetadataService,
             SongResolutionService songResolutionService,
             CatalogSeedingService catalogSeedingService,
-            MetadataPriorityCoordinator metadataPriorityCoordinator,
             @Qualifier("fastTierIdentifyExecutor") TaskExecutor identifyExecutor,
             @Qualifier("fastTierDatingExecutor") TaskExecutor datingExecutor) {
         this.songMetadataService = songMetadataService;
         this.songResolutionService = songResolutionService;
         this.catalogSeedingService = catalogSeedingService;
-        this.metadataPriorityCoordinator = metadataPriorityCoordinator;
         this.identifyExecutor = identifyExecutor;
         this.datingExecutor = datingExecutor;
     }
@@ -80,7 +77,6 @@ public class FastTierImportRunner {
         }
         SecurityContext callerContext = SecurityContextHolder.getContext();
         CountDownLatch settledSongs = new CountDownLatch(youtubeIds.size());
-        metadataPriorityCoordinator.beginOnTheSpotWork();
         try {
             for (String youtubeId : youtubeIds) {
                 identifyExecutor.execute(new DelegatingSecurityContextRunnable(
@@ -90,8 +86,6 @@ public class FastTierImportRunner {
         } catch (InterruptedException interruption) {
             Thread.currentThread().interrupt();
             log.warn("Fast-tier import interrupted with {} songs unsettled", settledSongs.getCount());
-        } finally {
-            metadataPriorityCoordinator.endOnTheSpotWork();
         }
     }
 

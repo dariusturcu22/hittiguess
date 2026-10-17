@@ -86,7 +86,7 @@ public class AdminPipelineService {
                     concurrency.limit(pace.stage()), timing.finishedInDurationWindow());
         }).toList();
         long remaining = usage.youtubeUnitsRemaining();
-        return new QueueOverviewDTO(stages, settings.enabled(), remaining, settings.youtubeReserveUnits(),
+        return new QueueOverviewDTO(stages, true, remaining, settings.youtubeReserveUnits(),
                 remaining < settings.youtubeReserveUnits(), DrainEstimate.overall(estimates));
     }
 
@@ -206,7 +206,6 @@ public class AdminPipelineService {
 
     @Transactional
     public EnqueueResultDTO enqueue(AdminCatalogSeedingRequest request) {
-        requireEnabled();
         if (request == null || ((request.playlistLink() == null || request.playlistLink().isBlank())
                 && (request.youtubeIds() == null || request.youtubeIds().isEmpty()))) {
             throw new IllegalArgumentException("A playlist link or video IDs are required");
@@ -220,16 +219,11 @@ public class AdminPipelineService {
 
     @Transactional
     public PipelineRunDTO runNow(String youtubeId) {
-        requireEnabled();
         String parsed = youtubeId == null ? null : YoutubeLinkParser.parseVideoId(youtubeId).orElse(null);
         if (parsed == null) { throw new IllegalArgumentException("A valid YouTube video ID or link is required"); }
         PipelineRun run = engine.startRun(parsed, PipelineLane.BACKFILL, PendingImportOrigin.ADMIN_SEED, null, null);
         engine.bump(run.id());
         return run(run);
-    }
-
-    public void requireEnabled() {
-        if (!settings.enabled()) { throw new ConflictException("The stage pipeline is disabled"); }
     }
 
     private PipelineRun requireRun(long runId) {

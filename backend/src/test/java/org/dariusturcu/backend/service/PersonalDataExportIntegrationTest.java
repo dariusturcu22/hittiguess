@@ -81,9 +81,7 @@ class PersonalDataExportIntegrationTest {
 
         @Bean
         CatalogSeedingService catalogSeedingService(PendingImportRepository pendingImportRepository) {
-            // No test here submits a song whose reprocessing needs to actually drain, so
-            // the backlog-drain dependencies below are never invoked.
-            return new CatalogSeedingService(pendingImportRepository, null, null, null, null, null, null, 0L);
+            return new CatalogSeedingService(pendingImportRepository, null, null, null, org.mockito.Mockito.mock(org.dariusturcu.backend.pipeline.PipelineJobService.class));
         }
 
         @Bean

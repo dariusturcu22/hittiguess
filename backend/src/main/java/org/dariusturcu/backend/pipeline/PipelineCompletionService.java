@@ -3,7 +3,6 @@ package org.dariusturcu.backend.pipeline;
 import org.dariusturcu.backend.model.song.Song;
 import org.dariusturcu.backend.service.SongCatalogService;
 import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -12,7 +11,6 @@ import tools.jackson.databind.JsonNode;
 import java.time.Instant;
 
 @Service
-@ConditionalOnProperty(name = "pipeline.stages.enabled", havingValue = "true")
 public class PipelineCompletionService {
     private final PipelineJobService engine;
     private final PipelineJobRepository repository;
