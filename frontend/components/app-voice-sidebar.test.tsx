@@ -200,6 +200,17 @@ describe("AppVoiceSidebar", () => {
     expect(screen.getByRole("complementary", { name: "Voice sidebar" })).toHaveClass("w-[76px]");
   });
 
+  it("scales its rail height with the sidebar height steps", () => {
+    inVoice = false;
+    render(<AppVoiceSidebar />);
+    const rail = screen.getByRole("complementary", { name: "Voice sidebar" });
+
+    expect(rail.className).toContain("h-full");
+    expect(rail.className).toContain("min-h-0");
+    expect(rail.className).toContain("short:py-4");
+    expect(rail.className).toContain("very-short:py-3");
+  });
+
   it("shares the DJ's tab audio on request and joins the call for a DJ outside it", async () => {
     inVoice = false;
     currentPathname = "/sessions/9";

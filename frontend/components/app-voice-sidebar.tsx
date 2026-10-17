@@ -18,7 +18,7 @@ import { VoiceMemberList } from "@/components/voice-member-list";
 
 const LOBBY_PATH_PATTERN = /^\/groups\/\d+/;
 // Matches the left sidebar's width in every state, in a call or not.
-const RAIL_CLASSES = "flex w-[76px] shrink-0 flex-col items-center border-l-[3px] border-sidebar-border bg-sidebar py-5";
+const RAIL_CLASSES = "flex h-full min-h-0 w-[76px] shrink-0 flex-col items-center border-l-[3px] border-sidebar-border bg-sidebar py-5 short:py-4 very-short:py-3";
 
 
 export function AppVoiceSidebar() {
