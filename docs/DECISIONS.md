@@ -1242,3 +1242,9 @@ Why: the second playtest showed that sharing one call for voice and song meant n
 Decision: desktop Firefox and Safari players get the share prompt again, and every attempt is logged, until real tests show whether they can capture audio. The earlier skip rule stays in the code behind one flag.
 
 Why: the earlier skip was based on documentation, not on a test in those browsers.
+
+## 2026-10-18 | The chat history endpoint stays newest-first and the panel reverses it
+
+Decision: `GET /api/groups/{groupId}/chat/messages` keeps returning its most-recent page newest-first. The chat panel renders that page oldest-first so the newest message sits at the bottom, and scrolls to the bottom when it opens and when a message arrives, holding the reader's own position once they have scrolled up. Each sender keeps one avatar color derived from their sender id, and times render on a 24-hour clock.
+
+Why: the endpoint's order is its paging contract, so the display order belongs in the client. Reading chat means answering the newest line, which belongs next to the input box. A color keyed on the render index reassigned every avatar each time a message arrived, so one sender appeared as several people.

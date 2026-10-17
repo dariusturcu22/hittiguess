@@ -75,7 +75,7 @@ Data: each voice member as a per-group avatar with name, a microphone speaking r
 
 ### Text chat overlay
 
-Data: message history for the group (sender's per-group display name, message body, timestamp), loaded on join. Explicit history recovery for chat events missed during reconnect remains in TASKS.md. Actions: send a message (500-character limit, rate-limited to 5 per 10 seconds, story 13), toggle the overlay open/closed.
+Data: message history for the group (sender's per-group display name, message body, timestamp), loaded on join, rendered oldest-first with the newest message at the bottom, times on a 24-hour clock, and one stable avatar color per sender. The panel scrolls to the newest message when it opens and when a message arrives, and holds the reader's position once they have scrolled up. Explicit history recovery for chat events missed during reconnect remains in TASKS.md. Actions: send a message (500-character limit, rate-limited to 5 per 10 seconds, story 13), toggle the overlay open/closed.
 
 ### Turn notification
 
