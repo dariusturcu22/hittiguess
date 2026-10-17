@@ -135,7 +135,7 @@ Sync through WebSocket/STOMP for both the group and the game session. REST for g
 
 The DJ is never shown an embedded YouTube player.
 
-- Remote sessions: the DJ first shares the screen or tab audio through the browser picker, then opens the real YouTube page in a new browser tab. The capture is mixed into the DJ's single outgoing voice track through a gain node that is open only during the DJ's own turn until the reveal, so the capture can stay alive across rounds without sending anything on other turns. Each player's card bars follow the incoming audio of the current DJ.
+- Remote sessions: the DJ first shares the screen or tab audio through the browser picker, then opens the real YouTube page in a new browser tab. The captured audio travels on its own session-scoped peer connections, one per listener, separate from the voice mesh, so a player hears the song without joining the voice call. The capture stays alive for the whole match and is attached to the song senders only during the DJ's own turn until the reveal, and detached the rest of the time. Each player's card bars follow the song stream.
 - In-person sessions: the DJ opens the real YouTube app through a deep link (Android intent, iOS universal link, falling back to a plain browser link if the app isn't installed) and plays through the device speaker.
 - Physical cards: the QR code encodes the YouTube video ID directly. Scanning opens the real YouTube app or site.
 - Playback itself is manual, on the DJ's device, there's no remote play or pause on YouTube's own player. The DJ holds no other in-app controls: pause, play, and closing the tab or app all happen on YouTube itself, not mirrored into the game. "Open YouTube Link" is the DJ's only in-app action.
@@ -150,6 +150,12 @@ Both are scoped to the group's lifetime, not the game session's: available from 
 Voice: mesh peer-to-peer, no media server, a standing room members can join or leave at any time, not a call anyone starts. Signaling rides the existing WebSocket layer. Capped at 8 participants per group. Cloudflare TURN, pay-as-you-go, used only when a direct connection between two peers fails, most connections never touch it. Video is out of scope; mesh video's bandwidth and CPU cost breaks down at realistic group sizes, and a media server was ruled out on cost and operational grounds.
 
 Text: plain messages over the same WebSocket connection, stored for the life of the group, not persisted after it's deleted.
+
+### Audio quality
+
+The song travels on its own WebRTC connections rather than the voice mesh, so voice compression never touches the music and a player who never joins the call still hears it. One connection per listener means the DJ's upload is the song bitrate paid once per listener, which is why the bitrate is capped and named in a single constant: stereo Opus at 128 kbps with in-band FEC, marked as music, and the capture opened with echo cancellation, noise suppression, and auto gain off. Raising the cap to 192 kbps adds 64 kbps per listener per direction.
+
+Voice stays on the group's mesh: the microphone opens with echo cancellation, noise suppression, and auto gain on, marked as speech, and capped at 40 kbps. Voice passes through an adjustable noise gate and an optional RNNoise filter, both of which run as AudioWorklets and fall back to the plain microphone path when their worklet or WebAssembly does not load.
 
 ### Verification
 

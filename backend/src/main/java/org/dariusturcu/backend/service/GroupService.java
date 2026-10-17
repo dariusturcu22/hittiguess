@@ -99,7 +99,6 @@ public class GroupService {
 
     public GroupDetailDTO joinGroup(JoinGroupRequest request) {
         User user = SecurityUtils.getCurrentUser();
-        requireNoActiveMembership(user);
 
         boolean hasInviteCode = request.inviteCode() != null && !request.inviteCode().isBlank();
         boolean hasJoinCode = request.joinCode() != null && !request.joinCode().isBlank();
@@ -117,6 +116,15 @@ public class GroupService {
                 : groupRepository.findByJoinCodeForUpdate(request.joinCode().toUpperCase())
                         .orElseThrow(() -> new ResourceNotFoundException(
                                 "Join code {" + request.joinCode() + "} not found"));
+
+        Optional<Member> currentMembership = memberRepository.findByUser(user);
+        if (currentMembership.isPresent()) {
+            Group currentGroup = currentMembership.get().getGroup();
+            if (currentGroup.getId().equals(group.getId())) {
+                return groupMapper.toDetailDTO(group);
+            }
+            throw new ConflictException("You are already in a group. Leave it first, then join this one.");
+        }
 
         if (group.getRemovedUserIds().contains(user.getId())) {
             throw new ConflictException("You were removed from this group");

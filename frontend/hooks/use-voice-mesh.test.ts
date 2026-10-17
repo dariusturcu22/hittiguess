@@ -1,9 +1,42 @@
 import { act, renderHook } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { shouldSilenceDjForActivePlayer, useVoiceMesh } from "./use-voice-mesh";
+import { noiseGateOpenThresholdDb, shouldSilenceDjForActivePlayer, useVoiceMesh } from "./use-voice-mesh";
+import { MAX_NOISE_GATE_SENSITIVITY, resetAudioSelection } from "@/hooks/use-audio-devices";
 
-const getUserMedia = vi.fn(async () => ({ getAudioTracks: () => [{ enabled: true }] }));
+const suppressor = vi.hoisted(() => ({
+  gateOptions: [] as Array<Record<string, number>>,
+  rnnoiseNodeCount: 0,
+  loadRnnoise: vi.fn(async () => new ArrayBuffer(8)),
+}));
+
+vi.mock("@sapphi-red/web-noise-suppressor", () => ({
+  NoiseGateWorkletNode: class {
+    constructor(_context: unknown, options: Record<string, number>) {
+      suppressor.gateOptions.push(options);
+    }
+    connect() {}
+    disconnect() {}
+  },
+  RnnoiseWorkletNode: class {
+    constructor() {
+      suppressor.rnnoiseNodeCount += 1;
+    }
+    connect() {}
+    disconnect() {}
+    destroy() {}
+  },
+  loadRnnoise: suppressor.loadRnnoise,
+}));
+
+function createMicrophoneTrack() {
+  return { enabled: true, contentHint: "", stop: vi.fn() };
+}
+
+const getUserMedia = vi.fn(async () => {
+  const track = createMicrophoneTrack();
+  return { getAudioTracks: () => [track], getTracks: () => [track] };
+});
 
 vi.mock("@/hooks/generated/group-management/group-management", () => ({
   useGetVoiceTurnCredentials: () => ({ data: undefined }),
@@ -19,12 +52,45 @@ vi.mock("@stomp/stompjs", () => ({
   }),
 }));
 
+let workletAddModuleImplementation: (url: string) => Promise<void> = async () => {};
+
+class FakeAudioContext {
+  currentTime = 0;
+  audioWorklet = { addModule: (url: string) => workletAddModuleImplementation(url) };
+  resume() {
+    return Promise.resolve();
+  }
+  close() {
+    return Promise.resolve();
+  }
+  createMediaStreamDestination() {
+    return { stream: { getAudioTracks: () => [{ enabled: true, stop: vi.fn() }] } };
+  }
+  createMediaStreamSource() {
+    return { connect: vi.fn(), disconnect: vi.fn() };
+  }
+  createGain() {
+    return { gain: { setValueAtTime: vi.fn() }, connect: vi.fn(), disconnect: vi.fn() };
+  }
+}
+
+function defineMediaDevices(mediaDevices: unknown) {
+  Object.defineProperty(window.navigator, "mediaDevices", { value: mediaDevices, configurable: true });
+}
+
+beforeEach(() => {
+  window.localStorage.clear();
+  resetAudioSelection();
+  suppressor.gateOptions.length = 0;
+  suppressor.rnnoiseNodeCount = 0;
+  suppressor.loadRnnoise.mockClear();
+  workletAddModuleImplementation = async () => {};
+  Object.defineProperty(window, "AudioContext", { value: FakeAudioContext, configurable: true });
+});
+
 describe("useVoiceMesh device selection", () => {
-  it("opens the selected microphone with an exact device constraint", async () => {
-    Object.defineProperty(window.navigator, "mediaDevices", {
-      value: { getUserMedia },
-      configurable: true,
-    });
+  it("opens the selected microphone with explicit processing and an exact device constraint", async () => {
+    defineMediaDevices({ getUserMedia });
     getUserMedia.mockClear();
 
     const { result } = renderHook(() =>
@@ -38,15 +104,18 @@ describe("useVoiceMesh device selection", () => {
 
     expect(opened).toBe(true);
     expect(getUserMedia).toHaveBeenCalledWith({
-      audio: { deviceId: { exact: "mic-9" } },
+      audio: {
+        echoCancellation: true,
+        noiseSuppression: true,
+        autoGainControl: true,
+        channelCount: 1,
+        deviceId: { exact: "mic-9" },
+      },
     });
   });
 
-  it("opens the default microphone without a selection", async () => {
-    Object.defineProperty(window.navigator, "mediaDevices", {
-      value: { getUserMedia },
-      configurable: true,
-    });
+  it("opens the default microphone with the same explicit processing", async () => {
+    defineMediaDevices({ getUserMedia });
     getUserMedia.mockClear();
 
     const { result } = renderHook(() => useVoiceMesh(4, 11, [], false, {}));
@@ -55,14 +124,18 @@ describe("useVoiceMesh device selection", () => {
       await result.current.startMicrophone();
     });
 
-    expect(getUserMedia).toHaveBeenCalledWith({ audio: true });
+    expect(getUserMedia).toHaveBeenCalledWith({
+      audio: {
+        echoCancellation: true,
+        noiseSuppression: true,
+        autoGainControl: true,
+        channelCount: 1,
+      },
+    });
   });
 
   it("reports an insecure context instead of a permission denial", async () => {
-    Object.defineProperty(window.navigator, "mediaDevices", {
-      value: undefined,
-      configurable: true,
-    });
+    defineMediaDevices(undefined);
 
     const { result } = renderHook(() => useVoiceMesh(4, 11, [], false, {}));
 
@@ -78,10 +151,7 @@ describe("useVoiceMesh device selection", () => {
 
   it("names permission denial and missing devices distinctly", async () => {
     const failingMediaDevices = { getUserMedia: vi.fn() };
-    Object.defineProperty(window.navigator, "mediaDevices", {
-      value: failingMediaDevices,
-      configurable: true,
-    });
+    defineMediaDevices(failingMediaDevices);
 
     const { result } = renderHook(() => useVoiceMesh(4, 11, [], false, {}));
 
@@ -117,61 +187,68 @@ describe("shouldSilenceDjForActivePlayer", () => {
   });
 });
 
-describe("useVoiceMesh tab audio", () => {
-  it("reports when the browser can't capture tab audio", async () => {
-    Object.defineProperty(window.navigator, "mediaDevices", {
-      value: { getUserMedia },
-      configurable: true,
-    });
-    vi.stubGlobal("isSecureContext", true);
+describe("noiseGateOpenThresholdDb", () => {
+  it("raises the open threshold with sensitivity and clamps out-of-range input", () => {
+    const quietestThreshold = noiseGateOpenThresholdDb(0);
+    const loudestThreshold = noiseGateOpenThresholdDb(MAX_NOISE_GATE_SENSITIVITY);
+
+    expect(quietestThreshold).toBeLessThan(loudestThreshold);
+    expect(noiseGateOpenThresholdDb(MAX_NOISE_GATE_SENSITIVITY / 2)).toBe((quietestThreshold + loudestThreshold) / 2);
+    expect(noiseGateOpenThresholdDb(-20)).toBe(quietestThreshold);
+    expect(noiseGateOpenThresholdDb(MAX_NOISE_GATE_SENSITIVITY * 2)).toBe(loudestThreshold);
+  });
+});
+
+describe("useVoiceMesh noise suppression", () => {
+  it("configures the noise gate from the stored sensitivity as a single channel", async () => {
+    const storedSensitivity = 80;
+    window.localStorage.setItem("hittiguess-noise-gate-sensitivity", String(storedSensitivity));
+    resetAudioSelection();
+    defineMediaDevices({ getUserMedia });
+
     const { result } = renderHook(() => useVoiceMesh(4, 11, [], false, {}));
-
-    let shared = true;
     await act(async () => {
-      shared = await result.current.startTabAudio();
+      await result.current.startMicrophone();
     });
 
-    expect(shared).toBe(false);
-    expect(result.current.tabAudioErrorMessage).toBe("This browser can't share tab audio.");
-    vi.unstubAllGlobals();
+    expect(suppressor.gateOptions).toHaveLength(1);
+    const gateOptions = suppressor.gateOptions.at(0);
+    expect(gateOptions).toMatchObject({
+      openThreshold: noiseGateOpenThresholdDb(storedSensitivity),
+      maxChannels: 1,
+    });
+    expect(gateOptions?.closeThreshold).toBeLessThan(gateOptions?.openThreshold ?? 0);
   });
 
-  it("blames the plain-HTTP address rather than the browser on an insecure origin", async () => {
-    Object.defineProperty(window.navigator, "mediaDevices", {
-      value: { getUserMedia },
-      configurable: true,
-    });
-    vi.stubGlobal("isSecureContext", false);
+  it("keeps the call working when the worklet modules fail to load", async () => {
+    defineMediaDevices({ getUserMedia });
+    workletAddModuleImplementation = async () => {
+      throw new Error("worklet unavailable");
+    };
+
     const { result } = renderHook(() => useVoiceMesh(4, 11, [], false, {}));
-
+    let opened = false;
     await act(async () => {
-      await result.current.startTabAudio();
+      opened = await result.current.startMicrophone();
     });
 
-    expect(result.current.tabAudioErrorMessage).toBe("Sharing audio needs the game open over HTTPS.");
-    vi.unstubAllGlobals();
+    expect(opened).toBe(true);
+    expect(suppressor.gateOptions).toHaveLength(0);
+    expect(suppressor.rnnoiseNodeCount).toBe(0);
   });
 
-  it("asks for display media with audio straight away, excluding the game tab", async () => {
-    const getDisplayMedia = vi.fn(async () => ({
-      getAudioTracks: () => [],
-      getVideoTracks: () => [],
-      getTracks: () => [],
-    }));
-    Object.defineProperty(window.navigator, "mediaDevices", {
-      value: { getUserMedia, getDisplayMedia },
-      configurable: true,
-    });
+  it("skips RNNoise but keeps the call working when the wasm fails to load", async () => {
+    defineMediaDevices({ getUserMedia });
+    suppressor.loadRnnoise.mockRejectedValueOnce(new Error("wasm unavailable"));
+
     const { result } = renderHook(() => useVoiceMesh(4, 11, [], false, {}));
-
-    let shared = true;
+    let opened = false;
     await act(async () => {
-      shared = await result.current.startTabAudio();
+      opened = await result.current.startMicrophone();
     });
 
-    expect(getDisplayMedia).toHaveBeenCalledWith(expect.objectContaining({ audio: true, selfBrowserSurface: "exclude" }));
-    expect(shared).toBe(false);
-    expect(result.current.tabAudioErrorMessage).toBe("No audio was shared. Choose Entire screen and turn on Share system audio, or choose the YouTube tab and turn on Share tab audio.");
+    expect(opened).toBe(true);
+    expect(suppressor.rnnoiseNodeCount).toBe(0);
   });
 });
 

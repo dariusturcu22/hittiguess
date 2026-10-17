@@ -15,9 +15,11 @@ import type { PlayerCardDTO } from "@/hooks/models/playerCardDTO";
 import type { PlayerDTO } from "@/hooks/models/playerDTO";
 import { GUESS_CORRECT_EVENT, PLACEMENT_PREVIEW_EVENT, useGameSessionRealtime, type GuessResult, type SessionEnded, type SessionRoundEvent } from "@/hooks/use-game-session-realtime";
 import { useQueryClient } from "@tanstack/react-query";
+import { useAudioDevices, MAX_SONG_VOLUME_PERCENT } from "@/hooks/use-audio-devices";
 import { useAudioLevels } from "@/hooks/use-audio-levels";
 import { useGroupRealtime } from "@/hooks/use-group-realtime";
-import { requestDjTabAudioShare, useIsTabAudioShared, useTabAudioError } from "@/hooks/use-local-audio-stream";
+import { useSongMesh } from "@/hooks/use-song-mesh";
+import { shouldSilenceDjForActivePlayer } from "@/hooks/use-voice-mesh";
 import { YOUTUBE_LINK_OUT_REL, YOUTUBE_LINK_OUT_TARGET, canShareTabAudio, youtubeLinkOutHref } from "@/lib/youtube-link-out";
 import { playLockInSound } from "@/lib/lock-in-sound";
 import {
@@ -62,6 +64,7 @@ const DRAGGED_CARD_LIFT_PIXELS = 118;
 const DRAGGED_COIN_HALF_SIZE_PIXELS = 26;
 const SECONDS_PER_MINUTE = 60;
 const PERCENT = 100;
+const MINIMUM_SONG_VOLUME_PERCENT = 0;
 const COUNTDOWN_RING_SIZE = 56;
 const COUNTDOWN_RING_CENTER = COUNTDOWN_RING_SIZE / 2;
 const COUNTDOWN_RING_RADIUS = 24;
@@ -216,10 +219,31 @@ export default function GameSessionPage({ params }: PageProps) {
   const guessStateQuery = useGetGuessState(sessionId, { query: { enabled: Boolean(currentRound) && !isDj, retry: false } });
   const guessState = guessStateQuery.data?.roundId === currentRound?.id ? guessStateQuery.data : undefined;
   const linkOutQuery = useGetCurrentRoundLinkOut(sessionId, { query: { enabled: isDj && !isRoundRevealed(roundStatus), retry: false } });
-  const isTabAudioShared = useIsTabAudioShared();
-  const tabAudioErrorMessage = useTabAudioError();
   const isSharingTabAudioSupported = typeof navigator !== "undefined" && canShareTabAudio(navigator.userAgent);
-  const audioLevels = useAudioLevels();
+  const { songVolume, setSongVolume } = useAudioDevices();
+  // A session that ended while this page wasn't listening is already purged, so a failed
+  // load with a known group means the game is over: its results are the place to go.
+  const fallbackGroupId = session?.groupId ?? activeMembershipQuery.data?.id;
+  const hasEnded = session?.status === COMPLETED_SESSION_STATUS || (sessionQuery.isError && fallbackGroupId !== undefined);
+  const playerUserIds = players.flatMap((player) => (player.userId === undefined ? [] : [player.userId]));
+  // Each membership signal stays undefined until its query settles: a false during a
+  // remount would end the DJ's capture, which is meant to survive in-app navigation.
+  const isPlayerInSession = sessionQuery.isLoading || currentUserQuery.isLoading ? undefined : currentPlayer !== undefined;
+  const hasGroupMembership = activeMembershipQuery.isLoading ? undefined : activeMembershipQuery.data !== undefined;
+  const songMesh = useSongMesh({
+    sessionId,
+    groupId: session?.groupId,
+    currentUserId: currentUserQuery.data?.id,
+    playerUserIds,
+    isDjForCurrentRound: isDj,
+    isSongRevealed: isRoundRevealed(roundStatus),
+    songVolume,
+    isSongSilenced: shouldSilenceDjForActivePlayer(currentRound, currentPlayer?.id),
+    hasSessionEnded: hasEnded,
+    isPlayerInSession,
+    hasGroupMembership,
+  });
+  const audioLevels = useAudioLevels(songMesh.visualizerStream);
 
   const [trackedRoundId, setTrackedRoundId] = useState<number | undefined>(undefined);
   const [placementDrag, setPlacementDrag] = useState<PointerDrag | null>(null);
@@ -296,10 +320,6 @@ export default function GameSessionPage({ params }: PageProps) {
   const realtime = useGameSessionRealtime(sessionId, handleRoundEvent, handleGuessResult, handleSessionEnded);
   const { placeBet, previewPlacement } = realtime;
 
-  // A session that ended while this page wasn't listening is already purged, so a failed
-  // load with a known group means the game is over: its results are the place to go.
-  const fallbackGroupId = session?.groupId ?? activeMembershipQuery.data?.id;
-  const hasEnded = session?.status === COMPLETED_SESSION_STATUS || (sessionQuery.isError && fallbackGroupId !== undefined);
   useEffect(() => {
     if (hasEnded && fallbackGroupId !== undefined) router.replace(resultsPath(sessionId, fallbackGroupId));
   }, [fallbackGroupId, hasEnded, router, sessionId]);
@@ -611,18 +631,20 @@ export default function GameSessionPage({ params }: PageProps) {
     aboveTimeline = <div className="flex w-max max-w-[calc(100vw-48px)] flex-col items-center gap-6 short:gap-4 very-short:gap-3 sm:flex-row sm:items-center sm:gap-8">
       <SongCard artist={linkOut?.artist} title={linkOut?.title} year={linkOut?.releaseYear} color={linkOut?.color} className="shadow-[6px_6px_0_var(--shadow-color)]" />
       <div className="flex max-w-[360px] flex-col items-center gap-3 short:gap-2 very-short:gap-1.5 text-center sm:items-start sm:text-left">
-        {isSharingTabAudioSupported && !isTabAudioShared
+        {isSharingTabAudioSupported && !songMesh.isCapturing
           ? <>
-            <button type="button" onClick={requestDjTabAudioShare} className="inline-flex items-center gap-2.5 rounded-full bg-primary px-6 py-3 short:py-2.5 very-short:py-2 font-display text-[13px] text-primary-foreground shadow-[3px_3px_0_var(--shadow-color)] transition-transform hover:-translate-y-0.5"><Volume2 className="size-4" />Share your audio first</button>
+            <button type="button" onClick={() => { void songMesh.shareSong(); }} className="inline-flex items-center gap-2.5 rounded-full bg-primary px-6 py-3 short:py-2.5 very-short:py-2 font-display text-[13px] text-primary-foreground shadow-[3px_3px_0_var(--shadow-color)] transition-transform hover:-translate-y-0.5"><Volume2 className="size-4" />Share your audio first</button>
             <p className="text-xs short:text-[11px] very-short:text-[10px] leading-relaxed text-muted-foreground">Choose Entire screen and turn on Share system audio. The group hears it only while you are the DJ.</p>
-            {tabAudioErrorMessage ? <div role="alert" className="inline-flex items-center gap-2 rounded-full border-2 border-warning bg-warning/10 px-3.5 py-1.5 text-[11px] font-bold text-warning"><TriangleAlert className="size-3.5 shrink-0" />{tabAudioErrorMessage}</div> : null}
+            {songMesh.shareErrorMessage
+              ? <div role="alert" className="inline-flex items-center gap-2 rounded-full border-2 border-warning bg-warning/10 px-3.5 py-1.5 text-[11px] font-bold text-warning"><TriangleAlert className="size-3.5 shrink-0" /><span>{songMesh.shareErrorMessage}</span><button type="button" onClick={() => { void songMesh.shareSong(); }} className="rounded-full border border-warning px-2.5 py-0.5 font-semibold transition-colors hover:bg-warning/20">Try again</button></div>
+              : null}
           </>
           : <>
             {watchUrl
               ? <a href={youtubeLinkOutHref(watchUrl, navigator.userAgent)} target={YOUTUBE_LINK_OUT_TARGET} rel={YOUTUBE_LINK_OUT_REL} className="inline-flex items-center gap-2.5 rounded-full bg-primary px-6 py-3 short:py-2.5 very-short:py-2 font-display text-[13px] text-primary-foreground shadow-[3px_3px_0_var(--shadow-color)] transition-transform hover:-translate-y-0.5">Open on YouTube to play<ExternalLink className="size-4" /></a>
               : <span className="inline-flex items-center gap-2.5 rounded-full bg-primary px-6 py-3 short:py-2.5 very-short:py-2 font-display text-[13px] text-primary-foreground opacity-55">Open on YouTube to play<ExternalLink className="size-4" /></span>}
             <p className="text-xs short:text-[11px] very-short:text-[10px] leading-relaxed text-muted-foreground">Play it out loud. Everyone else finds out what it is when the card gets revealed.</p>
-            {isTabAudioShared
+            {songMesh.isCapturing
               ? <div className="inline-flex items-center gap-2 rounded-full border-2 border-warning bg-warning/10 px-3.5 py-1.5 text-[11px] font-bold text-warning"><Volume2 className="size-3.5" />Sharing your audio with the group</div>
               : <div className="inline-flex items-center gap-2 rounded-full border-2 border-warning bg-warning/10 px-3.5 py-1.5 text-[11px] font-bold text-warning"><TriangleAlert className="size-3.5" />Play it out loud for the room.</div>}
           </>}
@@ -705,9 +727,14 @@ export default function GameSessionPage({ params }: PageProps) {
           {statusLabel ? <strong className={`font-display text-xs font-normal ${statusClassName}`}>{statusLabel}</strong> : null}
           <span className={`size-2 rounded-full ${realtime.connectionState === "connected" ? "bg-green" : "bg-muted-foreground"}`} role="img" aria-label={`Session connection ${realtime.connectionState}`} />
         </div>
-        {currentPlayer && !isSharingTabAudioSupported ? <p className="mt-1.5 text-[11px] text-muted-foreground">This browser can&apos;t share audio, so you are skipped as DJ. Use Chrome or Edge on a computer to DJ.</p> : null}
+        {currentPlayer && !isSharingTabAudioSupported ? <p className="mt-1.5 text-[11px] text-muted-foreground">This device can&apos;t share audio, so you are skipped as DJ. Use a computer to DJ.</p> : null}
       </div>
       <div className="flex shrink-0 items-center gap-3">
+      <label className="inline-flex shrink-0 items-center gap-2 rounded-full border-2 border-border bg-card py-2 pl-3 pr-4">
+        <Volume2 className="size-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
+        <span className="hidden text-[11px] font-semibold text-card-foreground sm:inline">Song volume</span>
+        <input type="range" aria-label="Song volume" min={MINIMUM_SONG_VOLUME_PERCENT} max={MAX_SONG_VOLUME_PERCENT} value={songVolume} onChange={(event) => setSongVolume(Number(event.target.value))} className="h-1 w-20 cursor-pointer accent-primary" />
+      </label>
       <AlertDialog>
         <AlertDialogTrigger asChild>
           <button type="button" disabled={leaveSession.isPending || leaveGroup.isPending} className="inline-flex items-center gap-2 rounded-full border-2 border-destructive bg-transparent px-4 py-2 text-xs font-semibold text-destructive disabled:opacity-60">
@@ -735,6 +762,7 @@ export default function GameSessionPage({ params }: PageProps) {
     </header>
 
     <section className="relative min-h-0 flex-1" aria-label="Game stage">
+      {songMesh.isPlaybackBlocked ? <button type="button" onClick={songMesh.resumePlayback} className="absolute left-0 top-0 z-30 inline-flex items-center gap-2 rounded-full border-2 border-primary bg-card px-4 py-2 text-xs font-semibold text-primary shadow-[3px_3px_0_var(--shadow-color)] transition-transform hover:-translate-y-0.5"><Volume2 className="size-3.5" />Click to enable sound</button> : null}
       <div className="absolute left-1/2 top-1/2 flex w-full max-w-[1100px] -translate-x-1/2 -translate-y-1/2 justify-center">
         {currentRound ? <GameplayTimeline cards={cards} slots={slots} tiltGapIndex={tiltGapIndex} focusKey={focusKey} isDimmed={isTimelineDimmed} trackReference={trackReference} /> : <p className="py-12 text-sm text-muted-foreground">Your timeline will appear when the round starts.</p>}
       </div>
