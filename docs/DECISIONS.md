@@ -1230,3 +1230,15 @@ Why: a production playtest showed that picking a window or tab raised before the
 Decision: a player whose browser cannot share audio, in practice Firefox and Safari, is skipped when the DJ rotation picks the next DJ. They still join the group, use voice chat, and guess every round, and they see a short notice explaining why they are not a DJ. The client reports its capability when the player joins.
 
 Why: a DJ without audio capture plays the song only through their own speakers, so nobody else can hear it in a remote game. Skipping them keeps every round playable without blocking those browsers from the rest of the game.
+
+## 2026-10-18 | The song travels on its own connection, separate from voice
+
+Decision: the DJ's shared audio is sent over a separate set of peer connections for the game session, which every player joins automatically as a listener, and voice chat carries only microphones. Outside the DJ's own turn the shared audio is detached from the connections, not muted. The song is sent as stereo Opus at 128 kbps with voice processing off, and the microphone gets noise suppression, a noise gate, and an optional RNNoise filter. Game screens (lobby, loading, rounds) fit the viewport and do not scroll.
+
+Why: the second playtest showed that sharing one call for voice and song meant no song for anyone outside voice, the DJ's voice was cut when the song was silenced, the card bars reacted to voice, and music inherited voice settings. Detaching keeps audio from leaving the DJ's computer outside their turn. A game screen that scrolls hides parts of the play area.
+
+## 2026-10-18 | Firefox and Safari may try to share audio for now
+
+Decision: desktop Firefox and Safari players get the share prompt again, and every attempt is logged, until real tests show whether they can capture audio. The earlier skip rule stays in the code behind one flag.
+
+Why: the earlier skip was based on documentation, not on a test in those browsers.
