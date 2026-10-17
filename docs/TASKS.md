@@ -33,31 +33,67 @@ A Chrome and Firefox playtest on the production site found that DJ audio never r
 
 DJ audio (the most important batch):
 
-- [ ] Find why a Chrome DJ's shared audio is not heard by other players: log the display-capture result (surface type, audio track present), the outgoing track state, and the receiving peer's incoming track and playback state in a two-Chrome run
-- [ ] Share once per match: a DJ who has not yet shared is asked for the screen share with system audio first, and only then does the Open on YouTube button appear; the share stays alive for the rest of the match, so later rounds do not ask again
-- [ ] Share the DJ's audio only during that player's own DJ turn: outside it the captured audio is not mixed into the voice stream and nobody receives it, and the audio stops when the DJ locks in; only the current DJ's audio is sent to the other players, never to the DJ; unit tests for the gating
-- [ ] Detect browsers that cannot capture audio (Firefox, Safari), report the capability to the server when a player joins, and skip those players in DJ rotation; they still play and guess, and see a short notice explaining why; a rotation with no capable player shows the group a clear message; unit and backend integration tests
-- [ ] Open the YouTube link in a new tab of the same browser window, not a popup window
+- [ ] Confirm in a two-Chrome production run that the DJ's shared audio reaches the other players; if it does not, log the display-capture result (surface type, audio track present), the outgoing track state, and the receiving peer's incoming track and playback state
+- [x] Share once per match: a DJ who has not yet shared is asked for the screen share with system audio first, and only then does the Open on YouTube button appear; the share stays alive for the rest of the match, so later rounds do not ask again
+- [x] Share the DJ's audio only during that player's own DJ turn: outside it the captured audio is not mixed into the voice stream and nobody receives it, and the audio stops when the DJ locks in; only the current DJ's audio is sent to the other players, never to the DJ; unit tests for the gating
+- [x] Detect browsers that cannot capture audio (Firefox, Safari), report the capability to the server when a player joins, and skip those players in DJ rotation; they still play and guess, and see a short notice explaining why; a rotation with no capable player shows the group a clear message; unit and backend integration tests
+- [x] Open the YouTube link in a new tab of the same browser window, not a popup window
 - [ ] Simplify the DJ view: one primary action, short instructions, no duplicated controls
-- [ ] The card's sound wave moves for every player from the DJ's audio and ignores voice chat; the DJ's own wave follows the shared audio
-- [ ] Unit and two-browser tests: share-once across rounds, missing audio track message, unsupported browser handling, wave source
+- [x] The card's sound wave moves for every player from the DJ's audio and ignores voice chat; the DJ's own wave follows the shared audio
+- [ ] Two-browser test: share-once across rounds, missing audio track message, unsupported browser handling, wave source (unit tests are in place)
 
 Leaving and ending:
 
-- [ ] A player can leave a running session and return to the lobby while the game continues without them; the round, DJ rotation, scoring, and results handle the departure; backend endpoint, realtime event, and integration tests
-- [ ] The voice indicator shows a player in voice only after they joined; find and fix the state that marks a player as in voice without joining; unit test
-- [ ] A player whose tab closed or whose connection dropped is removed from voice after 2 minutes; backend scheduler and integration test
+- [x] A player can leave a running session while the game continues without them: Leave game also leaves the group, because a member of a locked group is sent back into its game
+- [x] The voice indicator shows a player in voice only after they joined; find and fix the state that marks a player as in voice without joining; unit test
+- [x] A player whose tab closed or whose connection dropped is removed from voice after 2 minutes; backend scheduler and integration test
 
 Voice controls:
 
-- [ ] Volume sliders for the microphone and the speaker, plus a test (microphone level meter and a test tone) next to the device pickers; unit tests
+- [x] Volume sliders for the microphone and the speaker next to the device pickers; the microphone level meter and the speaker test tone already existed
 
 Visual:
 
-- [ ] Card colors that are too dark on the dark theme get a readable variant; check every song color
-- [ ] The round subtitle is never covered by the guessing card at any desktop zoom level; the card shrinks or the layout reflows; browser test at 100%, 125%, and 150% scaling
-- [ ] Quiet the 404 and 409 console errors from polling endpoints that expect no session or import (`/api/sessions/groups/{id}/active`, `/api/playlists/{id}/import-jobs/active`, `/api/sessions/{id}/link-out` after the reveal)
-- [ ] Investigate the `wss://api.hittiguess.com/ws` connection closed before it was established on page load
+- [x] Card colors that are too dark on the dark theme get a readable variant; check every song color
+- [ ] Browser test that the round subtitle is never covered by the guessing card at 100%, 125%, and 150% scaling; the stage's minimum height was raised
+- [ ] The `/api/playlists/{id}/import-jobs/active` 404 still shows in the console; changing that response needs an API contract decision
+- [x] Investigated the `wss://api.hittiguess.com/ws` closed-before-established message: it appears when a page unmounts its socket while connecting and needs no change
+
+## Story 53: Second playtest fixes
+
+A second production playtest found the game borderline playable but buggy: the song only reaches players who joined voice, voice and music degrade each other, the game screens scroll, and several lobby and playlist problems. Every item was checked against the code before it was written here.
+
+Separate song stream and audio quality:
+
+- [ ] Song mesh: a second set of peer connections per game session, signalled over STOMP and keyed by the session, that every player joins automatically as a listener with no microphone and no voice join; backend relay limited to the session's players
+- [ ] The DJ's captured audio is attached to the song connections only during the DJ's own turn until the reveal and is detached (`replaceTrack(null)`) at all other times, not muted; the share prompt still appears once per match
+- [ ] Remove all song and tab audio from the voice mesh; voice carries only the microphone; lock-in silences only the song stream for the active player, never the DJ's voice
+- [ ] Song quality: capture with echo cancellation, noise suppression, and auto gain off, `contentHint` music, stereo Opus at 128 kbps with a single constant for the bitrate; document the bandwidth maths
+- [ ] Voice quality: explicit echo cancellation, noise suppression, and auto gain, a noise gate with a sensitivity slider, and an RNNoise filter toggle with a fallback; a Windows tip about call ducking in the voice settings
+- [ ] Song volume slider, reachable from the voice settings and from the game page, independent of the speaker volume and working without joining voice
+- [ ] Visualizer rewrite: the song stream only, log-spaced bands, dB scaling, smoothing, 16 to 24 bars, clean rendering with no stray pixels
+- [ ] Stop the screen capture when the session ends, the player leaves the game or the group, the page unloads, or the share bar is stopped
+- [ ] Let Firefox and Safari try the share prompt on desktop, log the result of each attempt (browser, surface, audio track count) to the console and Sentry, keep the old gating behind one flag; record the findings here
+- [ ] The voice rail lists who is in the call before a player joins, on the lobby and the session page
+
+Game screens and lobby:
+
+- [ ] The group lobby, loading screens, and every round phase fit the viewport with no scrolling; website pages keep scrolling; checked at 1366x768, 1440x900, 1920x1080, and 125% and 150% zoom
+- [ ] Settings opens with the same gap above the footer buttons as the chat
+- [ ] Chat: stable avatar color per sender, 24-hour time, newest message at the bottom, taller panel
+- [ ] Playlist options popup in one compact row with Confirm inline; remove the "Songs are selected when the session starts" line
+- [ ] Left sidebar icons spaced slightly wider than now, not as wide as before
+
+Joining and playlists:
+
+- [ ] Joining a group the user already belongs to returns that group; joining while in another group gives a clear message with a leave option; the join page shows the server's real message and says invalid only for a missing code
+- [ ] At Start, build the game's song list once for both difficulty and custom: remove duplicates by normalized artist and title, shuffle, and keep it only in the session
+- [ ] Reproduce why Easy, Medium, and Hard did not generate a playlist, fix the cause, and show a clear message when a start fails
+
+Tests:
+
+- [ ] Unit tests for the song hook, the voice hook, the noise gate, the visualizer bands, and the stop conditions; backend tests for song signalling authorization, idempotent join, duplicate removal, and shuffling; Playwright checks for no scrolling at the listed sizes and a two-context song delivery test
+- [ ] Manual run: two real Chrome windows with system audio, one DJ and one listener who never joined voice; a Firefox and a Safari attempt; report the results here
 
 ## Story 7: Production hosting
 

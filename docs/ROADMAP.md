@@ -2,7 +2,7 @@
 
 [TASKS.md](TASKS.md) contains the requirements and tests. [PROJECT_STATE.md](PROJECT_STATE.md) governs readiness. Completed records and the historical documentation audit are in [ARCHIVE.md](ARCHIVE.md).
 
-1. Fix the production playtest findings (story 52), DJ audio first.
+1. Fix the production playtest findings (stories 52 and 53), the separate song stream first.
 2. Finish Azure cost controls (anomaly alerts and the shutdown Action Group).
 3. Fix missed-event reconnect recovery and finish two-factor frontend states.
 4. Verify the rest of production access: password-reset delivery, HTTPS/WSS, and core-to-AI communication.

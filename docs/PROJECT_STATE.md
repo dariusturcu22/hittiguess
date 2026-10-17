@@ -17,6 +17,7 @@
 | 47 | Remaining mockup reconciliation during the visual pass | Ready |
 | 52 | DJ audio delivery, leave a running session, voice fixes, layout fixes from the production playtest | Ready |
 | 51 | Admin console, seven-queue parallel source pipeline, usage and cost tracking | Ready; provider-key acceptance remains |
+| 53 | Separate song stream, voice and music quality, no-scroll game screens, lobby, join, and playlist fixes from the second playtest | Ready |
 
 The main game, catalog/import pipeline, participant history/statistics, prepared global difficulty, and automatic embedding indexing are implemented. Live deployment, media, and visual acceptance remain unfinished checks, not absent implementations.
 
