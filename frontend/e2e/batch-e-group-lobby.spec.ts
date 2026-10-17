@@ -318,9 +318,8 @@ test("gameplay shell renders placement, betting, and DJ link-out states", async 
       json: { watchUrl: "https://www.youtube.com/watch?v=dQw4w9WgXcQ" },
     }));
     await page.goto(`/sessions/${GAMEPLAY_SESSION_ID}`);
-    const youtubeLink = page.getByRole("link", { name: "Open on YouTube to play" });
-    await expect(youtubeLink).toHaveAttribute("target", "_blank");
-    await expect(page.getByText("Shares your tab or system audio with the group.")).toBeVisible();
+    await expect(page.getByRole("button", { name: "Share your audio first" })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Open on YouTube to play" })).toHaveCount(0);
   } finally {
     await page.context().close();
   }

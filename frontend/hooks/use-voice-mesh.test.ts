@@ -171,7 +171,7 @@ describe("useVoiceMesh tab audio", () => {
 
     expect(getDisplayMedia).toHaveBeenCalledWith(expect.objectContaining({ audio: true, selfBrowserSurface: "exclude" }));
     expect(shared).toBe(false);
-    expect(result.current.tabAudioErrorMessage).toBe("No audio was shared. Pick the YouTube tab and turn on tab audio.");
+    expect(result.current.tabAudioErrorMessage).toBe("No audio was shared. Choose Entire screen and turn on Share system audio, or choose the YouTube tab and turn on Share tab audio.");
   });
 });
 

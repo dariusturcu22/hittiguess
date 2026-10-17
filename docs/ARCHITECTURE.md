@@ -135,7 +135,7 @@ Sync through WebSocket/STOMP for both the group and the game session. REST for g
 
 The DJ is never shown an embedded YouTube player.
 
-- Remote sessions: the DJ opens the real YouTube page in a new browser tab, only from an explicit "Open YouTube Link" action paired with a UI warning that doing so starts broadcasting their tab or system audio. That tab is captured through WebRTC tab audio capture and streamed to the other players.
+- Remote sessions: the DJ first shares the screen or tab audio through the browser picker, then opens the real YouTube page in a new browser tab. The capture is mixed into the DJ's single outgoing voice track through a gain node that is open only during the DJ's own turn until the reveal, so the capture can stay alive across rounds without sending anything on other turns. Each player's card bars follow the incoming audio of the current DJ.
 - In-person sessions: the DJ opens the real YouTube app through a deep link (Android intent, iOS universal link, falling back to a plain browser link if the app isn't installed) and plays through the device speaker.
 - Physical cards: the QR code encodes the YouTube video ID directly. Scanning opens the real YouTube app or site.
 - Playback itself is manual, on the DJ's device, there's no remote play or pause on YouTube's own player. The DJ holds no other in-app controls: pause, play, and closing the tab or app all happen on YouTube itself, not mirrored into the game. "Open YouTube Link" is the DJ's only in-app action.

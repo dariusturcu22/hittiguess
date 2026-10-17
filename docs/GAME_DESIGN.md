@@ -80,7 +80,7 @@ Text chat renders as a semi-transparent overlay in the bottom-left corner, toggl
 - For remote sessions, that browser tab is captured through WebRTC and streamed to the other players.
 - Non-DJ players never see a YouTube embed or the YouTube app, only the game UI.
 - Reveal happens automatically once the betting window closes; nobody, DJ included, triggers it by hand.
-- Screen or system audio sharing for a remote session's WebRTC capture starts from the DJ's "Open YouTube Link" click itself, with a warning beforehand that tab or system audio will be broadcast. The same click opens YouTube in its own window so the capture picker stays visible in the game window.
+- A DJ who has not yet shared audio is asked first: a "Share your audio first" action opens the browser's screen-share picker (Entire screen with system audio, or the YouTube tab), and only then does "Open on YouTube to play" appear. The share stays alive for the rest of the match, so later rounds do not ask again, and its audio reaches the other players only while that player is the DJ and the song is still hidden. YouTube opens in a new tab. Every player's card bars follow the DJ's audio, never a microphone. Only desktop Chromium browsers can capture audio; Firefox, Safari, and phones cannot DJ.
 - Players can voice chat and text chat with the rest of their group, available from group creation, not just during a game session. See [ARCHITECTURE.md](ARCHITECTURE.md) for how this works.
 
 ## Ads

@@ -65,3 +65,24 @@ export const DJ_AUDIO_SHARE_EVENT = "session-start-audio-share";
 export function requestDjTabAudioShare() {
   window.dispatchEvent(new CustomEvent(DJ_AUDIO_SHARE_EVENT));
 }
+
+// The reason the last audio-share request failed, shown in the DJ view next to the share
+// action. The voice sidebar runs the capture, so it publishes the message here.
+let tabAudioErrorMessage: string | null = null;
+const tabAudioErrorListeners = new Set<() => void>();
+
+export function publishTabAudioError(message: string | null) {
+  tabAudioErrorMessage = message;
+  tabAudioErrorListeners.forEach((listener) => listener());
+}
+
+function subscribeTabAudioError(listener: () => void): () => void {
+  tabAudioErrorListeners.add(listener);
+  return () => {
+    tabAudioErrorListeners.delete(listener);
+  };
+}
+
+export function useTabAudioError(): string | null {
+  return useSyncExternalStore(subscribeTabAudioError, () => tabAudioErrorMessage, () => null);
+}
