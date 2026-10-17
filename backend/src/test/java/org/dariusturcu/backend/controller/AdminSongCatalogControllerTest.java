@@ -55,7 +55,7 @@ class AdminSongCatalogControllerTest {
 
     private final AdminSongCatalogRepository catalogRepository = mock(AdminSongCatalogRepository.class);
     private final AdminSongCatalogService catalogService = spy(new AdminSongCatalogService(catalogRepository,
-            mock(SongRepository.class), mock(PendingImportRepository.class), mock(SongReportRepository.class)));
+            mock(SongRepository.class), mock(PendingImportRepository.class), mock(SongReportRepository.class), mock(org.dariusturcu.backend.pipeline.AdminSongPipelineService.class)));
 
     private final MockMvc mockMvc = MockMvcBuilders
             .standaloneSetup(new AdminSongCatalogController(catalogService, new AdminAccessGuard()))

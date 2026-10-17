@@ -15,14 +15,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Optional;
 
-/**
- * Resolves one YouTube ID through the metadata pipeline and persists the resulting
- * Song. Shared by the admin backlog drain and the user on-the-spot path so both
- * turn a resolved metadata response into a catalog row the same way. A YouTube ID
- * already backing a Song row (the patient backlog re-resolving what an earlier
- * on-the-spot call already saved) updates that row in place rather than inserting
- * a second one for the same video.
- */
+/** Synchronous user resolution reuses an existing song for the same video. */
 @Slf4j
 @Service
 @RequiredArgsConstructor

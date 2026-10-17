@@ -74,10 +74,7 @@ public class SongMetadataService {
         }
     }
 
-    // The per-user in-flight gate above is request-scoped and has no meaning for the scheduled
-    // backlog drain, which runs with no authenticated user, so resolution by raw ID skips it.
-    // The priority coordinator, not a per-user cap, is what paces the drain against on-the-spot
-    // traffic for the shared external rate-limit budget.
+    // Internal resolution bypasses the interactive per-user in-flight gate.
     public AiResponse resolveByYoutubeId(String youtubeId) {
         AiResponse response = resolve(YOUTUBE_WATCH_URL_PREFIX + youtubeId);
         persistVerifiedResult(youtubeId, response, null);

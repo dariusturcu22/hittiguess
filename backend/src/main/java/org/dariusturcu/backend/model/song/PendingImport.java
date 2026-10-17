@@ -6,13 +6,7 @@ import lombok.Setter;
 
 import java.time.Instant;
 
-/**
- * A YouTube ID waiting for the patient metadata pipeline: an admin catalog seed, or the
- * recheck of a song a user path already saved with a provisional answer. The scheduled
- * backlog drain picks up PENDING rows, moves them through PROCESSING, and lands each on
- * DONE or FAILED. A recheck keeps the provisional year, and the drain records the
- * patient tier's year beside it.
- */
+/** Retained import history, including provisional and patient years for user rechecks. */
 @Entity
 @Getter
 @Setter

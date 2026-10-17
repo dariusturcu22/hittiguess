@@ -38,7 +38,9 @@ class AdminSongCatalogRepositoryIntegrationTest {
     private static final long FIRST_OFFSET = 0;
     private static final long THIRD_PAGE_OFFSET = 8;
     private static final long CATALOG_ROW_COUNT = 9;
-    private static final long WAITING_QUEUE_ROWS = 4;
+    private static final long WAITING_STAGE_JOBS = 4;
+    private static final long WAITING_EMBEDDINGS = 2;
+    private static final long WAITING_QUEUE_ROWS = WAITING_STAGE_JOBS + WAITING_EMBEDDINGS;
     private static final long IN_PROGRESS_QUEUE_ROWS = 1;
 
     private static final String BARBIE_GIRL = "Barbie Girl";
@@ -68,7 +70,7 @@ class AdminSongCatalogRepositoryIntegrationTest {
 
     @BeforeEach
     void seedCatalog() {
-        jdbcTemplate.execute("TRUNCATE songs, song_artists, pending_imports, users RESTART IDENTITY CASCADE");
+        jdbcTemplate.execute("TRUNCATE pipeline_runs, song_embedding_queue, songs, song_artists, pending_imports, users RESTART IDENTITY CASCADE");
         long maraId = insertUser("mara.k");
         long lenaId = insertUser("lena88");
 
@@ -124,6 +126,24 @@ class AdminSongCatalogRepositoryIntegrationTest {
     private static void insertQueueRow(String youtubeId, PendingImportOrigin origin, String status, String enqueuedAt) {
         jdbcTemplate.update("INSERT INTO pending_imports (youtube_id, origin, status, enqueued_at) VALUES (?, ?, ?, ?)",
                 youtubeId, origin.name(), status, Timestamp.valueOf(LocalDateTime.parse(enqueuedAt)));
+        String runStatus = switch (status) {
+            case "DONE", "FAILED" -> status;
+            default -> "ACTIVE";
+        };
+        String jobStatus = switch (status) {
+            case "PENDING" -> "WAITING";
+            case "PROCESSING" -> "IN_PROGRESS";
+            default -> status;
+        };
+        Long runId = jdbcTemplate.queryForObject("""
+                INSERT INTO pipeline_runs (youtube_id, origin, lane, status, created_at)
+                VALUES (?, ?, 'BACKFILL', ?, ?) RETURNING id
+                """, Long.class, youtubeId, origin.name(), runStatus,
+                OffsetDateTime.of(LocalDateTime.parse(enqueuedAt), ZoneOffset.UTC));
+        jdbcTemplate.update("""
+                INSERT INTO pipeline_jobs (run_id, stage, lane, status, max_attempts)
+                VALUES (?, 'YOUTUBE_METADATA', 'BACKFILL', ?, ?)
+                """, runId, jobStatus, org.dariusturcu.backend.pipeline.PipelineJobService.DEFAULT_MAX_ATTEMPTS);
     }
 
     private static List<String> titlesOrIds(List<AdminCatalogRow> rows) {
@@ -158,7 +178,7 @@ class AdminSongCatalogRepositoryIntegrationTest {
         assertThat(dragostea.rowKey()).startsWith("song:");
 
         AdminCatalogRow ziMi = rowFor(rows, ZI_MI);
-        assertThat(ziMi.status()).isEqualTo(CatalogSongStatus.NEEDS_REVIEW);
+        assertThat(ziMi.status()).isEqualTo(CatalogSongStatus.ERROR);
         assertThat(ziMi.hasUnfinishedRecheck()).isTrue();
         assertThat(ziMi.addedByUsername()).isEqualTo("mara.k");
 
@@ -209,10 +229,10 @@ class AdminSongCatalogRepositoryIntegrationTest {
         Map<CatalogSongStatus, Long> counts = repository.countByStatus(null);
 
         assertThat(counts).containsEntry(CatalogSongStatus.VERIFIED, 2L)
-                .containsEntry(CatalogSongStatus.NEEDS_REVIEW, 2L)
+                .containsEntry(CatalogSongStatus.NEEDS_REVIEW, 1L)
                 .containsEntry(CatalogSongStatus.IN_QUEUE, 3L)
                 .containsEntry(CatalogSongStatus.PROCESSING, 1L)
-                .containsEntry(CatalogSongStatus.ERROR, 1L);
+                .containsEntry(CatalogSongStatus.ERROR, 2L);
         assertThat(counts.values().stream().mapToLong(Long::longValue).sum()).isEqualTo(CATALOG_ROW_COUNT);
     }
 
@@ -226,12 +246,25 @@ class AdminSongCatalogRepositoryIntegrationTest {
 
     @Test
     void queueCountsAreZeroWhenTheQueueIsEmpty() {
-        jdbcTemplate.execute("TRUNCATE pending_imports RESTART IDENTITY CASCADE");
+        jdbcTemplate.execute("TRUNCATE pipeline_runs, song_embedding_queue, pending_imports RESTART IDENTITY CASCADE");
 
         AdminSongCatalogRepository.QueueCounts queueCounts = repository.countQueue();
 
         assertThat(queueCounts.waiting()).isZero();
         assertThat(queueCounts.inProgress()).isZero();
+    }
+
+    @Test
+    void retainedPendingImportsDoNotChangeCatalogRowsOrQueueCounts() {
+        List<AdminCatalogRow> originalRows = repository.findPage(null, null, WHOLE_CATALOG, FIRST_OFFSET);
+        AdminSongCatalogRepository.QueueCounts originalCounts = repository.countQueue();
+        jdbcTemplate.update("""
+                INSERT INTO pending_imports (youtube_id, origin, status, enqueued_at)
+                VALUES (?, 'ADMIN_SEED', 'PROCESSING', now())
+                """, "historical-only-id");
+
+        assertThat(repository.findPage(null, null, WHOLE_CATALOG, FIRST_OFFSET)).isEqualTo(originalRows);
+        assertThat(repository.countQueue()).isEqualTo(originalCounts);
     }
 
     @Test
@@ -256,7 +289,7 @@ class AdminSongCatalogRepositoryIntegrationTest {
 
         assertThat(titlesOrIds(rows)).containsExactly(ZI_MI);
         Map<CatalogSongStatus, Long> counts = repository.countByStatus("ZI-M");
-        assertThat(counts).containsEntry(CatalogSongStatus.NEEDS_REVIEW, 1L)
+        assertThat(counts).containsEntry(CatalogSongStatus.ERROR, 1L)
                 .containsEntry(CatalogSongStatus.VERIFIED, 0L);
     }
 

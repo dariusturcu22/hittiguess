@@ -14,7 +14,6 @@ import org.dariusturcu.backend.model.playlist.PlaylistImportJobStatus;
 import org.dariusturcu.backend.model.playlist.StartPlaylistImportRequest;
 import org.dariusturcu.backend.model.ai.SongMetadataResponse;
 import org.dariusturcu.backend.model.song.AlternateYoutubeId;
-import org.dariusturcu.backend.model.song.BacklogStatusDTO;
 import org.dariusturcu.backend.model.song.BulkImportRequest;
 import org.dariusturcu.backend.model.song.BulkImportResultDTO;
 import org.dariusturcu.backend.model.song.EnqueueResultDTO;
@@ -38,8 +37,6 @@ import org.dariusturcu.backend.security.UserPrincipal;
 import org.dariusturcu.backend.service.BulkImportService;
 import org.dariusturcu.backend.service.CatalogSeedingService;
 import org.dariusturcu.backend.service.ImportQuotaService;
-import org.dariusturcu.backend.service.MetadataPriorityCoordinator;
-import org.dariusturcu.backend.service.PendingImportProcessor;
 import org.dariusturcu.backend.service.FastTierImportRunner;
 import org.dariusturcu.backend.service.PlaylistAccessService;
 import org.dariusturcu.backend.service.PlaylistExpansionService;
@@ -49,13 +46,16 @@ import org.dariusturcu.backend.service.SongMetadataService;
 import org.dariusturcu.backend.service.SongResolutionService;
 import org.dariusturcu.backend.service.SongCatalogService;
 import org.dariusturcu.backend.service.YoutubeIdLookupService;
+import org.dariusturcu.backend.pipeline.PipelineJobService;
+import org.dariusturcu.backend.pipeline.PipelineJobRepository;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.transaction.PlatformTransactionManager;
 import org.flywaydb.core.Flyway;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
 import org.springframework.boot.persistence.autoconfigure.EntityScan;
 import org.springframework.boot.security.oauth2.client.autoconfigure.OAuth2ClientAutoConfiguration;
@@ -64,7 +64,6 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.task.SimpleAsyncTaskExecutor;
-import org.springframework.core.task.SyncTaskExecutor;
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -90,18 +89,10 @@ import java.util.stream.IntStream;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-/**
- * Exercises the catalog-seeding backlog and the on-the-spot import path against a real
- * Postgres instance, with the metadata resolver stubbed so no external call happens.
- * Uses the minimal JPA-only context, the same reason GroupLifecycleIntegrationTest does:
- * this project's OAuth2 and AI-service beans build an HttpClient this sandbox's JDK cannot
- * construct, and neither is needed to test the queueing and priority behavior.
- */
 @Testcontainers
 @SpringBootTest(classes = CatalogSeedingIntegrationTest.CatalogTestConfig.class)
 class CatalogSeedingIntegrationTest {
 
-    private static final long DAILY_DRAIN_QUOTA = 3;
     private static final int FAST_TIER_YEAR = 1998;
     private static final int PARALLEL_IMPORT_SONG_COUNT = 12;
     private static final String KNOWN_IMPORT_VIDEO_ID = "knownImport";
@@ -147,17 +138,6 @@ class CatalogSeedingIntegrationTest {
         }
 
         @Bean
-        PendingImportProcessor pendingImportProcessor(PendingImportRepository pendingImportRepository,
-                                                      SongResolutionService songResolutionService) {
-            return new PendingImportProcessor(pendingImportRepository, songResolutionService);
-        }
-
-        @Bean
-        MetadataPriorityCoordinator metadataPriorityCoordinator() {
-            return new MetadataPriorityCoordinator();
-        }
-
-        @Bean
         PlaylistExpansionService playlistExpansionService() {
             // No test here submits a playlist link, so the AI-service RestClient this
             // service would call is never actually invoked.
@@ -178,25 +158,28 @@ class CatalogSeedingIntegrationTest {
         }
 
         @Bean
+        PipelineJobService pipelineJobService(JdbcTemplate jdbcTemplate,
+                                              PlatformTransactionManager transactionManager) {
+            return new PipelineJobService(new PipelineJobRepository(jdbcTemplate), transactionManager,
+                    PipelineJobService.DEFAULT_MAX_ATTEMPTS);
+        }
+
+        @Bean
         CatalogSeedingService catalogSeedingService(PendingImportRepository pendingImportRepository,
                                                     YoutubeIdLookupService youtubeIdLookupService,
-                                                    PendingImportProcessor pendingImportProcessor,
-                                                    MetadataPriorityCoordinator metadataPriorityCoordinator,
                                                     PlaylistExpansionService playlistExpansionService,
                                                     SongRepository songRepository,
-                                                    @Value("${catalog.seeding.daily-drain-quota}") long dailyDrainQuota) {
+                                                    PipelineJobService pipelineJobService) {
             return new CatalogSeedingService(pendingImportRepository, youtubeIdLookupService,
-                    pendingImportProcessor, metadataPriorityCoordinator, playlistExpansionService, songRepository,
-                    new SyncTaskExecutor(), dailyDrainQuota);
+                    playlistExpansionService, songRepository, pipelineJobService);
         }
 
         @Bean
         FastTierImportRunner fastTierImportRunner(StubMetadataResolver stubMetadataResolver,
                                                   SongResolutionService songResolutionService,
-                                                  CatalogSeedingService catalogSeedingService,
-                                                  MetadataPriorityCoordinator metadataPriorityCoordinator) {
+                                                  CatalogSeedingService catalogSeedingService) {
             return new FastTierImportRunner(stubMetadataResolver, songResolutionService, catalogSeedingService,
-                    metadataPriorityCoordinator, new SimpleAsyncTaskExecutor(), new SimpleAsyncTaskExecutor());
+                    new SimpleAsyncTaskExecutor(), new SimpleAsyncTaskExecutor());
         }
 
         @Bean
@@ -230,14 +213,6 @@ class CatalogSeedingIntegrationTest {
         }
     }
 
-    /**
-     * A SongMetadataService that resolves deterministically without any HTTP call, on
-     * both the full pipeline and the fast tier, and records the order in which it was
-     * asked so a test can assert the drain yielded to on-the-spot traffic. IDs added to
-     * unresolvableYoutubeIds resolve to an error response instead of a song. The fast
-     * tier answers FAST_TIER_YEAR and the full pipeline PATIENT_YEAR, so a recheck
-     * visibly corrects the year.
-     */
     static class StubMetadataResolver extends SongMetadataService {
         final CopyOnWriteArrayList<String> resolutionOrder = new CopyOnWriteArrayList<>();
         final Set<String> unresolvableYoutubeIds = java.util.concurrent.ConcurrentHashMap.newKeySet();
@@ -284,7 +259,6 @@ class CatalogSeedingIntegrationTest {
         registry.add("spring.datasource.username", postgres::getUsername);
         registry.add("spring.datasource.password", postgres::getPassword);
         registry.add("spring.flyway.enabled", () -> false);
-        registry.add("catalog.seeding.daily-drain-quota", () -> DAILY_DRAIN_QUOTA);
     }
 
     @BeforeAll
@@ -295,6 +269,8 @@ class CatalogSeedingIntegrationTest {
                 .migrate();
     }
 
+    @Autowired
+    private JdbcTemplate jdbcTemplate;
     @Autowired
     private CatalogSeedingService catalogSeedingService;
     @Autowired
@@ -309,8 +285,6 @@ class CatalogSeedingIntegrationTest {
     private AlternateYoutubeIdRepository alternateYoutubeIdRepository;
     @Autowired
     private PendingImportRepository pendingImportRepository;
-    @Autowired
-    private MetadataPriorityCoordinator metadataPriorityCoordinator;
     @Autowired
     private StubMetadataResolver stubMetadataResolver;
     @Autowired
@@ -331,15 +305,13 @@ class CatalogSeedingIntegrationTest {
         importJobItemRepository.deleteAll();
         importJobRepository.deleteAll();
         playlistRepository.deleteAll();
+        jdbcTemplate.execute("TRUNCATE pipeline_runs, import_batches CASCADE");
         pendingImportRepository.deleteAll();
         importQuotaUsageRepository.deleteAll();
         alternateYoutubeIdRepository.deleteAll();
         songRepository.deleteAll();
         stubMetadataResolver.resolutionOrder.clear();
         stubMetadataResolver.unresolvableYoutubeIds.clear();
-        while (metadataPriorityCoordinator.isOnTheSpotTrafficActive()) {
-            metadataPriorityCoordinator.endOnTheSpotWork();
-        }
 
         // Persisted, not transient: an on-the-spot import records the submitting user as
         // each resolved song's addedBy, which has to reference a saved row.
@@ -390,7 +362,8 @@ class CatalogSeedingIntegrationTest {
 
         assertThat(result.skippedAlreadyKnownYoutubeIds()).containsExactly("already-known-id");
         assertThat(result.enqueuedYoutubeIds()).containsExactlyInAnyOrder("new-id-one", "new-id-two");
-        assertThat(pendingImportRepository.countByStatus(PendingImportStatus.PENDING)).isEqualTo(2);
+        assertThat(jdbcTemplate.queryForList("SELECT youtube_id FROM pipeline_runs", String.class))
+                .containsExactlyInAnyOrder("new-id-one", "new-id-two");
     }
 
     @Test
@@ -404,27 +377,10 @@ class CatalogSeedingIntegrationTest {
     }
 
     @Test
-    void theDrainRespectsTheDailyQuotaAndDoesNotExceedIt() {
-        catalogSeedingService.enqueue(List.of("id-1", "id-2", "id-3", "id-4", "id-5"));
-
-        int resolvedThisRun = catalogSeedingService.drainBacklog();
-
-        assertThat(resolvedThisRun).isEqualTo((int) DAILY_DRAIN_QUOTA);
-        assertThat(pendingImportRepository.countByStatus(PendingImportStatus.DONE)).isEqualTo(DAILY_DRAIN_QUOTA);
-        assertThat(pendingImportRepository.countByStatus(PendingImportStatus.PENDING)).isEqualTo(2);
-
-        BacklogStatusDTO status = catalogSeedingService.backlogStatus();
-        assertThat(status.processedTodayCount()).isEqualTo(DAILY_DRAIN_QUOTA);
-        assertThat(status.quotaRemainingToday()).isZero();
-
-        int resolvedSecondRun = catalogSeedingService.drainBacklog();
-        assertThat(resolvedSecondRun).isZero();
-    }
-
-    @Test
     void anOnTheSpotRequestResolvesEvenWhenTheSameIdIsInTheAdminBacklog() {
         catalogSeedingService.enqueue(List.of("contendedID"));
-        assertThat(pendingImportRepository.countByStatus(PendingImportStatus.PENDING)).isEqualTo(1);
+        assertThat(jdbcTemplate.queryForList("SELECT youtube_id FROM pipeline_runs", String.class))
+                .containsExactly("contendedID");
 
         BulkImportResultDTO result = bulkImportService.importImmediately(
                 new BulkImportRequest(null, List.of("contendedID"), null, null));
@@ -434,28 +390,24 @@ class CatalogSeedingIntegrationTest {
     }
 
     @Test
-    void aFastTierAnswerIsQueuedForTheRecheckAndThePatientPipelineCorrectsItsYear() {
+    void aFastTierAnswerQueuesAStageRecheckAndKeepsItsProvisionalHistory() {
         bulkImportService.importImmediately(new BulkImportRequest(null, List.of("fastTierID1"), null, null));
 
         assertThat(songRepository.findByYoutubeId("fastTierID1").getFirst().getReleaseYear()).isEqualTo(FAST_TIER_YEAR);
-        List<PendingImport> queued = pendingImportRepository.findByStatusOrderByEnqueuedAtAsc(
-                PendingImportStatus.PENDING, org.springframework.data.domain.Limit.of(10));
+        List<PendingImport> queued = pendingImportRepository.findByYoutubeIdOrderByEnqueuedAtAscIdAsc("fastTierID1");
         assertThat(queued).singleElement().satisfies(recheck -> {
             assertThat(recheck.getYoutubeId()).isEqualTo("fastTierID1");
             assertThat(recheck.getOrigin()).isEqualTo(PendingImportOrigin.FAST_TIER_RECHECK);
+            assertThat(recheck.getStatus()).isEqualTo(PendingImportStatus.PENDING);
             assertThat(recheck.getProvisionalYear()).isEqualTo(FAST_TIER_YEAR);
         });
 
-        int resolvedThisRun = catalogSeedingService.drainBacklog();
-
-        assertThat(resolvedThisRun).isEqualTo(1);
-        assertThat(songRepository.findByYoutubeId("fastTierID1").getFirst().getReleaseYear()).isEqualTo(PATIENT_YEAR);
-        assertThat(catalogSeedingService.backlogStatus().recentRechecks()).singleElement().satisfies(recheck -> {
-            assertThat(recheck.title()).isEqualTo("Title for fastTierID1");
-            assertThat(recheck.provisionalYear()).isEqualTo(FAST_TIER_YEAR);
-            assertThat(recheck.patientYear()).isEqualTo(PATIENT_YEAR);
-            assertThat(recheck.status()).isEqualTo(PendingImportStatus.DONE);
-        });
+        assertThat(jdbcTemplate.queryForList(
+                "SELECT provisional_year FROM pipeline_runs WHERE youtube_id = 'fastTierID1'", Integer.class))
+                .containsExactly(FAST_TIER_YEAR);
+        assertThat(jdbcTemplate.queryForList(
+                "SELECT lane FROM pipeline_runs WHERE youtube_id = 'fastTierID1'", String.class))
+                .containsExactly(org.dariusturcu.backend.pipeline.PipelineLane.USER_IMPORT.name());
     }
 
     @Test
@@ -494,15 +446,18 @@ class CatalogSeedingIntegrationTest {
             assertThat(songRepository.existsByIdAndPlaylistsId(song.getId(), playlistId)).as(youtubeId).isTrue();
         }
         assertThat(songRepository.existsByIdAndPlaylistsId(knownSong.getId(), playlistId)).isTrue();
-        assertThat(pendingImportRepository.findTop50ByOriginInOrderByEnqueuedAtDesc(Set.of(PendingImportOrigin.FAST_TIER_RECHECK)))
-                .hasSize(PARALLEL_IMPORT_SONG_COUNT - 1);
+        assertThat(pendingImportRepository.findAll())
+                .hasSize(PARALLEL_IMPORT_SONG_COUNT - 1)
+                .allSatisfy(recheck -> assertThat(recheck.getOrigin()).isEqualTo(PendingImportOrigin.FAST_TIER_RECHECK));
     }
 
     @Test
     void anAdminSeedIsNotListedAmongTheRechecks() {
         catalogSeedingService.enqueue(List.of("seededID01"));
 
-        assertThat(catalogSeedingService.backlogStatus().recentRechecks()).isEmpty();
+        assertThat(pendingImportRepository.findAll()).isEmpty();
+        assertThat(jdbcTemplate.queryForList("SELECT youtube_id FROM pipeline_runs", String.class))
+                .containsExactly("seededID01");
     }
 
     @Test
@@ -563,20 +518,6 @@ class CatalogSeedingIntegrationTest {
         assertThat(stubMetadataResolver.resolutionOrder).isEmpty();
         assertThat(importQuotaUsageRepository.findResolutionCount(submittingUser.getId(), LocalDate.now(ZoneOffset.UTC)))
                 .isEmpty();
-    }
-
-    @Test
-    void theDrainPausesWhileOnTheSpotTrafficIsActiveAndResumesOnceItClears() {
-        catalogSeedingService.enqueue(List.of("paused-id-1", "paused-id-2"));
-
-        metadataPriorityCoordinator.beginOnTheSpotWork();
-        int resolvedWhilePaused = catalogSeedingService.drainBacklog();
-        assertThat(resolvedWhilePaused).isZero();
-        assertThat(pendingImportRepository.countByStatus(PendingImportStatus.PENDING)).isEqualTo(2);
-
-        metadataPriorityCoordinator.endOnTheSpotWork();
-        int resolvedAfterClear = catalogSeedingService.drainBacklog();
-        assertThat(resolvedAfterClear).isEqualTo(2);
     }
 
     private Song persistSong(String youtubeId) {

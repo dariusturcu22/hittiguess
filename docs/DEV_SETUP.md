@@ -2,7 +2,7 @@
 
 ## Test accounts
 
-The core service seeds three reusable accounts on every startup outside Production, so a multiplayer round (one DJ, one active player, one other player) can be tested with three genuinely separate logged-in sessions instead of one account reused across tabs. Account 1 is an `ADMIN`, so it also opens the admin pages (catalog backlog, report queue); accounts 2 and 3 have the `TEST` role.
+The core service seeds three reusable accounts on every startup outside Production, so a multiplayer round (one DJ, one active player, one other player) can be tested with three genuinely separate logged-in sessions instead of one account reused across tabs. Account 1 is an `ADMIN`, so it also opens the admin pages (backfill queue, song catalog, report queue); accounts 2 and 3 have the `TEST` role.
 
 Credentials:
 
@@ -41,6 +41,14 @@ export JAVA_HOME="$HOME/.jdks/<jdk-25-directory>"
 ### Regenerating the API client
 
 `npm run api:gen` in `frontend/` generates `hooks/generated`, `hooks/models`, and `hooks/zod` from the running backend's spec. The generator version is pinned by `package-lock.json`. Run `npm ci` in `frontend/` first: an older installed `orval` generates different code and rewrites well over a hundred unrelated files. With the pinned version the diff contains only real contract changes.
+
+## Local stage pipeline
+
+Admin backfill and patient rechecks always use the persisted stage queues. No cutover flag is required. A leftover `PIPELINE_STAGES_ENABLED` variable is ignored; the owner can remove it from production after the cleanup merges. The stage concurrency settings, polling intervals, and `PIPELINE_YOUTUBE_RESERVE_UNITS` remain supported. The sequential drain quota setting is removed.
+
+The admin queue page is `/admin/backfill-queue`. The old `/admin/catalog-backlog` route and the catalog-seeding status and drain endpoints are removed. Enqueue still uses the stage pipeline. Historical `pending_imports` data and provisional and patient years remain available without a schema migration.
+
+For a local startup smoke check, run core in WSL with `PIPELINE_STAGES_ENABLED` unset after loading the local environment. A successful startup must create the stage worker, completion service, HTTP client, and scheduler without the removed sequential-drain beans. Keep all startup checks on the local databases.
 
 ## Running the Playwright end-to-end suite
 

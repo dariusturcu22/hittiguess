@@ -2472,3 +2472,19 @@ Verification covers dashboard, queue overview, queue songs, MusicBrainz stage, s
 - [x] Verify the combined frontend changes in a temporary integration worktree before publication
 
 The beta-removal branch passes 381 frontend tests, TypeScript, and a production build. Lint reports only three existing warnings. The combined pipeline, responsive-layout, and beta-removal frontend passes 410 tests across 65 files.
+
+## Cleanup: Remove the sequential drain
+
+The owner verified the enabled stage pipeline on a real production playlist on 2026-10-17. The stage queues become the only background metadata path; existing pending-import history and synchronous user resolution remain available.
+
+- [x] Remove the sequential drain, quota, sweeper, executor, unused processor and priority coordination after checking callers
+- [x] Remove the drain/status endpoints and unused response models; retain bulk enqueue and regenerate the frontend client from the local backend spec
+- [x] Make stage beans unconditional, remove the cutover setting and legacy constructors, and keep reserve, concurrency and interval settings
+- [x] Make catalog, dashboard and embedding reads use stage tables and pause controls while retaining pending-import history and patient years
+- [x] Remove the old catalog-backlog route and its obsolete callers; preserve the backfill queue screens
+- [x] Update unit and integration tests for enqueue, rechecks, catalog status/history, embedding pause and bean registration without the flag
+- [x] Run the full backend and AI suites, frontend tests, type check, lint and production build; run a WSL application startup smoke test without the flag
+- [x] Update architecture, API, frontend and setup docs; append the cleanup decision, reconcile Story 51 evidence and archive completed sections
+- [x] Review the complete diff for the cleanup pull request against dev
+
+Validation: the clean Windows backend run covers 1,035 tests and retains 20 documented loopback errors. The 168-test cleanup regression and failure recheck passes, including the pacing and local database failures from the full run. AI tests pass 395/395; frontend tests pass 410/410. Type checking and the production build pass; lint has only the three existing warnings. The WSL application starts with the flag absent, readiness returns 200, and the saved OpenAPI spec omits both removed endpoints. No migration is included.

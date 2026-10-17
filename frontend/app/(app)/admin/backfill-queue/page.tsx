@@ -187,7 +187,7 @@ function BatchList() {
     </section>
   );
 }
-function EnqueueForm({ enabled }: { enabled: boolean }) {
+function EnqueueForm() {
   const [input, setInput] = React.useState("");
   const feedback = useAdminMutationFeedback();
   const enqueue = useEnqueuePipeline({ mutation: feedback });
@@ -247,16 +247,11 @@ function EnqueueForm({ enabled }: { enabled: boolean }) {
         left after the user import reserve. Run one now puts one video first in
         the backfill lane.
       </p>
-      {!enabled && (
-        <p role="status" className="mb-3 text-xs text-warning">
-          The stage pipeline is disabled.
-        </p>
-      )}
       <div className="mt-auto flex flex-wrap gap-2.5">
         <SmallButton
           primary
           disabled={
-            !enabled || !entries.length || enqueue.isPending || run.isPending
+            !entries.length || enqueue.isPending || run.isPending
           }
           onClick={() => submit(false)}
         >
@@ -264,7 +259,7 @@ function EnqueueForm({ enabled }: { enabled: boolean }) {
         </SmallButton>
         <SmallButton
           disabled={
-            !enabled || !entries.length || enqueue.isPending || run.isPending
+            !entries.length || enqueue.isPending || run.isPending
           }
           onClick={() => submit(true)}
         >
@@ -526,7 +521,7 @@ export default function BackfillQueuePage() {
                 </div>
                 <div className="flex min-h-[250px] flex-1 gap-6 @max-4xl:flex-col">
                   <BatchList />
-                  <EnqueueForm enabled={query.data.stagesEnabled === true} />
+                  <EnqueueForm />
                 </div>
               </>
             )}

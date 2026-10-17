@@ -5,7 +5,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 import tools.jackson.databind.JsonNode;
 
@@ -14,7 +13,6 @@ import java.util.UUID;
 
 /** Stage slots lease within the shared concurrency limit and run bounded bursts. */
 @Component
-@ConditionalOnProperty(name = "pipeline.stages.enabled", havingValue = "true")
 public class PipelineStageWorker {
     public static final int DEFAULT_BURST_LIMIT = 20;
     private static final int MINIMUM_BURST_LIMIT = 1;

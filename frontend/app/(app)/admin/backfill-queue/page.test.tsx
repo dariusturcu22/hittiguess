@@ -421,18 +421,18 @@ describe("song detail controls", () => {
 });
 
 describe("queue safeguards", () => {
-  it("disables enqueue controls while the stage flag is off", () => {
-    state.queues = { data: { stagesEnabled: false, stages: [] } };
+  it("accepts enqueue input without a cutover flag in the response", () => {
+    state.queues = { data: { stages: [] } };
     render(<BackfillQueuePage />);
     fireEvent.change(screen.getByLabelText("Playlist link or YouTube IDs"), {
       target: { value: "dQw4w9WgXcQ" },
     });
-    expect(screen.getByRole("button", { name: "Run one now" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Run one now" })).toBeEnabled();
     expect(
       within(document.getElementById("add-to-backlog")!).getByRole("button", {
         name: "Add to backlog",
       }),
-    ).toBeDisabled();
+    ).toBeEnabled();
   });
   it("supports arrow-key tab navigation", () => {
     render(<BackfillQueuePage />);

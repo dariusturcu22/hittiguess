@@ -1,6 +1,5 @@
 package org.dariusturcu.backend.pipeline;
 
-import org.dariusturcu.backend.exception.ConflictException;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -16,10 +15,4 @@ class AdminPipelineServiceTest {
         assertThatThrownBy(() -> AdminPipelineService.page(-1)).isInstanceOf(IllegalArgumentException.class);
     }
 
-    @Test
-    void disabledStagePipelineCannotAcceptNewStageRuns() {
-        var service = new AdminPipelineService(null, null,
-                new PipelineSettings(false, PipelineSettings.DEFAULT_YOUTUBE_RESERVE_UNITS), null, null);
-        assertThatThrownBy(() -> service.runNow("dQw4w9WgXcQ")).isInstanceOf(ConflictException.class);
-    }
 }

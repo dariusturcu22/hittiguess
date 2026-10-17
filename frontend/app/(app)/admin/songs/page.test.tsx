@@ -65,6 +65,7 @@ const COUNTS = {
 const TOTAL_SONGS = 60;
 const TOTAL_PAGES = 3;
 const SONG_ID = 12;
+const MIXED_HISTORY_ENTRY_COUNT = 2;
 const SHORT_WAIT_MILLISECONDS = 100;
 
 const VERIFIED_SONG = {
@@ -268,6 +269,7 @@ describe("SongCatalogPage", () => {
   });
 
   it("opens the detail drawer for a song row and closes it", () => {
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
     detailHook.result = {
       data: {
         songId: SONG_ID,
@@ -285,7 +287,7 @@ describe("SongCatalogPage", () => {
         openReportCount: 2,
         queueHistory: [
           {
-            id: 1,
+            id: SONG_ID,
             origin: "FAST_TIER_RECHECK",
             status: "FAILED",
             enqueuedAt: "2026-10-15T12:00:00Z",
@@ -309,6 +311,9 @@ describe("SongCatalogPage", () => {
 
     const drawer = within(screen.getByRole("dialog", { name: "Song detail" }));
     expect(detailHook.songIds).toContain(SONG_ID);
+    expect(drawer.getByRole("list", { name: "Queue history" }).children).toHaveLength(MIXED_HISTORY_ENTRY_COUNT);
+    expect(consoleError).not.toHaveBeenCalled();
+    consoleError.mockRestore();
     expect(
       drawer.getByText(
         "Year 2019, fast pipeline, added Oct 15, 2026 by mara.k",

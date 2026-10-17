@@ -144,7 +144,7 @@ function DetailBody({
           aria-label="Queue history"
         >
           {queueHistory.map((entry) => (
-            <li key={entry.id}>
+            <li key={`${entry.origin}:${entry.id}:${entry.enqueuedAt}`}>
               <span className="mr-2.5">
                 {formatHistoryTime(entry.enqueuedAt)}
               </span>

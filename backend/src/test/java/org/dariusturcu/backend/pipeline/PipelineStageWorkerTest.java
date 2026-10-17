@@ -4,7 +4,6 @@ import org.dariusturcu.backend.service.ApiUsageService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
-import org.springframework.core.env.MapPropertySource;
 import org.springframework.mock.env.MockEnvironment;
 
 import java.time.Instant;
@@ -42,7 +41,7 @@ class PipelineStageWorkerTest {
 
     @BeforeEach
     void setup() {
-        worker = new PipelineStageWorker(engine, payloads, client, completion, usage, new PipelineSettings(true, RESERVE),
+        worker = new PipelineStageWorker(engine, payloads, client, completion, usage, new PipelineSettings(RESERVE),
                 StageConcurrency.defaults(), SMALL_BURST);
     }
 
@@ -122,19 +121,31 @@ class PipelineStageWorkerTest {
     }
 
     @Test
-    void disabledFlagRegistersNoStageWorkersClientsOrSchedulers() {
+    void stageBeansWireWithoutTheRemovedFlag() {
         try (var context = new AnnotationConfigApplicationContext()) {
-            context.getEnvironment().getPropertySources().addFirst(
-                    new MapPropertySource("test-flag", Map.of("pipeline.stages.enabled", "false")));
-            context.register(PipelineStageWorker.class, PipelineStageDispatcher.class, PipelineCompletionService.class,
+            context.setEnvironment(new MockEnvironment()
+                    .withProperty("ai.service.base-url", "http://localhost")
+                    .withProperty("ai.service.internal-api-key", "test-key"));
+            context.registerBean(PipelineJobService.class, () -> engine);
+            context.registerBean(PipelineJobRepository.class, () -> mock(PipelineJobRepository.class));
+            context.registerBean(StagePayloads.class, () -> payloads);
+            context.registerBean(ApiUsageService.class, () -> usage);
+            context.registerBean(org.dariusturcu.backend.service.SongCatalogService.class,
+                    () -> mock(org.dariusturcu.backend.service.SongCatalogService.class));
+            context.registerBean("coreJdbcTemplate", org.springframework.jdbc.core.JdbcTemplate.class,
+                    () -> mock(org.springframework.jdbc.core.JdbcTemplate.class));
+            context.registerBean(tools.jackson.databind.ObjectMapper.class, () -> new tools.jackson.databind.ObjectMapper());
+            context.registerBean(org.dariusturcu.backend.observability.CorrelationIdPropagatingInterceptor.class);
+            context.registerBean(StageConcurrency.class, StageConcurrency::defaults);
+            context.register(PipelineStageWorker.class, PipelineCompletionService.class,
                     HttpAiStageClient.class, PipelineStageConfig.class, PipelineSettings.class);
             context.refresh();
-            assertThat(context.getBeansOfType(PipelineStageWorker.class)).isEmpty();
-            assertThat(context.getBeansOfType(PipelineStageDispatcher.class)).isEmpty();
-            assertThat(context.getBeansOfType(AiStageClient.class)).isEmpty();
-            assertThat(context.containsBean("pipelineStageScheduler")).isFalse();
-            assertThat(context.containsBean("pipelineStageExecutor")).isFalse();
-            assertThat(context.getBean(PipelineSettings.class).enabled()).isFalse();
+            assertThat(context.getBean(PipelineStageWorker.class)).isNotNull();
+            assertThat(context.getBean(PipelineCompletionService.class)).isNotNull();
+            assertThat(context.getBean(AiStageClient.class)).isInstanceOf(HttpAiStageClient.class);
+            assertThat(context.containsBean("pipelineStageScheduler")).isTrue();
+            assertThat(context.containsBean("pipelineStageExecutor")).isTrue();
+            assertThat(context.getBean(PipelineSettings.class).youtubeReserveUnits()).isEqualTo(RESERVE);
         }
     }
 }

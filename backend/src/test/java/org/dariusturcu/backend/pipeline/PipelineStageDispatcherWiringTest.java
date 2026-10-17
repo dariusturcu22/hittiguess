@@ -2,7 +2,6 @@ package org.dariusturcu.backend.pipeline;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
-import org.springframework.mock.env.MockEnvironment;
 import org.springframework.scheduling.TaskScheduler;
 
 import java.time.Duration;
@@ -19,7 +18,6 @@ class PipelineStageDispatcherWiringTest {
     void defaultIntervalsAndQualifiedExecutorsWireIntoTheDispatcher() {
         TaskScheduler scheduler = mock(TaskScheduler.class);
         try (AnnotationConfigApplicationContext context = new AnnotationConfigApplicationContext()) {
-            context.setEnvironment(new MockEnvironment().withProperty("pipeline.stages.enabled", true));
             context.registerBean(PipelineStageWorker.class, () -> mock(PipelineStageWorker.class));
             context.registerBean(PipelineJobService.class, () -> mock(PipelineJobService.class));
             context.registerBean(StageConcurrency.class, StageConcurrency::defaults);

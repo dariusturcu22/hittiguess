@@ -94,7 +94,6 @@ class PipelineStageDispatcherIntegrationTest {
         properties.add("spring.datasource.username", postgres::getUsername);
         properties.add("spring.datasource.password", postgres::getPassword);
         properties.add("spring.flyway.enabled", () -> false);
-        properties.add("pipeline.stages.enabled", () -> true);
     }
 
     @BeforeAll
