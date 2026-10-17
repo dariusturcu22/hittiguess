@@ -553,6 +553,9 @@ export function useVoiceMesh(groupId: number, currentUserId: number | undefined,
     tabAudioErrorMessage,
     isSharingTabAudio,
     isSignalConnected,
+    // True once this browser has opened its audio for the call; the server can still list a
+    // member as in the call after a reload or a crash, when this is false.
+    isVoiceStarted: hasOutgoingAudio,
     startMicrophone,
     startTabAudio,
     stopTabAudio,

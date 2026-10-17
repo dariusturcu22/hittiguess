@@ -91,8 +91,22 @@ export function AppVoiceSidebar() {
     publishTabAudioError(tabAudioErrorMessage);
   }, [tabAudioErrorMessage]);
 
-  const { isSignalConnected } = voiceMesh;
+  const { isSignalConnected, isVoiceStarted } = voiceMesh;
   const { mutate: announceJoin } = joinVoice;
+  const { mutate: announceLeave } = leaveVoice;
+  // The server keeps listing a member as in the call after a reload or a closed tab, but
+  // this browser has no microphone or peers then. That stale entry is cleared so the
+  // roster never shows someone who is not actually in the call.
+  const isStaleLeaveSentReference = useRef(false);
+  useEffect(() => {
+    if (!isInVoice) {
+      isStaleLeaveSentReference.current = false;
+      return;
+    }
+    if (isVoiceStarted || isJoiningCall || !groupId || !currentUserQuery.data || isStaleLeaveSentReference.current) return;
+    isStaleLeaveSentReference.current = true;
+    announceLeave({ groupId }, { onSuccess: refreshVoicePresence });
+  }, [announceLeave, currentUserQuery.data, groupId, isInVoice, isJoiningCall, isVoiceStarted, refreshVoicePresence]);
   useEffect(() => {
     if (!isJoiningCall || !isSignalConnected || !groupId || isJoinRequestSentReference.current) return;
     isJoinRequestSentReference.current = true;

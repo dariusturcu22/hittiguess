@@ -773,6 +773,58 @@ class GroupServiceTest {
     }
 
     @Test
+    void disconnectMemberRecordsWhenTheSocketDropped() {
+        Group group = groupWithAdmin();
+        when(groupRepository.findById(10L)).thenReturn(Optional.of(group));
+
+        groupService.disconnectMember(10L, adminUser.getId());
+
+        assertThat(group.getMembers().getFirst().getDisconnectedAt()).isNotNull();
+    }
+
+    @Test
+    void reconnectingClearsTheDisconnectTimestamp() {
+        Group group = groupWithAdmin();
+        Member adminMember = group.getMembers().getFirst();
+        adminMember.setConnected(false);
+        adminMember.setDisconnectedAt(Instant.now().minusSeconds(30));
+        when(groupRepository.findById(10L)).thenReturn(Optional.of(group));
+
+        groupService.reconnectMember(10L, adminUser.getId());
+
+        assertThat(adminMember.getDisconnectedAt()).isNull();
+    }
+
+    @Test
+    void dropStaleVoicePresenceTakesAMemberOutOfTheCallAndBroadcastsIt() {
+        Group group = groupWithAdmin();
+        Member adminMember = group.getMembers().getFirst();
+        adminMember.setInVoice(true);
+        adminMember.setConnected(false);
+        adminMember.setDisconnectedAt(Instant.now().minusSeconds(180));
+        when(memberRepository.findInVoiceDisconnectedBefore(any(Instant.class))).thenReturn(List.of(adminMember));
+
+        groupService.dropStaleVoicePresence();
+
+        assertThat(adminMember.isInVoice()).isFalse();
+        verify(memberRepository).save(adminMember);
+        ArgumentCaptor<GroupBroadcastEvent> captor = ArgumentCaptor.forClass(GroupBroadcastEvent.class);
+        verify(eventPublisher).publishEvent(captor.capture());
+        assertThat(captor.getValue().type()).isEqualTo(GroupEventType.VOICE_PRESENCE_CHANGED);
+    }
+
+    @Test
+    void dropStaleVoicePresenceUsesATwoMinuteCutoff() {
+        when(memberRepository.findInVoiceDisconnectedBefore(any(Instant.class))).thenReturn(List.of());
+
+        groupService.dropStaleVoicePresence();
+
+        ArgumentCaptor<Instant> captor = ArgumentCaptor.forClass(Instant.class);
+        verify(memberRepository).findInVoiceDisconnectedBefore(captor.capture());
+        assertThat(captor.getValue()).isBetween(Instant.now().minusSeconds(125), Instant.now().minusSeconds(115));
+    }
+
+    @Test
     void disconnectMemberRejectsAUserWhoIsNotAMember() {
         Group group = groupWithAdmin();
         when(groupRepository.findById(10L)).thenReturn(Optional.of(group));

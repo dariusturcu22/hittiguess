@@ -6,6 +6,7 @@ import org.dariusturcu.backend.model.group.DjMode;
 import org.dariusturcu.backend.model.group.GroupDetailDTO;
 import org.dariusturcu.backend.model.group.GroupStatus;
 import org.dariusturcu.backend.model.group.JoinGroupRequest;
+import org.dariusturcu.backend.model.group.Member;
 import org.dariusturcu.backend.model.group.MemberDTO;
 import org.dariusturcu.backend.model.group.UpdateGroupSettingsRequest;
 import org.dariusturcu.backend.model.mapper.GroupMapper;
@@ -119,6 +120,8 @@ class GroupLifecycleIntegrationTest {
     private GroupService groupService;
     @Autowired
     private GroupRepository groupRepository;
+    @Autowired
+    private MemberRepository memberRepository;
     @Autowired
     private UserRepository userRepository;
     @Autowired
@@ -273,5 +276,32 @@ class GroupLifecycleIntegrationTest {
         authenticateAs(admin);
         GroupDetailDTO afterLeave = groupService.getGroup(created.id());
         assertThat(afterLeave.members()).hasSize(1);
+    }
+
+    @Test
+    void aMemberDisconnectedFromTheCallForOverTwoMinutesIsDroppedFromVoiceWhileARecentDropIsKept() {
+        User admin = persistUser("voice-sweep-admin");
+        User staleMember = persistUser("voice-sweep-stale");
+        User recentMember = persistUser("voice-sweep-recent");
+
+        authenticateAs(admin);
+        GroupDetailDTO created = groupService.createGroup(new CreateGroupRequest(null, null));
+        authenticateAs(staleMember);
+        groupService.joinGroup(new JoinGroupRequest(created.inviteCode(), null, null, null));
+        groupService.joinVoice(created.id());
+        groupService.disconnect(created.id());
+        authenticateAs(recentMember);
+        groupService.joinGroup(new JoinGroupRequest(created.inviteCode(), null, null, null));
+        groupService.joinVoice(created.id());
+        groupService.disconnect(created.id());
+
+        Member stale = memberRepository.findByUser(staleMember).orElseThrow();
+        stale.setDisconnectedAt(Instant.now().minus(3, ChronoUnit.MINUTES));
+        memberRepository.save(stale);
+
+        groupService.dropStaleVoicePresence();
+
+        assertThat(memberRepository.findByUser(staleMember).orElseThrow().isInVoice()).isFalse();
+        assertThat(memberRepository.findByUser(recentMember).orElseThrow().isInVoice()).isTrue();
     }
 }

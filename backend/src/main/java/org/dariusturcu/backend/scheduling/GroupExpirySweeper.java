@@ -15,11 +15,17 @@ import org.springframework.stereotype.Component;
 public class GroupExpirySweeper {
 
     private static final long SWEEP_INTERVAL_MILLIS = 60_000;
+    private static final long VOICE_SWEEP_INTERVAL_MILLIS = 20_000;
 
     private final GroupService groupService;
 
     @Scheduled(fixedRate = SWEEP_INTERVAL_MILLIS)
     public void sweep() {
         groupService.deleteExpiredGroups();
+    }
+
+    @Scheduled(fixedRate = VOICE_SWEEP_INTERVAL_MILLIS)
+    public void sweepVoicePresence() {
+        groupService.dropStaleVoicePresence();
     }
 }
