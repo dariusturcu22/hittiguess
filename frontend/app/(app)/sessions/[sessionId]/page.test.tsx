@@ -347,6 +347,15 @@ describe("GameSessionPage", () => {
     act(() => publishTabAudioSharing(false));
   });
 
+  it("tells a player on a browser that cannot capture audio that they are skipped as DJ", async () => {
+    mockCurrentUserId = ACTIVE_USER_ID;
+    const userAgent = vi.spyOn(window.navigator, "userAgent", "get").mockReturnValue("Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:140.0) Gecko/20100101 Firefox/140.0");
+    await renderPage();
+
+    expect(screen.getByText("This browser can't share audio, so you are skipped as DJ. Use Chrome or Edge on a computer to DJ.")).toBeVisible();
+    userAgent.mockReturnValue("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/140.0 Safari/537.36");
+  });
+
   it("shows spectators the live placement preview", async () => {
     mockCurrentUserId = SPECTATOR_USER_ID;
     await renderPage();

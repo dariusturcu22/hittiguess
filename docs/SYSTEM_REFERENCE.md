@@ -80,6 +80,7 @@ Every rate-limited request the core service rejects, whichever limiter caught it
 | POST | `/api/groups/{groupId}/members/{memberId}/promote` | `GroupController`, admin only, promotes another member to admin, story 39 |
 | POST | `/api/groups/{groupId}/voice/join` | `GroupController`, sets the caller's `isInVoice` presence flag and broadcasts voice presence on the group's voice topic, story 39 and story 12 |
 | POST | `/api/groups/{groupId}/voice/leave` | `GroupController`, clears the `isInVoice` presence flag and broadcasts voice presence, story 39 and story 12 |
+| POST | `/api/groups/{groupId}/audio-capability` | `GroupController`, the caller's browser reports whether it can capture audio (`canShareAudio`); stored on the member, copied to `Player.canDj` at the roster snapshot, and read by the DJ rotation, which skips players who cannot, story 52 |
 | GET | `/api/groups/{groupId}/voice/turn-credentials` | `GroupController`, member only, the ICE server list a client feeds `RTCPeerConnection`, STUN always, Cloudflare TURN only when a key is configured, story 12 |
 | GET | `/api/sessions/groups/{groupId}/active` | Current group member; returns the active session if present |
 | GET | `/api/groups/invites/{inviteCode}/preview` | Invite preview with group-specific member names and avatars |
