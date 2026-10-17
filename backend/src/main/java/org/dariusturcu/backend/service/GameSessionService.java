@@ -163,6 +163,7 @@ public class GameSessionService {
             player.setTokenCount(STARTING_TOKEN_COUNT);
             player.setStatus(PlayerStatus.ACTIVE);
             player.setConnected(true);
+            player.setCanDj(member.isCanShareAudio());
             player.setTotalArtistsGuessed(0);
             player.setTotalTitlesGuessed(0);
             session.addPlayer(player);
@@ -190,7 +191,7 @@ public class GameSessionService {
             firstActive = ordered.get((ordered.indexOf(firstDj) + 1) % ordered.size());
         } else {
             firstActive = ordered.get(0);
-            firstDj = ordered.get(1);
+            firstDj = preferredFirstDj(ordered, firstActive);
         }
 
         createRound(savedSession, firstActive, firstDj);
@@ -966,10 +967,10 @@ public class GameSessionService {
             nextActivePlayer = findNextEligiblePlayer(session, previousActiveTurnOrder, excludedFromActiveRotation);
             nextDjPlayer = isFixedDjStillActive
                     ? fixedDjPlayer
-                    : findNextEligiblePlayer(session, nextActivePlayer.getTurnOrder(), Set.of(nextActivePlayer.getId()));
+                    : findNextDjPlayer(session, nextActivePlayer.getTurnOrder(), Set.of(nextActivePlayer.getId()));
         } else {
             nextActivePlayer = findNextEligiblePlayer(session, previousActiveTurnOrder, Set.of());
-            nextDjPlayer = findNextEligiblePlayer(session, nextActivePlayer.getTurnOrder(), Set.of(nextActivePlayer.getId()));
+            nextDjPlayer = findNextDjPlayer(session, nextActivePlayer.getTurnOrder(), Set.of(nextActivePlayer.getId()));
         }
 
         // A round closes once the rotation reaches a player who already had a turn in it.
@@ -996,6 +997,25 @@ public class GameSessionService {
 
     private boolean anyPlayerHasWon(GameSession session) {
         return session.getPlayers().stream().anyMatch(player -> player.hasWon(session.getWinConditionCardCount()));
+    }
+
+    // The first DJ in a rotating session: the next player after the first active player whose
+    // browser can capture audio, or just the next player when nobody else can.
+    private Player preferredFirstDj(List<Player> ordered, Player firstActive) {
+        List<Player> others = ordered.stream().filter(player -> player != firstActive).toList();
+        return others.stream().filter(Player::isCanDj).findFirst().orElse(others.getFirst());
+    }
+
+    // The next DJ in turn order, passing over players whose browser cannot capture audio. When
+    // nobody else can, the next eligible player takes the role anyway so the round still runs.
+    private Player findNextDjPlayer(GameSession session, int fromTurnOrder, Set<Long> excludedPlayerIds) {
+        Set<Long> excludedIncludingIncapable = new java.util.HashSet<>(excludedPlayerIds);
+        session.getPlayers().stream().filter(player -> !player.isCanDj()).forEach(player -> excludedIncludingIncapable.add(player.getId()));
+        try {
+            return findNextEligiblePlayer(session, fromTurnOrder, excludedIncludingIncapable);
+        } catch (ConflictException noCapablePlayer) {
+            return findNextEligiblePlayer(session, fromTurnOrder, excludedPlayerIds);
+        }
     }
 
     private Player findNextEligiblePlayer(GameSession session, int fromTurnOrder, Set<Long> excludedPlayerIds) {

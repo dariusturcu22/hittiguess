@@ -26,6 +26,7 @@ export * from './adminSongDetailDTOStatus';
 export * from './adminSongDetailDTOVerificationStatus';
 export * from './adminUsageDTO';
 export * from './aiResponse';
+export * from './audioCapabilityRequest';
 export * from './authResponse';
 export * from './batchesParams';
 export * from './betDTO';

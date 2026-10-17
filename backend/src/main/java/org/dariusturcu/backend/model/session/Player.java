@@ -59,6 +59,11 @@ public class Player {
     // this field is still set (a reconnect clears it, cancelling the timeout in effect).
     private Instant disconnectedAt;
 
+    // Copied from the member at the roster snapshot: false when the player's browser cannot
+    // capture audio, so the DJ rotation passes them over.
+    @Column(name = "can_dj", nullable = false)
+    private boolean canDj = true;
+
     @Column(name = "total_artists_guessed", nullable = false)
     private int totalArtistsGuessed;
 

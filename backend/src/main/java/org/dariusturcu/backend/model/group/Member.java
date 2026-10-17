@@ -49,6 +49,11 @@ public class Member {
     // reads it to remove a member whose tab closed while they were in the call.
     private Instant disconnectedAt;
 
+    // Reported by the member's browser; false keeps them out of the DJ rotation because
+    // they cannot capture the song's audio for the others.
+    @Column(nullable = false)
+    private boolean canShareAudio = true;
+
     @Column(nullable = false, updatable = false)
     private Instant joinedAt;
 }
