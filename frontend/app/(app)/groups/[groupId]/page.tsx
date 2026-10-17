@@ -555,38 +555,35 @@ export default function GroupLobbyPage({ params }: PageProps) {
             {isTierPopupOpen ? (
               <>
                 <button type="button" aria-label="Close start options" onClick={closeTierPopup} className="fixed inset-0 z-10 cursor-default" />
-                <section aria-label="Start options" className="absolute right-0 top-full z-20 mt-2 w-[480px] rounded-[18px] border-[3px] border-border bg-card p-5 shadow-[6px_6px_0_rgba(0,0,0,0.35)]">
-                  <div className="mb-4 flex items-center justify-between gap-1">
+                <section aria-label="Start options" className="absolute right-0 top-full z-20 mt-2 w-auto rounded-[18px] border-[3px] border-border bg-card p-3 shadow-[6px_6px_0_rgba(0,0,0,0.35)]">
+                  <div className="flex items-center gap-1.5">
                     {DIFFICULTY_TIERS.map((tier) => (
                       <button
                         key={tier}
                         type="button"
                         onClick={() => { setSelectedTier(tier); setPlaylistSource("tier"); setStartError(""); }}
                         aria-pressed={playlistSource === "tier" && selectedTier === tier}
-                        className={`cursor-pointer whitespace-nowrap rounded-full px-3 py-2 font-display text-xs ${playlistSource === "tier" && selectedTier === tier ? "bg-accent text-accent-foreground" : "border-2 border-border text-muted-foreground"}`}
+                        className={`cursor-pointer whitespace-nowrap rounded-full px-2.5 py-1.5 font-display text-[11px] ${playlistSource === "tier" && selectedTier === tier ? "bg-accent text-accent-foreground" : "border-2 border-border text-muted-foreground"}`}
                       >
                         <Gauge className={`mr-1 inline size-3.5 ${tier === "EASY" ? "text-green" : tier === "HARD" ? "text-destructive" : "text-warning"}`} />
                         {tier.charAt(0) + tier.slice(1).toLowerCase()}
                       </button>
                     ))}
-                    <span aria-hidden="true" className="mx-1 h-7 w-px bg-border" />
+                    <span aria-hidden="true" className="mx-0.5 h-6 w-px bg-border" />
                     <button
                       type="button"
                       onClick={openCustomPicker}
                       aria-pressed={playlistSource === "custom"}
-                      className={`cursor-pointer whitespace-nowrap rounded-full px-3 py-2 font-display text-xs ${playlistSource === "custom" ? "bg-accent text-accent-foreground" : "border-2 border-border text-muted-foreground"}`}
+                      className={`cursor-pointer whitespace-nowrap rounded-full px-2.5 py-1.5 font-display text-[11px] ${playlistSource === "custom" ? "bg-accent text-accent-foreground" : "border-2 border-border text-muted-foreground"}`}
                     >
                       <SlidersHorizontal className="mr-1 inline size-3.5" />
                       Custom
                     </button>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <button type="button" onClick={handleConfirmTier} disabled={updateSettings.isPending} className="rounded-full bg-primary px-4 py-2 font-display text-xs text-primary-foreground disabled:opacity-60">
+                    <button type="button" onClick={handleConfirmTier} disabled={updateSettings.isPending} className="rounded-full bg-primary px-3 py-1.5 font-display text-[11px] text-primary-foreground disabled:opacity-60">
                       {updateSettings.isPending ? "Saving" : "Confirm"}
                     </button>
                   </div>
-                  <p className="mt-3 text-xs text-muted-foreground">Songs are selected when the session starts.</p>
-                  {startError ? <p role="alert" className="mt-4 text-sm text-destructive">{startError}</p> : null}
+                  {startError ? <p role="alert" className="mt-3 text-sm text-destructive">{startError}</p> : null}
                 </section>
               </>
             ) : null}
@@ -669,52 +666,6 @@ export default function GroupLobbyPage({ params }: PageProps) {
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
-        {isSettingsOpen ? (
-          <>
-            <button type="button" aria-label="Close settings" onClick={() => setIsSettingsOpen(false)} className="fixed inset-0 z-10 cursor-default" />
-            <section aria-label="Group settings" className="absolute bottom-3 left-0 z-20 w-full max-w-[400px] rounded-[18px] border-[3px] border-border bg-card p-6 shadow-[6px_6px_0_rgba(0,0,0,0.35)] sm:left-[228px] sm:p-7">
-              <div className="mb-5 flex items-center justify-between">
-                <h2 className="font-display text-lg text-card-foreground">Settings</h2>
-                <button type="button" onClick={() => setIsSettingsOpen(false)} className="text-muted-foreground hover:text-card-foreground">Close</button>
-              </div>
-              <div className="space-y-4">
-                <div className="flex items-center justify-between gap-3">
-                  <span id="dj-mode-label" className="text-[13px] text-muted-foreground">DJ mode</span>
-                  <Select value={selectedDjMode} onValueChange={(value) => setSelectedDjMode(value as "FIXED" | "ROTATING")}>
-                    <SelectTrigger aria-labelledby="dj-mode-label" className="w-[140px] rounded-full border-2 border-border bg-background">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="ROTATING">Rotating</SelectItem>
-                      <SelectItem value="FIXED">Fixed</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                {selectedDjMode === "FIXED" ? (
-                  <div className="flex items-center justify-between gap-3">
-                    <span id="fixed-dj-label" className="text-[13px] text-muted-foreground">Fixed DJ</span>
-                    <Select value={selectedFixedDjMemberId === undefined ? "auto" : String(selectedFixedDjMemberId)} onValueChange={(value) => setSelectedFixedDjMemberId(value === "auto" ? undefined : Number(value))}>
-                      <SelectTrigger aria-labelledby="fixed-dj-label" className="w-[140px] rounded-full border-2 border-border bg-background">
-                        <SelectValue placeholder="First to join" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="auto">First to join</SelectItem>
-                        {members.map((member) => (
-                          <SelectItem key={member.id} value={String(member.id ?? "")}>{member.displayName || "Player"}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                ) : null}
-                <label className="flex items-center justify-between gap-3 text-[13px] text-muted-foreground">
-                  Cards to win
-                  <input type="number" min={MINIMUM_WIN_CONDITION} value={winCondition} onChange={(event) => setWinCondition(Math.max(MINIMUM_WIN_CONDITION, Number(event.target.value)))} className="w-20 rounded-full border-2 border-border bg-background px-3 py-1.5 text-right text-sm font-semibold text-foreground outline-none" />
-                </label>
-              </div>
-              <div className="mt-6 flex gap-2.5"><button type="button" onClick={saveSettings} disabled={updateSettings.isPending} className="rounded-full bg-primary px-4 py-2.5 font-display text-xs text-primary-foreground disabled:opacity-60">{updateSettings.isPending ? "Saving" : "Save changes"}</button><button type="button" onClick={() => setIsSettingsOpen(false)} className="rounded-full border-2 border-border px-4 py-2.5 text-xs font-semibold text-card-foreground">Close</button></div>
-            </section>
-          </>
-        ) : null}
         {isCustomPickerOpen ? (
           <>
             <button type="button" aria-label="Close playlist selection" onClick={closeCustomPicker} className="absolute inset-0 z-20 cursor-default bg-background/80" />
@@ -784,6 +735,52 @@ export default function GroupLobbyPage({ params }: PageProps) {
           onClose={() => setIsChatOpen(false)}
           floating
         />
+      ) : null}
+      {isSettingsOpen ? (
+        <>
+          <button type="button" aria-label="Close settings" onClick={() => setIsSettingsOpen(false)} className="fixed inset-0 z-10 cursor-default" />
+          <section aria-label="Group settings" className="absolute bottom-full left-0 z-20 mb-3 w-full max-w-[400px] rounded-[18px] border-[3px] border-border bg-card p-6 shadow-[6px_6px_0_rgba(0,0,0,0.35)] sm:left-[228px] sm:p-7">
+            <div className="mb-5 flex items-center justify-between">
+              <h2 className="font-display text-lg text-card-foreground">Settings</h2>
+              <button type="button" onClick={() => setIsSettingsOpen(false)} className="text-muted-foreground hover:text-card-foreground">Close</button>
+            </div>
+            <div className="space-y-4">
+              <div className="flex items-center justify-between gap-3">
+                <span id="dj-mode-label" className="text-[13px] text-muted-foreground">DJ mode</span>
+                <Select value={selectedDjMode} onValueChange={(value) => setSelectedDjMode(value as "FIXED" | "ROTATING")}>
+                  <SelectTrigger aria-labelledby="dj-mode-label" className="w-[140px] rounded-full border-2 border-border bg-background">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="ROTATING">Rotating</SelectItem>
+                    <SelectItem value="FIXED">Fixed</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              {selectedDjMode === "FIXED" ? (
+                <div className="flex items-center justify-between gap-3">
+                  <span id="fixed-dj-label" className="text-[13px] text-muted-foreground">Fixed DJ</span>
+                  <Select value={selectedFixedDjMemberId === undefined ? "auto" : String(selectedFixedDjMemberId)} onValueChange={(value) => setSelectedFixedDjMemberId(value === "auto" ? undefined : Number(value))}>
+                    <SelectTrigger aria-labelledby="fixed-dj-label" className="w-[140px] rounded-full border-2 border-border bg-background">
+                      <SelectValue placeholder="First to join" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="auto">First to join</SelectItem>
+                      {members.map((member) => (
+                        <SelectItem key={member.id} value={String(member.id ?? "")}>{member.displayName || "Player"}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              ) : null}
+              <label className="flex items-center justify-between gap-3 text-[13px] text-muted-foreground">
+                Cards to win
+                <input type="number" min={MINIMUM_WIN_CONDITION} value={winCondition} onChange={(event) => setWinCondition(Math.max(MINIMUM_WIN_CONDITION, Number(event.target.value)))} className="w-20 rounded-full border-2 border-border bg-background px-3 py-1.5 text-right text-sm font-semibold text-foreground outline-none" />
+              </label>
+            </div>
+            <div className="mt-6 flex gap-2.5"><button type="button" onClick={saveSettings} disabled={updateSettings.isPending} className="rounded-full bg-primary px-4 py-2.5 font-display text-xs text-primary-foreground disabled:opacity-60">{updateSettings.isPending ? "Saving" : "Save changes"}</button><button type="button" onClick={() => setIsSettingsOpen(false)} className="rounded-full border-2 border-border px-4 py-2.5 text-xs font-semibold text-card-foreground">Close</button></div>
+          </section>
+        </>
       ) : null}
       <footer className="flex shrink-0 flex-wrap items-center gap-3">
         {!isCurrentUserLoading && isCurrentUserAdmin ? (
