@@ -109,6 +109,15 @@ class StompSubscriptionAuthorizationInterceptorTest {
         verify(memberRepository, never()).existsByGroupIdAndUserId(anyLong(), anyLong());
     }
 
+    @Test
+    void aSessionSongSignalUserDestinationIsAlwaysAllowed() {
+        Message<byte[]> message = subscribeFrame(
+                USER_DESTINATION_PREFIX + SessionDestinations.songSignalQueue(SESSION_ID));
+
+        assertThat(interceptor.preSend(message, channel)).isSameAs(message);
+        verify(playerRepository, never()).existsBySessionIdAndUserId(anyLong(), anyLong());
+    }
+
     @ParameterizedTest
     @ValueSource(strings = {"/queue/groups/7/voice-signal-usersession1", "/topic/other", "/topic/groups/7/chat/extra", "/app/groups/7/chat"})
     void anyOtherDestinationIsRefused(String destination) {

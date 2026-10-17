@@ -30,6 +30,7 @@ let lobbyMembers = [
 // and a fresh object per render would change every callback that depends on it.
 const routerMock = vi.hoisted(() => ({ replace: vi.fn(), push: vi.fn() }));
 const lobbyState = vi.hoisted(() => ({ status: "OPEN", cachedSessionId: undefined as number | undefined }));
+const lobbyQueryState = vi.hoisted(() => ({ isLoading: false, isError: false }));
 
 vi.mock("next/navigation", () => ({
   useRouter: () => routerMock,
@@ -41,7 +42,7 @@ vi.mock("@/hooks/generated/group-management/group-management", () => ({
   getGetGroupQueryKey: (groupId: number) => [`/api/groups/${groupId}`],
   getGetActiveMembershipQueryKey: () => ["/api/users/me/active-group"],
   useGetGroup: () => ({
-    data: {
+    data: lobbyQueryState.isLoading || lobbyQueryState.isError ? undefined : {
       id: 1,
       status: lobbyState.status,
       djMode: "ROTATING",
@@ -51,8 +52,8 @@ vi.mock("@/hooks/generated/group-management/group-management", () => ({
       members: lobbyMembers,
       playlists: [],
     },
-    isLoading: false,
-    isError: false,
+    isLoading: lobbyQueryState.isLoading,
+    isError: lobbyQueryState.isError,
   }),
   useLeaveGroup: () => ({ mutate: leaveMutate, isPending: false }),
   useRemoveMember: () => ({ mutate: removeMemberMutate, isPending: false }),
@@ -420,5 +421,117 @@ describe("GroupLobbyPage start options", () => {
     await renderPage();
 
     expect(screen.queryByRole("button", { name: /^Remove / })).not.toBeInTheDocument();
+  });
+
+  it("anchors the settings panel in the footer wrapper like the chat", async () => {
+    await renderPage();
+
+    fireEvent.click(screen.getByRole("button", { name: "Settings" }));
+    const settingsPanel = screen.getByLabelText("Group settings");
+    const footerWrapper = settingsPanel.parentElement;
+
+    expect(settingsPanel.className).toContain("bottom-full");
+    expect(settingsPanel.className).toContain("mb-3");
+    expect(settingsPanel.className).toContain("sm:left-[228px]");
+    expect(footerWrapper?.className).toContain("relative");
+    expect(footerWrapper).toContainElement(screen.getByRole("button", { name: "Leave lobby" }));
+  });
+
+  it("renders the start options as one compact row with the tier confirmation", async () => {
+    await renderPage();
+
+    fireEvent.click(screen.getByRole("button", { name: "Choose playlists" }));
+
+    const startOptions = screen.getByLabelText("Start options");
+    const tierRow = screen.getByRole("button", { name: "Easy" }).parentElement;
+
+    expect(startOptions.className).toContain("w-auto");
+    expect(startOptions.className).not.toContain("w-[480px]");
+    expect(screen.queryByText("Songs are selected when the session starts.")).toBeNull();
+    expect(tierRow).toContainElement(screen.getByRole("button", { name: "Custom" }));
+    expect(tierRow).toContainElement(screen.getByRole("button", { name: "Confirm" }));
+
+    fireEvent.click(screen.getByRole("button", { name: "Easy" }));
+    fireEvent.click(screen.getByRole("button", { name: "Confirm" }));
+
+    expect(updateSettingsMutate).toHaveBeenCalledWith(
+      { groupId: 1, data: { difficultyTier: "EASY" } }, expect.anything(),
+    );
+  });
+});
+
+describe("GroupLobbyPage viewport layout", () => {
+  beforeEach(() => {
+    lobbyQueryState.isLoading = false;
+    lobbyQueryState.isError = false;
+    lobbyState.status = "OPEN";
+    lobbyState.cachedSessionId = undefined;
+    lobbyMembers = [
+      { id: 1, userId: 11, displayName: "Admin", isAdmin: true, isConnected: true },
+      { id: 2, userId: 12, displayName: "Sam", isAdmin: false, isConnected: true },
+    ];
+  });
+
+  it("pins the lobby root to the viewport without page scrolling", async () => {
+    await renderPage();
+    const root = screen.getByRole("main");
+
+    expect(root.className).toContain("h-full");
+    expect(root.className).toContain("overflow-hidden");
+    expect(root.className).not.toContain("min-h-[720px]");
+  });
+
+  it("centres the loading state inside the viewport", async () => {
+    lobbyQueryState.isLoading = true;
+    await renderPage();
+
+    const root = screen.getByRole("main");
+    expect(root.className).toContain("h-full");
+    expect(root.className).toContain("overflow-hidden");
+    expect(root.className).not.toContain("min-h-[720px]");
+
+    const loadingStage = screen.getByLabelText("Loading group").parentElement;
+    expect(loadingStage?.className).toContain("min-h-0");
+    expect(loadingStage?.className).not.toContain("min-h-[480px]");
+  });
+
+  it("centres the error state inside the viewport", async () => {
+    lobbyQueryState.isError = true;
+    await renderPage();
+
+    const root = screen.getByRole("main");
+    expect(root.className).toContain("h-full");
+    expect(root.className).toContain("overflow-hidden");
+    expect(root.className).not.toContain("min-h-[720px]");
+    expect(screen.getByRole("heading", { name: "Group unavailable" })).toBeVisible();
+  });
+
+  it("lets the orbit stage fill the height and keeps the footer outside it", async () => {
+    await renderPage();
+    const stage = screen.getByText("Enter code to join").closest("section");
+
+    expect(stage?.className).toContain("flex-1");
+    expect(stage?.className).toContain("min-h-0");
+    expect(stage?.className).toContain("overflow-hidden");
+    expect(stage?.className).not.toContain("min-h-[480px]");
+    expect(stage?.className).not.toContain("overflow-y-auto");
+    expect(stage).not.toContainElement(screen.getByRole("button", { name: "Leave lobby" }));
+  });
+
+  it("scales the orbit members, their crowns, and the join code on short screens", async () => {
+    await renderPage();
+
+    const joinCode = screen.getByText("ABCD");
+    expect(joinCode.className).toContain("short:text-[60px]");
+    expect(joinCode.className).toContain("very-short:text-[48px]");
+
+    const memberBlock = screen.getByText(/^Admin/).parentElement;
+    const avatar = memberBlock?.querySelector(".avatar-initial");
+    expect(avatar?.className).toContain("short:size-[84px]");
+    expect(avatar?.className).toContain("very-short:size-[64px]");
+
+    const crown = memberBlock?.querySelector("svg.text-warning");
+    expect(crown?.getAttribute("class")).toContain("short:size-5");
+    expect(crown?.getAttribute("class")).toContain("very-short:size-4");
   });
 });

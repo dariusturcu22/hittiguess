@@ -71,11 +71,11 @@ Data: the current song's real YouTube page or app link-out, not an embedded play
 
 ### Voice sidebar
 
-Data: each voice member as a per-group avatar with name, a microphone speaking ring, and synchronized mute/deafen state. The rail is 76px wide, has no collapse control, and appears on the lobby or during an active call. The join control is at the top when outside a call. Member departure closes the gap with motion that respects reduced-motion preferences. Actions: join or leave the voice room at any time, mute/deafen self. Persists across the "playing while away" minimized state (`GAME_DESIGN.md`).
+Data: each voice member as a per-group avatar with name, a microphone speaking ring, and synchronized mute/deafen state. The rail is 76px wide, has no collapse control, and appears on the lobby and the session page, and everywhere else once the player is in the call. Outside the call it lists who is currently in the call, with the same avatars and speaking rings, and the join control sits below that list. Member departure closes the gap with motion that respects reduced-motion preferences. Actions: join or leave the voice room at any time, mute/deafen self. Persists across the "playing while away" minimized state (`GAME_DESIGN.md`).
 
 ### Text chat overlay
 
-Data: message history for the group (sender's per-group display name, message body, timestamp), loaded on join. Explicit history recovery for chat events missed during reconnect remains in TASKS.md. Actions: send a message (500-character limit, rate-limited to 5 per 10 seconds, story 13), toggle the overlay open/closed.
+Data: message history for the group (sender's per-group display name, message body, timestamp), loaded on join, rendered oldest-first with the newest message at the bottom, times on a 24-hour clock, and one stable avatar color per sender. The panel scrolls to the newest message when it opens and when a message arrives, and holds the reader's position once they have scrolled up. Explicit history recovery for chat events missed during reconnect remains in TASKS.md. Actions: send a message (500-character limit, rate-limited to 5 per 10 seconds, story 13), toggle the overlay open/closed.
 
 ### Turn notification
 

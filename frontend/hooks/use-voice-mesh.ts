@@ -3,9 +3,10 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Client } from "@stomp/stompjs";
 
+import type { NoiseGateWorkletNode, RnnoiseWorkletNode } from "@sapphi-red/web-noise-suppressor";
 import { useGetVoiceTurnCredentials } from "@/hooks/generated/group-management/group-management";
 import type { MemberDTO } from "@/hooks/models/memberDTO";
-import { publishLocalAudioStream, publishTabAudioSharing } from "./use-local-audio-stream";
+import { MAX_NOISE_GATE_SENSITIVITY, useAudioDevices } from "@/hooks/use-audio-devices";
 import { observeMicrophoneSpeaking, parseVoiceStatus, sendVoiceStatus, VOICE_STATUS_CHANNEL, type VoiceStatus } from "@/lib/voice-status";
 
 const WEBSOCKET_PATH = "/ws";
@@ -28,10 +29,23 @@ const INSECURE_CONTEXT_MESSAGE = "Talking needs the game open over HTTPS. You ca
 const MICROPHONE_PERMISSION_MESSAGE = "Microphone permission is needed to talk. You can still listen.";
 const MICROPHONE_NOT_FOUND_MESSAGE = "No microphone was found. You can still listen.";
 const MICROPHONE_START_FAILED_MESSAGE = "Could not start the microphone. You can still listen.";
-const TAB_AUDIO_UNSUPPORTED_MESSAGE = "This browser can't share tab audio.";
-const TAB_AUDIO_INSECURE_CONTEXT_MESSAGE = "Sharing audio needs the game open over HTTPS.";
-const TAB_AUDIO_MISSING_MESSAGE = "No audio was shared. Choose Entire screen and turn on Share system audio, or choose the YouTube tab and turn on Share tab audio.";
-const TAB_AUDIO_FAILED_MESSAGE = "Couldn't share tab audio.";
+
+const MAX_VOICE_CHANNELS = 1;
+const MICROPHONE_SPEECH_CONTENT_HINT = "speech";
+const VOICE_MAX_BITRATE_BITS_PER_SECOND = 40_000;
+
+// The hold is the tail the gate keeps open after the level drops, long enough that a pause
+// between words does not chop the next one. The close threshold sits under the open one so
+// a level hovering at the edge does not chatter.
+const NOISE_GATE_HOLD_MILLISECONDS = 200;
+const NOISE_GATE_CLOSE_THRESHOLD_MARGIN_DB = 8;
+const NOISE_GATE_MINIMUM_OPEN_THRESHOLD_DB = -70;
+const NOISE_GATE_MAXIMUM_OPEN_THRESHOLD_DB = -20;
+
+const NOISE_GATE_WORKLET_URL = "/rnnoise/noiseGateWorklet.js";
+const RNNOISE_WORKLET_URL = "/rnnoise/rnnoiseWorklet.js";
+const RNNOISE_WASM_URL = "/rnnoise/rnnoise.wasm";
+const RNNOISE_SIMD_WASM_URL = "/rnnoise/rnnoise_simd.wasm";
 
 interface VoiceSignal { type: string; senderUserId: number; targetMemberUserId: number; payload: string; }
 
@@ -40,22 +54,15 @@ interface AudioMixer {
   destination: MediaStreamAudioDestinationNode;
   microphoneSource: MediaStreamAudioSourceNode | null;
   microphoneGain: GainNode | null;
-  tabSource: MediaStreamAudioSourceNode | null;
-  tabGain: GainNode | null;
+  noiseGate: NoiseGateWorkletNode | null;
+  rnnoise: RnnoiseWorkletNode | null;
 }
 
 interface AudioContextWindow extends Window {
   webkitAudioContext?: typeof AudioContext;
 }
 
-// Chromium-only display-media hints: exclude the game tab itself from the picker and
-// offer system audio, so the DJ shares the whole screen's audio (or the YouTube tab's).
-interface DisplayAudioConstraints extends DisplayMediaStreamOptions {
-  selfBrowserSurface?: "exclude" | "include";
-  systemAudio?: "exclude" | "include";
-}
-
-const PLACEMENT_LOCKED_STATUSES = new Set(["COUNTDOWN", "BETTING", "REVEALED", "SCORED"]);
+export const PLACEMENT_LOCKED_STATUSES = new Set(["COUNTDOWN", "BETTING", "REVEALED", "SCORED"]);
 
 // The active player's song audio cuts off from lock-in until the next round starts;
 // only the DJ's incoming audio is silenced, so voice chat with everyone else goes on.
@@ -65,6 +72,14 @@ export function shouldSilenceDjForActivePlayer(
 ): boolean {
   if (!round || currentPlayerId === undefined || round.activePlayerId !== currentPlayerId) return false;
   return PLACEMENT_LOCKED_STATUSES.has(round.status ?? "");
+}
+
+// Higher sensitivity widens the gate: the open threshold rises, so steady background noise
+// has to be louder to hold it open. The value runs from effectively always open to speech-only.
+export function noiseGateOpenThresholdDb(sensitivityPercent: number): number {
+  const clampedSensitivity = Math.min(MAX_NOISE_GATE_SENSITIVITY, Math.max(0, sensitivityPercent));
+  const position = clampedSensitivity / MAX_NOISE_GATE_SENSITIVITY;
+  return NOISE_GATE_MINIMUM_OPEN_THRESHOLD_DB + position * (NOISE_GATE_MAXIMUM_OPEN_THRESHOLD_DB - NOISE_GATE_MINIMUM_OPEN_THRESHOLD_DB);
 }
 
 function describeMicrophoneError(error: unknown): string {
@@ -93,7 +108,116 @@ function createAudioMixer(): AudioMixer | null {
   if (!Context) return null;
   const context = new Context();
   void context.resume().catch(() => {});
-  return { context, destination: context.createMediaStreamDestination(), microphoneSource: null, microphoneGain: null, tabSource: null, tabGain: null };
+  return { context, destination: context.createMediaStreamDestination(), microphoneSource: null, microphoneGain: null, noiseGate: null, rnnoise: null };
+}
+
+async function loadWorkletModule(context: AudioContext, url: string): Promise<boolean> {
+  try {
+    await context.audioWorklet.addModule(url);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function createNoiseGateNode(context: AudioContext, sensitivityPercent: number): Promise<NoiseGateWorkletNode | null> {
+  if (!(await loadWorkletModule(context, NOISE_GATE_WORKLET_URL))) return null;
+  const openThreshold = noiseGateOpenThresholdDb(sensitivityPercent);
+  try {
+    const { NoiseGateWorkletNode: WorkletNode } = await import("@sapphi-red/web-noise-suppressor");
+    return new WorkletNode(context, {
+      openThreshold,
+      closeThreshold: openThreshold - NOISE_GATE_CLOSE_THRESHOLD_MARGIN_DB,
+      holdMs: NOISE_GATE_HOLD_MILLISECONDS,
+      maxChannels: MAX_VOICE_CHANNELS,
+    });
+  } catch {
+    return null;
+  }
+}
+
+// RNNoise is optional: a failed worklet or wasm fetch leaves the plain microphone path intact.
+async function createRnnoiseNode(context: AudioContext): Promise<RnnoiseWorkletNode | null> {
+  if (!(await loadWorkletModule(context, RNNOISE_WORKLET_URL))) return null;
+  try {
+    const { RnnoiseWorkletNode: WorkletNode, loadRnnoise } = await import("@sapphi-red/web-noise-suppressor");
+    const wasmBinary = await loadRnnoise({ url: RNNOISE_WASM_URL, simdUrl: RNNOISE_SIMD_WASM_URL });
+    return new WorkletNode(context, { maxChannels: MAX_VOICE_CHANNELS, wasmBinary });
+  } catch {
+    return null;
+  }
+}
+
+function disconnectMicrophoneGraph(mixer: AudioMixer) {
+  mixer.noiseGate?.disconnect();
+  mixer.rnnoise?.disconnect();
+  mixer.rnnoise?.destroy();
+  mixer.microphoneSource?.disconnect();
+  mixer.microphoneGain?.disconnect();
+  mixer.microphoneSource = null;
+  mixer.noiseGate = null;
+  mixer.rnnoise = null;
+  mixer.microphoneGain = null;
+}
+
+// The outgoing chain is microphone, optional gate, optional RNNoise, then the volume gain.
+// Each filter is skipped when its worklet or wasm does not load, so the chain always ends
+// at the destination and the call keeps working.
+async function connectMicrophoneGraph(
+  mixer: AudioMixer,
+  stream: MediaStream,
+  microphoneVolumePercent: number,
+  noiseGateSensitivity: number,
+  isRnnoiseEnabled: boolean,
+) {
+  disconnectMicrophoneGraph(mixer);
+  const source = mixer.context.createMediaStreamSource(stream);
+  const gain = mixer.context.createGain();
+  gain.gain.setValueAtTime(microphoneVolumePercent / PERCENT, mixer.context.currentTime);
+  let chainTail: AudioNode = source;
+  if (noiseGateSensitivity > 0) {
+    const noiseGate = await createNoiseGateNode(mixer.context, noiseGateSensitivity);
+    if (noiseGate) {
+      chainTail.connect(noiseGate);
+      chainTail = noiseGate;
+      mixer.noiseGate = noiseGate;
+    }
+  }
+  if (isRnnoiseEnabled) {
+    const rnnoise = await createRnnoiseNode(mixer.context);
+    if (rnnoise) {
+      chainTail.connect(rnnoise);
+      chainTail = rnnoise;
+      mixer.rnnoise = rnnoise;
+    }
+  }
+  chainTail.connect(gain);
+  gain.connect(mixer.destination);
+  mixer.microphoneSource = source;
+  mixer.microphoneGain = gain;
+}
+
+function microphoneConstraints(deviceId: string | undefined): MediaStreamConstraints {
+  const audio: MediaTrackConstraints = {
+    echoCancellation: true,
+    noiseSuppression: true,
+    autoGainControl: true,
+    channelCount: MAX_VOICE_CHANNELS,
+  };
+  if (deviceId) audio.deviceId = { exact: deviceId };
+  return { audio };
+}
+
+async function capSenderBitrate(sender: RTCRtpSender): Promise<void> {
+  try {
+    const parameters = sender.getParameters();
+    const encodings = parameters.encodings?.length ? parameters.encodings : [{}];
+    encodings.forEach((encoding) => { encoding.maxBitrate = VOICE_MAX_BITRATE_BITS_PER_SECOND; });
+    parameters.encodings = encodings;
+    await sender.setParameters(parameters);
+  } catch {
+    // A sender can reject parameters until its negotiation settles; the cap is best effort.
+  }
 }
 
 interface VoiceMeshOptions {
@@ -106,15 +230,17 @@ interface VoiceMeshOptions {
   onPresenceChange?: () => void;
 }
 
-// A full mesh of peer connections, one per other voice member. Every peer carries a
-// single outgoing audio track: the mix of this player's microphone and, for a DJ, the
-// shared YouTube tab audio. Mixing keeps the track stable, so starting or stopping
-// either input never needs a renegotiation, and a player with no microphone still
-// joins as a listener.
+// A full mesh of peer connections, one per other voice member. Every peer carries a single
+// outgoing audio track: this player's microphone, passed through an optional noise gate and
+// RNNoise filter so the track stays clean. The track itself never changes, so a player with
+// no microphone still joins as a listener.
 export function useVoiceMesh(groupId: number, currentUserId: number | undefined, voiceMembers: MemberDTO[], isInVoice: boolean, options: VoiceMeshOptions = {}) {
   const { microphoneDeviceId, speakerDeviceId, microphoneVolume = 100, speakerVolume = 100, onPresenceChange } = options;
+  const { noiseGateSensitivity, isRnnoiseEnabled } = useAudioDevices();
   const microphoneVolumeReference = useRef(microphoneVolume);
   const speakerVolumeReference = useRef(speakerVolume);
+  const noiseGateSensitivityReference = useRef(noiseGateSensitivity);
+  const isRnnoiseEnabledReference = useRef(isRnnoiseEnabled);
   const onPresenceChangeReference = useRef(onPresenceChange);
   useEffect(() => {
     onPresenceChangeReference.current = onPresenceChange;
@@ -123,26 +249,19 @@ export function useVoiceMesh(groupId: number, currentUserId: number | undefined,
   const clientReference = useRef<Client | null>(null);
   const mixerReference = useRef<AudioMixer | null>(null);
   const microphoneStreamReference = useRef<MediaStream | null>(null);
-  const tabStreamReference = useRef<MediaStream | null>(null);
   const peersReference = useRef(new Map<number, RTCPeerConnection>());
   const pendingCandidatesReference = useRef(new Map<number, RTCIceCandidateInit[]>());
   const remoteAudioReference = useRef(new Map<number, HTMLAudioElement>());
-  const remoteStreamsReference = useRef(new Map<number, MediaStream>());
-  const visualizerUserIdReference = useRef<number | undefined>(undefined);
-  const isBroadcastingTabAudioReference = useRef(false);
   const statusChannelsReference = useRef(new Map<number, RTCDataChannel>());
   const localStatusReference = useRef<VoiceStatus>({ isMuted: false, isDeafened: false, isSpeaking: false });
   const [memberStatuses, setMemberStatuses] = useState<Record<number, VoiceStatus>>({});
   const [microphoneStream, setMicrophoneStream] = useState<MediaStream | null>(null);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const isDeafenedReference = useRef(false);
-  const silencedUserIdsReference = useRef(new Set<number>());
   const [isMuted, setIsMuted] = useState(false);
   const [isDeafened, setIsDeafened] = useState(false);
   const [microphoneError, setMicrophoneError] = useState(false);
   const [microphoneErrorMessage, setMicrophoneErrorMessage] = useState<string | null>(null);
-  const [tabAudioErrorMessage, setTabAudioErrorMessage] = useState<string | null>(null);
-  const [isSharingTabAudio, setIsSharingTabAudio] = useState(false);
   const [isSignalConnected, setIsSignalConnected] = useState(false);
   const [hasOutgoingAudio, setHasOutgoingAudio] = useState(false);
   const [peerResetCount, setPeerResetCount] = useState(0);
@@ -193,22 +312,18 @@ export function useVoiceMesh(groupId: number, currentUserId: number | undefined,
     return mixerReference.current;
   }, []);
 
+  const applyVoiceBitrateCap = useCallback((peer: RTCPeerConnection) => {
+    peer.getTransceivers().forEach((transceiver) => { void capSenderBitrate(transceiver.sender); });
+  }, []);
+
   const refreshOutgoingTrack = useCallback(() => {
     const track = outgoingTrack();
     setHasOutgoingAudio(true);
     peersReference.current.forEach((peer) => {
       peer.getTransceivers().forEach((transceiver) => { void transceiver.sender.replaceTrack(track); });
+      applyVoiceBitrateCap(peer);
     });
-  }, [outgoingTrack]);
-
-  // The card's bars follow the song: the DJ's own shared audio while this player is
-  // broadcasting it, otherwise the audio arriving from the current DJ. The microphone
-  // never drives them, so talking does not move the bars.
-  const publishVisualizerStream = useCallback(() => {
-    const visualizerUserId = visualizerUserIdReference.current;
-    const remoteStream = visualizerUserId === undefined ? undefined : remoteStreamsReference.current.get(visualizerUserId);
-    publishLocalAudioStream(isBroadcastingTabAudioReference.current ? tabStreamReference.current : remoteStream ?? null);
-  }, []);
+  }, [applyVoiceBitrateCap, outgoingTrack]);
 
   useEffect(() => {
     speakerVolumeReference.current = speakerVolume;
@@ -221,9 +336,20 @@ export function useVoiceMesh(groupId: number, currentUserId: number | undefined,
     mixer?.microphoneGain?.gain.setValueAtTime(microphoneVolume / PERCENT, mixer.context.currentTime);
   }, [microphoneVolume]);
 
+  // A gate or RNNoise change rebuilds the outgoing chain for a live microphone; the tracked
+  // destination track is unchanged, so no peer needs to renegotiate.
+  useEffect(() => {
+    noiseGateSensitivityReference.current = noiseGateSensitivity;
+    isRnnoiseEnabledReference.current = isRnnoiseEnabled;
+    const mixer = mixerReference.current;
+    const stream = microphoneStreamReference.current;
+    if (!mixer || !stream) return;
+    void connectMicrophoneGraph(mixer, stream, microphoneVolumeReference.current, noiseGateSensitivity, isRnnoiseEnabled).catch(() => {});
+  }, [isRnnoiseEnabled, noiseGateSensitivity]);
+
   const applyRemoteAudioMuting = useCallback(() => {
-    remoteAudioReference.current.forEach((audio, userId) => {
-      audio.muted = isDeafenedReference.current || silencedUserIdsReference.current.has(userId);
+    remoteAudioReference.current.forEach((audio) => {
+      audio.muted = isDeafenedReference.current;
     });
   }, []);
 
@@ -245,9 +371,7 @@ export function useVoiceMesh(groupId: number, currentUserId: number | undefined,
     pendingCandidatesReference.current.delete(targetMemberUserId);
     remoteAudioReference.current.get(targetMemberUserId)?.pause();
     remoteAudioReference.current.delete(targetMemberUserId);
-    remoteStreamsReference.current.delete(targetMemberUserId);
-    publishVisualizerStream();
-  }, [publishVisualizerStream]);
+  }, []);
 
   const createPeer = useCallback((targetMemberUserId: number, isOfferer: boolean) => {
     const existingPeer = peersReference.current.get(targetMemberUserId);
@@ -259,6 +383,7 @@ export function useVoiceMesh(groupId: number, currentUserId: number | undefined,
       bindStatusChannel(targetMemberUserId, peer.createDataChannel(VOICE_STATUS_CHANNEL));
       const transceiver = peer.addTransceiver(AUDIO_KIND, { direction: SEND_AND_RECEIVE });
       void transceiver.sender.replaceTrack(outgoingTrack());
+      applyVoiceBitrateCap(peer);
       // An offer sent before the other member finished subscribing is lost; a peer that
       // never connects is torn down so the offer effect sends a fresh one.
       window.setTimeout(() => {
@@ -273,15 +398,13 @@ export function useVoiceMesh(groupId: number, currentUserId: number | undefined,
       const remoteStream = event.streams.at(0) ?? new MediaStream([event.track]);
       const audio = remoteAudioReference.current.get(targetMemberUserId) ?? new Audio();
       audio.srcObject = remoteStream;
-      audio.muted = isDeafenedReference.current || silencedUserIdsReference.current.has(targetMemberUserId);
+      audio.muted = isDeafenedReference.current;
       audio.volume = speakerVolumeReference.current / PERCENT;
       const sinkableAudio = audio as HTMLAudioElement & { setSinkId?: (deviceId: string) => Promise<void> };
       if (speakerDeviceId && typeof sinkableAudio.setSinkId === "function") {
         void sinkableAudio.setSinkId(speakerDeviceId).catch(() => {});
       }
       remoteAudioReference.current.set(targetMemberUserId, audio);
-      remoteStreamsReference.current.set(targetMemberUserId, remoteStream);
-      publishVisualizerStream();
       void audio.play().catch(() => {});
     };
     peer.onconnectionstatechange = () => {
@@ -292,7 +415,7 @@ export function useVoiceMesh(groupId: number, currentUserId: number | undefined,
     };
     peersReference.current.set(targetMemberUserId, peer);
     return peer;
-  }, [bindStatusChannel, closePeer, outgoingTrack, publishVisualizerStream, sendSignal, speakerDeviceId, turnCredentialsQuery.data?.iceServers]);
+  }, [applyVoiceBitrateCap, bindStatusChannel, closePeer, outgoingTrack, sendSignal, speakerDeviceId, turnCredentialsQuery.data?.iceServers]);
 
   // A candidate can arrive before the offer or answer it belongs to; it waits here until
   // the peer has a remote description to attach it to.
@@ -317,6 +440,7 @@ export function useVoiceMesh(groupId: number, currentUserId: number | undefined,
         transceiver.direction = SEND_AND_RECEIVE;
         void transceiver.sender.replaceTrack(outgoingTrack());
       });
+      applyVoiceBitrateCap(peer);
       const answer = await peer.createAnswer();
       await peer.setLocalDescription(answer);
       sendSignal(ANSWER_SIGNAL, senderUserId, answer);
@@ -337,7 +461,7 @@ export function useVoiceMesh(groupId: number, currentUserId: number | undefined,
         pendingCandidatesReference.current.set(senderUserId, [...pendingCandidates, payload as RTCIceCandidateInit]);
       }
     }
-  }, [closePeer, createPeer, flushPendingCandidates, outgoingTrack, sendSignal]);
+  }, [applyVoiceBitrateCap, closePeer, createPeer, flushPendingCandidates, outgoingTrack, sendSignal]);
   const handleSignalReference = useRef(handleSignal);
   useEffect(() => {
     handleSignalReference.current = handleSignal;
@@ -351,7 +475,6 @@ export function useVoiceMesh(groupId: number, currentUserId: number | undefined,
     const peers = peersReference.current;
     const statusChannels = statusChannelsReference.current;
     const remoteAudio = remoteAudioReference.current;
-    const remoteStreams = remoteStreamsReference.current;
     const client = new Client({
       brokerURL: websocketUrl(),
       reconnectDelay: RECONNECT_DELAY_MILLISECONDS,
@@ -387,7 +510,6 @@ export function useVoiceMesh(groupId: number, currentUserId: number | undefined,
       setMemberStatuses({});
       remoteAudio.forEach((audio) => audio.pause());
       remoteAudio.clear();
-      remoteStreams.clear();
       void client.deactivate();
     };
   }, [currentUserId, groupId, isInVoice]);
@@ -422,20 +544,14 @@ export function useVoiceMesh(groupId: number, currentUserId: number | undefined,
       return false;
     }
     try {
-      const microphoneStream = await navigator.mediaDevices.getUserMedia({ audio: microphoneDeviceId ? { deviceId: { exact: microphoneDeviceId } } : true });
+      const microphoneStream = await navigator.mediaDevices.getUserMedia(microphoneConstraints(microphoneDeviceId));
+      microphoneStream.getAudioTracks().forEach((track) => { track.contentHint = MICROPHONE_SPEECH_CONTENT_HINT; });
       microphoneStreamReference.current?.getTracks().forEach((track) => track.stop());
       microphoneStreamReference.current = microphoneStream;
       setMicrophoneStream(microphoneStream);
       if (mixer) {
-        mixer.microphoneSource?.disconnect();
-        mixer.microphoneGain?.disconnect();
-        mixer.microphoneSource = mixer.context.createMediaStreamSource(microphoneStream);
-        mixer.microphoneGain = mixer.context.createGain();
-        mixer.microphoneGain.gain.setValueAtTime(microphoneVolumeReference.current / PERCENT, mixer.context.currentTime);
-        mixer.microphoneSource.connect(mixer.microphoneGain);
-        mixer.microphoneGain.connect(mixer.destination);
+        await connectMicrophoneGraph(mixer, microphoneStream, microphoneVolumeReference.current, noiseGateSensitivityReference.current, isRnnoiseEnabledReference.current);
       }
-      publishVisualizerStream();
       refreshOutgoingTrack();
       setMicrophoneError(false);
       setMicrophoneErrorMessage(null);
@@ -446,85 +562,9 @@ export function useVoiceMesh(groupId: number, currentUserId: number | undefined,
       refreshOutgoingTrack();
       return false;
     }
-  }, [ensureMixer, microphoneDeviceId, publishVisualizerStream, refreshOutgoingTrack]);
-
-  const stopTabAudio = useCallback(() => {
-    tabStreamReference.current?.getTracks().forEach((track) => track.stop());
-    tabStreamReference.current = null;
-    mixerReference.current?.tabSource?.disconnect();
-    mixerReference.current?.tabGain?.disconnect();
-    if (mixerReference.current) {
-      mixerReference.current.tabSource = null;
-      mixerReference.current.tabGain = null;
-    }
-    setIsSharingTabAudio(false);
-    publishTabAudioSharing(false);
-    publishVisualizerStream();
-  }, [publishVisualizerStream]);
-
-  // Must run straight from a click: getDisplayMedia needs the click's user activation,
-  // so nothing is awaited before it.
-  const startTabAudio = useCallback(async () => {
-    if (typeof navigator === "undefined" || !navigator.mediaDevices?.getDisplayMedia) {
-      // Browsers hide screen capture entirely on an insecure origin, which is what a
-      // plain-HTTP LAN address is, so that case gets its own explanation.
-      setTabAudioErrorMessage(typeof window !== "undefined" && !window.isSecureContext ? TAB_AUDIO_INSECURE_CONTEXT_MESSAGE : TAB_AUDIO_UNSUPPORTED_MESSAGE);
-      return false;
-    }
-    const constraints: DisplayAudioConstraints = { video: true, audio: true, selfBrowserSurface: "exclude", systemAudio: "include" };
-    const displayRequest = navigator.mediaDevices.getDisplayMedia(constraints);
-    const mixer = ensureMixer();
-    try {
-      const displayStream = await displayRequest;
-      const audioTrack = displayStream.getAudioTracks().at(0);
-      displayStream.getVideoTracks().forEach((track) => track.stop());
-      if (!audioTrack) {
-        displayStream.getTracks().forEach((track) => track.stop());
-        setTabAudioErrorMessage(TAB_AUDIO_MISSING_MESSAGE);
-        return false;
-      }
-      stopTabAudio();
-      const tabStream = new MediaStream([audioTrack]);
-      tabStreamReference.current = tabStream;
-      if (mixer) {
-        mixer.tabSource = mixer.context.createMediaStreamSource(tabStream);
-        mixer.tabGain = mixer.context.createGain();
-        mixer.tabGain.gain.setValueAtTime(isBroadcastingTabAudioReference.current ? 1 : 0, mixer.context.currentTime);
-        mixer.tabSource.connect(mixer.tabGain);
-        mixer.tabGain.connect(mixer.destination);
-      } else {
-        microphoneStreamReference.current = tabStream;
-      }
-      audioTrack.addEventListener("ended", stopTabAudio, { once: true });
-      publishVisualizerStream();
-      refreshOutgoingTrack();
-      setTabAudioErrorMessage(null);
-      setIsSharingTabAudio(true);
-      publishTabAudioSharing(true);
-      return true;
-    } catch {
-      setTabAudioErrorMessage(TAB_AUDIO_FAILED_MESSAGE);
-      return false;
-    }
-  }, [ensureMixer, publishVisualizerStream, refreshOutgoingTrack, stopTabAudio]);
-
-  // The capture stays alive for the whole match, but its audio reaches the mix, and so
-  // the other players, only while this player is the DJ with the song still hidden.
-  const setTabAudioBroadcasting = useCallback((isBroadcasting: boolean) => {
-    isBroadcastingTabAudioReference.current = isBroadcasting;
-    const tabGain = mixerReference.current?.tabGain;
-    tabGain?.gain.setValueAtTime(isBroadcasting ? 1 : 0, tabGain.context.currentTime);
-    publishVisualizerStream();
-  }, [publishVisualizerStream]);
-
-  // Whose incoming audio drives the card's bars: the current DJ's, or nobody's.
-  const setVisualizerUserId = useCallback((userId: number | undefined) => {
-    visualizerUserIdReference.current = userId;
-    publishVisualizerStream();
-  }, [publishVisualizerStream]);
+  }, [ensureMixer, microphoneDeviceId, refreshOutgoingTrack]);
 
   const stopVoice = useCallback(() => {
-    stopTabAudio();
     microphoneStreamReference.current?.getTracks().forEach((track) => track.stop());
     microphoneStreamReference.current = null;
     setMicrophoneStream(null);
@@ -532,20 +572,18 @@ export function useVoiceMesh(groupId: number, currentUserId: number | undefined,
     statusChannelsReference.current.forEach((channel) => channel.close());
     statusChannelsReference.current.clear();
     setMemberStatuses({});
-    publishLocalAudioStream(null);
     peersReference.current.forEach((peer) => peer.close());
     peersReference.current.clear();
     remoteAudioReference.current.forEach((audio) => audio.pause());
     remoteAudioReference.current.clear();
-    remoteStreamsReference.current.clear();
-    isBroadcastingTabAudioReference.current = false;
+    if (mixerReference.current) disconnectMicrophoneGraph(mixerReference.current);
     void mixerReference.current?.context.close().catch(() => {});
     mixerReference.current = null;
     setHasOutgoingAudio(false);
     setIsMuted(false);
     isDeafenedReference.current = false;
     setIsDeafened(false);
-  }, [stopTabAudio]);
+  }, []);
 
   const toggleMute = useCallback(() => {
     const nextMuted = !isMuted;
@@ -559,13 +597,6 @@ export function useVoiceMesh(groupId: number, currentUserId: number | undefined,
     applyRemoteAudioMuting();
   }, [applyRemoteAudioMuting]);
 
-  // Silences specific members' incoming audio without touching the connection, used to
-  // cut the DJ's song off for the active player once their guess locks in.
-  const setSilencedUserIds = useCallback((userIds: number[]) => {
-    silencedUserIdsReference.current = new Set(userIds);
-    applyRemoteAudioMuting();
-  }, [applyRemoteAudioMuting]);
-
   return {
     memberStatuses,
     localStatus: { isMuted: isMuted || microphoneError, isDeafened, isSpeaking: isSpeaking && !isMuted && !microphoneError },
@@ -573,21 +604,13 @@ export function useVoiceMesh(groupId: number, currentUserId: number | undefined,
     isDeafened,
     microphoneError,
     microphoneErrorMessage,
-    tabAudioError: tabAudioErrorMessage !== null,
-    tabAudioErrorMessage,
-    isSharingTabAudio,
     isSignalConnected,
     // True once this browser has opened its audio for the call; the server can still list a
     // member as in the call after a reload or a crash, when this is false.
     isVoiceStarted: hasOutgoingAudio,
     startMicrophone,
-    startTabAudio,
-    stopTabAudio,
-    setTabAudioBroadcasting,
-    setVisualizerUserId,
     stopVoice,
     toggleMute,
     toggleDeafen,
-    setSilencedUserIds,
   };
 }

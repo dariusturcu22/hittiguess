@@ -104,6 +104,68 @@ describe("useAudioDevices", () => {
 
     expect(result.current.speakerVolume).toBe(55);
   });
+
+  it("starts the noise gate mid range, RNNoise on, and song volume at full", () => {
+    mockMediaDevices();
+
+    const { result } = renderHook(() => useAudioDevices());
+
+    expect(result.current.noiseGateSensitivity).toBe(50);
+    expect(result.current.isRnnoiseEnabled).toBe(true);
+    expect(result.current.songVolume).toBe(100);
+  });
+
+  it("saves the noise gate, RNNoise, and song volume and restores them after a store reset", () => {
+    mockMediaDevices();
+    const { result } = renderHook(() => useAudioDevices());
+
+    act(() => {
+      result.current.setNoiseGateSensitivity(72);
+      result.current.setRnnoiseEnabled(false);
+      result.current.setSongVolume(64);
+    });
+    expect(window.localStorage.getItem("hittiguess-noise-gate-sensitivity")).toBe("72");
+    expect(window.localStorage.getItem("hittiguess-rnnoise-enabled")).toBe("false");
+    expect(window.localStorage.getItem("hittiguess-song-volume")).toBe("64");
+
+    act(() => resetAudioSelection());
+
+    expect(result.current.noiseGateSensitivity).toBe(72);
+    expect(result.current.isRnnoiseEnabled).toBe(false);
+    expect(result.current.songVolume).toBe(64);
+  });
+
+  it("clamps out-of-range stored noise gate and song volume values", () => {
+    mockMediaDevices();
+    window.localStorage.setItem("hittiguess-noise-gate-sensitivity", "150");
+    window.localStorage.setItem("hittiguess-song-volume", "250");
+    resetAudioSelection();
+
+    const { result } = renderHook(() => useAudioDevices());
+
+    expect(result.current.noiseGateSensitivity).toBe(100);
+    expect(result.current.songVolume).toBe(100);
+  });
+
+  it("clamps a negative stored noise gate value up to the minimum", () => {
+    mockMediaDevices();
+    window.localStorage.setItem("hittiguess-noise-gate-sensitivity", "-40");
+    resetAudioSelection();
+
+    const { result } = renderHook(() => useAudioDevices());
+
+    expect(result.current.noiseGateSensitivity).toBe(0);
+  });
+
+  it("falls back to the RNNoise default when the stored value is corrupt", () => {
+    mockMediaDevices();
+    window.localStorage.setItem("hittiguess-rnnoise-enabled", "maybe");
+    resetAudioSelection();
+
+    const { result } = renderHook(() => useAudioDevices());
+
+    expect(result.current.isRnnoiseEnabled).toBe(true);
+  });
 });
 
 describe("clampVolume", () => {

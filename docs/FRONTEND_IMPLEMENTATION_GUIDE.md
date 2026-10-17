@@ -88,6 +88,8 @@ The rail tightens icon sizes and gaps below 860px and 700px of viewport height. 
 
 The current `dev` frontend implements the routes and gameplay wiring for Batches A through E. Choose-source and existing-playlist import states and colocated route/state tests exist. The full desktop rendered matrix, remaining contrast/keyboard/motion checks, and real HTTPS multiplayer media acceptance remain open. App screens are checked on desktop; only the landing page has mobile scope. Live Playwright validation of the group and gameplay flows requires the backend services to run from this same checkout.
 
+The group lobby, its loading and error states, and every round phase of the game session fill the viewport and do not scroll. Each of those roots fills the `(app)` layout's single scroll container and clips its own overflow, and the stage sizes to the available height instead of a fixed minimum: below 860px and 700px of viewport height the orbit avatars, the timeline cards, the DJ and guessing cards, the token pile, and the round-intro headline, ring, and avatars all shrink, and the above-centre-below offsets tighten with them. Those height variants cover the effective heights that 125% and 150% zoom produce on a 1366x768 window. The playlist picker modal, the chat panel, the voice rail's member list, and the timeline track keep their own internal scroll, and the results page still scrolls.
+
 ### Reference sheets, not pages
 
 These are component-variant exploration boards (flat gray canvas, not a themed app page), used as reference when building the component they cover, not implemented as a route themselves.

@@ -374,6 +374,15 @@ describe("AppSidebar on short screens", () => {
     expect(scrollArea).not.toContainElement(screen.getByTitle("Toggle theme"));
   });
 
+  it("widens the navigation gap while keeping tighter height steps", () => {
+    renderSidebar();
+
+    const navigationGroup = screen.getByTitle("Your playlists").parentElement;
+    expect(navigationGroup?.className).toContain("gap-5");
+    expect(navigationGroup?.className).toContain("short:gap-3.5");
+    expect(navigationGroup?.className).toContain("very-short:gap-2.5");
+  });
+
   it("keeps every rail target at least 36 px at every height step", () => {
     renderSidebar();
     const targets = [
