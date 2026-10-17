@@ -5,27 +5,17 @@
  * OpenAPI spec version: v0
  */
 import {
-  useMutation,
-  useQuery
+  useMutation
 } from '@tanstack/react-query';
 import type {
-  DataTag,
-  DefinedInitialDataOptions,
-  DefinedUseQueryResult,
   MutationFunction,
   QueryClient,
-  QueryFunction,
-  QueryKey,
-  UndefinedInitialDataOptions,
   UseMutationOptions,
-  UseMutationResult,
-  UseQueryOptions,
-  UseQueryResult
+  UseMutationResult
 } from '@tanstack/react-query';
 
 import type {
   AdminCatalogSeedingRequest,
-  BacklogStatusDTO,
   EnqueueResultDTO
 } from '../../models';
 
@@ -36,23 +26,8 @@ type SecondParameter<T extends (...args: never) => unknown> = Parameters<T>[1];
 
 
 
-const withQueryKey = <T extends object, K>(query: T, queryKey: K): T & { queryKey: K } => {
-  const result = { queryKey } as T & { queryKey: K };
-  for (const key of Object.keys(query)) {
-    // The explicit queryKey always wins, matching the previous
-    // `{ ...query, queryKey }` spread where it was set last.
-    if (key === 'queryKey') continue;
-    Object.defineProperty(result, key, {
-      enumerable: true,
-      configurable: true,
-      get: () => (query as Record<string, unknown>)[key],
-    });
-  }
-  return result;
-};
-
 /**
- * @summary Bulk-enqueue a YouTube playlist link and/or video IDs into the seeding backlog, admin only; already-known songs are skipped
+ * @summary Bulk-enqueue a YouTube playlist link and/or video IDs into the stage pipeline, admin only; already-known songs are skipped
  */
 export const enqueue = (
     adminCatalogSeedingRequest: AdminCatalogSeedingRequest,
@@ -106,7 +81,7 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
     export type EnqueueMutationVariables = {data: AdminCatalogSeedingRequest}
 
     /**
- * @summary Bulk-enqueue a YouTube playlist link and/or video IDs into the seeding backlog, admin only; already-known songs are skipped
+ * @summary Bulk-enqueue a YouTube playlist link and/or video IDs into the stage pipeline, admin only; already-known songs are skipped
  */
 export const useEnqueue = <TError = unknown,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof enqueue>>, TError,EnqueueMutationVariables, TContext>, request?: SecondParameter<typeof customInstance>}
@@ -118,160 +93,3 @@ export const useEnqueue = <TError = unknown,
       > => {
       return useMutation(getEnqueueMutationOptions(options), queryClient);
     }
-    /**
- * @summary Start draining the backlog now instead of waiting for the daily sweep, admin only; 409 when a drain is already running
- */
-export const drainNow = (
-
- options?: SecondParameter<typeof customInstance>,signal?: AbortSignal
-) => {
-
-
-      return customInstance<BacklogStatusDTO>(
-      {url: `/api/admin/catalog-seeding/drain`, method: 'POST', signal
-    },
-      options);
-    }
-
-
-
-
-export const getDrainNowMutationKey = () => ['drainNow'] as const;
-
-export const getDrainNowMutationOptions = <TError = unknown,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof drainNow>>, TError,void, TContext>, request?: SecondParameter<typeof customInstance>}
-): UseMutationOptions<Awaited<ReturnType<typeof drainNow>>, TError,void, TContext> => {
-
-const mutationKey = getDrainNowMutationKey();
-const {mutation: mutationOptions, request: requestOptions} = options ?
-      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
-      options
-      : {...options, mutation: {...options.mutation, mutationKey}}
-      : {mutation: { mutationKey, }, request: undefined};
-
-
-
-
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof drainNow>>, void> = () => {
-
-
-          return  drainNow(requestOptions)
-        }
-
-
-
-
-
-
-  return  { mutationFn, ...mutationOptions }}
-
-    export type DrainNowMutationResult = NonNullable<Awaited<ReturnType<typeof drainNow>>>
-
-    export type DrainNowMutationError = unknown
-
-
-    /**
- * @summary Start draining the backlog now instead of waiting for the daily sweep, admin only; 409 when a drain is already running
- */
-export const useDrainNow = <TError = unknown,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof drainNow>>, TError,void, TContext>, request?: SecondParameter<typeof customInstance>}
- , queryClient?: QueryClient): UseMutationResult<
-        Awaited<ReturnType<typeof drainNow>>,
-        TError,
-        void,
-        TContext
-      > => {
-      return useMutation(getDrainNowMutationOptions(options), queryClient);
-    }
-    /**
- * @summary Backlog status, admin only: pending count, processed today, quota remaining, and recent rechecks of provisional answers
- */
-export const backlogStatus = (
-
- options?: SecondParameter<typeof customInstance>,signal?: AbortSignal
-) => {
-
-
-      return customInstance<BacklogStatusDTO>(
-      {url: `/api/admin/catalog-seeding/status`, method: 'GET', signal
-    },
-      options);
-    }
-
-
-
-
-export const getBacklogStatusQueryKey = () => {
-    return [
-    `/api/admin/catalog-seeding/status`
-    ] as const;
-    }
-
-
-export const getBacklogStatusQueryOptions = <TData = Awaited<ReturnType<typeof backlogStatus>>, TError = unknown>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof backlogStatus>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
-) => {
-
-const {query: queryOptions, request: requestOptions} = options ?? {};
-
-  const queryKey =  queryOptions?.queryKey ?? getBacklogStatusQueryKey();
-
-
-
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof backlogStatus>>> = ({ signal }) => backlogStatus(requestOptions, signal);
-
-
-
-
-
-   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof backlogStatus>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
-}
-
-export type BacklogStatusQueryResult = NonNullable<Awaited<ReturnType<typeof backlogStatus>>>
-export type BacklogStatusQueryError = unknown
-
-
-export function useBacklogStatus<TData = Awaited<ReturnType<typeof backlogStatus>>, TError = unknown>(
-  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof backlogStatus>>, TError, TData>> & Pick<
-        DefinedInitialDataOptions<
-          Awaited<ReturnType<typeof backlogStatus>>,
-          TError,
-          Awaited<ReturnType<typeof backlogStatus>>
-        > , 'initialData'
-      >, request?: SecondParameter<typeof customInstance>}
- , queryClient?: QueryClient
-  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useBacklogStatus<TData = Awaited<ReturnType<typeof backlogStatus>>, TError = unknown>(
-  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof backlogStatus>>, TError, TData>> & Pick<
-        UndefinedInitialDataOptions<
-          Awaited<ReturnType<typeof backlogStatus>>,
-          TError,
-          Awaited<ReturnType<typeof backlogStatus>>
-        > , 'initialData'
-      >, request?: SecondParameter<typeof customInstance>}
- , queryClient?: QueryClient
-  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useBacklogStatus<TData = Awaited<ReturnType<typeof backlogStatus>>, TError = unknown>(
-  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof backlogStatus>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
- , queryClient?: QueryClient
-  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-/**
- * @summary Backlog status, admin only: pending count, processed today, quota remaining, and recent rechecks of provisional answers
- */
-
-export function useBacklogStatus<TData = Awaited<ReturnType<typeof backlogStatus>>, TError = unknown>(
-  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof backlogStatus>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
- , queryClient?: QueryClient
- ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
-
-  const queryOptions = getBacklogStatusQueryOptions(options)
-
-  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
-
-  return withQueryKey(query, queryOptions.queryKey);
-}
-
-
-
-
-
-
