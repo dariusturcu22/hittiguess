@@ -1242,3 +1242,9 @@ Why: the second playtest showed that sharing one call for voice and song meant n
 Decision: desktop Firefox and Safari players get the share prompt again, and every attempt is logged, until real tests show whether they can capture audio. The earlier skip rule stays in the code behind one flag.
 
 Why: the earlier skip was based on documentation, not on a test in those browsers.
+
+## 2026-10-18 | Difficulty selection widens past the requested tier when that tier is short
+
+Decision: a Start on the saved tier takes the requested tier's prepared scores first, then the other prepared tiers, then VERIFIED songs in international scope that have no prepared row. The requested tier keeps priority whenever its band can fill the pool. Only a catalog still short after widening fails the start, and that message names how many songs are available and how many the game needs.
+
+Why: the second playtest could not start Easy, Medium, or Hard. The start asked one tier band for connected players multiplied by the target card count multiplied by three, so a band smaller than that stopped the game even though the catalog held enough in-scope songs, and the refusal carried no numbers to act on.
