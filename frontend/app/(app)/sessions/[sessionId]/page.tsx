@@ -675,6 +675,7 @@ export default function GameSessionPage({ params }: PageProps) {
           {statusLabel ? <strong className={`font-display text-xs font-normal ${statusClassName}`}>{statusLabel}</strong> : null}
           <span className={`size-2 rounded-full ${realtime.connectionState === "connected" ? "bg-green" : "bg-muted-foreground"}`} role="img" aria-label={`Session connection ${realtime.connectionState}`} />
         </div>
+        {currentPlayer && !isSharingTabAudioSupported ? <p className="mt-1.5 text-[11px] text-muted-foreground">This browser can&apos;t share audio, so you are skipped as DJ. Use Chrome or Edge on a computer to DJ.</p> : null}
       </div>
       <div className="hidden shrink-0 items-center gap-2.5 rounded-full border-2 border-border bg-card py-2 pl-2 pr-4 sm:inline-flex">
         <span className="size-[26px] rounded-lg" style={{ background: playlistColor ? (playlistColor.startsWith("#") ? playlistColor : `#${playlistColor}`) : "var(--accent)" }} />

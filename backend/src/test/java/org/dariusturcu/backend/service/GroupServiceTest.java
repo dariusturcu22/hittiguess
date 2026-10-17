@@ -825,6 +825,30 @@ class GroupServiceTest {
     }
 
     @Test
+    void reportAudioCapabilityStoresWhetherTheMembersBrowserCanCaptureAudio() {
+        Group group = groupWithAdmin();
+        when(groupRepository.findById(10L)).thenReturn(Optional.of(group));
+        authenticateAs(adminUser);
+
+        groupService.reportAudioCapability(10L, false);
+
+        Member adminMember = group.getMembers().getFirst();
+        assertThat(adminMember.isCanShareAudio()).isFalse();
+        verify(memberRepository).save(adminMember);
+        verify(eventPublisher, never()).publishEvent(any());
+    }
+
+    @Test
+    void reportAudioCapabilityRejectsANonMember() {
+        Group group = groupWithAdmin();
+        when(groupRepository.findById(10L)).thenReturn(Optional.of(group));
+        authenticateAs(otherUser);
+
+        assertThatThrownBy(() -> groupService.reportAudioCapability(10L, false))
+                .isInstanceOf(AccessDeniedException.class);
+    }
+
+    @Test
     void disconnectMemberRejectsAUserWhoIsNotAMember() {
         Group group = groupWithAdmin();
         when(groupRepository.findById(10L)).thenReturn(Optional.of(group));

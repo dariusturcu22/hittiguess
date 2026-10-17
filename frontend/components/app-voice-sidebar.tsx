@@ -5,13 +5,14 @@ import { Headphones, Loader2, Mic, MicOff, Phone, PhoneOff, Settings } from "luc
 import { useQueryClient } from "@tanstack/react-query";
 import { usePathname } from "next/navigation";
 
-import { getGetActiveMembershipQueryKey, getGetGroupQueryKey, useGetActiveMembership, useJoinVoice, useLeaveVoice } from "@/hooks/generated/group-management/group-management";
+import { getGetActiveMembershipQueryKey, getGetGroupQueryKey, useGetActiveMembership, useJoinVoice, useLeaveVoice, useReportAudioCapability } from "@/hooks/generated/group-management/group-management";
 import { useGetActiveSessionForGroup, useGetSession } from "@/hooks/generated/game-session/game-session";
 import { useGetCurrentUser } from "@/hooks/generated/user-management/user-management";
 import { shouldSilenceDjForActivePlayer, useVoiceMesh } from "@/hooks/use-voice-mesh";
 import { useAudioDevices } from "@/hooks/use-audio-devices";
 import { DJ_AUDIO_SHARE_EVENT, publishTabAudioError } from "@/hooks/use-local-audio-stream";
 import { Button } from "@/components/shadcn/button";
+import { canShareTabAudio } from "@/lib/youtube-link-out";
 import { VoiceSettingsPopup } from "@/components/voice-settings-popup";
 import { VoiceMemberList } from "@/components/voice-member-list";
 
@@ -26,6 +27,7 @@ export function AppVoiceSidebar() {
   const currentUserQuery = useGetCurrentUser();
   const joinVoice = useJoinVoice();
   const leaveVoice = useLeaveVoice();
+  const { mutate: reportAudioCapability } = useReportAudioCapability();
   const [microphoneError, setMicrophoneError] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   // Set from the join click until the server confirms the call. The signalling socket
@@ -43,6 +45,14 @@ export function AppVoiceSidebar() {
   const currentMember = activeGroup?.members?.find((member) => member.userId === currentUserQuery.data?.id);
   const isInVoice = Boolean(currentMember?.isInVoice);
   const isOnLobbyPage = LOBBY_PATH_PATTERN.test(pathname);
+  // Tells the server once per group whether this browser can capture audio, so the DJ
+  // rotation skips a player who could not share the song (Firefox, Safari, phones).
+  const reportedGroupReference = useRef<number | undefined>(undefined);
+  useEffect(() => {
+    if (groupId === undefined || !currentUserQuery.data || reportedGroupReference.current === groupId) return;
+    reportedGroupReference.current = groupId;
+    reportAudioCapability({ groupId, data: { canShareAudio: canShareTabAudio(navigator.userAgent) } });
+  }, [currentUserQuery.data, groupId, reportAudioCapability]);
   const voiceMembers = (activeGroup?.members ?? []).filter((member) => member.isInVoice);
   const refreshVoicePresence = useCallback(() => {
     if (groupId) void queryClient.invalidateQueries({ queryKey: getGetGroupQueryKey(groupId) });

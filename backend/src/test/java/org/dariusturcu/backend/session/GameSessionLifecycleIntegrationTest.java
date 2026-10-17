@@ -470,6 +470,25 @@ class GameSessionLifecycleIntegrationTest {
         assertThat(afterReconnect.getStatus()).isEqualTo(PlayerStatus.LEFT);
     }
 
+    @Test
+    void theFirstDjIsAPlayerWhoseBrowserCanCaptureAudio() {
+        GameSession session = startRotatingSession("capable-dj", 3, Set.of(1));
+        Round round = firstRound(session);
+
+        assertThat(round.getDjPlayer().isCanDj()).isTrue();
+        assertThat(round.getDjPlayer().getId()).isNotEqualTo(round.getActivePlayer().getId());
+        assertThat(session.getPlayers().stream().filter(player -> !player.isCanDj()).count()).isEqualTo(1);
+    }
+
+    @Test
+    void whenNoOtherPlayerCanCaptureAudioTheNextPlayerStillTakesTheDjRole() {
+        GameSession session = startRotatingSession("no-capable-dj", 2, Set.of(1));
+        Round round = firstRound(session);
+
+        assertThat(round.getDjPlayer().isCanDj()).isFalse();
+        assertThat(round.getDjPlayer().getId()).isNotEqualTo(round.getActivePlayer().getId());
+    }
+
     private Round firstRound(GameSession session) {
         return roundRepository.findTopBySessionOrderByRoundNumberDesc(session).orElseThrow();
     }
@@ -479,6 +498,10 @@ class GameSessionLifecycleIntegrationTest {
     }
 
     private GameSession startRotatingSession(String label, int playerCount) {
+        return startRotatingSession(label, playerCount, Set.of());
+    }
+
+    private GameSession startRotatingSession(String label, int playerCount, Set<Integer> incapablePlayerIndexes) {
         User admin = persistUser(label + "-admin-" + System.nanoTime());
 
         authenticateAs(admin);
@@ -488,6 +511,9 @@ class GameSessionLifecycleIntegrationTest {
             User otherPlayer = persistUser(label + "-player-" + playerIndex + "-" + System.nanoTime());
             authenticateAs(otherPlayer);
             groupService.joinGroup(new JoinGroupRequest(createdGroup.inviteCode(), null, null, null));
+            if (incapablePlayerIndexes.contains(playerIndex)) {
+                groupService.reportAudioCapability(createdGroup.id(), false);
+            }
         }
 
         Playlist playlist = new Playlist();

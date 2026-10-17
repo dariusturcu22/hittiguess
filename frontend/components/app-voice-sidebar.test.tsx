@@ -6,6 +6,7 @@ import { AppVoiceSidebar } from "./app-voice-sidebar";
 
 const joinVoice = vi.fn();
 const leaveVoice = vi.fn();
+const reportAudioCapability = vi.fn();
 const startMicrophone = vi.fn(async () => true);
 const startTabAudio = vi.fn(async () => true);
 const setSilencedUserIds = vi.fn();
@@ -29,6 +30,7 @@ vi.mock("@/hooks/generated/group-management/group-management", () => ({
   }),
   useJoinVoice: () => ({ mutate: joinVoice, isPending: false }),
   useLeaveVoice: () => ({ mutate: leaveVoice, isPending: false }),
+  useReportAudioCapability: () => ({ mutate: reportAudioCapability }),
 }));
 
 vi.mock("@/hooks/generated/game-session/game-session", () => ({
@@ -87,6 +89,7 @@ describe("AppVoiceSidebar", () => {
     sessionData = undefined;
     joinVoice.mockClear();
     leaveVoice.mockClear();
+    reportAudioCapability.mockClear();
     startMicrophone.mockClear();
     startMicrophone.mockResolvedValue(true);
     startTabAudio.mockClear();
@@ -261,5 +264,21 @@ describe("AppVoiceSidebar", () => {
     render(<AppVoiceSidebar />);
 
     expect(leaveVoice).not.toHaveBeenCalled();
+  });
+
+  it("reports once per group whether this browser can capture audio", () => {
+    vi.spyOn(window.navigator, "userAgent", "get").mockReturnValue("Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:140.0) Gecko/20100101 Firefox/140.0");
+    const { rerender } = render(<AppVoiceSidebar />);
+    rerender(<AppVoiceSidebar />);
+
+    expect(reportAudioCapability).toHaveBeenCalledOnce();
+    expect(reportAudioCapability).toHaveBeenCalledWith({ groupId: 4, data: { canShareAudio: false } });
+  });
+
+  it("reports that a desktop Chromium browser can capture audio", () => {
+    vi.spyOn(window.navigator, "userAgent", "get").mockReturnValue("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/140.0 Safari/537.36");
+    render(<AppVoiceSidebar />);
+
+    expect(reportAudioCapability).toHaveBeenCalledWith({ groupId: 4, data: { canShareAudio: true } });
   });
 });

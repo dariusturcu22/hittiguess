@@ -1,6 +1,7 @@
 package org.dariusturcu.backend.controller;
 
 import jakarta.validation.Valid;
+import org.dariusturcu.backend.model.group.AudioCapabilityRequest;
 import org.dariusturcu.backend.model.group.CreateGroupRequest;
 import org.dariusturcu.backend.model.group.GroupDetailDTO;
 import org.dariusturcu.backend.model.group.GroupInvitePreviewDTO;
@@ -168,6 +169,15 @@ public class GroupController {
     public ResponseEntity<Void> leaveVoice(
             @PathVariable Long groupId) {
         groupService.leaveVoice(groupId);
+        return ResponseEntity.noContent().build();
+    }
+
+    @Operation(summary = "Report whether the calling member's browser can capture audio, which decides if they can be the DJ")
+    @PostMapping("/{groupId}/audio-capability")
+    public ResponseEntity<Void> reportAudioCapability(
+            @PathVariable Long groupId,
+            @Valid @RequestBody AudioCapabilityRequest request) {
+        groupService.reportAudioCapability(groupId, request.canShareAudio());
         return ResponseEntity.noContent().build();
     }
 

@@ -383,6 +383,15 @@ public class GroupService {
         setVoicePresenceAndBroadcast(groupId, false);
     }
 
+    // The member's browser reports whether it can capture audio. Nothing is broadcast: the
+    // flag is only read when a session starts and when the DJ rotation picks the next DJ.
+    public void reportAudioCapability(Long groupId, boolean canShareAudio) {
+        Group group = findGroup(groupId);
+        Member member = requireMembership(group, SecurityUtils.getCurrentUser());
+        member.setCanShareAudio(canShareAudio);
+        memberRepository.save(member);
+    }
+
     private void setVoicePresenceAndBroadcast(Long groupId, boolean inVoice) {
         Group group = findGroup(groupId);
         Member member = requireMembership(group, SecurityUtils.getCurrentUser());

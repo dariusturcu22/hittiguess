@@ -24,6 +24,7 @@ import type {
 } from '@tanstack/react-query';
 
 import type {
+  AudioCapabilityRequest,
   CreateGroupRequest,
   GenerateDifficultySetRequest,
   GeneratedSongPreviewDTO,
@@ -850,6 +851,74 @@ export const useDisconnect = <TError = unknown,
         TContext
       > => {
       return useMutation(getDisconnectMutationOptions(options), queryClient);
+    }
+    /**
+ * @summary Report whether the calling member's browser can capture audio, which decides if they can be the DJ
+ */
+export const reportAudioCapability = (
+    groupId: number,
+    audioCapabilityRequest: AudioCapabilityRequest,
+ options?: SecondParameter<typeof customInstance>,signal?: AbortSignal
+) => {
+
+
+      return customInstance<void>(
+      {url: `/api/groups/${groupId}/audio-capability`, method: 'POST',
+      headers: {'Content-Type': 'application/json', },
+      data: audioCapabilityRequest, signal
+    },
+      options);
+    }
+
+
+
+
+export const getReportAudioCapabilityMutationKey = () => ['reportAudioCapability'] as const;
+
+export const getReportAudioCapabilityMutationOptions = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof reportAudioCapability>>, TError,ReportAudioCapabilityMutationVariables, TContext>, request?: SecondParameter<typeof customInstance>}
+): UseMutationOptions<Awaited<ReturnType<typeof reportAudioCapability>>, TError,ReportAudioCapabilityMutationVariables, TContext> => {
+
+const mutationKey = getReportAudioCapabilityMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof reportAudioCapability>>, ReportAudioCapabilityMutationVariables> = (props) => {
+          const {groupId,data} = props ?? {};
+
+          return  reportAudioCapability(groupId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ReportAudioCapabilityMutationResult = NonNullable<Awaited<ReturnType<typeof reportAudioCapability>>>
+    export type ReportAudioCapabilityMutationBody = AudioCapabilityRequest
+    export type ReportAudioCapabilityMutationError = unknown
+    export type ReportAudioCapabilityMutationVariables = {groupId: number;data: AudioCapabilityRequest}
+
+    /**
+ * @summary Report whether the calling member's browser can capture audio, which decides if they can be the DJ
+ */
+export const useReportAudioCapability = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof reportAudioCapability>>, TError,ReportAudioCapabilityMutationVariables, TContext>, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof reportAudioCapability>>,
+        TError,
+        ReportAudioCapabilityMutationVariables,
+        TContext
+      > => {
+      return useMutation(getReportAudioCapabilityMutationOptions(options), queryClient);
     }
     /**
  * @summary Join a group via invite link or join code
