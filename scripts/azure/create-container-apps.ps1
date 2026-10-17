@@ -208,6 +208,9 @@ Invoke-Az containerapp create --name $CoreAppName --resource-group $ResourceGrou
         "RESEND_API_KEY=secretref:resend-api-key" `
     -o none
 
+Write-Host "`nAdding startup, liveness, and readiness probes to both apps..."
+& (Join-Path $PSScriptRoot "apply-health-probes.ps1") -ResourceGroup $ResourceGroup -AppNames @($AiAppName, $CoreAppName) -NoWait
+
 $coreHost = (Invoke-AzureCapture $az @("containerapp", "show", "--name", $CoreAppName, "--resource-group", $ResourceGroup, "--query", "properties.configuration.ingress.fqdn", "-o", "tsv")).Output
 Write-Host "`nDone. Secrets were stored in Container Apps and not printed."
 Write-Host "Core app address: https://$coreHost"
