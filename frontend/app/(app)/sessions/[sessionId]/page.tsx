@@ -734,7 +734,7 @@ export default function GameSessionPage({ params }: PageProps) {
       </div>
     </header>
 
-    <section className="relative min-h-[560px] flex-1" aria-label="Game stage">
+    <section className="relative min-h-[680px] flex-1" aria-label="Game stage">
       <div className="absolute left-1/2 top-1/2 flex w-full max-w-[1100px] -translate-x-1/2 -translate-y-1/2 justify-center">
         {currentRound ? <GameplayTimeline cards={cards} slots={slots} tiltGapIndex={tiltGapIndex} focusKey={focusKey} isDimmed={isTimelineDimmed} trackReference={trackReference} /> : <p className="py-12 text-sm text-muted-foreground">Your timeline will appear when the round starts.</p>}
       </div>

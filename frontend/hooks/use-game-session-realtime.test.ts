@@ -103,6 +103,19 @@ describe("useGameSessionRealtime", () => {
     expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ["round-link-out", 1] });
   });
 
+  it("does not refresh the DJ link-out once the song is revealed", () => {
+    const queryClient = new QueryClient();
+    const invalidateQueries = vi.spyOn(queryClient, "invalidateQueries");
+    renderHook(() => useGameSessionRealtime(1), {
+      wrapper: ({ children }: { children: ReactNode }) => createElement(QueryClientProvider, { client: queryClient }, children),
+    });
+
+    roundMessageHandler?.({ body: JSON.stringify({ type: "REVEAL_TRIGGERED", sessionId: 1, payload: { id: 5, status: "REVEALED" } }) });
+
+    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ["session", 1] });
+    expect(invalidateQueries).not.toHaveBeenCalledWith({ queryKey: ["round-link-out", 1] });
+  });
+
   it("hands the ended event's group to the page and clears the dead session's cached lookups", () => {
     const queryClient = new QueryClient();
     queryClient.setQueryData(["/api/sessions/groups/4/active"], { id: 1 });
