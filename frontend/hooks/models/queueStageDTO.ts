@@ -20,4 +20,11 @@ export interface QueueStageDTO {
   averageResponseMs?: number;
   estimatedDrainSeconds?: number;
   pausedReason?: string;
+  waitingDue?: number;
+  waitingScheduled?: number;
+  averageQueueWaitMs?: number;
+  jobsPerMinute?: number;
+  sourceRequestMs?: number;
+  concurrencyLimit?: number;
+  finishedLastHour?: number;
 }

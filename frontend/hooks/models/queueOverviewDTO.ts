@@ -12,4 +12,5 @@ export interface QueueOverviewDTO {
   youtubeUnitsRemaining?: number;
   youtubeReserveUnits?: number;
   youtubeBackfillLimited?: boolean;
+  estimatedDrainSeconds?: number;
 }
