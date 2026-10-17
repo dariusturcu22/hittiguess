@@ -66,7 +66,7 @@ Every rate-limited request the core service rejects, whichever limiter caught it
 | GET | `/api/playlists/{playlistId}/import-jobs/{importJobId}` | `PlaylistImportJobController`, one import job of the playlist, running or finished, with per-video results; needs read access to the playlist. The import screen reads a finished job's final results through it |
 | GET | `/api/playlists/{playlistId}/import-jobs/active` | `PlaylistImportJobController`, the playlist's currently running import job with per-video progress, if any, story 47 |
 | POST | `/api/groups` | `GroupController`, creates a group, the creator becomes its admin, story 39 |
-| POST | `/api/groups/join` | `GroupController`, join by invite link, rejects a banned or already-in-a-group user, story 39 |
+| POST | `/api/groups/join` | `GroupController`, join by invite link or join code; re-joining a group the caller is already in returns that group's detail without adding a member or broadcasting; a caller already in a different group is rejected with a conflict telling them to leave it first, and a caller removed from the group, or a group already started or full, is rejected with its own conflict, story 39 |
 | GET | `/api/groups/active` | `GroupController`, the caller's current active group, story 39 |
 | GET | `/api/groups/{groupId}` | `GroupController`, story 39 |
 | PATCH | `/api/groups/{groupId}/settings` | `GroupController`, admin only, story 39 |
