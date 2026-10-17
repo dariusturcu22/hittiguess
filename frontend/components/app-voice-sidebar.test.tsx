@@ -1,75 +1,50 @@
-import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { requestDjTabAudioShare } from "@/hooks/use-local-audio-stream";
 import { AppVoiceSidebar } from "./app-voice-sidebar";
 
 const joinVoice = vi.fn();
 const leaveVoice = vi.fn();
 const reportAudioCapability = vi.fn();
 const startMicrophone = vi.fn(async () => true);
-const startTabAudio = vi.fn(async () => true);
-const setSilencedUserIds = vi.fn();
-const setTabAudioBroadcasting = vi.fn();
-const setVisualizerUserId = vi.fn();
-let sessionData: unknown = undefined;
+let groupMembers: Array<{ id: number; userId: number; displayName: string; isInVoice: boolean }> = [];
+let hasGroup = true;
 const toggleMute = vi.fn();
 const toggleDeafen = vi.fn();
-let inVoice = true;
-let currentPathname = "/groups/4";
-
-vi.mock("next/navigation", () => ({
-  usePathname: () => currentPathname,
-}));
 
 vi.mock("@/hooks/generated/group-management/group-management", () => ({
   getGetActiveMembershipQueryKey: () => ["active-membership"],
   getGetGroupQueryKey: (groupId: number) => ["group", groupId],
   useGetActiveMembership: () => ({
-    data: { id: 4, members: [{ id: 1, userId: 11, displayName: "Alex", isInVoice: inVoice }] },
+    data: hasGroup ? { id: 4, members: groupMembers } : undefined,
   }),
   useJoinVoice: () => ({ mutate: joinVoice, isPending: false }),
   useLeaveVoice: () => ({ mutate: leaveVoice, isPending: false }),
   useReportAudioCapability: () => ({ mutate: reportAudioCapability }),
 }));
 
-vi.mock("@/hooks/generated/game-session/game-session", () => ({
-  useGetActiveSessionForGroup: () => ({ data: sessionData ? { id: 9 } : undefined }),
-  useGetSession: () => ({ data: sessionData }),
-}));
-
 vi.mock("@/hooks/generated/user-management/user-management", () => ({
   useGetCurrentUser: () => ({ data: { id: 11 } }),
-}));
-
-vi.mock("@/hooks/use-game-session-realtime", () => ({
-  useGameSessionRealtime: () => undefined,
 }));
 
 const voiceMeshState = vi.hoisted(() => ({ holdSignalling: false, isVoiceStarted: true }));
 
 vi.mock("@/hooks/use-voice-mesh", () => ({
-  shouldSilenceDjForActivePlayer: (round: { activePlayerId?: number; status?: string } | undefined, playerId: number | undefined) =>
-    round?.activePlayerId === playerId && round?.status === "COUNTDOWN",
   useVoiceMesh: (_groupId: number, _userId: number | undefined, _members: unknown[], isSignalling: boolean) => ({
     // The signalling socket connects as soon as the sidebar asks for it, unless a test
     // holds it back to check the join waits for it.
     isSignalConnected: isSignalling && !voiceMeshState.holdSignalling,
     isVoiceStarted: voiceMeshState.isVoiceStarted,
     startMicrophone,
-    startTabAudio,
-    stopTabAudio: vi.fn(),
-    setTabAudioBroadcasting,
-    setVisualizerUserId,
-    tabAudioErrorMessage: null,
     stopVoice: vi.fn(),
-    setSilencedUserIds,
     toggleMute,
     toggleDeafen,
     isMuted: false,
     isDeafened: false,
     microphoneError: false,
-    tabAudioError: false,
+    microphoneErrorMessage: null,
+    localStatus: { isMuted: false, isDeafened: false, isSpeaking: false },
+    memberStatuses: {},
   }),
 }));
 
@@ -81,21 +56,16 @@ vi.mock("@tanstack/react-query", () => ({
 
 describe("AppVoiceSidebar", () => {
   beforeEach(() => {
-    inVoice = true;
+    hasGroup = true;
     voiceMeshState.holdSignalling = false;
     voiceMeshState.isVoiceStarted = true;
-    currentPathname = "/groups/4";
+    groupMembers = [{ id: 1, userId: 11, displayName: "Alex", isInVoice: true }];
     window.localStorage.clear();
-    sessionData = undefined;
     joinVoice.mockClear();
     leaveVoice.mockClear();
     reportAudioCapability.mockClear();
     startMicrophone.mockClear();
     startMicrophone.mockResolvedValue(true);
-    startTabAudio.mockClear();
-    setSilencedUserIds.mockClear();
-    setTabAudioBroadcasting.mockClear();
-    setVisualizerUserId.mockClear();
     toggleMute.mockClear();
     toggleDeafen.mockClear();
   });
@@ -122,7 +92,7 @@ describe("AppVoiceSidebar", () => {
   });
 
   it("labels the join action and starts the microphone before joining", async () => {
-    inVoice = false;
+    groupMembers = [{ id: 1, userId: 11, displayName: "Alex", isInVoice: false }];
     render(<AppVoiceSidebar />);
 
     fireEvent.click(screen.getByRole("button", { name: "Join call" }));
@@ -131,26 +101,36 @@ describe("AppVoiceSidebar", () => {
     await waitFor(() => expect(joinVoice).toHaveBeenCalledWith({ groupId: 4 }, expect.anything()));
   });
 
-  it("hides the sidebar outside a call except on the lobby page", () => {
-    inVoice = false;
-    currentPathname = "/playlists";
+  it("lists who is in the call before joining", () => {
+    groupMembers = [
+      { id: 1, userId: 11, displayName: "Alex", isInVoice: false },
+      { id: 2, userId: 22, displayName: "Blair", isInVoice: true },
+    ];
+    render(<AppVoiceSidebar />);
+
+    expect(screen.getByText("Blair")).toBeVisible();
+    expect(screen.queryByText("Alex")).toBeNull();
+    expect(screen.getByRole("button", { name: "Join call" })).toBeVisible();
+  });
+
+  it("shows the rail with the join action outside a call on any page in a group", () => {
+    groupMembers = [{ id: 1, userId: 11, displayName: "Alex", isInVoice: false }];
+    render(<AppVoiceSidebar />);
+
+    expect(screen.getByRole("complementary", { name: "Voice sidebar" })).toBeVisible();
+    expect(screen.getByRole("button", { name: "Join call" })).toBeVisible();
+    expect(screen.queryByRole("button", { name: /ollapse|Expand/ })).toBeNull();
+  });
+
+  it("hides the rail only when the user is in no group", () => {
+    hasGroup = false;
     render(<AppVoiceSidebar />);
 
     expect(screen.queryByRole("complementary", { name: "Voice sidebar" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Join call" })).toBeNull();
   });
 
-  it("shows only the slim rail with no collapse control outside a call", () => {
-    inVoice = false;
-    render(<AppVoiceSidebar />);
-
-    expect(screen.getByRole("button", { name: "Join call" })).toBeVisible();
-    expect(screen.queryByRole("button", { name: /ollapse|Expand/ })).toBeNull();
-  });
-
   it("keeps the full sidebar everywhere while in a call", () => {
-    inVoice = true;
-    currentPathname = "/playlists";
     render(<AppVoiceSidebar />);
 
     expect(screen.getByRole("button", { name: "Leave voice" })).toBeVisible();
@@ -158,7 +138,7 @@ describe("AppVoiceSidebar", () => {
   });
 
   it("announces the join only once its signalling socket is connected", async () => {
-    inVoice = false;
+    groupMembers = [{ id: 1, userId: 11, displayName: "Alex", isInVoice: false }];
     voiceMeshState.holdSignalling = true;
     const { rerender } = render(<AppVoiceSidebar />);
 
@@ -172,7 +152,7 @@ describe("AppVoiceSidebar", () => {
   });
 
   it("still joins the call as a listener when the microphone can't start", async () => {
-    inVoice = false;
+    groupMembers = [{ id: 1, userId: 11, displayName: "Alex", isInVoice: false }];
     startMicrophone.mockResolvedValue(false);
     render(<AppVoiceSidebar />);
 
@@ -181,75 +161,15 @@ describe("AppVoiceSidebar", () => {
     await waitFor(() => expect(joinVoice).toHaveBeenCalledWith({ groupId: 4 }, expect.anything()));
   });
 
-  it("stays hidden on the game page outside a call", () => {
-    inVoice = false;
-    currentPathname = "/sessions/9";
-    render(<AppVoiceSidebar />);
-
-    expect(screen.queryByRole("complementary", { name: "Voice sidebar" })).toBeNull();
-  });
-
   it("keeps the same 76px width as the left sidebar in and out of a call", () => {
-    inVoice = false;
+    groupMembers = [{ id: 1, userId: 11, displayName: "Alex", isInVoice: false }];
     const { unmount } = render(<AppVoiceSidebar />);
     expect(screen.getByRole("complementary", { name: "Voice sidebar" })).toHaveClass("w-[76px]");
     unmount();
 
-    inVoice = true;
+    groupMembers = [{ id: 1, userId: 11, displayName: "Alex", isInVoice: true }];
     render(<AppVoiceSidebar />);
     expect(screen.getByRole("complementary", { name: "Voice sidebar" })).toHaveClass("w-[76px]");
-  });
-
-  it("shares the DJ's tab audio on request and joins the call for a DJ outside it", async () => {
-    inVoice = false;
-    currentPathname = "/sessions/9";
-    render(<AppVoiceSidebar />);
-
-    act(() => requestDjTabAudioShare());
-
-    expect(startTabAudio).toHaveBeenCalledOnce();
-    await waitFor(() => expect(joinVoice).toHaveBeenCalledWith({ groupId: 4 }, expect.anything()));
-  });
-
-  it("silences only the DJ for the active player once the guess locks in", () => {
-    sessionData = {
-      players: [{ id: 1, userId: 11 }, { id: 2, userId: 22 }],
-      currentRound: { activePlayerId: 1, djPlayerId: 2, status: "COUNTDOWN" },
-    };
-    render(<AppVoiceSidebar />);
-
-    expect(setSilencedUserIds).toHaveBeenLastCalledWith([22]);
-  });
-
-  it("broadcasts the shared audio only to the group while the DJ's song is hidden", () => {
-    sessionData = {
-      players: [{ id: 1, userId: 11 }, { id: 2, userId: 22 }],
-      currentRound: { activePlayerId: 2, djPlayerId: 1, status: "AWAITING_PLACEMENT" },
-    };
-    const { unmount } = render(<AppVoiceSidebar />);
-
-    expect(setTabAudioBroadcasting).toHaveBeenLastCalledWith(true);
-    expect(setVisualizerUserId).toHaveBeenLastCalledWith(undefined);
-    unmount();
-
-    sessionData = {
-      players: [{ id: 1, userId: 11 }, { id: 2, userId: 22 }],
-      currentRound: { activePlayerId: 2, djPlayerId: 1, status: "REVEALED" },
-    };
-    render(<AppVoiceSidebar />);
-
-    expect(setTabAudioBroadcasting).toHaveBeenLastCalledWith(false);
-  });
-
-  it("never broadcasts for a player who is not the DJ and follows the DJ's audio for the card", () => {
-    sessionData = {
-      players: [{ id: 1, userId: 11 }, { id: 2, userId: 22 }],
-      currentRound: { activePlayerId: 1, djPlayerId: 2, status: "AWAITING_PLACEMENT" },
-    };
-    render(<AppVoiceSidebar />);
-
-    expect(setTabAudioBroadcasting).toHaveBeenLastCalledWith(false);
-    expect(setVisualizerUserId).toHaveBeenLastCalledWith(22);
   });
 
   it("clears a stale in-call listing when this browser never opened its audio", () => {
@@ -267,7 +187,7 @@ describe("AppVoiceSidebar", () => {
   });
 
   it("reports once per group whether this browser can capture audio", () => {
-    vi.spyOn(window.navigator, "userAgent", "get").mockReturnValue("Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:140.0) Gecko/20100101 Firefox/140.0");
+    vi.spyOn(window.navigator, "userAgent", "get").mockReturnValue("Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X)");
     const { rerender } = render(<AppVoiceSidebar />);
     rerender(<AppVoiceSidebar />);
 
@@ -277,6 +197,13 @@ describe("AppVoiceSidebar", () => {
 
   it("reports that a desktop Chromium browser can capture audio", () => {
     vi.spyOn(window.navigator, "userAgent", "get").mockReturnValue("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/140.0 Safari/537.36");
+    render(<AppVoiceSidebar />);
+
+    expect(reportAudioCapability).toHaveBeenCalledWith({ groupId: 4, data: { canShareAudio: true } });
+  });
+
+  it("reports capture support from desktop Firefox while the flag is set", () => {
+    vi.spyOn(window.navigator, "userAgent", "get").mockReturnValue("Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:140.0) Gecko/20100101 Firefox/140.0");
     render(<AppVoiceSidebar />);
 
     expect(reportAudioCapability).toHaveBeenCalledWith({ groupId: 4, data: { canShareAudio: true } });
