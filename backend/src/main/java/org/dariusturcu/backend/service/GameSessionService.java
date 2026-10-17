@@ -115,6 +115,7 @@ public class GameSessionService {
     private final SessionResultsStore resultsStore;
     private final GameSessionScheduler gameSessionScheduler;
     private final ApplicationEventPublisher eventPublisher;
+    private final GameSongList gameSongList;
 
     // Self-injected through the Spring proxy so that a scheduled callback (running on the
     // scheduler's own thread, not through a caller that already went through the proxy)
@@ -136,11 +137,15 @@ public class GameSessionService {
             throw new ConflictException("Not enough connected members to start a session");
         }
 
-        List<Song> songPool = pendingPool.take(groupId)
+        // Every start path funnels its candidate songs through one dedupe-and-shuffle step, so
+        // the song list a session plays from is built the same way whether the songs came from
+        // a staged review, the group's playlists, or the difficulty selector.
+        List<Song> selectedPool = pendingPool.take(groupId)
                 .map(this::resolvePoolSongs)
                 .orElseGet(() -> group.getDifficultyTier() == null ? defaultSongPool(group)
                         : difficultySelector.selectPreparedInternational(group.getDifficultyTier(),
                         connectedMembers.size() * group.getWinConditionCardCount() * DIFFICULTY_POOL_HEADROOM));
+        List<Song> songPool = gameSongList.build(selectedPool);
         requireEnoughSongs(songPool.size(), connectedMembers.size(), group.getWinConditionCardCount());
 
         GameSession session = new GameSession();
@@ -260,10 +265,10 @@ public class GameSessionService {
         if (connectedMembers.size() < MINIMUM_PLAYERS) {
             throw new ConflictException("Not enough connected members to start a session");
         }
-        List<Song> resolvedPool = resolvePoolSongs(songIds);
+        List<Song> resolvedPool = gameSongList.distinct(resolvePoolSongs(songIds));
         requireEnoughSongs(resolvedPool.size(), connectedMembers.size(), group.getWinConditionCardCount());
 
-        pendingPool.stage(group.getId(), songIds);
+        pendingPool.stage(group.getId(), resolvedPool.stream().map(Song::getId).toList());
         try {
             return groupService.startGameSession(group.getId());
         } catch (RuntimeException startFailure) {
@@ -307,8 +312,8 @@ public class GameSessionService {
     private void requireEnoughSongs(int songCount, int playerCount, int winConditionCardCount) {
         int requiredSongCount = playerCount * winConditionCardCount;
         if (songCount < requiredSongCount) {
-            throw new ConflictException("Not enough songs to start: this group needs at least " + requiredSongCount
-                    + ", one starting card per player plus enough rounds to reach the win condition");
+            throw new ConflictException("Not enough songs to start: " + songCount + " available, this group needs at least "
+                    + requiredSongCount + ", one starting card per player plus enough rounds to reach the win condition");
         }
     }
 
