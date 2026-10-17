@@ -5,6 +5,7 @@ import { requestDjTabAudioShare } from "@/hooks/use-local-audio-stream";
 import { AppVoiceSidebar } from "./app-voice-sidebar";
 
 const joinVoice = vi.fn();
+const leaveVoice = vi.fn();
 const startMicrophone = vi.fn(async () => true);
 const startTabAudio = vi.fn(async () => true);
 const setSilencedUserIds = vi.fn();
@@ -27,7 +28,7 @@ vi.mock("@/hooks/generated/group-management/group-management", () => ({
     data: { id: 4, members: [{ id: 1, userId: 11, displayName: "Alex", isInVoice: inVoice }] },
   }),
   useJoinVoice: () => ({ mutate: joinVoice, isPending: false }),
-  useLeaveVoice: () => ({ mutate: vi.fn(), isPending: false }),
+  useLeaveVoice: () => ({ mutate: leaveVoice, isPending: false }),
 }));
 
 vi.mock("@/hooks/generated/game-session/game-session", () => ({
@@ -43,7 +44,7 @@ vi.mock("@/hooks/use-game-session-realtime", () => ({
   useGameSessionRealtime: () => undefined,
 }));
 
-const voiceMeshState = vi.hoisted(() => ({ holdSignalling: false }));
+const voiceMeshState = vi.hoisted(() => ({ holdSignalling: false, isVoiceStarted: true }));
 
 vi.mock("@/hooks/use-voice-mesh", () => ({
   shouldSilenceDjForActivePlayer: (round: { activePlayerId?: number; status?: string } | undefined, playerId: number | undefined) =>
@@ -52,6 +53,7 @@ vi.mock("@/hooks/use-voice-mesh", () => ({
     // The signalling socket connects as soon as the sidebar asks for it, unless a test
     // holds it back to check the join waits for it.
     isSignalConnected: isSignalling && !voiceMeshState.holdSignalling,
+    isVoiceStarted: voiceMeshState.isVoiceStarted,
     startMicrophone,
     startTabAudio,
     stopTabAudio: vi.fn(),
@@ -79,10 +81,12 @@ describe("AppVoiceSidebar", () => {
   beforeEach(() => {
     inVoice = true;
     voiceMeshState.holdSignalling = false;
+    voiceMeshState.isVoiceStarted = true;
     currentPathname = "/groups/4";
     window.localStorage.clear();
     sessionData = undefined;
     joinVoice.mockClear();
+    leaveVoice.mockClear();
     startMicrophone.mockClear();
     startMicrophone.mockResolvedValue(true);
     startTabAudio.mockClear();
@@ -243,5 +247,19 @@ describe("AppVoiceSidebar", () => {
 
     expect(setTabAudioBroadcasting).toHaveBeenLastCalledWith(false);
     expect(setVisualizerUserId).toHaveBeenLastCalledWith(22);
+  });
+
+  it("clears a stale in-call listing when this browser never opened its audio", () => {
+    voiceMeshState.isVoiceStarted = false;
+    render(<AppVoiceSidebar />);
+
+    expect(leaveVoice).toHaveBeenCalledOnce();
+    expect(leaveVoice).toHaveBeenCalledWith({ groupId: 4 }, expect.anything());
+  });
+
+  it("keeps a call this browser actually started", () => {
+    render(<AppVoiceSidebar />);
+
+    expect(leaveVoice).not.toHaveBeenCalled();
   });
 });

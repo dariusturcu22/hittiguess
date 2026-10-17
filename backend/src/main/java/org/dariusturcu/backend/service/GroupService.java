@@ -49,6 +49,7 @@ public class GroupService {
 
     private static final Duration PRE_SESSION_WINDOW = Duration.ofMinutes(30);
     private static final Duration BETWEEN_SESSION_WINDOW = Duration.ofMinutes(30);
+    private static final Duration VOICE_DISCONNECT_GRACE = Duration.ofMinutes(2);
 
     private static final String JOIN_CODE_ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
     private static final int JOIN_CODE_LENGTH = 4;
@@ -312,6 +313,7 @@ public class GroupService {
 
     private void setConnectedAndBroadcast(Group group, Member member, boolean connected) {
         member.setConnected(connected);
+        member.setDisconnectedAt(connected ? null : Instant.now());
         memberRepository.save(member);
         GroupDetailDTO result = groupMapper.toDetailDTO(group);
         eventPublisher.publishEvent(new GroupBroadcastEvent(GroupEventType.MEMBER_CONNECTION_CHANGED, result));
@@ -388,6 +390,19 @@ public class GroupService {
         memberRepository.save(member);
         GroupDetailDTO result = groupMapper.toDetailDTO(group);
         eventPublisher.publishEvent(new GroupBroadcastEvent(GroupEventType.VOICE_PRESENCE_CHANGED, result));
+    }
+
+    // Takes a member out of the call once their socket has been gone for the grace period,
+    // so a closed tab does not leave a ghost in the voice roster. Reconnecting inside the
+    // grace period clears the timestamp and keeps the member in the call.
+    public void dropStaleVoicePresence() {
+        Instant cutoff = Instant.now().minus(VOICE_DISCONNECT_GRACE);
+        for (Member member : memberRepository.findInVoiceDisconnectedBefore(cutoff)) {
+            member.setInVoice(false);
+            memberRepository.save(member);
+            Group group = member.getGroup();
+            eventPublisher.publishEvent(new GroupBroadcastEvent(GroupEventType.VOICE_PRESENCE_CHANGED, groupMapper.toDetailDTO(group)));
+        }
     }
 
     // Invoked by the scheduled sweep, never by a per-group timer: a sweep can be

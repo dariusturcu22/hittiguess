@@ -45,6 +45,10 @@ public class Member {
     @Column(nullable = false)
     private boolean isInVoice;
 
+    // Set when the member's socket drops and cleared when it returns; the voice sweep
+    // reads it to remove a member whose tab closed while they were in the call.
+    private Instant disconnectedAt;
+
     @Column(nullable = false, updatable = false)
     private Instant joinedAt;
 }
