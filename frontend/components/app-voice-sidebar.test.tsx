@@ -172,6 +172,17 @@ describe("AppVoiceSidebar", () => {
     expect(screen.getByRole("complementary", { name: "Voice sidebar" })).toHaveClass("w-[76px]");
   });
 
+  it("scales its rail height with the sidebar height steps", () => {
+    groupMembers = [{ id: 1, userId: 11, displayName: "Alex", isInVoice: false }];
+    render(<AppVoiceSidebar />);
+    const rail = screen.getByRole("complementary", { name: "Voice sidebar" });
+
+    expect(rail.className).toContain("h-full");
+    expect(rail.className).toContain("min-h-0");
+    expect(rail.className).toContain("short:py-4");
+    expect(rail.className).toContain("very-short:py-3");
+  });
+
   it("clears a stale in-call listing when this browser never opened its audio", () => {
     voiceMeshState.isVoiceStarted = false;
     render(<AppVoiceSidebar />);

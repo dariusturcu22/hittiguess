@@ -20,7 +20,7 @@ const TOKEN_PILE_MAXIMUM_COINS = 4;
 const TOKEN_PILE_COIN_OFFSET_PIXELS = 8;
 const TOKEN_PILE_COIN_ROTATIONS = [7, -9, 4, -5];
 
-export const CARD_SIZE_CLASSES = "size-[132px] sm:size-[168px]";
+export const CARD_SIZE_CLASSES = "size-[132px] sm:size-[168px] short:size-[148px] very-short:size-[116px]";
 
 function cardColor(color: string | undefined): string {
   if (!color) return DEFAULT_CARD_COLOR;
@@ -81,10 +81,10 @@ function drawSoundBars(canvas: HTMLCanvasElement | null, levels: number[]): void
 }
 
 export function SongCard({ artist, title, year, color, className = "", style }: { artist?: string; title?: string; year?: number | string; color?: string; className?: string; style?: CSSProperties }) {
-  return <article style={{ background: cardColor(color), color: CARD_TEXT_COLOR, ...style }} className={`flex shrink-0 flex-col items-center justify-center gap-1.5 rounded-[22px] border-[5px] border-background p-3.5 text-center ${CARD_SIZE_CLASSES} ${className}`}>
-    <span className="line-clamp-2 text-[10px] font-bold uppercase sm:text-xs">{artist || "Unknown artist"}</span>
-    <strong className="font-display text-[32px] leading-none sm:text-[40px]">{year ?? "?"}</strong>
-    <span className="line-clamp-2 text-[10px] font-medium opacity-80 sm:text-[11px]">{title || "Untitled"}</span>
+  return <article style={{ background: cardColor(color), color: CARD_TEXT_COLOR, ...style }} className={`flex shrink-0 flex-col items-center justify-center gap-1.5 short:gap-1 rounded-[22px] border-[5px] border-background p-3.5 short:p-3 very-short:p-2 text-center ${CARD_SIZE_CLASSES} ${className}`}>
+    <span className="line-clamp-2 text-[10px] font-bold uppercase sm:text-xs very-short:text-[9px]">{artist || "Unknown artist"}</span>
+    <strong className="font-display text-[32px] leading-none sm:text-[40px] short:text-[34px] very-short:text-[28px]">{year ?? "?"}</strong>
+    <span className="line-clamp-2 text-[10px] font-medium opacity-80 sm:text-[11px] very-short:text-[9px]">{title || "Untitled"}</span>
   </article>;
 }
 
@@ -126,15 +126,15 @@ interface MysteryCardProps {
 }
 
 export function MysteryCard({ levels, size = "timeline", label, isInteractive = false, className = "", onPointerDown, onKeyDown }: MysteryCardProps) {
-  const sizeClasses = size === "small" ? "size-[128px] rounded-[20px]" : `${CARD_SIZE_CLASSES} rounded-[22px]`;
-  const content = <SoundBars levels={levels} widthClassName={size === "small" ? "w-[59px]" : "w-16"} heightClassName={size === "small" ? "h-[46px]" : "h-[60px]"} />;
+  const sizeClasses = size === "small" ? "size-[128px] rounded-[20px] short:size-[112px] very-short:size-[96px]" : `${CARD_SIZE_CLASSES} rounded-[22px]`;
+  const content = <SoundBars levels={levels} widthClassName={size === "small" ? "w-[59px]" : "w-16"} heightClassName={size === "small" ? "h-[46px] short:h-[38px] very-short:h-[30px]" : "h-[60px] short:h-[52px] very-short:h-[40px]"} />;
   const classes = `flex shrink-0 items-center justify-center border-[5px] border-border bg-card shadow-[5px_5px_0_var(--shadow-color)] ${sizeClasses} ${className}`;
   if (!isInteractive) return <div className={classes} aria-hidden="true">{content}</div>;
   return <button type="button" aria-label={label} onPointerDown={onPointerDown} onKeyDown={onKeyDown} className={`${classes} cursor-grab touch-none select-none active:cursor-grabbing focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-ring`}>{content}</button>;
 }
 
 export function QuestionCard({ className = "" }: { className?: string }) {
-  return <div className={`flex shrink-0 items-center justify-center rounded-[22px] border-[5px] border-border bg-card font-display text-5xl text-muted-foreground/50 shadow-[5px_5px_0_var(--shadow-color)] ${CARD_SIZE_CLASSES} ${className}`} aria-label="Locked card">?</div>;
+  return <div className={`flex shrink-0 items-center justify-center rounded-[22px] border-[5px] border-border bg-card font-display text-5xl short:text-4xl very-short:text-3xl text-muted-foreground/50 shadow-[5px_5px_0_var(--shadow-color)] ${CARD_SIZE_CLASSES} ${className}`} aria-label="Locked card">?</div>;
 }
 
 export function Coin({ size = "medium", className = "", style }: { size?: "small" | "medium" | "large"; className?: string; style?: CSSProperties }) {
@@ -149,12 +149,12 @@ export function PlayerAvatar({ name, colorIndex, className = "size-8 text-xs" }:
 
 export function TokenPile({ tokenCount, label, isDimmed = false, earnedTokenRoundId }: { tokenCount: number; label: string; isDimmed?: boolean; earnedTokenRoundId?: number }) {
   const visibleCoins = Math.min(tokenCount, TOKEN_PILE_MAXIMUM_COINS);
-  return <div className={`flex flex-col items-center gap-2.5 transition-opacity ${isDimmed ? "opacity-50" : ""}`} aria-label={`${label}: ${tokenCount}`}>
-    <div className="relative h-[60px] w-[70px]">
+  return <div className={`flex flex-col items-center gap-2.5 short:gap-2 very-short:gap-1.5 transition-opacity ${isDimmed ? "opacity-50" : ""}`} aria-label={`${label}: ${tokenCount}`}>
+    <div className="relative h-[60px] w-[70px] short:h-[52px] short:w-[62px] very-short:h-[44px] very-short:w-[52px]">
       {earnedTokenRoundId !== undefined ? <Coin key={earnedTokenRoundId} className="token-earned-drop absolute left-3 top-1.5 z-10" /> : null}
       {visibleCoins === 0 ? <div className="absolute left-3 top-1.5 size-[46px] rounded-full border-2 border-dashed border-muted-foreground/60" /> : null}
       {Array.from({ length: visibleCoins }, (_, coinIndex) => <Coin key={coinIndex} className="absolute" style={{ left: (visibleCoins - 1 - coinIndex) * TOKEN_PILE_COIN_OFFSET_PIXELS, top: (visibleCoins - 1 - coinIndex) * (TOKEN_PILE_COIN_OFFSET_PIXELS / 2), transform: `rotate(${TOKEN_PILE_COIN_ROTATIONS.at(coinIndex) ?? 0}deg)` }} />)}
     </div>
-    <span className="text-[11px] font-bold uppercase tracking-[2px] text-muted-foreground">{label}</span>
+    <span className="text-[11px] font-bold uppercase tracking-[2px] text-muted-foreground short:text-[10px] very-short:text-[9px]">{label}</span>
   </div>;
 }
