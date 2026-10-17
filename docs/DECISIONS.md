@@ -1206,3 +1206,9 @@ The owner confirmed the production pipeline test before cleanup. Production alre
 ## 2026-10-17 | Container Apps definitions are updated from the live definition
 
 A Container Apps YAML update replaces the whole container, so a file that lists only the image and the probes drops every environment variable, secret reference, and resource limit, and the new revision exits at startup. Changes to a running app's container are therefore built from the definition read from the running app, with the new setting added, and the update is checked for a lost environment variable before it is sent. `scripts/azure/apply-health-probes.ps1` follows this rule for the startup, liveness, and readiness probes: it waits for a healthy new revision and restores the previous definition when none appears. Core and AI both run the probes.
+
+## 2026-10-17 | Core and AI run one always-on replica on Azure
+
+Decision: both Container Apps run with minimum and maximum replicas of 1 instead of scaling to zero. This supersedes the scale-to-zero choice in the 2026-10 hosting entry for the rest of the Azure trial; the move to a fixed-price server afterward is unchanged.
+
+Why: the measured cold start of about 35 seconds is too slow for the first player of a session, and the trial credit covers the always-on cost. Core could not scale beyond one replica anyway because game and STOMP state are process-local.
