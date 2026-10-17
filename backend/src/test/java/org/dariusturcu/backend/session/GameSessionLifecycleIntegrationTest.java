@@ -489,6 +489,67 @@ class GameSessionLifecycleIntegrationTest {
         assertThat(round.getDjPlayer().getId()).isNotEqualTo(round.getActivePlayer().getId());
     }
 
+    @Test
+    void aPlayerWhoIsNeitherActiveNorDjCanLeaveAndTheGameContinuesWithoutThem() {
+        GameSession session = startRotatingSession("leave-bystander", 3);
+        Round round = firstRound(session);
+        Player bystander = bystanderOf(session, round);
+
+        gameSessionService.leavePlayer(session.getId(), bystander.getUser().getId());
+
+        assertThat(playerRepository.findById(bystander.getId()).orElseThrow().getStatus()).isEqualTo(PlayerStatus.LEFT);
+        assertThat(gameSessionRepository.findById(session.getId())).isPresent();
+        assertThat(roundRepository.findById(round.getId()).orElseThrow().getDjPlayer().getId())
+                .isEqualTo(round.getDjPlayer().getId());
+    }
+
+    @Test
+    void whenTheDjLeavesBeforeTheRevealAnotherPlayerTakesOverTheRound() {
+        GameSession session = startRotatingSession("leave-dj", 3);
+        Round round = firstRound(session);
+        Player leavingDj = round.getDjPlayer();
+        Player expectedReplacement = bystanderOf(session, round);
+
+        gameSessionService.leavePlayer(session.getId(), leavingDj.getUser().getId());
+
+        Round afterLeave = roundRepository.findById(round.getId()).orElseThrow();
+        assertThat(afterLeave.getDjPlayer().getId()).isEqualTo(expectedReplacement.getId());
+        assertThat(afterLeave.getStatus()).isNotEqualTo(RoundStatus.SCORED);
+        assertThat(playerRepository.findById(leavingDj.getId()).orElseThrow().getStatus()).isEqualTo(PlayerStatus.LEFT);
+    }
+
+    @Test
+    void theGameEndsWhenALeaveLeavesFewerThanTwoPlayers() {
+        GameSession session = startTwoPlayerRotatingSession("leave-too-few");
+        Long sessionId = session.getId();
+        Long groupId = session.getGroupId();
+        Player leaver = session.getPlayers().getFirst();
+
+        gameSessionService.leavePlayer(sessionId, leaver.getUser().getId());
+
+        assertThat(gameSessionRepository.findById(sessionId)).isEmpty();
+        assertThat(groupRepository.findById(groupId).orElseThrow().getStatus()).isEqualTo(GroupStatus.OPEN);
+    }
+
+    @Test
+    void leavingTwiceChangesNothingTheSecondTime() {
+        GameSession session = startRotatingSession("leave-twice", 3);
+        Player bystander = bystanderOf(session, firstRound(session));
+
+        gameSessionService.leavePlayer(session.getId(), bystander.getUser().getId());
+        gameSessionService.leavePlayer(session.getId(), bystander.getUser().getId());
+
+        assertThat(gameSessionRepository.findById(session.getId())).isPresent();
+    }
+
+    private Player bystanderOf(GameSession session, Round round) {
+        return session.getPlayers().stream()
+                .filter(candidate -> !candidate.getId().equals(round.getActivePlayer().getId())
+                        && !candidate.getId().equals(round.getDjPlayer().getId()))
+                .findFirst()
+                .orElseThrow();
+    }
+
     private Round firstRound(GameSession session) {
         return roundRepository.findTopBySessionOrderByRoundNumberDesc(session).orElseThrow();
     }

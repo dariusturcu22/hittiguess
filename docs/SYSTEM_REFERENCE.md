@@ -89,6 +89,7 @@ Every rate-limited request the core service rejects, whichever limiter caught it
 | GET | `/api/playlists/{playlistId}/export/duplex` | Read access; alternating information and QR pages for duplex printing |
 | GET | `/api/sessions/{sessionId}` | `GameSessionController`, story 10 |
 | GET | `/api/sessions/{sessionId}/link-out` | `GameSessionController`, the current round's YouTube watch URL for the round's DJ only, refused after reveal, story 9 |
+| POST | `/api/sessions/{sessionId}/leave` | `GameSessionController`, the calling player leaves the running session and the game continues without them; a leaving DJ hands the current round's DJ role to the next eligible player, a leaving active player forfeits the round, and the session ends when fewer than two players remain; publishes `PLAYER_LEFT` on the round topic, story 52 |
 | GET | `/api/sessions/{sessionId}/guess-state` | `GameSessionController`, the calling player's artist and title guessing state for the current turn: artists credited, artists guessed, whether artist guessing or the title is closed, and whether the turn's token was earned |
 | GET | `/api/sessions/groups/{groupId}/results` | `GameSessionController`, a completed session's downloadable results export, story 10 |
 | GET | `/api/users/me/history` | Participant-only paginated core history; page defaults to 0 and pageSize to 20, maximum 100 |

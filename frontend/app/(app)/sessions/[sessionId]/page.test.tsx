@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { publishTabAudioError, publishTabAudioSharing } from "@/hooks/use-local-audio-stream";
@@ -10,6 +10,9 @@ let guessResultHandler: ((result: MockGuessResult) => void) | undefined;
 let sessionEndedHandler: ((ended: { groupId?: number }) => void) | undefined;
 let mockGuessState: Record<string, unknown> | undefined;
 const routerReplace = vi.fn();
+const routerPush = vi.fn();
+const leaveSessionMutate = vi.fn();
+const leaveGroupMutate = vi.fn();
 const placeCard = vi.fn(() => true);
 const previewPlacement = vi.fn(() => true);
 const submitGuess = vi.fn(() => true);
@@ -59,7 +62,7 @@ function withRound(round: Record<string, unknown>): MockGameSession {
 }
 
 vi.mock("next/navigation", () => ({
-  useRouter: () => ({ replace: routerReplace }),
+  useRouter: () => ({ replace: routerReplace, push: routerPush }),
 }));
 
 vi.mock("next/link", () => ({
@@ -67,7 +70,7 @@ vi.mock("next/link", () => ({
 }));
 
 vi.mock("@tanstack/react-query", () => ({
-  useQueryClient: () => ({ setQueryData: vi.fn(), getQueryData: () => mockGuessState }),
+  useQueryClient: () => ({ setQueryData: vi.fn(), getQueryData: () => mockGuessState, invalidateQueries: vi.fn() }),
 }));
 
 vi.mock("@/hooks/generated/game-session/game-session", () => ({
@@ -81,11 +84,14 @@ vi.mock("@/hooks/generated/game-session/game-session", () => ({
     isError: !mockSessionData,
   }),
   useGetGuessState: () => ({ data: mockGuessState }),
+  useLeaveSession: () => ({ mutate: leaveSessionMutate, isPending: false }),
   getGetGuessStateQueryKey: (sessionId: number) => [`/api/sessions/${sessionId}/guess-state`],
 }));
 
 vi.mock("@/hooks/generated/group-management/group-management", () => ({
   useGetActiveMembership: () => ({ data: { id: 2 } }),
+  getGetActiveMembershipQueryKey: () => ["/api/groups/active"],
+  useLeaveGroup: () => ({ mutate: leaveGroupMutate, isPending: false }),
   useGetGroup: () => ({ data: { playlists: [{ id: 5, name: "Midnight Radio", color: "cba6f7", songCount: 32, previewYoutubeIds: [] }] } }),
 }));
 
@@ -354,6 +360,21 @@ describe("GameSessionPage", () => {
 
     expect(screen.getByText("This browser can't share audio, so you are skipped as DJ. Use Chrome or Edge on a computer to DJ.")).toBeVisible();
     userAgent.mockReturnValue("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/140.0 Safari/537.36");
+  });
+
+  it("leaves the session, then the group, and goes home after confirming Leave game", async () => {
+    mockCurrentUserId = SPECTATOR_USER_ID;
+    leaveSessionMutate.mockImplementation((_variables, options) => options.onSuccess());
+    leaveGroupMutate.mockImplementation((_variables, options) => options.onSuccess());
+    await renderPage();
+
+    fireEvent.click(screen.getByRole("button", { name: "Leave game" }));
+    expect(leaveSessionMutate).not.toHaveBeenCalled();
+    fireEvent.click(within(await screen.findByRole("alertdialog")).getByRole("button", { name: "Leave game" }));
+
+    expect(leaveSessionMutate).toHaveBeenCalledWith({ sessionId: 1 }, expect.anything());
+    expect(leaveGroupMutate).toHaveBeenCalledWith({ groupId: 2 }, expect.anything());
+    expect(routerPush).toHaveBeenCalledWith("/playlists");
   });
 
   it("shows spectators the live placement preview", async () => {

@@ -691,22 +691,29 @@ public class GameSessionService {
         eventPublisher.publishEvent(new org.dariusturcu.backend.research.ScoredTurn(savedRound));
         publishRoundEvent(SessionEventType.ROUND_SCORED, session, savedRound);
 
+        if (endSessionWhenTooFewPlayersRemain(session)) {
+            return;
+        }
+        gameSessionScheduler.scheduleAfter(RoundTiming.REVEAL_HOLD, () -> self.advanceRoundEffect(roundId));
+    }
+
+    // Fewer than two players left to take the active-player and DJ roles, so the round
+    // can't continue. With someone already at the win condition the game completes on the
+    // current standings; otherwise it's an abandonment (no results export). See
+    // DECISIONS.md. Returns whether the session was ended.
+    private boolean endSessionWhenTooFewPlayersRemain(GameSession session) {
         long remainingActivePlayers = session.getPlayers().stream()
                 .filter(candidate -> candidate.getStatus() == PlayerStatus.ACTIVE)
                 .count();
-        if (remainingActivePlayers < MINIMUM_PLAYERS) {
-            // Fewer than two players left to take the active-player and DJ roles, so the
-            // round can't continue. With someone already at the win condition the game
-            // completes on the current standings; otherwise it's an abandonment (no
-            // results export). See DECISIONS.md.
-            if (anyPlayerHasWon(session)) {
-                completeSession(session.getId());
-            } else {
-                abandonSession(session.getId());
-            }
-        } else {
-            gameSessionScheduler.scheduleAfter(RoundTiming.REVEAL_HOLD, () -> self.advanceRoundEffect(roundId));
+        if (remainingActivePlayers >= MINIMUM_PLAYERS) {
+            return false;
         }
+        if (anyPlayerHasWon(session)) {
+            completeSession(session.getId());
+        } else {
+            abandonSession(session.getId());
+        }
+        return true;
     }
 
     // Effect method for the reveal-hold timer. A no-op unless the scored round is still the
@@ -1092,12 +1099,35 @@ public class GameSessionService {
         playerRepository.save(player);
 
         Round currentRound = getCurrentRound(session);
-        if (currentRound != null && currentRound.getStatus() != RoundStatus.SCORED
-                && currentRound.getActivePlayer().getId().equals(player.getId())) {
+        boolean isUnscoredRound = currentRound != null && currentRound.getStatus() != RoundStatus.SCORED;
+        if (isUnscoredRound && currentRound.getActivePlayer().getId().equals(player.getId())) {
             currentRound.setPlacementCorrect(false);
             currentRound.setPlacedPosition(null);
             roundRepository.save(currentRound);
             self.scoreRoundEffect(currentRound.getId());
+            return;
+        }
+        if (isUnscoredRound && currentRound.getDjPlayer().getId().equals(player.getId())) {
+            handOverDjRole(session, currentRound, player);
+        }
+        if (endSessionWhenTooFewPlayersRemain(session)) {
+            return;
+        }
+        if (currentRound != null) {
+            publishRoundEvent(SessionEventType.PLAYER_LEFT, session, currentRound);
+        }
+    }
+
+    // The DJ left before the reveal: the next eligible player who is not the active player
+    // takes over the current round's DJ role, so the song still gets played. With nobody
+    // left to take it, the too-few-players check right after ends the session.
+    private void handOverDjRole(GameSession session, Round round, Player leavingDj) {
+        try {
+            Player replacement = findNextEligiblePlayer(session, leavingDj.getTurnOrder(), Set.of(round.getActivePlayer().getId()));
+            round.setDjPlayer(replacement);
+            roundRepository.save(round);
+        } catch (ConflictException noEligiblePlayer) {
+            log.debug("No player left to take over as DJ for round {}", round.getId());
         }
     }
 

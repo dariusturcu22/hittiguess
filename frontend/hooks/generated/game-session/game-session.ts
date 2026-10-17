@@ -5,16 +5,20 @@
  * OpenAPI spec version: v0
  */
 import {
+  useMutation,
   useQuery
 } from '@tanstack/react-query';
 import type {
   DataTag,
   DefinedInitialDataOptions,
   DefinedUseQueryResult,
+  MutationFunction,
   QueryClient,
   QueryFunction,
   QueryKey,
   UndefinedInitialDataOptions,
+  UseMutationOptions,
+  UseMutationResult,
   UseQueryOptions,
   UseQueryResult
 } from '@tanstack/react-query';
@@ -49,6 +53,71 @@ const withQueryKey = <T extends object, K>(query: T, queryKey: K): T & { queryKe
 };
 
 /**
+ * @summary Leave a running game session, the game continues without the calling player
+ */
+export const leaveSession = (
+    sessionId: number,
+ options?: SecondParameter<typeof customInstance>,signal?: AbortSignal
+) => {
+
+
+      return customInstance<void>(
+      {url: `/api/sessions/${sessionId}/leave`, method: 'POST', signal
+    },
+      options);
+    }
+
+
+
+
+export const getLeaveSessionMutationKey = () => ['leaveSession'] as const;
+
+export const getLeaveSessionMutationOptions = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof leaveSession>>, TError,LeaveSessionMutationVariables, TContext>, request?: SecondParameter<typeof customInstance>}
+): UseMutationOptions<Awaited<ReturnType<typeof leaveSession>>, TError,LeaveSessionMutationVariables, TContext> => {
+
+const mutationKey = getLeaveSessionMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof leaveSession>>, LeaveSessionMutationVariables> = (props) => {
+          const {sessionId} = props ?? {};
+
+          return  leaveSession(sessionId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type LeaveSessionMutationResult = NonNullable<Awaited<ReturnType<typeof leaveSession>>>
+
+    export type LeaveSessionMutationError = unknown
+    export type LeaveSessionMutationVariables = {sessionId: number}
+
+    /**
+ * @summary Leave a running game session, the game continues without the calling player
+ */
+export const useLeaveSession = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof leaveSession>>, TError,LeaveSessionMutationVariables, TContext>, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof leaveSession>>,
+        TError,
+        LeaveSessionMutationVariables,
+        TContext
+      > => {
+      return useMutation(getLeaveSessionMutationOptions(options), queryClient);
+    }
+    /**
  * @summary Get the current state of a game session, must be a player in it
  */
 export const getSession = (

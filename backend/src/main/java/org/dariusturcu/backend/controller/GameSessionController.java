@@ -18,6 +18,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -63,6 +64,13 @@ public class GameSessionController {
     public ResponseEntity<RoundLinkOutDTO> getCurrentRoundLinkOut(@PathVariable Long sessionId) {
         Long currentUserId = SecurityUtils.getCurrentUserId();
         return ResponseEntity.ok(gameSessionService.getCurrentRoundLinkOut(sessionId, currentUserId));
+    }
+
+    @Operation(summary = "Leave a running game session, the game continues without the calling player")
+    @PostMapping("/{sessionId}/leave")
+    public ResponseEntity<Void> leaveSession(@PathVariable Long sessionId) {
+        gameSessionService.leavePlayer(sessionId, SecurityUtils.getCurrentUserId());
+        return ResponseEntity.noContent().build();
     }
 
     @Operation(summary = "Get the current round's artist and title guessing state for the calling player")

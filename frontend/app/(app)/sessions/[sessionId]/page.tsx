@@ -2,13 +2,15 @@
 
 import { use, useCallback, useEffect, useRef, useState, type KeyboardEvent, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowDown, ArrowRight, Bell, Check, ExternalLink, Loader2, Lock, MessageCircle, Music2, TriangleAlert, UserRound, Volume2, VolumeX, X } from "lucide-react";
+import { ArrowDown, ArrowRight, Bell, Check, ExternalLink, Loader2, Lock, LogOut, MessageCircle, Music2, TriangleAlert, UserRound, Volume2, VolumeX, X } from "lucide-react";
 
 import Link from "next/link";
+import { toast } from "sonner";
 
-import { getGetGuessStateQueryKey, useGetCurrentRoundLinkOut, useGetGuessState, useGetSession } from "@/hooks/generated/game-session/game-session";
-import { useGetActiveMembership, useGetGroup } from "@/hooks/generated/group-management/group-management";
+import { getGetGuessStateQueryKey, useGetCurrentRoundLinkOut, useGetGuessState, useGetSession, useLeaveSession } from "@/hooks/generated/game-session/game-session";
+import { getGetActiveMembershipQueryKey, useGetActiveMembership, useGetGroup, useLeaveGroup } from "@/hooks/generated/group-management/group-management";
 import { useGetCurrentUser } from "@/hooks/generated/user-management/user-management";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/shadcn/alert-dialog";
 import type { PlayerCardDTO } from "@/hooks/models/playerCardDTO";
 import type { PlayerDTO } from "@/hooks/models/playerDTO";
 import { GUESS_CORRECT_EVENT, PLACEMENT_PREVIEW_EVENT, useGameSessionRealtime, type GuessResult, type SessionEnded, type SessionRoundEvent } from "@/hooks/use-game-session-realtime";
@@ -86,6 +88,14 @@ function guessResultMessage(result: GuessResult, guessedArtist: boolean): string
     return remainingArtists > 0 ? `You got an artist. ${remainingArtists} more credited.` : "You got the artist.";
   }
   return result.titleCorrect ? "You got the title." : "Wrong title. The title is closed for this round.";
+}
+
+function mutationErrorMessage(error: unknown): string {
+  if (typeof error === "object" && error !== null && "response" in error) {
+    const response = (error as { response?: { data?: { message?: string } } }).response;
+    if (response?.data?.message) return response.data.message;
+  }
+  return "Something went wrong. Try again.";
 }
 
 function correctGuessHeadline(toast: CorrectGuessToast): string {
@@ -191,6 +201,8 @@ export default function GameSessionPage({ params }: PageProps) {
   const currentUserQuery = useGetCurrentUser();
   const queryClient = useQueryClient();
   const activeMembershipQuery = useGetActiveMembership({ query: { retry: false } });
+  const leaveSession = useLeaveSession();
+  const leaveGroup = useLeaveGroup();
   const session = sessionQuery.data;
   const groupRealtime = useGroupRealtime(session?.groupId ?? 0);
   const groupQuery = useGetGroup(session?.groupId ?? 0, { query: { enabled: Boolean(session?.groupId), retry: false } });
@@ -464,6 +476,24 @@ export default function GameSessionPage({ params }: PageProps) {
     setBetDrag({ pointerX: event.clientX, pointerY: event.clientY, hoverGap: stagedBetGap });
   }
 
+  // Leaving a running game leaves the group too: a member of a locked group is sent back
+  // into its game, so staying a member would pull the player straight back in. The game
+  // carries on without them.
+  function leaveGame() {
+    const leavingGroupId = session?.groupId;
+    if (leavingGroupId === undefined) return;
+    leaveSession.mutate({ sessionId }, {
+      onSuccess: () => leaveGroup.mutate({ groupId: leavingGroupId }, {
+        onSuccess: () => {
+          void queryClient.invalidateQueries({ queryKey: getGetActiveMembershipQueryKey() });
+          router.push("/playlists");
+        },
+        onError: (error) => toast.error(mutationErrorMessage(error)),
+      }),
+      onError: (error) => toast.error(mutationErrorMessage(error)),
+    });
+  }
+
   function lockIn() {
     if (droppedGap === null) return;
     if (realtime.placeCard(droppedGap)) {
@@ -677,10 +707,30 @@ export default function GameSessionPage({ params }: PageProps) {
         </div>
         {currentPlayer && !isSharingTabAudioSupported ? <p className="mt-1.5 text-[11px] text-muted-foreground">This browser can&apos;t share audio, so you are skipped as DJ. Use Chrome or Edge on a computer to DJ.</p> : null}
       </div>
+      <div className="flex shrink-0 items-center gap-3">
+      <AlertDialog>
+        <AlertDialogTrigger asChild>
+          <button type="button" disabled={leaveSession.isPending || leaveGroup.isPending} className="inline-flex items-center gap-2 rounded-full border-2 border-destructive bg-transparent px-4 py-2 text-xs font-semibold text-destructive disabled:opacity-60">
+            {leaveSession.isPending || leaveGroup.isPending ? <Loader2 className="size-3.5 animate-spin" /> : <LogOut className="size-3.5" />}
+            Leave game
+          </button>
+        </AlertDialogTrigger>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Leave this game?</AlertDialogTitle>
+            <AlertDialogDescription>The game carries on without you and you leave the group. You can rejoin the group later with its invite link or code once the game is over.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Stay</AlertDialogCancel>
+            <AlertDialogAction variant="destructive" onClick={leaveGame}>Leave game</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
       <div className="hidden shrink-0 items-center gap-2.5 rounded-full border-2 border-border bg-card py-2 pl-2 pr-4 sm:inline-flex">
         <span className="size-[26px] rounded-lg" style={{ background: playlistColor ? (playlistColor.startsWith("#") ? playlistColor : `#${playlistColor}`) : "var(--accent)" }} />
         <span className="max-w-[200px] truncate text-[13px] font-semibold text-card-foreground">{playlistName}</span>
         {songCount > 0 ? <><StatusDot /><span className="text-xs text-muted-foreground">{songCount} songs</span></> : null}
+      </div>
       </div>
     </header>
 
