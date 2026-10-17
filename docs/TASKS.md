@@ -39,7 +39,7 @@ Azure Container Apps hosts core and AI in one EU environment. Vercel hosts the f
 - [ ] Test the throughput limit of the C1-only JIT setting under game load; Azure stays on scale-to-zero for the trial
 - [ ] Verify Vercel root frontend, production branch dev, domain, API origin, and shared auth cookies
 - [ ] Verify real Google login and ordinary signup, verification, login, and password-reset delivery; configure the Resend domain and sender
-- [ ] Add HTTP liveness/readiness probes to both apps
+- [x] Add HTTP liveness/readiness probes to both apps
 - [ ] Deployment smoke test: health, HTTPS API, WSS STOMP, protected-route session_hint cookie, and internal core-to-AI requests
 - [ ] Production two-device acceptance: login, import, full game, reconnect, voice, DJ audio, and results
 - [ ] Plan the move to one Hetzner server before the Azure trial credit ends: document the deployment, rehearse it in isolation, and prepare DNS cutover and rollback

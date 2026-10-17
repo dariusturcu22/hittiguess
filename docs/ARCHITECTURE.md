@@ -173,6 +173,7 @@ Beta runs the frontend on Vercel and both backend containers in one Azure Contai
 
 - Database: two new Neon projects are the production data host. Neon suspends idle compute after five minutes and wakes it on the next query, so the Spring connection pool retires idle connections before Neon closes them. The transactional Postgres+pgvector project is shared by the core and AI services. A separate analytics Postgres project holds only append-heavy event data.
 - Frontend: Next.js on Vercel.
+- Health probes: both apps run HTTP startup, liveness, and readiness probes. Core uses `/actuator/health/readiness` for startup and readiness and `/actuator/health/liveness` for liveness on port 8080; the AI service uses `/health` on port 8000. `scripts/azure/apply-health-probes.ps1` applies them and `scripts/azure/create-container-apps.ps1` calls it after creating the apps.
 - Cost guardrails: Consumption plan only, no Azure Database for PostgreSQL, virtual network, private endpoint, Container Registry, dedicated workload profile, or Azure log ingestion. Azure budget alerts trigger a shutdown workflow before the whole-deployment cost ceiling is reached.
 - Migration path: Azure hosts the backend while the free trial credit lasts, then the two backend containers and a reverse proxy move to one fixed-price Hetzner server. Vercel and both Neon projects stay unchanged. Scale-to-zero on Azure costs a first-request wait of about 35 seconds (about 19 s for Azure to start the container, 13 s for Spring, 3 s for probes).
 
