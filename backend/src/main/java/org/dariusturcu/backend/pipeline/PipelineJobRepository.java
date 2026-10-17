@@ -16,9 +16,11 @@ import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.EnumMap;
+import java.util.EnumSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 
 /**
  * SQL for the stage pipeline tables. Every timestamp comes from the caller, so the service's
@@ -29,6 +31,8 @@ public class PipelineJobRepository {
 
     private static final String VIDEO_LOCK_KEY_PREFIX = "pipeline-run:";
     private static final String ID_COLUMN = "id";
+    private static final long NO_FAILURES = 0;
+    private static final int MILLISECONDS_PER_SECOND = 1000;
     private static final String RUN_COLUMNS = """
             id, youtube_id, batch_id, lane, status, origin, provisional_year, created_at, ready_to_save_at,
             finished_at""";
@@ -191,11 +195,27 @@ public class PipelineJobRepository {
                 """, Boolean.class, stage.name(), timestamp(now), timestamp(now)));
     }
 
-    public boolean stageIsBusy(PipelineStage stage) {
+    // One indexed read for every stage, so an idle poll costs a single round trip.
+    public Set<PipelineStage> stagesWithDueWork(Instant now) {
+        Set<PipelineStage> dueStages = EnumSet.noneOf(PipelineStage.class);
+        core.query("""
+                SELECT DISTINCT job.stage FROM pipeline_jobs job
+                JOIN pipeline_runs run ON run.id = job.run_id
+                WHERE job.status IN ('WAITING', 'IN_PROGRESS') AND run.status = 'ACTIVE'
+                    AND ((job.status = 'WAITING' AND job.next_attempt_at <= ?)
+                        OR (job.status = 'IN_PROGRESS' AND job.lease_expires_at < ?))
+                    AND NOT EXISTS (SELECT FROM stage_controls WHERE stage = job.stage AND paused)
+                """, row -> {
+            dueStages.add(PipelineStage.valueOf(row.getString("stage")));
+        }, timestamp(now), timestamp(now));
+        return dueStages;
+    }
+
+    // Holds the stage control row lock until the transaction ends, so the count stays true for the lease that follows.
+    public long lockStageAndCountInProgress(PipelineStage stage) {
         core.queryForObject("SELECT stage FROM stage_controls WHERE stage = ? FOR UPDATE", String.class, stage.name());
-        return Boolean.TRUE.equals(core.queryForObject(
-                "SELECT EXISTS (SELECT FROM pipeline_jobs WHERE stage = ? AND status = 'IN_PROGRESS')",
-                Boolean.class, stage.name()));
+        return core.queryForObject("SELECT count(*) FROM pipeline_jobs WHERE stage = ? AND status = 'IN_PROGRESS'",
+                Long.class, stage.name());
     }
 
     public Optional<PipelineJob> leaseNextWaiting(PipelineStage stage, String leaseOwner, Instant leaseExpiresAt,
@@ -220,8 +240,7 @@ public class PipelineJobRepository {
                 FOR UPDATE OF job SKIP LOCKED
             )
             UPDATE pipeline_jobs job
-            SET status = ?, lease_owner = ?, lease_expires_at = ?, started_at = COALESCE(job.started_at, ?),
-                updated_at = ?
+            SET status = ?, lease_owner = ?, lease_expires_at = ?, started_at = ?, updated_at = ?
             FROM candidate WHERE job.id = candidate.candidate_id
             RETURNING %4$s
             """.formatted(PipelineJobStatus.WAITING.name(), PipelineRunStatus.ACTIVE.name(),
@@ -230,7 +249,7 @@ public class PipelineJobRepository {
     public void markJobDone(long jobId, String resultJson, Instant now) {
         core.update("""
                 UPDATE pipeline_jobs SET status = ?, result = CAST(? AS jsonb), lease_expires_at = NULL,
-                    finished_at = ?, updated_at = ?
+                    failure_kind = NULL, failure_stage = NULL, failure_reason = NULL, finished_at = ?, updated_at = ?
                 WHERE id = ?
                 """, PipelineJobStatus.DONE.name(), resultJson, timestamp(now), timestamp(now), jobId);
     }
@@ -245,11 +264,12 @@ public class PipelineJobRepository {
                 reason, timestamp(now), jobId);
     }
 
-    public int retryWaitingJobs(long runId, Instant now) {
-        return core.update("""
+    public List<PipelineStage> retryWaitingJobs(long runId, Instant now) {
+        return core.query("""
                 UPDATE pipeline_jobs SET next_attempt_at = ?, updated_at = ?
                 WHERE run_id = ? AND status = 'WAITING' AND failure_kind = 'TRANSIENT'
-                """, timestamp(now), timestamp(now), runId);
+                RETURNING stage
+                """, (row, number) -> PipelineStage.valueOf(row.getString("stage")), timestamp(now), timestamp(now), runId);
     }
 
     public void markJobFailed(long jobId, int attempts, FailureKind failureKind, String reason, Instant now) {
@@ -278,14 +298,15 @@ public class PipelineJobRepository {
         }
     }
 
-    public void resetFailedJobs(long runId, int maxAttempts, Instant now) {
-        core.update("""
+    public List<PipelineStage> resetFailedJobs(long runId, int maxAttempts, Instant now) {
+        return core.query("""
                 UPDATE pipeline_jobs SET status = ?, attempts = 0, max_attempts = ?, next_attempt_at = ?,
                     lease_owner = NULL, lease_expires_at = NULL, failure_kind = NULL, failure_stage = NULL,
                     failure_reason = NULL, started_at = NULL, finished_at = NULL, updated_at = ?
                 WHERE run_id = ? AND status = ?
-                """, PipelineJobStatus.WAITING.name(), maxAttempts, timestamp(now), timestamp(now), runId,
-                PipelineJobStatus.FAILED.name());
+                RETURNING stage
+                """, (row, number) -> PipelineStage.valueOf(row.getString("stage")), PipelineJobStatus.WAITING.name(),
+                maxAttempts, timestamp(now), timestamp(now), runId, PipelineJobStatus.FAILED.name());
     }
 
     // Moves the run's unfinished jobs above every job now waiting; jobs the run creates later
@@ -305,32 +326,94 @@ public class PipelineJobRepository {
                 paused, paused ? reason : null, paused ? timestamp(now) : null, stage.name());
     }
 
-    public List<StageCounts> stageCounts(Instant startOfToday) {
+    // An in-progress job whose lease expired counts as queued again: the next lease reclaims it as a failed try.
+    public List<StageCounts> stageCounts(Instant now, Instant startOfToday) {
         return core.query("""
+                WITH classified AS (
+                    SELECT job.stage, job.status, job.attempts, job.next_attempt_at, job.finished_at,
+                        run.status AS run_status,
+                        job.status = 'IN_PROGRESS' AND job.lease_expires_at < ? AS lease_expired
+                    FROM pipeline_jobs job JOIN pipeline_runs run ON run.id = job.run_id
+                    WHERE job.status IN ('WAITING', 'IN_PROGRESS', 'FAILED')
+                        OR (job.status = 'DONE' AND job.finished_at >= ?)
+                )
                 SELECT control.stage, control.paused,
-                    count(job.id) FILTER (WHERE job.status = ? AND run.status = ?) AS waiting,
-                    count(job.id) FILTER (WHERE job.status = ?) AS in_progress,
-                    count(job.id) FILTER (WHERE job.status = ? AND job.finished_at >= ?) AS done_today,
-                    count(job.id) FILTER (WHERE job.status = ?) AS failed,
-                    count(job.id) FILTER (WHERE job.status = ? AND run.status = ? AND job.attempts > 0) AS retrying
+                    count(classified.stage) FILTER (WHERE classified.run_status = 'ACTIVE'
+                        AND (classified.status = 'WAITING' OR classified.lease_expired)) AS waiting,
+                    count(classified.stage) FILTER (WHERE classified.run_status = 'ACTIVE'
+                        AND ((classified.status = 'WAITING' AND classified.next_attempt_at <= ?)
+                            OR classified.lease_expired)) AS waiting_due,
+                    count(classified.stage) FILTER (WHERE classified.status = 'IN_PROGRESS'
+                        AND NOT classified.lease_expired) AS in_progress,
+                    count(classified.stage) FILTER (WHERE classified.status = 'DONE') AS done_today,
+                    count(classified.stage) FILTER (WHERE classified.status = 'FAILED'
+                        AND classified.run_status = 'FAILED') AS failed,
+                    count(classified.stage) FILTER (WHERE classified.run_status = 'ACTIVE'
+                        AND ((classified.status = 'WAITING' AND classified.attempts > 0)
+                            OR classified.lease_expired)) AS retrying
                 FROM stage_controls control
-                LEFT JOIN pipeline_jobs job ON job.stage = control.stage
-                LEFT JOIN pipeline_runs run ON run.id = job.run_id
+                LEFT JOIN classified ON classified.stage = control.stage
                 GROUP BY control.stage, control.paused
                 """, (resultSet, rowNumber) -> new StageCounts(
                         PipelineStage.valueOf(resultSet.getString("stage")), resultSet.getBoolean("paused"),
                         resultSet.getLong("waiting"), resultSet.getLong("in_progress"),
-                        resultSet.getLong("done_today"), resultSet.getLong("failed"), resultSet.getLong("retrying")),
-                PipelineJobStatus.WAITING.name(), PipelineRunStatus.ACTIVE.name(),
-                PipelineJobStatus.IN_PROGRESS.name(), PipelineJobStatus.DONE.name(), timestamp(startOfToday),
-                PipelineJobStatus.FAILED.name(), PipelineJobStatus.WAITING.name(), PipelineRunStatus.ACTIVE.name());
+                        resultSet.getLong("done_today"), resultSet.getLong("failed"), resultSet.getLong("retrying"),
+                        resultSet.getLong("waiting_due")),
+                timestamp(now), timestamp(startOfToday), timestamp(now));
     }
 
-    public StageCounts embeddingCounts() {
+    /** V41 retries indefinitely; claimed rows count as in progress until their lease expires. */
+    public StageCounts embeddingCounts(Instant now, Instant startOfToday) {
         return core.queryForObject("""
-                SELECT count(*) AS waiting, count(*) FILTER (WHERE attempts > 0) AS retrying FROM song_embedding_queue
-                """, (row, number) -> new StageCounts(PipelineStage.EMBEDDING, false,
-                row.getLong("waiting"), 0, 0, 0, row.getLong("retrying")));
+                SELECT (SELECT paused FROM stage_controls WHERE stage = 'EMBEDDING') AS paused,
+                    count(*) FILTER (WHERE claimed_at IS NULL OR available_at <= ?) AS waiting,
+                    count(*) FILTER (WHERE available_at <= ?) AS waiting_due,
+                    count(*) FILTER (WHERE claimed_at IS NOT NULL AND available_at > ?) AS in_progress,
+                    count(*) FILTER (WHERE (claimed_at IS NULL OR available_at <= ?) AND attempts > 0) AS retrying,
+                    (SELECT count(*) FROM songs WHERE embedding_stored_at >= ? AND embedding IS NOT NULL) AS done_today
+                FROM song_embedding_queue
+                """, (row, number) -> new StageCounts(PipelineStage.EMBEDDING, row.getBoolean("paused"),
+                row.getLong("waiting"), row.getLong("in_progress"), row.getLong("done_today"), NO_FAILURES,
+                row.getLong("retrying"), row.getLong("waiting_due")),
+                timestamp(now), timestamp(now), timestamp(now), timestamp(now), timestamp(startOfToday));
+    }
+
+    /** Timings of every metadata stage from jobs that finished done since the given instants. */
+    public Map<PipelineStage, StageTimings> stageTimings(Instant durationWindowStart, Instant throughputWindowStart) {
+        Map<PipelineStage, StageTimings> timingsByStage = new EnumMap<>(PipelineStage.class);
+        Instant earliestStart = durationWindowStart.isBefore(throughputWindowStart) ? durationWindowStart : throughputWindowStart;
+        core.query("""
+                SELECT stage,
+                    round(avg(EXTRACT(EPOCH FROM finished_at - started_at) * %1$d)
+                        FILTER (WHERE finished_at >= ?))::bigint AS average_duration_ms,
+                    round(avg(GREATEST(EXTRACT(EPOCH FROM started_at - next_attempt_at), 0) * %1$d)
+                        FILTER (WHERE finished_at >= ?))::bigint AS average_wait_ms,
+                    count(*) FILTER (WHERE finished_at >= ?) AS finished_in_duration_window,
+                    count(*) FILTER (WHERE finished_at >= ?) AS finished_in_throughput_window
+                FROM pipeline_jobs
+                WHERE status = 'DONE' AND started_at IS NOT NULL AND finished_at >= ?
+                GROUP BY stage
+                """.formatted(MILLISECONDS_PER_SECOND), row -> {
+            PipelineStage stage = PipelineStage.valueOf(row.getString("stage"));
+            timingsByStage.put(stage, new StageTimings(stage, row.getObject("average_duration_ms", Long.class),
+                    row.getObject("average_wait_ms", Long.class), row.getLong("finished_in_duration_window"),
+                    row.getLong("finished_in_throughput_window")));
+        }, timestamp(durationWindowStart), timestamp(durationWindowStart), timestamp(durationWindowStart),
+                timestamp(throughputWindowStart), timestamp(earliestStart));
+        return timingsByStage;
+    }
+
+    /** Embedding timings from stored embeddings; songs embedded before V47 carry no times. */
+    public StageTimings embeddingTimings(Instant durationWindowStart, Instant throughputWindowStart) {
+        return core.queryForObject("""
+                SELECT round(avg(EXTRACT(EPOCH FROM embedding_stored_at - embedding_started_at) * %1$d)
+                        FILTER (WHERE embedding_started_at IS NOT NULL))::bigint AS average_duration_ms,
+                    count(*) AS finished_in_duration_window,
+                    count(*) FILTER (WHERE embedding_stored_at >= ?) AS finished_in_throughput_window
+                FROM songs WHERE embedding IS NOT NULL AND embedding_stored_at >= ?
+                """.formatted(MILLISECONDS_PER_SECOND), (row, number) -> new StageTimings(PipelineStage.EMBEDDING, row.getObject("average_duration_ms", Long.class),
+                null, row.getLong("finished_in_duration_window"), row.getLong("finished_in_throughput_window")),
+                timestamp(throughputWindowStart), timestamp(durationWindowStart));
     }
 
     private long insertReturningId(String sql, Object... arguments) {

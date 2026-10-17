@@ -26,19 +26,26 @@ import {
 
 const ACTIVE_IMPORT_REFRESH_MILLISECONDS = 5_000;
 
-const RAIL_DIVIDER_CLASSES = "w-8 h-0.5 my-3.5 shrink-0 rounded-full bg-sidebar-border";
+// Height steps keep rail controls reachable before scrolling is needed.
+const RAIL_DIVIDER_CLASSES =
+  "w-8 h-0.5 my-3.5 short:my-2.5 very-short:my-1.5 shrink-0 rounded-full bg-sidebar-border";
 
-const ADMIN_RAIL_DIVIDER_CLASSES = "w-8 h-0.5 mt-3 mb-2 shrink-0 rounded-full bg-destructive/40";
+const ADMIN_RAIL_DIVIDER_CLASSES =
+  "w-8 h-0.5 mt-3 mb-2 short:mt-2.5 short:mb-1.5 very-short:mt-1.5 shrink-0 rounded-full bg-destructive/40";
+
+const RAIL_GROUP_GAP_CLASSES = "gap-3.5 short:gap-2.5 very-short:gap-1.5";
+
+const ADMIN_RAIL_GROUP_GAP_CLASSES = "gap-2.5 short:gap-1.5 very-short:gap-1";
 
 const ADMIN_RAIL_ICON_BASE_CLASSES =
-  "flex h-[42px] w-[42px] items-center justify-center rounded-[14px] text-destructive transition-opacity";
+  "flex h-[42px] w-[42px] short:size-[38px] very-short:size-9 shrink-0 items-center justify-center rounded-[14px] text-destructive transition-opacity";
 
 const ADMIN_RAIL_ICON_ACTIVE_CLASSES = "bg-destructive/15 ring-2 ring-destructive";
 
 const ADMIN_RAIL_ICON_INACTIVE_CLASSES = "opacity-70 hover:opacity-100";
 
 const RAIL_ICON_BASE_CLASSES =
-  "flex h-[46px] w-[46px] items-center justify-center rounded-[14px]";
+  "flex h-[46px] w-[46px] short:size-10 very-short:size-[38px] shrink-0 items-center justify-center rounded-[14px]";
 
 const RAIL_ICON_ACTIVE_CLASSES =
   "bg-accent text-accent-foreground shadow-xs";
@@ -209,14 +216,14 @@ export function AppSidebar() {
   const isGroupPage = pathname?.startsWith("/groups/") ?? false;
 
   return (
-    <aside className="flex w-[76px] shrink-0 flex-col items-center border-r-[3px] border-sidebar-border bg-sidebar py-5">
-      <Link href="/playlists" aria-label="Go to playlists" className="flex h-[22px] items-center justify-center rounded focus-visible:ring-2 focus-visible:ring-ring">
+    <aside className="flex h-full min-h-0 w-[76px] shrink-0 flex-col items-center border-r-[3px] border-sidebar-border bg-sidebar py-5 short:py-4 very-short:py-3">
+      <Link href="/playlists" aria-label="Go to playlists" className="flex h-[22px] shrink-0 items-center justify-center rounded focus-visible:ring-2 focus-visible:ring-ring">
         <LogoBars />
       </Link>
 
       <div className={RAIL_DIVIDER_CLASSES} />
 
-      <div className="relative">
+      <div className="relative shrink-0">
         <button
           type="button"
           onClick={openGameLobby}
@@ -240,75 +247,79 @@ export function AppSidebar() {
 
       <div className={RAIL_DIVIDER_CLASSES} />
 
-      <div className="flex flex-col gap-3.5">
-        <Link
-          href="/playlists"
-          className={`${RAIL_ICON_BASE_CLASSES} ${
-            isPlaylistsActive
-              ? RAIL_ICON_ACTIVE_CLASSES
-              : RAIL_ICON_INTERACTIVE_CLASSES
-          }`}
-          title="Your playlists"
-        >
-          <PlaylistsIcon />
-        </Link>
-        <Link
-          href="/explore"
-          className={`${RAIL_ICON_BASE_CLASSES} ${
-            isExploreActive
-              ? RAIL_ICON_ACTIVE_CLASSES
-              : RAIL_ICON_INTERACTIVE_CLASSES
-          }`}
-          title="Explore public playlists"
-        >
-          <ExploreIcon />
-        </Link>
+      <div data-testid="rail-scroll-area" className="min-h-0 w-full flex-1 overflow-y-auto overflow-x-hidden scrollbar-hidden">
+        <div className="flex flex-col items-center pb-1">
+          <div className={`flex flex-col ${RAIL_GROUP_GAP_CLASSES}`}>
+            <Link
+              href="/playlists"
+              className={`${RAIL_ICON_BASE_CLASSES} ${
+                isPlaylistsActive
+                  ? RAIL_ICON_ACTIVE_CLASSES
+                  : RAIL_ICON_INTERACTIVE_CLASSES
+              }`}
+              title="Your playlists"
+            >
+              <PlaylistsIcon />
+            </Link>
+            <Link
+              href="/explore"
+              className={`${RAIL_ICON_BASE_CLASSES} ${
+                isExploreActive
+                  ? RAIL_ICON_ACTIVE_CLASSES
+                  : RAIL_ICON_INTERACTIVE_CLASSES
+              }`}
+              title="Explore public playlists"
+            >
+              <ExploreIcon />
+            </Link>
+          </div>
+
+          <div className={RAIL_DIVIDER_CLASSES} />
+
+          <Link href="/history" title="Game history" className={`${RAIL_ICON_BASE_CLASSES} ${pathname.startsWith("/history") ? RAIL_ICON_ACTIVE_CLASSES : RAIL_ICON_INTERACTIVE_CLASSES}`}>
+            <History className="size-5" />
+          </Link>
+
+          {activeGroup?.id ? (
+            <Link
+              href={`/groups/${activeGroup.id}`}
+              className={`${RAIL_ICON_BASE_CLASSES} border-2 border-primary text-primary ${isGroupPage ? "bg-primary/10 shadow-xs" : ""}`}
+              title="Group lobby (active session)"
+            >
+              <GroupLobbyIcon />
+            </Link>
+          ) : null}
+
+          {isAdmin ? (
+            <>
+              <div className={ADMIN_RAIL_DIVIDER_CLASSES} />
+              <div className="mb-2 short:mb-1.5 font-display text-[8px] tracking-[1px] text-destructive very-short:hidden">ADMIN</div>
+              <nav aria-label="Admin" className={`flex flex-col ${ADMIN_RAIL_GROUP_GAP_CLASSES}`}>
+                {ADMIN_NAVIGATION_ITEMS.map((item) => {
+                  const isActive = isAdminNavigationItemActive(item, pathname);
+                  return (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      aria-label={`Admin: ${item.label}`}
+                      aria-current={isActive ? "page" : undefined}
+                      title={`Admin: ${item.label}`}
+                      className={`${ADMIN_RAIL_ICON_BASE_CLASSES} ${
+                        isActive ? ADMIN_RAIL_ICON_ACTIVE_CLASSES : ADMIN_RAIL_ICON_INACTIVE_CLASSES
+                      }`}
+                    >
+                      <item.icon className="size-5" aria-hidden="true" />
+                    </Link>
+                  );
+                })}
+              </nav>
+            </>
+          ) : null}
+        </div>
       </div>
 
-      <div className={RAIL_DIVIDER_CLASSES} />
-
-      <Link href="/history" title="Game history" className={`${RAIL_ICON_BASE_CLASSES} ${pathname.startsWith("/history") ? RAIL_ICON_ACTIVE_CLASSES : RAIL_ICON_INTERACTIVE_CLASSES}`}>
-        <History className="size-5" />
-      </Link>
-
-      {activeGroup?.id ? (
-        <Link
-          href={`/groups/${activeGroup.id}`}
-          className={`${RAIL_ICON_BASE_CLASSES} border-2 border-primary text-primary ${isGroupPage ? "bg-primary/10 shadow-xs" : ""}`}
-          title="Group lobby (active session)"
-        >
-          <GroupLobbyIcon />
-        </Link>
-      ) : null}
-
-      {isAdmin ? (
-        <>
-          <div className={ADMIN_RAIL_DIVIDER_CLASSES} />
-          <div className="mb-2 font-display text-[8px] tracking-[1px] text-destructive">ADMIN</div>
-          <nav aria-label="Admin" className="flex flex-col gap-2.5">
-            {ADMIN_NAVIGATION_ITEMS.map((item) => {
-              const isActive = isAdminNavigationItemActive(item, pathname);
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  aria-label={`Admin: ${item.label}`}
-                  aria-current={isActive ? "page" : undefined}
-                  title={`Admin: ${item.label}`}
-                  className={`${ADMIN_RAIL_ICON_BASE_CLASSES} ${
-                    isActive ? ADMIN_RAIL_ICON_ACTIVE_CLASSES : ADMIN_RAIL_ICON_INACTIVE_CLASSES
-                  }`}
-                >
-                  <item.icon className="size-5" aria-hidden="true" />
-                </Link>
-              );
-            })}
-          </nav>
-        </>
-      ) : null}
-
       {activeImport && !activeImportQuery.isError ? (
-        <div className="group relative mt-3">
+        <div className="group relative mt-3 mb-3 shrink-0 short:mt-2 short:mb-2">
           <button type="button" onClick={() => router.push(`/playlists/${activeImport.playlistId}/import/youtube`)} className="flex size-[30px] cursor-pointer items-center justify-center rounded-full bg-primary text-primary-foreground" title="Import in progress" aria-describedby="import-progress-popup">
             <span className="size-3 rounded-full border-2 border-current border-t-transparent animate-spin" />
           </button>
@@ -325,8 +336,6 @@ export function AppSidebar() {
         </div>
       ) : null}
 
-      <div className="flex-1" />
-
       <button
         type="button"
         onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
@@ -340,7 +349,7 @@ export function AppSidebar() {
         )}
       </button>
 
-      <div className="h-4" />
+      <div className="h-4 shrink-0 short:h-3 very-short:h-2" />
 
       <NavUser />
     </aside>

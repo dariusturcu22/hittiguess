@@ -71,7 +71,11 @@ The admin rail group (Dashboard, Backfill queue, Song catalog, Reports) appears 
 
 The overview, Songs tab, stage page, dashboard, and detail drawer have rendered comparisons at 1440x900 in both themes against their approved source files, using an isolated local backend and database. The layout retains the 76px rail, seven-card row, 420px enqueue panel, 410px pace card, hard shadows, and 520px drawer. Live data determines counts and row contents. Unknown embedding history and timing remain explicit. The pace chart starts empty and collects samples during the visit because the API has no historical series. The reserve display has no fabricated usage split. The stage flag remains off during local verification; enqueue and run-now are disabled, and rerun failures remain visible in their confirmations. Component tests cover the enabled enqueue and run-now paths, while backend integration tests cover their real-row behavior.
 
-The generated hooks supply every read and mutation. Queue pages refresh every 15 seconds, the dashboard every 30 seconds. Mutations invalidate admin queries and show success or failure feedback. Destructive actions use accessible confirmation dialogs. The source and review sections use actual job results; stored metadata stays available in an expandable section.
+The generated hooks supply every read and mutation. Queue pages refresh every 5 seconds, the dashboard every 10 seconds. Previous data stays visible while refreshed data loads. Mutations invalidate admin queries and show success or failure feedback. Destructive actions use accessible confirmation dialogs. The source and review sections use actual job results; stored metadata stays available in an expandable section.
+
+### Responsive behavior of admin screens
+
+The rail tightens icon sizes and gaps below 860px and 700px of viewport height. Its navigation group scrolls with a hidden scrollbar when needed; the theme switch and avatar stay reachable. Admin content scrolls vertically, and long tables scroll inside their cards beneath sticky headers. Stat tiles become two columns, stage cards wrap into four and then two columns, and supporting cards stack as available width shrinks. Low priority catalog columns hide before essential columns condense. Table overflow stays inside its card, and the song drawer uses the smaller of 520px and the available content width. The approved 1440x900 layout keeps its original proportions.
 
 ### Gameplay (routes implemented, stories 9/10/11/12/13/39)
 

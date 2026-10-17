@@ -269,6 +269,21 @@ def test_precheck_failures_are_attributed_to_deepinfra(client, mocker, precheck_
     assert body["upstreamStatus"] == expected_upstream_status
 
 
+def test_a_busy_deepinfra_precheck_is_logged_as_a_warning_and_not_reported(client, mocker, caplog):
+    precheck_mock = _patch_identification(mocker)
+    precheck_mock.side_effect = _openai_status_error(HTTP_TOO_MANY_REQUESTS)
+    capture_mock = mocker.patch("app.observability.error_reporting.sentry_sdk.capture_exception")
+
+    with caplog.at_level(logging.INFO):
+        response = client.post("/stages/youtube-metadata", json={"youtubeId": VIDEO_ID}, headers=_headers())
+
+    assert response.status_code == HTTP_BAD_GATEWAY
+    assert _error_body(response)["upstreamStatus"] == HTTP_TOO_MANY_REQUESTS
+    assert not [record for record in caplog.records if record.levelno >= logging.ERROR]
+    assert [record for record in caplog.records if record.levelno == logging.WARNING and "YOUTUBE_METADATA" in record.getMessage()]
+    capture_mock.assert_not_called()
+
+
 @respx.mock
 def test_an_upstream_error_leaks_no_key_or_url_into_the_body_or_the_formatted_logs(client, caplog):
     respx.get(url__startswith=YOUTUBE_VIDEOS_URL).mock(return_value=httpx.Response(HTTP_FORBIDDEN, json={"error": "quota"}))

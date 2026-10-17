@@ -2,7 +2,8 @@
 
 import React from "react";
 import Link from "next/link";
-import { keepPreviousData } from "@tanstack/react-query";
+import { livePollingQueryOptions } from "../../live-admin-data";
+import { jobTriesText, visibleFailureReason } from "../queue-presentation";
 import {
   useJobs,
   useQueues,
@@ -10,7 +11,7 @@ import {
 } from "@/hooks/generated/admin-pipeline/admin-pipeline";
 import {
   STAGES,
-  PIPELINE_REFRESH_MS,
+  BACKFILL_QUEUE_REFRESH_INTERVAL_MILLISECONDS,
   panelClass,
   pageClass,
   count,
@@ -20,6 +21,10 @@ import {
   useAdminMutationFeedback,
   SmallButton,
   PageHeader,
+  UpdatedAgo,
+  scrollingTableCardClass,
+  tableScrollAreaClass,
+  stickyTableHeadClass,
   StatePill,
   StageToggle,
   ConfirmAction,
@@ -56,7 +61,9 @@ function PaceCard({ queue }: { queue: QueueStageDTO }) {
   }, []);
   const maximum = Math.max(...samples, MINIMUM_CHART_SCALE_MS);
   return (
-    <div className={`${panelClass} w-[410px] shrink-0 px-[18px] py-3.5`}>
+    <div
+      className={`${panelClass} w-[410px] shrink-0 px-[18px] py-3.5 @max-6xl:w-[340px] @max-5xl:w-full`}
+    >
       <div className="mb-2 text-[11px] font-semibold uppercase text-muted-foreground">
         Pace, this visit
       </div>
@@ -92,16 +99,15 @@ export function StageQueuePage({ stage }: { stage: string }) {
   const [status, setStatus] = React.useState("WAITING");
   const [page, setPage] = React.useState(0);
   const overview = useQueues({
-    query: { refetchInterval: PIPELINE_REFRESH_MS },
+    query: livePollingQueryOptions(BACKFILL_QUEUE_REFRESH_INTERVAL_MILLISECONDS),
   });
   const jobs = useJobs(
     stage,
     { status, page },
     {
-      query: {
-        refetchInterval: PIPELINE_REFRESH_MS,
-        placeholderData: keepPreviousData,
-      },
+      query: livePollingQueryOptions(
+        BACKFILL_QUEUE_REFRESH_INTERVAL_MILLISECONDS,
+      ),
     },
   );
   const queue = overview.data?.stages?.find(
@@ -113,7 +119,7 @@ export function StageQueuePage({ stage }: { stage: string }) {
     <div className={pageClass}>
       <Link
         href="/admin/backfill-queue"
-        className="mb-2 text-xs text-muted-foreground"
+        className="mb-2 self-start rounded text-xs text-muted-foreground hover:text-accent focus-visible:ring-2 focus-visible:ring-accent"
       >
         Backfill queue / {definition.label}
       </Link>
@@ -121,6 +127,13 @@ export function StageQueuePage({ stage }: { stage: string }) {
         title={`${definition.label} queue`}
         subtitle="Jobs in this stage, in processing order within each lane."
       >
+        <UpdatedAgo
+          updatedAt={Math.min(overview.dataUpdatedAt, jobs.dataUpdatedAt) || undefined}
+          refreshFailed={
+            (overview.isError && Boolean(overview.data)) ||
+            (jobs.isError && Boolean(jobs.data))
+          }
+        />
         {definition.id !== "EMBEDDING" && (
           <ConfirmAction
             label="Retry all failed"
@@ -138,7 +151,7 @@ export function StageQueuePage({ stage }: { stage: string }) {
         retry={overview.refetch}
       />
       {queue && (
-        <div className="mb-[18px] flex gap-5">
+        <div className="mb-[18px] flex shrink-0 flex-wrap gap-5 @max-6xl:gap-3.5">
           <div className={`${panelClass} w-[150px] shrink-0 px-[18px] py-3.5`}>
             <div className="mb-3 text-[11px] font-semibold uppercase text-muted-foreground">
               State
@@ -158,9 +171,9 @@ export function StageQueuePage({ stage }: { stage: string }) {
           ].map(([label, value, color]) => (
             <div
               key={label}
-              className={`${panelClass} min-w-0 flex-1 px-[18px] py-3.5`}
+              className={`${panelClass} min-w-[110px] flex-1 px-[18px] py-3.5`}
             >
-              <div className="mb-2 text-[11px] font-semibold uppercase text-muted-foreground">
+              <div className="mb-2 truncate text-[11px] font-semibold uppercase text-muted-foreground">
                 {label}
               </div>
               <div
@@ -174,7 +187,7 @@ export function StageQueuePage({ stage }: { stage: string }) {
         </div>
       )}
       <div
-        className="mb-3.5 flex items-center gap-2"
+        className="mb-3.5 flex shrink-0 flex-wrap items-center gap-2"
         role="group"
         aria-label="Job filters"
       >
@@ -201,18 +214,18 @@ export function StageQueuePage({ stage }: { stage: string }) {
           failure history, and done-today totals are unavailable.
         </p>
       )}
-      <section
-        className={`${panelClass} flex min-h-0 flex-1 flex-col overflow-hidden`}
-      >
-        <div className="flex-1 overflow-auto">
-          <table className="w-full table-fixed text-left text-xs">
-            <thead className="border-b-2 border-border bg-card text-[10px] uppercase text-icon-muted">
+      <section className={`${panelClass} ${scrollingTableCardClass}`}>
+        <div className={tableScrollAreaClass}>
+          <table className="w-full min-w-[720px] table-fixed text-left text-xs">
+            <thead className={stickyTableHeadClass}>
               <tr>
                 <th className="w-[64px] px-3 py-2.5">Priority</th>
-                <th className="w-[26%] px-5 py-2.5">Song</th>
+                <th className="w-[26%] px-5 py-2.5 @max-5xl:px-3">Song</th>
                 <th className="w-[110px] px-2 py-2.5">Lane</th>
-                <th className="w-[120px] px-2 py-2.5">Queued</th>
-                <th className="w-[75px] px-2 py-2.5">Attempts</th>
+                <th className="w-[120px] px-2 py-2.5 @max-5xl:hidden">
+                  Queued
+                </th>
+                <th className="w-[110px] px-2 py-2.5">Tries</th>
                 <th className="px-2 py-2.5">Status</th>
                 <th className="w-[160px] px-5 py-2.5 text-right">Actions</th>
               </tr>
@@ -223,8 +236,11 @@ export function StageQueuePage({ stage }: { stage: string }) {
                   <td className="px-3 py-[9px] text-accent">
                     {job.priority ? "↑" : ""}
                   </td>
-                  <td className="px-5 py-[9px]">
-                    <div className="truncate text-[13px] font-semibold">
+                  <td className="px-5 py-[9px] @max-5xl:px-3">
+                    <div
+                      className="truncate text-[13px] font-semibold"
+                      title={job.title ?? job.youtubeId}
+                    >
                       {job.title ?? job.youtubeId}
                     </div>
                     <div className="mt-1 truncate text-[11px] text-muted-foreground">
@@ -242,16 +258,22 @@ export function StageQueuePage({ stage }: { stage: string }) {
                           : "Unavailable"}
                     </span>
                   </td>
-                  <td className="px-2 py-[9px] text-[11px] text-muted-foreground">
+                  <td className="px-2 py-[9px] text-[11px] text-muted-foreground @max-5xl:hidden">
                     {dateTime(job.queuedAt)}
                   </td>
-                  <td className="px-2 py-[9px]">
-                    {job.attempts ?? 0}/{job.maxAttempts ?? "unknown"}
+                  <td className="px-2 py-[9px] text-[11px]">
+                    {jobTriesText(job)}
                   </td>
                   <td className="px-2 py-[9px] text-[11px] text-muted-foreground">
-                    {job.lastError ?? job.status?.replaceAll("_", " ")}
+                    <div
+                      className="line-clamp-2"
+                      title={visibleFailureReason(job)}
+                    >
+                      {visibleFailureReason(job) ??
+                        job.status?.replaceAll("_", " ")}
+                    </div>
                     {job.retrying && (
-                      <div>Retry {dateTime(job.nextAttemptAt)}</div>
+                      <div>Next try {dateTime(job.nextAttemptAt)}</div>
                     )}
                   </td>
                   <td className="px-5 py-[9px]">

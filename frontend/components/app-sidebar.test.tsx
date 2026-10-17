@@ -316,6 +316,19 @@ describe("AppSidebar admin group", () => {
     expect(screen.getByLabelText("Admin: Song catalog")).not.toHaveAttribute("aria-current");
   });
 
+  it("keeps the admin links in their configured order", () => {
+    currentUserRole = "ADMIN";
+    renderSidebar();
+
+    const adminLinks = screen.getAllByRole("link", { name: /^Admin: / });
+    expect(adminLinks.map((link) => link.getAttribute("aria-label"))).toEqual([
+      "Admin: Dashboard",
+      "Admin: Backfill queue",
+      "Admin: Song catalog",
+      "Admin: Reports",
+    ]);
+  });
+
   it("marks nothing active outside the admin routes", () => {
     currentUserRole = "ADMIN";
     renderSidebar();
@@ -324,5 +337,66 @@ describe("AppSidebar admin group", () => {
     expect(screen.getByLabelText("Admin: Backfill queue")).not.toHaveAttribute("aria-current");
     expect(screen.getByLabelText("Admin: Song catalog")).not.toHaveAttribute("aria-current");
     expect(screen.getByLabelText("Admin: Dashboard")).not.toHaveAttribute("aria-current");
+  });
+});
+
+describe("AppSidebar on short screens", () => {
+  const MINIMUM_TOUCH_TARGET_PX = 36;
+  const TAILWIND_SPACING_PX = 4;
+
+  function smallestSizePx(className: string) {
+    const arbitrarySizes = [...className.matchAll(/(?:size|h|w)-\[\d+px\]/g)].map(
+      ([matchedClass]) => Number(matchedClass.replace(/\D/g, "")),
+    );
+    const scaleSizes = [...className.matchAll(/size-\d+(?![\w[])/g)].map(
+      ([matchedClass]) => Number(matchedClass.replace(/\D/g, "")) * TAILWIND_SPACING_PX,
+    );
+    return Math.min(...arbitrarySizes, ...scaleSizes);
+  }
+
+  beforeEach(() => {
+    currentPathname = "/admin";
+    currentUserRole = "ADMIN";
+    activeMembership = { id: 4 };
+    activeImportResponse = { isError: true };
+  });
+
+  it("scrolls only the middle section and keeps the play button and theme toggle outside it", () => {
+    renderSidebar();
+    const scrollArea = screen.getByTestId("rail-scroll-area");
+
+    expect(scrollArea.className).toContain("overflow-y-auto");
+    expect(scrollArea.className).toContain("min-h-0");
+    expect(scrollArea.className).toContain("scrollbar-hidden");
+    expect(scrollArea).toContainElement(screen.getByTitle("Your playlists"));
+    expect(scrollArea).toContainElement(screen.getByLabelText("Admin: Reports"));
+    expect(scrollArea).not.toContainElement(screen.getByTitle("Open group lobby"));
+    expect(scrollArea).not.toContainElement(screen.getByTitle("Toggle theme"));
+  });
+
+  it("keeps every rail target at least 36 px at every height step", () => {
+    renderSidebar();
+    const targets = [
+      screen.getByTitle("Open group lobby"),
+      screen.getByTitle("Your playlists"),
+      screen.getByTitle("Game history"),
+      screen.getByTitle("Group lobby (active session)"),
+      screen.getByLabelText("Admin: Dashboard"),
+      screen.getByTitle("Toggle theme"),
+    ];
+
+    for (const target of targets) {
+      expect(target.className).toMatch(/very-short:/);
+      expect(smallestSizePx(target.className)).toBeGreaterThanOrEqual(MINIMUM_TOUCH_TARGET_PX);
+    }
+  });
+
+  it("keeps the admin group distinct and hides only its label on very short screens", () => {
+    renderSidebar();
+
+    expect(screen.getByText("ADMIN").className).toContain("very-short:hidden");
+    expect(screen.getByText("ADMIN").className).toContain("text-destructive");
+    expect(screen.getByLabelText("Admin: Dashboard").className).toContain("text-destructive");
+    expect(screen.getByLabelText("Admin: Dashboard").className).toContain("ring-destructive");
   });
 });

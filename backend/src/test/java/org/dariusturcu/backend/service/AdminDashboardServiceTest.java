@@ -57,7 +57,7 @@ class AdminDashboardServiceTest {
     void theDashboardIncludesQueueControlsAndReserveDataWithoutReplacingExistingFields() {
         var pipeline = mock(org.dariusturcu.backend.pipeline.AdminPipelineService.class);
         var queues = new org.dariusturcu.backend.model.admin.QueueOverviewDTO(java.util.List.of(), true,
-                WAITING_ROWS, org.dariusturcu.backend.pipeline.PipelineSettings.DEFAULT_YOUTUBE_RESERVE_UNITS, true);
+                WAITING_ROWS, org.dariusturcu.backend.pipeline.PipelineSettings.DEFAULT_YOUTUBE_RESERVE_UNITS, true, null);
         when(pipeline.queues()).thenReturn(queues);
         when(adminSongCatalogService.catalogCounts()).thenReturn(new AdminCatalogCountsDTO(
                 ALL_COUNT, VERIFIED_COUNT, NEEDS_REVIEW_COUNT, IN_QUEUE_COUNT, PROCESSING_COUNT, ERROR_COUNT));

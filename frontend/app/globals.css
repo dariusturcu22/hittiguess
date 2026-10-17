@@ -5,6 +5,10 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* Narrower height steps override the preceding rail spacing. */
+@custom-variant short (@media (max-height: 860px));
+@custom-variant very-short (@media (max-height: 700px));
+
 html {
   scrollbar-gutter: auto;
   scrollbar-width: none;
@@ -27,6 +31,17 @@ html {
 }
 
 .dark .global-scrollbar-thumb { background: rgba(166,173,200,.55); }
+
+/* Explicit scrollbar width overrides the global hidden scrollbar. */
+@utility scrollbar-thin-visible {
+  scrollbar-width: thin;
+  scrollbar-color: var(--icon-muted) transparent;
+}
+
+/* Scroll areas that keep the global hidden scrollbar in every browser. */
+@utility scrollbar-hidden {
+  scrollbar-width: none;
+}
 
 html.theme-transition,
 html.theme-transition * {

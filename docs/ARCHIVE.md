@@ -2456,6 +2456,15 @@ M01 adds the away-turn banner and one sound per turn across reconnects. M02 adds
 - [x] Delete standalone audit and remaining-work files and update all references
 - [x] Validate local documentation links, archive completed tasks, and check the final diff
 
+## Fix: Responsive admin screens
+
+- [x] Review and finish responsive rails, cards, tables, and song drawer while preserving the approved 1440x900 mockups
+- [x] Verify queue and dashboard polling, action invalidation, and clear retry history with focused unit tests
+- [x] Browser verification against the local backend: all seven screen states at eight viewports in both themes, with screenshots reviewed
+- [x] Document responsive behavior and run the frontend unit suite, TypeScript check, and lint
+
+Verification covers dashboard, queue overview, queue songs, MusicBrainz stage, song drawer, reports, and the playlists rail at 1024x640, 1280x720, 1280x800, 1366x768, 1536x864, 1707x1067, 1440x900, and 1920x1080 in both themes. All 112 screenshots have no horizontal page overflow; short-screen content and rail controls remain reachable. The 1440x900 comparisons retain the approved mockup proportions. Local pause/resume refreshes queue data immediately; interval requests follow the 5-second queue and 10-second dashboard settings. The frontend suite passes 414 tests across 65 files, TypeScript passes, and lint has only the three existing warnings in untouched files.
+
 ## Release: Closed-beta removal verification
 
 - [x] Review the gate removal, authentication coverage, documentation, and branch diff

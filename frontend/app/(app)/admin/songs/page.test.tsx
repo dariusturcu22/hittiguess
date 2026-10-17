@@ -291,6 +291,13 @@ describe("SongCatalogPage", () => {
             enqueuedAt: "2026-10-15T12:00:00Z",
             failureReason: "No usable metadata",
           },
+          {
+            id: SONG_ID,
+            origin: "ADMIN_SEED",
+            status: "DONE",
+            enqueuedAt: "2026-10-15T13:00:00Z",
+            failureReason: "Stale failure from a successful job",
+          },
         ],
       },
       isLoading: false,
@@ -311,6 +318,7 @@ describe("SongCatalogPage", () => {
       drawer.getByText(/Fast-tier import recheck, failed\. No usable metadata/),
     ).toBeInTheDocument();
     expect(drawer.getByText("medium")).toBeInTheDocument();
+    expect(drawer.queryByText(/Stale failure from a successful job/)).not.toBeInTheDocument();
     expect(
       drawer.queryByText("What each source found"),
     ).not.toBeInTheDocument();

@@ -3,7 +3,8 @@ import { stageLabel } from "../backfill-queue/pipeline-ui";
 
 const SOURCE_STAGES = ["MUSICBRAINZ", "DISCOGS", "WIKIDATA", "WIKIPEDIA"];
 function describe(source: SourceFindingDTO): string {
-  if (source.failureReason) return source.failureReason;
+  if (source.failureReason && source.status !== "DONE")
+    return source.failureReason;
   if (source.status === "SKIPPED") return "This source was not needed.";
   if (source.status !== "DONE")
     return source.status?.replaceAll("_", " ") ?? "Not queued";
@@ -59,7 +60,7 @@ export function SourceFindings({
                   <span className={`w-11 shrink-0 font-display text-sm ${typeof year === "number" && releaseYear != null && year !== releaseYear ? "text-peach" : "text-green"}`}>
                     {typeof year === "number" ? year : ""}
                   </span>
-                  <span className="min-w-0 flex-1 text-[11px] text-muted-foreground">
+                  <span className="min-w-0 flex-1 break-words text-[11px] text-muted-foreground">
                     {source ? describe(source) : "Not queued"}
                   </span>
                   <span className="text-[11px] text-icon-muted">

@@ -2,7 +2,8 @@
 
 import React from "react";
 import Link from "next/link";
-import { keepPreviousData } from "@tanstack/react-query";
+import { livePollingQueryOptions } from "../live-admin-data";
+import { jobTriesText, visibleFailureReason } from "./queue-presentation";
 import { toast } from "sonner";
 import {
   useQueues,
@@ -17,7 +18,7 @@ import {
 import type { QueueStageDTO } from "@/hooks/models/queueStageDTO";
 import {
   STAGES,
-  PIPELINE_REFRESH_MS,
+  BACKFILL_QUEUE_REFRESH_INTERVAL_MILLISECONDS,
   panelClass,
   pageClass,
   inputClass,
@@ -29,6 +30,10 @@ import {
   useAdminMutationFeedback,
   SmallButton,
   PageHeader,
+  UpdatedAgo,
+  scrollingTableCardClass,
+  tableScrollAreaClass,
+  stickyTableHeadClass,
   StatePill,
   StageToggle,
   ConfirmAction,
@@ -43,7 +48,7 @@ const FULL_PROGRESS_PERCENT = 100;
 function StageCard({ stage }: { stage: QueueStageDTO }) {
   const definition = STAGES.find((item) => item.id === stage.stage);
   return (
-    <section className={`${panelClass} min-w-0 flex-1 px-3.5 pt-3.5 pb-3`}>
+    <section className={`${panelClass} flex min-w-0 flex-col px-3.5 pt-3.5 pb-3`}>
       <h2
         className="mb-2 truncate text-xs font-bold"
         title={stageLabel(stage.stage)}
@@ -66,12 +71,14 @@ function StageCard({ stage }: { stage: QueueStageDTO }) {
           ["Time to drain", stage.state === "PAUSED" ? "Paused" : duration(stage.estimatedDrainSeconds), ""],
         ].map(([label, value, color]) => (
           <div className="flex justify-between gap-1" key={label}>
-            <dt>{label}</dt>
-            <dd className={color}>{value}</dd>
+            <dt className="min-w-0 truncate" title={label}>
+              {label}
+            </dt>
+            <dd className={`whitespace-nowrap ${color}`}>{value}</dd>
           </div>
         ))}
       </dl>
-      <p className="mt-2 mb-2.5 min-h-6 text-[10px] leading-3 text-icon-muted">
+      <p className="mt-2 mb-2.5 min-h-6 flex-1 text-[10px] leading-3 text-icon-muted">
         {stage.pausedReason ??
           (stage.cooldownUntil
             ? `Cooldown until ${dateTime(stage.cooldownUntil)}`
@@ -95,16 +102,15 @@ function BatchList() {
   const query = useBatches(
     { page },
     {
-      query: {
-        refetchInterval: PIPELINE_REFRESH_MS,
-        placeholderData: keepPreviousData,
-      },
+      query: livePollingQueryOptions(
+        BACKFILL_QUEUE_REFRESH_INTERVAL_MILLISECONDS,
+      ),
     },
   );
   const feedback = useAdminMutationFeedback();
   const cancel = useCancelBatch({ mutation: feedback });
   return (
-    <section className={`${panelClass} flex min-w-0 flex-1 flex-col`}>
+    <section className={`${panelClass} flex min-w-0 flex-1 flex-col @max-4xl:h-[360px] @max-4xl:flex-none`}>
       <h2 className="px-5 py-3.5 font-display text-sm">Batches</h2>
       <QueryState
         loading={query.isLoading}
@@ -112,7 +118,7 @@ function BatchList() {
         retry={query.refetch}
         empty={!query.isLoading && !query.isError && !query.data?.items?.length}
       />
-      <div className="flex-1 overflow-y-auto">
+      <div className="min-h-0 flex-1 overflow-y-auto scrollbar-thin-visible contain-size">
         {query.data?.items?.map((batch) => {
           const completed =
             (batch.done ?? 0) + (batch.failed ?? 0) + (batch.cancelled ?? 0);
@@ -126,7 +132,10 @@ function BatchList() {
             >
               <div className="flex items-start gap-3">
                 <div className="min-w-0 flex-1">
-                  <h3 className="truncate text-[13px] font-semibold">
+                  <h3
+                    className="truncate text-[13px] font-semibold"
+                    title={batch.label ?? `Batch ${batch.id}`}
+                  >
                     {batch.label ?? `Batch ${batch.id}`}
                   </h3>
                   <p className="mt-1 text-[11px] text-muted-foreground">
@@ -137,7 +146,7 @@ function BatchList() {
                       : `${duration(batch.estimatedDrainSeconds)} to drain`}
                   </p>
                 </div>
-                <span className="text-xs">
+                <span className="whitespace-nowrap text-xs">
                   {count(batch.done ?? 0)} / {count(batch.total ?? 0)}
                 </span>
                 {!batch.cancelledAt &&
@@ -217,7 +226,7 @@ function EnqueueForm({ enabled }: { enabled: boolean }) {
   return (
     <section
       id="add-to-backlog"
-      className={`${panelClass} flex w-[420px] shrink-0 flex-col px-5 py-[18px]`}
+      className={`${panelClass} flex w-[clamp(300px,36%,420px)] shrink-0 flex-col px-5 py-[18px] @max-4xl:w-full`}
     >
       <h2 className="mb-4 font-display text-sm">Add to backlog</h2>
       <label
@@ -243,7 +252,7 @@ function EnqueueForm({ enabled }: { enabled: boolean }) {
           The stage pipeline is disabled.
         </p>
       )}
-      <div className="mt-auto flex gap-2.5">
+      <div className="mt-auto flex flex-wrap gap-2.5">
         <SmallButton
           primary
           disabled={
@@ -278,10 +287,9 @@ export function RunList() {
   const query = useRuns(
     { state, page },
     {
-      query: {
-        refetchInterval: PIPELINE_REFRESH_MS,
-        placeholderData: keepPreviousData,
-      },
+      query: livePollingQueryOptions(
+        BACKFILL_QUEUE_REFRESH_INTERVAL_MILLISECONDS,
+      ),
     },
   );
   const counts = query.data?.counts;
@@ -315,34 +323,41 @@ export function RunList() {
         </span>
       </div>
 
-      <section
-        className={`${panelClass} flex min-h-0 flex-1 flex-col overflow-hidden`}
-      >
-        <div className="flex-1 overflow-auto">
-          <table className="w-full table-fixed text-left text-xs">
-            <thead className="border-b-2 border-border bg-card text-[10px] uppercase text-icon-muted">
+      <section className={`${panelClass} ${scrollingTableCardClass}`}>
+        <div className={tableScrollAreaClass}>
+          <table className="w-full min-w-[720px] table-fixed text-left text-xs">
+            <thead className={stickyTableHeadClass}>
               <tr>
-                <th className="w-[25%] px-5 py-2.5">Song</th>
-                <th className="w-[15%] px-2 py-2.5">Batch</th>
-                <th className="w-[23%] px-2 py-2.5">Stages</th>
-                <th className="px-2 py-2.5">Note</th>
+                <th className="px-5 py-2.5">Song</th>
+                <th className="w-[15%] px-2 py-2.5 @max-5xl:hidden">Batch</th>
+                <th className="w-[250px] px-2 py-2.5">Stages</th>
+                <th className="w-[28%] px-2 py-2.5">Note</th>
                 <th className="w-[160px] px-5 py-2.5 text-right">Actions</th>
               </tr>
             </thead>
             <tbody>
               {query.data?.items?.map((run) => {
-                const failure = run.jobs?.find((job) => job.lastError);
+                const failure = run.jobs?.find((job) =>
+                  visibleFailureReason(job),
+                );
+                const retriedJob = run.jobs?.find(
+                  (job) => job.status === "DONE" && (job.attempts ?? 0) > 0,
+                );
+                const songTitle = run.title ?? run.youtubeId;
                 return (
                   <tr key={run.id} className="border-b-2 border-background">
                     <td className="px-5 py-[9px]">
-                      <div className="truncate text-[13px] font-semibold">
-                        {run.title ?? run.youtubeId}
+                      <div
+                        className="truncate text-[13px] font-semibold"
+                        title={songTitle}
+                      >
+                        {songTitle}
                       </div>
                       <div className="mt-1 truncate text-[11px] text-muted-foreground">
                         {run.artists?.join(", ")} · {run.youtubeId}
                       </div>
                     </td>
-                    <td className="truncate px-2 py-[9px] text-[11px] text-muted-foreground">
+                    <td className="truncate px-2 py-[9px] text-[11px] text-muted-foreground @max-5xl:hidden">
                       {run.batchLabel ??
                         (run.lane === "USER_IMPORT"
                           ? "User import"
@@ -354,17 +369,24 @@ export function RunList() {
                     <td className="px-2 py-[9px] text-[11px] text-muted-foreground">
                       {failure ? (
                         <>
-                          {failure.lastError}
-                          {failure.retrying && (
-                            <div>
-                              Retry {dateTime(failure.nextAttemptAt)}, attempt{" "}
-                              {failure.attempts}/
-                              {failure.maxAttempts ?? "unknown"}
-                            </div>
-                          )}
+                          <div
+                            className="line-clamp-2"
+                            title={failure.lastError}
+                          >
+                            {failure.lastError}
+                          </div>
+                          <div>
+                            {jobTriesText(failure)}
+                            {failure.retrying &&
+                              `, next ${dateTime(failure.nextAttemptAt)}`}
+                          </div>
                         </>
                       ) : run.status === "DONE" ? (
-                        "Metadata saved"
+                        retriedJob ? (
+                          `Metadata saved. ${stageLabel(retriedJob.stage)} ${jobTriesText(retriedJob).toLowerCase()}.`
+                        ) : (
+                          "Metadata saved"
+                        )
                       ) : run.status === "CANCELLED" ? (
                         "Cancelled"
                       ) : (
@@ -404,7 +426,9 @@ export function RunList() {
 }
 export default function BackfillQueuePage() {
   const [tab, setTab] = React.useState("Overview");
-  const query = useQueues({ query: { refetchInterval: PIPELINE_REFRESH_MS } });
+  const query = useQueues({
+    query: livePollingQueryOptions(BACKFILL_QUEUE_REFRESH_INTERVAL_MILLISECONDS),
+  });
   const feedback = useAdminMutationFeedback();
   const pause = usePausePipeline({ mutation: feedback });
   const resume = useResumePipeline({ mutation: feedback });
@@ -417,6 +441,10 @@ export default function BackfillQueuePage() {
         title="Backfill queue"
         subtitle="Each stage runs at its own pace. User imports go first."
       >
+        <UpdatedAgo
+          updatedAt={query.dataUpdatedAt}
+          refreshFailed={query.isError && Boolean(query.data)}
+        />
         <SmallButton
           disabled={!query.data || pause.isPending || resume.isPending}
           onClick={() => (allPaused ? resume : pause).mutate()}
@@ -475,7 +503,7 @@ export default function BackfillQueuePage() {
         role="tabpanel"
         id={`panel-${tab}`}
         aria-labelledby={`tab-${tab}`}
-        className="flex min-h-0 flex-1 flex-col"
+        className="flex flex-1 flex-col"
       >
         {tab === "Songs" ? (
           <RunList />
@@ -488,7 +516,7 @@ export default function BackfillQueuePage() {
             />
             {query.data && (
               <>
-                <div className="mb-5 flex gap-3.5">
+                <div className="mb-5 grid shrink-0 grid-cols-7 gap-3.5 @max-6xl:grid-cols-4 @max-4xl:grid-cols-2">
                   {STAGES.map((stage) => {
                     const queue = query.data.stages?.find(
                       (item) => item.stage === stage.id,
@@ -496,7 +524,7 @@ export default function BackfillQueuePage() {
                     return queue && <StageCard key={stage.id} stage={queue} />;
                   })}
                 </div>
-                <div className="flex min-h-[250px] flex-1 gap-6">
+                <div className="flex min-h-[250px] flex-1 gap-6 @max-4xl:flex-col">
                   <BatchList />
                   <EnqueueForm enabled={query.data.stagesEnabled === true} />
                 </div>
