@@ -29,7 +29,8 @@ apiWebSocketUrl.protocol = apiUrl.protocol === "https:" ? "wss:" : "ws:";
 const contentSecurityPolicy = [
   "default-src 'self'",
   // React uses eval in development only, to rebuild call stacks for its debugging tools.
-  `script-src 'self' 'unsafe-inline'${process.env.NODE_ENV === "development" ? " 'unsafe-eval'" : ""}`,
+  // The noise filter compiles WebAssembly, which needs wasm-unsafe-eval.
+  `script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval'${process.env.NODE_ENV === "development" ? " 'unsafe-eval'" : ""}`,
   "style-src 'self' 'unsafe-inline'",
   `img-src 'self' data: blob: ${apiUrl.origin} https://i.ytimg.com https://*.googleusercontent.com`,
   `connect-src 'self' ${apiUrl.origin} ${apiWebSocketUrl.origin}${sentryOrigin === undefined ? "" : ` ${sentryOrigin}`}`,

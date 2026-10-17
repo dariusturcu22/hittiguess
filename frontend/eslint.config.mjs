@@ -16,6 +16,9 @@ const eslintConfig = defineConfig([
     "hooks/generated/**",
     "hooks/models/**",
     "hooks/zod/**",
+    // The AudioWorklet processor and wasm binaries are copied from
+    // @sapphi-red/web-noise-suppressor so the browser can load them by URL.
+    "public/rnnoise/**",
   ]),
 ]);
 
