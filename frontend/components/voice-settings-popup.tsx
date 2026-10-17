@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 
 import { Button } from "@/components/shadcn/button";
-import { useAudioDevices } from "@/hooks/use-audio-devices";
+import { MAX_MICROPHONE_VOLUME_PERCENT, MAX_SPEAKER_VOLUME_PERCENT, useAudioDevices } from "@/hooks/use-audio-devices";
 
 const TEST_TONE_FREQUENCY_HERTZ = 440;
 const TEST_TONE_GAIN = 0.2;
@@ -40,14 +40,38 @@ function audioContextConstructor(): typeof AudioContext | undefined {
   return window.AudioContext ?? (window as AudioContextWindow).webkitAudioContext;
 }
 
+function VolumeSlider({ label, value, maximum, onChange }: { label: string; value: number; maximum: number; onChange: (percent: number) => void }) {
+  return (
+    <label className="flex flex-col gap-1.5 text-[13px] text-muted-foreground">
+      <span className="flex items-center justify-between">
+        {label}
+        <span className="font-semibold text-foreground">{value}%</span>
+      </span>
+      <input
+        type="range"
+        min={0}
+        max={maximum}
+        step={5}
+        value={value}
+        onChange={(event) => onChange(Number(event.target.value))}
+        className="w-full accent-primary"
+      />
+    </label>
+  );
+}
+
 export function VoiceSettingsPopup({ onClose }: { onClose: () => void }) {
   const {
     microphones,
     speakers,
     microphoneDeviceId,
     speakerDeviceId,
+    microphoneVolume,
+    speakerVolume,
     selectMicrophone,
     selectSpeaker,
+    setMicrophoneVolume,
+    setSpeakerVolume,
     refreshDevices,
   } = useAudioDevices();
   const [microphoneLevel, setMicrophoneLevel] = useState(0);
@@ -201,6 +225,7 @@ export function VoiceSettingsPopup({ onClose }: { onClose: () => void }) {
             {microphoneTestError}
           </p>
         ) : null}
+        <VolumeSlider label="Microphone volume" value={microphoneVolume} maximum={MAX_MICROPHONE_VOLUME_PERCENT} onChange={setMicrophoneVolume} />
         {isTestingMicrophone ? (
           <div
             className="h-2 overflow-hidden rounded-full bg-secondary"
@@ -236,6 +261,7 @@ export function VoiceSettingsPopup({ onClose }: { onClose: () => void }) {
             </Button>
           </span>
         </label>
+        <VolumeSlider label="Speaker volume" value={speakerVolume} maximum={MAX_SPEAKER_VOLUME_PERCENT} onChange={setSpeakerVolume} />
       </div>
     </section>
   );
