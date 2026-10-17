@@ -129,7 +129,11 @@ export function useGameSessionRealtime(
             }
             void queryClient.invalidateQueries({ queryKey: getGetSessionQueryKey(sessionId) });
             void queryClient.invalidateQueries({ queryKey: getGetGuessStateQueryKey(sessionId) });
-            void queryClient.invalidateQueries({ queryKey: getGetCurrentRoundLinkOutQueryKey(sessionId) });
+            // The link-out is refused once the song is revealed, so refreshing it then only
+            // produces a 409.
+            if (roundEvent?.payload?.status !== "REVEALED" && roundEvent?.payload?.status !== "SCORED") {
+              void queryClient.invalidateQueries({ queryKey: getGetCurrentRoundLinkOutQueryKey(sessionId) });
+            }
           }
         });
         client.subscribe(`${SESSION_USER_QUEUE}/${sessionId}/guess-result`, (message) => {

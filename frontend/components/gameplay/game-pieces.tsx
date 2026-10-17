@@ -1,5 +1,7 @@
 import type { CSSProperties, KeyboardEvent, PointerEvent } from "react";
 
+import { readableCardColor } from "@/lib/card-color";
+
 const CARD_TEXT_COLOR = "#1e1e2e";
 const DEFAULT_CARD_COLOR = "#cba6f7";
 const VISUALIZER_BAR_COUNT = 5;
@@ -15,7 +17,7 @@ export const CARD_SIZE_CLASSES = "size-[132px] sm:size-[168px]";
 
 function cardColor(color: string | undefined): string {
   if (!color) return DEFAULT_CARD_COLOR;
-  return color.startsWith("#") ? color : `#${color}`;
+  return readableCardColor(color.startsWith("#") ? color : `#${color}`);
 }
 
 export function SongCard({ artist, title, year, color, className = "", style }: { artist?: string; title?: string; year?: number | string; color?: string; className?: string; style?: CSSProperties }) {

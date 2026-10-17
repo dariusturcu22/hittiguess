@@ -39,7 +39,8 @@ export function AppVoiceSidebar() {
   const { microphoneDeviceId, speakerDeviceId, microphoneVolume, speakerVolume } = useAudioDevices();
   const activeGroup = activeMembershipQuery.data;
   const groupId = activeGroup?.id;
-  const activeSessionQuery = useGetActiveSessionForGroup(groupId ?? 0, { query: { enabled: groupId !== undefined, retry: false } });
+  // Only a locked group has a running game; asking an open group for one just returns a 404.
+  const activeSessionQuery = useGetActiveSessionForGroup(groupId ?? 0, { query: { enabled: groupId !== undefined && activeGroup?.status === "LOCKED", retry: false } });
   const activeSessionId = activeSessionQuery.data?.id;
   const sessionQuery = useGetSession(activeSessionId ?? 0, { query: { enabled: activeSessionId !== undefined, retry: false } });
   const currentMember = activeGroup?.members?.find((member) => member.userId === currentUserQuery.data?.id);
