@@ -27,6 +27,37 @@ Frontend implementation and tests belong to story 28. Feature work requires a Re
 - [ ] Verify the production Cloudflare TURN credentials (both variables are set on core) with two devices on different networks and force TURN relay; add backend integration coverage if HTTP-boundary tests leave gaps
 - [x] Two-client HTTPS test: full game, round advancement, current DJ link-out, voice join/leave and delivery, tab-audio capture, reconnect, and results
 
+## Story 52: Live playtest fixes
+
+A Chrome and Firefox playtest on the production site found that DJ audio never reached the other players, a player cannot leave a running session, and several voice and layout problems. Voice chat, playlists, and song adding worked.
+
+DJ audio (the most important batch):
+
+- [ ] Find why a Chrome DJ's shared audio is not heard by other players: log the display-capture result (surface type, audio track present), the outgoing track state, and the receiving peer's incoming track and playback state in a two-Chrome run
+- [ ] Share once per match: one entire-screen share with system audio stays alive across rounds and DJs, the DJ's click starts only YouTube, and a clear prompt explains "Entire screen" with "Share system audio" when the chosen surface has no audio track
+- [ ] Detect browsers that cannot capture audio (Firefox, Safari) before a round and exclude them from DJ rotation or show a clear notice; decide the rule with the owner
+- [ ] Open the YouTube link in a new tab of the same browser window, not a popup window
+- [ ] Simplify the DJ view: one primary action, short instructions, no duplicated controls
+- [ ] The card's sound wave moves for every player from the DJ's audio and ignores voice chat; the DJ's own wave follows the shared audio
+- [ ] Unit and two-browser tests: share-once across rounds, missing audio track message, unsupported browser handling, wave source
+
+Leaving and ending:
+
+- [ ] A player can leave a running session and return to the lobby while the game continues without them; the round, DJ rotation, scoring, and results handle the departure; backend endpoint, realtime event, and integration tests
+- [ ] The voice indicator shows a player in voice only after they joined; find and fix the state that marks a player as in voice without joining; unit test
+- [ ] A player whose tab closed or whose connection dropped is removed from voice after 2 minutes; backend scheduler and integration test
+
+Voice controls:
+
+- [ ] Volume sliders for the microphone and the speaker, plus a test (microphone level meter and a test tone) next to the device pickers; unit tests
+
+Visual:
+
+- [ ] Card colors that are too dark on the dark theme get a readable variant; check every song color
+- [ ] The round subtitle is never covered by the guessing card at any desktop zoom level; the card shrinks or the layout reflows; browser test at 100%, 125%, and 150% scaling
+- [ ] Quiet the 404 and 409 console errors from polling endpoints that expect no session or import (`/api/sessions/groups/{id}/active`, `/api/playlists/{id}/import-jobs/active`, `/api/sessions/{id}/link-out` after the reveal)
+- [ ] Investigate the `wss://api.hittiguess.com/ws` connection closed before it was established on page load
+
 ## Story 7: Production hosting
 
 Azure Container Apps hosts core and AI in one EU environment. Vercel hosts the frontend. Core stays single-replica because game and STOMP state are process-local. The whole-deployment ceiling is $20/month.
