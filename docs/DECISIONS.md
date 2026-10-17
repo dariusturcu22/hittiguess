@@ -1218,3 +1218,9 @@ Why: the measured cold start of about 35 seconds is too slow for the first playe
 Decision: the production Container Apps use the same Sentry projects, Grafana Cloud stack, and Cloudflare TURN key as local development. `scripts/azure/set-observability-secrets.ps1` copies them from the local `.env` files into Container Apps secrets and verifies each stored secret against the file value. Metrics stay off in production until an Alloy container and an internal-only metrics port exist.
 
 Why: none of the three services needs a separate key per environment, and a second set of accounts adds setup without isolating anything the environment tag does not already separate. Core's `/actuator/prometheus` requires authentication, so an Alloy scraper cannot reach it today, and exposing it publicly would be a security change that belongs in its own story.
+
+## 2026-10-17 | DJ audio is shared once per match, and players can leave a running session
+
+Decision: the DJ shares the entire screen with system audio once per match, and that share stays alive across rounds and DJs so no round asks again. The link opens as a tab in the same window. A player can leave a running session and return to the lobby while the game continues without them. A player whose tab closed or connection dropped leaves voice after 2 minutes.
+
+Why: a production playtest showed that picking a window or tab raised before the YouTube tab existed produced a share without audio, and that browsers always require a user click to start a share, so the way to avoid repeated prompts is one long-lived share. Browsers that cannot capture audio, such as Firefox, cannot act as DJ. The playtest also showed players had no way out of a running session short of the whole group ending it.
