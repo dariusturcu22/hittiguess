@@ -1243,6 +1243,12 @@ Decision: desktop Firefox and Safari players get the share prompt again, and eve
 
 Why: the earlier skip was based on documentation, not on a test in those browsers.
 
+## 2026-10-18 | The chat history endpoint stays newest-first and the panel reverses it
+
+Decision: `GET /api/groups/{groupId}/chat/messages` keeps returning its most-recent page newest-first. The chat panel renders that page oldest-first so the newest message sits at the bottom, and scrolls to the bottom when it opens and when a message arrives, holding the reader's own position once they have scrolled up. Each sender keeps one avatar color derived from their sender id, and times render on a 24-hour clock.
+
+Why: the endpoint's order is its paging contract, so the display order belongs in the client. Reading chat means answering the newest line, which belongs next to the input box. A color keyed on the render index reassigned every avatar each time a message arrived, so one sender appeared as several people.
+
 ## 2026-10-18 | Joining a group the caller already belongs to is idempotent
 
 Decision: `POST /api/groups/join` returns the target group when the caller is already a member of it, without adding a second membership or publishing a join event. A caller who is a member of a different group gets a 409 that says to leave it first, and the join page offers to leave that group and retry. The join page shows the server's own message for every 409 and reserves "That invite link isn't valid." for a missing code. A group deleted when its last member left has no row, so its link is a plain 404.

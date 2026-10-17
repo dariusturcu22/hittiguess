@@ -406,6 +406,42 @@ describe("GroupLobbyPage start options", () => {
 
     expect(screen.queryByRole("button", { name: /^Remove / })).not.toBeInTheDocument();
   });
+
+  it("anchors the settings panel in the footer wrapper like the chat", async () => {
+    await renderPage();
+
+    fireEvent.click(screen.getByRole("button", { name: "Settings" }));
+    const settingsPanel = screen.getByLabelText("Group settings");
+    const footerWrapper = settingsPanel.parentElement;
+
+    expect(settingsPanel.className).toContain("bottom-full");
+    expect(settingsPanel.className).toContain("mb-3");
+    expect(settingsPanel.className).toContain("sm:left-[228px]");
+    expect(footerWrapper?.className).toContain("relative");
+    expect(footerWrapper).toContainElement(screen.getByRole("button", { name: "Leave lobby" }));
+  });
+
+  it("renders the start options as one compact row with the tier confirmation", async () => {
+    await renderPage();
+
+    fireEvent.click(screen.getByRole("button", { name: "Choose playlists" }));
+
+    const startOptions = screen.getByLabelText("Start options");
+    const tierRow = screen.getByRole("button", { name: "Easy" }).parentElement;
+
+    expect(startOptions.className).toContain("w-auto");
+    expect(startOptions.className).not.toContain("w-[480px]");
+    expect(screen.queryByText("Songs are selected when the session starts.")).toBeNull();
+    expect(tierRow).toContainElement(screen.getByRole("button", { name: "Custom" }));
+    expect(tierRow).toContainElement(screen.getByRole("button", { name: "Confirm" }));
+
+    fireEvent.click(screen.getByRole("button", { name: "Easy" }));
+    fireEvent.click(screen.getByRole("button", { name: "Confirm" }));
+
+    expect(updateSettingsMutate).toHaveBeenCalledWith(
+      { groupId: 1, data: { difficultyTier: "EASY" } }, expect.anything(),
+    );
+  });
 });
 
 describe("GroupLobbyPage viewport layout", () => {
