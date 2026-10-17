@@ -67,42 +67,42 @@ Five branches off `dev`, one PR each, in this order: `feat/song-stream-and-voice
 
 ### Part A: separate song stream and voice quality (branch `feat/song-stream-and-voice-quality`)
 
-- [ ] Song mesh: a second set of peer connections per game session, signalled over STOMP and keyed by the session, that every player joins automatically as a listener with no microphone and no voice join; backend relay limited to the session's players
-  - [ ] Backend `SongSignalingController` (`@MessageMapping("/sessions/{sessionId}/song/signal")`), `SessionDestinations.songSignalQueue(sessionId)` as `/queue/sessions/{sessionId}/song-signal`, authorization through `PlayerRepository.existsBySessionIdAndUserId` for sender and target, relay through `convertAndSendToUser`; the group TURN credentials endpoint is reused
-  - [ ] Backend tests: a non-player is rejected, a player of another session is rejected, the relay reaches only the target
-  - [ ] Frontend song hook: one persistent `sendrecv` connection per pair for the whole session, the lower user id offers, the sender track swaps with `replaceTrack` when the DJ changes, and a fresh offer after a peer failure like voice's `peerResetCount`; a player who reloads or joins mid-session recovers
-- [ ] The DJ's captured audio is attached to the song connections only during the DJ's own turn until the reveal and is detached (`replaceTrack(null)`) at all other times, not muted; the share prompt still appears once per match
-  - [ ] The capture stays alive for the whole match, is used directly as the sender track, and is tapped by the visualizer only, never routed through the voice mixer
+- [x] Song mesh: a second set of peer connections per game session, signalled over STOMP and keyed by the session, that every player joins automatically as a listener with no microphone and no voice join; backend relay limited to the session's players
+  - [x] Backend `SongSignalingController` (`@MessageMapping("/sessions/{sessionId}/song/signal")`), `SessionDestinations.songSignalQueue(sessionId)` as `/queue/sessions/{sessionId}/song-signal`, authorization through `PlayerRepository.existsBySessionIdAndUserId` for sender and target, relay through `convertAndSendToUser`; the group TURN credentials endpoint is reused
+  - [x] Backend tests: a non-player is rejected, a player of another session is rejected, the relay reaches only the target
+  - [x] Frontend song hook: one persistent `sendrecv` connection per pair for the whole session, the lower user id offers, the sender track swaps with `replaceTrack` when the DJ changes, and a fresh offer after a peer failure like voice's `peerResetCount`; a player who reloads or joins mid-session recovers
+- [x] The DJ's captured audio is attached to the song connections only during the DJ's own turn until the reveal and is detached (`replaceTrack(null)`) at all other times, not muted; the share prompt still appears once per match
+  - [x] The capture stays alive for the whole match, is used directly as the sender track, and is tapped by the visualizer only, never routed through the voice mixer
   - [ ] Attaching at turn start produces no audible glitch: check for a start-up delay and pre-attach shortly before the song starts if there is one
-  - [ ] Tests: attach and detach on turn changes, one share per match, no renegotiation when the DJ changes
-- [ ] Remove all song and tab audio from the voice mesh; voice carries only the microphone; lock-in silences only the song stream for the active player, never the DJ's voice
-  - [ ] Remove the tab mixer, `startTabAudio`, `setTabAudioBroadcasting`, `isSharingTabAudio`, and the tab error plumbing from `use-voice-mesh.ts`; voice never changes the song's quality or routing and never needs a voice join
-  - [ ] Keep the `shouldSilenceDjForActivePlayer` semantics (`COUNTDOWN`, `BETTING`, `REVEALED`, `SCORED`) and retarget them from the DJ's incoming audio element to the song element
-  - [ ] Tests: the voice hook carries no tab code, lock-in mutes only the song element
-- [ ] Song quality: capture with echo cancellation, noise suppression, and auto gain off, `contentHint` music, stereo Opus at 128 kbps with a single constant for the bitrate; document the bandwidth maths
-  - [ ] SDP munging in both directions (`stereo=1; sprop-stereo=1`, `maxaveragebitrate=128000`, `useinbandfec=1`, `maxplaybackrate=48000`) plus `RTCRtpSender.setParameters` max bitrate taken from one named constant, so 192 kbps is a one-line change
-  - [ ] Document roughly bitrate x listeners for DJ upload in `ARCHITECTURE.md`
-- [ ] Voice quality: explicit echo cancellation, noise suppression, and auto gain, a noise gate with a sensitivity slider, and an RNNoise filter toggle with a fallback; a Windows tip about call ducking in the voice settings
-  - [ ] Open the microphone with `echoCancellation: true`, `noiseSuppression: true`, `autoGainControl: true`, `channelCount: 1`, `contentHint` speech, and cap the sender at about 40 kbps
-  - [ ] Add `@sapphi-red/web-noise-suppressor`, pinned to an exact version at least two weeks old after a licence check, default on, and fall back to the plain constraints when the worklet fails
-  - [ ] Persist the gate sensitivity and the filter toggle in the shared audio-device store; the Windows tip is a collapsible hint shown only on Windows
-  - [ ] Tests: the explicit constraints, the gate threshold with attack and release, the RNNoise fallback
-- [ ] Song volume slider, reachable from the voice settings and from the game page, independent of the speaker volume and working without joining voice
-  - [ ] Tests: the volume store and the game-page control
-- [ ] Visualizer rewrite: the song stream only, log-spaced bands, dB scaling, smoothing, 16 to 24 bars, clean rendering with no stray pixels
-  - [ ] `fftSize` 2048, `smoothingTimeConstant` about 0.8, `minDecibels` about -90, `maxDecibels` about -10, 40 Hz to 16 kHz log bands from the context sample rate, a gentle spectral tilt, per-bar attack and release, heights from dB values
+  - [x] Tests: attach and detach on turn changes, one share per match, no renegotiation when the DJ changes
+- [x] Remove all song and tab audio from the voice mesh; voice carries only the microphone; lock-in silences only the song stream for the active player, never the DJ's voice
+  - [x] Remove the tab mixer, `startTabAudio`, `setTabAudioBroadcasting`, `isSharingTabAudio`, and the tab error plumbing from `use-voice-mesh.ts`; voice never changes the song's quality or routing and never needs a voice join
+  - [x] Keep the `shouldSilenceDjForActivePlayer` semantics (`COUNTDOWN`, `BETTING`, `REVEALED`, `SCORED`) and retarget them from the DJ's incoming audio element to the song element
+  - [x] Tests: the voice hook carries no tab code, lock-in mutes only the song element
+- [x] Song quality: capture with echo cancellation, noise suppression, and auto gain off, `contentHint` music, stereo Opus at 128 kbps with a single constant for the bitrate; document the bandwidth maths
+  - [x] SDP munging in both directions (`stereo=1; sprop-stereo=1`, `maxaveragebitrate=128000`, `useinbandfec=1`, `maxplaybackrate=48000`) plus `RTCRtpSender.setParameters` max bitrate taken from one named constant, so 192 kbps is a one-line change
+  - [x] Document roughly bitrate x listeners for DJ upload in `ARCHITECTURE.md`
+- [x] Voice quality: explicit echo cancellation, noise suppression, and auto gain, a noise gate with a sensitivity slider, and an RNNoise filter toggle with a fallback; a Windows tip about call ducking in the voice settings
+  - [x] Open the microphone with `echoCancellation: true`, `noiseSuppression: true`, `autoGainControl: true`, `channelCount: 1`, `contentHint` speech, and cap the sender at about 40 kbps
+  - [x] Add `@sapphi-red/web-noise-suppressor`, pinned to an exact version at least two weeks old after a licence check, default on, and fall back to the plain constraints when the worklet fails
+  - [x] Persist the gate sensitivity and the filter toggle in the shared audio-device store; the Windows tip is a collapsible hint shown only on Windows
+  - [x] Tests: the explicit constraints, the gate threshold with attack and release, the RNNoise fallback
+- [x] Song volume slider, reachable from the voice settings and from the game page, independent of the speaker volume and working without joining voice
+  - [x] Tests: the volume store and the game-page control
+- [x] Visualizer rewrite: the song stream only, log-spaced bands, dB scaling, smoothing, 16 to 24 bars, clean rendering with no stray pixels
+  - [x] `fftSize` 2048, `smoothingTimeConstant` about 0.8, `minDecibels` about -90, `maxDecibels` about -10, 40 Hz to 16 kHz log bands from the context sample rate, a gentle spectral tilt, per-bar attack and release, heights from dB values
   - [ ] Canvas rendering with `devicePixelRatio` handling, a static resting state when there is no audio, and `prefers-reduced-motion` respected; check the card border and background at several zoom levels in a real browser
-  - [ ] Tests: the band maths (log spacing, tilt, smoothing) against a fake analyser
-- [ ] Stop the screen capture when the session ends, the player leaves the game or the group, the page unloads, or the share bar is stopped
-  - [ ] Stop all tracks and detach the song sender on each of those events; a route change inside the app does not stop the capture
-  - [ ] Tests: one per stop path
+  - [x] Tests: the band maths (log spacing, tilt, smoothing) against a fake analyser
+- [x] Stop the screen capture when the session ends, the player leaves the game or the group, the page unloads, or the share bar is stopped
+  - [x] Stop all tracks and detach the song sender on each of those events; a route change inside the app does not stop the capture
+  - [x] Tests: one per stop path
 - [ ] Let Firefox and Safari try the share prompt on desktop, log the result of each attempt (browser, surface, audio track count) to the console and Sentry, keep the old gating behind one flag; record the findings here
-  - [ ] The frontend has no Sentry SDK today: add `@sentry/nextjs`, initialise it from a DSN environment variable, and record each share outcome as a breadcrumb alongside the `console.info` line
-  - [ ] When no audio track comes back, show the browser name with a retry and keep the round moving; the message tells players the DJ has no audio
+  - [x] The frontend has no Sentry SDK today: add `@sentry/nextjs`, initialise it from a DSN environment variable, and record each share outcome as a breadcrumb alongside the `console.info` line
+  - [x] When no audio track comes back, show the browser name with a retry and keep the round moving; the message tells players the DJ has no audio
   - [ ] Collect a Firefox and a Safari result, then decide whether to restore the skip
-- [ ] The voice rail lists who is in the call before a player joins, on the lobby and the session page
-  - [ ] Hide the rail only when the user is in no group; keep the Join button at the bottom
-- [ ] Handle autoplay blocked on a listener: a small "Click to enable sound" affordance on the session page and a retry on the first user gesture
+- [x] The voice rail lists who is in the call before a player joins, on the lobby and the session page
+  - [x] Hide the rail only when the user is in no group; keep the Join button at the bottom
+- [x] Handle autoplay blocked on a listener: a small "Click to enable sound" affordance on the session page and a retry on the first user gesture
 - [ ] Manual, for the owner: two real Chrome windows with system audio, one DJ and one listener who never joined voice; a Firefox and a Safari attempt; report the results here
 
 ### Part B: no-scroll game screens (branch `fix/no-scroll-game-ui`)

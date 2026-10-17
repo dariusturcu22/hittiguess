@@ -1,7 +1,6 @@
 import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { publishTabAudioError, publishTabAudioSharing } from "@/hooks/use-local-audio-stream";
 import GameSessionPage from "./page";
 
 let roundEventHandler: ((event: { type: string; payload?: Record<string, unknown> }) => void) | undefined;
@@ -24,6 +23,16 @@ const DJ_USER_ID = 12;
 const SPECTATOR_USER_ID = 13;
 const BETTING_WINDOW_REMAINING_MILLISECONDS = 9_000;
 const REVEAL_HOLD_REMAINING_MILLISECONDS = 4_000;
+
+const shareSong = vi.fn(async () => true);
+const resumePlayback = vi.fn();
+const setSongVolume = vi.fn();
+const useAudioLevelsSpy = vi.fn<(stream: MediaStream | null) => number[]>(() => []);
+let mockSongVolume = 100;
+let mockIsCapturing = false;
+let mockShareErrorMessage: string | null = null;
+let mockIsPlaybackBlocked = false;
+let mockVisualizerStream: MediaStream | null = null;
 
 const TIMELINE = [
   { songId: 1, artist: "Natalie Imbruglia", title: "Torn", releaseYear: 1998, color: "89b4fa", position: 0 },
@@ -103,6 +112,34 @@ vi.mock("@/hooks/use-group-realtime", () => ({
   useGroupRealtime: () => ({ connectionState: "connected", sendChat: vi.fn(() => true) }),
 }));
 
+vi.mock("@/hooks/use-song-mesh", () => ({
+  useSongMesh: () => ({
+    shareSong,
+    isCapturing: mockIsCapturing,
+    shareErrorMessage: mockShareErrorMessage,
+    isPlaybackBlocked: mockIsPlaybackBlocked,
+    resumePlayback,
+    visualizerStream: mockVisualizerStream,
+    isSignalConnected: true,
+  }),
+}));
+
+vi.mock("@/hooks/use-audio-levels", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/hooks/use-audio-levels")>();
+  return {
+    ...actual,
+    useAudioLevels: (stream: MediaStream | null) => useAudioLevelsSpy(stream),
+  };
+});
+
+vi.mock("@/hooks/use-audio-devices", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/hooks/use-audio-devices")>();
+  return {
+    ...actual,
+    useAudioDevices: () => ({ songVolume: mockSongVolume, setSongVolume }),
+  };
+});
+
 vi.mock("@/lib/lock-in-sound", () => ({
   playLockInSound: vi.fn(),
 }));
@@ -150,6 +187,10 @@ describe("GameSessionPage", () => {
     previewPlacement.mockClear();
     submitGuess.mockClear();
     skipBetting.mockClear();
+    shareSong.mockClear();
+    resumePlayback.mockClear();
+    setSongVolume.mockClear();
+    useAudioLevelsSpy.mockClear();
     roundEventHandler = undefined;
     guessResultHandler = undefined;
     sessionEndedHandler = undefined;
@@ -157,6 +198,11 @@ describe("GameSessionPage", () => {
     routerReplace.mockClear();
     mockSessionData = MID_GAME_SESSION;
     mockCurrentUserId = ACTIVE_USER_ID;
+    mockSongVolume = 100;
+    mockIsCapturing = false;
+    mockShareErrorMessage = null;
+    mockIsPlaybackBlocked = false;
+    mockVisualizerStream = null;
     window.sessionStorage.clear();
   });
 
@@ -317,8 +363,6 @@ describe("GameSessionPage", () => {
 
   it("asks the DJ to share audio before the YouTube link appears", async () => {
     mockCurrentUserId = DJ_USER_ID;
-    const shareRequests = vi.fn();
-    window.addEventListener("session-start-audio-share", shareRequests);
     await renderPage();
 
     expect(screen.queryByRole("link", { name: "Open on YouTube to play" })).toBeNull();
@@ -327,38 +371,62 @@ describe("GameSessionPage", () => {
     expect(screen.queryByPlaceholderText("Guess the artist")).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Share your audio first" }));
 
-    expect(shareRequests).toHaveBeenCalledOnce();
-    window.removeEventListener("session-start-audio-share", shareRequests);
+    expect(shareSong).toHaveBeenCalledOnce();
   });
 
-  it("shows a failed audio share next to the share button", async () => {
+  it("shows a failed audio share with a retry that shares again", async () => {
     mockCurrentUserId = DJ_USER_ID;
+    mockShareErrorMessage = "No audio was shared.";
     await renderPage();
 
-    act(() => publishTabAudioError("No audio was shared."));
-
     expect(screen.getByRole("alert")).toHaveTextContent("No audio was shared.");
-    act(() => publishTabAudioError(null));
+    fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+
+    expect(shareSong).toHaveBeenCalledOnce();
   });
 
   it("shows the DJ a real YouTube link that opens in a new tab once the audio is shared", async () => {
     mockCurrentUserId = DJ_USER_ID;
-    act(() => publishTabAudioSharing(true));
+    mockIsCapturing = true;
     await renderPage();
 
     const link = await screen.findByRole("link", { name: "Open on YouTube to play" });
     expect(link).toHaveAttribute("href", WATCH_URL);
     expect(link).toHaveAttribute("target", "_blank");
     expect(screen.getByText("Sharing your audio with the group")).toBeVisible();
-    act(() => publishTabAudioSharing(false));
+  });
+
+  it("traces the song hook's visualizer stream into the audio levels", async () => {
+    const visualizerStream = { id: "song-stream" } as unknown as MediaStream;
+    mockVisualizerStream = visualizerStream;
+    await renderPage();
+
+    expect(useAudioLevelsSpy).toHaveBeenCalledWith(visualizerStream);
+  });
+
+  it("offers a click to enable sound while the song playback is blocked", async () => {
+    mockIsPlaybackBlocked = true;
+    await renderPage();
+
+    fireEvent.click(screen.getByRole("button", { name: "Click to enable sound" }));
+
+    expect(resumePlayback).toHaveBeenCalledOnce();
+  });
+
+  it("changes the song volume from the page header", async () => {
+    await renderPage();
+
+    fireEvent.change(screen.getByRole("slider", { name: "Song volume" }), { target: { value: "40" } });
+
+    expect(setSongVolume).toHaveBeenCalledWith(40);
   });
 
   it("tells a player on a browser that cannot capture audio that they are skipped as DJ", async () => {
     mockCurrentUserId = ACTIVE_USER_ID;
-    const userAgent = vi.spyOn(window.navigator, "userAgent", "get").mockReturnValue("Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:140.0) Gecko/20100101 Firefox/140.0");
+    const userAgent = vi.spyOn(window.navigator, "userAgent", "get").mockReturnValue("Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1");
     await renderPage();
 
-    expect(screen.getByText("This browser can't share audio, so you are skipped as DJ. Use Chrome or Edge on a computer to DJ.")).toBeVisible();
+    expect(screen.getByText("This device can't share audio, so you are skipped as DJ. Use a computer to DJ.")).toBeVisible();
     userAgent.mockReturnValue("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/140.0 Safari/537.36");
   });
 

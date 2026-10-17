@@ -22,8 +22,10 @@ public final class SessionDestinations {
     private static final String GUESS_SEGMENT = "/guess";
     private static final String BET_SEGMENT = "/bet";
     private static final String SKIP_BETTING_SEGMENT = "/skip-betting";
+    private static final String SONG_SIGNAL_SEGMENT = "/song/signal";
     private static final String SESSION_QUEUE_PREFIX = "/queue/sessions/";
     private static final String GUESS_RESULT_SEGMENT = "/guess-result";
+    private static final String SONG_SIGNAL_QUEUE_SEGMENT = "/song-signal";
 
     private static final Pattern SESSION_TOPIC_PATTERN = Pattern.compile(
             "^" + Pattern.quote(SESSION_TOPIC_PREFIX) + "(?<sessionId>\\d+)/[^/]+$");
@@ -71,6 +73,17 @@ public final class SessionDestinations {
 
     public static String skipBettingDestination(Long sessionId) {
         return SESSION_APP_PREFIX + sessionId + SKIP_BETTING_SEGMENT;
+    }
+
+    public static String songSignalDestination(Long sessionId) {
+        return SESSION_APP_PREFIX + sessionId + SONG_SIGNAL_SEGMENT;
+    }
+
+    // Per-user queue each song signaling step is delivered on, sent through
+    // SimpMessagingTemplate#convertAndSendToUser, so only its target player receives it.
+    // A client subscribes to it with the "/user" prefix.
+    public static String songSignalQueue(Long sessionId) {
+        return SESSION_QUEUE_PREFIX + sessionId + SONG_SIGNAL_QUEUE_SEGMENT;
     }
 
     public static Optional<Long> sessionIdFromTopic(String destination) {

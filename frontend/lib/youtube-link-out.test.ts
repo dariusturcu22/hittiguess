@@ -29,9 +29,9 @@ describe("canShareTabAudio", () => {
     expect(canShareTabAudio("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/140.0 Safari/537.36 Edg/140.0")).toBe(true);
   });
 
-  it("cannot capture audio in Firefox or Safari", () => {
-    expect(canShareTabAudio("Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:140.0) Gecko/20100101 Firefox/140.0")).toBe(false);
-    expect(canShareTabAudio("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 Version/18.0 Safari/605.1.15")).toBe(false);
+  it("lets desktop Firefox and Safari try to capture audio while the flag is set", () => {
+    expect(canShareTabAudio("Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:140.0) Gecko/20100101 Firefox/140.0")).toBe(true);
+    expect(canShareTabAudio("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 Version/18.0 Safari/605.1.15")).toBe(true);
   });
 
   it("does not capture audio on phones", () => {
