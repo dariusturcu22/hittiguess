@@ -10,7 +10,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -21,6 +20,10 @@ import java.util.stream.Collectors;
 @Service
 public class PreparedDifficultyService {
     private static final String CALCULATION_VERSION = "global-v1";
+    private static final String REQUESTED_TIER_PREDICATE = "difficulty.tier = ?";
+    private static final String OTHER_TIER_PREDICATE = "difficulty.tier <> ?";
+    private static final String AFTER_PIVOT_COMPARISON = ">=";
+    private static final String BEFORE_PIVOT_COMPARISON = "<";
     private final JdbcTemplate core;
     private final JdbcTemplate analytics;
     private final SongRepository songs;
@@ -40,28 +43,59 @@ public class PreparedDifficultyService {
     @Transactional(readOnly = true)
     public List<Song> select(DifficultyTier tier, int targetCount) {
         double samplingPivot = ThreadLocalRandom.current().nextDouble();
-        List<Long> selected = new ArrayList<>(selectIds(tier, samplingPivot, true, targetCount));
+        List<Long> selected = new ArrayList<>();
+        appendPreparedBand(selected, REQUESTED_TIER_PREDICATE, tier, samplingPivot, targetCount);
+        appendPreparedBand(selected, OTHER_TIER_PREDICATE, tier, samplingPivot, targetCount);
+        appendUnpreparedInternationalSongs(selected, targetCount);
         if (selected.size() < targetCount) {
-            selected.addAll(selectIds(tier, samplingPivot, false, targetCount - selected.size()));
-        }
-        if (selected.size() < targetCount) {
-            throw new ConflictException("Not enough internationally known verified songs for a " + targetCount + "-card " + tier + " set");
+            throw new ConflictException("Not enough internationally known verified songs: " + selected.size()
+                    + " available, " + targetCount + " needed for a " + targetCount + "-card " + tier + " set");
         }
         Map<Long, Song> byId = songs.findAllById(selected).stream().collect(Collectors.toMap(Song::getId, Function.identity()));
-        List<Song> pool = selected.stream().map(byId::get).collect(Collectors.toCollection(ArrayList::new));
-        Collections.shuffle(pool);
-        return pool;
+        return selected.stream().map(byId::get).collect(Collectors.toCollection(ArrayList::new));
     }
 
-    private List<Long> selectIds(DifficultyTier tier, double pivot, boolean afterPivot, int count) {
-        String comparison = afterPivot ? ">=" : "<";
+    // Fills the target in widening order: the requested tier first so it dominates when its band
+    // is large enough, then the other prepared tiers, then verified songs in international scope
+    // that have no prepared row. The steps draw from disjoint predicates, so no song is selected
+    // twice, and each step keeps the pivot's two halves so a short catalog is spread across it.
+    private void appendPreparedBand(List<Long> selected, String tierPredicate, DifficultyTier tier, double pivot,
+            int targetCount) {
+        int remaining = targetCount - selected.size();
+        if (remaining <= 0) {
+            return;
+        }
+        selected.addAll(selectPreparedBand(tierPredicate, AFTER_PIVOT_COMPARISON, tier, pivot, remaining));
+        remaining = targetCount - selected.size();
+        if (remaining <= 0) {
+            return;
+        }
+        selected.addAll(selectPreparedBand(tierPredicate, BEFORE_PIVOT_COMPARISON, tier, pivot, remaining));
+    }
+
+    private void appendUnpreparedInternationalSongs(List<Long> selected, int targetCount) {
+        int remaining = targetCount - selected.size();
+        if (remaining <= 0) {
+            return;
+        }
+        selected.addAll(core.query("""
+                SELECT song.id FROM songs song
+                WHERE song.verification_status = 'VERIFIED' AND song.wikidata_sitelinks_count >= ?
+                  AND NOT EXISTS (SELECT 1 FROM song_difficulty difficulty WHERE difficulty.song_id = song.id)
+                ORDER BY song.id LIMIT ?
+                """, (result, rowNumber) -> result.getLong("id"),
+                DifficultyTunedSongSelector.INTERNATIONAL_SCOPE_MINIMUM_SITELINKS, remaining));
+    }
+
+    private List<Long> selectPreparedBand(String tierPredicate, String pivotComparison, DifficultyTier tier, double pivot,
+            int count) {
         return core.query("""
                 SELECT difficulty.song_id FROM song_difficulty difficulty JOIN songs song ON song.id = difficulty.song_id
-                WHERE difficulty.tier = ? AND difficulty.sampling_key %s ? AND song.verification_status = 'VERIFIED'
+                WHERE %s AND difficulty.sampling_key %s ? AND song.verification_status = 'VERIFIED'
                   AND song.wikidata_sitelinks_count >= ?
                 ORDER BY difficulty.sampling_key, difficulty.song_id LIMIT ?
-                """.formatted(comparison), (result, rowNumber) -> result.getLong("song_id"), tier.name(), pivot,
-                DifficultyTunedSongSelector.INTERNATIONAL_SCOPE_MINIMUM_SITELINKS, count);
+                """.formatted(tierPredicate, pivotComparison), (result, rowNumber) -> result.getLong("song_id"),
+                tier.name(), pivot, DifficultyTunedSongSelector.INTERNATIONAL_SCOPE_MINIMUM_SITELINKS, count);
     }
 
     @Transactional

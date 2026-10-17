@@ -219,6 +219,7 @@ export default function GroupLobbyPage({ params }: PageProps) {
   const [selectedTier, setSelectedTier] = useState<GenerateDifficultySetRequestTier>("MEDIUM");
   const [playlistSource, setPlaylistSource] = useState<"tier" | "custom">("tier");
   const [startError, setStartError] = useState("");
+  const [startSessionError, setStartSessionError] = useState("");
   const [selectedDjMode, setSelectedDjMode] = useState<"FIXED" | "ROTATING">("ROTATING");
   const [selectedPlaylistIds, setSelectedPlaylistIds] = useState<number[]>([]);
   const [selectedFixedDjMemberId, setSelectedFixedDjMemberId] = useState<number | undefined>(undefined);
@@ -303,11 +304,16 @@ export default function GroupLobbyPage({ params }: PageProps) {
       setIsMinPlayersOpen(true);
       return;
     }
+    setStartSessionError("");
     startSession.mutate(
       { groupId },
       {
         onSuccess: () => { refreshGroup(); refreshActiveMembership(); closeAllPopups(); },
-        onError: (error) => toast.error(mutationErrorMessage(error)),
+        onError: (error) => {
+          const message = mutationErrorMessage(error);
+          toast.error(message);
+          setStartSessionError(message);
+        },
       },
     );
   }
@@ -781,6 +787,11 @@ export default function GroupLobbyPage({ params }: PageProps) {
             <div className="mt-6 short:mt-4 very-short:mt-3 flex gap-2.5"><button type="button" onClick={saveSettings} disabled={updateSettings.isPending} className="rounded-full bg-primary px-4 py-2.5 short:py-2 font-display text-xs text-primary-foreground disabled:opacity-60">{updateSettings.isPending ? "Saving" : "Save changes"}</button><button type="button" onClick={() => setIsSettingsOpen(false)} className="rounded-full border-2 border-border px-4 py-2.5 text-xs font-semibold text-card-foreground">Close</button></div>
           </section>
         </>
+      ) : null}
+      {startSessionError ? (
+        <p role="alert" className="mb-3 text-sm font-semibold text-destructive">
+          Could not start the game: {startSessionError}
+        </p>
       ) : null}
       <footer className="flex shrink-0 flex-wrap items-center gap-3 short:gap-2.5 very-short:gap-2">
         {!isCurrentUserLoading && isCurrentUserAdmin ? (

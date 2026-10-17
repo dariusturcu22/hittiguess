@@ -107,40 +107,41 @@ Five branches off `dev`, one PR each, in this order: `feat/song-stream-and-voice
 
 ### Part B: no-scroll game screens (branch `fix/no-scroll-game-ui`)
 
-- [ ] The group lobby, loading screens, and every round phase fit the viewport with no scrolling; website pages keep scrolling; checked at 1366x768, 1440x900, 1920x1080, and 125% and 150% zoom
-  - [ ] Wrap the two game routes with `h-full overflow-hidden` and keep `results` scrollable; a `sessions/[sessionId]/layout.tsx` would also wrap `results`, so either wrap inside each page root or reset `results` in its own layout
-  - [ ] Remove the `min-h-[720px]`, `min-h-[680px]`, and `min-h-[480px]` values and scale content with `short:`/`very-short:` variants, `clamp()`, or container queries; the timeline, tokens, buttons, and cards stay visible and usable
-  - [ ] The round subtitle stays clear of the DJ/guessing card at every listed size
-  - [ ] Lobby popups may scroll inside their own panel only when their content genuinely exceeds it
-- [ ] Assert against the real scroll container (the `(app)` layout's `overflow-y-auto` div), not `documentElement`, which `h-screen overflow-hidden` already clips
-- [ ] Playwright: lobby with 1 and 8 members, each lobby popup open, round intro, guessing, betting, reveal, between-rounds loading, and game over, at all listed sizes
+- [x] The group lobby, loading screens, and every round phase fit the viewport with no scrolling; website pages keep scrolling; checked at 1366x768, 1440x900, 1920x1080, and 125% and 150% zoom
+  - [x] Wrap the two game routes with `h-full overflow-hidden` and keep `results` scrollable; a `sessions/[sessionId]/layout.tsx` would also wrap `results`, so either wrap inside each page root or reset `results` in its own layout
+  - [x] Remove the `min-h-[720px]`, `min-h-[680px]`, and `min-h-[480px]` values and scale content with `short:`/`very-short:` variants, `clamp()`, or container queries; the timeline, tokens, buttons, and cards stay visible and usable
+  - [ ] The round subtitle stays clear of the DJ/guessing card at every listed size (confirm by eye at 125% and 150% zoom)
+  - [x] Lobby popups may scroll inside their own panel only when their content genuinely exceeds it
+- [x] Assert against the real scroll container (the `(app)` layout's `overflow-y-auto` div), not `documentElement`, which `h-screen overflow-hidden` already clips
+- [ ] Playwright covers the lobby and one gameplay phase at 1366x768, 1440x900, and 1920x1080; extend it to the 8-member lobby, each lobby popup, round intro, betting, reveal, between-rounds loading, game over, and 125% and 150% zoom, and run it (e2e does not run in CI)
 
 ### Part C: lobby, chat, and playlist-selection UI (branch `fix/lobby-chat-playlist-ui`)
 
-- [ ] Settings opens with the same gap above the footer buttons as the chat, anchored to the same footer wrapper
-- [ ] Chat: stable avatar color per sender from `senderId`, 24-hour time with `hourCycle: "h23"`, newest message at the bottom, and a taller panel
-  - [ ] Reverse the newest-first history in the client without changing the API contract, auto-scroll to the bottom on open and on each new message, and stay put when the reader has scrolled up
-- [ ] Playlist options popup in one compact row with Confirm inline (Easy, Medium, Hard, divider, Custom, Confirm), a smaller footprint than `w-[480px]`, and the "Songs are selected when the session starts" line removed; keep the error alert
-- [ ] Left sidebar icons spaced slightly wider than now, not as wide as before (`RAIL_GROUP_GAP_CLASSES` around `gap-5`, scaling down for `short`/`very-short`), fitting at 1366x768 and 150% zoom without scrolling the rail
-- [ ] Tests: extend `group-chat-overlay.test.tsx` and the lobby page tests for the new chat, popup, and rail behaviour
+- [x] Settings opens with the same gap above the footer buttons as the chat, anchored to the same footer wrapper
+- [x] Chat: stable avatar color per sender from `senderId`, 24-hour time with `hourCycle: "h23"`, newest message at the bottom, and a taller panel
+  - [x] Reverse the newest-first history in the client without changing the API contract, auto-scroll to the bottom on open and on each new message, and stay put when the reader has scrolled up
+- [x] Playlist options popup in one compact row with Confirm inline (Easy, Medium, Hard, divider, Custom, Confirm), a smaller footprint than `w-[480px]`, and the "Songs are selected when the session starts" line removed; keep the error alert
+- [x] Left sidebar icons spaced slightly wider than now, not as wide as before (`RAIL_GROUP_GAP_CLASSES` around `gap-5`, scaling down for `short`/`very-short`), fitting at 1366x768 and 150% zoom without scrolling the rail
+- [x] Tests: extend `group-chat-overlay.test.tsx` and the lobby page tests for the new chat, popup, and rail behaviour
 
 ### Part D: invite link and joining (branch `fix/invite-join`)
 
-- [ ] Joining a group the user already belongs to returns that group; joining while in another group gives a clear message with a leave option; the join page shows the server's real message and says invalid only for a missing code
-  - [ ] Reorder `joinGroup`: resolve the group first, then branch on the caller's membership (`memberRepository.findByUser`); the same group returns the detail with no new member and no `MEMBER_JOINED` event, a different group gives a "leave it first" 409
-  - [ ] Join page: read the server message for 409 and keep "That invite link isn't valid." for 404 only; the leave-and-retry button uses the cached active membership for the other group's id
-- [ ] A group deleted when its last member left is a plain 404 today, so the link is dead with no way to say "this group has ended" unless a tombstone is added; keep the generic wording and note it
-- [ ] Tests: backend idempotent join, cross-group 409, and the existing removed and full cases; frontend join page cases for each message; update `docs/SYSTEM_REFERENCE.md` if the endpoint description changes
+- [x] Joining a group the user already belongs to returns that group; joining while in another group gives a clear message with a leave option; the join page shows the server's real message and says invalid only for a missing code
+  - [x] Reorder `joinGroup`: resolve the group first, then branch on the caller's membership (`memberRepository.findByUser`); the same group returns the detail with no new member and no `MEMBER_JOINED` event, a different group gives a "leave it first" 409
+  - [x] Join page: read the server message for 409 and keep "That invite link isn't valid." for 404 only; the leave-and-retry button uses the cached active membership for the other group's id
+- [x] A group deleted when its last member left is a plain 404 today, so the link is dead with no way to say "this group has ended" unless a tombstone is added; keep the generic wording and note it
+- [x] Tests: backend idempotent join, cross-group 409, and the existing removed and full cases; frontend join page cases for each message; update `docs/SYSTEM_REFERENCE.md` if the endpoint description changes
 
 ### Part E: playlist generation for a game (branch `fix/game-song-list`)
 
-- [ ] At Start, build the game's song list once for both difficulty and custom: remove duplicates by normalized artist and title, shuffle, and keep it only in the session
-  - [ ] Normalized key: lowercase, strip diacritics and punctuation, drop bracketed and dash-suffixed qualifiers; keep the first occurrence; share one normalization for both paths
-  - [ ] Inject `Random` so the shuffle is deterministic under test
-- [ ] Reproduce why Easy, Medium, and Hard did not generate a playlist, fix the cause, and show a clear message when a start fails
-  - [ ] Run the core locally in WSL against throwaway Postgres; check that the tier persists, how many verified songs exist per tier, and where the start fails
-  - [ ] The likely cause is a tier band holding fewer verified `sitelinks >= 5` rows than `players * win cards * headroom`, which fails the start with a 409; widen the sampling or surface the real message, and report the local counts per tier
-- [ ] Tests: normalization units, deterministic shuffle, tier and custom integration including no duplicates and two starts differing in order, and an assert that no playlist rows are created
+- [x] At Start, build the game's song list once for both difficulty and custom: remove duplicates by normalized artist and title, shuffle, and keep it only in the session
+  - [x] Normalized key: lowercase, strip diacritics and punctuation, drop bracketed and dash-suffixed qualifiers; keep the first occurrence; share one normalization for both paths
+  - [x] Inject `Random` so the shuffle is deterministic under test
+- [x] Reproduce why Easy, Medium, and Hard did not generate a playlist, fix the cause, and show a clear message when a start fails
+  - [x] Run the core locally in WSL against throwaway Postgres: the local catalog holds 29 verified songs (26 in international scope; EASY 10, MEDIUM 9, HARD 7), too few for a 30-card start; selection now widens across tiers and names the real counts
+- [ ] Run the per-tier eligible-song count query from PR 318 against the production database and confirm the catalog is large enough for the game sizes players use; if not, import more songs
+  - [x] The likely cause is a tier band holding fewer verified `sitelinks >= 5` rows than `players * win cards * headroom`, which fails the start with a 409; widen the sampling or surface the real message, and report the local counts per tier
+- [x] Tests: normalization units, deterministic shuffle, tier and custom integration including no duplicates and two starts differing in order, and an assert that no playlist rows are created
 
 ## Story 7: Production hosting
 

@@ -43,6 +43,7 @@ import org.dariusturcu.backend.repository.UserRepository;
 import org.dariusturcu.backend.scheduling.GameSessionScheduler;
 import org.dariusturcu.backend.security.UserPrincipal;
 import org.dariusturcu.backend.service.GameSessionService;
+import org.dariusturcu.backend.service.GameSongList;
 import org.dariusturcu.backend.service.GameSessionStartListener;
 import org.dariusturcu.backend.service.GroupService;
 import org.dariusturcu.backend.service.PendingSessionSongPool;
@@ -215,7 +216,7 @@ class DifficultySessionStartIntegrationTest {
             return new GameSessionService(gameSessionRepository, playerRepository, roundRepository, guessRepository,
                     betRepository, groupRepository, songRepository, playlistRepository, groupService,
                     playlistAccessService, playlistExpansionService, difficultySelector, pendingPool, sessionMapper,
-                    resultsStore, gameSessionScheduler, eventPublisher);
+                    resultsStore, gameSessionScheduler, eventPublisher, new GameSongList());
         }
 
         @Bean

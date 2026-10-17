@@ -72,10 +72,13 @@ import tools.jackson.databind.json.JsonMapper;
 
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Random;
 import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -138,6 +141,8 @@ class GameSessionServiceTest {
     private static final int PREPARED_POOL_SIZE = 30;
     private static final long DISCONNECTED_USER_ID = 3L;
     private static final long FIRST_CATALOG_SONG_ID = 11L;
+    private static final long DUPLICATE_CATALOG_SONG_ID = 99L;
+    private static final long SHUFFLE_SEED = 42L;
     private static final java.time.Duration AUTO_ABANDON_DELAY = java.time.Duration.ofMinutes(10);
 
     // Built in setUp(), not as a field initializer: SessionMapper needs the betRepository
@@ -154,7 +159,7 @@ class GameSessionServiceTest {
                 gameSessionRepository, playerRepository, roundRepository, guessRepository, betRepository,
                 groupRepository, songRepository, playlistRepository, groupService, playlistAccessService,
                 playlistExpansionService, difficultySelector, pendingPool, sessionMapper, resultsStore,
-                gameSessionScheduler, eventPublisher);
+                gameSessionScheduler, eventPublisher, new GameSongList(new Random(SHUFFLE_SEED)));
         // Self-injection (see GameSessionService's @Lazy self field): the production
         // context resolves this through the Spring proxy, a plain unit test wires it
         // directly to the instance under test.
@@ -1456,6 +1461,32 @@ class GameSessionServiceTest {
         return song;
     }
 
+    // A second catalog row for the first catalog song's artist and title, so a pool that
+    // includes it collides with FIRST_CATALOG_SONG_ID under the builder's normalized key.
+    private Song duplicateOfFirstCatalogSong() {
+        Song duplicate = song(DUPLICATE_CATALOG_SONG_ID, "Song " + FIRST_CATALOG_SONG_ID, 2000,
+                artist("Artist " + FIRST_CATALOG_SONG_ID, ArtistRole.MAIN, 0));
+        duplicate.setYoutubeId("video-duplicate");
+        return duplicate;
+    }
+
+    private Set<Long> playedSongIds(GameSession session) {
+        Set<Long> playedIds = new HashSet<>();
+        session.getPlayers().forEach(player ->
+                player.getTimeline().forEach(card -> playedIds.add(card.getSong().getId())));
+        playedIds.addAll(session.getSongQueue());
+        return playedIds;
+    }
+
+    private List<Long> playedOrder(GameSession session) {
+        List<Long> order = new ArrayList<>();
+        session.getPlayers().stream()
+                .sorted(Comparator.comparingInt(Player::getTurnOrder))
+                .forEach(player -> player.getTimeline().forEach(card -> order.add(card.getSong().getId())));
+        order.addAll(session.getSongQueue());
+        return order;
+    }
+
     @Test
     void generateDifficultySetMapsScoredSongsToPreviews() {
         Group group = groupWithTwoConnectedMembers();
@@ -1697,5 +1728,60 @@ class GameSessionServiceTest {
                         GROUP_ID, new StartCustomSessionRequest(null, PASTED_PLAYLIST_LINK)))
                 .isInstanceOf(ConflictException.class);
         assertThat(pendingPool.take(GROUP_ID)).isEmpty();
+    }
+
+    @Test
+    void startSessionDeduplicatesTheStagedCustomPool() {
+        Group group = groupWithTwoConnectedMembers();
+        when(groupRepository.findById(GROUP_ID)).thenReturn(Optional.of(group));
+        List<Long> songIds = catalogPool(STARTABLE_POOL_SIZE);
+        songIds.add(duplicateOfFirstCatalogSong().getId());
+        pendingPool.stage(GROUP_ID, songIds);
+
+        GameSession session = gameSessionService.startSession(GROUP_ID);
+
+        assertThat(session.getSongQueue()).hasSize(STARTABLE_POOL_SIZE - 3);
+        assertThat(playedSongIds(session)).doesNotContain(DUPLICATE_CATALOG_SONG_ID);
+    }
+
+    @Test
+    void startSessionDeduplicatesThePreparedDifficultyPool() {
+        Group group = groupWithTwoConnectedMembers();
+        group.setDifficultyTier(DifficultyTier.HARD);
+        when(groupRepository.findById(GROUP_ID)).thenReturn(Optional.of(group));
+        List<Song> prepared = new ArrayList<>(catalogPool(PREPARED_POOL_SIZE).stream().map(songsById::get).toList());
+        prepared.add(duplicateOfFirstCatalogSong());
+        when(difficultySelector.selectPreparedInternational(DifficultyTier.HARD, PREPARED_POOL_SIZE)).thenReturn(prepared);
+
+        GameSession session = gameSessionService.startSession(GROUP_ID);
+
+        assertThat(session.getSongQueue()).hasSize(PREPARED_POOL_SIZE - 3);
+        assertThat(playedSongIds(session)).doesNotContain(DUPLICATE_CATALOG_SONG_ID);
+    }
+
+    @Test
+    void consecutiveStartsOnTheSameGroupShuffleIntoDifferentOrders() {
+        Group group = groupWithTwoConnectedMembers();
+        when(groupRepository.findById(GROUP_ID)).thenReturn(Optional.of(group));
+        List<Long> songIds = catalogPool(STARTABLE_POOL_SIZE);
+
+        pendingPool.stage(GROUP_ID, songIds);
+        List<Long> firstOrder = playedOrder(gameSessionService.startSession(GROUP_ID));
+
+        pendingPool.stage(GROUP_ID, songIds);
+        List<Long> secondOrder = playedOrder(gameSessionService.startSession(GROUP_ID));
+
+        assertThat(firstOrder).isNotEqualTo(secondOrder);
+    }
+
+    @Test
+    void startingASessionWritesNoPlaylist() {
+        Group group = groupWithTwoConnectedMembers();
+        when(groupRepository.findById(GROUP_ID)).thenReturn(Optional.of(group));
+        pendingPool.stage(GROUP_ID, catalogPool(STARTABLE_POOL_SIZE));
+
+        gameSessionService.startSession(GROUP_ID);
+
+        verify(playlistRepository, never()).save(any(Playlist.class));
     }
 }

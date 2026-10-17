@@ -45,6 +45,7 @@ import org.dariusturcu.backend.repository.UserRepository;
 import org.dariusturcu.backend.scheduling.GameSessionScheduler;
 import org.dariusturcu.backend.security.UserPrincipal;
 import org.dariusturcu.backend.service.GameSessionService;
+import org.dariusturcu.backend.service.GameSongList;
 import org.dariusturcu.backend.service.GameSessionStartListener;
 import org.dariusturcu.backend.service.GroupService;
 import org.dariusturcu.backend.service.PlaylistAccessService;
@@ -238,7 +239,7 @@ class GameSessionLifecycleIntegrationTest {
             return new GameSessionService(gameSessionRepository, playerRepository, roundRepository, guessRepository,
                     betRepository, groupRepository, songRepository, playlistRepository, groupService,
                     playlistAccessService, playlistExpansionService, difficultySelector, pendingPool, sessionMapper,
-                    resultsStore, gameSessionScheduler, eventPublisher);
+                    resultsStore, gameSessionScheduler, eventPublisher, new GameSongList());
         }
 
         @Bean
@@ -308,10 +309,9 @@ class GameSessionLifecycleIntegrationTest {
                 new UsernamePasswordAuthenticationToken(new UserPrincipal(user), null, null));
     }
 
-    // Strictly increasing release years across every song this test adds, so that
-    // placing each round's song at the end of whichever player's timeline is playing it
-    // is always the correct placement: every year handed out so far is guaranteed smaller
-    // than every year still queued.
+    // Every song this test adds has a distinct release year, so the correct placement for a
+    // round's song is the timeline slot after every card whose year is smaller, whatever order
+    // the shuffled queue hands the songs out in.
     private Song persistSong(Playlist playlist, User addedBy, int releaseYear, String title) {
         Song song = new Song();
         song.setTitle(title);
@@ -368,7 +368,10 @@ class GameSessionLifecycleIntegrationTest {
             GameSession currentSession = gameSessionRepository.findById(sessionId).orElseThrow();
             Round currentRound = roundRepository.findTopBySessionOrderByRoundNumberDesc(currentSession).orElseThrow();
             Player activePlayer = currentRound.getActivePlayer();
-            int correctPosition = activePlayer.getTimeline().size();
+            int roundSongReleaseYear = currentRound.getSong().getReleaseYear();
+            int correctPosition = (int) activePlayer.getTimeline().stream()
+                    .filter(card -> card.getReleaseYear() < roundSongReleaseYear)
+                    .count();
             gameSessionService.lockInPlacement(sessionId, activePlayer.getUser().getId(), new PlaceCardRequest(correctPosition));
             roundsPlayed++;
         }
