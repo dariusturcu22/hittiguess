@@ -368,6 +368,22 @@ describe("GroupLobbyPage start options", () => {
 
     await waitFor(() => expect(toastMocks.error).toHaveBeenCalled());
   });
+
+  it("shows the server's reason next to the Start button when starting fails", async () => {
+    startSessionMutate.mockImplementation((_args, options) =>
+      options?.onError?.({ response: { data: { message: "Not enough internationally known verified songs: 3 available, 10 needed" } } }),
+    );
+    await renderPage();
+
+    fireEvent.click(screen.getByRole("button", { name: "Start game" }));
+
+    await waitFor(() =>
+      expect(screen.getByRole("alert")).toHaveTextContent(
+        "Could not start the game: Not enough internationally known verified songs: 3 available, 10 needed",
+      ),
+    );
+  });
+
   it("lets the admin remove another member after confirming", async () => {
     await renderPage();
 

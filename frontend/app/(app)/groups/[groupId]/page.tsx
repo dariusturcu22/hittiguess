@@ -219,6 +219,7 @@ export default function GroupLobbyPage({ params }: PageProps) {
   const [selectedTier, setSelectedTier] = useState<GenerateDifficultySetRequestTier>("MEDIUM");
   const [playlistSource, setPlaylistSource] = useState<"tier" | "custom">("tier");
   const [startError, setStartError] = useState("");
+  const [startSessionError, setStartSessionError] = useState("");
   const [selectedDjMode, setSelectedDjMode] = useState<"FIXED" | "ROTATING">("ROTATING");
   const [selectedPlaylistIds, setSelectedPlaylistIds] = useState<number[]>([]);
   const [selectedFixedDjMemberId, setSelectedFixedDjMemberId] = useState<number | undefined>(undefined);
@@ -303,11 +304,16 @@ export default function GroupLobbyPage({ params }: PageProps) {
       setIsMinPlayersOpen(true);
       return;
     }
+    setStartSessionError("");
     startSession.mutate(
       { groupId },
       {
         onSuccess: () => { refreshGroup(); refreshActiveMembership(); closeAllPopups(); },
-        onError: (error) => toast.error(mutationErrorMessage(error)),
+        onError: (error) => {
+          const message = mutationErrorMessage(error);
+          toast.error(message);
+          setStartSessionError(message);
+        },
       },
     );
   }
@@ -784,6 +790,11 @@ export default function GroupLobbyPage({ params }: PageProps) {
           onClose={() => setIsChatOpen(false)}
           floating
         />
+      ) : null}
+      {startSessionError ? (
+        <p role="alert" className="mb-3 text-sm font-semibold text-destructive">
+          Could not start the game: {startSessionError}
+        </p>
       ) : null}
       <footer className="flex shrink-0 flex-wrap items-center gap-3">
         {!isCurrentUserLoading && isCurrentUserAdmin ? (
