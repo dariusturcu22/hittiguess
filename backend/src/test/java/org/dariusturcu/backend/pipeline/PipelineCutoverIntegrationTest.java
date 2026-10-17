@@ -42,6 +42,7 @@ import static org.mockito.Mockito.when;
 class PipelineCutoverIntegrationTest {
     private static final String VIDEO_ID = "cutover0001";
     private static final String OTHER_VIDEO = "cutover0002";
+    private static final String THIRD_VIDEO = "cutover0003";
     private static final String OWNER = "test-stage-worker";
     private static final int YEAR = 1999;
     private static final int DIFFERENT_YEAR = 2001;
@@ -50,6 +51,7 @@ class PipelineCutoverIntegrationTest {
     private static final Duration PACE_WAIT = Duration.ofSeconds(45);
     private static final int CONCURRENT_CALLERS = 4;
     private static final long CONCURRENT_TIMEOUT_SECONDS = 30;
+    private static final int SINGLE_SLOT = 1;
 
     @Container
     static final PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("pgvector/pgvector:pg18");
@@ -59,7 +61,8 @@ class PipelineCutoverIntegrationTest {
     @EntityScan("org.dariusturcu.backend.model")
     @EnableJpaRepositories(basePackageClasses = SongRepository.class)
     @Import({PipelineSettings.class, PipelineJobRepository.class, PipelineJobService.class, StagePayloads.class,
-            PipelineCompletionService.class, PipelineStageWorker.class, SongCatalogService.class})
+            PipelineCompletionService.class, PipelineStageWorker.class, SongCatalogService.class,
+            StageConcurrency.class, StageWakeUps.class})
     static class TestConfig {
         @Bean
         JdbcTemplate coreJdbcTemplate(DataSource dataSource) { return new JdbcTemplate(dataSource); }
@@ -199,16 +202,24 @@ class PipelineCutoverIntegrationTest {
     }
 
     @Test
-    void expiredLeasesAreRecoveredAndOnlyOneJobPerStageCanRunAtOnce() {
+    void expiredLeasesAreRecoveredAndTheStageLimitHoldsAcrossWorkers() {
         PipelineRun run = start(VIDEO_ID);
         start(OTHER_VIDEO);
-        PipelineJob leased = engine.leaseExclusive(PipelineStage.YOUTUBE_METADATA, OWNER, true).orElseThrow();
-        assertThat(engine.leaseExclusive(PipelineStage.YOUTUBE_METADATA, "other", true)).isEmpty();
+        PipelineJob leased = engine.leaseWithinLimit(PipelineStage.YOUTUBE_METADATA, OWNER, true, SINGLE_SLOT).orElseThrow();
+        assertThat(engine.leaseWithinLimit(PipelineStage.YOUTUBE_METADATA, "other", true, SINGLE_SLOT)).isEmpty();
         core.update("UPDATE pipeline_jobs SET lease_expires_at = now() - interval '1 second' WHERE id = ?", leased.id());
         worker.work(PipelineStage.YOUTUBE_METADATA);
         assertThat(youtubeJob(run.id()).attempts()).isEqualTo(1);
         assertThat(youtubeJob(run.id()).status()).isEqualTo(PipelineJobStatus.WAITING);
         assertThat(stages.calls).containsExactly(PipelineStage.YOUTUBE_METADATA);
+    }
+
+    @Test
+    void oneTickDrainsEveryDueJobOfTheStage() {
+        List<PipelineRun> runs = List.of(start(VIDEO_ID), start(OTHER_VIDEO), start(THIRD_VIDEO));
+        assertThat(worker.work(PipelineStage.YOUTUBE_METADATA)).isEqualTo(runs.size());
+        assertThat(runs).allSatisfy(run ->
+                assertThat(youtubeJob(run.id()).status()).isEqualTo(PipelineJobStatus.DONE));
     }
 
     @Test

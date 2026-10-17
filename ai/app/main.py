@@ -1,3 +1,7 @@
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
+
+import anyio.to_thread
 from fastapi import Depends, FastAPI
 from prometheus_fastapi_instrumentator import Instrumentator
 
@@ -22,7 +26,19 @@ def require_internal_api_key_configured(internal_api_key: str) -> None:
 
 require_internal_api_key_configured(settings.internal_service_api_key)
 
-app = FastAPI(title="hittiguess AI microservice", openapi_url=None, docs_url=None, redoc_url=None)
+# Sync stage calls share worker threads with imports and health checks while waiting on providers.
+WORKER_THREAD_LIMIT = 100
+
+
+@asynccontextmanager
+async def lifespan(application: FastAPI) -> AsyncIterator[None]:
+    anyio.to_thread.current_default_thread_limiter().total_tokens = WORKER_THREAD_LIMIT
+    yield
+
+
+app = FastAPI(
+    title="hittiguess AI microservice", openapi_url=None, docs_url=None, redoc_url=None, lifespan=lifespan
+)
 app.add_middleware(CorrelationIdMiddleware)
 app.include_router(metadata_router)
 app.include_router(fast_tier_router)

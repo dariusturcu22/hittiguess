@@ -1,7 +1,6 @@
 package org.dariusturcu.backend.pipeline;
 
-// Waiting and retrying count only jobs of active runs; retrying jobs are waiting jobs that
-// have already failed at least once.
+/** Queue count definitions are shared with admin filters and documented in SYSTEM_REFERENCE.md. */
 public record StageCounts(
         PipelineStage stage,
         boolean paused,
@@ -9,5 +8,6 @@ public record StageCounts(
         long inProgress,
         long doneToday,
         long failed,
-        long retrying) {
+        long retrying,
+        long waitingDue) {
 }

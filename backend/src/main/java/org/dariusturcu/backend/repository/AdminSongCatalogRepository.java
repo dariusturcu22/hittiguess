@@ -4,6 +4,7 @@ import org.dariusturcu.backend.model.song.CatalogSongStatus;
 import org.dariusturcu.backend.model.song.PendingImportOrigin;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.dariusturcu.backend.pipeline.PipelineJobFailures;
 import org.dariusturcu.backend.pipeline.PipelineSettings;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
@@ -169,7 +170,8 @@ public class AdminSongCatalogRepository {
                     AND history.enqueued_at <= COALESCE(run.finished_at, now()) AT TIME ZONE 'UTC'
                     ORDER BY history.id DESC LIMIT 1) AS patient_year,
                 (SELECT failure_reason FROM pipeline_jobs failure WHERE failure.run_id = run.id
-                    AND failure.failure_reason IS NOT NULL ORDER BY failure.updated_at DESC LIMIT 1) AS failure_reason,
+                    AND failure.failure_reason IS NOT NULL AND """ + PipelineJobFailures.visibleCondition("failure") + """
+                    ORDER BY failure.updated_at DESC LIMIT 1) AS failure_reason,
                 CASE WHEN run.status = 'FAILED' THEN 'FAILED'
                     WHEN run.status = 'DONE' THEN 'DONE'
                     WHEN EXISTS (SELECT FROM pipeline_jobs job WHERE job.run_id = run.id AND job.status = 'IN_PROGRESS')

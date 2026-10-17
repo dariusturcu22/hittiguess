@@ -25,7 +25,7 @@ class PipelineJobServiceWiringTest {
             DataSource dataSource = new DriverManagerDataSource(UNUSED_DATABASE_URL);
             context.registerBean("coreJdbcTemplate", JdbcTemplate.class, () -> new JdbcTemplate(dataSource));
             context.registerBean(PlatformTransactionManager.class, () -> new JdbcTransactionManager(dataSource));
-            context.register(PipelineJobRepository.class, PipelineJobService.class);
+            context.register(PipelineJobRepository.class, PipelineJobService.class, StageWakeUps.class);
             context.refresh();
 
             assertThat(context.getBean(PipelineJobService.class)).isNotNull();
