@@ -1224,3 +1224,9 @@ Why: none of the three services needs a separate key per environment, and a seco
 Decision: the DJ shares the entire screen with system audio once per match, and that share stays alive across rounds and DJs so no round asks again. The link opens as a tab in the same window. A player can leave a running session and return to the lobby while the game continues without them. A player whose tab closed or connection dropped leaves voice after 2 minutes.
 
 Why: a production playtest showed that picking a window or tab raised before the YouTube tab existed produced a share without audio, and that browsers always require a user click to start a share, so the way to avoid repeated prompts is one long-lived share. Browsers that cannot capture audio, such as Firefox, cannot act as DJ. The playtest also showed players had no way out of a running session short of the whole group ending it.
+
+## 2026-10-17 | Players whose browser cannot capture audio are skipped as DJ
+
+Decision: a player whose browser cannot share audio, in practice Firefox and Safari, is skipped when the DJ rotation picks the next DJ. They still join the group, use voice chat, and guess every round, and they see a short notice explaining why they are not a DJ. The client reports its capability when the player joins.
+
+Why: a DJ without audio capture plays the song only through their own speakers, so nobody else can hear it in a remote game. Skipping them keeps every round playable without blocking those browsers from the rest of the game.
