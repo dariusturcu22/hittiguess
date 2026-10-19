@@ -1284,3 +1284,9 @@ Why: the share-outcome logging asks for a breadcrumb, and Sentry covers only the
 Decision: `main` holds the running production version and is the branch work lands on. Pull requests target `main`, the backend deploy workflow runs on pushes to `main`, and the pull request checks run on `main`. The `dev` branch no longer exists. `legacy` stays frozen.
 
 Why: the whole `dev` history was merged into `main` once the new version became the production one, and keeping a second long-lived branch only added a promotion step. Earlier entries in this file that mention `dev` describe how the work was done at the time.
+
+## 2026-10-19 | The Fly.io deployment is gone
+
+Decision: the Fly.io backend app is deleted and its configuration file, `backend/fly.toml`, is removed from the repository. Azure Container Apps is the only backend host.
+
+Why: production moved to Azure and the Fly app only kept an always-on machine billing. The 2026-07 decision to move off Fly.io stays in this file as history.
