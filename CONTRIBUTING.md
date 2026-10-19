@@ -4,7 +4,7 @@ hittiguess is a multiplayer music guessing game with a Spring Boot core backend,
 
 ## Local setup
 
-Clone the repository and check out `dev`, the active development branch. `main` and `legacy` are not where development happens; see the root `README.md` for what each branch is.
+Clone the repository and check out `main`, the active branch. `legacy` is a frozen earlier version; see the root `README.md` for what each branch is.
 
 You'll need:
 
@@ -64,9 +64,9 @@ No other variable in either `.env.example` file is required to run the app local
 
 ## Branch and pull request workflow
 
-All work happens on `dev`, through pull requests. Nobody commits directly to `dev`, `main`, or `legacy`, regardless of how small the change is.
+All work happens through pull requests into `main`. Nobody commits directly to `main` or `legacy`, regardless of how small the change is.
 
-Branch off `dev` using one of these prefixes, matching the kind of change:
+Branch off `main` using one of these prefixes, matching the kind of change:
 
 - `feature/*` for new functionality
 - `fix/*` for bug fixes
@@ -75,7 +75,7 @@ Branch off `dev` using one of these prefixes, matching the kind of change:
 
 Commit granularly: each commit should represent one coherent change, not a batch of unrelated edits. Write commit messages and PR descriptions as plain statements of fact about what changed and why, in prose paragraphs, not first person and not narrating the process of getting there. See the PR template for the expected shape.
 
-Open a pull request against `dev` when the work is ready for review. The project owner reviews and merges; pull requests are never merged automatically. Only one pull request from a given batch of planned stories is open for review at a time; if you're picking up the next story in a batch, do the work locally on its own branch, but hold off opening that pull request until the current one merges.
+Open a pull request against `main` when the work is ready for review. The project owner reviews and merges; pull requests are never merged automatically. Only one pull request from a given batch of planned stories is open for review at a time; if you're picking up the next story in a batch, do the work locally on its own branch, but hold off opening that pull request until the current one merges.
 
 ## Picking up a story from TASKS.md
 
