@@ -18,6 +18,12 @@ import java.util.function.Function;
 
 @Component
 public class JwtUtil {
+    // Marks a token issued mid-login for a twoFactorEnabled account: narrowly scoped to
+    // /auth/2fa/verify. validateToken refuses any token carrying this claim, so it never
+    // authenticates a request anywhere a real access token is expected.
+    private static final String TOKEN_TYPE_CLAIM = "tokenType";
+    private static final String TWO_FACTOR_PENDING_TOKEN_TYPE = "two_factor_pending";
+
     @Value("${jwt.secret}")
     private String secret;
 
@@ -26,6 +32,12 @@ public class JwtUtil {
 
     @Value("${jwt.refresh-expiration}")
     private Long refreshExpiration;
+
+    @Value("${jwt.refresh-expiration-remember-me}")
+    private Long rememberedRefreshExpiration;
+
+    @Value("${jwt.two-factor-pending-expiration}")
+    private Long twoFactorPendingExpiration;
 
     public SecretKey getSigningKey() {
         return Keys.hmacShaKeyFor(secret.getBytes());
@@ -96,7 +108,13 @@ public class JwtUtil {
                 .compact();
     }
 
+    // Only a real access token authenticates a request. Access tokens carry no token-type
+    // claim, so any token that does (the two-factor pending token) is refused here, which
+    // covers both the HTTP filter and the STOMP CONNECT check.
     public Boolean validateToken(String token, UserDetails userDetails) {
+        if (extractClaim(token, claims -> claims.get(TOKEN_TYPE_CLAIM, String.class)) != null) {
+            return false;
+        }
         final String email = extractEmail(token);
         if (userDetails instanceof UserPrincipal principal) {
             return email.equals(principal.getUser().getEmail()) && !isTokenExpired(token);
@@ -108,12 +126,36 @@ public class JwtUtil {
         return UUID.randomUUID().toString();
     }
 
+    public String generateTwoFactorPendingToken(User user) {
+        Map<String, Object> claims = new HashMap<>();
+        claims.put("userId", user.getId());
+        claims.put(TOKEN_TYPE_CLAIM, TWO_FACTOR_PENDING_TOKEN_TYPE);
+        return Jwts.builder()
+                .claims(claims)
+                .subject(user.getEmail())
+                .issuedAt(new Date(System.currentTimeMillis()))
+                .expiration(new Date(System.currentTimeMillis() + twoFactorPendingExpiration))
+                .signWith(getSigningKey())
+                .compact();
+    }
+
+    // Throws io.jsonwebtoken.JwtException (including ExpiredJwtException) for a malformed,
+    // tampered, or expired token, same as every other extractClaim caller relies on.
+    public boolean isTwoFactorPendingToken(String token) {
+        String tokenType = extractClaim(token, claims -> claims.get(TOKEN_TYPE_CLAIM, String.class));
+        return TWO_FACTOR_PENDING_TOKEN_TYPE.equals(tokenType);
+    }
+
     public long getExpirationSeconds() {
         return expiration / 1000;
     }
 
     public long getRefreshExpirationSeconds() {
         return refreshExpiration / 1000;
+    }
+
+    public long getRememberedRefreshExpirationSeconds() {
+        return rememberedRefreshExpiration / 1000;
     }
 
     public long getRefreshExpiration() {

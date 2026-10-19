@@ -3,22 +3,27 @@ package org.dariusturcu.backend.model.song;
 import jakarta.validation.constraints.NotNull;
 import org.dariusturcu.backend.model.user.UserSummaryDTO;
 
+import java.util.List;
+
 public record SongDTO(
         @NotNull
         Long id,
         @NotNull
-        String artist,
+        List<SongArtistDTO> artists,
         @NotNull
         String title,
         @NotNull
         int releaseYear,
         @NotNull
         String youtubeId,
-        String gradientColor1,
-        String gradientColor2,
-        SongTag songTag,
+        String color,
+        String genre,
         Country country,
         @NotNull
-        UserSummaryDTO addedBy
+        VerificationStatus verificationStatus,
+        String confidence,
+        boolean needsUserAttention,
+        UserSummaryDTO addedBy,
+        Integer durationSeconds
 ) {
 }

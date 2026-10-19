@@ -1,0 +1,1280 @@
+# DECISIONS.md: Decision Log
+
+Append-only. Never edit or delete past entries. New decisions go at the bottom.
+
+---
+
+## 2026-06 | DJ model for YouTube compliance
+
+Decision: use a DJ role as the architecture for YouTube compliance in online multiplayer. The DJ's device runs playback; other players receive only audio and see only the game UI.
+
+Why: YouTube's IFrame API terms require an embedded player to be visible, unmodified, and not overlaid. In a multiplayer game where everyone has a player, this can't be enforced without breaking gameplay. A DJ model sidesteps this: only one device has any relationship to the player, and that player doesn't guess that round anyway.
+
+Note, 2026-07: the mechanism described here was superseded, see the 2026-07 entry below. The DJ-per-round principle and zero embed on non-DJ devices still stand.
+
+---
+
+## 2026-06 | No unofficial APIs
+
+Decision: use only official APIs for external services. No unofficial or reverse-engineered clients.
+
+Why: unofficial libraries aren't authorized by the underlying service and carry meaningfully higher terms-of-service risk than the official API for the same functionality.
+
+---
+
+## 2026-06 | Multi-source metadata pipeline
+
+Decision: verify song metadata using multiple external sources (YouTube, MusicBrainz, Wikipedia, Genius, Discogs), synthesized by an LLM, rather than relying on a single AI model's training data.
+
+Why: LLM training data is unreliable for niche and underground music. Fetching structured data from specialist databases first, then using the LLM only for synthesis and reconciliation, is more accurate. MusicBrainz and Discogs cover underground and electronic music that mainstream sources miss.
+
+---
+
+## 2026-06 | Separate submittedYear vs verifiedYear
+
+Decision: store `submittedYear` and `verifiedYear` as separate fields, not a single `releaseYear`.
+
+Why: without this distinction, there's no way to tell whether a year was changed after review, which the verification workflow depends on.
+
+Note, 2026-09: reopened as an undecided question rather than settled fact, see the 2026-09 "Reopen release-year field shape" entry below. The audit-trail reasoning here still stands as one option under consideration, it's no longer the final answer.
+
+---
+
+## 2026-06 | Persist metadata pipeline output
+
+Decision: store the full pipeline output as a JSON column, and persist the confidence value.
+
+Why: without this, provenance is lost once the frontend consumes the response. Auditing and re-verification become impossible.
+
+---
+
+## 2026-06 | pgvector for deduplication before the pipeline
+
+Decision: check pgvector similarity against existing verified songs before running the full pipeline. Reuse on a high-confidence match, skipping the LLM call.
+
+Why: reduces cost and latency for songs that are already in the database.
+
+---
+
+## 2026-06 | Flutter deprioritized
+
+Decision: the Flutter app is deprioritized in favor of the web-based game.
+
+Why: playback now happens through a browser tab or the real YouTube app, which works on mobile browsers too, removing the original reason for a dedicated native playback app.
+
+---
+
+## 2026-07 | DJ model refined: link out to the real YouTube instead of embedding
+
+Decision: stop embedding the YouTube player entirely. The DJ is sent to the real YouTube page, a new browser tab, for remote sessions, or the real YouTube app for in-person sessions. Physical cards encode the YouTube URL directly in the QR code.
+
+Why: an earlier prototype hid the iframe and blocked ads, a direct violation of YouTube's developer policies. This exposure doesn't shrink just because the audience stays small or grows without active marketing. It depends on what the software does, not on audience size. The fix is architectural: a plain outbound link to YouTube's own page or app is not an embedded player at all, so the rules governing embedded players don't apply. This holds regardless of user count.
+
+Trade-off accepted: no programmatic access to the playback state on a page we don't control, so round reveal is a manual trigger instead of automatic. Ads always play, unmodified.
+
+Supersedes: the 2026-06 DJ model entry, mechanism only. The underlying DJ-per-round principle is unchanged.
+
+---
+
+## 2026-07 | Split the backend: Spring Boot core, Python/FastAPI AI microservice
+
+Decision: split the backend into two services. Spring Boot keeps auth, CRUD, game session, and WebSocket. A Python/FastAPI service takes over the metadata pipeline, LLM synthesis, and embeddings. Spring AI is removed from the Java side.
+
+Why: Python has a stronger, faster-moving ecosystem for LLM and embeddings work than the Java equivalent. The metadata pipeline was already a distinct component; this gives it its own process and dependency footprint, separate from the core app's CRUD and auth concerns.
+
+Why not a full rewrite to Python instead: the existing Spring Boot auth and CRUD layer already works. Rewriting it would discard working infrastructure for no functional gain.
+
+Implementation notes: the core service calls the AI microservice over an internal endpoint, not publicly exposed. The core service owns all migrations; the AI microservice never alters schema. Both services run in the same Azure Container Apps environment.
+
+---
+
+## 2026-07 | Move backend hosting from Fly.io to Azure Container Apps
+
+Decision: migrate both backend services to Azure Container Apps. Database moves to Azure Database for PostgreSQL Flexible Server, pgvector enabled. Frontend stays on Vercel.
+
+Why: Fly.io kept compute running regardless of actual traffic, which doesn't fit a usage pattern that's bursty and mostly idle. Azure Container Apps' Consumption plan scales to zero and charges nothing while idle. AWS Fargate and App Runner both maintain a non-zero baseline cost even at low traffic, reproducing the same problem this migration is meant to fix.
+
+Open item: current Postgres host needs confirming before data migration. See PROJECT_STATE.md.
+
+Note, 2026-09: reversed, see the 2026-09 "Deployment platform reopened" entry below. Azure was chosen without comparing alternatives or setting a cost ceiling first; both the hosting platform and the database platform are undecided again.
+
+---
+
+## 2026-08 | Community verification through reports, not thumbs up or down
+
+Decision: replace the earlier thumbs-up/thumbs-down concept with a report flow: a report button, a free-text message, a field for the year the reporter believes is correct, and separate fields for one or more sources.
+
+Why: a simple up or down vote trusts the crowd without capturing any actual information behind the disagreement. Separate structured fields, year and sources, give an admin or a future automated process something concrete to act on, instead of an unexplained vote count.
+
+Open item: what promotes a reported or newly submitted song to fully verified is not yet decided.
+
+---
+
+## 2026-08 | Voice chat: mesh peer-to-peer, no media server, Cloudflare TURN as fallback
+
+Decision: voice chat between players in a session uses a mesh WebRTC topology, signaling over the existing WebSocket layer, capped at 8 participants per session. Cloudflare's pay-as-you-go TURN service is used only as a fallback for connections that can't be established directly. Video is out of scope for now.
+
+Why: a full media server removes the participant limit and enables group video, but requires either self-hosting a real-time media server or paying a per-participant-minute provider, both ruled out. At realistic group sizes for this game, mesh audio-only is well within what peer-to-peer can handle reliably; video mesh is not, since video bitrate is far higher than audio and mesh bandwidth scales with each additional participant. A relay, TURN, is still required regardless of group size, since a meaningful share of real-world network connections can't establish a direct path due to NAT type. At this usage scale, the actual relay cost is negligible, well under the cost of any managed media server or self-hosted alternative.
+
+Why not self-hosting a TURN server instead: self-hosting only becomes cheaper than a pay-as-you-go relay at usage volumes far beyond this project's expected scale. Below that threshold, a managed relay is both cheaper and less operational work.
+
+---
+
+## 2026-08 | Round mechanic: active player has priority on valid placements
+
+Decision: the player whose turn it is places their guess and locks it in first. Other players holding a token may then bet on their own guess, first come, first served. If the active player's placement is correct, including when it shares a release year with an existing card on the timeline, they keep the card regardless of any bet, and the bet is lost.
+
+Why: this matches the official Hitster ruling for the equivalent situation. A same-year tie doesn't override a correct placement, and a bettor only wins the card if the active player was actually wrong.
+
+---
+
+## 2026-08 | Sessions are ephemeral, not persistent groups
+
+Decision: a game session is created with an invite link and exists only while it's being played, the same way a Gartic Phone round works. Everyone who joins is a full player. There's no spectating and no joining a session already in progress. Voice and text chat are scoped to the session's lifetime. When the session ends, nothing persists except a downloadable results export.
+
+Why: an earlier idea involved persistent groups, similar to Discord servers, that would stick around between games. Given the actual usage pattern, friends starting a game together and playing it through, that persistence adds storage and complexity without a clear benefit. The simpler model also removes an entire category of open questions about group membership, moderation, and long-term data retention.
+
+Note, 2026-08: superseded by the "Group and game session are separate entities" entry below. Persistent groups came back once chat/voice persistence and replay without a new invite link turned out to matter more than the complexity this entry was trying to avoid.
+
+---
+
+## 2026-08 | Project state as a story backlog, with a task gate
+
+Decision: `PROJECT_STATE.md` holds a table of stories with stable IDs and a status: Implemented, Ready, In Progress, or Needs Definition. `TASKS.md` holds concrete, checkable tasks. A story can have draft tasks written against it while still marked Needs Definition; that alone doesn't unlock feature work. A story becomes Ready only once its tasks have been checked against the real codebase and confirmed accurate. Feature work requires a Ready story with tasks; fix, chore, and docs work, including bugs listed directly in TASKS.md, doesn't need a story at all. Fully implemented stories move out of both files into `ARCHIVE.md`.
+
+Why: without a defined-before-built gate, an AI coding agent will happily start implementing a half-formed idea. Separating "a task exists" from "a task is confirmed against real code" matters specifically because task breakdowns written during planning, without access to the actual repository, can turn out to be wrong once the real code is visible. Archiving completed stories keeps the active files from growing indefinitely.
+
+---
+
+## 2026-08 | Branching: main, dev, legacy
+
+Decision: three persistent branches. `legacy` is frozen at the current implementation and stays live in production while the new architecture is built. `dev` is the active integration branch, worked on exclusively through pull requests from `feature/*`, `fix/*`, `chore/*`, and `docs/*` branches. `main` is not touched until the new architecture is ready to replace what `legacy` is currently serving.
+
+Why: this keeps the current, working deployment available to actual players throughout the rework, rather than breaking it mid-refactor.
+
+---
+
+## 2026-08 | Core-to-AI-microservice auth: shared secret header
+
+Decision: the core service authenticates to the AI microservice's internal endpoint with a shared secret header, `X-Internal-Api-Key`, checked against `INTERNAL_SERVICE_API_KEY` on both sides.
+
+Why: the original split decision left the mechanism open, shared secret header or network-level restriction. A header works identically in local dev and in Azure Container Apps, with no dependency on Container Apps-specific network configuration, and needs no extra infrastructure to set up.
+
+---
+
+## 2026-08 | Pause MusicBrainz, Wikipedia, and Genius pending an API usage review
+
+Decision: only the YouTube Data API source makes live calls in the metadata pipeline right now. MusicBrainz, Wikipedia, and Genius all return no result until a deliberate review confirms each one's API usage is official, legal, and ethical.
+
+Why: porting the pipeline to the AI microservice (story 6) carried these three integrations over unchanged from the pre-split code, without that review having happened yet. Reviewing all three together, deliberately, is preferred over reviewing them one at a time.
+
+Open item: what each of the three needs, and what the resulting integration looks like for each, is planned as the next thing to work through after story 6.
+
+---
+
+## 2026-08 | Metadata source set: MusicBrainz, Discogs, Wikidata; Genius, Last.fm, and live Wikipedia search dropped
+
+Decision: the metadata pipeline's structured sources are MusicBrainz, Discogs, and Wikidata. Genius, Last.fm, and Wikipedia's live search API are dropped, not paused.
+
+Why: reading each source's own current license and terms directly, not a summary of them, MusicBrainz's core fields (title, artist credit, release date) and Discogs's monthly data dumps are both CC0, public domain. Wikidata's entire structured dataset is CC0 and explicitly cleared for commercial or personal reuse, and it supersedes Wikipedia's live search entirely: same underlying project, cleaner license, structured data instead of a fact regex-matched out of article prose. Genius's terms restrict commercial use and broadly prohibit automated data gathering without a clear carve-out for their own API. Last.fm's license is non-commercial by default and explicitly terminable at their discretion. Both were only ever secondary sources for a release date; the license friction on both makes dropping them the cleaner call over trying to fix them.
+
+Note: MusicBrainz's release-group `first-release-date` field, not a specific release's date, is the correct field for an original release year; a plain recording or release search can return several results tied at the same confidence score with different dates (a genuine reissue vs. the original), verified against live queries during this review. Sources reduce how often the LLM has to guess a year, they don't remove the LLM's role reconciling disagreements between sources.
+
+---
+
+## 2026-09 | iTunes Search API reviewed and rejected as a metadata source
+
+Decision: the iTunes Search API is not added to the metadata pipeline's source set.
+
+Why: its terms of use are scoped to Apple's Affiliate Program, promotional use only. Content must sit proximate to a store badge or purchase link and "is not used for independent entertainment value apart from its promotional purpose," with required "provided courtesy of iTunes" attribution on any preview use. None of that fits a backend metadata source with no iTunes purchase links or store badges anywhere in the product, the same mismatch that got Genius and Last.fm dropped in the entry above. Its rate limit (about 20 calls/minute) is also far below MusicBrainz/Discogs/Wikidata's. Rejected on terms alone, without live testing, matching how Genius and Last.fm were handled.
+
+---
+
+## 2026-09 | Metadata pipeline call/reconcile shape: MusicBrainz, Discogs, Wikidata
+
+Decision: for each of the three structured sources, query both the submitted track and its parent album, then take the earliest valid release year across every candidate either query returns, not the first or top-scored candidate alone. Compare and select by extracted year, never by raw date string.
+
+Why: validated against 42 real songs (a hand-picked mainstream/mid-tier/niche/Romanian set, and a real 34-song YouTube playlist), a track-only query missed the true original date repeatedly, always in the same direction: it found a reissue, remix, or standalone-single release instead of the earliest one. A niche vaporwave track's own MusicBrainz release-group gave a 2019 reissue date instead of 2011; a real playlist song ("Hey Mama") has its own 2015 single release on Discogs but is also track 10 on a 2014 album, and trusting whichever master a search result listed first picked the later one. Comparing by extracted year rather than raw date string matters too: Wikidata zero-pads an unknown month/day to "-00-00", which sorts as numerically earlier than a fully-precise same-year date in naive string comparison despite not being an earlier real day, and the schema only stores `releaseYear` as a plain int regardless.
+
+Per-source specifics, each confirmed against live data, not assumed:
+- MusicBrainz: query the release-group endpoint, never the plain recording/release endpoints (settled already in this file's 2026-08 entry). Scan every release-group tied at the top score, not just the first, prefer the type matching query intent (Single for a track-level query, Album for an album-level one, confirmed necessary: an album query for "Thriller" collided with the unrelated same-titled "Thriller" single without this), and take the earliest first-release-date among whichever are dated.
+- Discogs: a release search returns individual pressings and reissues; follow to the master resource for the canonical year, but a track can belong to more than one distinct master, its own single release and the album it also appears on, so check every distinct master found among the results, not just the first, and take the earliest. Treat a master year of `0` as unknown, Discogs uses that instead of null.
+- Wikidata: search the title alone, a combined "artist title" query returns nothing. Use a wide result window (20, not the platform default of a handful), a common title can bury the real song several results down. Prefer whichever result's description mentions the artist; if none do, fall back only to a result whose description sounds like an actual music release, never to an unrelated top-ranked result, a narrow-window, no-fallback-check version of this search resolved "Dark Horse" to a 2008 Nickelback album instead of Katy Perry's 2013 song. A song's own `P361` ("part of") claim, when present, resolves its parent album directly, more reliable than guessing the album's title and searching for it separately.
+- Title preprocessing: strip a `(feat. X)`/`(ft. X)` clause before querying MusicBrainz or Wikidata, both return zero matches otherwise; Discogs' search tolerates the clause as-is. The featured artist names aren't discarded, they're extracted into a separate list, feeding story 23's open question on multi-artist storage.
+
+Note: this settles how the three structured sources are called and reconciled against each other. It does not settle two adjacent, still-open questions: how their combined result reconciles against the LLM synthesis step when sources genuinely disagree past a one-year single/album gap (the existing confidence-guideline logic in `prompt.py` already exists for this, unchanged by this decision), and how the pipeline gets a usable artist name at all when a YouTube video's title and channel don't carry one, confirmed on real anime openings across three different channels, where only the description states the real artist, in a different format every time. That gap is decided separately (see `TASKS.md`'s spike entry): a structured-output LLM call, not per-channel regex, extracts title/artist/featured-artists from the raw title, channel, and description when the channel doesn't look like a real artist.
+
+---
+
+## 2026-08 | Product standard: professional-grade, not just working
+
+Decision: the project holds itself to the same standard for the product as for its external dependencies, official and compliant, not just functional. This includes a real privacy policy and terms of service, GDPR compliance, and production-grade observability (error tracking, monitoring).
+
+Why: prompted by finding an existing web-based Hitster clone with no visible terms of service, privacy policy, or GDPR compliance. Not a story yet, a standard the project is held to as stories get defined.
+
+---
+
+## 2026-08 | Database split: not for capacity, only for workload shape
+
+Decision: splitting the database across multiple free-tier instances purely to gain storage capacity is rejected. A real split, separating transactional data (users, songs, ratings, OLTP-shaped) from usage-analytics event data (games played, session length, append-heavy and time-series-shaped), stays on the table for a different reason, see story 33 in `PROJECT_STATE.md`.
+
+Why: capacity was the only reason raised for a multi-instance split. Song metadata plus user, playlist, and ratings data is small enough to stay well under a single free-tier instance's limits even at the 100-200 user target scale, checked directly rather than assumed.
+
+---
+
+## 2026-08 | Group and game session are separate entities
+
+Decision: what was one ephemeral "session" is now two entities. A group is the persistent lobby, invite-link membership, an admin role, live-synced game settings, chat, and voice, that a game session lives inside. The game session is the round-by-round gameplay itself, created only when the group's admin starts one, and still fully ephemeral, purged when it ends except for a downloadable results export. A group can run more than one game session over its lifetime.
+
+Why: a single-tier model (Gartic Phone's approach, in-memory, gone when the round ends) doesn't fit a product with persistent chat and voice, replay without recreating an invite link, or an admin able to configure settings before anyone commits to starting. Splitting the two lets chat and voice exist before, between, and after games without tying their lifetime to one round of play.
+
+Note: the group's lifecycle runs on fixed timers, not activity tracking, deliberately. An activity-based timer (reset by any interaction) was considered and rejected: it opens a loophole where starting and immediately abandoning a game session resets the clock indefinitely. Fixed timers: 30 minutes from group creation to the admin starting a session, 30 minutes from a session ending to the admin starting another, 10 minutes with zero connected players before an in-progress session is torn down as abandoned. Reconnecting to a still-active group happens through account state on app load, not by reusing the invite link, the link is for joining a group for the first time only.
+
+Note: the game session's win condition is an admin-configured setting, not an automatic formula: minimum 5 cards always, maximum 20 for a 2-3 player group, maximum 15 for a 4-8 player group.
+
+See story 10 (game session), story 39 (group), and stories 9, 12, and 13 in `PROJECT_STATE.md`, and `ARCHITECTURE.md` and `GAME_DESIGN.md` for the full shape.
+
+---
+
+## 2026-09 | Open source, non-commercial, no monetization or third-party tracking
+
+Decision: the project is open source with no monetization plan, ever. No ads, no third-party trackers, no selling user data. First-party analytics (stories 33, 34) stay in scope, they're for improving the product for the people playing it, not for anyone else's benefit.
+
+Why: built for friends and family, not to compete for users or ad revenue. Reaching the ~100-200 user scale of that group is a complete win, not a floor to grow past.
+
+---
+
+## 2026-09 | Whole-deployment cost ceiling: target $0, tolerate up to ~$20/month total
+
+Decision: cost stays low deliberately. The entire deployment, every service combined (backend, AI microservice, frontend, database, observability, everything), targets $0/month and tolerates up to roughly $20/month total if there's a real reason, such as a genuine skills investment, not convenience. That ceiling applies to the whole stack, not per service. If real usage outgrows what fits the budget, the response is gameplay balancing, capping concurrent sessions, queuing players, or similar, not paying for more infrastructure.
+
+Why: the project is non-commercial and small-scale by design (see the open-source decision above); infrastructure spend should match that, not creep upward service by service across a multi-service architecture.
+
+---
+
+## 2026-09 | Deployment platform reopened
+
+Decision: the earlier choice of Azure Container Apps and Azure Database for PostgreSQL is reversed. Deployment platform, both compute and database, is undecided again, deliberately deferred until the app is close to feature-complete locally rather than decided now. Leaving Fly.io for backend hosting stays decided; where it moves to doesn't. Whether to migrate off Supabase at all, and to what, is also undecided; Azure Database for PostgreSQL and Neon have both come up as candidates, neither chosen.
+
+Why: the original Azure decision was made without comparing real alternatives or the whole-deployment cost ceiling now in place (see above). Revisiting once, closer to feature-complete, avoids re-deciding hosting multiple times as the app's actual resource needs become clearer.
+
+---
+
+## 2026-09 | Reopen release-year field shape, defer artist modeling entirely
+
+Decision: whether release year is `submittedYear` plus `verifiedYear` (preserves the original submission after a correction) or one mutable field plus `verificationStatus` (simpler) is reopened as undecided. Separately, how a song with multiple or featured artists is stored and guessed, today's schema assumes a single `artist` string, is new, undecided scope: whether storage is an array, whether every featured artist must be guessed correctly, and what the guess-box UI looks like for more than one artist are all open.
+
+Why: the year-field question was settled without weighing the two options against each other explicitly. The artist question was never considered at all in the original schema design, surfaced only once a real "feat." credit was worked through concretely.
+
+---
+
+## 2026-09 | Game session mechanics: reconnect, leave, token earning, betting timing
+
+Decision: a disconnected player keeps their timeline, tokens, and turn order untouched, marked only `isConnected: false`. An explicit leave, or a disconnected active player's turn going unanswered for 90 seconds, marks them `Left`: excluded from future turns and DJ rotation, but their existing timeline cards still count toward the final results. Guessing a song's artist and title is a separate action from timeline placement, available to the active player for the whole turn; a fully correct guess earns a token. After timeline placement locks in (with a sound effect), a 3-5 second countdown leads into a 15-second betting window, skipped entirely if no player holds a token, endable early with a skip-betting action, and concurrency-safe so only the first bet is accepted and a losing attempt doesn't cost a token.
+
+Why: mirrors the same disconnect-versus-leave distinction already decided for groups, applied down to the player level inside a session, rather than leaving session-level reconnect behavior unspecified. The betting sequence's timing gives players who already heard the song enough time to act without dead air.
+
+---
+
+## 2026-09 | Group additions: join code, per-group identity, voluntary admin transfer
+
+Decision: a group can be joined by a 4-letter code as well as the existing invite link. On joining, a member is prompted for a per-group display name and avatar, defaulting to their account's own but editable and private to that group, other members never see the real account profile. The admin can voluntarily promote another member to admin at any time, independent of the existing auto-promote-on-leave path.
+
+Why: a join code is easier to share verbally or in person than a link. Per-group identity lets someone play under a different name or avatar with people they don't want to share their main profile with, coworkers versus close friends, for example.
+
+---
+
+## 2026-09 | Every story's tasks carry their own tests
+
+Decision: every task breakdown in `TASKS.md` must include explicit test tasks alongside the feature tasks, not deferred to a separate test-coverage story. Story 22 stays scoped to backfilling tests for code that predates this rule.
+
+Why: stories get implemented autonomously from `TASKS.md`; a story needs a real completion criterion beyond "the feature code works."
+
+---
+
+## 2026-09 | License: MIT
+
+Decision: the project is licensed MIT, a permissive license anyone can fork, redistribute, and self-host, including a competing hosted instance, with no restriction.
+
+Why: AGPLv3 and the Business Source License were both considered first, on the assumption that a hosted fork by someone else was worth guarding against. Neither actually protects anything real here: there's no revenue or user base to lose to a competing fork, since the project has no monetization plan and isn't being marketed for growth (see the open-source/non-commercial decision above). MIT is also the stronger choice for the project's actual purpose, a portfolio piece: it's the license every engineer and recruiter recognizes instantly with zero friction to clone and evaluate, where a non-standard restrictive license would need explaining and could read as mismatched against a project that describes itself as small-scale and non-commercial.
+
+---
+
+## 2026-09 | Drop stories 29 and 31, no viable audio-feature source
+
+Decision: story 29 (content-based recommender using audio features like tempo, energy, valence) and story 31 (similar-songs feature) are both dropped, not left open.
+
+Why: researched directly rather than assumed. AcousticBrainz, the obvious free source, shut down its live API and submission pipeline in February 2022; only a frozen 2022 dataset remains, with coverage skewed toward mainstream music already analyzed before the shutdown, the opposite of the niche and underground coverage this project prioritizes. Self-hosting Essentia (the toolkit AcousticBrainz itself used) works on any song but needs the actual audio file, and the only way to get that for a YouTube-sourced song is unofficial downloading, which violates the project's non-negotiable official-APIs-only rule and the DJ-link-out architecture built specifically to avoid touching YouTube's media stream. Paid catalog APIs are real ongoing cost for a nice-to-have feature and still don't solve the niche-track coverage gap. Story 31's only version worth building, audio-based similarity, depends on the same missing data; its fallback (text-embedding similarity over artist/title) was explicitly rejected as not a real substitute, it mostly catches same-artist or similarly-worded matches, not "sounds like."
+
+---
+
+## 2026-09 | Per-user game history, reopened and reversed
+
+Decision: a per-user game history page is added (story 34), reading compact per-game summaries (group, players, win/loss, cards won, final score) from the separate analytics store (story 33). The transactional `GameSession`/`Round`/`Guess` rows still purge exactly as story 10 specifies; the history page reads only from the analytics store, never from session state that no longer exists.
+
+Why: an earlier planning session explicitly decided against a persistent per-user game-history tab, staying purge-only to match the ephemeral session framing, but that decision was only ever said in conversation, never written into this log or any doc. Revisited once story 33's separate analytics store made it effectively free: the store already needs to exist for usage stats, and a compact game summary costs nothing extra to retain there, without touching the core session model's ephemerality at all.
+
+---
+
+## 2026-09 | Story 30 redefined: difficulty-tuned session generation, absorbs story 21
+
+Decision: story 30 changes from a generic "collaborative filtering recommendations" placeholder into a concrete feature: generating a game session's card set on the spot, scored to a chosen difficulty (easy/medium/hard) for the group's actual players, instead of only playing from an admin-picked playlist. Absorbs story 21's card-assembly mechanics rather than keeping two stories doing adjacent things; difficulty becomes one more selection criterion alongside theme. Built in two tiers: a per-song aggregate correct-guess-rate score that works immediately and covers first-time players, and a personalized collaborative-filtering layer on top that only ships once it demonstrably beats that aggregate baseline. Group-level scoring for easy mode uses the group's lowest individual predicted score, not an average, so the least experienced player is protected rather than averaged away; hard mode uses a plain average, since it's opt-in.
+
+Why: the original framing, "recommend songs a user might like," doesn't fit how the game actually works, players don't browse and pick songs individually. Reframed around what collaborative filtering can genuinely predict here: whether a given player would get a given song right, which directly powers something the game already wants, curated playlists tuned to a group's skill, rather than an abstract recommendation feature with no clear place to surface it. The personalized-vs-baseline comparison also gives the retraining pipeline a real signal to act on (the model degrading relative to the simple baseline) instead of a fixed schedule with no actual quality check behind it.
+
+---
+
+## 2026-09 | Story 21 folded into story 30, not just cross-referenced
+
+Decision: story 21's tasks (theme-based catalog search, genre/popularity fields, metadata-pipeline gap-filling, the review UI) move into story 30's task list directly. Story 21's row in `PROJECT_STATE.md` points to story 30 instead of carrying its own tasks.
+
+Why: both stories generate a game session's card set, one from a theme, one from a difficulty tier; keeping them as two separate stories with two separate generation endpoints would mean building the same underlying mechanism twice instead of once with two combinable selection criteria.
+
+---
+
+## 2026-09 | Metadata pipeline final shape: two-tier lock-or-LLM, Wikipedia added as a fourth source
+
+Decision: the metadata pipeline for resolving a song's release year has two tiers, both now final. Patient tier (the admin backlog drain, and full verification of anything the fast tier touches): query MusicBrainz, Discogs, and Wikidata always; lock the year immediately with no LLM call at all when all three agree exactly; when they don't, fetch and extract Wikipedia (a dedicated reading-comprehension LLM call) and reconcile all four sources' candidates with a second LLM call. Fast tier (on-the-spot, answers immediately): dispatch each song to exactly one of MusicBrainz or Wikipedia, never both, whichever is free grabs the next song under dynamic work-stealing dispatch rather than a fixed split; every fast-tier answer is provisional and gets re-queued through the patient tier afterward. Wikipedia is added as a fourth structured/LLM-assisted source, alongside MusicBrainz, Discogs, and Wikidata. Model choice: gpt-5-nano reconciles among structured candidates, DeepSeek-V4-Flash reads Wikipedia's prose, two different models for two different jobs, not one model for everything.
+
+Why: validated against a real 70-song test set spanning mainstream, adversarial, and niche/regional cases, not guessed at. The patient tier scored 99% (69/70), with 53% of songs locking without any LLM call at all. The fast tier scored 90% (63/70). Wikipedia earned a permanent seat in the pipeline specifically because its errors are largely uncorrelated with the other three sources': it solved cases (a single-vs-album date trap, a case where two independent structured sources agreed with each other on the same wrong year) that all three structured sources missed together, at the cost of a few new mistakes of its own that the other sources don't make. The two-model split exists because a real test found gpt-5-nano notably worse at the reading-comprehension extraction task specifically, despite being the stronger reconciler of the two, one model wasn't uniformly best at both jobs.
+
+Open item: this settles the pipeline shape itself, not expected to be revisited again barring a real problem found during implementation. What a genuine no-answer (no source has anything at all) does downstream, and whether any of this gets built into the real AI microservice versus staying validated-but-unbuilt in the spike, are both still open, see `TASKS.md`.
+
+---
+
+## 2026-09 | Rate-limit contention: on-the-spot traffic always preempts the admin backlog
+
+Decision: the admin catalog-seeding backlog drain and on-the-spot user requests (including playlist imports) share the same external rate-limit budgets, MusicBrainz, Discogs, Wikidata, and Wikipedia all come from the same outbound IP. On-the-spot traffic is always high priority; the backlog drain pauses while any on-the-spot traffic is active and resumes once it's clear, rather than the two paths contending for the same budget in real time. Every song the fast tier answers provisionally gets re-added to the admin backlog afterward, to be resolved properly through the patient pipeline at low priority like everything else already in that queue.
+
+Why: this was surfaced, not resolved, when story 40 was first drafted; "on-the-spot always wins on priority" was already decided for queue ordering, but nothing defined what that meant for the two paths' shared external rate-limit budgets specifically. A pause-and-resume design avoids building real-time token-bucket arbitration between two internal consumers of the same external ceiling, and fits the two-tier pipeline's own shape: the backlog drain has no latency pressure of its own, so yielding to on-the-spot traffic costs it nothing but time.
+
+---
+
+## 2026-09 | Verification schema: one release-year field, four-tier verificationStatus, reportable at every tier
+
+Decision: release year is one mutable field plus `verificationStatus`, not a separate `submittedYear`/`verifiedYear` pair. `verificationStatus` has four tiers: `UNVERIFIED` (default, not yet processed), `VERIFIED` (story 18's lock, all three structured sources agreed, immutable except through the report/re-verification process), `NEEDS_REVIEW` (an LLM-reconciled year, not locked), and `MANUAL_ENTRY` (a human-entered year for a song no source, including Wikipedia, had any data on at all, the least-trusted tier). Every card, at every tier including `VERIFIED`, can be reported; a report against an already-`VERIFIED` card sinks to the bottom of the admin review queue rather than being blocked outright.
+
+Why: a single field plus a status is simpler than two year fields and still gives a clear audit trail, whether a year is locked, LLM-guessed, or human-entered is exactly the information that mattered about "was this corrected," not preserving a separate original-submission value alongside it. `MANUAL_ENTRY` exists as its own tier, below `NEEDS_REVIEW`, because a human guess with zero source corroboration is a genuinely different confidence level than an LLM reconciling real, if disagreeing, source data. Allowing reports on locked cards too, rather than exempting them, keeps one code path for every card; the admin-queue priority ordering (lowest confidence first, already decided) does the real work of not wasting review time on a report against a card three independent official sources already agreed on.
+
+Open item: the report's own data shape (message, suggested year, one or more sources) was already decided in the 2026-08 "Community verification through reports" entry above. How a submitted report actually gets resolved, whether that stays fully manual or has any automated assist, and how the community thumbs-up signal on `NEEDS_REVIEW`/`MANUAL_ENTRY` cards works mechanically (a vote threshold, what it does to `verificationStatus`, if anything, on its own) are still under discussion, not settled here.
+
+---
+
+## 2026-09 | Story 32 dropped: redundant with the verification pipeline
+
+Decision: story 32 (a scheduled, periodic LLM-as-judge pass over the whole catalog flagging likely duplicate or mislabeled songs) is dropped, not deferred.
+
+Why: every song already gets verified on submission through story 18's pipeline, and a fast-tier answer gets re-verified through the patient tier afterward. A separate scheduled audit pass over the whole catalog duplicates that coverage. A manual, admin-triggered version, run on demand rather than on a schedule, isn't ruled out, but isn't a defined feature.
+
+---
+
+## 2026-09 | Flutter kept, held to the same DJ-model rule as the web app
+
+Decision: the Flutter app is kept, not dropped or repurposed. In the meantime, it follows the same non-negotiable rule as the rest of the product: the DJ is never shown an embedded or hidden YouTube player, playback happens on the real YouTube app.
+
+Why: settles the "keep, repurpose, or drop" question that had been sitting open since Flutter was deprioritized behind the web-based game. Compliance with the DJ-model rule doesn't wait for a future repurposing decision, it applies now, the same way it already applies to the web app.
+
+---
+
+## 2026-09 | Story 30 medium difficulty: median of individual scores
+
+Decision: medium-difficulty group scoring (story 30) uses the median of the group's individual predicted scores.
+
+Why: easy already uses the group's lowest individual score (worst-case protection) and hard uses a plain average (no protection, opt-in). The median sits between the two without introducing a new weighting factor to tune.
+
+---
+
+## 2026-09 | YouTube Developer Policies read directly for story 35; a related metadataRaw constraint surfaced
+
+Decision: story 35 (the public ground-truth data API) is confirmed clear to ship as designed. Separately, any raw YouTube API Data (a video's title, description, channel name, view counts) that ends up persisted in `metadataRaw` needs its own delete-or-refresh cycle within 30 calendar days; it can't be kept indefinitely as-is.
+
+Why: read YouTube's actual Developer Policies directly rather than a summary. Section III.E.4.h prohibits substituting or deriving new metrics from YouTube's own numeric/engagement data, its own example is entirely about view and like counts, it says nothing about publishing an independently-sourced fact (artist, title, release year, all CC0 from MusicBrainz/Discogs/Wikidata) merely because a video's title or channel name was used as a lookup key to find it. Section III.E.4.c/d separately requires non-authorized API Data to be deleted or refreshed within 30 calendar days of storage, a real constraint on `metadataRaw`'s shape that wasn't on record before this read, unrelated to story 35's own data, which was never sourced from YouTube API Data in the first place.
+
+---
+
+## 2026-09 | Report and confirmation resolution: fully manual, ranked by a five-tier priority queue
+
+Decision: a submitted report never changes `verificationStatus` on its own, an admin decides every case manually. The admin review queue ranks cards by priority, not submission time: (1) converging reports, two or more independent reports on the same card suggesting the same year, ranked highest regardless of current status, including an already-`VERIFIED` card; (2) reported without convergence, a single report or several that disagree with each other, ranked below convergent reports by confidence tier; (3) unreported `NEEDS_REVIEW`/`MANUAL_ENTRY` cards with at least one community confirmation (a thumbs-up, distinct from a report, shown only on these two tiers), ranked by confirmation count, a fast confirm rather than research; (4) unreported cards with no confirmations, ranked by confidence tier alone; (5) `VERIFIED` cards with no report never enter the queue. Convergence is defined as two independent reports agreeing on the same year, not three. The review surface shows the admin the actual signals behind a card's rank (report count, whether they converge and on what year, confirmation count), not a single opaque score.
+
+
+---
+
+## 2026-09 | Story 9 built (backend): DJ link-out endpoint, no server-side "opened the link" state
+
+Decision: story 9's backend slice is a single DJ-gated read endpoint, `GET /api/sessions/{sessionId}/link-out`, returning the current round's YouTube video id and canonical watch URL through `RoundLinkOutDTO`. Access is restricted to the round's own DJ (a non-DJ player and a non-member are both denied) and refused once the round is `REVEALED` or `SCORED`, since by then the song is already public and the DJ's playback window is over. The watch URL is built by a new `YoutubeLinkParser.buildWatchUrl` from the stored video id rather than assembled from a hardcoded string inline. This exists because `RoundDTO` deliberately withholds a song's `youtubeId` until the reveal, so a DJ client otherwise has no way to reach the video to link out. Round flow stays driven by the active player's placement-lock-in timers, not by the DJ opening the link, so "the DJ opened the link" carries no server-side state and is a story-28 client concern. The guess-lock-in audio-stream cutoff is likewise a story-28 client reaction to the existing `GUESS_LOCKED` broadcast, not new backend state. The DJ view, the "Open YouTube Link" action and its audio-sharing warning, WebRTC tab-audio capture, and deep-link handling are all deferred to story 28 under the standing all-frontend-in-story-28 policy.
+
+Why: the one real backend gap for story 9 was that playback data never reached the DJ. Everything else the story lists is frontend or WebRTC, which lives in story 28. Gating the link-out to the DJ and only before the reveal keeps the endpoint from becoming a way for any player to read an unrevealed song's identity, which would defeat the round. Building the watch URL through a named helper keeps the compliance-critical "real YouTube page, never an embedded player" rule in one place rather than scattered as string literals. Adding a server-side "DJ opened the link" flag was rejected because nothing in round flow reads it: the timers already fire off placement lock-in, so such a flag would be dead state.
+
+Why: at this project's scale (100-200 users), full manual review is not a burden, and any automation that lets a report or a vote count flip `verificationStatus` on its own risks trusting a single anonymous claim, or a small group's coordinated votes, over reconciliation that already ran against real sources, against the project's own "professional-grade, not just working" standard. A confidence-only queue and a report/confirmation-blind queue were both considered and rejected: confidence alone ignores real evidence a report or a wave of confirmations represents, and treating every report identically regardless of convergence wastes review time on isolated, likely-mistaken reports ahead of ones where multiple people independently agree. The two-independent-reports convergence bar, not three, accounts for how few people are ever going to report the same niche song's error at this user scale; a higher bar would mean most genuine errors never reach it.
+
+---
+
+## 2026-09 | Multi-artist storage: ordered list with roles, equal for guessing, remix/cover/mashup split into their own songs
+
+Decision: a song's artists are an ordered list, each entry tagged `MAIN` or `FEATURED`. More than one `MAIN` artist is allowed, a joint credit like "Queen & David Bowie" has two, neither featured. The role tag is a display concern only: a physical card prints the main artist(s), then "featuring" the featured ones. For guessing and scoring, every artist on the list is treated identically, naming any single one correctly earns the token, not all of them. A `(feat. X)`/`(ft. X)` clause is stripped from the song title and its artist extracted into the list instead, superseding the AI microservice's existing title-cleaning rule, which currently keeps that clause in the title text. A remix, cover, or mashup clause is the only thing that survives in the title, and each becomes its own separate `Song`, its own artist list and release year, not a variant of the original; story 16's pgvector duplicate check must not treat one as a near-duplicate of the track it's based on.
+
+Why: a flat, equally-weighted list is simpler than modeling a strict single-main-plus-features hierarchy, and matches how real credits actually work, some songs have multiple co-equal artists with no featured credit at all. Keeping the main/featured role as display-only, rather than scoring-relevant, avoids penalizing a correct guess just because the player named the featured artist instead of the main one. Splitting a remix/cover/mashup into its own song follows from treating it as what it actually is, a different recording, often by a different artist, with its own release date, not the same song with an alternate title.
+
+---
+
+## 2026-09 | Database split: one explicit boundary, transactional versus analytics
+
+Decision: the project has exactly one database split, and it's given its own story (42) rather than staying implicit inside story 33's provisioning task: the transactional Postgres+pgvector instance holds every entity either service reads or writes today (users, groups, sessions, rounds, guesses, songs, playlists, embeddings), and story 33's separate append-heavy store holds only usage/event data. No per-service database (one for the core service, a separate one for the AI microservice) is planned.
+
+Why: story 33 already decided to provision a separate analytics store, but the actual domain boundary, which entities live where, was only ever implicit in that story's tasks. Giving it its own story documents the boundary at the architecture level once, instead of restating it inconsistently across stories 33 and 34.
+
+---
+
+## 2026-09 | Session-long guess leaderboards, open to every player except the DJ
+
+Decision: every player except the DJ, the round's active player included, can submit a title/artist guess. The active player's guess works exactly as it already does, both correct earns the token, independent of placement correctness, either one wrong earns nothing. Every guess, active or not, also feeds two running per-player tallies for the session: "Most Artists Guessed" (every individual artist name correctly given, main or featured, from any song, counts once, regardless of how many total artists that song has) and "Most Titles Guessed" (every fully-correct title). Both leaderboards are shown alongside the main card-count ranking at session end.
+
+Why: the existing mechanic only lets the active player guess, meaning everyone else has no reason to pay attention to a round's title and artist at all. A second, token-independent leaderboard gives every player a reason to engage every round without changing the core token/betting economy, since these tallies never affect card ownership or win condition.
+
+---
+
+## 2026-09 | Story 30: country/language filter dropped in favor of a sitelinks-based international default, and public playlists
+
+Decision: a country/language filter dimension for difficulty-generated sessions is dropped. A difficulty-generated set defaults to international scope instead, a song counts as international if its Wikidata sitelinks count (the number of language-edition Wikipedia articles covering it) clears a threshold, decided once there's enough real catalog data to check it against, not guessed now. Separately, playing from an existing playlist now covers three cases: a playlist the player owns, one they're a member of, and one someone has published publicly for anyone to use, a new capability.
+
+Why: a dedicated country/language filter adds a real design and data-modeling surface (whether it's its own dimension, how it interacts with difficulty tiers) for a need the sitelinks-based international default already covers more simply, distinguishing a globally-known hit from a domestically-known one in the same language or country, without needing a separate filter a user has to think to apply. The sitelinks signal itself was already validated during the metadata-sourcing spike, this decision is about how to use it, not new testing. Public playlists exist because "select a playlist you have access to" was previously limited to ownership or membership, with no way for one person's curated set to reach anyone outside their own group.
+
+---
+
+## 2026-09 | Typo-tolerance threshold for in-round title/artist guesses: normalized, flat edit-distance budget of 1
+
+Decision: a title or artist guess is checked against the canonical answer by normalizing both strings (lowercase, strip all punctuation, strip diacritics, collapse out all whitespace) and comparing the result with Damerau-Levenshtein edit distance, where an adjacent-letter transposition counts as one edit rather than two. A guess counts as correct at an edit distance of 1 or less; anything higher fails, regardless of how long the title or artist name is. This applies identically to the title guess and to each artist-name guess, naming any single artist correctly on a multi-artist song already earns the token per the existing rule.
+
+No separate word-count, word-order, or per-word-ratio rule is needed: normalizing away spacing and punctuation before computing a single whole-string edit distance already produces the right answer for every calibration example worked through, including cases that originally looked like they needed their own handling. A missing word ("Beatles" for "The Beatles"), a reordered pair ("Rhapsody Bohemian"), and an added word ("Bohemian Rhapsody Song") all land at an edit distance well past 1 once compared as one string, without a dedicated rule for any of them. A short, unrelated real word swapped in for another ("App" for "Up", "and" for "N'" in "Guns N' Roses") fails the same way a long word's typo passes: the rule cares about edit distance, not word length or meaning, so "Guns and Roses" does not count as correct.
+
+A length-scaling budget (more characters allowing more tolerated edits) was tested directly against real examples up to 8 words and 30+ characters, two independent one-letter typos in a title of that length still did not count as correct. The crossover point where a longer title would earn budget for a second typo, if one exists at all, sits above the length of nearly any real song title or artist name in this catalog, so scaling was dropped in favor of a flat budget of 1 everywhere.
+
+Why: the mechanism was already decided as edit-distance/fuzzy matching, not semantic or ML-based, so a rule has to hold up character by character, not by recognizing that "N'" means "and." A flat, unscaled budget of 1 is also the simplest rule that fits every calibration example from both sessions, and calibration explicitly tested and rejected the alternative (scaling with length) rather than assuming it away.
+
+---
+
+## 2026-09 | Story 28 scoped: one unified redesign pass, fresh visual direction
+
+Decision: story 28's UI redesign covers the existing implemented pages (landing, auth, dashboard/playlist and song CRUD) and the not-yet-built gameplay screens `GAME_DESIGN.md` already specs (timeline, guess box, voice sidebar, chat overlay, DJ view, results/leaderboards) in one unified pass, not two separate efforts. The visual direction starts fresh rather than building on the current shadcn/Tailwind theme tokens, though the underlying shadcn component library stays unless a specific component doesn't hold up under the new direction. Mockups are built as a multi-artboard canvas through the `design` skill (Claude Design's canvas editor, available directly in this environment) rather than an external tool, reviewed before any implementation code is written.
+
+Why: the gameplay screens don't exist as code yet, so designing them separately from the existing pages would mean shipping two visually disconnected halves of the same app. A single pass keeps the whole product consistent from the start instead of redesigning the existing pages once now and the new ones again later.
+
+---
+
+## 2026-09 | DJ controls the round's flow, reveal is the DJ's alone
+
+Decision: the DJ, not any player, controls a round's flow, pause, play, close the YouTube tab or app, end the current turn, and reveal. The 2026-07 DJ-link-out entry's "any player can reveal" trade-off is superseded by this: reveal still can't be automatic, there's no programmatic access to a page the app doesn't control, but it's the DJ's manual trigger specifically, fired only after the betting window closes, not a power every player holds. Separately, screen or system audio sharing for a remote session's WebRTC tab capture only starts when the DJ clicks "Open YouTube Link," paired with an explicit UI warning that doing so broadcasts their tab or system audio to the group. The active player's own audio stream cuts off immediately once they lock in a guess, regardless of what's still playing on the DJ's end.
+
+Why: letting any player reveal was a placeholder from when reveal was first designed as a stopgap for the lack of programmatic playback access, not a deliberate multiplayer-UX choice. The DJ already controls playback, giving them the rest of the round's flow controls too keeps one person responsible for pacing the round instead of leaving reveal timing to whichever player clicks first. The audio-sharing warning exists because starting tab capture is a real, consent-relevant action, a player should know before it happens that their audio is about to broadcast.
+
+---
+
+## 2026-09 | Story 30 cut to two top-level modes: Difficulty-Based and Custom, theme generation dropped
+
+Decision: story 30's playlist/session selection is exactly two top-level modes, Difficulty-Based (Auto-Generated), a card set assembled on the spot and scored for the group's actual players, and Custom, the player starts a session from an accessible playlist or pastes one directly. Theme-request generation, absorbed from story 21 into an earlier version of this story, is dropped entirely, and story 21 itself is now Dropped rather than Consolidated. The owned/member/published-public three-way access model for playing from an existing playlist stays: a playlist a player owns, is a member of, or that's been published publicly are all valid under Custom mode, and publishing a playlist publicly stays a real capability with its own `isPublic` flag and publish/unpublish endpoint.
+
+Why: theme generation depended on catalog search (story 14) and new genre/popularity fields that existed for no other reason than to serve it, real scope for a feature that hadn't proven it was worth building yet. Cutting it down to the two top-level modes that matter, an on-the-spot generated set and a player's own accessible playlist, ships a simpler, real feature instead of carrying speculative scope. The three-way access model stays because publishing a playlist publicly is a real, wanted capability independent of the top-level mode count, dropping it was a miscommunication during the original cut, not a deliberate scope decision.
+
+---
+
+## 2026-09 | Story 40's YouTube-ID check and story 16's pgvector check: exact-match sequencing decided
+
+Decision: story 40's exact YouTube-ID check runs first; only a genuinely new ID reaches story 16's pgvector embedding check. A high-confidence pgvector match against an existing `Song` means the new ID is another upload of an already-known song, not a new one: link it into story 40's alternate-ID table against that existing `Song` and stop, no full pipeline run. The full metadata pipeline only runs once both checks come up empty.
+
+Why: this was previously left open pending story 16 actually existing. The two checks solve adjacent but different problems, an exact ID match versus a near-duplicate under a different upload, and stacking them in cheapest-first order (no external calls, then an embedding comparison, then the full pipeline only as a last resort) avoids ever running the expensive pipeline for a song the catalog already has under a different YouTube ID.
+
+---
+
+## 2026-09 | Wikidata sitelinks count also weights story 30's difficulty tiering
+
+Decision: a song's Wikidata sitelinks count, already used as story 30's international-scope gate, also weights which songs each difficulty tier draws from. Easy weights song selection toward higher-sitelink, more widely-recognized songs; hard carries no such weighting and can pull from low-sitelink, niche/obscure catalog entries same as anything else; medium sits between. This blends with, not replaces, the per-song aggregate guess-correctness score and the personalized collaborative-filtering layer, and is what a newly-verified song with no real guesses yet falls back on until it has enough play history for the aggregate score to mean anything.
+
+Why: sitelinks count is a real popularity proxy, a song covered by many language editions of Wikipedia is a widely-recognized one, and it's available the moment a song is verified, unlike the guess-based signals, which need real play history to exist first. Difficulty-based generation is meant to favor popular, recognizable tracks for its easy tier and only reach into the niche/underground catalog this project otherwise deliberately supports (`CLAUDE.md`) as the tier climbs, not treat every verified song the same regardless of how many people would actually recognize it.
+
+---
+
+## 2026-09 | Song editing narrows to MANUAL_ENTRY once verificationStatus ships
+
+Decision: once story 23's `verificationStatus` field exists, editing a song's fields directly is restricted to `MANUAL_ENTRY` songs only. `VERIFIED` and `NEEDS_REVIEW` songs lose the edit action entirely and keep only the report affordance (`NEEDS_REVIEW` also keeps story 17's thumbs-up confirmation once that ships). Today's live Song Detail page, which has no `verificationStatus` field yet and lets any song's fields be edited, is unaffected until story 23 lands; this decision governs the shape editing takes once it does.
+
+Why: surfaced during story 28's design pass. `VERIFIED` data already went through source agreement or an admin's manual review, hand-editing it back out undermines the trust tier the pipeline just established; `NEEDS_REVIEW` data came from LLM reconciliation of real, if disagreeing, source data, correcting it by hand the same way a `MANUAL_ENTRY` song would skips the review process story 17 already defines for exactly this case. `MANUAL_ENTRY` is different in kind, a human guess with zero source corroboration, the least-trusted tier specifically because nothing else vouches for it, so it's the one tier where letting the submitter (or another member) fix it directly by hand is a real improvement rather than a bypass.
+
+---
+
+## 2026-09 | Import songs from an existing playlist, and its background-import UX, given their own scope
+
+Decision: two pieces of new scope surfaced during story 28's design pass, neither previously tracked. First, a third way to add songs to a playlist alongside search-and-add (story 14) and YouTube-playlist import (story 40): copying songs directly from a playlist the player already has access to (owned, a member of, or published publicly) into the one they're editing, instant, no metadata pipeline involved since every song is already a resolved catalog row. Given its own story, 45, blocked on story 15's song/playlist join table. Second, the background-import UX for story 40's YouTube-crawl path specifically: a temporary left-sidebar icon and a fading toast, both reopening the import screen with live progress, so leaving the screen doesn't cancel an in-progress crawl. Added as frontend tasks under story 40 rather than a new story, since it's UX for a capability story 40 already owns.
+
+Why: both were reasonable, wanted features once the design pass reached the "add songs to a playlist" screens, but CLAUDE.md's task gate means design work surfacing new scope gets written into the backlog before it's built, not folded silently into mockups with no corresponding story or task.
+
+---
+
+## 2026-09 | Playlist membership: owner/admin, granular permissions, kick versus ban, per-playlist identity
+
+Decision: a playlist gets a real owner/admin, today's `Playlist.users` many-to-many has no such concept. Only the owner can rename the playlist, change its cover/color/description, toggle it public, delete it, or manage other members. Each non-owner member holds three independently revocable grants: read, write (add songs), and delete (remove existing songs), not a single role. Removing a member is two distinct actions: kicking (membership ends, the invite link or code still lets them rejoin later) and banning (membership ends and rejoining is blocked outright). Separately, joining a playlist by invite prompts for a per-playlist display name and avatar, defaulting to the account's own but editable, the same pattern `GAME_DESIGN.md` already specifies for joining a group, now extended to playlists.
+
+Why: surfaced during story 28's design pass on the Edit playlist and Join by invite screens. Even read being revocable, not just write and delete, was a deliberate call: it lets an owner temporarily shut a member out without removing them from the playlist outright, distinct from a kick. Extending per-space identity to playlists mirrors the reasoning that already justified it for groups, playing under a different name or avatar with people who don't share every space, without conflating a playlist's own membership model with a game group's.
+
+---
+
+## 2026-09 | DJ holds no in-app round controls; reveal and turn advance run automatically
+
+Decision: the DJ's only in-app action is "Open YouTube Link." Pause, play, close, end turn, and reveal, all previously listed as DJ-only controls, are removed. Playback control happens entirely on the real YouTube page or app, not mirrored into the game. The round's own flow no longer waits on a DJ trigger anywhere: the betting countdown and window already run on their own timers once the active player locks in a placement, so reveal firing automatically once the betting window closes, and the active player role advancing automatically once scoring resolves, both fall out of timers the game already has running rather than needing a new one.
+
+Why: surfaced during story 28's design pass on the DJ view screen. Mirroring play/pause/close into the app duplicates controls the DJ already has open on the real YouTube tab for no benefit. End turn and reveal looked like they needed a manual trigger, but the betting window was already timed, closing it and firing the reveal off the same clock removes a step without changing when either happens.
+
+---
+
+## 2026-09 | A flagged prompt-injection attempt is an abuse-visibility event
+
+Decision: when story 41's injection-detection check flags a submission, that flag itself writes an abuse-visibility event, the same category as story 34's rate-limit-exceeded and report-submitted events, not just an ambiguous-content outcome.
+
+Why: an attempted prompt injection is evidence of intent, not the same kind of uncertainty as a song the non-music classifier genuinely can't place. Tracking it the same way as the other abuse-visibility signals keeps a pattern of injection attempts reviewable later, the same reasoning already applied to rate-limit and report abuse. Depends on story 34's event pipeline existing.
+
+Open item: whether a flagged submission is also outright rejected, versus routed to manual review, still needs a call, not made here.
+
+---
+
+## 2026-09 | Story 20 greenlit: the validated metadata pipeline is built into production
+
+Decision: the local/cheap LLM spike's validated two-tier pipeline and model choice (gpt-5-nano for reconciliation, DeepSeek-V4-Flash for Wikipedia extraction, the patient/fast tier shape) is built into the real AI microservice, not left validated-but-unbuilt in `ai/spikes/`. Story 20's own remaining scope narrows to exactly the client infrastructure this needs beyond what already exists: a DeepInfra (OpenAI-compatible) client for DeepSeek-V4-Flash, copied and adapted from `ai/spikes/openai_compatible_spike.py`'s validated implementation. gpt-5-nano needs no new client, the existing `openai_client.py` already calls OpenAI by model name.
+
+Why: the spike ran real accuracy numbers against a 70-song test set (99% patient tier, 90% fast tier) and turned up no reliability concern worth re-testing before building; the only thing left open was whether to actually ship it, not whether it works. The winning design isn't a genuinely local, self-hosted model, llama.cpp's accuracy came in well below its own hosted twin under quantization, so "local LLM option" narrows in practice to "the cheapest hosted models that actually clear the accuracy bar," which the spike already identified.
+
+---
+
+## 2026-09 | Story 39's timer lifecycle runs on a scheduled sweep, not a per-group in-JVM timer
+
+Decision: the group lifecycle's two 30-minute timers (creation to first session, and session end to the next one) share a single nullable `expiresAt` column on `Group`. A `@Scheduled` job (`GroupExpirySweeper`, running every 60 seconds) deletes any group whose `expiresAt` has passed, covering both windows through the same mechanism rather than one timer implementation per case. `expiresAt` is null while a session is actually in progress, since neither timer should run then.
+
+Why: a per-group `Timer` or `ScheduledExecutorService` task can't be exercised in a test without actually waiting out its delay. A sweep can: a test sets `expiresAt` to an already-past instant and calls the sweep method directly, no real waiting involved. This is also the first `@Scheduled` usage in the backend, `@EnableScheduling` is added on `BackendApplication` for it.
+
+---
+
+## 2026-09 | Story 39 ships group settings persistence without the real-time broadcast; voice and chat stay presence-only or entirely deferred
+
+Decision: story 39 builds `Group` and `Member` fully, including the admin-only settings update endpoint, but three pieces of its original task list don't ship complete, each already scoped to a story ROADMAP.md sequences right after this one.
+
+Settings changes (playlist(s), DJ mode, win-condition card count) persist correctly through `GroupService.updateGroupSettings`, a single method left clean for story 11 to call from its WebSocket handler or publish an event from. Nothing pushes the update to other members yet, since story 11 (real-time sync over WebSocket) doesn't exist in this codebase and is the very next batch after this one; ROADMAP.md's Phase 1 note already calls out building story 11 alongside stories 10 and 39 for exactly this reason.
+
+Voice gets a plain `isInVoice` presence flag on `Member` and join/leave-voice endpoints that flip it, nothing more. The actual WebRTC mesh and signaling belong to story 12, which is blocked on stories 11 and 39 both shipping and owns that mechanism on its own terms.
+
+Chat isn't built at all: no `ChatMessage` entity, no send/receive/persistence endpoint. Story 13 owns group-scoped text chat outright and is also blocked on stories 11 and 39. `Group` keeps a normal `Long` primary key, which is all story 13 needs to attach messages to it later.
+
+Why: building real-time broadcast, WebRTC signaling, or message persistence into story 39 would duplicate work story 11, 12, and 13 already own, ahead of the WebSocket layer all three actually depend on. Shipping the group/member model and its REST surface now, with clean extension points for the deferred pieces, unblocks those later stories without guessing at a transport layer that doesn't exist yet.
+
+---
+
+## 2026-09 | Story 11: STOMP config, JWT handshake auth, and the group-event messaging pattern
+
+Decision: the core service gets one STOMP-over-WebSocket endpoint (`/ws`, no SockJS fallback), one application-destination prefix (`/app`), and one simple-broker prefix (`/topic`), configured in `WebSocketConfig`. The WebSocket handshake authenticates the same JWT the REST side already validates, but through a `ChannelInterceptor` on the STOMP CONNECT frame rather than an HTTP handshake interceptor: a browser's WebSocket handshake can't carry a custom `Authorization` header, so the client sends the token as a native STOMP header on CONNECT instead, and `StompAuthenticationChannelInterceptor` reads it there, matching the token-based-authentication pattern Spring's own documentation recommends over the HTTP-session-oriented handshake-interceptor approach.
+
+Per-group STOMP destinations follow `/topic/groups/{groupId}/membership`, `/topic/groups/{groupId}/settings`, `/topic/groups/{groupId}/chat`, and `/topic/groups/{groupId}/voice` (`GroupDestinations`), plus a reserved client-to-server `/app/groups/{groupId}/admin` for a future WebSocket-driven admin action, unused today since every admin action (settings, start session) still runs over REST and broadcasts from `GroupService`'s own methods. Chat and voice are naming reservations only, story 13 and story 12 own the actual send/receive and signaling logic. Story 10's game-session batch extends this same convention in parallel under `/topic/sessions/{sessionId}/...` and `/app/sessions/{sessionId}/...`, documented in `GroupDestinations`' javadoc rather than built now, since no session model exists yet.
+
+`GroupService` doesn't talk to STOMP directly. It publishes a `GroupBroadcastEvent` (an event type plus the fresh `GroupDetailDTO` snapshot) through Spring's `ApplicationEventPublisher`, no prior usage existed in this codebase, this is the first. `GroupBroadcastListener` picks the event up, serializes it to JSON with the application's own Jackson `ObjectMapper`, and forwards it to the matching topic via `SimpMessagingTemplate`. Broadcasting the whole group snapshot on every change, rather than a bespoke delta payload per event type, keeps the client side of this simple: replace the local copy of the group on any message. `GroupService` broadcasts member joined, member left, settings changed, and game session started as the story's task list names, plus member-connection-changed (disconnect/reconnect) and admin-transfer, both genuine "membership changes" a client needs reflected live even though the original task list didn't spell them out individually. A client's WebSocket disconnect is handled for the group-member half only: `GroupSessionEventListener` reacts to Spring's `SessionDisconnectEvent`, resolves the member from the socket's authenticated principal (not a request-scoped `SecurityContext`, which doesn't exist on a socket event), and calls a new `GroupService.disconnectMember(groupId, userId)` overload. The in-session-player half of disconnect handling has no code to write against yet, story 10 owns the `Player` entity.
+
+A client registers presence by subscribing to its group's membership topic right after creating or joining the group over REST; `GroupSessionEventListener` reacts to that subscription (via Spring's `SessionSubscribeEvent`) to record the socket session against the group in `GroupPresenceRegistry`, an in-memory session-id-to-group-id map read back on disconnect. Group-side state events (membership, settings changes) log as a single structured line, `groupEvent type=... groupId=...`, a shape story 12's WebRTC connection lifecycle logging can append to later without redesigning the log format.
+
+This batch's tests couldn't exercise a real network socket: this sandbox's JDK cannot open even a loopback TCP connection under any NIO selector provider (embedded Tomcat's `NioEndpoint` fails with "Unable to establish loopback connection" the same class of constraint `GroupLifecycleIntegrationTest`'s own comments already document for `java.net.http.HttpClient` construction against the OAuth2 client beans). `GroupWebSocketIntegrationTest` drives the real Spring message channels and the real simple broker directly instead: sending genuine STOMP SUBSCRIBE/DISCONNECT frames into `clientInboundChannel` and publishing the `SessionSubscribeEvent`/`SessionDisconnectEvent` the WebSocket transport layer would normally publish, then asserting against the broker's own `SubscriptionRegistry` (which session is subscribed to which destination right now) rather than capturing delivered frames, since actual frame delivery also passes through `SubProtocolWebSocketHandler`, which needs a live `WebSocketSession` this sandbox can't create. The subscription registry is what determines delivery in production, so asserting against it directly still proves the reconnect guarantee (no stale or duplicate subscription survives a disconnect-and-resubscribe cycle) without depending on that transport-facing code.
+
+Why: a ChannelInterceptor on CONNECT is Spring's documented approach for token-based STOMP authentication and mirrors the REST side's own Authorization-header path, rather than inventing a cookie-forwarding scheme for the handshake. An event-publisher-then-listener indirection keeps `GroupService` ignorant of the transport layer entirely, the same separation the existing codebase already draws between `GroupService` and `GroupMapper`/`JwtUtil`; it also means the existing Mockito-based `GroupServiceTest` only grew an `ApplicationEventPublisher` mock rather than a `SimpMessagingTemplate` mock scattered across every test that touches a mutating method. Broadcasting member-connection and admin-transfer changes was a deliberate small extension past the story's literal four-event list: leaving a peer's connection dot stale in every other client's UI until their next unrelated group event would be a worse outcome than the story text technically not naming it. The subscription-registry-based test strategy is the sandbox-driven adaptation of this batch's testing, in the same spirit as `GroupLifecycleIntegrationTest`'s minimal JPA-only context: prove the guarantee against the real component that provides it, without requiring infrastructure this environment cannot stand up.
+
+---
+
+## 2026-09 | Story 10: round-timer scheduling, betting concurrency, and round-rotation rules `GAME_DESIGN.md` left unspecified
+
+Decision: every round-level timer (the 3-5 second lock-in countdown, the 15-second betting window, the 90-second active-player turn timeout, and the 10-minute auto-abandon check) is split into a plain, directly-callable effect method on `GameSessionService` and a thin scheduling layer, `GameSessionScheduler`, that wraps a single injected Spring `TaskScheduler` bean. `GameSessionService` never waits on real time itself: `lockInPlacement` schedules `startBettingWindowEffect` after the countdown, `startBettingWindowEffect` schedules `revealEffect` after the betting window (or calls it immediately if no eligible player holds a token), `disconnectPlayer` schedules `turnTimeoutEffect` when the disconnecting player is mid-turn, and `checkAutoAbandonEffect` is scheduled the instant every player is disconnected. Every effect method is idempotent against being called more than once or after the state it expects has already moved on (a status check at the top returns early), since a manual call, a real timer, and a skip action can all reach the same effect. A dedicated `TaskScheduler` bean (`SchedulingConfig`, a pooled `ThreadPoolTaskScheduler`) is added for this; `GroupExpirySweeper`'s existing `@Scheduled` sweep now also runs on this pool instead of Spring's single-threaded default, a side effect of the bean existing at all rather than a deliberate change to that sweep.
+
+Betting concurrency is handled with one atomic conditional `UPDATE`, not application-level locking: `RoundRepository.tryAcceptBet` sets a round's `bettor_player_id` only `WHERE bettor_player_id IS NULL`, and Postgres's own row-level locking serializes concurrent attempts against the same row, so exactly one caller's update affects a row and every other caller's affects zero, with no retry loop or `SELECT ... FOR UPDATE` needed. A token is deducted (`PlayerRepository.deductToken`, itself a guarded conditional `UPDATE`) only after that round's bet is actually accepted, so a losing attempt truly costs nothing, matching `GAME_DESIGN.md`'s betting rule exactly.
+
+`GAME_DESIGN.md` describes DJ mode ("fixed" or "rotating") without saying how the DJ role interacts with the active-player rotation. Resolved: in `FIXED` mode, one player (the earliest in turn order at session start) is the permanent DJ for the whole session and never enters the active-player rotation at all, playing music but never taking a timeline turn themselves; the remaining players rotate the active-player role among themselves, skipping anyone marked `Left`. In `ROTATING` mode, every player rotates through the active-player role in turn order, and each round's DJ is whichever player is next up after that round's active player, so DJ duty and playing your own turn never collide for anyone. If fewer than two players remain with `ACTIVE` status after a round resolves (through timeout or explicit leave), the session can't continue and is abandoned rather than completed, since no win condition was reached.
+
+Song selection is a fixed, non-randomized queue: at session start, one song per player is popped off the group's combined playlist songs (in playlist order) as their starting anchor card, and the remaining songs form an ordered queue popped from the front as each round starts. `GAME_DESIGN.md` doesn't specify a selection algorithm; a real shuffle is left for a later pass, since nothing in this story's rules or tests depends on song order being unpredictable, and a deterministic queue is what let the round-flow tests construct exact placement/scoring scenarios without needing to intercept a random source.
+
+A completed or abandoned session's rows (roster, rounds, guesses, timeline cards) are deleted immediately as `GAME_DESIGN.md` and `ARCHITECTURE.md` require; the one thing kept past the purge, a completed session's results export, lives in a small in-memory `SessionResultsStore` keyed by group id rather than its own database table, since nothing in the story calls for keeping it forever, across a restart, or queryable by anything other than the group it belonged to.
+
+Why: splitting a timer's effect from its scheduling mechanism is what makes round-level timers (measured in seconds) unit-testable at all, the same reasoning `GroupExpirySweeper`'s sweep-based design already established for the group lifecycle's 30-minute timers, extended here to real wall-clock scheduling for the cases (the full lifecycle, auto-abandon, and disconnect/timeout integration tests) that need to prove the wiring itself works. Two different test doubles cover that proof: an immediate-fire `TaskScheduler` for the lifecycle and disconnect tests, which turns a scheduled effect into a synchronous call so a multi-round game plays out instantly instead of over real minutes, and a real `ThreadPoolTaskScheduler` for the betting-concurrency test, which needs a round's `BETTING` state actually committed and visible to other database connections before racing real threads against it. An atomic conditional `UPDATE` for betting concurrency was chosen over pessimistic locking because it needs no explicit lock management and is trivially correct under Postgres's own row-level locking, the same reasoning a unique-constraint-style guard would get for any single-winner race. The DJ-rotation rule was resolved by picking the interpretation that keeps every round structurally sound (the DJ and the active player are never the same person, matching `GAME_DESIGN.md`'s "separate roles" framing) while giving `FIXED` mode a real, distinct meaning from `ROTATING` rather than collapsing into it.
+
+---
+
+## 2026-09 | Story 46 migration: owner selection for pre-existing playlists
+
+Decision: the story 46 migration assigns each pre-existing playlist's owner as the lowest user id among its `user_playlists` members, its earliest-created account. A playlist that held songs but never had a `user_playlists` row of its own falls back further: the contributor of its oldest song becomes both owner and sole member, since a song's `added_by` is always a real account and nothing else ties such a playlist to a user at all. A playlist matching neither case, no members and no songs, is dropped by the migration; the application never leaves a playlist in that state outside of migration, since the last member leaving already deletes it.
+
+Why: no creation timestamp exists on `Playlist` to read an actual creator from, so a deterministic stand-in was needed. Lowest user id approximates "earliest account, most likely the creator" without adding a real audit trail this story doesn't otherwise need. The song-contributor fallback exists because real data can apparently include a playlist with songs but no matching `user_playlists` row (this surfaced in the migration test suite's existing fixtures), and every playlist needs a determinable owner coming out of this migration, not just the common case.
+
+Note, 2026-09: reversed, see the 2026-09 "Story 46 migration reversed" entry below. Pre-existing playlists and songs are cleared outright instead of having an owner guessed for them.
+
+---
+
+## 2026-09 | Story 12: voice-chat backend is a signaling relay, a presence broadcast, and a config-gated TURN endpoint
+
+Decision: voice chat's server side is three pieces, and only three. The WebRTC mesh itself lives in the browser and belongs to story 28's gameplay pass, so the backend builds only what cannot run client-side.
+
+Signaling relays over the existing STOMP layer, not a new transport. `VoiceSignalingController` handles `/app/groups/{groupId}/voice/signal`, resolves the sender from the CONNECT-frame principal the same way `GameActionController` does, gates on group membership through a new read-only `GroupService.isGroupMember(groupId, userId)`, and forwards the signal onto the group's existing `/topic/groups/{groupId}/voice` topic. The relayed message carries the signal type (offer, answer, or candidate), the sender's user id taken from the principal, the target member's user id echoed from the request, and the opaque SDP or ICE-candidate payload the server never inspects. Fanning one signaling step out to the whole voice topic and letting each peer ignore anything not addressed to it matches the group layer's broadcast-the-whole-thing convention and avoids configuring the broker's user-destination support, which nothing else in the codebase uses. The sender id comes from the authenticated principal, never the request, so a member cannot forge signaling as another member.
+
+Presence rides the same event indirection story 11 built. `GroupService.joinVoice` and `leaveVoice` already flipped `Member.isInVoice`; they now also publish a `GroupBroadcastEvent` of a new `VOICE_PRESENCE_CHANGED` type, and `GroupBroadcastListener` routes that type to the voice topic while every other non-settings type still routes to the membership topic. The broadcast is the fresh group snapshot, whose `MemberDTO` already carries `isInVoice`, so no bespoke presence payload is needed.
+
+TURN credentials come from a member-gated `GET /api/groups/{groupId}/voice/turn-credentials`, gated by reusing `GroupService.getGroup`, which already throws for a non-member. `TurnCredentialsService` always returns a STUN entry so most peers connect directly, and adds a Cloudflare TURN entry only when both a key id and an API token are configured. The Cloudflare key does not exist in any environment yet, so the key-absent branch returns STUN-only credentials with `turnAvailable=false` rather than failing, and the actual short-lived-credential mint against Cloudflare's API is deferred behind the key. Both config values are read from properties with blank defaults, never hardcoded, and the API token is treated as a secret in `.env.example`.
+
+The 8-participant cap is structural, not a new counter. A group is already capped at `Group.MAX_MEMBERS` (8) and only members can join voice, so a voice room can never exceed the group size; the mesh's own per-peer connection budget is a client concern.
+
+Why: relaying over the existing group STOMP layer reuses story 11's authentication, membership, and broadcast machinery instead of standing up a parallel transport for one message shape, and keeping the payload opaque leaves every WebRTC decision where it belongs, in the browser. Handing out STUN unconditionally and TURN only behind a configured key means the endpoint is useful the moment the frontend exists, degrades to direct-only rather than erroring when no relay is provisioned, and needs no code change once the key lands, only configuration. Testing followed the same Mockito-driven approach the group broadcast layer already uses: the relay controller and the routing switch are proven against a mocked `SimpMessagingTemplate` with an `ArgumentCaptor`, and the TURN service's key-absent behavior against a direct constructor call, none of which needs the real network socket this sandbox cannot open.
+
+---
+
+## 2026-09 | Story 46: the playlist owner can't leave while other members remain
+
+Decision: leaving a playlist you own is only allowed once you're its last remaining member, in which case leaving deletes the playlist exactly as it already did before this story. While other members are still on the playlist, the owner's leave attempt is rejected; kicking or banning every other member first, or waiting for them to leave, clears the way.
+
+Why: the owner is the sole source of every owner-only action, including managing membership itself. An owner leaving mid-playlist would strand the remaining members with no one able to change grants, kick, ban, or otherwise administer it, and this story doesn't introduce an ownership-transfer mechanism to hand that authority off cleanly first.
+
+Note, 2026-09: reversed, see the 2026-09 "Owner leave and ownership transfer" entry below. The owner can leave at any time; leadership passes automatically instead of being blocked.
+
+---
+
+## 2026-09 | Song deletion once a song isn't playlist-exclusive: unlink first, delete only when orphaned everywhere
+
+Decision: story 15 replaces `Song`'s singular `@ManyToOne playlist` with a `song_playlists` join table, so a song can belong to more than one playlist. Removing a song from a playlist now only unlinks that one join row. The song row itself is only deleted outright once that removal leaves it with zero remaining playlists.
+
+Why: there's no catalog view today that can reach a song with no playlist at all, so leaving one behind as a fully orphaned, unreachable row is worse than deleting it. But a straight delete on every removal, the old behavior when a song could only ever have one playlist, would silently break the song for every other playlist it's still linked to once story 45's cross-playlist copy exists. Checking for zero remaining playlists before deleting gets both: no dangling rows, and no destructive surprise for a shared song.
+
+Note, 2026-09: reversed, see the 2026-09 "Song deletion reversed" entry below. A song is a standalone catalog entity, independent of any playlist it belongs to; it is never deleted as a side effect of removing it from a playlist, including its last one.
+
+---
+
+## 2026-09 | Song deletion reversed: a song is independent of any playlist, never deleted for having zero
+
+Decision: removing a song from a playlist only ever unlinks the join row. `PlaylistService.deleteSong` no longer deletes the `Song` row itself under any circumstance, including when that removal leaves it with zero remaining playlists. `checkSongBelongsToPlaylist` also moves off `song.getPlaylists()`'s in-memory collection (a stream filter over every playlist the song belongs to) onto a single repository existence query (`SongRepository.existsByIdAndPlaylistsId`) against the join table directly, since the check only ever needs to know about one playlist, not load them all.
+
+Why: a song is a standalone catalog entity in its own right, not something that exists only in service of being in a playlist. Treating "zero playlists" as a deletion trigger, the prior decision's compromise, still destroys real data the moment a song is unlinked from its last playlist, exactly the kind of destructive surprise that decision was trying to avoid for a song shared across playlists, just triggered by a smaller number of playlists (one) instead of several. A song sitting with zero playlists is a normal, permanent, valid state, not a signal that something needs cleaning up. The access-check query change is a plain efficiency fix: filtering a fully-loaded collection in Java does strictly more work than a direct exists query against the join table for a check that only cares about one specific playlist.
+
+---
+
+## 2026-09 | SongTag replaced by a genre field, reading the settled design mockups back into the backend
+
+Decision: `SongTag` (`PLAYLIST`/`SPECIAL`/`ANIME`) and the `song_tags` table are dropped outright, with no automatic backfill into anything, existing tag data doesn't carry forward. `Song` gets a nullable `genre` string instead, populated later by the metadata pipeline rather than user-submitted, so it's absent from `CreateSongRequest`/`UpdateSongRequest` the same way `confidence` and `metadataRaw` are. `GET /api/enums/tags` is removed with it, there's no fixed enum left to enumerate. Separately, `CardGenerator`'s printed card is redrawn to match the settled look in `docs/design/source/CardOptions.dc.html`: one flat color per card instead of a two-color gradient, rounded corners, a thick border, a hard offset shadow, and only artist/year/title on the face, no tag triangle or country flag (the tag triangle's removal also drops the last thing that read a playlist's color for card rendering, superseding a fixed placeholder color a different PR had introduced there in the meantime). The card/QR export endpoints gain a `PaperSize` parameter (A4, Letter, defaulting to A4), and the page grid is now computed from that paper's real pixel dimensions at 300 DPI instead of a fixed constant that never actually corresponded to a real sheet of paper.
+
+Why: `docs/design/source`'s mockups (built during story 28's design pass, before this schema and before story 28's own implementation phase) were never cross-checked against the current backend when they were made. Going through them now: no mockup shows `PLAYLIST`/`SPECIAL`/`ANIME` or a multi-select tag picker anywhere, `SongDetailLight.dc.html` instead shows a single genre chip next to the year, and no submission-flow mockup lets a user set one, consistent with it being pipeline-derived. `CardOptions.dc.html` explicitly settles the card's visual shape and states plainly what's on it and what isn't. This work is backend only; the frontend side (a real genre/tag input surface, and a still-undesigned print-settings screen for choosing paper size) is deferred to story 28's implementation phase, where the two get reconciled directly against whatever the frontend actually needs instead of guessed at now.
+
+---
+
+## 2026-09 | Story 14's song search is catalog-wide, backend built first
+
+Decision: story 14's search endpoint (`GET /api/songs/search`) searches the whole `songs` table, not one playlist or one user's playlists. It's a plain authenticated top-level route rather than nested under a specific playlist's URL, since a catalog-wide search has no single playlist to check membership against, and needs none of `PlaylistService`'s per-playlist access checks. A query is matched by exact YouTube ID if it parses as a bare video ID or a YouTube link (watch URL, `youtu.be` short link, or embed URL, the same shapes `AddSongForm.tsx`'s `extractYoutubeId` already recognizes, now replicated server-side as `YoutubeLinkParser`), and otherwise as a case-insensitive keyword against title and artist name. This work is backend only, the same split the song-genre-and-print-redesign batch used: wiring `AddSongForm.tsx` to check search results before submission, and building the search UI itself, are deferred to story 28's implementation phase.
+
+Why: the task list's own motivating use case, checking whether a song is already in the catalog before it's resubmitted as a near-duplicate, only makes sense against every song, not one playlist's subset. This mirrors story 16's pgvector dedup check, also catalog-wide against every `VERIFIED` song, so the two dedup paths (plain keyword/link versus embedding-based similarity) end up covering the same scope. Building the endpoint now and the UI later avoids guessing at a search surface against mockups that predate this decision, the same reasoning already applied to the genre field and the printed card.
+
+---
+
+## 2026-09 | Story 16 built: pgvector duplicate detection, similarity threshold, AI microservice database client
+
+Decision: story 16's dedup check runs in `metadata/service.py`'s `resolve_metadata`, before the source-fetch/LLM step. It normalizes `artist + title` (lowercase, diacritics stripped, punctuation removed, whitespace collapsed, the same normalization shape already used for in-round guess matching), embeds the result with `text-embedding-3-small`, and compares it by cosine distance against every `VERIFIED` song's stored embedding. A distance at or below 0.08 (roughly 0.92 cosine similarity) counts as high-confidence: the existing song's data is reused and the LLM call is skipped entirely. Any failure in this check (an unreachable database, an embedding API error) is treated as no match, not a hard failure, so the full pipeline still runs. The core service's Flyway migration `V7__enable_pgvector_and_add_song_embedding.sql` enables the `vector` extension and adds a nullable `embedding vector(1536)` column plus an HNSW cosine-ops index to `songs`; the local dev Postgres image (`backend/docker-compose.yml`) and every Testcontainers-based backend test moved from `postgres:18-alpine` to `pgvector/pgvector:pg18`, the same Postgres major version with the extension binary bundled in. The AI microservice gets its own direct Postgres connection (`ai/app/dedup/database.py`, a new `database_url` setting) using `pg8000`, a pure-Python driver, rather than `psycopg`: `psycopg`'s compiled bindings failed to load under this project's actual Windows development environment (an OS-level Application Control policy blocking the native DLL), while `pg8000` has no native extension to load at all. Both are officially supported by the `pgvector` Python package's own driver adapters, so the switch cost nothing in capability. The AI microservice only ever reads and writes rows through this connection, never DDL, consistent with `CLAUDE.md`'s schema-ownership rule. Storing an embedding for a verified song (`store_verified_song_embedding`) is implemented and tested but has no caller yet: no code path anywhere in the backend today actually promotes a song to `VERIFIED` (story 18's promotion criteria isn't built), so there is no real trigger to wire it to yet. It becomes story 18's natural hook once that promotion flow exists. Story 15's song/playlist join table was an unmerged, un-landed PR when this story was built; today's dedup check only ever compares against `songs` rows directly and doesn't consider playlist relationships at all, so whether a near-duplicate match should behave differently when a song can belong to multiple playlists is an open question, to be revisited now that story 15 has actually merged.
+
+Why: text-embedding-3-small clusters near-identical short "artist title" strings (differing only in casing, punctuation, minor wording, or an upload's extra qualifiers) far tighter than 0.08 cosine distance, while distinct songs land well above it in practice; ARCHITECTURE.md flagged the exact threshold as an open question, and this is a deliberately conservative starting point rather than a value tuned against production data that doesn't exist yet, revisit once real submissions accumulate. Swallowing dedup-check failures rather than propagating them keeps a best-effort optimization from becoming a new way for the whole submission pipeline to fail. Picking a database client that only needs to satisfy this one project's actual development machine, rather than defaulting to whichever driver is more popular in the wider Python ecosystem, avoids a dependency the team's own environment can't reliably load; pg8000 is a mature, actively maintained driver with first-class pgvector support, not a fallback of last resort. Leaving `store_verified_song_embedding` uncalled rather than inventing a fake trigger for it keeps the story's scope to what it actually owns, and having the function already built, tested, and correct removes real work from whichever story wires the real trigger later.
+
+---
+
+## 2026-09 | Story 46 migration reversed: pre-existing playlists and songs are cleared, not assigned a guessed owner
+
+Decision: the story 46 migration no longer tries to determine an owner for any pre-existing playlist. Every existing playlist and song is deleted outright (along with their join and tag rows), `user_playlists` is still dropped the same as before. `users` is untouched.
+
+Why: nothing in the pre-story-46 schema names a real creator, so any owner the migration picks is a guess, not a fact. Guessing an owner from `user_playlists` row order stands on data that was never meant to carry that meaning. Clearing the catalog instead of migrating it forward on a guess keeps the owner column's data honest from the first row it's ever set on.
+
+---
+
+## 2026-09 | Owner leave and ownership transfer: leadership passes automatically, and the owner can hand it off at any time
+
+Decision: the playlist owner can leave at any time. If other members remain, the member who joined earliest is promoted to owner automatically as part of that same leave; a playlist with other members left is never without an owner. Separately, the owner can transfer ownership to any current member at any time through a dedicated endpoint; the previous owner is not removed and keeps their existing membership and grants, just without the owner-only powers.
+
+Why: blocking the owner from leaving until everyone else was gone, the prior decision, forced a departing owner to kick or ban every other member first just to leave their own playlist, destroying those memberships as a side effect of an unrelated decision to leave. Automatic promotion by join order gives every playlist a deterministic next owner without asking the departing owner to choose one under pressure. The separate transfer endpoint covers the case where the owner wants to hand off leadership deliberately, without leaving.
+
+---
+
+## 2026-09 | Story 38 observability: everything short of the account-dependent pieces built now, degrading safely to no-op without credentials
+
+Decision: story 38 is split at the boundary of what needs a real third-party account and what doesn't, and everything on the no-account side is built now rather than deferred alongside the account-dependent pieces. The core service uses `spring-boot-starter-actuator` and `micrometer-registry-prometheus`, exposing `/actuator/health` and `/actuator/prometheus`. The AI microservice uses `prometheus-fastapi-instrumentator` for a `/metrics` endpoint and a plain `/health` route. Both services get OpenTelemetry instrumentation: the core service via `opentelemetry-spring-boot-starter` (`io.opentelemetry.instrumentation:opentelemetry-instrumentation-bom` pinned at 2.30.0), the AI microservice via `opentelemetry-instrumentation-fastapi` with a manually installed `TracerProvider`. Both default to producing real in-process spans without exporting anywhere: the core service through `otel.sdk.disabled`, defaulting to `true` until `OTEL_SDK_DISABLED=false` is set; the AI microservice by only attaching an OTLP exporter when `OTEL_EXPORTER_OTLP_ENDPOINT` is actually set. Both services get Sentry SDK wiring (`sentry-spring-boot-4`, `sentry-sdk`), inactive by the SDK's own default behavior whenever no DSN is configured, so `sentry_sdk.capture_exception` and its Java equivalent are safe no-ops until a real DSN exists. Structured logging in both services renders each log line as one JSON object (timestamp, level, logger, message, request id, trace/span id) to stdout, a shape a Loki/Promtail pipeline can scrape without either service depending on a live Loki endpoint to run or be tested; the core service uses a small hand-written Logback encoder rather than a third-party JSON encoder library, avoiding a dependency whose Jackson-version compatibility with this project's already-bleeding-edge Spring Boot 4 stack couldn't be confirmed without a real build. A `CorrelationIdFilter` (core service) and `CorrelationIdMiddleware` (AI microservice) assign or reuse an `X-Request-Id` header per request, attach it to the active OpenTelemetry span as a `request.id` attribute, and a `ClientHttpRequestInterceptor` forwards it onto the core-service-to-AI-service RestClient call. Each metadata source's fetch failure and the OpenAI synthesis call's failure are now logged distinctly and routed through the Sentry capture path, rather than disappearing into the pipeline's generic swallowed `status="ERROR"` response. The Grafana dashboard (request rate, error rate, latency percentiles for both services) is checked in as a dashboard-as-code JSON file at `observability/grafana/hittiguess-overview-dashboard.json`, following Grafana's own dashboard JSON model, ready to import once a Grafana instance exists. Left undone: creating the actual Grafana Cloud account and Sentry project, pointing the built metrics/log/trace pipes at them, the live dashboard itself, uptime monitoring (no production deployment exists yet), and the free-tier usage-limit check (depends entirely on those accounts).
+
+Why: building the account-independent instrumentation now, rather than deferring the whole story until account creation happens, means the moment a Grafana Cloud account and a Sentry project exist, they're pointed at working, tested instrumentation instead of becoming a second, larger implementation task. Every account-dependent task is bounded by a hard rule: agents don't create third-party accounts on the user's behalf. Defaulting every export path to a safe no-op absent explicit configuration means the instrumentation can be merged and run in every environment, including this sandbox's own test suite, without a live collector, Sentry project, or Grafana Cloud account ever being reachable from it.
+
+---
+
+## 2026-09 | Story 38's account-dependent pieces built: Grafana Alloy for metrics, OTLP for logs, two real bugs fixed
+
+Decision: with real Grafana Cloud and Sentry accounts now created, the remaining account-dependent pieces of story 38 are built. Metrics ship through a new Grafana Alloy container (`observability/alloy/config.alloy`, added to `backend/docker-compose.yml`) rather than the application pushing them directly: neither service runs as its own container (`make dev` starts both as plain host processes), so Alloy scrapes `/actuator/prometheus` and `/metrics` through `host.docker.internal` and remote-writes the result to Grafana Cloud's hosted Prometheus. Logs ship through Grafana Cloud's unified OTLP gateway instead of a Loki-specific push path, the same endpoint and credentials traces already use: the core service gets a second Logback appender (`OpenTelemetryAppender`, from the newly added `opentelemetry-logback-appender-1.0`, which needed importing `opentelemetry-instrumentation-bom-alpha` alongside the existing stable BOM since the appender isn't part of the stable one), and the AI microservice gets an OTLP `LoggingHandler` from `opentelemetry-instrumentation-logging`.
+
+Two real bugs surfaced while verifying this against live Grafana Cloud credentials, both AI-microservice-specific, and both fixed here. First, `tracing.py` passed `settings.otel_exporter_otlp_endpoint` directly to `OTLPSpanExporter`'s `endpoint` argument; doing so skips the OpenTelemetry SDK's own per-signal path resolution, which only runs when the SDK reads the endpoint from the environment itself. Every trace export was silently 404'ing against Grafana Cloud's gateway, confirmed by a direct HTTP request against the same endpoint with and without the `/v1/traces` suffix. The fix appends the correct suffix explicitly (`/v1/traces`, `/v1/logs`) rather than relying on environment-variable auto-detection, since `pydantic-settings` loads `.env` into its own `Settings` object, not into the real process environment, so the SDK's own env-reading path was never going to see it regardless. Second, the new logging bridge's handler was initially attached to the root logger, following the OpenTelemetry example almost verbatim; that immediately created an unbounded feedback loop, since the OTLP exporter's own HTTP calls log through `urllib3`, which the root-attached handler re-exports, triggering another HTTP call and another log line, forever. Reproduced directly (the process hung until killed) before fixing it by attaching the handler to the `"app"` logger specifically, the parent of every `logging.getLogger(__name__)` call in this codebase, which sits outside the namespace OpenTelemetry's and urllib3's own loggers use.
+
+Why: Alloy over a direct in-app push avoids adding a second metrics-export code path per service when neither runs as a container Alloy could otherwise scrape without help; one shared agent doing the scraping keeps that logic out of application code entirely. Routing logs through the same OTLP gateway as traces, rather than standing up a separate Loki-specific credential and push path, means one less credential set to manage for a signal Grafana Cloud already accepts over OTLP. Both bugs were caught by testing against real Grafana Cloud credentials rather than trusting the code as written, confirming CLAUDE.md's own testing discipline extends to third-party integrations exactly where they're hardest to verify from unit tests alone: an HTTP call to a real external endpoint, and a runtime feedback loop that only manifests once a handler is actually attached and receiving real log volume.
+
+---
+
+## 2026-09 | CLAUDE.md's content moves to AGENTS.md, the cross-tool convention
+
+Decision: the project's conventions (stack, commands, non-negotiable rules, writing style, code conventions, git workflow, task gate) move from `CLAUDE.md` into a new root `AGENTS.md`. `CLAUDE.md` becomes a short pointer to it. `.kiro/steering/agents-md.md` (always-included) and `.cursor/rules/agents-md.mdc` (`alwaysApply: true`) each inline `AGENTS.md`'s content via their own tool's live file-reference syntax, rather than copying it, so there's one file to keep current.
+
+Why: this project is worked on with more than one agentic coding tool, and `CLAUDE.md` is a Claude-Code-specific filename nothing else reads. AGENTS.md is the convention Codex, Cursor, Kiro, and Claude Code itself all read natively; keeping every convention in the one file both Codex and Kiro's baseline support already cover, plus a live-referenced pointer for Kiro and Cursor's own scoped-rule systems, avoids maintaining the same rules in three or four places that drift out of sync with each other.
+
+---
+
+## 2026-09 | Three readiness tiers replace an undifferentiated batch plan: Local, Beta, Finished
+
+Decision: `ROADMAP.md` now names three milestones above its phase breakdown. Local is Phase 0, Phase 1, and Phase 2, plus story 47 (naming consistency) and story 22 (test coverage), both moved to run last within Phase 2, in that order; it's playable by the project owner alone or with one other person over a locally opened port, no real deployment target needed. Beta adds story 7 and story 8, hosting and database migration, actually decided and executed, and covers deploying for real and demo matches with friends and colleagues. Finished is Phase 3 alone, the lowest priority, since neither of its stories blocks Local or Beta. Story 22 no longer runs partway through Phase 1; its existing partial implementation (batch 18, PR #85) is dropped rather than carried forward, since redoing it once Local's actual feature surface is finished is less work than maintaining partial coverage through every story that lands between now and then. Story 28's design phase is confirmed done, all 53 screens (auth, playlist management, song review, import, gameplay, plus the landing page, both themes) already exist in `docs/design/hittiguess-design.html`; only its implementation phase remains, staying in Phase 2 where it already was.
+
+Why: the project owner's own test cycle only needs three tiers, not phase numbers, to reason about: can they play it, can other people play it, is it done. Test coverage written mid-build gets rewritten every time the surface it covers changes, story 27's rate limiter and story 37's `DELETE /me` fix both landed real behavior changes after batch 18's tests were written against the pre-fix code. Writing it once, last, against a settled Local feature set costs less than maintaining it continuously through stories that haven't shipped yet. The design canvas predates this decision only in the sense that nobody had gone back to check it against `TASKS.md`'s stale unchecked boxes; the actual mockup work was already complete.
+
+---
+
+## 2026-09 | Story 44 built: TEST role, Spring profiles as the environment mechanism, startup guard instead of a CI check
+
+Decision: story 44 introduces real Spring profiles (`spring.profiles.active`, wired to the existing `APP_ENV` variable) as the environment mechanism, rather than a hand-rolled property. `EnvironmentGuard.isProduction()` wraps `Environment.acceptsProfiles` and is the one place that defines what Production means; `TestRoleAccessGuard` and `TestAccountSeeder` both go through it. Every `TEST`-role guardrail this story adds only ever disables behavior when `EnvironmentGuard.isProduction()` is true, it never depends on a `TEST`-role row's mere absence. The "startup or CI check" task is built as an application startup guard (`ProductionTestAccountStartupGuard`), not a CI pipeline step: CI has no access to the real production database to check against, so a CI job could only ever check a database that isn't the one the task cares about. The seeded test account's credentials are documented in a new `docs/DEV_SETUP.md` rather than `CONTRIBUTING.md`, since story 36's `CONTRIBUTING.md` hasn't merged into `dev` yet; this content moves into `CONTRIBUTING.md` once that branch merges.
+
+Why: `spring.profiles.active` and `@Profile` are Spring Boot's own supported mechanism for exactly this kind of environment-gated behavior, confirmed against the current Spring Boot 4.1 documentation rather than assumed from memory, and it composes with `Environment` and `@Profile` anywhere in the codebase instead of requiring every new check to re-read a custom property by hand. Reusing the existing `APP_ENV` variable instead of introducing a second, separately-configured environment signal keeps `CookieUtil`'s existing `app.env` check and the new profile check from ever disagreeing about which environment is active. A CI-pipeline version of the "fails loudly" check was considered and rejected: nothing in a CI run has a connection to the actual Production database, so the check that matters can only run where the application itself runs, at its own startup, against its own real connection.
+
+---
+
+## 2026-09 | Story 37 built: song attribution survives account deletion, legal pages are markdown for now
+
+Decision: `Song.addedBy` becomes a nullable foreign key (`V11__make_song_added_by_nullable.sql`). Deleting an account clears `addedBy` to null on every song it submitted instead of blocking the deletion or deleting the songs; `SongDTO.addedBy` and `SongMapper.toDTO` are updated to allow and handle a null value. `deleteUser()` also now applies `leavePlaylist()`'s existing departure logic (delete a playlist the user was the last member of, promote the earliest-joined remaining member to owner if the user owned a playlist others still belong to) once per playlist the deleted user was in, factored into a shared `departFromPlaylist` helper. That helper explicitly deletes the departing membership row through `PlaylistMembershipRepository` rather than relying only on the parent collection's orphan removal: when the departing user's own account row is deleted in the same transaction, Hibernate's flush ordering can otherwise try to null the membership's not-null `user_id` column before it resolves that the row needs deleting outright, which fails the same way the original FK violation did. A new `GET /api/users/me/export` endpoint and `PersonalDataExportService`, separate from the existing playlist-content `ExportService`, return a full GDPR personal-data dump: account fields, every playlist membership, and every submitted song. The privacy policy and terms of service live as markdown at `docs/legal/privacy-policy.md` and `docs/legal/terms-of-service.md`; a cookie-consent notice stays out of scope until story 34 (first-party analytics) ships, since no third-party trackers exist to consent to yet.
+
+Why: a song is already treated as independent of any playlist it belongs to (see the "Song deletion reversed" entry above); letting its submitter attribution survive that same way, rather than blocking account deletion or deleting the song, keeps that same principle consistent across both relationships. Reusing `leavePlaylist()`'s ownership-transfer logic for account deletion instead of inventing separate behavior keeps one rule for what happens when a user stops belonging to a playlist, regardless of why. The GDPR export endpoint stays a separate service rather than an extension of `ExportService`, since that service exists to generate printable playlist PDFs, a different concern that happens to share the word "export." The legal pages stay markdown rather than becoming real Next.js routes because this batch is backend-focused (the bug fix and the export endpoint); wiring them into the frontend's actual page structure is deferred to story 28's implementation phase, the same deferral pattern already used for other backend-first stories in this project.
+
+---
+
+## 2026-09 | Story 36 built: open-source collaboration readiness
+
+Decision: `CODE_OF_CONDUCT.md` adapts the Contributor Covenant, version 2.1, rather than a custom document, with only the enforcement section rewritten for a single-maintainer project instead of the template's committee-based process; reports route to the maintainer's own email. `CONTRIBUTING.md`'s secrets section documents the three variables a new contributor needs sandbox-safe values for to run the app at all (`YOUTUBE_API_KEY`, `OPENAI_API_KEY`, `INTERNAL_SERVICE_API_KEY`), plus `DISCOGS_CONSUMER_KEY`/`DISCOGS_CONSUMER_SECRET` as a fourth, called out separately since it's a real production source (story 25, already shipped) rather than optional, it just degrades gracefully instead of blocking startup when unset. `ai/.env.example` lists several more variables than that: DeepInfra's client exists in code but nothing in the live `resolve_metadata` path calls it yet, story 18 hasn't wired it in, and the rest (Wikidata/Wikipedia bot logins, and the story 20 spike's other candidate providers) are explicitly commented in `ai/.env.example` itself as unused by the production microservice. Documenting setup instructions for those would describe accounts nobody actually needs today.
+
+Why: the Contributor Covenant is the de facto standard for open-source codes of conduct; writing a custom one from scratch would trade a widely recognized document for a bespoke one with no real benefit at this project's scale. Scoping the secrets section to the variables a contributor actually needs, distinguishing "required to start" from "a real source that degrades gracefully" from "not called by production code at all," keeps `CONTRIBUTING.md` honest about what each one actually is, rather than either overstating a spike-only variable's importance or silently omitting a real one.
+
+---
+
+## 2026-09 | Story 27 built: Bucket4j for the core service, a hand-rolled sliding-window limiter for the AI microservice
+
+Decision: the core service adds Bucket4j (`bucket4j-core`, framework-agnostic, no Spring dependency of its own) and applies time-window rate limiting through a single servlet filter, `RateLimitingFilter`, layered after `JwtAuthenticationFilter` in the security chain. Every request is keyed by authenticated user where one exists, by client socket address otherwise, at a general limit of 60 requests per minute. `/auth/login` and `/auth/register` are always keyed by socket address regardless of authentication state, sharing one stricter bucket at 5 requests per minute, since those are exactly the endpoints credential-stuffing and account-enumeration attempts target. The socket address, not `X-Forwarded-For`, is the key in both cases: this deployment has no reverse proxy in front of it to set that header honestly, so it is fully attacker-controlled, and keying on it would let an attacker bypass either limit by sending a different value on every request. This sits alongside `SongMetadataService`'s existing single-in-flight-request-per-user gate on `/api/metadata/song` rather than replacing it, the two solve different problems: one in-flight request at a time versus no more than N requests in a time window. Every 429 the core service returns, the filter's own and the existing in-flight gate's, now uses the app's `ErrorResponse` record; the in-flight gate's `RateLimitExceededException` replaces the `ResponseStatusException` it used to throw, which rendered as Spring's default `ProblemDetail` instead of the app's own error shape. The AI microservice gets an independent limit on `/metadata/resolve`, a hand-rolled in-memory sliding-window counter (`app/rate_limit.py`) keyed by client address at 30 requests per minute, evaluated before the `X-Internal-Api-Key` check so repeated attempts to guess that key are limited too. No new dependency (`slowapi` or otherwise) was needed for it, and no Redis or other shared store either: both services run as a single instance each, so per-process in-memory state is correct, the same reasoning already used for `SongMetadataService`'s in-flight set.
+
+Why: Bucket4j is the standard choice for Spring rate limiting and has no Spring Boot 4 compatibility issues to check, since it depends on nothing from the framework at all. A single filter rather than per-controller annotations covers every public-facing endpoint uniformly and keeps the auth-specific limit and the general limit as one mechanism instead of two. Keying login and register by address unconditionally, rather than falling back to the general per-user/per-IP key logic, matters because an attacker enumerating accounts or stuffing credentials never has a valid session to be keyed by user in the first place. Trusting `X-Forwarded-For` without a trusted proxy actually setting it would have made the limiter worse than not having one for exactly the attack it exists to blunt, a real forwarded-header-aware fallback becomes worth adding once a specific hosting platform (stories 7/8) puts a real proxy in front of this deployment. Standardizing the 429 shape removes the one place in the app where a client had to handle two different error response formats for the same status code. The AI microservice's own limit exists because anyone holding the shared internal API key, not just the core service, can call `/metadata/resolve` directly, and the core service's per-user limiting offers that endpoint no protection at all in that case.
+
+---
+
+## 2026-09 | Story 33: analytics store is a second Postgres database, not a new store technology
+
+Decision: the append-heavy analytics/event store story 42 already carved out gets provisioned as a second Postgres database, `analytics-db` alongside the existing `db` service in `docker-compose.yml`, rather than a dedicated time-series or event-store technology. It carries its own Flyway migration history under `db/analytics-migration`, run through a separate `DataSource`, `Flyway`, and `JdbcTemplate` wired in `AnalyticsDataSourceConfig`, fully independent of the core service's `spring.datasource`-bound datasource and its V1-V10 migration history. The schema is a single `analytics_events` table (event type, timestamp, JSONB payload), with a typed payload record per event kind in code rather than a dedicated column set per event type. Retention defaults to 180 days, configurable through `analytics.retention.days`, enforced by a daily `@Scheduled` sweep following `GroupExpirySweeper`'s existing shape. Nothing yet calls the write API; story 34 instruments the real event-producing call sites.
+
+Why: this is a solo-developer hobby project already running Postgres through Testcontainers for every other integration test and through `docker-compose` for local development. A second Postgres database keeps both of those working paths unchanged, needs no new technology to operate, back up, or reason about, and still gives the isolation story 33's tests require: two independent connection pools and two independent Flyway histories, so an analytics write cannot touch or block the transactional database's schema or its rows. A dedicated time-series or event-store technology would add real operational and testing weight (a new container to run locally, a new client library, a new set of failure modes) for a project at this scale, with no concrete requirement here that Postgres can't satisfy. A single JSONB-payload table over one table per event type avoids a schema migration every time a new event type is added, at the cost of losing column-level constraints on payload shape, an acceptable trade for a store nothing queries yet.
+
+---
+
+## 2026-09 | Documentation consistency pass after story 38 (observability) merged
+
+Decision: after PR #81 (story 38) merged, a full pass across `PROJECT_STATE.md`, `TASKS.md`, `ROADMAP.md`, and `ARCHITECTURE.md` found and fixed several pieces of drift unrelated to story 38 itself, caught while checking it. First, a real story-ID collision: `ARCHIVE.md` already had an archived "Story 47" (replacing `SongTag` with a genre field and adding real paper-size export), while `PROJECT_STATE.md`/`TASKS.md`/`ROADMAP.md` separately used ID 47 for a newer "naming consistency" story introduced by the roadmap-restructuring PR. The naming-consistency story is renumbered to 49 (the next free ID) rather than disturbing the already-shipped, already-archived genre story. Second, `ROADMAP.md`'s batch-plan checklist had batches 12, 13, 15, 16, 17, and 19 (stories 33, 27, 37, 36, 44, and 42/43) still unchecked despite each one's PR having merged into `dev` long before story 38's; batch 14 (story 38) is checked too, since the checklist tracks a batch's PR merging, not the underlying story reaching `Implemented`, and PR #81 has merged even though story 38 itself deliberately stays `Ready`. Third, story 39 (Group)'s `PROJECT_STATE.md` row still read bare "Ready" despite its backend being fully built on `feature/group`, the same deferred-frontend-tasks shape stories 10 and 11 already carry as "Implemented" with a caveat; promoted to match. Fourth, `ARCHITECTURE.md`'s "What's built"/"Not yet built" summary was badly stale, still describing Discogs, pgvector dedup, the playlist/song relational fix, rate limiting, and song search by link/keyword as unbuilt when all had already shipped; rewritten against the current `PROJECT_STATE.md`/`ARCHIVE.md` state.
+
+Why: `TASKS.md` is what work actually happens from and `PROJECT_STATE.md` is the backlog's source of truth, so a stale or colliding story ID risks a future session picking up the wrong story's context under a shared number, and a stale `ARCHITECTURE.md` summary risks re-litigating or re-building something that's already done. None of this was caused by story 38's own changes; it surfaced only because reviewing story 38's doc updates prompted a full cross-file check rather than a narrow one.
+
+---
+
+## 2026-09 | All frontend work consolidated into story 28; every other story is backend-only
+
+Decision: story 28 (UI redesign implementation) is the single home for all frontend work. Every other story, including the gameplay stories 9, 12, and 13, is backend-only: its frontend tasks (pages, components, WebRTC/browser-side pieces, frontend tests) are tracked under story 28 and built there, wired against the real backends the prior batches shipped, not built in the story's own batch. A backend story is complete when its backend code and backend tests pass; its inline frontend tasks stay listed for traceability but don't gate that story's batch.
+
+Why: the frontend was the real bottleneck and cross-cutting risk across stories 9, 12, 13, 28, and 30, all of which needed frontend that mostly doesn't exist (the frontend today is auth plus playlist/song CRUD only). Building each story's slice of frontend in its own batch, against a design system story 28 hasn't applied yet and gameplay screens that don't exist, would mean redoing it when story 28 lands. Consolidating every frontend piece into story 28 lets each backend batch be cleanly backend-testable with no frontend dependency, and lets story 28 build the whole UI once against a complete, real backend. This also extends the pattern stories 10, 11, 14, and 46 already used (deferring their frontend to story 28) to every remaining story uniformly.
+
+---
+
+## 2026-09 | Story 34 abuse-visibility event writes are stubbed until story 34 ships
+
+Decision: where a story would write an abuse-visibility event (story 41's flagged-injection event, story 17's report-submitted event, story 27's rate-limit-exceeded event), it writes a stubbed no-op instead, a structured log line marked `TODO: story 34`, rather than a real event. Story 34 (first-party usage analytics, Phase 3) replaces these stubs with real writes into its event pipeline when it ships.
+
+Why: story 34's analytics event store and write path are Phase 3 and not built, but stories 41, 17, and 27 (all earlier) reference writing abuse-visibility events. Blocking those stories on story 34, or pulling a partial story 34 forward, both cost more than a clearly-marked stub. The stub keeps each earlier story's own logic complete and testable (the flag fires, the log line proves it) while leaving one obvious integration point for story 34 to wire, the same deferral shape the project already uses elsewhere.
+
+---
+
+## 2026-09 | Story 41 flagged-injection submissions are rejected outright; story 26 cache skipped
+
+Decision: two open items from earlier entries are settled. A submission whose raw YouTube text is flagged by story 41's prompt-injection check is rejected outright, not routed to manual review; the abuse-visibility event is still written (stubbed per the entry above). Separately, story 26 (cache metadata pipeline results) is not built: its scope-review decision resolves to skip, since story 40's batch YouTube-ID lookup and story 16's pgvector near-duplicate check already cover the exact-repeat and near-duplicate cases, leaving only a rare same-ID double-submit burst that isn't worth a caching layer at the 100-200 user scale.
+
+Why: an attempted prompt injection is evidence of intent, not an honestly ambiguous song, so treating it as disqualifying (reject) rather than sending it to a human matches its nature; a false positive is a recoverable resubmit. Story 26's only unique gap over the two existing dedup paths is a burst of the identical YouTube ID arriving before the first submission persists, a case rare enough at this scale that a whole cache layer with its own invalidation and backend-choice questions isn't justified.
+
+
+---
+
+## 2026-09 | Two earlier open items resolved: verified-promotion criteria and build-into-microservice
+
+Decision: two open items left hanging in earlier entries are now resolved, recorded here rather than by editing those entries.
+
+The 2026-08 "Community verification through reports, not thumbs up or down" entry closed with "what promotes a reported or newly submitted song to fully verified is not yet decided." That is decided and built: story 18's lock rule promotes a song to `VERIFIED` only on exact agreement among MusicBrainz, Discogs, and Wikidata, with no LLM call; anything short of that lands at `NEEDS_REVIEW` through Wikipedia extraction and four-source reconciliation, and a total no-answer at `MANUAL_ENTRY`. The rule and its tiers were fixed in the 2026-09 "Metadata pipeline final shape" and "Verification schema" entries and shipped to `dev` in batch 20 (`feature/verification-promotion`).
+
+The 2026-09 "Metadata pipeline final shape: two-tier lock-or-LLM" entry closed with an open item asking "whether any of this gets built into the real AI microservice versus staying validated-but-unbuilt in the spike." That is decided and built: the 2026-09 "Story 20 greenlit" entry committed to building the validated pipeline into the real microservice, and it shipped to `dev` across batches 20 (verification pipeline, story 18), 21 (catalog seeding and bulk import, story 40), 22 (content safety, story 41), and 23 (parallelized fetches, story 24). The pipeline now runs in `ai/app/metadata/`, not only in `ai/spikes/`.
+
+Why: both items were phrased as still-open in entries this log never revisited, so a reader reaching them has no signal that the question closed. Recording the resolution as its own append-only entry, pointing back to the entries it settles, keeps the log honest without editing past text.
+
+---
+
+## 2026-09 | Story 17 report resolution: uphold semantics without a re-resolution pipeline
+
+Decision: upholding a song's open reports marks those reports upheld and, for a song still in an editable status (`UNVERIFIED` or `MANUAL_ENTRY`), moves it to `MANUAL_ENTRY`. A locked song (`VERIFIED` or `NEEDS_REVIEW`) keeps its year and status unchanged when its reports are upheld; the upheld reports surface it for admin judgment but nothing overwrites the locked year. Dismissing a song's open reports moves them to dismissed and changes nothing about the song. Confirmations are accepted only on `NEEDS_REVIEW`/`MANUAL_ENTRY` cards. A report is allowed on any card, including `VERIFIED` ones.
+
+Why: story 40's re-resolution pipeline does not exist yet, so uphold cannot trigger an automated re-fetch. Routing an editable song to `MANUAL_ENTRY` puts it in the tier an admin fills in by hand, which is the available manual path today. The locked-year rule reuses `PlaylistService.EDITABLE_VERIFICATION_STATUSES` so a report can never do through the back door what a direct edit is already forbidden from doing. The report-submitted abuse-visibility event stays a stubbed structured log line until story 34 ships its event pipeline.
+
+---
+
+## 2026-09 | Story 13 group chat: history bound, deletion cascade, and where the length limit lives
+
+Decision: group-scoped text chat is a `ChatMessage` row (`group_id`, `sender_id`, `content`, `created_at`) in the `chat_messages` table (migration `V14`), scoped to the group's whole life rather than a game session's. Send rides the same STOMP convention story 11 fixed: a client sends to `/app/groups/{groupId}/chat` (`GroupChatController`), and `ChatService` persists the message and broadcasts it to `/topic/groups/{groupId}/chat` through `SimpMessagingTemplate`, serializing with the application `ObjectMapper` the same way `GroupBroadcastListener` does. History is a member-only REST read, `GET /api/groups/{groupId}/chat/messages`, returning the most recent `HISTORY_PAGE_SIZE` (50) messages most-recent-first.
+
+Three points settled here. The history read is bounded to a fixed most-recent page rather than returning a group's entire chat: a group lives at most a short, timer-bounded window and its overlay only ever shows recent lines, so an unbounded read buys nothing and a page size is the honest contract for what a joining or reconnecting client loads. Deletion cleanup is a database-level `ON DELETE CASCADE` on the `chat_messages` group foreign key, not a mapped `@OneToMany` cascade on `Group`: messages are not part of the group aggregate the way `members` is, and loading every message into memory just to delete a group would be wasteful, so the cascade lives in the schema and the expiry sweep's plain `groups` delete carries the messages with it. The 500-character limit is validated in `ChatService` against `ChatMessage.MAX_CONTENT_LENGTH` (which the column length also uses) rather than as a bean-validation annotation, because a STOMP payload does not pass through the REST `@Valid` path; the per-user rate limit (5 per 10 seconds) reuses `RateLimiterRegistry` keyed by group and user, and a breach rejects the send and writes the stubbed `TODO: story 34` rate-limit event through `AbuseVisibilityEvents`.
+
+Why: reusing the existing STOMP destination convention, broadcast indirection, membership check, rate limiter, and stubbed-event pattern keeps chat consistent with the group and report code already on `dev` instead of inventing parallel machinery. The chat overlay UI, unread indicators, and the input box stay with story 28, the single home for frontend, so this batch is backend only.
+
+---
+
+## 2026-09 | Story 45 import from playlist: reuse existing mechanisms, defer the public-source path
+
+Decision: importing songs from one playlist into another links the source playlist's existing `Song` rows into the target through story 15's `song_playlists` join table, using `Playlist.addSong`. Songs already present in the target are skipped rather than re-linked or erroring. The requester must be able to read the source (owner or member, through `PlaylistAccessService.requireRead`) and write to the target (`requireWrite`). The endpoint is `POST /api/playlists/{playlistId}/imports`, where the path playlist is the target and the body carries the source playlist ID. No new schema ships with this story.
+
+The draft tasks described the source read check as accepting a public source (`isPublic`). `Playlist` has no `isPublic` field: public playlists are story 30, which is not built. The public-source path and its test are deferred to story 30 rather than inventing a public flag ahead of that story. Source readability today is owner-or-member, matching every other playlist read in the codebase.
+
+Why: the copy is a catalog-level link operation, not a metadata fetch, so it reuses the join table and the grant checks that already gate every playlist read and write. Building the public-source branch now would require adding the story 30 mechanism early and guessing its shape, so it waits for the story that owns it. The frontend picker is story 28, per the standing all-frontend-in-story-28 policy.
+
+---
+
+## 2026-09 | Story 30 backend: the difficulty model lives in the core service, computed on the fly, with the play-data tier scaffolded
+
+Decision: story 30's difficulty model is built in the core service under `org.dariusturcu.backend.difficulty`, not the AI microservice, because it reads core JPA entities (`Song`, and the story 10 `Round`/`Guess` data) and makes no external call, and because the core service owns the schema the play-derived signal aggregates over. It is computed on the fly with no schema change: the per-song play signal is a grouped aggregate query (`RoundRepository.aggregatePlacementStatsBySong`) over scored rounds, not a stored `SongDifficulty` table or view, so it stays current with no refresh job and needs no migration. `SYSTEM_REFERENCE.md` lists a planned `SongDifficulty` table; it is not needed for the on-the-fly model and is left unbuilt.
+
+A song's difficulty is one score in `[0, 1]`, where lower is easier. `SongDifficultyScorer` blends two signals: the play-derived correct-placement fraction (an easier song is placed correctly on the timeline more often, so difficulty is the complement of that fraction) and a Wikidata sitelinks popularity proxy (a more widely covered song is more recognizable, so a higher sitelinks count maps to lower difficulty). Thin play history is blended with the sitelinks proxy in proportion to how many scored rounds exist, so one lucky or unlucky round does not decide a song's tier; a song with no signal at all sits at the neutral midpoint. Every weight and threshold is a named constant carrying an initial heuristic value, not one fitted against data. No real play data exists to fit them against, so they are the deliberate starting point to tune once real rounds accumulate.
+
+Group difficulty follows the tier: easy takes the lowest individual predicted score so the least experienced player is protected, hard takes a plain average, medium takes the median, matching `GAME_DESIGN.md` and the earlier tiering decision. Difficulty-tuned selection (`DifficultyTunedSongSelector`) scores the verified catalog for a group's players, keeps the songs whose group score bands into the requested tier, and returns them capped at the target card count, reusing the existing `Song` and `Round` repositories. An empty catalog and a tier with no matching songs both return an empty list rather than failing.
+
+The Wikidata sitelinks count is not persisted yet. It exists only in `ai/spikes/wikidata_spike.py`, not in the real metadata pipeline (`ai/app/metadata/`), and the AI microservice never alters schema, so persisting it is a story-23 change to `Song` and the metadata write path. The scorer reads it through an `Optional` seam and falls back to the neutral default while it is absent, so real values flow in with no scorer change once the column and its capture land. The international-scope filter that gates on the same count is deferred with it.
+
+The personalized collaborative-filtering tier is scaffolded, not built. `PersonalizedDifficultyPredictor` is the plug point and `AggregateBaselinePredictor` is the shipped implementation, returning the per-song baseline for every player. A trained model, its retraining job, and the accuracy-versus-baseline monitoring check are deferred: they need enough accumulated `Guess` data to beat the baseline, which does not exist until real rounds are played over time, and inventing tuned values against nonexistent data would be dishonest. The Difficulty-Based generation endpoint, the Custom-mode endpoint, the `Playlist` public flag those depend on, and all frontend are also deferred; the scoring and selection core they call is what this slice builds.
+
+Why: difficulty reads core-owned entities and needs no external call or LLM, so the core service is where it belongs, and computing it from existing rows avoids a table that would need its own refresh path to stay accurate. Naming every weight and threshold as an initial heuristic, rather than presenting fitted numbers, keeps the model honest about the absence of real play data to tune against, and the `Optional` sitelinks seam plus the predictor interface keep the deferred pieces (sitelinks persistence, the trained model) as clean attach points rather than half-wired code.
+
+---
+
+## 2026-09 | Betting is positional, not a blind right-or-wrong flag
+
+Decision: a bet carries a position, the bettor's own chosen insertion index into their own timeline, staked at the same moment as the bet itself and validated in range the same way the active player's own placement already is. The bet only wins if the active player's placement was wrong and that stated position also turns out correct once the song is revealed, checked with the same `isPlacementCorrect` logic used for the active player, applied to the bettor's timeline instead. A wrong stated position discards the card exactly like a round with no bettor at all. `RoundRepository.tryAcceptBet` sets `bettor_player_id`, `bet_placed_at`, and the new `bet_position` column in the same atomic conditional UPDATE, so the position is claimed by the same race-winning bet rather than a separate step. A winning bettor receives only the card, never a bonus token, in every case.
+
+Why: the original `GAME_DESIGN.md` text and the initial story 10 implementation described betting as a blind flag, accepted whenever the active player was wrong with no actual position guess involved, which under-specified what the project owner's own design mockups always showed: the bettor staking a token between two specific cards on their own timeline. This closes that gap rather than reversing a prior deliberate decision. The reveal mockup's "+1 token" reward for a correct bet is confirmed wrong and is not implemented; the only reward for a correct bet is the card.
+
+---
+
+## 2026-09 | Betting targets the active player's shared timeline, one bet per interval, not one bettor per round
+
+Decision: the previous entry's model, one bettor per round staking a position on their own separate timeline, is wrong and is superseded by this entry. Every bet is placed against the ACTIVE PLAYER's own timeline, the same one the active player locks their own guess into and the one every other player is already looking at during that round. During the 15-second betting window, multiple players can each place a bet, at the same time as each other, as long as each picks a different gap in the active player's timeline than every other bettor and none of them pick the gap the active player already locked in. A round can end with zero, one, or several accepted bets, one per distinct gap; a player still can't bet twice in the same round, still can't bet if they're the active player or DJ, and still needs a token, deducted immediately on acceptance. A `Bet` entity (`round`, `player`, `position`, `placedAt`) replaces the single `bettorPlayer`/`betPosition`/`betPlacedAt` columns on `Round`; the `bets` table's `(round_id, position)` and `(round_id, player_id)` unique constraints are what make accepting a bet concurrency-safe now, in place of the single conditional `UPDATE` `RoundRepository.tryAcceptBet` used before: `BetRepository.insertBet` does a plain `INSERT`, and a unique-constraint violation, caught as `DataIntegrityViolationException`, means the bet wasn't accepted, the same outcome the old zero-row `UPDATE` produced. Since exactly one gap in the active player's timeline is objectively correct for the revealed release year, and no two bets share a gap, at most one bettor can ever be sitting on it. If the active player's placement was wrong and a bettor is on that gap, that bettor wins the card, not the active player; it lands on the WINNING BETTOR's own timeline, at wherever it objectively belongs there, computed automatically rather than chosen by the bettor. Every other accepted bettor loses their token for nothing.
+
+Why: this was surfaced directly by the project owner reviewing the first version of this fix: "not one bet per round. one bet per interval, and you can't bet on the interval that the active player guessed," on the active player's own timeline specifically, "when a player is playing, everyone sees that player's timeline, and that's where the other people bet," confirming a rule already settled during the project's own design planning that the first pass had gotten wrong. Modeling bets as a list against a shared timeline, rather than a single column against each bettor's own, is what makes "several people can watch and bet on the same round" representable at all.
+
+---
+
+## 2026-09 | Story 40: playlist-link expansion lives in the AI microservice, progress is a per-user STOMP channel
+
+Decision: expanding a YouTube playlist link into its video IDs (`playlistItems.list`) is built in the AI microservice, alongside the existing single-video YouTube integration, not in the core service. `fetch_playlist_video_ids` in `ai/app/metadata/sources/youtube.py` paginates through `nextPageToken`, and `POST /metadata/playlist-video-ids` exposes it internally, gated by the same `X-Internal-Api-Key` check `/metadata/resolve` already uses. The core service calls it through a new `PlaylistExpansionService`, which also owns merging the expanded IDs with whatever IDs or links a caller submitted alongside the link, deduplicated. Both catalog-seeding paths use it: `BulkImportService.importImmediately` and `CatalogSeedingService.enqueue`'s new `AdminCatalogSeedingRequest` overload. A link that doesn't parse to a valid playlist, or an upstream fetch failure, raises `PlaylistImportException`, mapped to a 400 by `GlobalExceptionHandler`, rather than the import silently proceeding as if the link had been ignored.
+
+Live per-song progress for the on-the-spot bulk-import path (`ImportPlaylistProcessingDark.dc.html`'s per-row states) is a new per-user STOMP channel, not polling. `BulkImportService` publishes a `BulkImportProgressEvent` for every submitted video ID as its resolution loop reaches it; `BulkImportProgressListener` forwards each one to `/user/queue/bulk-import-progress` through `SimpMessagingTemplate#convertAndSendToUser`, the per-user counterpart to `GroupBroadcastListener` and `SessionBroadcastListener`'s per-group and per-session broadcasts. This is new ground for the STOMP layer: `WebSocketConfig` previously registered only `/topic` as a broker prefix, which routes broadcasts but not the `/queue`-prefixed destination Spring's `UserDestinationMessageHandler` rewrites a per-user send into, so `/queue` is now registered alongside it. The admin catalog-seeding backlog does not get this channel: `AdminCatalogBacklogDark.dc.html` shows a backlog-count and quota summary rather than live per-item progress, so its enqueue endpoint stays synchronous request-response.
+
+Why: the AI microservice is the only place in the system with YouTube Data API access, so a second, redundant integration in the core service would duplicate what already exists rather than extend it. A dedicated `PlaylistExpansionService` keeps playlist-link handling in one place both catalog-seeding paths share, instead of each reimplementing the expand-and-merge step. Per-user STOMP delivery matches what a bulk import actually is, one user's own request, rather than reusing a broadcast pattern built for shared group or session state; polling was rejected because the mockup calls for rows updating live as each song resolves, not on a refresh interval.
+
+---
+
+## 2026-09 | Story 30 public playlists: publish/unpublish, browsing, and saving without membership
+
+Decision: `Playlist` gets a `boolean isPublic` field, default false, added by migration `V15`. Publishing is two owner-only endpoints, `POST /api/playlists/{playlistId}/publish` and `POST /api/playlists/{playlistId}/unpublish`, rather than a single toggle: this controller already models every other owner-only state change (promote, kick, ban) as its own named action per existing state rather than a generic toggle, so publish/unpublish follows the same shape instead of introducing a different one next to it. Both call `PlaylistAccessService.requireOwner`, the same check `updatePlaylist` and the member-management endpoints already use.
+
+`PlaylistAccessService.requireRead` itself is extended to pass for any playlist with `isPublic` true, regardless of ownership or membership, rather than adding a separate public-read path alongside it. Every existing playlist read, including story 45's import source check, already calls `requireRead`, so extending the one check makes a published playlist readable and importable everywhere that check already gates, with no separate wiring per call site. This also resolves story 45's deferred task: importing from a public playlist the requester neither owns nor is a member of now works, with no change to `PlaylistImportService` itself.
+
+Browsing is `GET /api/playlists/public`, open to any authenticated user, returning every playlist with `isPublic` true via a new `PublicPlaylistSummaryDTO` (id, name, color, songCount, and the owner as a `UserSummaryDTO`, the same DTO `SongDTO.addedBy` already uses). `PlaylistSummaryDTO` is left alone rather than extended with owner info, since its existing callers (a user's own playlist list) have no use for it.
+
+Saving a public playlist into another user's library is a new `SavedPlaylist` entity (`user`, `playlist`, `savedAt`), its own `saved_playlists` table with a unique constraint on `(user_id, playlist_id)`, deliberately independent of `PlaylistMembership` and `PlaylistBan`: no grants, no per-playlist identity, no kick/ban interaction. `POST`/`DELETE /api/playlists/{playlistId}/save` and `GET /api/users/me/saved-playlists` are open to any authenticated user. Saving rejects a non-public playlist, the caller's own playlist, and an already-saved playlist, all as `ConflictException`, matching how `PlaylistService` and `UserService` already surface rule violations (an already-existing membership, a target that's already the owner). An already-saved playlist is treated as a conflict rather than a silent no-op, consistent with `joinPlaylist`'s existing already-a-member conflict.
+
+Why: reusing `requireOwner` and `requireRead` instead of new checks keeps public playlists inside the access model every other playlist operation already goes through, rather than adding a parallel one. Modeling saving as its own entity instead of a flag on `PlaylistMembership` or a degenerate membership row keeps the two concepts, a bookmark versus real access, from ever being confused at the code level. This is a narrow, independently-decided slice of story 30, built ahead of the rest of that story, which stays open pending the difficulty-generation scope; see `PROJECT_STATE.md`'s story 30 row.
+
+---
+
+## 2026-09 | Admin report resolution can override a locked song, superseding the uphold-only lock rule
+
+Decision: `POST /api/admin/song-reports/{songId}/uphold` is replaced by `POST /api/admin/song-reports/{songId}/resolve`, taking a `ResolveReportRequest` (`correctedYear`, nullable, and `verificationStatus`, required, one of `VERIFIED`/`NEEDS_REVIEW`/`MANUAL_ENTRY`). Resolving a song's open reports marks them upheld and applies the admin's chosen year and status unconditionally, including on a song currently `VERIFIED`. This supersedes the 2026-09 "Story 17 report resolution: uphold semantics without a re-resolution pipeline" entry's rule that a locked song's year and status stay unchanged when its reports are upheld, and narrows the "once locked, no code path may overwrite the year" rule from the story 18 lock-evaluation entries to exclude this one specific admin-driven path. Every other path, including a report simply being upheld with no explicit admin override, still respects the lock: `EDITABLE_VERIFICATION_STATUSES` is removed from `SongReportService` entirely since the resolve path no longer checks it and nothing else in that class needs it.
+
+Why: `docs/design/source/AdminReportQueueDark.dc.html`'s admin report-resolution screen shows a song explicitly labeled "currently locked at 1983, VERIFIED" with an editable year field and a verification-status dropdown submitted together through a single "Resolve" action, and the project owner confirmed directly, after this contradiction with the standing lock rule was raised, that the design is the correct one. An admin manually resolving a report is the deliberate human review step the lock rule was always meant to route disputed `VERIFIED` songs into, story 40's automated re-resolution pipeline does not exist to do it any other way, so the lock has to yield to that one explicit, admin-driven action rather than leaving a correctly-identified wrong year permanently stuck.
+
+---
+
+## 2026-09 | ROADMAP.md's batch plan retargeted to story 28's screen clusters
+
+Decision: `ROADMAP.md`'s "Batch plan" section, originally one story per PR sequencing Phase 1 and Phase 2, is replaced rather than removed outright or left as a stale checklist. Nearly every story it sequenced has since shipped, several out of the order it originally picked, through branches it never named, so the old list no longer describes how to reach for the next unit of work. The only piece of genuinely sequential work left toward Local is story 28's implementation phase, so the new batch plan sequences that instead, split into the same screen clusters `docs/design/hittiguess-design.html` and `FRONTEND_CONTENT.md` already group its 53 mockups into (existing pages, planned playlist screens, song review and search, admin views, gameplay screens, and a final cross-cutting batch for the component/token boundary and accessibility pass).
+
+Why: a batch plan earns its place by giving a session a starting point without re-deriving one; a plan describing finished work no longer does that, and deleting the section entirely would lose a genuinely useful pattern, one ordered PR-sized list, for the one sequential stretch of work that remains. Story 28 is that stretch: its own tasks in `TASKS.md` are just two broad implementation bullets with no PR-sized breakdown, so retargeting the batch plan section is where that breakdown belongs, grouped by the same screen categories the design and content docs already use rather than inventing a new taxonomy.
+
+---
+
+## 2026-09 | Test account seeding grows from one account to three
+
+Decision: `TestAccountSeeder` (story 44) now seeds three fixed `TEST`-role accounts (`test-agent-1`/`2`/`3@hittiguess.local`) instead of one, each idempotent independently. `seedTestAccount()` becomes a private per-account helper; the public entry point is `seedTestAccounts()`, iterating a `List<TestAccount>` record rather than three parallel constants.
+
+Why: testing a real multiplayer round needs three genuinely separate, simultaneously logged-in sessions, one DJ, one active player, one other player, not one account reused across browser tabs, which shares cookies and can't hold three independent WebSocket connections at once. Three fixed, reusable accounts let an agent or a Playwright script log in as all three at once without registering throwaway accounts per run, the same reasoning that motivated one reusable test account in the first place.
+
+---
+
+## 2026-09 | Story 50 auth hardening: login blocks unverified accounts, totpSecret stays a plain column, and the 2FA login step uses a scoped JWT
+
+Decision: an unverified local account (`emailVerified` false) cannot log in at all; `AuthService.login` throws `EmailNotVerifiedException`, mapped to 403 with a message distinct from `BadCredentialsException`'s 401, so a future frontend can tell the two apart without parsing text. This is the task list's own stated simpler default and nothing in the real code argued against it: there is no existing partial-access mode for an unverified account to fall into, and gating every downstream endpoint individually would be far more code for the same outcome. `POST /auth/register` no longer logs the caller in immediately; it creates the account, sends the verification email, and returns `AuthResponse` with no cookies set, since auto-login would otherwise hand out a working session to an account the login endpoint itself would reject a moment later. Existing accounts are backfilled `emailVerified = true` by migration `V18` (`ADD COLUMN ... DEFAULT TRUE`, then the default flipped to `FALSE`), since they already log in successfully today and retroactively locking them out on deploy would be a regression, not hardening.
+
+`totpSecret` is a plain, unencrypted column on `User`. This codebase has no existing encryption-at-rest primitive for any column (`JWT_SECRET`, refresh tokens, and password hashes all rely on hashing or transport security, never column-level encryption), so adding one here would be new infrastructure built for a single field rather than a project-wide pattern, disproportionate to this story's scope. The safeguard is that no DTO or API response ever serializes `totpSecret` (covered by its own test), the same boundary `RefreshToken`'s hashed token and `User.password` already rely on. A database compromise that reaches `totpSecret` already reaches `password` and every refresh token, so this column is not a materially weaker link than what already sits next to it.
+
+The intermediate two-factor login token is a JWT signed with the same key as the real access/refresh tokens, carrying `userId` and a `tokenType: "two_factor_pending"` claim, five minutes' expiration (`jwt.two-factor-pending-expiration`), issued by `JwtUtil.generateTwoFactorPendingToken`. It is never accepted by `JwtAuthenticationFilter`, which only reads the `access_token` cookie and skips `/auth/**` entirely apart from the three endpoints that need a real session (`/auth/2fa/setup`, `/confirm`, `/disable`); `AuthService.verifyTwoFactor` is the only code path that ever inspects a pending token, and rejects one missing the `tokenType` claim outright. A new claim on the same JWT shape was chosen over a second token store (a database-backed pending-login table) because the pending token is short-lived and stateless by nature, an intermediate step that either completes or expires, with nothing worth persisting if it never gets used.
+
+`/auth/resend-verification`, `/auth/password-reset/request`, and `/auth/2fa/verify` were added to `RateLimitingFilter`'s existing IP-only strict bucket alongside `/auth/login` and `/auth/register`. The task list named only the first explicitly, but a second-factor code is a 6-digit brute-force target and a password-reset request sends a real email on every call; both fit the same rationale the login/register bucket already exists for, and leaving them on the general 60-per-minute limit would be a real gap in an "auth hardening" story.
+
+Why: each of these is a real fork in the code that the task list left to judgment rather than a change the task list already settled. Blocking login outright is the simplest rule that actually stops an unverified account from doing anything, and pairing it with no-auto-login-on-register closes the one path that would have quietly defeated it. Plain-column `totpSecret` matches the security posture already implicit in the rest of the schema instead of introducing a one-off encryption scheme with no other column to share it with. A claim on the existing JWT keeps the two-factor login step stateless and consistent with how access and refresh tokens already work, rather than adding a new table and cleanup job for a value that lives for at most five minutes.
+
+---
+
+## 2026-09 | Story 28's retheme-only rule is superseded for pages whose mockup layout differs from the existing page
+
+Decision: two implementation passes at story 28's existing pages both applied the new colors, fonts, and spacing tokens on top of the current pages' unchanged layouts. Several pages' mockups use a different structure than what already exists, most visibly the playlist list, where the mockup is a narrow icon-only nav rail next to a grid of cover-art cards and the app is a full sidebar with a text list and an empty content area. No token or class change turns one layout into the other. `docs/FRONTEND_IMPLEMENTATION_GUIDE.md` now governs implementation: a page's mockup is the literal spec for its structure, not only its styling, and a page gets rebuilt to match that structure rather than kept as-is and restyled, whenever the two differ. shadcn primitives are still required for every form control, button, dialog, and table; only the retheme-only constraint on overall page layout is lifted.
+
+Why: the project owner's standing rule is that the design mockups are authoritative over existing backend or frontend code whenever the two disagree, and retheme-only silently overrode that rule for page structure specifically. A page that keeps the old layout and only changes its surface styling does not satisfy "the design is authoritative," no matter how closely the color and font tokens match, and two rounds of exactly that approach were rejected on review for looking like "the old version with a skin on top of it."
+
+---
+
+## 2026-09 | Metadata locks include corroborated Wikipedia and one-year source clusters
+
+Decision: after the three structured sources fail their initial exact lock, Wikipedia is extracted as before. The pipeline promotes a result to `VERIFIED` without four-source reconciliation when at least three of the four source years agree exactly. It also promotes when at least three non-null source years all fall within a one-year range, using the earliest year. The existing earliest-candidate extraction rule remains unchanged.
+
+Why: corroborated source evidence resolves these cases without paying for reconciliation, while a one-year range stays within gameplay tolerance. Requiring every available candidate to stay in that range prevents a distant outlier from being silently accepted.
+
+## 2026-09 | Batch F keeps shadcn primitives as the interaction boundary
+
+Decision: Batch F keeps shadcn and Radix primitives for accessible controls, dialogs, popovers, and form fields. Page-specific composition and design tokens provide the visual system. Components are replaced only when the required interaction cannot be expressed through the existing primitive.
+
+Why: the primitives already provide keyboard behavior, focus management, and semantic defaults. Replacing them would duplicate tested accessibility behavior while making the visual design harder to keep consistent.
+
+## 2026-09 | Story 30 sitelinks persistence: nullable count column, separate count fetch, unknown stays null
+
+Decision: `songs` gains a nullable `wikidata_sitelinks_count` integer column (`V21`), populated by both song persistence paths (`SongResolutionService` for pipeline-resolved songs, `PlaylistService` for user-confirmed creations). The AI microservice resolves the count with a dedicated `wbgetentities` call asking for `sitelinks` only, against the track candidate's entity id, rather than widening the existing labels and claims lookup, and threads it through `SongMetadataResult` into `AiMetadataContent` and `SongMetadataResponse`. A failed lookup resolves to null, never zero, and the difficulty scorer treats null as the neutral midpoint. The international-scope cutoff stays undecided until real catalog data exists to check a value against; the scorer's existing minima keep their heuristic values.
+
+Why: a sitelinks payload carries every linked edition's full entry, so folding it into the lookup that runs for every candidate would bloat a call whose result is otherwise small, while the count is only ever needed for the single track entity. Null for unknown keeps a song with no capture history (everything resolved before this column existed, plus any failed lookup) from skewing easy or hard; zero would read as maximally obscure, which is a claim about the song, not a statement that nothing is known. Persisting through both creation paths matters because user-confirmed songs bypass the resolution service entirely.
+
+## 2026-09 | Story 30 session starts: preview-then-confirm generation, staged pools, admin-only
+
+Decision: Difficulty-Based starts split into a side-effect-free preview (`POST /api/groups/{groupId}/session/generate`, tier plus target count in, song previews out) and a confirm (`POST .../start-with-songs`, reviewed ids in), with Custom-mode (`POST .../start-custom`, exactly one of a playlist id or a pasted playlist link) beside them. All three are group-admin-only, matching the legacy start. The preview returns identity and release facts only, never the youtubeId the round flow withholds until the reveal. The confirmed or custom song ids reach the session through an in-memory staged pool keyed by groupId (`PendingSessionSongPool`, mirroring `SessionResultsStore`): the endpoint stages the pool, then runs the unchanged group lock and broadcast, and the existing start listener consumes the staged pool exactly once when the broadcast fires. A start that fails before the broadcast discards its staged pool, so nothing leaks into a later start. A pasted playlist link expands to video ids and maps each to its catalog song, skipping videos with no match; a link with no matches at all is a conflict, not an empty session. The international-scope cutoff for generation is 5 sitelinks, an initial heuristic to tune once real catalog data exists.
+
+Why: previewing without starting is what the review step needs, and revalidating the confirmed ids on the way in keeps a stale or hand-edited review from starting a broken session. Routing through the existing lock and broadcast keeps every client in sync exactly the way the legacy start does, instead of growing a second session-creation flow with its own sync semantics. Withholding youtubeId from the preview respects the same rule that keeps it out of round state before the reveal. Skipping unknown videos rather than failing the whole link treats a playlist with some uncatalogued tracks as usable, while failing on zero matches tells the admin plainly there is nothing playable.
+
+## 2026-09 | Pixel-art image rule: pixelized uploads stored as database bytes
+
+Decision: playlist covers and profile pictures upload pixelized and persist as normalized PNG bytes in the database (`playlists.cover_image`, `users.avatar_image`, `V25`), never as hotlinked originals. The client shrinks uploads onto a 32-pixel grid with smoothing off; the server re-validates (decodable image, at most 64 pixels per side, 256KB cap) and normalizes to PNG before storing. Cover writes require playlist write access; both reads are public so plain image elements can load them without credentials, which pixel art needs and which is safe because the bytes carry no private data. Playlists without a custom cover keep the song-thumbnail mosaic, users without an avatar keep their initial.
+
+Why: hotlinked originals leak whatever the source serves over time and bypass any size discipline, while tiny PNG bytes keep image storage inside the schema the core service already owns. Client-side pixelization sets the style, server-side validation keeps a hostile client from storing anything else. Public reads follow from how browsers load images, not from a judgment that covers are public content.
+
+## 2026-09 | OAuth returnTo: additionalParameters round trip, validated on both ends
+
+Decision: the invite returnTo survives Google sign in inside the OAuth2 authorization request itself. The login and register pages append a validated returnTo to the `/oauth2/authorization/google` link, a request resolver carries it into the saved authorization request's additionalParameters (persisted by the existing cookie repository), and the success handler reads it back and appends it to the frontend redirect. The redirect handler routes to the validated value instead of the fixed library path. Validation is same origin absolute paths only, applied when the link is built, when the request is saved, and when the redirect is sent, so a crafted value is dropped at each step rather than trusted once.
+
+Why: the authorization request cookie is the only state that spans the round trip to the provider, so anything else (a query param on the start link alone, a request attribute) is gone by the time the callback runs. Keeping the value inside that request reuses the persistence the flow already has instead of adding a second cookie with its own lifetime and cleanup. Triple validation keeps each side safe on its own: the frontend never builds an off site link, the backend never saves or redirects to one.
+
+## 2026-09 | Export duplex interleave replaces the combined single-face mode
+
+Decision: the combined card face (QR printed beside the answer) is removed, and the third export mode is an interleaved duplex PDF: info page, matching mirrored QR page, next info page, and so on in natural order. The separate info and QR files keep their manual flip-the-stack behavior, including the QR sheet-order reversal. The interleaved file skips that reversal so a printer's native double-sided mode lines each pair up in one pass.
+
+Why: a QR on the same face as the answer removes the hiding half of a physical card game. Interleaving keeps the per-card mirroring that aligns backs to fronts while letting the printer, not the user, handle the duplexing.
+
+## 2026-09 | Group invite preview mirrors the playlist one
+
+Decision: `GET /api/groups/invites/{inviteCode}/preview` returns member count and members with no authentication, mirroring the playlist preview endpoint, and both join pages render an invalid-link screen off the preview error instead of a form with placeholder data.
+
+Why: a dead code should read as dead before the join click, not after it. The group page had no preview to gate on, so it gets the same endpoint shape rather than a different error path.
+
+## 2026-09 | Featured artists ride a structured list, not the title string
+
+Decision: the precheck prompt extracts featured credits into a `featured_artists` list while the title keeps only the song name, and the Java side persists them as `FEATURED` song-artist rows behind the `MAIN` one. Card rendering already reads those roles, so no card change was needed.
+
+Why: embedding the credit in the title leaks the answer onto the card face and collapses two roles into one string every downstream reader would have to re-parse. A list keeps the split where the model already made it instead of reconstructing it with string matching later.
+
+## 2026-09 | YouTube import progress lives on its own page with a slim playlist banner
+
+Decision: the YouTube import page keeps the job open in place with a progress bar and per-song checklist instead of redirecting to the playlist, the playlist song list refetches as items finish rather than once at the end, and the sidebar indicator links to that progress page. The playlist banner trims to a single line linking there.
+
+Why: redirecting away hid the only view that shows per-song state, and a banner with thumbnails duplicated what the sidebar and the page already cover. One progress view plus a pointer to it keeps all three surfaces consistent.
+
+## 2026-09 | Import progress resumes from storage, 404 alone means done
+
+Decision: the YouTube import page seeds its started state from the stored active-import job for that playlist, and only a 404 from the active-job poll counts as completion. Any other fetch error keeps the last known items on screen with a retrying note while the five-second poll continues.
+
+Why: a stored job is the only record that survives a reload, and the backend answers 404 exactly when no job is active. Treating every error as done turned a blip into a false completion, while the job kept running server-side.
+
+## 2026-09 | Dedup match carries artist lists split by role
+
+Decision: the verified-song similarity query aggregates artist names into main and featured arrays by role instead of one comma-joined string, and the match, precheck, and result schemas carry both lists end to end. Structured-source queries and LLM prompts take the mains joined for display; persistence writes one row per name.
+
+Why: the joined string collapsed roles the game needs apart, and a name containing a comma would have split wrong on the way back. Arrays keep the database's own role split intact through the fast path instead of reconstructing it.
+
+## 2026-09 | Public group preview exposes display identity only
+
+Decision: the unauthenticated group invite preview maps members to a lean shape with display name, avatar, and admin flag. User ids, presence, voice state, and join time stay behind membership.
+
+Why: the preview needs no auth by design, so everything it returns is public to anyone holding a code. The full member DTO was built for logged-in members, not for that audience.
+
+## 2026-09 | STOMP subscriptions are authorized, and voice signals go to one user
+
+Decision: every STOMP SUBSCRIBE passes through `StompSubscriptionAuthorizationInterceptor`. A `/topic/groups/{groupId}/...` topic needs group membership, a `/topic/sessions/{sessionId}/...` topic needs a player in that session, and a `/user/...` destination is always allowed because Spring resolves it to the subscriber's own session. Anything else is refused, including a direct subscription to a resolved per-user `/queue` destination. `VoiceSignalingController` now delivers each signal only to its target member on `/user/queue/groups/{groupId}/voice-signal` through `convertAndSendToUser`, and refuses a target outside the group. The group voice topic keeps carrying voice presence only. This supersedes the fan-out part of the story 12 entry above.
+
+Why: authenticating CONNECT alone let any signed-in user subscribe to another group's chat, voice, settings, and membership topics, or another session's round topic, by guessing an id. Signals carry players' network addresses, so broadcasting them to the whole group exposed every member's addresses to every other member. The broker's user-destination support was already configured for bulk import progress, so the reason the entry above gave for fanning out no longer holds.
+
+## 2026-09 | The AI service installs from a uv lockfile
+
+Decision: `ai/uv.lock`, generated by `uv lock`, pins every direct and transitive dependency of the AI service, including the dev extra. CI installs with `uv sync --locked --extra dev` and runs the tests through `uv run --locked`, so a lockfile out of step with `pyproject.toml` fails the build instead of resolving fresh versions. `pyproject.toml` keeps its version ranges, and `uv lock` is rerun whenever one changes.
+
+Why: the service had only unpinned `>=` ranges and no lockfile, so every install could resolve different versions, builds weren't reproducible, and there was no fixed set of versions to audit. uv reads the existing `pyproject.toml` unchanged and creates the same `.venv` the Makefile already runs from.
+
+## 2026-09 | Game sessions recover from restarts and no longer stall
+
+Decision: a player counts as connected while any of their sockets is subscribed to the session's round topic, and subscribing marks them connected again. A session needs at least players times the win condition in songs to start, and when the queue runs out it completes on the current standings. Each round has a three-minute placement deadline; an idle active player's card is discarded like a wrong placement with no bets, without marking them Left. Skip betting is open only to eligible bettors, and the window closes once every eligible bettor holding a token has bet or skipped. On startup, each in-progress session's current round timer is rescheduled from the round's stored timestamps, every player starts disconnected until a socket subscribes again, and the auto-abandon timer is armed. Completed session results are stored in the session_results table. A guess's result goes only to the guesser, and a player's first correct artist or title is broadcast without the answer.
+
+Why: the reconnect path had no caller and every socket close counted as a disconnect, so a reload got an active player marked Left and could abandon a live session. An empty queue threw inside the scheduled advance and left clients on the reveal. Timers and results lived only in memory, so a restart stranded rounds. An idle but connected active player held the round forever, and any single player could end everyone's betting window. The placement deadline is generous because the active player listens through YouTube's ads first. The song minimum gives every player enough turns for a game with good placements to reach the win, and matches the set size the lobby already generates for difficulty starts. The skip rule follows GAME_DESIGN.md: the button ends the window early when no one wants to bet.
+
+## 2026-09 | Shared songs, covers, member identity, and results are access-checked
+
+Decision: a song can be edited directly only by someone who can write every playlist holding it; anyone else reports a correction instead. A playlist's custom cover needs the same read access as the playlist. A member's per-group display name is 1 to 30 characters with no control characters, and a per-group avatar URL must be an https Google profile image. A group's stored session results can be read only by the users who played that session.
+
+Why: a song row is shared across playlists, so one playlist's writer could change a song everywhere it's used. The cover endpoint was public, exposing private playlists' covers by id. Every member's browser loads a member's avatar URL, and Google profile images are the only avatar URLs the app produces, so any other host would only serve tracking or abuse. Group ids are sequential, so an unchecked results endpoint let anyone read any group's results.
+
+## 2026-09 | Imports are capped and metered, and group admins can remove members
+
+Decision: an import holds at most 200 songs, on both the on-the-spot bulk import and the background playlist import. Each user gets 500 new songs resolved per UTC day across both paths, counted in the import_quota_usage table and reserved in one statement before any paid lookup starts; songs already in the catalog don't count. The bulk import checks write access to its target playlist before any lookup. Uploaded images are refused from their header's declared dimensions before any pixel data is decoded. Join codes allow ten attempts per user per ten minutes. A group admin can remove another member while no game session runs; the removed user can't rejoin that group, and their open sockets are closed after the removal commits.
+
+Why: every new song costs OpenAI and YouTube calls, and both import paths accepted unbounded lists, so one user could run up the bill without limit. The reservation is atomic so concurrent imports can't together pass the day's limit. Four-letter join codes are guessable, and without removal an unwanted joiner could only be escaped by abandoning the group. A STOMP subscription is authorized only when it's made, so a removed member would keep receiving group messages until their socket closed; closing it forces every subscription through the membership check again.
+
+## 2026-09 | Batch 7 preserves explained refusals and hides unexpected failures
+
+Decision: the global handler preserves `ResponseStatusException` status and reason, returns 403 for `AccessDeniedException`, returns 400 with its message for `IllegalArgumentException`, which services throw for a request they refuse as invalid, and keeps the existing explicit exception mappings. Other runtime failures are logged server-side and return a generic 500 message. OAuth `returnTo` values are accepted only as slash-prefixed paths without backslashes, control characters, or a protocol-relative prefix. Production startup requires a Resend API key, while environments without a key silently skip email delivery and never write a token-bearing link to logs.
+
+Why: explicit refusals are user-facing state that the frontend already shows. Infrastructure failures are not safe client detail. Browser URL parsing treats a backslash after a slash as an authority boundary and strips tabs and newlines, so path-prefix checking alone does not establish a local redirect. Email tokens grant account access and cannot appear in logs.
+
+## 2026-09 | Batch 8 uses response headers and transactional locks for low-risk hardening
+
+Decision: the frontend sends a CSP that permits the API origin and matching WebSocket origin, YouTube thumbnails, Google avatars, self-hosted fonts, browser media blobs, and Next inline scripts, plus `unsafe-eval` in development only, which React needs there. Production disables Springdoc. The AI service rejects an empty internal key at startup, uses a constant-time comparison, and exposes neither docs nor metrics. CSV formula prefixes are escaped with an apostrophe. Group joins lock the matching group row pessimistically before capacity is checked, through dedicated finders so read-only lookups such as the invite preview never take the lock.
+
+Why: each CSP origin corresponds to a current runtime dependency. The group lock serializes joins on the only row whose member count establishes capacity. Documentation and metrics are not public endpoints for the AI service.
+
+## 2026-09 | AI service metrics are served behind the internal key
+
+Decision: the AI service exposes `/metrics` again, guarded by the same `X-Internal-Api-Key` check as its other routes. The Alloy scrape sends that header from `INTERNAL_SERVICE_API_KEY`, which it already loads from `backend/.env`. This supersedes the part of the batch 8 entry that disabled the metrics route.
+
+Why: disabling the route stopped AI metrics from reaching Grafana. The key restricts the route to the scraper without a separate credential or port to manage.
+
+## 2026-09 | Rounds are full passes, games end at a round's end, and guessing is one shot per field
+
+Decision: a round is one full pass through the active-player rotation; each rounds row is a turn inside it, and the round number shown to players advances once the rotation reaches a player who already had a turn in the current round. Reaching the win condition no longer ends the game on the spot: the game completes when the round in which anyone reached it closes, and all results use competition ranking, so players tied on cards, artists guessed, or titles guessed share a place. Players start with two tokens. The title gets one guess per turn. Artists are guessed one at a time: a correct artist counts and allows another, a wrong one closes artist guessing for the turn, and repeating an artist already guessed is refused. The active player earns one token per turn for the title plus at least one artist. When a session ends, the ended event carries the group id, the group broadcasts that it's open again, and the results screen reads the group from its URL. This supersedes the "fully correct guess, both artist and title" token rule and the single-turn round of the earlier gameplay entries.
+
+Why: from playtest feedback. Ending mid-round gave players earlier in the turn order an extra turn over the rest, and it ruled out ties. Songs with several credited artists made "every artist" nearly unreachable, and unlimited resubmissions turned guessing into brute force. Sessions are purged when they end, so a client that learned about the end by refetching the session got a 404 and was stuck on it.
+
+## 2026-09 | LAN playtests with voice run behind a local HTTPS proxy, and the DJ's audio share starts from the YouTube click
+
+Decision: a LAN playtest that needs voice runs `scripts/lan-https-proxy.mjs`, a dependency-free Node proxy that serves one HTTPS origin on the LAN address with a keytool-generated self-signed certificate and forwards backend paths (`/api/`, `/auth/`, `/ws`, the OAuth handshake, API docs) to the Spring Boot service and everything else to the Next dev server. The DJ's "Open on YouTube to play" click requests the tab-audio capture first and then opens YouTube in its own named window with the opener link cut; phones keep the plain link to the YouTube app. A player's signalling socket connects before the join is announced. The voice sidebar keeps the left sidebar's 76px width in every state and shows only on the group lobby page or while its player is in the call.
+
+Why: browsers expose `getUserMedia`, `getDisplayMedia`, and the Clipboard API only on secure origins, so voice and audio sharing could never work over the plain-HTTP LAN address. One proxy origin means one certificate to accept, no cross-origin API calls, and no TLS setup in either service. The capture request needs the click's user activation, so it goes before the window opens, and a separate window keeps the picker visible in the game window. Announcing the join first let other members send their offers before the joining socket was listening, so the first connection attempt was always lost and voice waited on the eight-second retry.
+
+## 2026-09 | Every user YouTube import runs on the fast tier, in parallel, and the patient tier rechecks it
+
+Decision: every user import of YouTube videos, the background playlist import and the on-the-spot bulk import alike and whatever its size, resolves new songs on the fast tier from the earlier two-tier entry, with no size threshold. The AI service exposes it as two calls: `/metadata/identify` (YouTube fetch, hard filter, verified-duplicate check, and the pre-check LLM call) and `/metadata/date-fast` (a provisional year from one lane, MusicBrainz or Wikipedia plus LLM extraction, whichever frees up first given the work in flight, falling back to the other lane when the first finds nothing). The backend dispatches every new song's identify call at once onto a bounded pool, and each song moves to its year lookup the moment its own identify returns, so no song waits on another. Each source's pacing in the AI service reserves request slots under a lock, so parallel songs queue at the source's documented pace instead of bursting. A resolved song joins the playlist immediately and is saved UNVERIFIED, then queued as a `FAST_TIER_RECHECK` backlog row carrying its provisional year; the patient drain records its own year beside it, and the admin backlog lists both with a run-now drain. A song neither lane can date goes through the full pipeline inline and isn't rechecked. A manually added song is queued as a `USER_ADD_RECHECK` the same way. Every existing limit still holds: the backend paces its own fast-tier calls to the AI service's per-minute cap, the full-pipeline fallback runs one song at a time to stay inside `/metadata/resolve`'s 30 a minute, a source's cooldown or back-off holds its shared pacer for every caller, the import page polls no faster than every five seconds so one user stays inside the core service's 60 requests a minute, and the 200-song import cap and 500-song daily quota are checked before any of it starts. Test account 1 is seeded as an ADMIN. This supersedes the 2026-09 entry's claim that the fast tier was built into the microservice: until now only the patient pipeline existed, and user imports ran it one song at a time and then again from the backlog.
+
+Why: owner decision after the second playtest, where a playlist import took minutes because every song ran the full patient pipeline sequentially, and each was then run through the same pipeline a second time from the backlog. The fast tier's spike scored 90% at a fraction of the calls, and the patient recheck catches the rest without the user waiting on it. Linking each song as it resolves lets a user start playing before a large import finishes.
+
+## 2026-10 | Beta uses Azure Container Apps with Supabase, then moves to Hetzner if sustained cost requires it
+
+Decision: Beta deploys the Next.js frontend on Vercel, the Spring core and FastAPI AI service as separate Azure Container Apps in one Consumption environment, and data in two new Supabase projects. The transactional Postgres+pgvector project is shared by both backend services. The separate analytics Postgres project is used only by the Spring core. The core app has external HTTPS and WebSocket ingress, while the AI app has internal-only ingress. The core app remains at one replica until the realtime broker and process-local session state are externalized. Azure resource limits, game-admission limits, budget alerts, and a shutdown workflow protect the whole-deployment ceiling of roughly $20 per month. If sustained Azure use exceeds that ceiling, the same two container images and reverse proxy move to one fixed-price Hetzner server. Vercel and both Supabase projects stay in place.
+
+Why: Azure Container Apps supplies the public cloud deployment, container operations, managed HTTPS, internal service networking, revision workflow, and observability integration wanted for Beta. The game has a small expected user base, direct peer-to-peer media, and a realtime core that cannot yet scale horizontally. A fixed-price Hetzner server is therefore the cost-control path once steady WebSocket activity removes the benefit of scale-to-zero pricing. Keeping Vercel and Supabase unchanged makes that future migration a deployment change rather than a data or frontend migration.
+
+## 2026-10 | Production databases move from Supabase to Neon
+
+Decision: the two production Postgres databases, the transactional core project with pgvector and the analytics project, run on Neon instead of Supabase. The app has a single production deployment, and the closed-beta access gate is a phase of that deployment, not a separate environment. The Azure Container Apps and Vercel plan from the earlier Beta entry is unchanged.
+
+Why: Neon's Free plan suspends idle compute after five minutes and wakes it automatically on the next query in roughly half a second, while a Supabase Free project pauses after a week of inactivity and stays down until restored by hand. A paused database would take down a rarely visited production app without warning. Neon's Free plan also gives 1 GB per project, raised from 0.5 GB on 2026-10-02, against 500 MB on Supabase. Both providers offer standard Postgres with pgvector, so the Flyway histories and the Spring datasource configuration carry over with new connection URLs. Neon closes idle connections on suspend, so the Spring connection pool retires connections before that happens.
+
+## 2026-10-09: Playlist metadata and lobby design requirements
+
+Later approved product requirements supersede older mockups. The affected design sources and published canvas must reflect those requirements before serving as the visual reference. Library and Explore filters, playlist member popups, import inside Add song, and separate lobby playlist selection remain the intended behavior. Group-admin transfer requires confirmation and updates permissions after success.
+
+New playlists retain their creation timestamp. Existing playlists have no reliable creation date and keep a null value. Song duration comes from the submitted upload's official YouTube metadata, including duplicate matches, and remains nullable. Stored durations expire after 29 days with hourly cleanup; they are not inferred from title, release metadata, or a different upload.
+
+Account/profile/settings pages, legal-page UI, statistics, account-management controls, and disclosure/export-scope updates are deferred to a later documentation-review batch. Their missing implementation remains tracked rather than marked complete.
+
+## 2026-10-09: Automatic YouTube duration refresh
+
+The six-hour duration refresh supersedes the hourly deletion behavior in the earlier playlist metadata decision. Due video IDs are batched in groups of up to 50 through official videos.list using contentDetails, without the metadata synthesis pipeline. Successful lookups update freshness; missing videos clear duration. Failed lookups do not extend freshness and remain due for the next sweep. Expired cached values are cleared after a failed sweep.
+
+A videos.list request costs one quota unit for up to 50 IDs. Refresh shares the project's quota with new-song lookups. Evenly spread refreshes of a million videos every 29 days use roughly 690 units daily, while expiry spikes, retries, and partial batches increase that cost. No separate daily refresh allowance is enforced yet; a catalog approaching the shared quota limit needs budgeting or an approved quota increase.
+
+## 2026-10-09: Gameplay feedback and voice presentation
+
+The approved gameplay behavior keeps automatic reveal after betting, full-pass rounds, joint winners, and guessing that closes at placement lock-in. Opening YouTube does not start the round timers. Older manual-reveal and first-to-target text is superseded.
+
+The voice sidebar is a 76px rail without collapse. It appears on the lobby or during an active call, with join at the top outside a call. Per-group avatars, microphone speaking rings, and mute/deafen indicators use the existing voice peer connections. A reliable ordered data channel carries transient status, sends the current state when it opens, and clears remote state when the peer closes. Speaking detection excludes shared song audio.
+
+Away state shows the active player, round, own tokens, and only the current phase's server deadline. An unlocked own turn produces a clickable banner and one sound per turn across reconnects. Audio starts after a browser interaction. Token drop feedback runs only for a new token award, with separate incorrect-guess feedback and reduced-motion support. Account and legal work remains deferred.
+
+## 2026-10-09: Verified results populate the catalog independently of playlists
+
+Every genuinely new fully verified pipeline result enters the shared catalog immediately, regardless of submission origin or whether the user confirms a preview. Playlist membership requires an explicit action. Unverified previews remain temporary until submission; imports and admin processing retain their existing persistence behavior. The ten-minute per-user/per-video preview cache avoids repeated processing for confirmation and does not delay verified catalog insertion.
+
+Verified duplicate responses carry the existing song ID. The core service links an alternate upload to that song rather than inserting another Song. Reuse preserves its primary video, duration, metadata, and attribution. Primary inserts, alternate-ID links, and playlist confirmation share transaction locks by submitted YouTube ID. A provisional response cannot downgrade an existing verified song.
+
+Admin origin never grants verification or bypasses the pipeline. The combined structured precheck handles extraction, classification, and injection detection; rejection stops downstream source gathering. Exact three-source agreement skips Wikipedia and year reconciliation, not the earlier precheck. These rules supersede older claims of immediate admin trust and a separate detector before every LLM call.
+
+Automatic Topic-upload searches and upgrade suggestions, genre enrichment, and genre game modes are dropped. Existing nullable genre columns remain for compatibility. Raw-evidence storage, source-match safety tuning, and gather-boundary timeouts remain outside this change.
+
+
+## 2026-10-09 | Core game history, prepared difficulty, and one-year analytics retention
+
+Decision: user-visible game history and statistics live in core, alongside prepared song difficulty scores used by session generation. Analytics holds internal usage and research data. This supersedes the earlier plan to serve player history from analytics. Compact game and participant summaries persist before temporary session deletion, remain participant-only after group expiry, preserve ties and departures, and exclude song timelines, raw guesses, chat, and voice. Interrupted games do not count as wins.
+
+History remains while any participant account remains. Account deletion removes identifying fields and access, leaves anonymous deleted-player results for other participants, and removes a summary after its last account-linked participant is deleted. Raw analytics retention changes from 180 to 365 days, including planned research observations. Anonymous per-song aggregates survive raw-event expiry. Research identity is subject to account deletion.
+
+Difficulty calculation runs in the background from analytics observations and publishes prepared scores into core. Cold starts use popularity; personalization remains deferred. Confirm saves the tier without generating songs. Start selects a varied eligible pool using connected players times the win target times three, without exposing song previews or requiring analytics availability. The field contract and implementation tasks are recorded in SYSTEM_REFERENCE.md and TASKS.md.
+
+## 2026-10-09: Durable research delivery and prepared global selection
+
+Scored turns queue pseudonymous research observations in core within the gameplay transaction. Analytics delivery commits the observation, retry key, and anonymous aggregate together; core acknowledges only after that commit. Gameplay does not require analytics availability. Account deletion queues anonymization and removes the core identity mapping. Analytics tombstones prevent late deliveries from restoring that identity. Raw observations expire after 365 days, including observations still queued during an outage; anonymous aggregates survive.
+
+Prepared core difficulty uses popularity for new verified songs and retained placement aggregates for measured songs. Background refresh runs every six hours and retains prior scores when analytics is unavailable. Start uses the tier and sampling-key index with a random pivot and wraparound, then shuffles the selected pool. Confirm persists the tier only. Compact core summaries retain participant history independently of temporary sessions and group lifetime. Personalized models remain deferred.
+
+## 2026-10-10 | Durable verified catalog embedding indexing
+
+Core owns a versioned embedding queue and database triggers so every verified catalog save path, including verification upgrades and artist/title edits, schedules indexing after its transaction commits. Existing verified entries with missing embeddings enter the same queue. AI performs the embedding call through an authenticated internal endpoint, with bounded requests, leased jobs, retry backoff, and stale-result checks. A separate core scheduler invokes it only when work is due. Indexing does not delay submission requests or change playlist membership; similarity reuse begins once the embedding is stored.
+
+## 2026-10-10 | Azure runs the backend during the free trial, then Hetzner
+
+Decision: The backend stays on Azure Container Apps with scale-to-zero while the free trial credit lasts, about three weeks from this date. It then moves to one fixed-price Hetzner server. Vercel and both Neon projects stay unchanged.
+
+Why: A measured cold start after scale-to-zero is about 35 seconds, and Azure's usage-based pricing costs more than the project wants to pay for an always-on replica. The trial credit covers the beta period at no cost, and a fixed monthly price on Hetzner avoids a variable bill afterward. The C1-only JIT setting shortened Spring startup by under a second on Azure's single vCPU, so most of the cold start is Azure scheduling and cannot be tuned away in the app.
+
+## 2026-10-16 | Backfill and user imports run through seven persisted stage queues
+
+Each metadata stage (YouTube metadata, MusicBrainz, Discogs, Wikidata, Wikipedia, LLM reconciliation, embedding) has its own persisted queue and workers that lease jobs at the stage's own pace. A song is finalized when every stage it needs has finished. Wikipedia is queued only when MusicBrainz, Discogs, and Wikidata disagree. Core owns the job tables; the AI service workers lease from them. The earlier design resolved one song at a time through a single synchronous call, kept source pacing in process memory, and marked a song failed on any upstream error, so one slow source idled the others, a restart lost partial work, and an outage permanently failed songs.
+
+Transient upstream errors retry with backoff and never fail a song; permanent errors store their real reason and stage. LLM usage has no cap and is tracked with an estimated cost from official prices. The fixed daily drain cap is replaced by the real YouTube quota with a reserve for user imports.
+
+## 2026-10-16 | External API usage is recorded per day and priced on read
+
+The AI service records every YouTube Data API request, chat completion, and embedding call in the core-owned `api_usage_daily` table, one row per day, provider, and operation, with call counts, YouTube quota units, and input and output tokens. YouTube days follow Pacific time, matching the reset of its daily quota; DeepInfra and OpenAI days follow UTC. Estimated cost is computed when usage is read, from the stored tokens and named price constants that carry the date they were read from the providers' official pages, so a corrected price also corrects history. Recording runs off the request path and swallows every failure, so it never changes a pipeline result or its pacing.
+
+## 2026-10-16 | The stage pipeline job engine reclaims leases lazily and pauses a stage on a rejected key
+
+Expired leases are reclaimed inside each lease call for that stage, with no scheduler polling the job tables, because every extra query keeps the serverless database awake. A lost lease counts as a failed attempt, so a job that keeps crashing its worker still gives up after the maximum attempts. A rejected API key pauses the whole stage and returns the job to its queue without using an attempt or failing the run, since every job of that stage would fail the same way until the key is fixed. Only one active run may exist per YouTube ID, enforced by a partial unique index and an advisory lock on the ID when a run starts.
+
+## 2026-10-16 | AI stages share resolve functions and persist source pacing
+
+The internal stage endpoints share identification, source lookup, and reconciliation functions with resolve. Stage calls propagate provider failures with a sanitized cause, provider, and upstream status so core can retry outages and pause rejected keys. Resolve keeps its existing best-effort fallbacks. Wikipedia returns lead text and a null earliest year; structured extraction stays in reconciliation to preserve the existing call sequence and usage accounting. Exact three-source agreement still skips Wikipedia extraction and reconciliation.
+
+Core owns V45's `stage_pace` table. AI processes reserve source slots through one atomic update and sleep outside the database, keeping reservations and cooldowns across restarts. Stage calls defer pace waits over 30 seconds with 429 and `retryAfterSeconds`, reserving nothing; resolve keeps waiting. Database outages fall back to in-memory pacing with a warning and a 30-second database retry window. Response-time averages are written in the background. Core workers and queue cutover remain separate work.
+
+## 2026-10-16 | Core stage workers use a disabled cutover flag and V41 executes embeddings
+
+Core leases metadata stage jobs and calls AI's internal stage endpoints. This supersedes the earlier queue decision's claim that AI workers lease core jobs. Each metadata stage permits one in-progress job, enforced through a locked stage control row. Idle workers check cheaply for due work, and pace deferrals reschedule without consuming an attempt. Admin batches use the backfill lane; user patient rechecks use the user lane and promote existing backfill runs for the same video. Backfill YouTube leases stop below a configurable 1,500-unit reserve, while user jobs ignore it.
+
+The cutover defaults off through `PIPELINE_STAGES_ENABLED`. With it off, the existing drain remains unchanged. With it on, the old scheduled and manual drains are disabled. Song persistence and run completion commit together, with save failures retrying the last stage. V41 remains the embedding executor, so the engine no longer creates a separate embedding job and the run finishes at song save. No production flag is enabled by this change.
+
+## 2026-10-16 | Admin pipeline reporting keeps skipped counts and protects songs used by games
+
+Core migration V46 stores skipped duplicates on each import batch so an empty submission batch can still report known or already-queued videos. Queue and song controls remain admin-only. Cancelling a batch prevents retry-all from restarting its failed runs. Embedding controls pause the V41 scheduler when the stage pipeline is enabled; its missing terminal history and hard attempt limit remain unknown in the API.
+
+An explicit admin catalog delete removes playlist links, alternate IDs, reports, confirmations, and artists, and cancels unfinished runs for its video IDs. A song still used by a current game's rounds, cards, or future-song queue cannot be deleted. This preserves the existing rule that an ordinary playlist removal only unlinks a song, while allowing an admin to remove a catalog entry deliberately.
+
+## 2026-10-16 | Pipeline stages overlap requests and wake after committed work
+
+Stage leases enforce per-stage concurrency through the stage control row across core processes. YouTube identification defaults to four slots, reconciliation to three, and each other metadata source to two. A bounded executor holds stage calls while a separate scheduler handles polling and timers. Workers drain up to twenty jobs per burst. Committed job creation and stage completion wake the next worker immediately; retries schedule wake-ups. A combined poll remains as recovery, with an immediate startup check, five-second active polling, and a ten-minute idle interval. The idle interval exceeds Neon's default five-minute inactivity threshold. Missed or remote signals can wait one idle interval, and other periodic database users can still prevent suspension. The AI service keeps one Uvicorn process and raises its shared AnyIO worker-thread limit to 100. Source pace reservations remain serialized, while waits and upstream calls overlap.
+
+Admin averages measure completed job duration over sixty minutes, separate from upstream response time. Ten-minute completion throughput, duration, concurrency and pace supply approximate drain estimates, which remain unknown without a measured basis. The overall estimate is the slowest current stage and excludes downstream jobs not yet created. Core V47 adds embedding claim and storage timestamps through triggers; the V41 queue remains its executor and has no hard failure limit or terminal job history. Successful jobs clear old failure fields, and read paths hide stale failures on completed work without rewriting historical rows. API failedTries and maxTries clarify the existing failed-attempt counters while preserving compatibility. Transient provider failures stay warning logs without error-reporter capture; unexpected failures stay errors.
+
+## 2026-10-16 | The closed-beta gate is removed and the deployed app is fully accessible
+
+Decision: the closed-beta access gate is gone. The `NEXT_PUBLIC_CLOSED_BETA` flag, the `BETA_ACCESS_PASSWORD` tester code, the `beta_access` cookie, the `/closed-beta` page, the `/api/beta-access` route, and the proxy redirect for visitors without the cookie are deleted from the frontend. Every visitor reaches the landing page, login, registration, and the rest of the app, which stays behind its normal authentication: the proxy still sends a request without a `session_hint` cookie from a protected route to `/login`, and the backend still authenticates every API call. The landing page renders its signed-in redirect for everyone again, and its calls to action lead to `/register` and `/login`.
+
+Why: the gate limited the production deployment to invited testers while the app was verified. The app is now open to everyone, so the gate and its link to the legacy app no longer serve a purpose. The 2026-10 entry on Neon, which describes the closed-beta gate as a phase of the single production deployment, remains accurate history for that phase.
+
+## 2026-10-17 | Persisted stages are the only backfill and patient-recheck pipeline
+
+The sequential backlog drain, its daily song cap, scheduled sweeper, manual drain and status endpoints, and obsolete catalog-backlog page are removed. Core stage workers, completion, HTTP stage calls, and scheduling are unconditional. Catalog and dashboard queue state comes from pipeline runs and jobs, with V41 still executing embeddings. The synchronous user fast tier and previews keep their existing behavior. Historical `pending_imports` rows and patient years remain readable; no table or column is dropped and no migration is included.
+
+The owner confirmed the production pipeline test before cleanup. Production already uses the stage path, so removal of the cutover flag preserves its behavior. A leftover `PIPELINE_STAGES_ENABLED` environment variable is ignored and can be removed by the owner after merge. YouTube reserve, stage concurrency, polling intervals, and source pacing remain configurable.
+
+## 2026-10-17 | Container Apps definitions are updated from the live definition
+
+A Container Apps YAML update replaces the whole container, so a file that lists only the image and the probes drops every environment variable, secret reference, and resource limit, and the new revision exits at startup. Changes to a running app's container are therefore built from the definition read from the running app, with the new setting added, and the update is checked for a lost environment variable before it is sent. `scripts/azure/apply-health-probes.ps1` follows this rule for the startup, liveness, and readiness probes: it waits for a healthy new revision and restores the previous definition when none appears. Core and AI both run the probes.
+
+## 2026-10-17 | Core and AI run one always-on replica on Azure
+
+Decision: both Container Apps run with minimum and maximum replicas of 1 instead of scaling to zero. This supersedes the scale-to-zero choice in the 2026-10 hosting entry for the rest of the Azure trial; the move to a fixed-price server afterward is unchanged.
+
+Why: the measured cold start of about 35 seconds is too slow for the first player of a session, and the trial credit covers the always-on cost. Core could not scale beyond one replica anyway because game and STOMP state are process-local.
+
+## 2026-10-17 | Production reuses the local Sentry, Grafana, and Cloudflare credentials
+
+Decision: the production Container Apps use the same Sentry projects, Grafana Cloud stack, and Cloudflare TURN key as local development. `scripts/azure/set-observability-secrets.ps1` copies them from the local `.env` files into Container Apps secrets and verifies each stored secret against the file value. Metrics stay off in production until an Alloy container and an internal-only metrics port exist.
+
+Why: none of the three services needs a separate key per environment, and a second set of accounts adds setup without isolating anything the environment tag does not already separate. Core's `/actuator/prometheus` requires authentication, so an Alloy scraper cannot reach it today, and exposing it publicly would be a security change that belongs in its own story.
+
+## 2026-10-17 | DJ audio is shared once per match, and players can leave a running session
+
+Decision: the DJ shares the entire screen with system audio once per match, and that share stays alive across rounds and DJs so no round asks again. The link opens as a tab in the same window. A player can leave a running session and return to the lobby while the game continues without them. A player whose tab closed or connection dropped leaves voice after 2 minutes.
+
+Why: a production playtest showed that picking a window or tab raised before the YouTube tab existed produced a share without audio, and that browsers always require a user click to start a share, so the way to avoid repeated prompts is one long-lived share. Browsers that cannot capture audio, such as Firefox, cannot act as DJ. The playtest also showed players had no way out of a running session short of the whole group ending it.
+
+## 2026-10-17 | Players whose browser cannot capture audio are skipped as DJ
+
+Decision: a player whose browser cannot share audio, in practice Firefox and Safari, is skipped when the DJ rotation picks the next DJ. They still join the group, use voice chat, and guess every round, and they see a short notice explaining why they are not a DJ. The client reports its capability when the player joins.
+
+Why: a DJ without audio capture plays the song only through their own speakers, so nobody else can hear it in a remote game. Skipping them keeps every round playable without blocking those browsers from the rest of the game.
+
+## 2026-10-18 | The song travels on its own connection, separate from voice
+
+Decision: the DJ's shared audio is sent over a separate set of peer connections for the game session, which every player joins automatically as a listener, and voice chat carries only microphones. Outside the DJ's own turn the shared audio is detached from the connections, not muted. The song is sent as stereo Opus at 128 kbps with voice processing off, and the microphone gets noise suppression, a noise gate, and an optional RNNoise filter. Game screens (lobby, loading, rounds) fit the viewport and do not scroll.
+
+Why: the second playtest showed that sharing one call for voice and song meant no song for anyone outside voice, the DJ's voice was cut when the song was silenced, the card bars reacted to voice, and music inherited voice settings. Detaching keeps audio from leaving the DJ's computer outside their turn. A game screen that scrolls hides parts of the play area.
+
+## 2026-10-18 | Firefox and Safari may try to share audio for now
+
+Decision: desktop Firefox and Safari players get the share prompt again, and every attempt is logged, until real tests show whether they can capture audio. The earlier skip rule stays in the code behind one flag.
+
+Why: the earlier skip was based on documentation, not on a test in those browsers.
+
+## 2026-10-18 | Difficulty selection widens past the requested tier when that tier is short
+
+Decision: a Start on the saved tier takes the requested tier's prepared scores first, then the other prepared tiers, then VERIFIED songs in international scope that have no prepared row. The requested tier keeps priority whenever its band can fill the pool. Only a catalog still short after widening fails the start, and that message names how many songs are available and how many the game needs.
+
+Why: the second playtest could not start Easy, Medium, or Hard. The start asked one tier band for connected players multiplied by the target card count multiplied by three, so a band smaller than that stopped the game even though the catalog held enough in-scope songs, and the refusal carried no numbers to act on.
+
+## 2026-10-18 | The chat history endpoint stays newest-first and the panel reverses it
+
+Decision: `GET /api/groups/{groupId}/chat/messages` keeps returning its most-recent page newest-first. The chat panel renders that page oldest-first so the newest message sits at the bottom, and scrolls to the bottom when it opens and when a message arrives, holding the reader's own position once they have scrolled up. Each sender keeps one avatar color derived from their sender id, and times render on a 24-hour clock.
+
+Why: the endpoint's order is its paging contract, so the display order belongs in the client. Reading chat means answering the newest line, which belongs next to the input box. A color keyed on the render index reassigned every avatar each time a message arrived, so one sender appeared as several people.
+
+## 2026-10-18 | Joining a group the caller already belongs to is idempotent
+
+Decision: `POST /api/groups/join` returns the target group when the caller is already a member of it, without adding a second membership or publishing a join event. A caller who is a member of a different group gets a 409 that says to leave it first, and the join page offers to leave that group and retry. The join page shows the server's own message for every 409 and reserves "That invite link isn't valid." for a missing code. A group deleted when its last member left has no row, so its link is a plain 404.
+
+Why: the second playtest had a player still a member after a closed tab open the same link in a second browser and see an invalid-link screen. Membership survives a closed tab by design, so that block was the membership, and its 409 message was hidden behind the invalid-link wording. A rejoin of the group the caller is already in has nothing to reject.
+
+## 2026-10-18 | The game's song list is built and deduplicated at session start
+
+Decision: at Start, the difficulty path and the custom path both build the game's song list once. Duplicates are removed by a normalized artist and title key, the list is shuffled, and the starting cards and the round queue are dealt from it. The list belongs to the session and is never saved as a playlist.
+
+Why: the custom path dealt starting cards from an unshuffled, entity-distinct list, so two games on the same playlist opened identically, and the same artist and title can exist as more than one song row. The loading screen between the lobby and the first round already masks the work, so generation stays at Start rather than moving into the lobby.
+
+## 2026-10-18 | Game screens fit the viewport and do not scroll
+
+Decision: the group lobby, the loading screens, and every round phase fill the viewport and never scroll, and their content sizes to the available height instead of a fixed minimum. Playlists, the editor, import, explore, history, admin, auth, and results keep normal scrolling.
+
+Why: the second playtest found the DJ and guessing card covering the round subtitle and the footer actions pushed off screen at laptop heights, because each game screen forced a minimum height taller than the viewport. A play area that has to be scrolled hides part of the board.
+
+## 2026-10-18 | The frontend reports to Sentry
+
+Decision: the frontend adds the Sentry SDK and initialises it from a DSN environment variable, recording share-outcome breadcrumbs alongside console logs. Initialisation is skipped when the variable is absent, so no DSN is committed.
+
+Why: the share-outcome logging asks for a breadcrumb, and Sentry covers only the backend and the AI service today, so the frontend has no place to put one.

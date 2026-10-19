@@ -1,0 +1,171 @@
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import type { ReactNode } from "react";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+import LoginPage from "./page";
+
+const { toastError, toastSuccess } = vi.hoisted(() => ({ toastError: vi.fn(), toastSuccess: vi.fn() }));
+const resendMutate = vi.fn();
+const loginMutate = vi.fn();
+const loginPush = vi.fn();
+let loginSearchParams = new URLSearchParams();
+type LoginErrorHandler = (error: unknown, variables: { data: { email: string } }) => void;
+let loginMutationCallbacks: { onSuccess?: (data: unknown) => void; onError?: LoginErrorHandler } = {};
+let resendMutationCallbacks: { onSuccess?: () => void; onError?: (error: unknown) => void } = {};
+
+vi.mock("next/link", () => ({
+  default: ({ children, href }: { children: ReactNode; href: string }) => <a href={href}>{children}</a>,
+}));
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ push: loginPush }),
+  useSearchParams: () => loginSearchParams,
+}));
+vi.mock("@/hooks/generated/authentication-management/authentication-management", () => ({
+  useLogin: (options?: { mutation?: { onSuccess?: (data: unknown) => void; onError?: LoginErrorHandler } }) => {
+    loginMutationCallbacks = options?.mutation ?? {};
+    return { mutate: loginMutate, isPending: false };
+  },
+  useResendVerification: (options?: { mutation?: { onSuccess?: () => void; onError?: (error: unknown) => void } }) => {
+    resendMutationCallbacks = options?.mutation ?? {};
+    return { mutate: resendMutate, isPending: false };
+  },
+}));
+
+vi.mock("sonner", () => ({ toast: { error: toastError, success: toastSuccess } }));
+
+const FORBIDDEN_STATUS = 403;
+const UNAUTHORIZED_STATUS = 401;
+const NOT_VERIFIED_MESSAGE = "Email not verified, check your inbox for a verification link";
+const LOGIN_VARIABLES = { data: { email: "player@example.com" } };
+
+describe("LoginPage", () => {
+  beforeEach(() => {
+    toastError.mockReset();
+    toastSuccess.mockReset();
+    resendMutate.mockReset();
+    loginMutate.mockReset();
+    loginPush.mockReset();
+    loginSearchParams = new URLSearchParams();
+  });
+
+  it("does not submit invalid credentials", async () => {
+    render(<LoginPage />);
+    fireEvent.click(screen.getByRole("button", { name: "Log in" }));
+    expect((await screen.findAllByText(/too small/i)).length).toBeGreaterThan(0);
+    expect(loginMutate).not.toHaveBeenCalled();
+  });
+
+  it("submits valid credentials", async () => {
+    render(<LoginPage />);
+    fireEvent.change(screen.getByLabelText("Email"), { target: { value: "player@example.com" } });
+    fireEvent.change(document.querySelector('input[type="password"]')!, { target: { value: "CorrectHorseBatteryStaple1!" } });
+    fireEvent.click(screen.getByRole("button", { name: "Log in" }));
+    await waitFor(() => expect(loginMutate).toHaveBeenCalledWith({ data: { email: "player@example.com", password: "CorrectHorseBatteryStaple1!", rememberMe: false } }));
+  });
+
+  it("sends remember-me when the checkbox is checked", async () => {
+    render(<LoginPage />);
+    fireEvent.change(screen.getByLabelText("Email"), { target: { value: "player@example.com" } });
+    fireEvent.change(document.querySelector('input[type="password"]')!, { target: { value: "CorrectHorseBatteryStaple1!" } });
+    fireEvent.click(screen.getByLabelText("Remember me"));
+    fireEvent.click(screen.getByRole("button", { name: "Log in" }));
+    await waitFor(() => expect(loginMutate).toHaveBeenCalledWith({ data: { email: "player@example.com", password: "CorrectHorseBatteryStaple1!", rememberMe: true } }));
+  });
+
+  it("returns to the join prompt after login when one was requested", async () => {
+    loginSearchParams = new URLSearchParams("returnTo=/playlists/join/abc123");
+    render(<LoginPage />);
+    fireEvent.change(screen.getByLabelText("Email"), { target: { value: "player@example.com" } });
+    fireEvent.change(document.querySelector('input[type="password"]')!, { target: { value: "CorrectHorseBatteryStaple1!" } });
+    fireEvent.click(screen.getByRole("button", { name: "Log in" }));
+    await waitFor(() => expect(loginMutate).toHaveBeenCalled());
+    loginMutationCallbacks.onSuccess?.({});
+    await waitFor(() => expect(loginPush).toHaveBeenCalledWith("/playlists/join/abc123"));
+  });
+
+  it("ignores an off-site return target", async () => {
+    loginSearchParams = new URLSearchParams("returnTo=https://evil.example.com");
+    render(<LoginPage />);
+    fireEvent.change(screen.getByLabelText("Email"), { target: { value: "player@example.com" } });
+    fireEvent.change(document.querySelector('input[type="password"]')!, { target: { value: "CorrectHorseBatteryStaple1!" } });
+    fireEvent.click(screen.getByRole("button", { name: "Log in" }));
+    await waitFor(() => expect(loginMutate).toHaveBeenCalled());
+    loginMutationCallbacks.onSuccess?.({});
+    await waitFor(() => expect(loginPush).toHaveBeenCalledWith("/playlists"));
+  });
+
+  it("explains that the email already has a password account after a Google sign-in is refused", async () => {
+    loginSearchParams = new URLSearchParams("error=account_exists");
+    render(<LoginPage />);
+    await waitFor(() => expect(toastError).toHaveBeenCalledWith(
+      "An account with this email already exists. Log in with your password instead."));
+  });
+
+  it("shows the generic Google failure message for any other sign-in error", async () => {
+    loginSearchParams = new URLSearchParams("error=oauth2_failed");
+    render(<LoginPage />);
+    await waitFor(() => expect(toastError).toHaveBeenCalledWith(
+      "Google sign-in failed. Try again or use email and password."));
+  });
+
+  it("carries the return target on the Google link", () => {
+    loginSearchParams = new URLSearchParams("returnTo=/groups/join/abc123");
+    render(<LoginPage />);
+
+    expect(screen.getByRole("link", { name: "Continue with Google" })).toHaveAttribute(
+      "href",
+      expect.stringContaining("returnTo=%2Fgroups%2Fjoin%2Fabc123"),
+    );
+  });
+
+  it("leaves the Google link bare without a return target", () => {
+    render(<LoginPage />);
+
+    expect(screen.getByRole("link", { name: "Continue with Google" })).toHaveAttribute(
+      "href",
+      expect.not.stringContaining("returnTo"),
+    );
+  });
+
+  it("tells an unverified account why it cannot log in", () => {
+    render(<LoginPage />);
+    loginMutationCallbacks.onError?.({ response: { status: FORBIDDEN_STATUS, data: { message: NOT_VERIFIED_MESSAGE } } }, LOGIN_VARIABLES);
+    expect(toastError).toHaveBeenCalledWith(NOT_VERIFIED_MESSAGE);
+  });
+
+  it("keeps the generic message for wrong credentials", () => {
+    render(<LoginPage />);
+    loginMutationCallbacks.onError?.({ response: { status: UNAUTHORIZED_STATUS, data: { message: "Invalid username or password" } } }, LOGIN_VARIABLES);
+    expect(toastError).toHaveBeenCalledWith("Invalid email or password.");
+  });
+
+  it("offers to resend the verification email for an unverified account", () => {
+    render(<LoginPage />);
+    act(() => loginMutationCallbacks.onError?.({ response: { status: FORBIDDEN_STATUS, data: { message: NOT_VERIFIED_MESSAGE } } }, LOGIN_VARIABLES));
+    fireEvent.click(screen.getByRole("button", { name: "Resend verification email" }));
+    expect(resendMutate).toHaveBeenCalledWith({ data: { email: "player@example.com" } });
+  });
+
+  it("does not offer a resend for wrong credentials", () => {
+    render(<LoginPage />);
+    act(() => loginMutationCallbacks.onError?.({ response: { status: UNAUTHORIZED_STATUS, data: { message: "Invalid username or password" } } }, LOGIN_VARIABLES));
+    expect(screen.queryByRole("button", { name: "Resend verification email" })).toBeNull();
+  });
+
+  it("hides the resend option again when the next login attempt starts", async () => {
+    render(<LoginPage />);
+    act(() => loginMutationCallbacks.onError?.({ response: { status: FORBIDDEN_STATUS, data: { message: NOT_VERIFIED_MESSAGE } } }, LOGIN_VARIABLES));
+    fireEvent.change(screen.getByLabelText("Email"), { target: { value: "player@example.com" } });
+    fireEvent.change(document.querySelector('input[type="password"]')!, { target: { value: "CorrectHorseBatteryStaple1!" } });
+    fireEvent.click(screen.getByRole("button", { name: "Log in" }));
+    await waitFor(() => expect(screen.queryByRole("button", { name: "Resend verification email" })).toBeNull());
+  });
+
+  it("confirms a resend and reports a failed one", () => {
+    render(<LoginPage />);
+    act(() => resendMutationCallbacks.onSuccess?.());
+    expect(toastSuccess).toHaveBeenCalled();
+    act(() => resendMutationCallbacks.onError?.(new Error("Network Error")));
+    expect(toastError).toHaveBeenCalledWith("Couldn't send the email. Try again in a moment.");
+  });
+});

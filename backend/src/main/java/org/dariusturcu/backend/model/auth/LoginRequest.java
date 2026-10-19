@@ -7,6 +7,11 @@ public record LoginRequest(
         String email,
 
         @NotBlank(message = "Password is required")
-        String password
+        String password,
+
+        // Nullable wrapper, not primitive: older clients omit the field, and
+        // this codebase's Jackson mapping rejects null into a primitive.
+        // Absent means no preference, same as false.
+        Boolean rememberMe
 ) {
 }

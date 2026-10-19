@@ -14,9 +14,12 @@ import org.dariusturcu.backend.model.song.Song;
 import org.dariusturcu.backend.repository.PlaylistRepository;
 import org.dariusturcu.backend.security.util.SecurityUtils;
 import org.dariusturcu.backend.util.CardGenerator;
+import org.dariusturcu.backend.util.PaperSize;
 import org.dariusturcu.backend.util.QRGenerator;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
@@ -29,33 +32,35 @@ import java.util.List;
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class ExportService {
-    private final PlaylistRepository playlistRepository;
+    private static final int MAX_SONGS_PER_EXPORT = 500;
 
-    public byte[] generatePdf(Long playlistId) {
-        List<Song> songs = getValidatedSongs(playlistId);
-        try {
-            return buildPdf(songs, false);
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to generate PDF: " + e.getMessage());
-        }
+    private final PlaylistRepository playlistRepository;
+    private final PlaylistAccessService playlistAccessService;
+
+    private enum PageContent {
+        INFO, QR, DUPLEX
     }
 
-    private byte[] buildPdf(List<Song> songs, boolean isQr) throws IOException {
+    private byte[] buildPdf(List<Song> songs, PaperSize paperSize, PageContent pageContent) throws IOException {
         PDDocument document = new PDDocument();
 
         List<List<Song>> chunks = new ArrayList<>();
-        int pageSize = 12;
+        int pageSize = paperSize.cardsPerPage(CardGenerator.CARD_SIZE);
         for (int i = 0; i < songs.size(); i += pageSize) {
             chunks.add(songs.subList(i, Math.min(i + pageSize, songs.size())));
         }
 
-        if (isQr) Collections.reverse(chunks);
+        if (pageContent == PageContent.QR) Collections.reverse(chunks);
 
         for (List<Song> chunk : chunks) {
-            BufferedImage image = isQr
-                    ? QRGenerator.generateQRPage(chunk)
-                    : CardGenerator.generateInfoPage(chunk);
-            addImagePage(document, image);
+            switch (pageContent) {
+                case QR -> addImagePage(document, QRGenerator.generateQRPage(chunk, paperSize));
+                case DUPLEX -> {
+                    addImagePage(document, CardGenerator.generateInfoPage(chunk, paperSize));
+                    addImagePage(document, QRGenerator.generateQRPage(chunk, paperSize));
+                }
+                case INFO -> addImagePage(document, CardGenerator.generateInfoPage(chunk, paperSize));
+            }
         }
 
         ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
@@ -79,19 +84,28 @@ public class ExportService {
         contentStream.close();
     }
 
-    public byte[] generateInfoPdf(Long playlistId) {
+    public byte[] generateInfoPdf(Long playlistId, PaperSize paperSize) {
         List<Song> songs = getValidatedSongs(playlistId);
         try {
-            return buildPdf(songs, false);
+            return buildPdf(songs, paperSize, PageContent.INFO);
         } catch (Exception e) {
             throw new RuntimeException("Failed to generate PDF: " + e.getMessage());
         }
     }
 
-    public byte[] generateQrPdf(Long playlistId) {
+    public byte[] generateQrPdf(Long playlistId, PaperSize paperSize) {
         List<Song> songs = getValidatedSongs(playlistId);
         try {
-            return buildPdf(songs, true);
+            return buildPdf(songs, paperSize, PageContent.QR);
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to generate PDF: " + e.getMessage());
+        }
+    }
+
+    public byte[] generateDuplexPdf(Long playlistId, PaperSize paperSize) {
+        List<Song> songs = getValidatedSongs(playlistId);
+        try {
+            return buildPdf(songs, paperSize, PageContent.DUPLEX);
         } catch (Exception e) {
             throw new RuntimeException("Failed to generate PDF: " + e.getMessage());
         }
@@ -101,18 +115,16 @@ public class ExportService {
         Playlist playlist = playlistRepository.findById(playlistId)
                 .orElseThrow(() -> new ResourceNotFoundException(ResourceType.PLAYLIST, playlistId));
 
-        boolean hasAccess = playlist.getUsers().stream()
-                .anyMatch(user -> user.getId().equals(SecurityUtils.getCurrentUserId()));
-
-        // TODO custom exception
-        if (!hasAccess) {
-            throw new RuntimeException("Access denied: You are not a member of this playlist");
-        }
+        playlistAccessService.requireRead(playlist, SecurityUtils.getCurrentUser());
 
         List<Song> songs = playlist.getSongs();
 
         if (songs.isEmpty()) {
-            throw new RuntimeException("Playlist has no songs to generate PDF for");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Playlist has no songs to generate PDF for");
+        }
+        if (songs.size() > MAX_SONGS_PER_EXPORT) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Playlist has more than " + MAX_SONGS_PER_EXPORT + " songs, too many to export at once");
         }
         return songs;
     }

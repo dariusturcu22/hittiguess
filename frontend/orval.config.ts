@@ -1,15 +1,16 @@
 import { defineConfig } from "orval";
 
 export default defineConfig({
-  myHitster: {
+  hittiguess: {
     input: {
       target: "http://localhost:8080/v3/api-docs",
     },
     output: {
       mode: "tags-split",
-      target: "api/generated",
-      schemas: "api/models",
+      target: "hooks/generated",
+      schemas: "hooks/models",
       client: "react-query",
+      httpClient: "axios",
       mock: false,
       override: {
         mutator: {
@@ -19,13 +20,13 @@ export default defineConfig({
       },
     },
   },
-  myHitsterZod: {
+  hittiguessZod: {
     input: {
       target: "http://localhost:8080/v3/api-docs",
     },
     output: {
       mode: "tags-split",
-      target: "api/zod",
+      target: "hooks/zod",
       client: "zod",
     },
   },

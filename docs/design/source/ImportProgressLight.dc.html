@@ -1,0 +1,69 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bungee&family=Baloo+2:wght@700;800&family=Space+Grotesk:wght@400;500;600;700&display=swap">
+  <style>
+    body { margin: 0; }
+    .navicon { width: 46px; height: 46px; border-radius: 14px; display: flex; align-items: center; justify-content: center; cursor: pointer; color: #9ca0b0; }
+    .navicon.import-active { background: rgba(210,15,57,0.14); color: #d20f39; box-shadow: 0 0 0 2px #d20f39; }
+    .divider { width: 32px; height: 2px; background: #ccd0da; border-radius: 2px; margin: 14px auto; flex-shrink: 0; }
+    .callout-label { font-family: 'Space Grotesk', sans-serif; font-weight: 600; font-size: 12px; color: #d20f39; }
+    .callout-line { width: 40px; height: 2px; background: #ccd0da; }
+    @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+    .spinner-icon { animation: spin 1.2s linear infinite; transform-origin: center; }
+  </style>
+</helmet>
+<div style="width: 900px; height: 370px; background: #eff1f5; font-family: 'Space Grotesk', sans-serif; box-sizing: border-box; color: #4c4f69; padding: 40px; box-sizing: border-box; background-image: radial-gradient(circle, rgba(76,79,105,0.2) 1.5px, transparent 1.5px); background-size: 22px 22px; position: relative; overflow: hidden;">
+
+  <div style="margin-bottom: 30px;">
+    <div style="font-family: 'Bungee', sans-serif; font-size: 22px; color: #d20f39; text-shadow: 2px 2px 0 #ccd0da;">Import running in the background</div>
+    <div style="font-size: 13px; color: #5c5f77; margin-top: 6px; max-width: 720px; line-height: 1.6;">Clicking "Add" doesn't have to wait for every song to finish. Leave the import screen and it keeps going: a temporary sidebar icon while it's active, and a small toast that appears then fades after a few seconds. Both open the import screen again.</div>
+  </div>
+
+  <div style="display: flex; gap: 60px; align-items: flex-start;">
+
+    <div style="display: flex; align-items: center; gap: 20px;">
+      <div style="width: 76px; background: #e6e9ef; border-radius: 16px; display: flex; flex-direction: column; align-items: center; padding: 16px 0; box-sizing: border-box; border: 3px solid #ccd0da;">
+        <div class="navicon" title="Group lobby">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+        </div>
+        <div class="divider"></div>
+        <div class="navicon import-active" title="Importing playlist, 6 of 14">
+          <svg class="spinner-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="9" stroke-dasharray="34 20"></circle></svg>
+        </div>
+      </div>
+      <div>
+        <div class="callout-label">New, temporary icon</div>
+        <div style="font-size: 12px; color: #5c5f77; margin-top: 6px; max-width: 160px; line-height: 1.5;">Only shown while an import is active. Click it any time to reopen the import screen.</div>
+      </div>
+    </div>
+
+    <div style="display: flex; align-items: center; gap: 20px;">
+      <div style="width: 300px; background: #ffffff; border: 3px solid #4c4f69; border-radius: 16px; box-shadow: 6px 6px 0 rgba(76,79,105,0.25); box-sizing: border-box; padding: 16px 18px; display: flex; align-items: center; gap: 12px;">
+        <svg class="spinner-icon" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#d20f39" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="9" stroke-dasharray="34 20"></circle></svg>
+        <div style="flex: 1; min-width: 0;">
+          <div style="font-size: 13px; color: #4c4f69; font-weight: 600;">Importing playlist</div>
+          <div style="font-size: 12px; color: #5c5f77; margin-top: 2px;">6 of 14 songs done</div>
+        </div>
+      </div>
+      <div>
+        <div class="callout-label">Corner toast</div>
+        <div style="font-size: 12px; color: #5c5f77; margin-top: 6px; max-width: 150px; line-height: 1.5;">Appears once when the import starts, fades on its own after a few seconds. Click it while it's up to jump back in.</div>
+      </div>
+    </div>
+
+  </div>
+
+</div>
+</x-dc>
+<script data-dc-script data-props='{}'>
+class Component extends DCLogic {}
+</script>
+</body>
+</html>

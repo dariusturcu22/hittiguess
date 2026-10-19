@@ -1,0 +1,503 @@
+# SYSTEM_REFERENCE.md: API Contracts, Entity Model, State Diagrams
+
+Structured reference for what exists in the code today, distinct from [ARCHITECTURE.md](ARCHITECTURE.md)'s narrative blueprint of the target shape. Where a section describes something not yet built, it says so explicitly rather than blending planned and current state together. Regenerate the "current" sections by hand when the underlying code changes; nothing here is auto-generated.
+
+## API contracts
+
+Playlist metadata fields: PlaylistDetailDTO.createdAt is a UTC creation timestamp assigned to new playlists and unchanged by edits. Legacy rows remain null. SongDTO.durationSeconds and SongMetadataResponse.durationSeconds carry a positive whole-second duration from official YouTube contentDetails.duration, never an LLM estimate. The AI identification and resolution contracts use duration_seconds. Unknown metadata remains null.
+
+Core persistence records durationFetchedAt. SongDurationRefreshService checks due durations every six hours, starting at 29 days old, through the authenticated internal POST /metadata/video-durations endpoint. Each request batches up to 50 distinct YouTube IDs into one official videos.list request with part=contentDetails; it runs no LLM calls. Successful responses update the duration and timestamp. Missing videos receive a null duration and a lookup timestamp. Failed or incomplete responses stop the sweep, retain due timestamps for retry, and clear expired duration values. Conditional updates preserve metadata refreshed concurrently by another operation. The API hides durations at 29 days even before the scheduled sweep runs.
+
+YouTube videos.list costs one quota unit per batch. Refreshing N distinct videos every 29 days averages approximately N / (50 × 29) units daily when expiry dates are spread evenly, plus partial batches and retries. A million videos costs roughly 690 units daily; a large import can create a corresponding expiry spike. Refresh shares the quota used by other video lookups. This implementation stops on upstream failures, including quota exhaustion, but does not reserve a daily allowance for new-song imports. A refresh budget or increased quota becomes necessary if catalog growth approaches the shared limit.
+
+Every rate-limited request the core service rejects, whichever limiter caught it, returns 429 with the same body every other error response uses: `ErrorResponse` (`status`, `message`, `timestamp`), never Spring's default `ProblemDetail`. `RateLimitingFilter` applies a 60-requests-per-minute limit to every request, keyed by authenticated user where one exists and by client IP otherwise, except `/auth/login`, `/auth/register`, `/auth/resend-verification`, `/auth/password-reset/request`, and `/auth/2fa/verify`, which always share a stricter 5-requests-per-minute bucket keyed by IP regardless of authentication state. See story 27 and story 50 in `DECISIONS.md`.
+
+### Core service (Spring Boot)
+
+| Method | Path | Controller |
+|---|---|---|
+| POST | `/auth/register` | `AuthController`, rate-limited, see story 27 |
+| POST | `/auth/login` | `AuthController`, rate-limited, see story 27; returns a pending token instead of tokens for a `twoFactorEnabled` account, story 50 |
+| POST | `/auth/refresh` | `AuthController` |
+| POST | `/auth/logout` | `AuthController` |
+| POST | `/auth/verify-email` | `AuthController`, story 50 |
+| POST | `/auth/resend-verification` | `AuthController`, rate-limited, story 50 |
+| POST | `/auth/password-reset/request` | `AuthController`, always 200, story 50 |
+| POST | `/auth/password-reset/confirm` | `AuthController`, story 50 |
+| POST | `/auth/2fa/setup` | `AuthController`, authenticated, story 50 |
+| POST | `/auth/2fa/confirm` | `AuthController`, authenticated, story 50 |
+| POST | `/auth/2fa/disable` | `AuthController`, authenticated, requires current password or a valid code, story 50 |
+| POST | `/auth/2fa/verify` | `AuthController`, rate-limited, completes a two-factor login, story 50 |
+| GET | `/api/enums/countries` | `EnumController` |
+| GET | `/api/playlists/{playlistId}/export/info` | `ExportController`, `paperSize` query param (`A4`, `LETTER`, `LEGAL`, `A3`, `A5`, `TABLOID`; default `A4`) |
+| GET | `/api/playlists/{playlistId}/export/qr` | `ExportController`, same `paperSize` query param |
+| GET | `/api/playlists/{playlistId}` | `PlaylistController`, requires `canRead` |
+| PATCH | `/api/playlists/{playlistId}` | `PlaylistController`, owner only |
+| GET | `/api/playlists/{playlistId}/songs/{songId}` | `PlaylistController`, requires `canRead` |
+| POST | `/api/playlists/{playlistId}/songs` | `PlaylistController`, requires write access to the destination playlist |
+| PATCH | `/api/playlists/{playlistId}/songs/{songId}` | `PlaylistController`, requires write access to every playlist containing the shared song |
+| DELETE | `/api/playlists/{playlistId}/songs/{songId}` | `PlaylistController`, requires `canDelete` |
+| GET | `/api/playlists/{playlistId}/members` | `PlaylistController`, requires `canRead`, story 46 |
+| PATCH | `/api/playlists/{playlistId}/members/{userId}` | `PlaylistController`, owner only, updates a member's grants, story 46 |
+| DELETE | `/api/playlists/{playlistId}/members/{userId}` | `PlaylistController`, owner only, kicks a member, story 46 |
+| POST | `/api/playlists/{playlistId}/members/{userId}/ban` | `PlaylistController`, owner only, bans a member, story 46 |
+| POST | `/api/playlists/{playlistId}/members/{userId}/promote` | `PlaylistController`, owner only, transfers ownership, previous owner stays a member, story 46 |
+| POST | `/api/playlists/{playlistId}/publish` | `PlaylistController`, owner only, sets `isPublic` true, story 30 |
+| POST | `/api/playlists/{playlistId}/unpublish` | `PlaylistController`, owner only, sets `isPublic` false, story 30 |
+| GET | `/api/playlists/public` | `PlaylistController`, any authenticated user, every playlist with `isPublic` true, story 30 |
+| POST | `/api/playlists/{playlistId}/save` | `PlaylistController`, any authenticated user, saves a public playlist into the caller's own library without creating a membership, rejects a non-public playlist, the caller's own playlist, or an already-saved playlist, story 30 |
+| DELETE | `/api/playlists/{playlistId}/save` | `PlaylistController`, any authenticated user, unsaves a previously saved playlist, story 30 |
+| GET | `/api/metadata/song` | `SongMetadataController`, one-in-flight-request-per-user limit plus the general time-window rate limit, see story 27 |
+| GET | `/api/users/me` | `UserController` |
+| GET | `/api/users/{userId}` | `UserController` |
+| PATCH | `/api/users/me` | `UserController` |
+| DELETE | `/api/users/me` | `UserController`, story 37 fixed the FK violation and playlist-orphaning bugs formerly logged in `TASKS.md`'s Bug fixes section |
+| GET | `/api/users/me/export` | `UserController`, `PersonalDataExportService`, GDPR personal-data export: account fields, every playlist membership, every submitted song, retained core game history, and the account's research observations, story 37, distinct from `ExportController`'s playlist-content PDFs |
+| POST | `/api/users/me/playlists` | `UserController` |
+| GET | `/api/users/me/playlists` | `UserController` |
+| POST | `/api/users/me/playlists/{playlistInviteCode}` | `UserController`, optional body carries a per-playlist display name and avatar, rejects a banned user, story 46 |
+| DELETE | `/api/users/me/playlists/{playlistId}` | `UserController`, the owner can leave at any time, leadership passes to the earliest-joined remaining member, story 46 |
+| GET | `/api/users/me/saved-playlists` | `UserController`, the current user's saved public playlists, distinct from `/api/users/me/playlists`, story 30 |
+| PUT | `/api/users/me/avatar` | `PixelArtImageController`, multipart upload, pixelizes and stores the image as PNG bytes on `User.avatarImage`, story 47 |
+| GET | `/api/users/{userId}/avatar` | `PixelArtImageController`, returns the stored avatar PNG bytes, story 47 |
+| PUT | `/api/playlists/{playlistId}/cover` | `PixelArtImageController`, multipart upload, owner only, pixelizes and stores the image as PNG bytes on `Playlist.coverImage`, story 47 |
+| GET | `/api/playlists/{playlistId}/cover` | `PixelArtImageController`, returns the stored cover PNG bytes, story 47 |
+| POST | `/api/playlists/{playlistId}/import-jobs` | `PlaylistImportJobController`, starts a background YouTube import into the playlist and returns the job id immediately, story 47 |
+| GET | `/api/playlists/{playlistId}/import-jobs/{importJobId}` | `PlaylistImportJobController`, one import job of the playlist, running or finished, with per-video results; needs read access to the playlist. The import screen reads a finished job's final results through it |
+| GET | `/api/playlists/{playlistId}/import-jobs/active` | `PlaylistImportJobController`, the playlist's currently running import job with per-video progress, if any, story 47 |
+| POST | `/api/groups` | `GroupController`, creates a group, the creator becomes its admin, story 39 |
+| POST | `/api/groups/join` | `GroupController`, join by invite link or join code; re-joining a group the caller is already in returns that group's detail without adding a member or broadcasting; a caller already in a different group is rejected with a conflict telling them to leave it first, and a caller removed from the group, or a group already started or full, is rejected with its own conflict, story 39 |
+| GET | `/api/groups/active` | `GroupController`, the caller's current active group, story 39 |
+| GET | `/api/groups/{groupId}` | `GroupController`, story 39 |
+| PATCH | `/api/groups/{groupId}/settings` | `GroupController`, admin only, story 39 |
+| POST | `/api/groups/{groupId}/start-session` | `GroupController`, admin only while open; locks the group and builds the session song list from the saved tier at Start or from Custom playlists, deduped by normalized artist and title and shuffled, with difficulty selection widening across tiers when the saved tier is short, story 39 |
+| POST | `/api/groups/{groupId}/session/generate` | `GroupController`, admin only, generates a difficulty-tuned song set for review without starting anything, story 30 |
+| POST | `/api/groups/{groupId}/session/start-with-songs` | `GroupController`, admin only, starts a game session from the reviewed song ids, locks the group to new members, story 30 |
+| POST | `/api/groups/{groupId}/session/start-custom` | `GroupController`, admin only, starts a game session from an accessible playlist or a pasted playlist link, locks the group to new members, story 30 |
+| POST | `/api/groups/{groupId}/leave` | `GroupController`, an explicit leave, admin leave passes leadership to the earliest-joined member, story 39 |
+| POST | `/api/groups/{groupId}/disconnect` | `GroupController`, marks the caller disconnected without ending membership, story 39 |
+| POST | `/api/groups/{groupId}/reconnect` | `GroupController`, story 39 |
+| POST | `/api/groups/{groupId}/members/{memberId}/promote` | `GroupController`, admin only, promotes another member to admin, story 39 |
+| POST | `/api/groups/{groupId}/voice/join` | `GroupController`, sets the caller's `isInVoice` presence flag and broadcasts voice presence on the group's voice topic, story 39 and story 12 |
+| POST | `/api/groups/{groupId}/voice/leave` | `GroupController`, clears the `isInVoice` presence flag and broadcasts voice presence, story 39 and story 12 |
+| POST | `/api/groups/{groupId}/audio-capability` | `GroupController`, the caller's browser reports whether it can capture audio (`canShareAudio`); stored on the member, copied to `Player.canDj` at the roster snapshot, and read by the DJ rotation, which skips players who cannot, story 52 |
+| GET | `/api/groups/{groupId}/voice/turn-credentials` | `GroupController`, member only, the ICE server list a client feeds `RTCPeerConnection`, STUN always, Cloudflare TURN only when a key is configured, story 12 |
+| GET | `/api/sessions/groups/{groupId}/active` | Current group member; returns the active session if present |
+| GET | `/api/groups/invites/{inviteCode}/preview` | Invite preview with group-specific member names and avatars |
+| POST | `/api/groups/{groupId}/members/{memberId}/remove` | Admin only while open; blocks rejoin and closes removed member sockets |
+| GET | `/api/groups/{groupId}/chat/messages` | Group member only; bounded recent chat history |
+| GET | `/api/playlists/{playlistId}/export/duplex` | Read access; alternating information and QR pages for duplex printing |
+| GET | `/api/sessions/{sessionId}` | `GameSessionController`, story 10 |
+| GET | `/api/sessions/{sessionId}/link-out` | `GameSessionController`, the current round's YouTube watch URL for the round's DJ only, refused after reveal, story 9 |
+| POST | `/api/sessions/{sessionId}/leave` | `GameSessionController`, the calling player leaves the running session and the game continues without them; a leaving DJ hands the current round's DJ role to the next eligible player, a leaving active player forfeits the round, and the session ends when fewer than two players remain; publishes `PLAYER_LEFT` on the round topic, story 52 |
+| GET | `/api/sessions/{sessionId}/guess-state` | `GameSessionController`, the calling player's artist and title guessing state for the current turn: artists credited, artists guessed, whether artist guessing or the title is closed, and whether the turn's token was earned |
+| GET | `/api/sessions/groups/{groupId}/results` | `GameSessionController`, a completed session's downloadable results export, story 10 |
+| GET | `/api/users/me/history` | Participant-only paginated core history; page defaults to 0 and pageSize to 20, maximum 100 |
+| GET | `/api/users/me/history/{summaryId}` | Original participant only, including after group expiry; outsiders receive 404 |
+| GET | `/api/users/me/statistics` | Core history totals; interrupted games are separate and never wins |
+| POST | `/api/admin/catalog-seeding/enqueue` | `AdminCatalogSeedingController`, admin only via `AdminAccessGuard`, body is `AdminCatalogSeedingRequest` (`playlistLink`, `youtubeIds`, both nullable), expands a submitted playlist link through the AI microservice and merges it with any submitted IDs or links before enqueueing whatever the catalog does not already have, story 40 |
+| GET | `/api/admin/usage` | `AdminUsageController`, admin only via `AdminAccessGuard`, returns `AdminUsageDTO`: `youtube` (`unitsUsedToday`, `dailyLimit`, `unitsRemaining`, `quotaDay`, `resetsAt` as the next midnight Pacific), `deepInfra` and `openAi` (each with `today` and `month` holding `calls`, `inputTokens`, `outputTokens`, `estimatedCostUsd`), `estimatedCostTodayUsd`, `estimatedCostMonthUsd`, and `pricesVerifiedOn`; the daily limit defaults to 10,000 units and is set by `usage.youtube.daily-quota-units`, story 51 |
+| GET | `/api/admin/dashboard` | `AdminDashboardController`, admin only via `AdminAccessGuard`, returns `AdminDashboardDTO`: `songs` (`verified`, `needsReview`, `inQueue`, `processing`, `error`, `total`, the unfiltered catalog counts), `queue` (`waiting` counts waiting metadata jobs plus the V41 embedding queue, and `inProgress` counts in-progress metadata jobs of active runs), and `usage` (the same `AdminUsageDTO` as `/api/admin/usage`), story 51 |
+| GET | `/api/admin/songs` | `AdminSongCatalogController`, admin only via `AdminAccessGuard`, the song catalog: every song plus every admin-seeded backlog item whose YouTube ID has no song yet, newest `createdAt` first with unknown dates last. Optional `query` (trimmed; 400 when shorter than 3 characters) matches song title or artist name by case-insensitive substring with LIKE wildcards escaped, or an exact YouTube ID; optional `status` (`CatalogSongStatus`) filters rows; `page` is 0-based (400 when negative) and `size` defaults to 25 and must be 1 to 25 (400 otherwise, never clamped). Returns `AdminCatalogPageDTO`: `items`, `page`, `size`, `totalElements`, `totalPages`, and `counts` (`all`, `verified`, `needsReview`, `inQueue`, `processing`, `error`, following the search text and ignoring the status filter). Each item is `AdminCatalogSongDTO`: `id` (`song:<id>` or `import:<id>`), `songId` (null for a backlog item), `youtubeId`, `title`, `artists`, `releaseYear` (null when unresolved), `status`, `pipeline`, `createdAt`, `addedBy` (username or null), and `addedByKind`, story 51 |
+| GET | `/api/admin/songs/{songId}` | `AdminSongCatalogController`, admin only, read-only `AdminSongDetailDTO`: the catalog row fields, the stored `verificationStatus`, `confidence`, and `wikidataSitelinksCount`, `openReportCount`, and `queueHistory` with pipeline runs for the song's YouTube ID oldest first and retained historical rows where no matching run exists (`origin`, `status`, `enqueuedAt`, `processedAt`, `provisionalYear`, `patientYear`, `failureReason`); 404 for an unknown song. Stage runs add sourceFindings and reviewReason when available, story 51 |
+| POST | `/api/bulk-import` | `BulkImportController`, any authenticated user, immediate on-the-spot resolution of `BulkImportRequest` (`playlistLink`, `videoIdsOrLinks`), a submitted playlist link is expanded through the AI microservice and merged with any submitted IDs or links, uses the synchronous fast tier before patient rechecks enter the user lane, story 40 |
+| GET | `/api/ground-truth/songs` | `GroundTruthController`, public, paged verified `(artist, title, releaseYear)` triples with no YouTube-sourced fields, general rate limit applies, story 35 |
+| POST | `/api/songs/{songId}/reports` | `SongReportController`, any authenticated user reports a song's metadata with a message, suggested correct year, and sources, one report per user per song, story 17 |
+| POST | `/api/songs/{songId}/confirmations` | `SongReportController`, any authenticated user confirms a low-confidence card, one confirmation per user per song, story 17 |
+| GET | `/api/admin/song-reports/queue` | `AdminSongReportController`, admin only via `AdminAccessGuard`, the review queue ranked by the five-tier priority order, story 17 |
+| POST | `/api/admin/song-reports/{songId}/resolve` | `AdminSongReportController`, admin only, body is `ResolveReportRequest` (`correctedYear` nullable, `verificationStatus` required, one of `VERIFIED`/`NEEDS_REVIEW`/`MANUAL_ENTRY`); marks the song's open reports upheld and applies the chosen year and status unconditionally, overriding even a `VERIFIED` song's lock, story 17 |
+| POST | `/api/admin/song-reports/{songId}/dismiss` | `AdminSongReportController`, admin only, dismisses a song's open reports and changes nothing about the song, story 17 |
+| GET | `/actuator/health` | Actuator, unauthenticated at the top-level status; component detail gated by `management.endpoint.health.show-details=when-authorized`, story 38 |
+| GET | `/actuator/prometheus` | Actuator, Prometheus scrape format via `micrometer-registry-prometheus`, story 38 |
+
+### AI microservice (FastAPI)
+
+Resolved metadata carries ordered `main_artists` and `featured_artists`, verification status, confidence, year, color, nullable sitelinks, and the submitted upload's nullable duration. A verified duplicate also carries `canonical_song_id`; a new result leaves it null. Core exposes that field as `canonicalSongId` and uses it for alternate-ID linking rather than creating another Song. The duplicate response's duration belongs to the submitted upload and must not overwrite the reused song's primary-upload duration.
+
+`GET /api/metadata/song` saves genuinely new VERIFIED results to the shared catalog before returning. It never creates playlist membership. Successful previews remain reusable for ten minutes in a per-user/per-video memory cache; unverified previews require explicit submission. Playlist confirmation resolves primary and alternate IDs to the existing Song before creating a row. Admin imports use the same verification rules as user submissions.
+
+| Method | Path | Notes |
+|---|---|---|
+| POST | `/metadata/resolve` | Internal only, gated by `X-Internal-Api-Key`, called by the core service's `SongMetadataService`, never exposed publicly. Independently rate-limited at 30 requests per minute per client address, evaluated before the internal-key check, since anyone holding that shared key could otherwise call it directly. See story 27 |
+| POST | `/metadata/identify` | Internal only, same internal-key gate, with its own fast-tier rate limit (1200 requests per minute per client address). The fast tier's first pass for one video: YouTube fetch, non-music hard filter, verified-duplicate check, and the combined pre-check LLM call with content safety. Returns the identified title, artists, and color, or a verified duplicate's full answer, or a rejection |
+| POST | `/metadata/date-fast` | Internal only, same gate and fast-tier rate limit. Body `{title, main_artists}`; looks up a provisional year on one lane, MusicBrainz or Wikipedia plus LLM extraction, whichever frees up first, falling back to the other lane when the first finds nothing |
+| POST | `/metadata/playlist-video-ids` | Internal only, same `X-Internal-Api-Key` gate and rate limit as `/metadata/resolve`, called by the core service's `PlaylistExpansionService`. Body `{playlist_url_or_id}`, crawls the playlist through YouTube Data API's `playlistItems.list`, paginating on `nextPageToken`, and returns `{video_ids}`. A link or id that doesn't parse to a valid playlist returns 400; an upstream fetch failure on the first page returns 502. Story 40 |
+| GET | `/health` | Unauthenticated, story 38 |
+| GET | `/metrics` | Prometheus scrape format via `prometheus-fastapi-instrumentator`, gated by `X-Internal-Api-Key`. |
+
+### AI stage contracts (story 51)
+
+All six stage endpoints require `X-Internal-Api-Key`. Stage request and response fields use camelCase, except the nested or final `MetadataResolveResponse`, which keeps the snake_case fields used by `/metadata/resolve`. Core workers call these endpoints for queued metadata stages.
+
+| POST path | Request | Successful response |
+|---|---|---|
+| `/stages/youtube-metadata` | `{youtubeId}` (video ID or link) | `{outcome, video, title, artists, featuredArtists, color, rejectionReason, rejectionDetail, result}`. `video` contains `videoTitle`, `channelTitle`, `durationSeconds`, and `categoryId`. `outcome` is `IDENTIFIED`, `REJECTED`, or `DUPLICATE`. Identified results carry the accepted precheck's identity; rejection carries its reason. Rejected and duplicate outcomes carry the final response in `result`; identified results leave it null. |
+| `/stages/musicbrainz` | `{title, artists, youtubeId?}` | `{candidates, earliestYear}` |
+| `/stages/discogs` | Same source request | `{candidates, earliestYear}` |
+| `/stages/wikidata` | Same source request | `{candidates, earliestYear, sitelinksCount}` |
+| `/stages/wikipedia` | Same source request | `{candidates, earliestYear}`. Candidates contain lead-section extracts; `earliestYear` is null because structured LLM extraction happens during reconciliation. |
+| `/stages/llm-reconcile` | `{title, artists, featuredArtists?, color, video, musicbrainzCandidates?, discogsCandidates?, wikidataCandidates?, wikipediaCandidates?, sitelinksCount?, youtubeId?}` | The final `MetadataResolveResponse`, including the submitted video's duration. Three matching structured years return the locked result without Wikipedia extraction or reconciliation calls. |
+
+Source candidates use the same curated fields as resolve. `earliestYear` is always present and is null when no structured year exists. Wikidata's optional sitelinks count remains null if that auxiliary lookup fails. Source requests remove featured-artist suffixes from titles and join main artists with ` & `, matching resolve. Reconciliation retains the Wikipedia-assisted lock and manual-entry paths. Missing candidate lists default to empty lists; missing sitelinks default to null.
+
+Stage failures return `{stage, provider, providerHint, cause, upstreamStatus, message}`. `provider` is `YOUTUBE`, `MUSICBRAINZ`, `DISCOGS`, `WIKIDATA`, `WIKIPEDIA`, `DEEPINFRA`, or `OPENAI`, or null for an unattributed internal failure. `providerHint` matches core's `FailureClassifier`: `YOUTUBE_VIDEO_LOOKUP`, `API_KEY_PROVIDER`, or `KEYLESS_PROVIDER`. `upstreamStatus` is the provider's HTTP status, or null without a response. Error messages are fixed text and contain no exception text, keys, or request URLs.
+
+| Cause | HTTP status |
+|---|---|
+| `HTTP_ERROR` | 502, with the actual status in `upstreamStatus` |
+| `TIMEOUT` | 504 |
+| `CONNECTION_ERROR` | 503 |
+| `NO_USABLE_METADATA` | 422, for an invalid or missing YouTube video |
+| `OTHER` | 500 |
+
+Pace deferral is a separate 429 response: `{stage, retryAfterSeconds, message}`, with a matching `Retry-After` header. The delay is rounded up to whole seconds, with a minimum of one second. A source slot more than 30 seconds away is not reserved. Core must reschedule this response without charging an attempt. Provider rate limits instead return `HTTP_ERROR` with `upstreamStatus: 429`. Resolve retains its uncapped pace waits and best-effort fallbacks, while stage reconciliation propagates DeepInfra extraction and OpenAI reconciliation failures.
+
+### Correlation id (story 38)
+
+Both services accept and echo an `X-Request-Id` header on every request: the core service's `CorrelationIdFilter` and the AI microservice's `CorrelationIdMiddleware` reuse an incoming value or generate one, attach it to the active OpenTelemetry span as a `request.id` attribute, include it in every structured log line emitted while handling that request, and echo it back on the response. The core service's `CorrelationIdPropagatingInterceptor` forwards the current request's id onto the outgoing RestClient call to the AI microservice, so one user action stays traceable across both services' logs and correlates with a single trace.
+
+### Bulk import progress (story 40)
+
+The on-the-spot bulk-import path (`POST /api/bulk-import`) reports live per-song progress over a per-user STOMP destination rather than only its final response: `BulkImportService` publishes a `BulkImportProgressEvent` (`username`, `youtubeId`, `outcome`, one of `ALREADY_KNOWN`/`RESOLVED`/`UNRESOLVED`) for every submitted video id as its resolution loop reaches it, and `BulkImportProgressListener` forwards each one to `/user/queue/bulk-import-progress` through `SimpMessagingTemplate#convertAndSendToUser`, targeting the submitting user's own session rather than a shared group or session topic. `WebSocketConfig` registers `/queue` as a broker prefix alongside `/topic` so this per-user routing has somewhere to deliver to. Admin enqueue returns its batch synchronously; the backfill queue pages poll persisted stages, runs, batches, and usage instead of receiving these user progress events.
+
+Story 39's group endpoints, story 10's game-session endpoints, story 40's admin catalog-seeding and bulk-import endpoints, and story 17's report, confirmation, and admin review endpoints are live and listed above. Story 10 and 11 also add STOMP client-to-server destinations for in-session actions, handled by `GameActionController`:
+
+| Destination | Controller | Notes |
+|---|---|---|
+| `/app/sessions/{sessionId}/place` | `GameActionController` | Lock in a card placement, story 10 |
+| `/app/sessions/{sessionId}/guess` | `GameActionController` | Submit a title/artist guess, story 10 |
+| `/app/sessions/{sessionId}/bet` | `GameActionController` | Place a bet after the active player's guess locks, story 10 |
+| `/app/sessions/{sessionId}/skip-betting` | `GameActionController` | Skip the betting window, story 10 |
+| `/app/sessions/{sessionId}/song/signal` | `SongSignalingController` | Relay one WebRTC offer, answer, or ICE candidate between two players of the session, for the DJ's shared song audio, story 53. Delivered to the one target as `/user/queue/sessions/{sessionId}/song-signal`; both sender and target must be players of that session |
+
+Story 30's Difficulty-Based-generation and Custom-mode session-start endpoints (`/session/generate`, `/session/start-with-songs`, `/session/start-custom`) are live and listed above. Story 9's link-out endpoint is live and listed above. Story 13's group text chat has also shipped (`V14__add_chat_messages`, member-only STOMP send and REST history), with its history route listed above. Story 12's voice signaling relay is live as a STOMP mapping on `/app/groups/{groupId}/voice/signal`, which forwards one WebRTC offer, answer, or ICE candidate onto the group's `/topic/groups/{groupId}/voice` topic for member-to-member routing; story 28 now implements the WebRTC mesh and gameplay clients that use it. The song signal relay (`/app/sessions/{sessionId}/song/signal`, story 53) is session-scoped like the game actions: it relays to the single target player and is refused unless both sender and target are players of that session, so the DJ's shared song keeps its own peer connections apart from the group voice mesh. Visual, representative-state, route smoke, and accessibility verification remain open. This table lists the REST surface live on `dev` today.
+
+## Entity model
+
+Private guess results on `/user/queue/sessions/{sessionId}/guess-result` include `roundId`, `artistCorrect`, `titleCorrect`, `tokenAwarded`, and the current `state`. `tokenAwarded` is true only when that submission grants a new token. The state's `tokenEarned` remains true for later submissions in the same turn. The frontend uses the per-submission flag for award feedback.
+
+Voice peer connections carry a reliable ordered `voice-status` data channel with `isMuted`, `isDeafened`, and `isSpeaking`. The sender identity comes from the established peer connection. Current status is sent when the channel opens; status is discarded when the peer closes. Speaking measures microphone audio only.
+
+### Current (JPA entities, core service)
+
+Current JPA entities: `User`, `Playlist`, `PlaylistMembership`, `PlaylistBan`, `SavedPlaylist`, `Song`, `SongArtist`, `RefreshToken`, `EmailVerificationToken`, `PasswordResetToken`, `TwoFactorBackupCode` (story 50), plus `Group` and `Member` (story 39), `GameSession`, `Player`, `Round`, `Guess`, and `Bet` (story 10), `ChatMessage` (story 13), `AlternateYoutubeId` and `PendingImport` (story 40), `SongReport` and `SongConfirmation` (story 17), and `PlaylistImportJob` and `PlaylistImportJobItem` (story 47). `Bet` (round, player, position, placedAt) is one accepted bet against a round's active-player timeline; a round can carry several, one per distinct gap, enforced by unique constraints on the `bets` table rather than a single bettor column on `Round`. The core seven are detailed below; the game, group, and chat entities follow the shapes in `ARCHITECTURE.md` and their own story sections in `TASKS.md`.
+
+```
+User
+  ├── id, username, email, password, imageUrl
+  ├── avatarImage (nullable byte[], pixelized PNG uploaded via PUT /api/users/me/avatar; distinct from
+  │     imageUrl, which carries an OAuth provider's own picture URL, story 47)
+  ├── authProvider, authProviderId
+  ├── emailVerified (default false; true immediately for a Google OAuth2 signup, story 50)
+  ├── totpSecret (nullable, plain column, never returned by any DTO, story 50)
+  ├── twoFactorEnabled (default false, story 50)
+  └── role (USER, TEST, ADMIN)
+
+EmailVerificationToken
+  ├── id, token (hashed, unique), expiresAt
+  └── user: User  (@OneToOne; a new request replaces the previous row, same pattern as RefreshToken)
+
+PasswordResetToken
+  ├── id, token (hashed, unique), expiresAt, used (default false)
+  └── user: User  (@OneToOne; a new request replaces the previous row)
+
+TwoFactorBackupCode
+  ├── id, codeHash (hashed like a password), used (default false)
+  └── user: User  (@ManyToOne; ten rows generated together on /auth/2fa/confirm)
+
+Playlist
+  ├── id, name, color, inviteCode (unique, immutable)
+  ├── coverImage (nullable byte[], pixelized PNG uploaded via PUT /api/playlists/{playlistId}/cover,
+  │     owner only; a playlist without one keeps the song-thumbnail mosaic cover, story 47)
+  ├── isPublic (default false, story 30; only the owner can publish/unpublish; a public playlist is
+  │     readable by any authenticated user through requireRead, independent of ownership or membership)
+  ├── owner: User  (@ManyToOne, set to the creator on creation, story 46; only the owner can rename,
+  │     change color, delete the playlist, or manage members)
+  ├── songs: List<Song>  (@ManyToMany, owning side, joins through song_playlists; removing a song here
+  │     only ever unlinks it, a Song is never deleted as a side effect of playlist membership)
+  └── memberships: List<PlaylistMembership>  (@OneToMany, cascade ALL, orphanRemoval, story 46 replaces
+        the old plain users many-to-many)
+
+PlaylistMembership
+  ├── id, canRead, canWrite, canDelete  (independently revocable, story 46; an owner has all three
+  │     implicitly and holds no override here)
+  ├── displayName, avatarUrl  (per-playlist identity, defaults to the account's own at join time)
+  ├── joinedAt
+  ├── playlist: Playlist  (@ManyToOne, owns the FK)
+  └── user: User  (@ManyToOne)
+
+PlaylistBan
+  ├── id, bannedAt
+  ├── playlist: Playlist  (@ManyToOne)
+  └── user: User  (@ManyToOne; existence of a row blocks that user's future join-by-invite attempts
+        against this playlist, independent of PlaylistMembership, story 46)
+
+SavedPlaylist
+  ├── id, savedAt
+  ├── user: User  (@ManyToOne)
+  └── playlist: Playlist  (@ManyToOne; unique on (user, playlist), story 30. A bookmark into the
+        user's own library, not a membership: grants no read/write/delete access and creates no
+        per-playlist identity, distinct from PlaylistMembership and unrelated to PlaylistBan. Only
+        a currently public playlist can be saved, and the owner cannot save their own playlist)
+
+Song
+  ├── id, title, releaseYear, youtubeId, color  (single color field, replaces the old
+  │     gradientColor1/gradientColor2 pair, story 47, V20)
+  ├── wikidataSitelinksCount (nullable int, the international-scope and popularity-weighting signal
+  │     for story 30's difficulty generation, written by the AI metadata pipeline, V21)
+  ├── artists: List<SongArtist>  (@OneToMany, ordered by displayOrder; the pipeline persists all
+  │     MAIN artists followed by FEATURED artists; manual artist text maps to one MAIN row)
+  ├── genre  (nullable compatibility field; pipeline enrichment and genre modes are dropped)
+  ├── country
+  ├── verificationStatus (UNVERIFIED default, VERIFIED, NEEDS_REVIEW, MANUAL_ENTRY; see the state
+  │     diagram below; story 18's lock-evaluation pipeline that moves it is built)
+  ├── confidence (nullable, populated by the metadata pipeline)
+  ├── metadataRaw (nullable compatibility field, not populated by the current pipeline)
+  ├── playlists: Set<Playlist>  (@ManyToMany, mappedBy "songs"; a song can belong to more than one
+  │     playlist since story 15, and to zero, a song is a standalone catalog entity independent of
+  │     any playlist, see DECISIONS.md's 2026-09 "Song deletion reversed" entry)
+  ├── addedBy: User       (@ManyToOne, nullable since story 37, no inverse mapping; cleared, not blocked
+  │     or cascaded, when the submitting account is deleted)
+  └── createdAt (nullable timestamptz, V43, set on persist and defaulting to now() for raw inserts;
+        songs that predate V43 take their oldest pending_imports row, otherwise stay null as unknown)
+
+SongArtist
+  ├── id, name, role (MAIN/FEATURED), displayOrder
+  └── song: Song  (@ManyToOne, owns the FK back to Song)
+
+RefreshToken
+  ├── id, token (unique, hashed)
+  ├── user: User  (@OneToOne)
+  ├── rememberMe (default false, V22, controls the issued cookie's expiry length)
+  └── expiresAt
+```
+
+`Group` also carries a `joinCode` (unique 4-letter code, alongside the existing invite link, story 39) and a nullable `fixedDjMemberId` (the admin's chosen fixed DJ when `djMode` is `FIXED`, V23; unset falls back to the earliest-joined-member behavior). See `ARCHITECTURE.md` for the rest of `Group`'s shape.
+
+```
+PlaylistImportJob
+  ├── id (UUID string), playlistId, submittedByUsername, status, createdAt, completedAt
+  └── items: List<PlaylistImportJobItem>  (@OneToMany, cascade ALL; one row per submitted video id)
+
+PlaylistImportJobItem
+  ├── id, youtubeId, status, songId (nullable until resolved)
+  └── job: PlaylistImportJob  (@ManyToOne, owns the FK)
+```
+
+Tracks a playlist-scoped background YouTube import (story 47) so a user can keep browsing while it resolves; the playlist detail view reads the active job to render pending songs greyed out (V24). Each item moves from `PENDING` (waiting for a free slot) through `IDENTIFYING` and `DATING` (its two fast-tier stages) to `RESOLVED`, `ALREADY_KNOWN`, or `UNRESOLVED`, and a resolved song joins the playlist the moment it settles.
+
+Schema changes go through Flyway migrations in `backend/src/main/resources/db/migration/`, not Hibernate's `ddl-auto`, which is set to `validate`. Core migrations run through V40: V37 replaces playlist invite codes, V38 stores playlist creation time and song duration, V39 indexes due durations, and V40 adds history, prepared difficulty, and research delivery. Earlier migrations include V28 records accepted two-factor time steps and login failures, V29 adds betting skips, V30 adds placement deadlines, V31 and V32 persist session results, V33 records import quota usage, V34 records removed group users, V35 adds full-pass round numbers, and V36 adds a backlog row's origin and its provisional and patient years. V26 adds the playlist description and V27 adds raw video-info fields to playlist-import job items.
+
+### Prepared difficulty and retained history
+
+These tables are read through JDBC. Their fields and retention rules are described in the game history section below.
+
+- `SongDifficulty` (story 30): prepared core scores in `song_difficulty`, read through JDBC. Background calculation uses durable analytics aggregates. The compatibility preview route still supports the older temporary-round selector; the lobby Start path reads prepared scores.
+
+### Analytics store (story 33)
+
+A separate database from the transactional one above, not JPA-mapped: its own Flyway history under `db/analytics-migration`, its own `DataSource`/`JdbcTemplate` wired in `AnalyticsDataSourceConfig` (`org.dariusturcu.backend.analytics`). `analytics_events` stores general usage events:
+
+```
+analytics_events
+  ├── id (bigserial)
+  ├── event_type (text, matches AnalyticsEventType's enum names)
+  ├── occurred_at (timestamptz, defaults to insertion time)
+  └── payload (jsonb, one typed record per AnalyticsEventType)
+```
+
+`AnalyticsEventType` values: `GAME_SESSION_STARTED`, `GAME_SESSION_ENDED`, `LOGIN`, `PLAYLIST_CREATED`, `SONG_SUBMITTED`, `RATE_LIMIT_EXCEEDED`, `REPORT_SUBMITTED`, `FAILED_LOGIN_ATTEMPT`, each with its own payload record in the same package. `AnalyticsEventRecorder.recordEvent(AnalyticsEventType, Object)` is the write API; nothing calls it yet, story 34 instruments the real event-producing call sites. `AnalyticsRetentionService.purgeExpiredEvents()`, swept daily by `AnalyticsRetentionSweeper`, deletes events older than `analytics.retention.days` (365 by default).
+
+## State diagrams
+
+### Song verification status (stories 18, 23)
+
+```mermaid
+stateDiagram-v2
+    [*] --> UNVERIFIED: song submitted
+    UNVERIFIED --> VERIFIED: structured sources agree or Wikipedia corroborates a lock
+    UNVERIFIED --> NEEDS_REVIEW: sources disagree, Wikipedia + four-source reconciliation runs
+    UNVERIFIED --> MANUAL_ENTRY: no source, including Wikipedia, has any data
+    NEEDS_REVIEW --> VERIFIED: patient recheck establishes a source lock or admin resolves a report
+    VERIFIED --> VERIFIED: locked against every path except an admin resolving a story 17 report
+    VERIFIED --> NEEDS_REVIEW: an admin resolves a report and chooses this status instead
+    VERIFIED --> MANUAL_ENTRY: an admin resolves a report and chooses this status instead
+```
+
+`VERIFIED` is a lock against every automatic path and every other manual path, but not an absolute one: an admin resolving a song's open reports through `POST /api/admin/song-reports/{songId}/resolve` can set a corrected year and change the verification status even on a `VERIFIED` song, per the 2026-09 "Admin report resolution can override a locked song" `DECISIONS.md` entry. No other path, including a report simply being upheld with nothing else, overwrites a locked year. `MANUAL_ENTRY` is the least-trusted tier, distinct from `NEEDS_REVIEW`.
+
+Exact agreement across MusicBrainz, Discogs, and Wikidata skips Wikipedia and reconciliation after the combined precheck. The Wikipedia-assisted lock accepts three matching source years, or at least three available years whose entire range spans at most one year, choosing the earliest. Remaining evidence goes through reconciliation to NEEDS_REVIEW; no-answer results become MANUAL_ENTRY. Catalog persistence protects an already verified year and artist list; a fresh lookup of its primary upload can refresh official duration.
+
+### Group and game session lifecycle (stories 10, 39)
+
+```mermaid
+stateDiagram-v2
+    [*] --> Lobby: group created, creator becomes admin
+    Lobby --> Lobby: member joins/leaves, admin changes settings
+    Lobby --> Deleted: 30 minutes pass with no game session started
+    Lobby --> InSession: admin starts a game session, group locks to new members
+    InSession --> Lobby: session ends normally (results exported) or is abandoned (10 minutes, zero connected players, no export)
+    Lobby --> Deleted: 30 minutes pass with no next session started
+    Deleted --> [*]
+```
+
+A group can cycle through `Lobby` → `InSession` → `Lobby` any number of times before being deleted. `GameSession` itself is ephemeral within `InSession`: purged entirely once it ends or is abandoned, while compact participant-only history survives both completion and abandonment. The latest normal completion also remains available as the group results export.
+
+### Retained import history (story 40)
+
+`pending_imports` retains historical admin seeds and user patient rechecks, including their origins, timestamps, provisional years, patient years, and failures. New admin work and user rechecks create pipeline runs instead of sequential-drain work. Stage completion records patient-year history for rechecks. No table, column, or historical row is dropped by the sequential-drain cleanup.
+
+### Admin song catalog row (story 51)
+
+`CatalogSongRules` defines how each `/api/admin/songs` row is described; the list query repeats the status rule in SQL so it can filter and count by status.
+
+- Status: a song with an active pipeline run for its YouTube ID shows that row, `PROCESSING` before `PENDING` (`IN_QUEUE`). Without one, a latest failed run makes the song `ERROR`; otherwise a `VERIFIED` song is `VERIFIED`, and `NEEDS_REVIEW`, `UNVERIFIED`, and `MANUAL_ENTRY` songs are `NEEDS_REVIEW`. A pipeline run with no song is `PROCESSING`, `IN_QUEUE`, or `ERROR` once it failed.
+- Pipeline runs without a song: only non-cancelled `ADMIN_SEED` runs mapped to `PENDING`, `PROCESSING`, or `FAILED` whose YouTube ID has no song, one row per YouTube ID, preferring the processing row, then the pending row, then the newest failed one. Its `createdAt` is the oldest of those rows. Recheck rows always belong to a saved song and never appear on their own.
+- Pipeline: `FAST` while a recheck row (`FAST_TIER_RECHECK` or `USER_ADD_RECHECK`) is not `DONE`; `FULL` when the latest run is an `ADMIN_SEED` or a recheck row is `DONE`; `UNKNOWN` otherwise.
+- Added by: `USER` with the username when the song names an account; `ADMIN_SEED` with a null username when it does not and an admin seed run exists for its YouTube ID; `UNKNOWN` otherwise. Runs without a song are always `ADMIN_SEED`.
+
+V43 adds the `pg_trgm` extension with trigram GIN indexes `songs_title_trgm_idx` and `song_artists_name_trgm_idx` for the substring search, `songs_youtube_id_idx` for the exact ID match, `pending_imports_youtube_id_idx` for each song's backlog rows, and `songs_created_at_idx`.
+
+
+## Game history and difficulty data
+
+Core owns both migration histories. V40 creates the core history, prepared difficulty, research identity mapping, and delivery queue. Analytics V2 creates observations, anonymous aggregates, retry deduplication, and deleted-identity tombstones. Game history preserves one summary before temporary session rows are purged. The existing group results export still retains only the latest completed game for each group.
+
+| Database | Entity | Fields |
+| --- | --- | --- |
+| Core | GameSummary | id, sourceSessionId (unique), groupName snapshot, startedAt, endedAt, mode, difficultyTier (null for Custom), winTargetCards, participantCount, turnsPlayed, endingReason, rulesVersion |
+| Core | GameParticipantSummary | id, gameSummaryId, userId (nullable after deletion), displayName snapshot, participationStatus, finalCardCount, cardRank, artistRank, titleRank, isWinner, placementAttempts, correctPlacements, titleAttempts, correctTitles, artistAttempts, correctArtists, betsPlaced, betsWon |
+| Core | SongDifficulty | songId, score, tier, placementSampleCount, calculationVersion, calculatedAt, samplingKey |
+| Analytics | SongPlayObservation | eventId (unique), occurredAt, songId, researchPlayerId, gameCorrelationId, placementOutcome, timelineCardCount, validInsertionSlotCount, titleAttempted, titleCorrect, artistAttempts, correctArtists, requestedDifficultyTier (null for Custom), rulesVersion |
+| Analytics | SongDifficultyAggregate | songId, rulesVersion, timelineSizeBand, placementAttempts, correctPlacements, titleAttempts, correctTitles, artistAttempts, correctArtists, updatedAt |
+
+Game summaries exclude song lists, final timelines, raw guesses, chat, and voice. Only original participants can read them, including departed players and after group expiry. Ties remain ties. Interrupted games do not count as competitive wins. Duration derives from the timestamps; user-visible totals derive from core history. Account deletion clears account links and names from shared summaries, removes research identity, and removes summaries once no account-linked participants remain. History has no age-based expiry while a participant account remains.
+
+Raw analytics events and observations expire after 365 days. Anonymous song aggregates survive raw-observation expiry and contain no player identity. Observation delivery and aggregation are retry-safe; skipped turns do not count as incorrect attempts. Pseudonymous research identities remain account-linked data requiring deletion handling. The core delivery queue commits scored-turn observations with gameplay before temporary rows are purged. A worker delivers up to 50 observations every 30 seconds; analytics commits the observation, deduplication key, and aggregate together before core acknowledges delivery. Expired queued raw observations are removed independently of analytics availability. Account deletion removes the core identity mapping and queues analytics anonymization; tombstones also anonymize late deliveries.
+
+Difficulty calculation runs every six hours and publishes prepared scores to core. Cold starts use the popularity proxy. Session starts select from the tier and sampling-key index using a random pivot, taking the requested tier first and widening to the other prepared tiers and then to in-scope verified songs with no prepared row when that tier is short, preserving the last successful scores during analytics failures. Confirm stores the selected tier only; Start builds a session song list with connected player count multiplied by win target cards multiplied by three, deduped by a normalized primary artist and title and shuffled, and the list is not saved as a playlist or displayed for review. International eligibility retains the current verified-status and five-sitelink rules. A catalog still short after widening produces an error stating how many songs are available and how many are needed. Personalized ML training remains deferred.
+
+Playlist invites are eight uppercase letters with collision checks; older stored codes may use earlier formats. Group join codes are four uppercase letters. All three print modes accept A4, LETTER, LEGAL, A3, A5, and TABLOID. Shared-song metadata editing is limited to UNVERIFIED and MANUAL_ENTRY and requires write access to every containing playlist.
+
+Transport turns and full-pass rounds are separate: `RoundDTO.turnNumber` advances for each player's turn; `roundNumber` advances after a full pass. `RoundDTO` includes placement, countdown, betting, and reveal deadlines, accepted bets, eligible skip-voter IDs, and reveal-only artist, title, year, and color. `GuessStateDTO` exposes the caller's progressive artist state and one-shot title state. Guess feedback is private; revealed song metadata is public only after reveal.
+
+`PlayerCard` stores a player's timeline card while a session is active. `StoredSessionResults` stores the latest normal result per group with the original participant account IDs for access control. `GameSummary` and `GameParticipantSummary` retain compact history independently of those temporary rows and group membership.
+
+## Verified catalog embedding indexing
+
+Core V41 owns `song_embedding_queue`: `song_id` (primary key and cascading song foreign key), `generation` (monotonic metadata revision), `attempts`, and `available_at` (next attempt or lease expiry). Verified song inserts, verification changes, and artist/title edits schedule a fresh generation; non-verified songs lose their embedding and queued work. The migration backfills verified entries whose embedding is missing.
+
+Internal `POST /catalog/index-next` requires `X-Internal-Api-Key` and returns `{indexed, retry_scheduled}`. The core scheduler checks for due work every ten seconds on its own thread and avoids waking AI when the queue is empty. AI claims one job atomically with a five-minute lease, generates a 1536-dimensional embedding from normalized main artists and title, and commits it only when generation and attempt match. Metadata edits and reclaimed leases reject stale results. The internal client has a ten-second connection timeout and a two-minute response timeout. OpenAI embedding requests have a 60-second timeout and no immediate SDK retries. Failed jobs retry from two minutes with exponential backoff capped at six hours. Queue recovery survives service restarts; catalog metadata and playlist membership remain unchanged.
+
+## External API usage
+
+Core V42 owns `api_usage_daily`: `usage_date`, `provider` (`YOUTUBE`, `DEEPINFRA`, `OPENAI`), `operation` (`videos.list`, `playlistItems.list`, `chat_completion`, `embeddings`), `call_count`, `quota_units` (YouTube quota units, 0 for other providers), `input_tokens`, `output_tokens`, `created_at`, and `updated_at`, unique on (`usage_date`, `provider`, `operation`). The AI service upserts one increment per call from a background thread, adding to the day's counters. YouTube rows use the Pacific date because the YouTube quota resets at midnight Pacific time; other providers use the UTC date. Every YouTube request that receives a response counts its quota units, whatever the status. Chat and embedding calls record the token counts from the response's usage field, or zero tokens when it has none. A failed write is logged by exception type and dropped, and never affects the pipeline.
+
+Estimated cost is computed on read in `ApiUsagePricing` from the stored tokens and named per-million-token price constants, with the date the prices were read; it is never stored, so a corrected price also corrects past figures. The month is the current UTC calendar month.
+
+## Stage pipeline job engine (story 51)
+
+Core V44 owns four tables. The engine processes all admin backfill and patient rechecks. Stage worker, completion service, HTTP client, and scheduler beans are unconditional. The sequential drain, its daily song cap, and the catalog-seeding status and drain endpoints are removed. `PIPELINE_STAGES_ENABLED` is ignored and can be removed by the owner after merge. Historical `pending_imports` rows and patient years remain readable; no schema migration is included.
+
+Core V45 adds `stage_pace`: `stage` (primary key), `next_slot_at`, nullable `cooldown_until`, `current_delay_ms`, nullable `avg_response_ms`, and `updated_at`. Seeded stages are `YOUTUBE_METADATA`, `MUSICBRAINZ`, `DISCOGS`, `WIKIDATA`, and `WIKIPEDIA`. Delay and response times cannot be negative. The AI service updates rows but never creates or migrates the table.
+
+Slot reservation is one atomic `UPDATE` returning the reserved timestamp and wait. Capped reservations update only when the next slot is within the cap; a rejected reservation reads the current wait without advancing the slot. Holds move both the next slot and cooldown forward. YouTube has no added spacing interval and still honors persisted cooldowns. Other source intervals retain their existing rate policies. A database failure or missing row logs a warning and uses the in-memory pacer; unavailable stores are retried after 30 seconds. Each successful measured response updates an exponential moving average in milliseconds on a background writer, with a newest-sample weight of 0.2.
+
+- `import_batches`: `id`, `kind` (`ADMIN_PLAYLIST`, `ADMIN_IDS`, `USER_IMPORT`), `label`, `source_link`, `created_by` (nullable user, set null when the account is deleted), `created_at`, `cancelled_at`.
+- `pipeline_runs`: one YouTube ID's journey through the stages. `id`, `youtube_id`, `batch_id`, `lane` (`USER_IMPORT`, `BACKFILL`), `status` (`ACTIVE`, `DONE`, `FAILED`, `CANCELLED`), `origin` (the `PendingImportOrigin` values `ADMIN_SEED`, `FAST_TIER_RECHECK`, `USER_ADD_RECHECK`), `provisional_year`, `created_at`, `ready_to_save_at`, `finished_at`. The partial unique index `pipeline_runs_one_active_per_video` allows one `ACTIVE` run per YouTube ID, and `startRun` takes a transaction advisory lock on the ID, so a concurrent start returns the run already active.
+- `pipeline_jobs`: one stage of one run. `id`, `run_id`, `stage`, `lane` (copied from the run), `status` (`WAITING`, `IN_PROGRESS`, `DONE`, `FAILED`, `SKIPPED`, `CANCELLED`), `attempts`, `max_attempts`, `priority` (higher first), `next_attempt_at`, `lease_owner`, `lease_expires_at`, `result` (JSON), `failure_kind` (`TRANSIENT`, `PERMANENT`), `failure_stage`, `failure_reason`, `created_at`, `started_at`, `finished_at`, `updated_at`, unique on (`run_id`, `stage`). The partial index `pipeline_jobs_waiting_lease_order` serves the lease order and `pipeline_jobs_in_progress_lease_expiry` serves lease reclaim.
+- `stage_controls`: one seeded row per stage with `paused`, `paused_reason`, and `paused_at`.
+
+Stages are `YOUTUBE_METADATA`, `MUSICBRAINZ`, `DISCOGS`, `WIKIDATA`, `WIKIPEDIA`, `LLM_RECONCILIATION`, and `EMBEDDING`. Every status column has a CHECK constraint listing its values.
+
+`PipelineJobService.leaseNext(stage, owner, duration)` first reclaims the stage's expired leases, then leases one due `WAITING` job of an active run with `FOR UPDATE SKIP LOCKED`, user imports first, then higher priority, then oldest. A paused stage leases nothing. There is no background reclaim poll. A lost lease counts as a failed attempt. Completing or failing a job requires the caller to still hold its lease. Row locks are always taken on the run before the job.
+
+A transient failure retries after a backoff of 30 seconds doubling per attempt, capped at 30 minutes, shortened by up to 20% of jitter. After `pipeline.job.max-attempts` attempts (default 6) the job fails with the reason `Gave up after N attempts: <reason>` and the run fails. A transient failure with a rejected key puts the job back in its queue without using an attempt and pauses the stage with the reason `API key rejected`. A permanent failure fails the job and the run at once. `FailureClassifier` treats 408, 425, 429, 5xx, timeouts, connection errors, and unknown errors as transient; 400, 401, and 403 from a provider that takes an API key as a transient rejected key; and 404 or 410 from a YouTube video lookup and no usable metadata as permanent.
+
+```mermaid
+stateDiagram-v2
+    [*] --> YOUTUBE_METADATA
+    YOUTUBE_METADATA --> Sources: done
+    state Sources {
+        MUSICBRAINZ
+        DISCOGS
+        WIKIDATA
+    }
+    Sources --> ReadyToSave: all three answered with the same earliest year, Wikipedia and LLM skipped
+    Sources --> WIKIPEDIA: years differ, a year is missing, or a source did not answer
+    WIKIPEDIA --> LLM_RECONCILIATION
+    LLM_RECONCILIATION --> ReadyToSave
+    ReadyToSave --> Saved: song persistence and run DONE in one transaction
+    Saved --> [*]
+```
+
+The three source jobs are created together and run in parallel; the decision waits until all three are terminal. `StageDependencies` holds these rules, reading `earliestYear` (an integer or null) from each source job's result. New jobs inherit the priority of the job that finished before them. Cancelling a batch cancels its active runs and their waiting jobs; a job already in progress finishes as `CANCELLED` and its result is dropped. Retrying a failed run requeues its failed jobs with fresh attempts, unless another run of the same YouTube ID is active. Discarding cancels a run, bumping raises a run's unfinished jobs above every waiting job, and `stageCounts` reads metadata job counts plus the V41 embedding queue depth and retry count. No new `EMBEDDING` job is created in the engine; that stage value remains for compatibility and reporting.
+
+`PipelineStageDispatcher` starts stage work after committed wake-ups and polls all stages in one due-work query. `pipeline.stages.interval-seconds` defaults to 5 and `pipeline.stages.idle-interval-seconds` to 600 (ten minutes). Startup polls immediately. `pipeline.stages.burst-limit` defaults to 20 jobs per slot. `pipeline.stages.concurrency.youtube-metadata` defaults to 4, `llm-reconciliation` to 3, and `musicbrainz`, `discogs`, `wikidata`, and `wikipedia` to 2 each under the same property prefix. A stage control row lock makes `leaseWithinLimit` enforce the limit across core processes after reclaiming expired leases. The bounded executor has the sum of metadata slots plus two threads; polling and wake-up timers use a separate two-thread scheduler. Wake-ups are in-process hints delivered after commit, and the poll recovers missed or remote signals with up to one idle interval of delay. The ten-minute idle interval exceeds Neon's default five-minute inactivity threshold, but other periodic database users can still prevent suspension. Retry timers cover the next ten minutes; later retries rely on polling. Stage requests have a ten-second connect timeout, a four-minute read timeout, and five-minute job leases. The AI service owns source pacing and serves sync requests on up to 100 AnyIO worker threads in its single Uvicorn process. Local 429 pace deferrals reschedule without failed tries; upstream provider errors use the classifier, and internal authentication failures pause the stage. AI transient provider errors (429, 5xx, timeouts, and connection failures) are warning logs without stack traces or error-reporter capture. Unexpected failures remain errors.
+
+Only YouTube backfill leases check the remaining daily units through `ApiUsageService`. The configurable reserve is `pipeline.youtube.reserve-units`, from `PIPELINE_YOUTUBE_RESERVE_UNITS`, default 1,500. Exactly the reserve still permits a backfill lease; values below it allow only user-lane YouTube jobs. Other stages continue processing already-fetched videos. User rechecks carry their provisional year and promote an active backfill run to the user lane when necessary. Admin enqueue records a playlist or ID batch; known songs and already-active runs are skipped in its response.
+
+`PipelineCompletionService` completes the last needed stage, constructs the final metadata (locally for an exact three-source lock), calls `SongCatalogService.persist`, records the patient year in recheck history, and marks the run `DONE` in one transaction. A save failure rolls everything back and returns the last stage to retry. Verified duplicates finish from the YouTube stage; rejected prechecks fail the run without creating source jobs. V41's database triggers schedule verified embeddings after the song transaction commits.
+
+The catalog list, counts, detail status, pipeline labels, and live queue history read runs and jobs. A latest failed run appears as an error when no run is active. The dashboard's waiting total includes the metadata jobs and the V41 embedding queue; embedding has no separate engine in-progress count. Retained `pending_imports` rows supply historical detail and patient years, never live catalog or dashboard queue counts.
+
+### Stage pipeline verification
+
+The owner confirmed the production playlist test on 2026-10-17 before the sequential-drain cleanup. The stage pipeline remains the only metadata queue path; runtime rollback through a cutover flag is no longer available.
+
+Regression checks cover source agreement skipping Wikipedia and reconciliation, disagreement reaching both stages, one saved song per video, V41 embedding completion, provider retries, rejected-key pauses, pace deferrals without failed tries, expired lease recovery, and the YouTube reserve protecting user work. Patient rechecks retain their provisional songs and record patient years without duplicates. Queue and catalog pages expose real stage failures, attempts, retry times, pause reasons, and batch progress.
+
+## Admin queue and control API (story 51)
+
+Every endpoint below calls `AdminAccessGuard` before its service operation. Requests from ordinary users return 403. Invalid stages, job statuses, pages, video IDs, years, and malformed bodies return 400. Missing runs, batches, or songs return 404. Refused state transitions and deletion during a game return 409. Error responses use `ErrorResponse` (`status`, `message`, `timestamp`). Queue stage paths accept enum names or lowercase names with hyphens, such as `youtube-metadata`.
+
+| Method and path | Request | Response |
+|---|---|---|
+| `GET /api/admin/queues` | None | `QueueOverviewDTO`: `stages`, `stagesEnabled`, `youtubeUnitsRemaining`, `youtubeReserveUnits`, `youtubeBackfillLimited` |
+| `GET /api/admin/queues/{stage}/jobs` | Optional `status` and zero-based `page`; `status` also accepts `RETRYING` and `DONE_TODAY` | `QueueJobPageDTO`: `items`, `page`, fixed `size: 25`, `totalElements`, `totalPages` |
+| `GET /api/admin/runs` | Optional `status` (`ACTIVE`, `DONE`, `FAILED`, `CANCELLED`), `lane` (`USER_IMPORT`, `BACKFILL`), `state` (`WAITING`, `IN_PROGRESS`, `RETRYING`, `DONE`, `FAILED`, `CANCELLED`), and `page` | `PipelineRunPageDTO`, pagination and global `counts` by derived state, with per-run stage jobs |
+| `POST /api/admin/queues/{stage}/pause` | No body | `{affected}` |
+| `POST /api/admin/queues/{stage}/resume` | No body | `{affected}` |
+| `POST /api/admin/pipeline/pause` | No body | `{affected}`, all stage controls change in one transaction |
+| `POST /api/admin/pipeline/resume` | No body | `{affected}` |
+| `POST /api/admin/runs/{id}/retry` | No body | `{affected}`; a failed run without a competing active run restarts with fresh attempts; waiting transient retries become due now and retain their attempts |
+| `POST /api/admin/runs/{id}/discard` | No body | `{affected}`; finished runs return 409 |
+| `POST /api/admin/runs/{id}/bump` | No body | `{affected}`, the number of unfinished jobs raised above waiting work in their lane |
+| `POST /api/admin/queues/retry-failed` | No body; optional `stage` query | `{affected}`, the number of runs restarted, scoped to the failed stage when supplied; cancelled batches remain stopped |
+| `GET /api/admin/batches` | Optional `page`, 25 per page | `ImportBatchPageDTO`, with the standard pagination fields |
+| `POST /api/admin/batches/{id}/cancel` | No body | `{affected}`, active runs cancelled; late results are discarded |
+| `POST /api/admin/pipeline/enqueue` | `{playlistLink?, youtubeIds?}`, at least one required | `EnqueueResultDTO`: `enqueuedYoutubeIds`, `skippedAlreadyKnownYoutubeIds`, `skippedAlreadyQueuedYoutubeIds`, `batchId` |
+| `POST /api/admin/pipeline/run-now` | `{youtubeId}`, video ID or link | `PipelineRunDTO`; existing songs can be reprocessed, and an active run is reused and bumped |
+| `POST /api/admin/songs/{id}/rerun` | No body | `PipelineRunDTO`, through the same run-now path |
+| `PUT /api/admin/songs/{id}` | `{releaseYear?, verificationStatus?}`, at least one required | `{affected}`; years range from 1000 to the current year, and verified songs require a known year |
+| `DELETE /api/admin/songs/{id}` | No body | `{affected}`; removes playlist links, alternate IDs, reports, confirmations, and artist rows, cancels active runs, and deletes the catalog song. A song in a current game's cards, rounds, or future-song queue returns 409 |
+
+Each `QueueStageDTO` contains `stage`, `state` (`RUNNING`, `PAUSED`, `COOLING_DOWN`), `waiting`, `inProgress`, `retrying`, `doneToday`, `failed`, `currentDelayMs`, `cooldownUntil`, `averageResponseMs`, `estimatedDrainSeconds`, and `pausedReason`. Additive fields are `waitingDue`, `waitingScheduled`, `averageQueueWaitMs`, `jobsPerMinute`, `sourceRequestMs`, `concurrencyLimit`, and `finishedLastHour`.
+
+| Field | Meaning |
+| --- | --- |
+| `waiting` | WAITING jobs on active runs, including future retries, plus expired IN_PROGRESS leases on active runs |
+| `waitingDue` | Waiting jobs whose next attempt is due, plus expired leases |
+| `waitingScheduled` | Waiting minus waitingDue, including retry backoff and pace deferrals |
+| `inProgress` | IN_PROGRESS jobs with an unexpired lease |
+| `retrying` | The subset of waiting with failed tries, plus expired leases awaiting reclaim |
+| `failed` | FAILED jobs on runs still marked FAILED; discarded runs are excluded |
+| `doneToday` | DONE jobs finished since UTC midnight; SKIPPED jobs never count |
+| `averageResponseMs` | Mean lease-to-finish duration of DONE jobs finished in the last 60 minutes; null without samples |
+| `averageQueueWaitMs` | Mean nonnegative time from the final next-attempt time to the final lease for the same samples; backoff and earlier failed tries are excluded |
+| `jobsPerMinute` | DONE completions over the last ten minutes divided by ten |
+| `sourceRequestMs` | The AI pacer's moving average upstream request time, separate from job duration |
+| `concurrencyLimit` | Configured simultaneous metadata jobs; embedding uses its single scheduler slot |
+| `finishedLastHour` | DONE samples in the duration window |
+
+Drain estimates cover waiting plus in-progress work currently held by each stage. The rate is the larger of measured completions per minute (at least two completions in ten minutes) and concurrency divided by the mean job duration. Source pace caps that rate. Remaining cooldown is added, with seconds rounded up. A busy paused stage or a stage without a measured basis returns null; an empty stage returns zero. `QueueOverviewDTO.estimatedDrainSeconds` and batch estimates use the maximum stage estimate because stages run in parallel, and return null if any stage holding work has no estimate. These estimates do not predict jobs that later dependencies have not created yet.
+
+Core migration V47 adds `song_embedding_queue.claimed_at` and `songs.embedding_started_at`/`embedding_stored_at`, maintained by triggers without changing AI schema ownership. An embedding queue row is in progress while its claim is unexpired, otherwise waiting. Retrying waiting rows have prior claims; failures retry without a hard limit, so `failed` is zero. `doneToday` counts currently stored embeddings timestamped since UTC midnight. Duration and throughput come from stored embeddings, with null duration for storage without a recorded claim. Embeddings stored before V47 have no timestamp and do not enter these samples. Metadata invalidation clears storage timestamps. Embedding queue wait and source request averages remain null.
+
+Each job contains `id`, nullable `runId`, `youtubeId`, `title` (falling back to the video ID), nullable `lane`, `stage`, `status`, `retrying`, nullable `queuedAt`, `attempts`, nullable `maxAttempts`, `nextAttemptAt`, `lastError`, nullable `failingStage`, `priority`, and `artists`, plus additive `failedTries` and nullable `maxTries`. Metadata `attempts` counts failed tries, not successful calls; `failedTries` is its clearer alias and `maxTries` aliases `maxAttempts`. Completion clears failure fields without resetting failed tries. Read paths hide stale failure data except for FAILED jobs and WAITING jobs with failed tries, including historical rows without a migration. Stage jobs are ordered by lane, priority, retry time, and ID. WAITING, RETRYING, and IN_PROGRESS filters follow the lease count definitions above, although rows retain their persisted status until reclaim. `DONE_TODAY` uses UTC midnight. V41 embedding `attempts` retains its raw claim counter for compatibility; `failedTries` subtracts the currently active claim. Its hard limit, lane and enqueue timestamp remain null. Terminal embedding history is absent from the job list even though stored embeddings supply aggregate completion counts. Embedding pause/resume controls its existing scheduler.
+
+Runs contain `id`, `youtubeId`, `title`, `lane`, `status`, `provisionalYear`, `queuedAt`, nullable `finishedAt`, `jobs`, nullable `batchId`, nullable `batchLabel`, and `artists`. The run page counts retain every derived state within the selected status and lane, regardless of the state filter. Completed metadata runs include read-only embedding progress derived from their catalog song and V41 queue, without creating an engine job. Batches contain `id`, `kind`, `label`, nullable `sourceLink`, `createdAt`, nullable `cancelledAt`, `total`, `waiting`, `inProgress`, `done`, `failed`, `cancelled`, `skippedDuplicates`, and nullable `estimatedDrainSeconds`. Core migration V46 adds the nonnegative `import_batches.skipped_duplicates` counter, including known videos and already-active runs skipped by the submission. Empty batches retain their skipped count. The catalog-seeding enqueue response includes the stage batch ID in its nullable `batchId` field.
+
+`QueueOverviewDTO.stagesEnabled` remains true for API compatibility; it is no longer a runtime switch.
+
+`GET /api/admin/dashboard` retains its existing fields and adds `pipeline`, the same queue overview as `/queues`. It carries the paused-stage reasons for the banner and the YouTube reserve figures. `GET /api/admin/songs/{songId}` adds `sourceFindings` (`stage`, `status`, nullable `result`, nullable `failureReason`) and `reviewReason` from the latest run. Both are omitted for songs without a run. An exact lock has a deterministic agreement reason; reconciliation retains the AI's structured result reasoning. Catalog edits trigger V41 indexing when verification changes.

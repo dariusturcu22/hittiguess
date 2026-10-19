@@ -1,0 +1,8 @@
+---
+description: This project's conventions, sourced from AGENTS.md
+alwaysApply: true
+---
+
+This project's conventions live in `AGENTS.md` at the repository root, not in a Cursor-specific file. Read it in full before starting any work.
+
+@AGENTS.md

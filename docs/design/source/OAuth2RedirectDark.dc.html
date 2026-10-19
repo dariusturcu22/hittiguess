@@ -1,0 +1,48 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bungee&family=Baloo+2:wght@700;800&family=Space+Grotesk:wght@400;500;600;700&display=swap">
+  <style>
+    body { margin: 0; }
+    .bar { border-radius: 100px; }
+    @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+    .spinner-icon { animation: spin 1.1s linear infinite; transform-origin: center; }
+  </style>
+</helmet>
+<div style="width: 1440px; height: 900px; background: #1e1e2e; font-family: 'Space Grotesk', sans-serif; box-sizing: border-box; color: #cdd6f4; display: flex; align-items: center; justify-content: center; position: relative; overflow: hidden; background-image: radial-gradient(circle, rgba(108,112,134,0.25) 1.5px, transparent 1.5px); background-size: 22px 22px;">
+
+  <div style="position: absolute; top: -180px; right: -160px; width: 560px; height: 560px; border-radius: 50%; background: #f5c2e7; opacity: 0.14; z-index: 1;"></div>
+  <div style="position: absolute; bottom: -220px; left: -160px; width: 480px; height: 480px; background: #cba6f7; opacity: 0.14; transform: rotate(18deg); z-index: 1;"></div>
+
+  <div style="display: flex; flex-direction: column; align-items: center; position: relative; z-index: 2;">
+
+    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 44px;">
+      <div style="display: flex; align-items: center; gap: 3px; height: 24px;">
+        <div class="bar" style="background: #a6e3a1; width: 5px; height: 11px;"></div>
+        <div class="bar" style="background: #a6e3a1; width: 5px; height: 22px;"></div>
+        <div class="bar" style="background: #a6e3a1; width: 5px; height: 15px;"></div>
+        <div class="bar" style="background: #a6e3a1; width: 5px; height: 24px;"></div>
+      </div>
+      <div style="font-family: 'Baloo 2', sans-serif; font-weight: 800; font-size: 26px; color: #cdd6f4;">hittiguess</div>
+    </div>
+
+    <svg class="spinner-icon" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#f5c2e7" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="9" stroke-dasharray="34 20"></circle></svg>
+
+    <div style="font-family: 'Bungee', sans-serif; font-size: 18px; color: #f5c2e7; margin-top: 22px; text-shadow: 2px 2px 0 #11111b;">Signing you in&hellip;</div>
+    <div style="font-size: 13px; color: #a6adc8; margin-top: 10px;">Finishing up with your account provider. This only takes a second.</div>
+
+  </div>
+
+</div>
+</x-dc>
+<script data-dc-script data-props='{}'>
+class Component extends DCLogic {}
+</script>
+</body>
+</html>

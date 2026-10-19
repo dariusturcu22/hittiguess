@@ -1,18 +1,24 @@
 package org.dariusturcu.backend.model.ai;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.databind.PropertyNamingStrategies;
-import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
-import com.fasterxml.jackson.databind.annotation.JsonNaming;
+// Deliberately no @JsonNaming here: this record is the outbound-facing shape
+// returned to the frontend (which expects camelCase, matching every other
+// DTO in the API), unlike AiMetadataContent, which mirrors the AI
+// microservice's snake_case wire format on the way in.
+import java.util.List;
 
-@JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
 public record SongMetadataResponse(
         String title,
-        String artist,
-        @JsonDeserialize(using = FlexibleYearDeserializer.class)
+        List<String> mainArtists,
+        List<String> featuredArtists,
         Integer releaseYear,
-        String gradientColor1,
-        String gradientColor2
+        String color,
+        String confidence,
+        String source,
+        String reasoning,
+        String verificationStatus,
+        Integer sitelinksCount,
+        Integer durationSeconds,
+        Long canonicalSongId
 ) {
 
 }

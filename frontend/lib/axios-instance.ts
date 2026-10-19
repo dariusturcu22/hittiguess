@@ -1,5 +1,11 @@
 import axios, { AxiosRequestConfig, AxiosResponse } from "axios";
 
+declare module "axios" {
+  interface AxiosRequestConfig {
+    skipAuthRedirect?: boolean;
+  }
+}
+
 export const AXIOS_INSTANCE = axios.create({
   baseURL: process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080",
   withCredentials: true,
@@ -43,9 +49,7 @@ AXIOS_INSTANCE.interceptors.response.use(
       if (isRefreshing) {
         return new Promise((resolve, reject) => {
           failedQueue.push({ resolve, reject });
-        })
-          .then(() => AXIOS_INSTANCE(originalRequest))
-          .catch((error) => Promise.reject(error));
+        }).then(() => AXIOS_INSTANCE(originalRequest));
       }
       originalRequest._retry = true;
       isRefreshing = true;
@@ -57,9 +61,18 @@ AXIOS_INSTANCE.interceptors.response.use(
           { withCredentials: true },
         );
 
+        processQueue(null);
         return AXIOS_INSTANCE(originalRequest);
       } catch (refreshError) {
-        window.location.href = "/login";
+        processQueue(refreshError);
+        // Outside React here, no router available; a hard redirect also
+        // clears all in-memory app state on session expiry. Session probes on
+        // public pages opt out through skipAuthRedirect: a 401 there means
+        // logged out, not an expired session worth bouncing over.
+        if (!originalRequest.skipAuthRedirect) {
+          // eslint-disable-next-line @next/next/no-location-assign-relative-destination
+          window.location.href = "/login";
+        }
         return Promise.reject(refreshError);
       } finally {
         isRefreshing = false;

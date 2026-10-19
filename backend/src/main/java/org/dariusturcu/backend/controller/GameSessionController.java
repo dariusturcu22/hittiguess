@@ -1,0 +1,91 @@
+package org.dariusturcu.backend.controller;
+
+import org.dariusturcu.backend.exception.ResourceNotFoundException;
+import org.dariusturcu.backend.model.mapper.SessionMapper;
+import org.dariusturcu.backend.model.session.GameSession;
+import org.dariusturcu.backend.model.session.GameSessionDTO;
+import org.dariusturcu.backend.model.session.RoundLinkOutDTO;
+import org.dariusturcu.backend.model.session.GuessStateDTO;
+import org.dariusturcu.backend.model.session.SessionResultsDTO;
+import org.dariusturcu.backend.security.util.SecurityUtils;
+import org.dariusturcu.backend.service.GameSessionService;
+import org.dariusturcu.backend.service.SessionResultsStore;
+
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+@RestController
+@RequestMapping("/api/sessions")
+@RequiredArgsConstructor
+@Tag(name = "Game session", description = "Handles the round-by-round game session for a group")
+public class GameSessionController {
+
+    private final GameSessionService gameSessionService;
+    private final SessionMapper sessionMapper;
+    private final SessionResultsStore resultsStore;
+
+    @Operation(summary = "Get the current state of a game session, must be a player in it")
+    @GetMapping("/{sessionId}")
+    public ResponseEntity<GameSessionDTO> getSession(@PathVariable Long sessionId) {
+        GameSession session = gameSessionService.getSession(sessionId);
+        requirePlayerMembership(session);
+        return ResponseEntity.ok(sessionMapper.toSessionDTO(session, gameSessionService.getCurrentRoundOrNull(session)));
+    }
+
+    @Operation(summary = "Get a group's active game session, must be a player in it")
+    @GetMapping("/groups/{groupId}/active")
+    public ResponseEntity<GameSessionDTO> getActiveSessionForGroup(@PathVariable Long groupId) {
+        GameSession session = gameSessionService.getActiveSessionForGroup(groupId);
+        requirePlayerMembership(session);
+        return ResponseEntity.ok(sessionMapper.toSessionDTO(session, gameSessionService.getCurrentRoundOrNull(session)));
+    }
+
+    @Operation(summary = "Get the most recently completed session's results export for a group, must have played in it")
+    @GetMapping("/groups/{groupId}/results")
+    public ResponseEntity<SessionResultsDTO> getResults(@PathVariable Long groupId) {
+        SessionResultsStore.PlayedResults playedResults = resultsStore.get(groupId)
+                .orElseThrow(() -> new ResourceNotFoundException("No completed session results found for group {id=" + groupId + "}"));
+        if (!playedResults.wasPlayedBy(SecurityUtils.getCurrentUserId())) {
+            throw new AccessDeniedException("You didn't play in this group's last session");
+        }
+        return ResponseEntity.ok(playedResults.results());
+    }
+
+    @Operation(summary = "Get the current round's YouTube link-out, must be the round's DJ")
+    @GetMapping("/{sessionId}/link-out")
+    public ResponseEntity<RoundLinkOutDTO> getCurrentRoundLinkOut(@PathVariable Long sessionId) {
+        Long currentUserId = SecurityUtils.getCurrentUserId();
+        return ResponseEntity.ok(gameSessionService.getCurrentRoundLinkOut(sessionId, currentUserId));
+    }
+
+    @Operation(summary = "Leave a running game session, the game continues without the calling player")
+    @PostMapping("/{sessionId}/leave")
+    public ResponseEntity<Void> leaveSession(@PathVariable Long sessionId) {
+        gameSessionService.leavePlayer(sessionId, SecurityUtils.getCurrentUserId());
+        return ResponseEntity.noContent().build();
+    }
+
+    @Operation(summary = "Get the current round's artist and title guessing state for the calling player")
+    @GetMapping("/{sessionId}/guess-state")
+    public ResponseEntity<GuessStateDTO> getGuessState(@PathVariable Long sessionId) {
+        return ResponseEntity.ok(gameSessionService.getGuessState(sessionId, SecurityUtils.getCurrentUserId()));
+    }
+
+    private void requirePlayerMembership(GameSession session) {
+        Long currentUserId = SecurityUtils.getCurrentUserId();
+        boolean isPlayer = session.getPlayers().stream()
+                .anyMatch(player -> player.getUser().getId().equals(currentUserId));
+        if (!isPlayer) {
+            throw new AccessDeniedException("You are not a player in this session");
+        }
+    }
+
+}

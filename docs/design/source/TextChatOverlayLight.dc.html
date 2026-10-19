@@ -1,0 +1,103 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bungee&family=Baloo+2:wght@700;800&family=Space+Grotesk:wght@400;500;600;700&display=swap">
+  <style>
+    .msg-row { display: flex; align-items: flex-start; gap: 10px; min-height: 52px; box-sizing: border-box; }
+    .msg-avatar { width: 28px; height: 28px; border-radius: 50%; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-family: 'Bungee', sans-serif; font-size: 10px; color: #ffffff; }
+  </style>
+</helmet>
+<div style="width: 450px; height: 658px; box-sizing: border-box; background: #eff1f5; background-image: radial-gradient(circle, rgba(76,79,105,0.2) 1.5px, transparent 1.5px); background-size: 22px 22px; display: flex; align-items: center; justify-content: center; font-family: 'Space Grotesk', sans-serif;">
+  <div style="width: 380px; box-sizing: border-box; background: #ffffff; border: 3px solid #4c4f69; border-radius: 18px; box-shadow: 6px 6px 0 rgba(76,79,105,0.25); display: flex; flex-direction: column;">
+
+    <!-- HEADER -->
+    <div style="padding: 20px 22px; border-bottom: 2px solid #ccd0da; display: flex; align-items: center; justify-content: space-between;">
+      <span style="font-weight: 700; font-size: 15px; color: #4c4f69;">Chat</span>
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#5c5f77" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+    </div>
+
+    <!-- MESSAGE LIST -->
+    <div style="padding: 24px 22px; display: flex; flex-direction: column; gap: 18px;">
+      <div class="msg-row">
+        <div class="msg-avatar" style="background: #3772e6;">M</div>
+        <div style="flex: 1; min-width: 0;">
+          <div style="display: flex; align-items: baseline; gap: 8px;">
+            <span style="font-weight: 700; font-size: 12px; color: #3772e6;">Mara</span>
+            <span style="font-size: 9px; color: #9ca0b0;">7:41 PM</span>
+          </div>
+          <div style="font-size: 13px; color: #4c4f69; margin-top: 3px;">1998?? no way that's older than I thought</div>
+        </div>
+      </div>
+      <div class="msg-row">
+        <div class="msg-avatar" style="background: #d49032;">T</div>
+        <div style="flex: 1; min-width: 0;">
+          <div style="display: flex; align-items: baseline; gap: 8px;">
+            <span style="font-weight: 700; font-size: 12px; color: #d49032;">Theo</span>
+            <span style="font-size: 9px; color: #9ca0b0;">7:41 PM</span>
+          </div>
+          <div style="font-size: 13px; color: #4c4f69; margin-top: 3px;">gg</div>
+        </div>
+      </div>
+      <div class="msg-row">
+        <div class="msg-avatar" style="background: #ed6f27;">D</div>
+        <div style="flex: 1; min-width: 0;">
+          <div style="display: flex; align-items: baseline; gap: 8px;">
+            <span style="font-weight: 700; font-size: 12px; color: #ed6f27;">Darius</span>
+            <span style="font-size: 9px; color: #9ca0b0;">7:42 PM</span>
+          </div>
+          <div style="font-size: 13px; color: #4c4f69; margin-top: 3px;">nice guess</div>
+        </div>
+      </div>
+      <div class="msg-row">
+        <div class="msg-avatar" style="background: #3772e6;">M</div>
+        <div style="flex: 1; min-width: 0;">
+          <div style="display: flex; align-items: baseline; gap: 8px;">
+            <span style="font-weight: 700; font-size: 12px; color: #3772e6;">Mara</span>
+            <span style="font-size: 9px; color: #9ca0b0;">7:42 PM</span>
+          </div>
+          <div style="font-size: 13px; color: #4c4f69; margin-top: 3px;">how do you even know this one</div>
+        </div>
+      </div>
+      <div class="msg-row">
+        <div class="msg-avatar" style="background: #d49032;">T</div>
+        <div style="flex: 1; min-width: 0;">
+          <div style="display: flex; align-items: baseline; gap: 8px;">
+            <span style="font-weight: 700; font-size: 12px; color: #d49032;">Theo</span>
+            <span style="font-size: 9px; color: #9ca0b0;">7:43 PM</span>
+          </div>
+          <div style="font-size: 13px; color: #4c4f69; margin-top: 3px;">my mom played it on repeat lol</div>
+        </div>
+      </div>
+      <div class="msg-row">
+        <div class="msg-avatar" style="background: #ed6f27;">D</div>
+        <div style="flex: 1; min-width: 0;">
+          <div style="display: flex; align-items: baseline; gap: 8px;">
+            <span style="font-weight: 700; font-size: 12px; color: #ed6f27;">Darius</span>
+            <span style="font-size: 9px; color: #9ca0b0;">7:43 PM</span>
+          </div>
+          <div style="font-size: 13px; color: #4c4f69; margin-top: 3px;">respect</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- INPUT ROW -->
+    <div style="padding: 20px 20px; border-top: 2px solid #ccd0da; display: flex; align-items: center; gap: 10px;">
+      <div style="flex: 1; background: #eff1f5; border: 2px solid #ccd0da; border-radius: 100px; padding: 12px 18px; font-size: 13px; color: #9ca0b0; box-sizing: border-box;">Type a message...</div>
+      <div style="width: 38px; height: 38px; border-radius: 50%; background: #ed6f27; flex-shrink: 0; display: flex; align-items: center; justify-content: center;">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="#ffffff"><path d="M2 21l21-9L2 3v7l15 2-15 2z"></path></svg>
+      </div>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script data-dc-script data-props='{}'>
+class Component extends DCLogic {}
+</script>
+</body>
+</html>

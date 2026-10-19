@@ -1,0 +1,2 @@
+ALTER TABLE songs
+    ALTER COLUMN added_by DROP NOT NULL;

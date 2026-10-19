@@ -1,0 +1,33 @@
+package org.dariusturcu.backend.controller;
+
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import lombok.RequiredArgsConstructor;
+import org.dariusturcu.backend.model.song.AdminCatalogSeedingRequest;
+import org.dariusturcu.backend.model.song.EnqueueResultDTO;
+import org.dariusturcu.backend.security.AdminAccessGuard;
+import org.dariusturcu.backend.service.CatalogSeedingService;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+@RestController
+@RequestMapping("/api/admin/catalog-seeding")
+@RequiredArgsConstructor
+@Tag(name = "Admin catalog seeding", description = "Admin-only bulk enqueue for growing the song catalog")
+public class AdminCatalogSeedingController {
+
+    private final CatalogSeedingService catalogSeedingService;
+    private final AdminAccessGuard adminAccessGuard;
+
+    @Operation(summary = "Bulk-enqueue a YouTube playlist link and/or video IDs into the stage pipeline, "
+            + "admin only; already-known songs are skipped")
+    @PostMapping("/enqueue")
+    public ResponseEntity<EnqueueResultDTO> enqueue(@RequestBody AdminCatalogSeedingRequest request) {
+        adminAccessGuard.requireAdmin();
+        return ResponseEntity.ok(catalogSeedingService.enqueue(request));
+    }
+
+}

@@ -1,12 +1,17 @@
 package org.dariusturcu.backend.config;
 
-import lombok.RequiredArgsConstructor;
+import tools.jackson.databind.ObjectMapper;
+import org.dariusturcu.backend.exception.ErrorResponse;
+import org.dariusturcu.backend.ratelimit.RateLimitingFilter;
 import org.dariusturcu.backend.security.JwtAuthenticationFilter;
 import org.dariusturcu.backend.security.oauth2.CustomOAuth2UserService;
 import org.dariusturcu.backend.security.oauth2.HttpCookieOAuth2AuthorizationRequestRepository;
+import org.dariusturcu.backend.security.oauth2.OAuth2AuthenticationFailureHandler;
 import org.dariusturcu.backend.security.oauth2.OAuth2AuthenticationSuccessHandler;
+import org.dariusturcu.backend.security.oauth2.ReturnToOAuth2AuthorizationRequestResolver;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -20,6 +25,7 @@ import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.access.AccessDeniedHandler;
 import org.springframework.security.web.authentication.HttpStatusEntryPoint;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
@@ -28,20 +34,62 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Configuration
 @EnableWebSecurity
-@RequiredArgsConstructor
 @Order(1)
 
 public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
+    private final RateLimitingFilter rateLimitingFilter;
     private final UserDetailsService userDetailsService;
     private final CustomOAuth2UserService customOAuth2UserService;
     private final OAuth2AuthenticationSuccessHandler oAuth2AuthenticationSuccessHandler;
+    private final OAuth2AuthenticationFailureHandler oAuth2AuthenticationFailureHandler;
     private final HttpCookieOAuth2AuthorizationRequestRepository authorizationRequestRepository;
+    private final ReturnToOAuth2AuthorizationRequestResolver returnToAuthorizationRequestResolver;
+    private final ObjectMapper objectMapper;
+    private final List<String> allowedFrontendOrigins;
+
+    @Value("${app.cookie-domain:}")
+    private String cookieDomain = "";
+
+    public SecurityConfig(
+            JwtAuthenticationFilter jwtAuthenticationFilter,
+            RateLimitingFilter rateLimitingFilter,
+            UserDetailsService userDetailsService,
+            CustomOAuth2UserService customOAuth2UserService,
+            OAuth2AuthenticationSuccessHandler oAuth2AuthenticationSuccessHandler,
+            OAuth2AuthenticationFailureHandler oAuth2AuthenticationFailureHandler,
+            HttpCookieOAuth2AuthorizationRequestRepository authorizationRequestRepository,
+            ReturnToOAuth2AuthorizationRequestResolver returnToAuthorizationRequestResolver,
+            ObjectMapper objectMapper,
+            @Value("${frontend.allowed-origins}") List<String> allowedFrontendOrigins
+    ) {
+        this.jwtAuthenticationFilter = jwtAuthenticationFilter;
+        this.rateLimitingFilter = rateLimitingFilter;
+        this.userDetailsService = userDetailsService;
+        this.customOAuth2UserService = customOAuth2UserService;
+        this.oAuth2AuthenticationSuccessHandler = oAuth2AuthenticationSuccessHandler;
+        this.oAuth2AuthenticationFailureHandler = oAuth2AuthenticationFailureHandler;
+        this.authorizationRequestRepository = authorizationRequestRepository;
+        this.returnToAuthorizationRequestResolver = returnToAuthorizationRequestResolver;
+        this.objectMapper = objectMapper;
+        this.allowedFrontendOrigins = allowedFrontendOrigins;
+    }
+
+    // The frontend reads this cookie from document.cookie to echo it as a header, so on a
+    // sibling subdomain it must carry the shared parent domain, or the browser hides it.
+    CookieCsrfTokenRepository csrfTokenRepository() {
+        CookieCsrfTokenRepository csrfTokenRepository = CookieCsrfTokenRepository.withHttpOnlyFalse();
+        if (!cookieDomain.isBlank()) {
+            csrfTokenRepository.setCookieCustomizer(cookie -> cookie.domain(cookieDomain));
+        }
+        return csrfTokenRepository;
+    }
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
@@ -50,18 +98,32 @@ public class SecurityConfig {
 
         return http
                 .csrf(csrf -> csrf
-                        .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
+                        .csrfTokenRepository(csrfTokenRepository())
                         .csrfTokenRequestHandler(csrfHandler)
+                        // Only the /auth endpoints reached before a session exists skip CSRF.
+                        // The ones acting on the signed-in account (2FA setup, confirm,
+                        // disable, and logout) need the token like every other mutation,
+                        // since production cookies are SameSite=None.
                         .ignoringRequestMatchers(
-                                "/auth/**",
+                                "/auth/register",
+                                "/auth/login",
+                                "/auth/2fa/verify",
+                                "/auth/verify-email",
+                                "/auth/resend-verification",
+                                "/auth/password-reset/**",
+                                "/auth/refresh",
                                 "/error",
                                 "/oauth2/**",
-                                "/login/oauth2/**",
-                                "/api/**"
+                                "/login/oauth2/**"
                         )
                 )
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .authorizeHttpRequests(auth -> auth
+                        .requestMatchers(
+                                "/auth/2fa/setup",
+                                "/auth/2fa/confirm",
+                                "/auth/2fa/disable"
+                        ).authenticated()
                         .requestMatchers(
                                 "/auth/**",
                                 "/oauth2/**",
@@ -71,6 +133,11 @@ public class SecurityConfig {
                                 "/v3/api-docs/**",
                                 "/v3/api-docs",
                                 "/api/enums/**",
+                                "/api/playlists/invites/*/preview",
+                                "/api/groups/invites/*/preview",
+                                "/api/users/*/avatar",
+                                "/api/ground-truth/**",
+                                "/actuator/health/**",
                                 "/error"
                         ).permitAll()
                         .anyRequest().authenticated()
@@ -80,16 +147,20 @@ public class SecurityConfig {
                 )
                 .exceptionHandling(exception -> exception
                         .authenticationEntryPoint(new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED))
+                        .accessDeniedHandler(accessDeniedHandler())
                 )
                 .authenticationProvider(authenticationProvider())
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
+                .addFilterAfter(rateLimitingFilter, JwtAuthenticationFilter.class)
                 .oauth2Login(oauth2 -> oauth2
                         .authorizationEndpoint(auth -> auth
-                                .authorizationRequestRepository(authorizationRequestRepository))
+                                .authorizationRequestRepository(authorizationRequestRepository)
+                                .authorizationRequestResolver(returnToAuthorizationRequestResolver))
                         .userInfoEndpoint(userInfoEndpointConfig -> userInfoEndpointConfig
                                 .userService(customOAuth2UserService)
                         )
                         .successHandler(oAuth2AuthenticationSuccessHandler)
+                        .failureHandler(oAuth2AuthenticationFailureHandler)
                 )
                 .build();
     }
@@ -97,7 +168,7 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(List.of("http://localhost:3000", "https://my-hitster.dariusturcu22.com"));
+        configuration.setAllowedOrigins(allowedFrontendOrigins);
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(List.of("*"));
         configuration.setAllowCredentials(true);
@@ -109,11 +180,23 @@ public class SecurityConfig {
 
     @Bean
     public AuthenticationProvider authenticationProvider() {
-        DaoAuthenticationProvider authenticationProvider = new DaoAuthenticationProvider();
-        authenticationProvider.setUserDetailsService(userDetailsService);
+        DaoAuthenticationProvider authenticationProvider = new DaoAuthenticationProvider(userDetailsService);
         authenticationProvider.setPasswordEncoder(passwordEncoder());
         return authenticationProvider;
-        // FIXME fix deprecated
+    }
+
+    @Bean
+    public AccessDeniedHandler accessDeniedHandler() {
+        return (request, response, accessDeniedException) -> {
+            response.setStatus(HttpStatus.FORBIDDEN.value());
+            response.setContentType("application/json");
+            ErrorResponse errorResponse = new ErrorResponse(
+                    HttpStatus.FORBIDDEN.value(),
+                    accessDeniedException.getMessage(),
+                    LocalDateTime.now()
+            );
+            objectMapper.writeValue(response.getWriter(), errorResponse);
+        };
     }
 
     @Bean

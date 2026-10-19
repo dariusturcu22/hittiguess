@@ -1,87 +1,195 @@
 package org.dariusturcu.backend.service;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.dariusturcu.backend.exception.RateLimitExceededException;
+import org.dariusturcu.backend.model.ai.AiFastDateResponse;
+import org.dariusturcu.backend.model.ai.AiIdentifyResponse;
+import org.dariusturcu.backend.model.ai.AiMetadataContent;
 import org.dariusturcu.backend.model.ai.AiResponse;
+import org.dariusturcu.backend.model.ai.AiServiceResolveResponse;
+import org.dariusturcu.backend.model.ai.FastDateRequest;
+import org.dariusturcu.backend.model.ai.MetadataResolveRequest;
 import org.dariusturcu.backend.model.ai.SongMetadataResponse;
-import org.dariusturcu.backend.service.metadata.GeniusService;
-import org.dariusturcu.backend.service.metadata.MusicBrainzService;
-import org.dariusturcu.backend.service.metadata.WikipediaService;
-import org.dariusturcu.backend.service.metadata.YouTubeMetadataService;
-import org.dariusturcu.backend.util.MetadataParser;
-import org.dariusturcu.backend.util.MetadataPromptBuilder;
-import org.springframework.ai.chat.client.ChatClient;
-import org.springframework.ai.openai.OpenAiChatOptions;
-import org.springframework.beans.factory.annotation.Value;
+import org.dariusturcu.backend.model.song.VerificationStatus;
+import org.dariusturcu.backend.model.user.User;
+import org.dariusturcu.backend.security.util.SecurityUtils;
+import org.dariusturcu.backend.util.RequestPacer;
+import org.dariusturcu.backend.util.YoutubeLinkParser;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestClient;
 
+import java.time.Duration;
+import java.time.Instant;
 import java.time.LocalDateTime;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.List;
+import java.util.Optional;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class SongMetadataService {
-    private final ChatClient.Builder chatClientBuilder;
-    private final YouTubeMetadataService youTubeMetadataService;
-    private final MusicBrainzService musicBrainzService;
-    private final WikipediaService wikipediaService;
-    private final GeniusService geniusService;
-    private final ObjectMapper objectMapper;
+    private static final String YOUTUBE_WATCH_URL_PREFIX = "https://www.youtube.com/watch?v=";
+    private static final Duration PREVIEW_CACHE_TTL = Duration.ofMinutes(10);
+    private static final String IDENTIFY_PATH = "/metadata/identify";
+    private static final String FAST_DATE_PATH = "/metadata/date-fast";
+    // Mirrors the AI service's FAST_TIER_MAX_REQUESTS_PER_WINDOW, so the backend stays
+    // under that cap itself instead of discovering it through 429s.
+    private static final int AI_FAST_TIER_REQUESTS_PER_MINUTE = 1200;
+    private static final Duration AI_FAST_TIER_REQUEST_INTERVAL =
+            Duration.ofMinutes(1).dividedBy(AI_FAST_TIER_REQUESTS_PER_MINUTE);
 
-    @Value("${spring.ai.openai.chat.options.model:gpt-5.1}")
-    private String aiModel;
+    private final RestClient aiServiceRestClient;
+    private final SongCatalogService songCatalogService;
+
+    // The metadata pipeline chains several rate-limited external calls plus a paid LLM call,
+    // so one user queuing many concurrent requests can tie up threads and run up cost. Capping
+    // it at one in-flight request per user, rather than a time window, matches the actual risk.
+    private final Set<Long> usersWithRequestInFlight = ConcurrentHashMap.newKeySet();
+    private final ConcurrentHashMap<PreviewCacheKey, CachedPreview> previewMetadataByKey = new ConcurrentHashMap<>();
+    private final RequestPacer fastTierRequestPacer = new RequestPacer(AI_FAST_TIER_REQUEST_INTERVAL);
+
+    private static final String SUCCESS_STATUS = "SUCCESS";
+    private static final String REJECTED_STATUS = "REJECTED";
+    private static final String ERROR_STATUS = "ERROR";
 
     public AiResponse fetchMetadata(String youtubeUrl) {
-        long startTime = System.currentTimeMillis();
+        Long userId = SecurityUtils.getCurrentUserId();
+        if (!usersWithRequestInFlight.add(userId)) {
+            throw new RateLimitExceededException("A metadata request is already in progress");
+        }
 
         try {
-            Map<String, Object> allMetadata = gatherAllMetadata(youtubeUrl);
-            String prompt = MetadataPromptBuilder.build(allMetadata);
-
-            String raw = chatClientBuilder.build()
-                    .prompt()
-                    .user(prompt)
-                    .options(OpenAiChatOptions.builder()
-                            .model(aiModel)
-                            .temperature(0.1)
-                            .build())
-                    .call()
-                    .content();
-
-            assert raw != null;
-            String clean = raw.replaceAll("```json|```", "").trim();
-            System.out.println("AI RAW RESPONSE: " + clean);
-            SongMetadataResponse parsed = objectMapper.readValue(clean, SongMetadataResponse.class);
-
-            long duration = System.currentTimeMillis() - startTime;
-
-            return new AiResponse(parsed, aiModel, duration, LocalDateTime.now(), "SUCCESS");
-
-        } catch (Exception e) {
-            return new AiResponse(
-                    null,
-                    aiModel,
-                    0,
-                    LocalDateTime.now(),
-                    "ERROR"
-            );
+            AiResponse response = resolve(youtubeUrl);
+            Optional<String> youtubeId = YoutubeLinkParser.parseVideoId(youtubeUrl);
+            youtubeId.ifPresent(videoId -> persistVerifiedResult(videoId, response, SecurityUtils.getCurrentUser()));
+            if (SUCCESS_STATUS.equals(response.status()) && response.content() != null && youtubeId.isPresent()) {
+                previewMetadataByKey.put(new PreviewCacheKey(userId, youtubeId.get()), new CachedPreview(response, Instant.now()));
+            }
+            return response;
+        } finally {
+            usersWithRequestInFlight.remove(userId);
         }
     }
 
-    private Map<String, Object> gatherAllMetadata(String url) {
-        Map<String, Object> allData = new HashMap<>();
+    // Internal resolution bypasses the interactive per-user in-flight gate.
+    public AiResponse resolveByYoutubeId(String youtubeId) {
+        AiResponse response = resolve(YOUTUBE_WATCH_URL_PREFIX + youtubeId);
+        persistVerifiedResult(youtubeId, response, null);
+        return response;
+    }
 
-        Map<String, String> ytData = youTubeMetadataService.fetchMetadata(url);
-        allData.put("youtube", ytData);
+    private void persistVerifiedResult(String youtubeId, AiResponse response, User addedBy) {
+        if (SUCCESS_STATUS.equals(response.status()) && response.content() != null
+                && VerificationStatus.VERIFIED.name().equals(response.content().verificationStatus())) {
+            songCatalogService.persist(youtubeId, response.content(), addedBy);
+        }
+    }
 
-        String title = MetadataParser.cleanYouTubeText(ytData.get("video_title"));
-        String artist = MetadataParser.cleanYouTubeText(ytData.get("channel_title"));
+    // The fast tier's first pass for one video. Empty when the AI service can't be
+    // reached or answers with nothing, which callers treat like an ERROR response.
+    public Optional<AiIdentifyResponse> identifyByYoutubeId(String youtubeId) {
+        return postToFastTier(IDENTIFY_PATH, new MetadataResolveRequest(YOUTUBE_WATCH_URL_PREFIX + youtubeId), AiIdentifyResponse.class);
+    }
 
-        allData.put("musicbrainz", musicBrainzService.search(title, artist));
-        allData.put("wikipedia", wikipediaService.search(title, artist));
-        allData.put("genius", geniusService.search(title, artist));
+    // The fast tier's one-lane year lookup for an identified song.
+    public Optional<AiFastDateResponse> dateFast(String title, List<String> mainArtists) {
+        return postToFastTier(FAST_DATE_PATH, new FastDateRequest(title, mainArtists), AiFastDateResponse.class);
+    }
 
-        return allData;
+    private <ResponseType> Optional<ResponseType> postToFastTier(String path, Object request, Class<ResponseType> responseType) {
+        try {
+            fastTierRequestPacer.awaitSlot();
+            return Optional.ofNullable(aiServiceRestClient.post()
+                    .uri(path)
+                    .body(request)
+                    .retrieve()
+                    .body(responseType));
+        } catch (InterruptedException interruption) {
+            Thread.currentThread().interrupt();
+            return Optional.empty();
+        } catch (Exception aiServiceCallFailure) {
+            log.warn("AI microservice call to {} failed: {}", path, aiServiceCallFailure.getMessage());
+            return Optional.empty();
+        }
+    }
+
+    public Optional<AiResponse> findCachedPreview(String youtubeId) {
+        PreviewCacheKey cacheKey = new PreviewCacheKey(SecurityUtils.getCurrentUserId(), youtubeId);
+        CachedPreview cachedPreview = previewMetadataByKey.get(cacheKey);
+        if (cachedPreview == null) {
+            return Optional.empty();
+        }
+        if (cachedPreview.createdAt().plus(PREVIEW_CACHE_TTL).isAfter(Instant.now())) {
+            return Optional.of(cachedPreview.response());
+        }
+        previewMetadataByKey.remove(cacheKey, cachedPreview);
+        return Optional.empty();
+    }
+
+    private AiResponse resolve(String youtubeUrl) {
+        long startTime = System.currentTimeMillis();
+
+        try {
+            AiServiceResolveResponse response = aiServiceRestClient.post()
+                    .uri("/metadata/resolve")
+                    .body(new MetadataResolveRequest(youtubeUrl))
+                    .retrieve()
+                    .body(AiServiceResolveResponse.class);
+
+            long duration = System.currentTimeMillis() - startTime;
+
+            if (response == null) {
+                return new AiResponse(null, null, duration, LocalDateTime.now(), ERROR_STATUS, null, null);
+            }
+
+            if (REJECTED_STATUS.equals(response.status())) {
+                return new AiResponse(null, response.model(), duration, LocalDateTime.now(),
+                        REJECTED_STATUS, response.rejectionReason(), response.rejectionDetail());
+            }
+
+            if (!SUCCESS_STATUS.equals(response.status())) {
+                return new AiResponse(null, response.model(), duration, LocalDateTime.now(), ERROR_STATUS, null, null);
+            }
+
+            return new AiResponse(toSongMetadataResponse(response.content()), response.model(), duration, LocalDateTime.now(), SUCCESS_STATUS, null, null);
+        } catch (Exception aiServiceCallFailure) {
+            log.warn("AI microservice call failed: {}", aiServiceCallFailure.getMessage());
+            return new AiResponse(null, null, System.currentTimeMillis() - startTime, LocalDateTime.now(), ERROR_STATUS, null, null);
+        }
+    }
+
+    // AiMetadataContent mirrors the AI microservice's snake_case wire format on
+    // the way in; SongMetadataResponse is the outbound shape the frontend
+    // actually consumes (camelCase, matching every other DTO in the API). The
+    // two must stay distinct types rather than one dual-purpose record, since
+    // a single Jackson naming strategy can't be snake_case for one direction
+    // and camelCase for the other.
+    static SongMetadataResponse toSongMetadataResponse(AiMetadataContent content) {
+        if (content == null) {
+            return null;
+        }
+        return new SongMetadataResponse(
+                content.title(),
+                content.mainArtists(),
+                content.featuredArtists(),
+                content.releaseYear(),
+                content.color(),
+                content.confidence(),
+                content.source(),
+                content.reasoning(),
+                content.verificationStatus(),
+                content.sitelinksCount(),
+                content.durationSeconds(),
+                content.canonicalSongId()
+        );
+    }
+
+    private record PreviewCacheKey(Long userId, String youtubeId) {
+    }
+
+    private record CachedPreview(AiResponse response, Instant createdAt) {
     }
 }

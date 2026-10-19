@@ -2,10 +2,10 @@ package org.dariusturcu.backend.model.playlist;
 
 import jakarta.validation.constraints.NotNull;
 import org.dariusturcu.backend.model.song.SongDTO;
-import org.dariusturcu.backend.model.user.UserSummaryDTO;
 
 import java.util.List;
 import java.util.Set;
+import java.time.Instant;
 
 public record PlaylistDetailDTO(
         @NotNull
@@ -14,11 +14,16 @@ public record PlaylistDetailDTO(
         String name,
         @NotNull
         String color,
+        String description,
         @NotNull
         String inviteCode,
         @NotNull
         int songCount,
         List<SongDTO> songs,
         @NotNull
-        Set<UserSummaryDTO> users) {
+        Long ownerId,
+        @NotNull
+        Set<PlaylistMemberDTO> members,
+        boolean isPublic,
+        Instant createdAt) {
 }

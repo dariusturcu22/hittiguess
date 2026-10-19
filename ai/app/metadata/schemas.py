@@ -1,0 +1,178 @@
+from enum import Enum
+from typing import Literal
+
+from pydantic import BaseModel, Field, field_validator
+from app.metadata.sources.util import YOUTUBE_VIDEOS_BATCH_SIZE
+
+ConfidenceLevel = Literal["low", "medium", "high"]
+LOW_CONFIDENCE = "low"
+VALID_CONFIDENCE_LEVELS = frozenset({"low", "medium", "high"})
+
+
+def _normalize_confidence(value: object) -> ConfidenceLevel:
+    normalized_value = str(value).strip().lower()
+    if normalized_value in VALID_CONFIDENCE_LEVELS:
+        return normalized_value
+    return LOW_CONFIDENCE
+
+
+class ConfidenceNormalizedModel(BaseModel):
+    @field_validator("confidence", mode="before", check_fields=False)
+    @classmethod
+    def normalize_confidence(cls, value: object) -> ConfidenceLevel:
+        return _normalize_confidence(value)
+
+
+class LlmExtractionResult(ConfidenceNormalizedModel):
+    """Structured-output shape for both the Wikipedia extraction step and
+    the four-source reconciliation step in story 18's lock-or-LLM pipeline.
+    Mirrors SongMetadataResult minus the color and source fields, which are
+    display and provenance concerns resolved outside the reconciliation
+    call."""
+
+    title: str
+    artist: str
+    release_year: int | None
+    confidence: ConfidenceLevel
+    reasoning: str
+
+
+class SubmissionPreCheckResult(BaseModel):
+    """One structured-output call covering everything a submission needs
+    before any structured source is queried: splitting the raw YouTube
+    video title and channel name into a clean song title, main artists,
+    featured artists, and a single flat display color, plus the
+    prompt-injection and song/compilation classification checks
+    content_safety.evaluate gates on. title and main artists are empty for
+    a genuinely unidentifiable submission, resisting an invented answer
+    rather than guessing."""
+
+    title: str | None
+    main_artists: list[str] = []
+    featured_artists: list[str] = []
+    color: str
+    contains_injection_attempt: bool
+    injection_reasoning: str
+    is_song: bool
+    is_compilation: bool
+    classification_confidence: ConfidenceLevel
+    classification_reasoning: str
+
+    @field_validator("classification_confidence", mode="before")
+    @classmethod
+    def normalize_classification_confidence(cls, value: object) -> ConfidenceLevel:
+        return _normalize_confidence(value)
+
+
+class MetadataResolveRequest(BaseModel):
+    youtube_url: str
+
+
+class RejectionReason(str, Enum):
+    NOT_MUSIC = "NOT_MUSIC"
+    COMPILATION = "COMPILATION"
+    PROMPT_INJECTION = "PROMPT_INJECTION"
+
+
+class SongClassification(BaseModel):
+    is_song: bool
+    is_compilation: bool
+    confidence: str
+    reasoning: str
+
+
+class InjectionCheckResult(BaseModel):
+    contains_injection_attempt: bool
+    reasoning: str
+
+
+class SongMetadataResult(ConfidenceNormalizedModel):
+    title: str
+    main_artists: list[str] = []
+    featured_artists: list[str] = []
+    release_year: int | None
+    color: str
+    confidence: ConfidenceLevel
+    source: str
+    reasoning: str
+    verification_status: str | None = None
+    sitelinks_count: int | None = None
+    duration_seconds: int | None = None
+    canonical_song_id: int | None = None
+
+
+class MetadataResolveResponse(BaseModel):
+    status: str
+    model: str
+    content: SongMetadataResult | None = None
+    rejection_reason: RejectionReason | None = None
+    rejection_detail: str | None = None
+
+
+class PlaylistVideoIdsRequest(BaseModel):
+    playlist_url_or_id: str
+
+
+class PlaylistVideoIdsResponse(BaseModel):
+    video_ids: list[str]
+
+
+class VideoInfoRequest(BaseModel):
+    video_ids: list[str]
+
+
+class VideoInfoItem(BaseModel):
+    video_id: str
+    title: str
+    channel_title: str
+
+
+class VideoInfoResponse(BaseModel):
+    videos: list[VideoInfoItem]
+
+
+class IdentifyRequest(BaseModel):
+    youtube_url: str
+
+
+class IdentifiedSong(BaseModel):
+    title: str
+    main_artists: list[str] = []
+    featured_artists: list[str] = []
+    color: str
+    duration_seconds: int | None = None
+
+
+class IdentifyResponse(BaseModel):
+    """The fast tier's first pass. SUCCESS carries either the identified song, which
+    still needs a year, or a verified duplicate's complete answer, which doesn't."""
+
+    status: str
+    model: str
+    identified: IdentifiedSong | None = None
+    duplicate: SongMetadataResult | None = None
+    rejection_reason: RejectionReason | None = None
+    rejection_detail: str | None = None
+
+
+class FastDateRequest(BaseModel):
+    title: str
+    main_artists: list[str]
+
+
+class FastDateResponse(BaseModel):
+    release_year: int | None
+    confidence: ConfidenceLevel
+    source: str
+    lane: str | None
+
+
+MINIMUM_VIDEO_BATCH_SIZE = 1
+
+
+class VideoDurationsRequest(BaseModel):
+    video_ids: list[str] = Field(min_length=MINIMUM_VIDEO_BATCH_SIZE, max_length=YOUTUBE_VIDEOS_BATCH_SIZE)
+
+
+class VideoDurationsResponse(BaseModel):
+    durations: dict[str, int | None]

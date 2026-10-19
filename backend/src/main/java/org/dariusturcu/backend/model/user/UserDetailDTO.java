@@ -10,6 +10,7 @@ public record UserDetailDTO(
         String email,
         String imageUrl,
         String provider,
+        Role role,
         List<PlaylistSummaryDTO> playlists
 ) {
 }

@@ -7,6 +7,8 @@ public record AiResponse(
         String model,
         long durationMs,
         LocalDateTime timestamp,
-        String status
+        String status,
+        String rejectionReason,
+        String rejectionDetail
 ) {
 }

@@ -6,6 +6,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.dariusturcu.backend.security.util.JwtUtil;
 import org.dariusturcu.backend.util.CookieUtil;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -17,10 +18,20 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
+import java.util.Set;
 
+@Slf4j
 @Component
 @RequiredArgsConstructor
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
+    // Everything else under /auth/** is reached with no session yet (register, login, the
+    // token-based verify-email/password-reset/2fa-verify endpoints), so this filter has
+    // nothing useful to authenticate there. These three are the exception: 2FA setup,
+    // confirm, and disable act on the caller's own account and need a real principal.
+    private static final Set<String> AUTHENTICATED_AUTH_PATHS = Set.of(
+            "/auth/2fa/setup", "/auth/2fa/confirm", "/auth/2fa/disable"
+    );
+
     private final JwtUtil jwtUtil;
     private final CookieUtil cookieUtil;
     private final UserDetailsService userDetailsService;
@@ -39,7 +50,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
         String path = request.getRequestURI();
-        return path.startsWith("/auth/");
+        return path.startsWith("/auth/") && !AUTHENTICATED_AUTH_PATHS.contains(path);
     }
 
     @Override
@@ -62,9 +73,11 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 UserDetails userDetails = userDetailsService.loadUserByUsername(username);
 
                 if (jwtUtil.validateToken(jwt, userDetails)) {
+                    // Credentials are null because the JWT signature already proved identity,
+                    // there's no password to carry forward once authenticated.
                     UsernamePasswordAuthenticationToken authenticationToken = new UsernamePasswordAuthenticationToken(
                             userDetails,
-                            null, // TODO why
+                            null,
                             userDetails.getAuthorities()
                     );
                     authenticationToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
@@ -72,8 +85,10 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 }
             }
         } catch (Exception e) {
-            IO.println(e.getMessage());
+            log.debug("JWT validation failed: {}", e.getMessage());
         }
-        filterChain.doFilter(request, response); // TODO understand these last few lines
+        // Authorization happens later based on whether the SecurityContext got populated above,
+        // this filter always lets the request continue either way.
+        filterChain.doFilter(request, response);
     }
 }

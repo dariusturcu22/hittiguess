@@ -24,6 +24,12 @@ public class RefreshToken {
     @Column(nullable = false)
     private Instant expiresAt;
 
+    // Extends the refresh lifetime to the remembered window instead of the
+    // standard one; preserved across refresh rotation so a remembered session
+    // stays remembered until logout or expiry.
+    @Column(nullable = false)
+    private boolean rememberMe;
+
     public boolean isExpired() {
         return Instant.now().isAfter(expiresAt);
     }

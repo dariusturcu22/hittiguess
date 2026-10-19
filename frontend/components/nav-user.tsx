@@ -1,53 +1,30 @@
 "use client";
 
 import * as React from "react";
-import {
-  IconDotsVertical,
-  IconLogout,
-  IconUserCircle,
-  IconMoon,
-  IconSun,
-} from "@tabler/icons-react";
-import { useTheme } from "next-themes";
+import { IconLogout, IconSettings } from "@tabler/icons-react";
 
-import {
-  Avatar,
-  AvatarFallback,
-  AvatarImage,
-} from "@/components/shadcn/avatar";
 import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuGroup,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/shadcn/dropdown-menu";
-import {
-  SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuItem,
-  useSidebar,
-} from "@/components/shadcn/sidebar";
 import { useLogout } from "@/hooks/generated/authentication-management/authentication-management";
 import { useRouter } from "next/navigation";
-import { useGetCurrentUser } from "@/hooks/generated/user-management/user-management";
+import { useQueryClient } from "@tanstack/react-query";
+import { getGetCurrentUserQueryKey, useGetCurrentUser } from "@/hooks/generated/user-management/user-management";
+import { useUploadOwnAvatar } from "@/hooks/generated/pixel-art-images/pixel-art-images";
+import { PixelImageInput } from "@/components/pixel-image-input";
+
+import { useHistoryStatistics, PERCENT_SCALE } from "@/hooks/game-history";
 
 export function NavUser() {
-  const [mounted, setMounted] = React.useState(false);
-  const { isMobile } = useSidebar();
-  const { theme, setTheme } = useTheme();
-
-  React.useEffect(() => {
-    setMounted(true);
-  }, []);
-
   const router = useRouter();
+  const queryClient = useQueryClient();
 
   const { mutate: logout } = useLogout({
     mutation: {
       onSuccess: () => {
+        queryClient.clear();
         router.push("/login");
       },
     },
@@ -62,80 +39,119 @@ export function NavUser() {
     },
   });
 
+  const { data: statistics } = useHistoryStatistics(Boolean(user?.id));
+  const winRate = statistics && statistics.gamesPlayed > 0 ? Math.round(statistics.wins / statistics.gamesPlayed * PERCENT_SCALE) : 0;
+
   function handleLogout() {
     logout();
   }
 
+  const avatarInitial = user?.username?.trim().charAt(0).toUpperCase() ?? "";
+  const [avatarFailed, setAvatarFailed] = React.useState(false);
+  const [avatarVersion, setAvatarVersion] = React.useState(0);
+  const uploadAvatar = useUploadOwnAvatar();
+  const showAvatarImage = Boolean(user?.id) && !avatarFailed;
+  const avatarImageUrl = user?.id
+    ? `${process.env.NEXT_PUBLIC_API_URL}/api/users/${user.id}/avatar?version=${avatarVersion}`
+    : undefined;
+
+  function uploadAvatarImage(pixelBlob: Blob) {
+    uploadAvatar.mutate(
+      { data: { avatar: pixelBlob } },
+      {
+        onSuccess: () => {
+          setAvatarFailed(false);
+          setAvatarVersion((currentVersion) => currentVersion + 1);
+          void queryClient.invalidateQueries({ queryKey: getGetCurrentUserQueryKey() });
+        },
+      },
+    );
+  }
+
   return (
-    <SidebarMenu>
-      <SidebarMenuItem>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <SidebarMenuButton
-              size="lg"
-              className="cursor-pointer data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <button
+          type="button"
+          className="avatar-initial flex h-11 w-11 shrink-0 cursor-pointer items-center justify-center rounded-full border-2 border-sidebar-border bg-primary font-display text-base text-primary-foreground"
+        >
+          {avatarInitial}
+        </button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent
+        className="w-[290px] overflow-hidden rounded-[18px] border-[3px] border-border-strong bg-card p-0 shadow-lg"
+        side="right"
+        align="end"
+        sideOffset={12}
+      >
+        <div className="flex items-start gap-3 bg-primary/20 p-4">
+          <div className="group relative h-11 w-11 shrink-0">
+            <div className="flex h-11 w-11 items-center justify-center overflow-hidden rounded-full bg-primary font-display text-base text-primary-foreground">
+              {showAvatarImage ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={avatarImageUrl}
+                  alt=""
+                  onError={() => setAvatarFailed(true)}
+                  className="size-full object-cover [image-rendering:pixelated]"
+                />
+              ) : (
+                avatarInitial
+              )}
+            </div>
+            <PixelImageInput
+              label="Change profile picture"
+              disabled={uploadAvatar.isPending}
+              buttonClassName="absolute inset-0 flex items-center justify-center rounded-full bg-background/55 text-card-foreground opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100 disabled:opacity-0"
+              onPixelized={(pixelBlob) => uploadAvatarImage(pixelBlob)}
             >
-              <Avatar className="h-8 w-8 rounded-lg">
-                <AvatarImage src={user?.imageUrl} alt={user?.username} />
-                <AvatarFallback className="rounded-lg">CN</AvatarFallback>
-              </Avatar>
-              <div className="grid flex-1 text-left text-sm px-1 leading-tight">
-                <span className="truncate font-medium">{user?.username}</span>
-              </div>
-              <IconDotsVertical className="ml-auto size-4" />
-            </SidebarMenuButton>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent
-            className="w-(--radix-dropdown-menu-trigger-width) min-w-56 rounded-lg"
-            side={isMobile ? "bottom" : "right"}
-            align="end"
-            sideOffset={4}
-          >
-            <DropdownMenuLabel className="p-0 font-normal">
-              <div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
-                <Avatar className="h-8 w-8 rounded-lg">
-                  <AvatarImage src={user?.imageUrl} alt={user?.username} />
-                  <AvatarFallback className="rounded-lg">CN</AvatarFallback>
-                </Avatar>
-                <div className="grid flex-1 text-left text-sm leading-tight">
-                  <span className="truncate font-medium">{user?.username}</span>
-                  <span className="text-muted-foreground truncate text-xs">
-                    {user?.email}
-                  </span>
-                </div>
-              </div>
-            </DropdownMenuLabel>
-            <DropdownMenuSeparator />
-            <DropdownMenuGroup>
-              <DropdownMenuItem
-                className="cursor-pointer"
-                onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-              >
-                {mounted ? (
-                  <>
-                    {theme === "dark" ? <IconSun /> : <IconMoon />}
-                    <span>{theme === "dark" ? "Light Mode" : "Dark Mode"}</span>
-                  </>
-                ) : (
-                  <>
-                    <div className="size-4 animate-pulse rounded-full bg-muted" />
-                    <span>Loading...</span>
-                  </>
-                )}
-              </DropdownMenuItem>
-              <DropdownMenuItem className="cursor-pointer">
-                <IconUserCircle />
-                Account
-              </DropdownMenuItem>
-            </DropdownMenuGroup>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={handleLogout} className="cursor-pointer">
-              <IconLogout />
-              Log out
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </SidebarMenuItem>
-    </SidebarMenu>
+              <span className="text-[9px] font-bold uppercase">Edit</span>
+            </PixelImageInput>
+          </div>
+          <div className="flex min-w-0 flex-1 flex-col gap-1.5 pt-0.5">
+            <span className="truncate font-display text-base text-card-foreground">
+              {user?.username}
+            </span>
+            <span
+              className="w-fit rounded-full bg-border-strong px-2.5 py-1 font-display text-[8px] whitespace-nowrap text-primary"
+              title="Profile pages haven't shipped yet"
+            >
+              View profile
+            </span>
+          </div>
+          <div className="flex shrink-0 gap-1.5">
+            <button
+              type="button"
+              title="Settings haven't shipped yet"
+              className="flex size-[30px] items-center justify-center rounded-[9px] text-muted-foreground"
+            >
+              <IconSettings className="size-4" />
+            </button>
+            <button
+              type="button"
+              onClick={handleLogout}
+              title="Log out"
+              className="flex size-[30px] cursor-pointer items-center justify-center rounded-[9px] text-destructive"
+            >
+              <IconLogout className="size-4" />
+            </button>
+          </div>
+        </div>
+        <div className="grid grid-cols-3 divide-x-2 divide-secondary px-3 py-4 text-center">
+          <div>
+            <div className="font-display text-base text-card-foreground">{statistics?.gamesPlayed ?? "Unavailable"}</div>
+            <div className="mt-1 text-[9px] uppercase tracking-wide text-muted-foreground">Games</div>
+          </div>
+          <div>
+            <div className="font-display text-base text-card-foreground">{statistics ? `${winRate}%` : "Unavailable"}</div>
+            <div className="mt-1 text-[9px] uppercase tracking-wide text-muted-foreground">Win rate</div>
+          </div>
+          <div>
+            <div className="font-display text-base text-card-foreground">{statistics?.wins ?? "Unavailable"}</div>
+            <div className="mt-1 text-[9px] uppercase tracking-wide text-muted-foreground">Wins</div>
+          </div>
+        </div>
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }
