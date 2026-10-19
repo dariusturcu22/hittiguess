@@ -2,7 +2,7 @@
 
 A multiplayer music guessing game, inspired by Hitster. Players hear a song, guess when it was released, and place it on a chronological timeline.
 
-This is `dev`, the active branch. The project is being reworked from a single Spring Boot app into the two-service architecture and full feature set described in [AGENTS.md](AGENTS.md) and [docs/](docs/). The app currently live in production is an earlier, simpler version, frozen on `legacy`. See that branch's own README for what it is and how to run it.
+This is `main`, the active branch and the version running in production: the two-service architecture and full feature set described in [AGENTS.md](AGENTS.md) and [docs/](docs/). The earlier, simpler version of the app is frozen on `legacy`. See that branch's own README for what it is and how to run it.
 
 ## Docs
 

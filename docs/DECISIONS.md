@@ -1278,3 +1278,9 @@ Why: the second playtest found the DJ and guessing card covering the round subti
 Decision: the frontend adds the Sentry SDK and initialises it from a DSN environment variable, recording share-outcome breadcrumbs alongside console logs. Initialisation is skipped when the variable is absent, so no DSN is committed.
 
 Why: the share-outcome logging asks for a breadcrumb, and Sentry covers only the backend and the AI service today, so the frontend has no place to put one.
+
+## 2026-10-19 | `main` is the only trunk and `dev` is retired
+
+Decision: `main` holds the running production version and is the branch work lands on. Pull requests target `main`, the backend deploy workflow runs on pushes to `main`, and the pull request checks run on `main`. The `dev` branch no longer exists. `legacy` stays frozen.
+
+Why: the whole `dev` history was merged into `main` once the new version became the production one, and keeping a second long-lived branch only added a promotion step. Earlier entries in this file that mention `dev` describe how the work was done at the time.
