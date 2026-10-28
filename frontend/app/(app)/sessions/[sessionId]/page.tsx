@@ -441,7 +441,8 @@ export default function GameSessionPage({ params }: PageProps) {
   }, [sessionId]);
 
   if (!Number.isInteger(sessionId) || sessionId <= 0) return <main className="p-10 text-destructive">This game session link is invalid.</main>;
-  if (sessionQuery.isLoading) return <main className="flex h-full min-h-0 items-center justify-center overflow-hidden"><Loader2 className="size-8 animate-spin text-primary" aria-label="Loading game session" /></main>;
+  if (sessionQuery.isLoading || (sessionQuery.isError && activeMembershipQuery.isLoading)) return <main className="flex h-full min-h-0 items-center justify-center overflow-hidden"><Loader2 className="size-8 animate-spin text-primary" aria-label="Loading game session" /></main>;
+  if (hasEnded && fallbackGroupId !== undefined) return <main className="flex h-full min-h-0 items-center justify-center overflow-hidden"><Loader2 className="size-8 animate-spin text-primary" aria-label="Loading game session" /></main>;
   if (sessionQuery.isError || !session) return <main className="flex h-full min-h-0 flex-col items-center justify-center gap-4 overflow-hidden p-10 text-center">
     <p className="text-sm text-muted-foreground">This game has ended.</p>
     <Link href={activeMembershipQuery.data?.id ? `/groups/${activeMembershipQuery.data.id}` : "/playlists"} className="rounded-full bg-primary px-5 py-2.5 font-display text-xs text-primary-foreground">{activeMembershipQuery.data?.id ? "Back to lobby" : "Back to playlists"}</Link>
