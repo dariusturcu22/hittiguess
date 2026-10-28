@@ -63,7 +63,7 @@ public class SongMapper {
         song.setReleaseYear(request.releaseYear());
         if (request.youtubeId() != null) {
             if (!request.youtubeId().equals(song.getYoutubeId())) {
-                song.recordOfficialDuration(null);
+                song.clearOfficialDuration();
             }
             song.setYoutubeId(request.youtubeId());
         }

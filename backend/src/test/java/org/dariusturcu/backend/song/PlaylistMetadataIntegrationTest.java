@@ -126,4 +126,35 @@ class PlaylistMetadataIntegrationTest {
         entityManager.clear();
         assertThat(songRepository.findById(expired.getId()).orElseThrow().getDurationSeconds()).isNull();
     }
+
+    @Test
+    void neverFetchedDurationsAreCandidatesAndAreRefreshedBeforeExpiredValues() {
+        Instant checkedAt = Instant.now().truncatedTo(java.time.temporal.ChronoUnit.MICROS);
+        Instant expiredAt = checkedAt.minus(EXPIRED_AGE);
+        Instant cutoff = checkedAt.minus(SongDurationRefreshService.RETENTION);
+        Song neverFetched = new Song();
+        neverFetched.setYoutubeId("never-fetched-upload");
+        Song expired = new Song();
+        expired.setYoutubeId("expired-upload");
+        expired.setDurationSeconds(OFFICIAL_DURATION_SECONDS);
+        expired.setDurationFetchedAt(expiredAt);
+        Song fresh = new Song();
+        fresh.setYoutubeId("fresh-upload");
+        fresh.recordOfficialDuration(OFFICIAL_DURATION_SECONDS);
+        List<Song> dueSongs = List.of(neverFetched, expired);
+        songRepository.saveAllAndFlush(List.of(neverFetched, expired, fresh));
+
+        assertThat(songRepository.countDurationRefreshCandidates(cutoff)).isEqualTo(dueSongs.size());
+        assertThat(songRepository.findDurationRefreshCandidates(cutoff, PageRequest.of(FIRST_PAGE, REFRESH_BATCH_SIZE)))
+                .containsExactly("never-fetched-upload", "expired-upload");
+        assertThat(songRepository.updateRefreshedDuration("never-fetched-upload", OFFICIAL_DURATION_SECONDS, checkedAt, cutoff)).isOne();
+        assertThat(songRepository.updateRefreshedDuration("fresh-upload", OFFICIAL_DURATION_SECONDS, checkedAt, cutoff)).isZero();
+        assertThat(songRepository.findDurationRefreshCandidates(cutoff, PageRequest.of(FIRST_PAGE, REFRESH_BATCH_SIZE)))
+                .containsExactly("expired-upload");
+
+        entityManager.clear();
+        Song refreshed = songRepository.findById(neverFetched.getId()).orElseThrow();
+        assertThat(refreshed.getDurationSeconds()).isEqualTo(OFFICIAL_DURATION_SECONDS);
+        assertThat(refreshed.getDurationFetchedAt()).isEqualTo(checkedAt);
+    }
 }
