@@ -40,6 +40,7 @@ const DESKTOP_VIEWPORTS = [
   { width: 1920, height: 1080 },
 ];
 const APP_SCROLL_CONTAINER_SELECTOR = ".bg-dotted";
+const VIEWPORT_EDGE_TOLERANCE_PIXELS = 0.5;
 const LOBBY_FOOTER_ACTIONS = ["Start game", "Leave lobby"];
 const PLAYER_ID = 10;
 const DJ_ID = 20;
@@ -69,6 +70,24 @@ async function appScrollMeasurements(page: Page): Promise<{ scrollHeight: number
     scrollHeight: element.scrollHeight,
     clientHeight: element.clientHeight,
   }));
+}
+
+// A scaled game stage can land an element's edge a fraction of a pixel past the
+// viewport, which IntersectionObserver reports as a ratio just under 1. This measures
+// the button's own box instead, with a half-pixel allowance for that rounding.
+async function expectButtonFullyOnScreen(page: Page, buttonName: string): Promise<void> {
+  const button = page.getByRole("button", { name: buttonName });
+  await expect.poll(async () => {
+    const buttonBox = await button.boundingBox();
+    const viewport = page.viewportSize();
+    if (!buttonBox || !viewport) return Number.POSITIVE_INFINITY;
+    return Math.max(
+      -buttonBox.x,
+      -buttonBox.y,
+      buttonBox.x + buttonBox.width - viewport.width,
+      buttonBox.y + buttonBox.height - viewport.height,
+    );
+  }, { message: `${buttonName} should stay fully on screen` }).toBeLessThanOrEqual(VIEWPORT_EDGE_TOLERANCE_PIXELS);
 }
 
 async function csrfHeaders(page: Page): Promise<Record<string, string>> {
@@ -222,7 +241,7 @@ test("lobby keeps its footer actions on screen in a short or zoomed window", asy
     await expect(page.getByRole("heading", { name: "Group Lobby" })).toBeVisible();
 
     for (const footerAction of LOBBY_FOOTER_ACTIONS) {
-      await expect(page.getByRole("button", { name: footerAction })).toBeInViewport({ ratio: 1 });
+      await expectButtonFullyOnScreen(page, footerAction);
     }
   } finally {
     if (groupId !== undefined) {
@@ -251,7 +270,7 @@ test("lobby fits every desktop viewport without vertical scrolling", async ({ br
       ).toBeLessThanOrEqual(measurements.clientHeight);
 
       for (const footerAction of LOBBY_FOOTER_ACTIONS) {
-        await expect(page.getByRole("button", { name: footerAction })).toBeInViewport({ ratio: 1 });
+        await expectButtonFullyOnScreen(page, footerAction);
       }
 
       await page.screenshot({ path: testInfo.outputPath(`lobby-${viewport.width}x${viewport.height}.png`) });
@@ -417,7 +436,7 @@ test("gameplay session fits every desktop viewport without vertical scrolling", 
         `${viewport.width}x${viewport.height}`,
       ).toBeLessThanOrEqual(measurements.clientHeight);
 
-      await expect(page.getByRole("button", { name: "Leave game" })).toBeInViewport({ ratio: 1 });
+      await expectButtonFullyOnScreen(page, "Leave game");
 
       await page.screenshot({ path: testInfo.outputPath(`gameplay-${viewport.width}x${viewport.height}.png`) });
     }
