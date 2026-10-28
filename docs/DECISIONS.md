@@ -1290,3 +1290,9 @@ Why: the whole `dev` history was merged into `main` once the new version became 
 Decision: the Fly.io backend app is deleted and its configuration file, `backend/fly.toml`, is removed from the repository. Azure Container Apps is the only backend host.
 
 Why: production moved to Azure and the Fly app only kept an always-on machine billing. The 2026-07 decision to move off Fly.io stays in this file as history.
+
+## 2026-10-28 | Game screens keep their design size and scale to the window
+
+Decision: the group lobby, the round intro, and every game session phase render inside a fixed 1288x900 stage, the design artboard minus its two 76px rails. The stage scales uniformly to the space it is given, centers, never scrolls, and stops at 1.25 so large monitors do not enlarge it. Elements inside the stage use their design size only, and the `short:` and `very-short:` height variants are gone from these screens. The stage exposes its scale through a context that converts pointer coordinates into stage coordinates, so drag and drop math stays in design units. Dialogs and popups that portal to the document body stay outside the stage and unscaled. The scale is rounded down to the six decimal places a serialized transform keeps, so the scaled box never overflows its host by a subpixel.
+
+Why: shrinking each element on its own schedule made some text and cards smaller while their neighbours stayed at design size, so the board no longer looked like the design at laptop heights. Scaling the whole board keeps every proportion, and converting pointer coordinates with the same scale keeps a dragged card under the pointer at any window size.

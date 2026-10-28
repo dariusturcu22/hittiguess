@@ -152,7 +152,7 @@ artist, or duplicate. Each task has a self-contained brief in `opencode-tasks/`.
 Layout and game screens:
 
 - [ ] Left rail icons spaced further apart at every height step
-- [ ] Game screens (lobby, round intro, every round phase, between rounds) laid out as the 1440x900 designs and scaled evenly to the window, replacing the per-element `short:`/`very-short:` shrinking
+- [x] Game screens (lobby, round intro, every round phase, between rounds) laid out as the 1440x900 designs and scaled evenly to the window, replacing the per-element `short:`/`very-short:` shrinking
 - [ ] Lobby matches its design artboards in text size, spacing, and alignment
 - [ ] Gameplay matches its design artboards in text size, spacing, alignment, and timeline card size
 - [ ] The waveform has 5 bars everywhere in the app, driven by the song's frequency bands
