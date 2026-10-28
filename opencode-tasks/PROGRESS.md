@@ -7,10 +7,10 @@ then `opencode-tasks/README.md`, then the brief named under "Current task".
 
 ## Current task
 
-- Task: 07, `opencode-tasks/07-spectator-live-drag.md`
-- Branch: `feature/spectator-live-drag`
-- Step reached: feature code, tests, and full checks finished
-- Next step: commit, push, and open the pull request
+- Task: 08, `opencode-tasks/08-game-screen-scale.md`
+- Branch: `fix/game-screen-scale` (not created yet)
+- Step reached: brief not read
+- Next step: read the brief, then create the branch off an up-to-date `main`
 
 ## Finished tasks
 
@@ -22,7 +22,8 @@ then `opencode-tasks/README.md`, then the brief named under "Current task".
 | 04 | `fix/countdown-clock-sync` | https://github.com/dariusturcu22/hittiguess/pull/328 | `RoundDTO.serverTime`; median offset module; session page, round intro, and away widget count on server time |
 | 05 | `fix/start-session-from-playlist` | https://github.com/dariusturcu22/hittiguess/pull/329 | Shared `useCreateGroupAndOpen`; playlist start creates or chooses a group; locked groups cannot be left |
 | 06 | `fix/page-transitions` | https://github.com/dariusturcu22/hittiguess/pull/330 | Proxy redirect for `/`; session loader while results redirect; lobby loader while locked; 491 frontend tests |
+| 07 | `feature/spectator-live-drag` | https://github.com/dariusturcu22/hittiguess/pull/331 | Preview phases and timeline fractions; spectator card floats, follows the drag, and lands in the gap; 495 frontend tests and 1076 backend tests |
 
 ## Blocked or skipped
 
-None.
+Tasks 09 and 10 depend on task 08, and tasks 14 to 17 depend on task 13. Each waits for that task's PR before its branch starts.
