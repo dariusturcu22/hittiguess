@@ -23,7 +23,7 @@ then `opencode-tasks/README.md`, then the brief named under "Current task".
 | 05 | fix/start-session-from-playlist | #329 | Start session from a playlist creates a group or offers to leave the current one |
 | 06 | fix/page-transitions | #330 | Logged-in `/` redirects in `proxy.ts`; loaders cover known redirects |
 | 07 | feature/spectator-live-drag | #331 | Spectators see the active player's card move live during a drag |
-| 08 | fix/game-screen-scale | pending | Lobby and session screens render in a fixed 1288x900 stage scaled to the window |
+| 08 | fix/game-screen-scale | #332 | Lobby and session screens render in a fixed 1288x900 stage scaled to the window |
 
 ## Blocked or skipped
 
