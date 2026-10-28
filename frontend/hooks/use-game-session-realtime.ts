@@ -9,6 +9,7 @@ import { getGetActiveMembershipQueryKey, getGetGroupQueryKey } from "@/hooks/gen
 import type { GameSessionDTO } from "@/hooks/models/gameSessionDTO";
 import type { RoundDTO } from "@/hooks/models/roundDTO";
 import { HISTORY_QUERY_KEY } from "@/hooks/game-history";
+import type { PlacementPreviewMessage, PlacementPreviewPhase } from "@/lib/placement-preview";
 
 const WEBSOCKET_PATH = "/ws";
 const SESSION_ROUND_TOPIC = "/topic/sessions";
@@ -32,7 +33,7 @@ type ConnectionState = "connecting" | "connected" | "disconnected" | "error";
 export interface SessionRoundEvent {
   type: string;
   sessionId: number;
-  payload?: RoundDTO & { position?: number | null; playerId?: number; displayName?: string; artistGuessed?: boolean; titleGuessed?: boolean; roundId?: number };
+  payload?: RoundDTO & { position?: number | null; x?: number; y?: number; phase?: PlacementPreviewPhase; playerId?: number; displayName?: string; artistGuessed?: boolean; titleGuessed?: boolean; roundId?: number };
 }
 
 export interface GuessState {
@@ -191,7 +192,7 @@ export function useGameSessionRealtime(
 
   return {
     connectionState: hasValidSessionId ? connectionState : "disconnected",
-    previewPlacement: (position: number | null) => publish(PREVIEW_ACTION, { position }),
+    previewPlacement: (preview: PlacementPreviewMessage) => publish(PREVIEW_ACTION, { ...preview }),
     placeCard: (position: number) => publish(PLACE_ACTION, { position }),
     submitGuess: (guessedArtist: string, guessedTitle: string) => publish(GUESS_ACTION, { guessedArtist, guessedTitle }),
     placeBet: (position: number) => publish(BET_ACTION, { position }),
