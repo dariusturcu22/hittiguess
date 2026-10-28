@@ -166,9 +166,9 @@ Gameplay behavior:
 Navigation:
 
 - [ ] Start session on a playlist creates a group when the user has none, and asks to use the current group or leave it and create a new one when the user has one
-- [ ] A logged-in visit to `/` redirects to `/playlists` before the landing page renders
-- [ ] A finished game goes straight to its results with a loader, without the "This game has ended" screen in between
-- [ ] Entering a game from the lobby shows a loader instead of a flash of the lobby
+- [x] A logged-in visit to `/` redirects to `/playlists` before the landing page renders
+- [x] A finished game goes straight to its results with a loader, without the "This game has ended" screen in between
+- [x] Entering a game from the lobby shows a loader instead of a flash of the lobby
 
 Catalog and pipeline:
 

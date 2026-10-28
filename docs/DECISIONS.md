@@ -1290,3 +1290,9 @@ Why: the whole `dev` history was merged into `main` once the new version became 
 Decision: the Fly.io backend app is deleted and its configuration file, `backend/fly.toml`, is removed from the repository. Azure Container Apps is the only backend host.
 
 Why: production moved to Azure and the Fly app only kept an always-on machine billing. The 2026-07 decision to move off Fly.io stays in this file as history.
+
+## 2026-10-28 | Pages render a loader while a redirect they know about is pending
+
+Decision: a page that will redirect once another query resolves renders its loading state until the redirect happens, instead of rendering content it is about to replace. The logged-in redirect from `/` runs in `proxy.ts`, where the session hint cookie is readable before the landing page renders.
+
+Why: rendering the outgoing screen first produced a visible flash of content that was already obsolete, in the session page when a game had ended, in the lobby when a game was starting, and on the landing page for a logged-in visitor.
