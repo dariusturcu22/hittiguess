@@ -160,7 +160,7 @@ Layout and game screens:
 Gameplay behavior:
 
 - [ ] Countdowns use the server's clock: every response that carries a deadline also carries the server time, and clients correct for their own clock offset
-- [ ] Every player sees the active player's card move live while it is dragged, with the same waveform, as in the GameSessionCardDraggingSpectator design
+- [x] Every player sees the active player's card move live while it is dragged, with the same waveform, as in the GameSessionCardDraggingSpectator design
 - [ ] The voice rail's Join button is the next slot under the people in the call, at the top when the call is empty
 
 Navigation:

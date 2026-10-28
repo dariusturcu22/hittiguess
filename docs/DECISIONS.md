@@ -1290,3 +1290,9 @@ Why: the whole `dev` history was merged into `main` once the new version became 
 Decision: the Fly.io backend app is deleted and its configuration file, `backend/fly.toml`, is removed from the repository. Azure Container Apps is the only backend host.
 
 Why: production moved to Azure and the Fly app only kept an always-on machine billing. The 2026-07 decision to move off Fly.io stays in this file as history.
+
+## 2026-10-28 | Placement previews carry the card's position so every player sees the drag
+
+Decision: the active player's client publishes the placement preview as a phase (`IDLE`, `DRAGGING`, `DROPPED`), the hovered gap, and the card's center as fractions of the timeline track's box. The backend clamps the fractions and relays them on `PLACEMENT_PREVIEW` without persisting them, dropping previews beyond 30 per second per player. Every other client renders the same mystery card at those fractions with the same audio levels, small and floating in `IDLE`, full size and wobbling in `DRAGGING` with a 60ms position transition, and in the timeline gap in `DROPPED`.
+
+Why: gap indices alone left spectators with a static placeholder and no card before the drag started, while the active player was moving a card above the timeline. Fractions map one client's screen onto another's, so a drag looks the same on a phone and on a 1440px display. The rate limit keeps pointer movement from flooding the session topic, and the next frame carries the current position anyway.
