@@ -7,8 +7,8 @@ then `opencode-tasks/README.md`, then the brief named under "Current task".
 
 ## Current task
 
-- Task: 01, `opencode-tasks/01-left-sidebar-spacing.md`
-- Branch: `fix/left-rail-spacing` (not created yet)
+- Task: 02, `opencode-tasks/02-voice-rail-join-slot.md`
+- Branch: `fix/voice-rail-join-slot` (not created yet)
 - Step reached: not started
 - Next step: create the branch off an up-to-date `main`
 
@@ -16,6 +16,7 @@ then `opencode-tasks/README.md`, then the brief named under "Current task".
 
 | Task | Branch | PR | Notes |
 |---|---|---|---|
+| 01 | `fix/left-rail-spacing` | https://github.com/dariusturcu22/hittiguess/pull/325 | Awaiting review |
 
 ## Blocked or skipped
 
