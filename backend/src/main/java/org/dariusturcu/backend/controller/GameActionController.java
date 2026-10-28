@@ -28,7 +28,7 @@ public class GameActionController {
 
     @MessageMapping("/sessions/{sessionId}/preview")
     public void previewPlacement(@DestinationVariable Long sessionId, @Payload PlacementPreviewRequest request, Principal principal) {
-        gameSessionService.previewPlacement(sessionId, resolveUserId(principal), request.position());
+        gameSessionService.previewPlacement(sessionId, resolveUserId(principal), request);
     }
 
     @MessageMapping("/sessions/{sessionId}/place")
