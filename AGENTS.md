@@ -76,6 +76,10 @@ Any multi-step or batched piece of work, whatever kind of branch it lands on, ge
 
 Every task breakdown in `TASKS.md` must include explicit test tasks alongside the feature tasks: unit tests for new services or functions, integration tests for new endpoints, and any test infrastructure a story is the first to need. A story isn't done when the feature code works, it's done when its own tests exist and pass too. This isn't deferred to story 22 (test coverage). That story backfills tests for code that predates this rule; every story from here on carries its own.
 
+## Active task queue
+
+When `opencode-tasks/PROGRESS.md` exists, read it before any other work, and again after every restart or context compaction. It names the task brief in `opencode-tasks/` that is in progress and the step reached. Reread that brief and `opencode-tasks/README.md` before continuing, never continue from memory of earlier steps, and update `PROGRESS.md` after every finished step, committed with that step's work.
+
 ## Documentation
 
 - Product vision and goals: [docs/VISION.md](docs/VISION.md)
