@@ -15,6 +15,8 @@ const HALF_SCALE = 0.5;
 const HALF_WIDTH_PIXELS = GAME_STAGE_WIDTH * HALF_SCALE;
 const FULL_HEIGHT_PIXELS = GAME_STAGE_HEIGHT;
 const LARGE_VIEWPORT_PIXELS = 4000;
+const SHORT_WINDOW_WIDTH_PIXELS = 1280;
+const SHORT_WINDOW_HEIGHT_PIXELS = 600;
 const STAGE_LEFT_PIXELS = 100;
 const STAGE_TOP_PIXELS = 50;
 const POINTER_OFFSET_X_PIXELS = 100;
@@ -57,6 +59,13 @@ describe("computeGameStageScale", () => {
 
   it("fits the narrower axis", () => {
     expect(computeGameStageScale(HALF_WIDTH_PIXELS, FULL_HEIGHT_PIXELS)).toBe(HALF_SCALE);
+  });
+
+  it("never leaves the scaled box larger than the space it measured", () => {
+    const scale = computeGameStageScale(SHORT_WINDOW_WIDTH_PIXELS, SHORT_WINDOW_HEIGHT_PIXELS);
+
+    expect(GAME_STAGE_WIDTH * scale).toBeLessThanOrEqual(SHORT_WINDOW_WIDTH_PIXELS);
+    expect(GAME_STAGE_HEIGHT * scale).toBeLessThanOrEqual(SHORT_WINDOW_HEIGHT_PIXELS);
   });
 
   it("caps the scale for large windows", () => {

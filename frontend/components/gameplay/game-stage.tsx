@@ -7,10 +7,15 @@ export const GAME_STAGE_HEIGHT = 900;
 export const GAME_STAGE_MAXIMUM_SCALE = 1.25;
 
 const NO_AVAILABLE_SPACE = 0;
+// Browsers keep six decimal places in a serialized transform. Rounding the scale down
+// to that precision stops the scaled box from poking a fraction of a pixel past the
+// space it was measured against, which a scroll container would then clip.
+const SCALE_PRECISION = 1_000_000;
 
 export function computeGameStageScale(availableWidth: number, availableHeight: number): number {
   if (availableWidth <= NO_AVAILABLE_SPACE || availableHeight <= NO_AVAILABLE_SPACE) return NO_AVAILABLE_SPACE;
-  return Math.min(availableWidth / GAME_STAGE_WIDTH, availableHeight / GAME_STAGE_HEIGHT, GAME_STAGE_MAXIMUM_SCALE);
+  const fittingScale = Math.min(availableWidth / GAME_STAGE_WIDTH, availableHeight / GAME_STAGE_HEIGHT, GAME_STAGE_MAXIMUM_SCALE);
+  return Math.floor(fittingScale * SCALE_PRECISION) / SCALE_PRECISION;
 }
 
 interface GameStagePoint {
