@@ -1,6 +1,8 @@
 # OpenCode task queue (third playtest)
 
-Work through these files one at a time, in numeric order, starting at 01. Each file is self-contained: it names the
+Work through these files one at a time, in numeric order, starting at 01. `PROGRESS.md` records the
+task in progress and the step reached: read it first, reread it after every restart or context
+compaction, and update it after every finished step. Each file is self-contained: it names the
 files to open, what is wrong today, what to build, and how to test
 it. Do not read files a task does not name unless you need them; your context window is small.
 

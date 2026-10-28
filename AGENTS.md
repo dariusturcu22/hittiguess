@@ -60,7 +60,7 @@ This applies everywhere: every markdown file in this repo, chat responses to the
 - PRs are reviewed on GitHub by the project owner, never merged automatically. Merge only when explicitly told to for a named PR. When merging, use a regular merge, never squash, so the individual commits survive. GitHub auto-deletes the remote branch on merge. Immediately after merging, delete the local copy of the branch.
 - Never include a `Co-Authored-By` trailer or any AI-attribution footer on commits or pull requests.
 - Commit granularly. Each commit represents one coherent change, not a batch of unrelated changes.
-- When working through a batch of stories (see `docs/ROADMAP.md`'s batch plan), open a pull request per batch as each one is finished; several may be open for review at once. Each batch still gets its own branch off `main` and its own PR. The project owner reviews and merges them asynchronously, on their own schedule, and a batch's PR being open does not block starting or opening the next. Keep each batch's branch cut from the current `dev` and sync `dev` into it before opening its PR, so each PR's diff stays scoped to that batch's own change.
+- When working through a batch of stories (see `docs/ROADMAP.md`'s batch plan), open a pull request per batch as each one is finished; several may be open for review at once. Each batch still gets its own branch off `main` and its own PR. The project owner reviews and merges them asynchronously, on their own schedule, and a batch's PR being open does not block starting or opening the next. Keep each batch's branch cut from the current `main` and sync `main` into it before opening its PR, so each PR's diff stays scoped to that batch's own change.
 
 ## Task gate
 
@@ -75,6 +75,10 @@ This gate applies to `feature` work only. `fix`, `chore`, and `docs` branches, i
 Any multi-step or batched piece of work, whatever kind of branch it lands on, gets written into `TASKS.md` before the first step starts, not backfilled afterward. An external document, a report, an audit, a plan discussed in conversation, is not a substitute for `TASKS.md`. `TASKS.md` is the historical record of what was planned and what got done, and it only stays accurate if work starts there instead of starting somewhere else and getting written down later, or not at all.
 
 Every task breakdown in `TASKS.md` must include explicit test tasks alongside the feature tasks: unit tests for new services or functions, integration tests for new endpoints, and any test infrastructure a story is the first to need. A story isn't done when the feature code works, it's done when its own tests exist and pass too. This isn't deferred to story 22 (test coverage). That story backfills tests for code that predates this rule; every story from here on carries its own.
+
+## Active task queue
+
+When `opencode-tasks/PROGRESS.md` exists, read it before any other work, and again after every restart or context compaction. It names the task brief in `opencode-tasks/` that is in progress and the step reached. Reread that brief and `opencode-tasks/README.md` before continuing, never continue from memory of earlier steps, and update `PROGRESS.md` after every finished step, committed with that step's work.
 
 ## Documentation
 
