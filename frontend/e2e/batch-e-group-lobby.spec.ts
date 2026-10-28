@@ -322,6 +322,9 @@ test("results screen exports the final ranking", async ({ browser }) => {
 
 test("gameplay shell renders placement, betting, and DJ link-out states", async ({ browser }) => {
   const page = await login(browser, ADMIN_ACCOUNT);
+  // A placement round that is already open. The round intro drains against the
+  // placement deadline, so a deadline in the past dismisses it at once.
+  const roundPlacementEndsAt = new Date().toISOString();
   const player = {
     id: PLAYER_ID,
     userId: PLAYER_ID,
@@ -350,7 +353,7 @@ test("gameplay shell renders placement, betting, and DJ link-out states", async 
     await page.route(`**${GAMEPLAY_SESSION_API_PATH}`, (route) => route.fulfill({ json: {
       ...baseSession,
       players: [player, dj],
-      currentRound: { roundNumber: 4, activePlayerId: PLAYER_ID, djPlayerId: DJ_ID, status: "AWAITING_PLACEMENT" },
+      currentRound: { roundNumber: 4, activePlayerId: PLAYER_ID, djPlayerId: DJ_ID, status: "AWAITING_PLACEMENT", placementEndsAt: roundPlacementEndsAt },
     } }));
     await page.goto(`/sessions/${GAMEPLAY_SESSION_ID}`);
     const card = page.getByRole("button", { name: "Your card. Choose a timeline position." });
@@ -379,7 +382,7 @@ test("gameplay shell renders placement, betting, and DJ link-out states", async 
     await page.route(`**${GAMEPLAY_SESSION_API_PATH}`, (route) => route.fulfill({ json: {
       ...baseSession,
       players: [player, dj],
-      currentRound: { roundNumber: 4, activePlayerId: PLAYER_ID, djPlayerId: DJ_ID, status: "AWAITING_PLACEMENT" },
+      currentRound: { roundNumber: 4, activePlayerId: PLAYER_ID, djPlayerId: DJ_ID, status: "AWAITING_PLACEMENT", placementEndsAt: roundPlacementEndsAt },
     } }));
     await page.route(`**${LINK_OUT_API_PATH}`, (route) => route.fulfill({
       json: { watchUrl: "https://www.youtube.com/watch?v=dQw4w9WgXcQ" },
