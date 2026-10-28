@@ -7,10 +7,10 @@ then `opencode-tasks/README.md`, then the brief named under "Current task".
 
 ## Current task
 
-- Task: 06, `opencode-tasks/06-page-transitions.md`
-- Branch: `fix/page-transitions` (created from `origin/main`)
-- Step reached: proxy redirect, session loader, and lobby loader written; tests, docs and the task list updated; frontend checks pass
-- Next step: run the archive script, commit, open the PR, then start task 07
+- Task: 07, `opencode-tasks/07-spectator-live-drag.md`
+- Branch: `feature/spectator-live-drag` (not created yet)
+- Step reached: brief read
+- Next step: read the two drag artboards, then create the branch off an up-to-date `main`
 
 ## Finished tasks
 
@@ -21,6 +21,7 @@ then `opencode-tasks/README.md`, then the brief named under "Current task".
 | 03 | `fix/waveform-five-bars` | https://github.com/dariusturcu22/hittiguess/pull/327 | `VISUALIZER_BAND_COUNT = 5`; 7px pill bars with 6px gaps; new `game-pieces.test.tsx` |
 | 04 | `fix/countdown-clock-sync` | https://github.com/dariusturcu22/hittiguess/pull/328 | `RoundDTO.serverTime`; median offset module; session page, round intro, and away widget count on server time |
 | 05 | `fix/start-session-from-playlist` | https://github.com/dariusturcu22/hittiguess/pull/329 | Shared `useCreateGroupAndOpen`; playlist start creates or chooses a group; locked groups cannot be left |
+| 06 | `fix/page-transitions` | https://github.com/dariusturcu22/hittiguess/pull/330 | Proxy redirect for `/`; session loader while results redirect; lobby loader while locked; 491 frontend tests |
 
 ## Blocked or skipped
 
