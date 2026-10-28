@@ -43,6 +43,7 @@ import {
 import { GroupChatOverlay } from "@/components/group-chat-overlay";
 import { Coin, MysteryCard, PlayerAvatar, QuestionCard, SongCard, TokenPile } from "@/components/gameplay/game-pieces";
 import { GameplayTimeline, TIMELINE_CARD_SELECTOR } from "@/components/gameplay/gameplay-timeline";
+import { GameStage, useGameStage } from "@/components/gameplay/game-stage";
 import { RoundIntro } from "@/components/gameplay/round-intro";
 
 const COMPLETED_SESSION_STATUS = "COMPLETED";
@@ -108,8 +109,8 @@ function correctGuessHeadline(toast: CorrectGuessToast): string {
 }
 
 interface PointerDrag {
-  pointerX: number;
-  pointerY: number;
+  stageX: number;
+  stageY: number;
   hoverGap: number | null;
 }
 
@@ -145,12 +146,14 @@ interface BetGapContext {
 // The gap under the pointer, or null when the pointer is too far above or below the
 // row (or, for a bet, over a gap that can't take one). Nudges the row sideways while the
 // pointer rests near either edge, so a long timeline can be reached while dragging.
-function hoverGapAt(track: HTMLDivElement | null, betGapContext: BetGapContext, clientX: number, clientY: number, isBetting: boolean): number | null {
+function hoverGapAt(track: HTMLDivElement | null, betGapContext: BetGapContext, clientX: number, clientY: number, isBetting: boolean, stageScale: number): number | null {
   if (!track) return null;
   const trackRectangle = track.getBoundingClientRect();
-  if (clientY < trackRectangle.top - DROP_ZONE_VERTICAL_REACH_PIXELS || clientY > trackRectangle.bottom + DROP_ZONE_VERTICAL_REACH_PIXELS) return null;
-  if (clientX < trackRectangle.left + EDGE_SCROLL_ZONE_PIXELS) track.scrollBy({ left: -EDGE_SCROLL_STEP_PIXELS });
-  if (clientX > trackRectangle.right - EDGE_SCROLL_ZONE_PIXELS) track.scrollBy({ left: EDGE_SCROLL_STEP_PIXELS });
+  const verticalReachPixels = DROP_ZONE_VERTICAL_REACH_PIXELS * stageScale;
+  const edgeScrollZonePixels = EDGE_SCROLL_ZONE_PIXELS * stageScale;
+  if (clientY < trackRectangle.top - verticalReachPixels || clientY > trackRectangle.bottom + verticalReachPixels) return null;
+  if (clientX < trackRectangle.left + edgeScrollZonePixels) track.scrollBy({ left: -EDGE_SCROLL_STEP_PIXELS });
+  if (clientX > trackRectangle.right - edgeScrollZonePixels) track.scrollBy({ left: EDGE_SCROLL_STEP_PIXELS });
   const cardCenters = Array.from(track.querySelectorAll(TIMELINE_CARD_SELECTOR)).map((element) => {
     const cardRectangle = element.getBoundingClientRect();
     return cardRectangle.left + cardRectangle.width / 2;
@@ -174,7 +177,7 @@ function StatusDot() {
 
 function RolePill({ label, name, colorIndex, size = "small" }: { label: string; name?: string; colorIndex: number; size?: "small" | "large" }) {
   return <div className="flex items-center gap-2">
-    <PlayerAvatar name={name} colorIndex={colorIndex} className={size === "large" ? "size-10 text-sm short:size-9 very-short:size-8" : "size-8 text-xs short:size-7 very-short:size-6"} />
+    <PlayerAvatar name={name} colorIndex={colorIndex} className={size === "large" ? "size-10 text-sm" : "size-8 text-xs"} />
     <div className="text-left">
       <div className={`uppercase tracking-[1.5px] text-muted-foreground ${size === "large" ? "text-[9px]" : "text-[8px]"}`}>{label}</div>
       <div className={`font-bold text-card-foreground ${size === "large" ? "text-base" : "text-[13px]"}`}>{name ?? "Waiting"}</div>
@@ -184,7 +187,7 @@ function RolePill({ label, name, colorIndex, size = "small" }: { label: string; 
 
 function DashedGap({ tone = "primary", isSmall = false, children }: { tone?: "primary" | "green" | "muted"; isSmall?: boolean; children?: ReactNode }) {
   const toneClasses = tone === "green" ? "border-green" : tone === "muted" ? "border-muted-foreground/60" : "border-primary";
-  return <div data-timeline-focus="" className={`gameplay-gap-pulse flex h-[132px] short:h-[148px] very-short:h-[116px] items-center justify-center rounded-[22px] border-dashed sm:h-[168px] ${isSmall ? "w-16 rounded-2xl border-2" : "w-[118px] border-[3px] sm:w-[150px] short:w-[130px] very-short:w-[104px]"} ${toneClasses}`}>{children ?? <ArrowDown className={`size-5 ${tone === "green" ? "text-green" : tone === "muted" ? "text-muted-foreground" : "text-primary"}`} strokeWidth={2.5} />}</div>;
+  return <div data-timeline-focus="" className={`gameplay-gap-pulse flex h-[132px] items-center justify-center rounded-[22px] border-dashed sm:h-[168px] ${isSmall ? "w-16 rounded-2xl border-2" : "w-[118px] border-[3px] sm:w-[150px]"} ${toneClasses}`}>{children ?? <ArrowDown className={`size-5 ${tone === "green" ? "text-green" : tone === "muted" ? "text-muted-foreground" : "text-primary"}`} strokeWidth={2.5} />}</div>;
 }
 
 function BetCoin({ bettorName, colorIndex }: { bettorName?: string; colorIndex: number }) {
@@ -197,8 +200,15 @@ function BetCoin({ bettorName, colorIndex }: { bettorName?: string; colorIndex: 
 }
 
 export default function GameSessionPage({ params }: PageProps) {
+  return <GameStage>
+    <GameSessionScreen params={params} />
+  </GameStage>;
+}
+
+function GameSessionScreen({ params }: PageProps) {
   const { sessionId: sessionIdParam } = use(params);
   const sessionId = Number(sessionIdParam);
+  const { scale: stageScale, toStagePoint } = useGameStage();
   const router = useRouter();
   const sessionQuery = useGetSession(sessionId, { query: { retry: false } });
   const currentUserQuery = useGetCurrentUser();
@@ -392,10 +402,11 @@ export default function GameSessionPage({ params }: PageProps) {
   useEffect(() => {
     if (!isPlacementDragging) return;
     function movePlacement(event: PointerEvent) {
-      setPlacementDrag({ pointerX: event.clientX, pointerY: event.clientY, hoverGap: hoverGapAt(trackReference.current, betGapContextReference.current, event.clientX, event.clientY, false) });
+      const stagePoint = toStagePoint(event.clientX, event.clientY);
+      setPlacementDrag({ stageX: stagePoint.x, stageY: stagePoint.y, hoverGap: hoverGapAt(trackReference.current, betGapContextReference.current, event.clientX, event.clientY, false, stageScale) });
     }
     function dropPlacement(event: PointerEvent) {
-      const gapIndex = hoverGapAt(trackReference.current, betGapContextReference.current, event.clientX, event.clientY, false);
+      const gapIndex = hoverGapAt(trackReference.current, betGapContextReference.current, event.clientX, event.clientY, false, stageScale);
       if (gapIndex !== null) setDroppedGap(gapIndex);
       setPlacementDrag(null);
     }
@@ -407,16 +418,17 @@ export default function GameSessionPage({ params }: PageProps) {
       window.removeEventListener("pointerup", dropPlacement);
       window.removeEventListener("pointercancel", dropPlacement);
     };
-  }, [isPlacementDragging]);
+  }, [isPlacementDragging, stageScale, toStagePoint]);
 
   const isBetDragging = betDrag !== null;
   useEffect(() => {
     if (!isBetDragging) return;
     function moveBet(event: PointerEvent) {
-      setBetDrag({ pointerX: event.clientX, pointerY: event.clientY, hoverGap: hoverGapAt(trackReference.current, betGapContextReference.current, event.clientX, event.clientY, true) });
+      const stagePoint = toStagePoint(event.clientX, event.clientY);
+      setBetDrag({ stageX: stagePoint.x, stageY: stagePoint.y, hoverGap: hoverGapAt(trackReference.current, betGapContextReference.current, event.clientX, event.clientY, true, stageScale) });
     }
     function dropBet(event: PointerEvent) {
-      const gapIndex = hoverGapAt(trackReference.current, betGapContextReference.current, event.clientX, event.clientY, true);
+      const gapIndex = hoverGapAt(trackReference.current, betGapContextReference.current, event.clientX, event.clientY, true, stageScale);
       setBetDrag(null);
       if (gapIndex === null) return;
       if (roundStatus === BETTING_STATUS) {
@@ -433,7 +445,7 @@ export default function GameSessionPage({ params }: PageProps) {
       window.removeEventListener("pointerup", dropBet);
       window.removeEventListener("pointercancel", dropBet);
     };
-  }, [isBetDragging, placeBet, roundStatus]);
+  }, [isBetDragging, placeBet, roundStatus, stageScale, toStagePoint]);
 
   const dismissIntro = useCallback(() => {
     markIntroSeen(sessionId);
@@ -472,7 +484,8 @@ export default function GameSessionPage({ params }: PageProps) {
   function startPlacementDrag(event: ReactPointerEvent<HTMLElement>) {
     if (!isActivePlayer || !isAwaitingPlacement) return;
     event.preventDefault();
-    setPlacementDrag({ pointerX: event.clientX, pointerY: event.clientY, hoverGap: droppedGap });
+    const stagePoint = toStagePoint(event.clientX, event.clientY);
+    setPlacementDrag({ stageX: stagePoint.x, stageY: stagePoint.y, hoverGap: droppedGap });
   }
 
   function moveDroppedCard(event: KeyboardEvent<HTMLElement>) {
@@ -493,7 +506,8 @@ export default function GameSessionPage({ params }: PageProps) {
   function startBetDrag(event: ReactPointerEvent<HTMLElement>) {
     if (!canStakeBet) return;
     event.preventDefault();
-    setBetDrag({ pointerX: event.clientX, pointerY: event.clientY, hoverGap: stagedBetGap });
+    const stagePoint = toStagePoint(event.clientX, event.clientY);
+    setBetDrag({ stageX: stagePoint.x, stageY: stagePoint.y, hoverGap: stagedBetGap });
   }
 
   // Leaving a running game leaves the group too: a member of a locked group is sent back
@@ -620,7 +634,7 @@ export default function GameSessionPage({ params }: PageProps) {
   // --- Element floating above the timeline ------------------------------------------
   let aboveTimeline: ReactNode = null;
   if (isAwaitingPlacement && isActivePlayer && droppedGap === null && !placementDrag) {
-    aboveTimeline = <div className="flex flex-col items-center gap-2.5 short:gap-2 very-short:gap-1.5">
+    aboveTimeline = <div className="flex flex-col items-center gap-2.5">
       <span className="text-[11px] font-bold uppercase tracking-[2.5px] text-primary">Your card</span>
       <div className="gameplay-card-float"><MysteryCard size="small" isInteractive levels={audioLevels} label="Your card. Choose a timeline position." onPointerDown={startPlacementDrag} onKeyDown={moveDroppedCard} /></div>
       <span className="flex items-center gap-1.5 text-[11px] text-muted-foreground"><ArrowDown className="size-3" strokeWidth={2.5} />Drag onto the timeline</span>
@@ -628,22 +642,22 @@ export default function GameSessionPage({ params }: PageProps) {
   } else if (isAwaitingPlacement && isDj) {
     const linkOut = linkOutQuery.data;
     const watchUrl = linkOut?.watchUrl;
-    aboveTimeline = <div className="flex w-max max-w-[calc(100vw-48px)] flex-col items-center gap-6 short:gap-4 very-short:gap-3 sm:flex-row sm:items-center sm:gap-8">
+    aboveTimeline = <div className="flex w-max max-w-[calc(100vw-48px)] flex-col items-center gap-6 sm:flex-row sm:items-center sm:gap-8">
       <SongCard artist={linkOut?.artist} title={linkOut?.title} year={linkOut?.releaseYear} color={linkOut?.color} className="shadow-[6px_6px_0_var(--shadow-color)]" />
-      <div className="flex max-w-[360px] flex-col items-center gap-3 short:gap-2 very-short:gap-1.5 text-center sm:items-start sm:text-left">
+      <div className="flex max-w-[360px] flex-col items-center gap-3 text-center sm:items-start sm:text-left">
         {isSharingTabAudioSupported && !songMesh.isCapturing
           ? <>
-            <button type="button" onClick={() => { void songMesh.shareSong(); }} className="inline-flex items-center gap-2.5 rounded-full bg-primary px-6 py-3 short:py-2.5 very-short:py-2 font-display text-[13px] text-primary-foreground shadow-[3px_3px_0_var(--shadow-color)] transition-transform hover:-translate-y-0.5"><Volume2 className="size-4" />Share your audio first</button>
-            <p className="text-xs short:text-[11px] very-short:text-[10px] leading-relaxed text-muted-foreground">Choose Entire screen and turn on Share system audio. The group hears it only while you are the DJ.</p>
+            <button type="button" onClick={() => { void songMesh.shareSong(); }} className="inline-flex items-center gap-2.5 rounded-full bg-primary px-6 py-3 font-display text-[13px] text-primary-foreground shadow-[3px_3px_0_var(--shadow-color)] transition-transform hover:-translate-y-0.5"><Volume2 className="size-4" />Share your audio first</button>
+            <p className="text-xs leading-relaxed text-muted-foreground">Choose Entire screen and turn on Share system audio. The group hears it only while you are the DJ.</p>
             {songMesh.shareErrorMessage
               ? <div role="alert" className="inline-flex items-center gap-2 rounded-full border-2 border-warning bg-warning/10 px-3.5 py-1.5 text-[11px] font-bold text-warning"><TriangleAlert className="size-3.5 shrink-0" /><span>{songMesh.shareErrorMessage}</span><button type="button" onClick={() => { void songMesh.shareSong(); }} className="rounded-full border border-warning px-2.5 py-0.5 font-semibold transition-colors hover:bg-warning/20">Try again</button></div>
               : null}
           </>
           : <>
             {watchUrl
-              ? <a href={youtubeLinkOutHref(watchUrl, navigator.userAgent)} target={YOUTUBE_LINK_OUT_TARGET} rel={YOUTUBE_LINK_OUT_REL} className="inline-flex items-center gap-2.5 rounded-full bg-primary px-6 py-3 short:py-2.5 very-short:py-2 font-display text-[13px] text-primary-foreground shadow-[3px_3px_0_var(--shadow-color)] transition-transform hover:-translate-y-0.5">Open on YouTube to play<ExternalLink className="size-4" /></a>
-              : <span className="inline-flex items-center gap-2.5 rounded-full bg-primary px-6 py-3 short:py-2.5 very-short:py-2 font-display text-[13px] text-primary-foreground opacity-55">Open on YouTube to play<ExternalLink className="size-4" /></span>}
-            <p className="text-xs short:text-[11px] very-short:text-[10px] leading-relaxed text-muted-foreground">Play it out loud. Everyone else finds out what it is when the card gets revealed.</p>
+              ? <a href={youtubeLinkOutHref(watchUrl, navigator.userAgent)} target={YOUTUBE_LINK_OUT_TARGET} rel={YOUTUBE_LINK_OUT_REL} className="inline-flex items-center gap-2.5 rounded-full bg-primary px-6 py-3 font-display text-[13px] text-primary-foreground shadow-[3px_3px_0_var(--shadow-color)] transition-transform hover:-translate-y-0.5">Open on YouTube to play<ExternalLink className="size-4" /></a>
+              : <span className="inline-flex items-center gap-2.5 rounded-full bg-primary px-6 py-3 font-display text-[13px] text-primary-foreground opacity-55">Open on YouTube to play<ExternalLink className="size-4" /></span>}
+            <p className="text-xs leading-relaxed text-muted-foreground">Play it out loud. Everyone else finds out what it is when the card gets revealed.</p>
             {songMesh.isCapturing
               ? <div className="inline-flex items-center gap-2 rounded-full border-2 border-warning bg-warning/10 px-3.5 py-1.5 text-[11px] font-bold text-warning"><Volume2 className="size-3.5" />Sharing your audio with the group</div>
               : <div className="inline-flex items-center gap-2 rounded-full border-2 border-warning bg-warning/10 px-3.5 py-1.5 text-[11px] font-bold text-warning"><TriangleAlert className="size-3.5" />Play it out loud for the room.</div>}
@@ -652,23 +666,23 @@ export default function GameSessionPage({ params }: PageProps) {
     </div>;
   } else if (roundStatus === COUNTDOWN_STATUS) {
     const secondsLeft = secondsUntil(currentRound?.countdownEndsAt, now);
-    aboveTimeline = <div className="relative size-14 short:size-12 very-short:size-10" aria-label={`Betting opens in ${secondsLeft}`}>
+    aboveTimeline = <div className="relative size-14" aria-label={`Betting opens in ${secondsLeft}`}>
       <svg viewBox={`0 0 ${COUNTDOWN_RING_SIZE} ${COUNTDOWN_RING_SIZE}`} className="size-full -rotate-90" aria-hidden="true"><circle cx={COUNTDOWN_RING_CENTER} cy={COUNTDOWN_RING_CENTER} r={COUNTDOWN_RING_RADIUS} fill="none" strokeWidth="5" className="stroke-card" /><circle cx={COUNTDOWN_RING_CENTER} cy={COUNTDOWN_RING_CENTER} r={COUNTDOWN_RING_RADIUS} fill="none" strokeWidth="5" strokeLinecap="round" className="stroke-primary transition-[stroke-dashoffset] duration-200" strokeDasharray={COUNTDOWN_RING_CIRCUMFERENCE} strokeDashoffset={COUNTDOWN_RING_CIRCUMFERENCE * (1 - fractionRemaining(currentRound?.countdownEndsAt, LOCK_IN_COUNTDOWN_MILLISECONDS, now))} /></svg>
       <span className="absolute inset-0 flex items-center justify-center font-display text-lg text-foreground">{Math.max(secondsLeft, 1)}</span>
     </div>;
   } else if (roundStatus === BETTING_STATUS) {
-    aboveTimeline = <div className="flex flex-col items-center gap-1.5 short:gap-1 very-short:gap-1">
-      <span className="gameplay-timer-blink font-display text-[28px] short:text-[24px] very-short:text-[20px] text-destructive">{formatClock(secondsUntil(currentRound?.bettingWindowEndsAt, now))}</span>
+    aboveTimeline = <div className="flex flex-col items-center gap-1.5">
+      <span className="gameplay-timer-blink font-display text-[28px] text-destructive">{formatClock(secondsUntil(currentRound?.bettingWindowEndsAt, now))}</span>
       <span className="text-[11px] font-bold uppercase tracking-[2px] text-muted-foreground">Betting closes</span>
       {hasSkippedBetting ? <span className="mt-1 text-[11px] text-muted-foreground">Skipped. Waiting for the others.</span> : null}
       {canSkipBetting ? <button type="button" onClick={skipBetting} className="mt-1 rounded-full border-2 border-border bg-card px-3.5 py-1 text-[11px] font-semibold text-card-foreground transition-colors hover:border-primary">Skip betting</button> : null}
     </div>;
   } else if (isRevealed && currentRound?.nextRoundStartsAt) {
-    aboveTimeline = <div className="flex flex-col items-center gap-3.5 short:gap-2.5 very-short:gap-2">
+    aboveTimeline = <div className="flex flex-col items-center gap-3.5">
       <span className="text-xs font-bold uppercase tracking-[2px] text-muted-foreground">Next turn starts in</span>
-      <div className="flex items-center gap-7 short:gap-5 very-short:gap-4 rounded-full border-2 border-border bg-card px-7 py-3.5 short:py-2.5 very-short:py-2 shadow-[4px_4px_0_var(--shadow-color)]">
+      <div className="flex items-center gap-7 rounded-full border-2 border-border bg-card px-7 py-3.5 shadow-[4px_4px_0_var(--shadow-color)]">
         <RolePill label="DJ" name={nextTurn.nextDj?.displayName} colorIndex={colorIndexOf(nextTurn.nextDj)} size="large" />
-        <span className="h-[30px] w-px bg-border short:h-6 very-short:h-5" />
+        <span className="h-[30px] w-px bg-border" />
         <RolePill label="Turn" name={nextTurn.nextActive?.displayName} colorIndex={colorIndexOf(nextTurn.nextActive)} size="large" />
       </div>
       <div className="h-1.5 w-[220px] overflow-hidden rounded-full bg-border"><div className="h-full rounded-full bg-primary transition-[width] duration-200 ease-linear" style={{ width: `${Math.round(fractionRemaining(currentRound.nextRoundStartsAt, REVEAL_HOLD_MILLISECONDS, now) * PERCENT)}%` }} /></div>
@@ -682,20 +696,20 @@ export default function GameSessionPage({ params }: PageProps) {
     ? `Artists: ${guessState?.correctArtistCount ?? 0} of ${guessState?.artistCount ?? 0}`
     : (guessState?.correctArtistCount ?? 0) > 0 ? "Guess another artist" : "Guess the artist";
   const titlePlaceholder = isTitleGuessClosed ? (guessState?.titleCorrect ? "Title guessed" : "Title missed") : "Guess the title";
-  const guessFields = <div className="flex w-full flex-col gap-3 sm:flex-row sm:justify-center sm:gap-5 short:gap-2.5 very-short:gap-2">
+  const guessFields = <div className="flex w-full flex-col gap-3 sm:flex-row sm:justify-center sm:gap-5">
     <GuessPill icon={<UserRound className="size-4 shrink-0" />} placeholder={artistPlaceholder} label="Guess the artist" value={artistGuess} onChange={setArtistGuess} onSubmit={() => submitGuess("artist")} isClosed={isArtistGuessClosed} />
     <GuessPill icon={<Music2 className="size-4 shrink-0" />} placeholder={titlePlaceholder} label="Guess the title" value={titleGuess} onChange={setTitleGuess} onSubmit={() => submitGuess("title")} isClosed={isTitleGuessClosed} />
   </div>;
   let belowTimeline: ReactNode = null;
   if (isAwaitingPlacement && isActivePlayer && droppedGap !== null && !placementDrag) {
-    belowTimeline = <div className="flex w-full max-w-[560px] flex-col items-center gap-4 short:gap-3 very-short:gap-2">
-      <button type="button" onClick={lockIn} className="inline-flex items-center gap-2.5 rounded-full bg-primary px-6 py-3 short:py-2.5 very-short:py-2 font-display text-[13px] text-primary-foreground shadow-[3px_3px_0_var(--shadow-color)] transition-transform hover:-translate-y-0.5"><Lock className="size-4" strokeWidth={2.5} />Lock in answer</button>
+    belowTimeline = <div className="flex w-full max-w-[560px] flex-col items-center gap-4">
+      <button type="button" onClick={lockIn} className="inline-flex items-center gap-2.5 rounded-full bg-primary px-6 py-3 font-display text-[13px] text-primary-foreground shadow-[3px_3px_0_var(--shadow-color)] transition-transform hover:-translate-y-0.5"><Lock className="size-4" strokeWidth={2.5} />Lock in answer</button>
       {guessFields}
     </div>;
   } else if (isAwaitingPlacement && !isDj) {
-    belowTimeline = <div className="flex w-full max-w-[560px] flex-col items-center gap-3 short:gap-2.5 very-short:gap-2">
+    belowTimeline = <div className="flex w-full max-w-[560px] flex-col items-center gap-3">
       {guessFields}
-      <p className="text-center text-[11.5px] short:text-[11px] very-short:text-[10px] text-muted-foreground">{isActivePlayer ? "One title guess. Artists one at a time: a wrong artist ends artist guessing. The title plus one artist earns a token." : "Anyone can guess, anytime, no matter whose turn it is."}</p>
+      <p className="text-center text-[11.5px] text-muted-foreground">{isActivePlayer ? "One title guess. Artists one at a time: a wrong artist ends artist guessing. The title plus one artist earns a token." : "Anyone can guess, anytime, no matter whose turn it is."}</p>
     </div>;
   } else if (isRevealed) {
     belowTimeline = <p className="flex items-center gap-2 text-xs text-muted-foreground"><Lock className="size-3.5" />Round closed. Next card is dealt in a moment.</p>;
@@ -705,9 +719,9 @@ export default function GameSessionPage({ params }: PageProps) {
 
   const isSittingOut = isActivePlayer && (roundStatus === COUNTDOWN_STATUS || roundStatus === BETTING_STATUS);
 
-  return <main className="relative flex h-full min-h-0 flex-col overflow-hidden px-6 pb-8 pt-8 short:pb-6 short:pt-6 very-short:pb-4 very-short:pt-4 sm:px-14 sm:pb-10 sm:pt-9">
+  return <main className="relative flex h-full min-h-0 flex-col overflow-hidden px-6 pb-8 pt-8 sm:px-14 sm:pb-10 sm:pt-9">
     {showsIntro ? <RoundIntro winConditionCardCount={winConditionCardCount} roundNumber={roundNumber} countdownSeconds={ROUND_INTRO_SECONDS} endsAt={introEndsAt} dj={{ name: djPlayer?.displayName, colorIndex: colorIndexOf(djPlayer) }} activePlayer={{ name: activePlayer?.displayName, colorIndex: colorIndexOf(activePlayer) }} onFinished={dismissIntro} /> : null}
-    {turnNoticePlayer && !showsIntro ? <div role="status" className="absolute left-1/2 top-6 z-30 flex w-[min(520px,calc(100%-32px))] -translate-x-1/2 items-center justify-between gap-4 rounded-full border-[3px] border-primary bg-card px-7 py-4 short:py-3 very-short:py-2 shadow-[6px_6px_0_var(--shadow-color)] animate-in fade-in-0 slide-in-from-top-2">
+    {turnNoticePlayer && !showsIntro ? <div role="status" className="absolute left-1/2 top-6 z-30 flex w-[min(520px,calc(100%-32px))] -translate-x-1/2 items-center justify-between gap-4 rounded-full border-[3px] border-primary bg-card px-7 py-4 shadow-[6px_6px_0_var(--shadow-color)] animate-in fade-in-0 slide-in-from-top-2">
       <span className="flex min-w-0 items-center gap-3"><Bell className="size-6 shrink-0 text-primary" /><span className="truncate text-base font-bold text-primary">{turnNoticePlayer.id === currentPlayer?.id ? "Your turn: get ready" : `${turnNoticePlayer.displayName ?? "A player"}'s turn: get ready`}</span></span>
       <span className="shrink-0 text-xs text-muted-foreground">Round {roundNumber}</span>
     </div> : null}
@@ -718,10 +732,10 @@ export default function GameSessionPage({ params }: PageProps) {
       <Check className="size-4 text-green" strokeWidth={3} />
     </div> : null}
 
-    <header className="flex shrink-0 items-start justify-between gap-4 short:gap-3 very-short:gap-2">
+    <header className="flex shrink-0 items-start justify-between gap-4">
       <div className="min-w-0">
-        <h1 className="font-display text-[26px] short:text-[28px] very-short:text-[24px] text-foreground [text-shadow:3px_3px_0_var(--text-shadow-on-page)] sm:text-[32px]">Round {roundNumber}</h1>
-        <div className="mt-2 short:mt-1.5 very-short:mt-1 flex flex-wrap items-center gap-2.5 text-xs text-muted-foreground">
+        <h1 className="font-display text-[26px] text-foreground [text-shadow:3px_3px_0_var(--text-shadow-on-page)] sm:text-[32px]">Round {roundNumber}</h1>
+        <div className="mt-2 flex flex-wrap items-center gap-2.5 text-xs text-muted-foreground">
           {statusDetail ? <span>{statusDetail}</span> : null}
           {statusDetail && statusLabel ? <StatusDot /> : null}
           {statusLabel ? <strong className={`font-display text-xs font-normal ${statusClassName}`}>{statusLabel}</strong> : null}
@@ -766,40 +780,40 @@ export default function GameSessionPage({ params }: PageProps) {
       <div className="absolute left-1/2 top-1/2 flex w-full max-w-[1100px] -translate-x-1/2 -translate-y-1/2 justify-center">
         {currentRound ? <GameplayTimeline cards={cards} slots={slots} tiltGapIndex={tiltGapIndex} focusKey={focusKey} isDimmed={isTimelineDimmed} trackReference={trackReference} /> : <p className="py-12 text-sm text-muted-foreground">Your timeline will appear when the round starts.</p>}
       </div>
-      {currentRound ? <p className="absolute bottom-[calc(50%+98px)] short:bottom-[calc(50%+86px)] very-short:bottom-[calc(50%+68px)] left-1/2 -translate-x-1/2 text-xs font-bold uppercase tracking-[3px] text-muted-foreground">Timeline</p> : null}
-      {aboveTimeline ? <div className="absolute bottom-[calc(50%+132px)] short:bottom-[calc(50%+116px)] very-short:bottom-[calc(50%+92px)] left-1/2 flex -translate-x-1/2 justify-center">{aboveTimeline}</div> : null}
-      {caption ? <p className="absolute left-1/2 top-[calc(50%+98px)] short:top-[calc(50%+86px)] very-short:top-[calc(50%+68px)] w-max max-w-[calc(100%-16px)] -translate-x-1/2 text-center text-xs text-muted-foreground">{caption}</p> : null}
-      {belowTimeline ? <div className="absolute left-1/2 top-[calc(50%+148px)] short:top-[calc(50%+130px)] very-short:top-[calc(50%+102px)] flex w-full -translate-x-1/2 justify-center px-3">{belowTimeline}</div> : null}
+      {currentRound ? <p className="absolute bottom-[calc(50%+98px)] left-1/2 -translate-x-1/2 text-xs font-bold uppercase tracking-[3px] text-muted-foreground">Timeline</p> : null}
+      {aboveTimeline ? <div className="absolute bottom-[calc(50%+132px)] left-1/2 flex -translate-x-1/2 justify-center">{aboveTimeline}</div> : null}
+      {caption ? <p className="absolute left-1/2 top-[calc(50%+98px)] w-max max-w-[calc(100%-16px)] -translate-x-1/2 text-center text-xs text-muted-foreground">{caption}</p> : null}
+      {belowTimeline ? <div className="absolute left-1/2 top-[calc(50%+148px)] flex w-full -translate-x-1/2 justify-center px-3">{belowTimeline}</div> : null}
       <div aria-live="polite" className="absolute bottom-0 left-1/2 w-max max-w-full -translate-x-1/2"><p key={guessFeedbackSequence} className={`text-center text-xs ${isGuessResultCorrect === true ? "font-semibold text-green" : isGuessResultCorrect === false ? "incorrect-guess-feedback text-destructive" : "text-muted-foreground"}`}>{feedbackMessage}</p></div>
     </section>
 
     {isChatOpen ? <GroupChatOverlay groupId={session.groupId ?? 0} connectionState={groupRealtime.connectionState} sendChat={groupRealtime.sendChat} onClose={() => setIsChatOpen(false)} /> : null}
 
-    <footer className="flex shrink-0 flex-wrap items-end justify-between gap-4 short:gap-3 very-short:gap-2">
+    <footer className="flex shrink-0 flex-wrap items-end justify-between gap-4">
       <div className="flex items-center gap-3">
-        <div className="inline-flex items-center gap-4 short:gap-3 rounded-full border-2 border-border bg-card py-2.5 short:py-2 very-short:py-1.5 pl-2.5 pr-5">
+        <div className="inline-flex items-center gap-4 rounded-full border-2 border-border bg-card py-2.5 pl-2.5 pr-5">
           <RolePill label="DJ" name={djPlayer?.displayName} colorIndex={colorIndexOf(djPlayer)} />
-          <span className="h-7 w-px bg-border short:h-6 very-short:h-5" />
+          <span className="h-7 w-px bg-border" />
           <RolePill label="Turn" name={activePlayer?.displayName} colorIndex={colorIndexOf(activePlayer)} />
         </div>
-        <button type="button" onClick={() => setIsChatOpen((isOpen) => !isOpen)} aria-label={isChatOpen ? "Close chat" : "Open chat"} className={`relative z-20 flex size-11 short:size-10 very-short:size-9 items-center justify-center rounded-full border-2 bg-card text-card-foreground transition-colors ${isChatOpen ? "border-primary text-primary" : "border-border hover:border-primary"}`}><MessageCircle className="size-[18px]" /></button>
+        <button type="button" onClick={() => setIsChatOpen((isOpen) => !isOpen)} aria-label={isChatOpen ? "Close chat" : "Open chat"} className={`relative z-20 flex size-11 items-center justify-center rounded-full border-2 bg-card text-card-foreground transition-colors ${isChatOpen ? "border-primary text-primary" : "border-border hover:border-primary"}`}><MessageCircle className="size-[18px]" /></button>
       </div>
       <div onPointerDown={startBetDrag} className={canStakeBet ? "cursor-grab touch-none select-none active:cursor-grabbing" : ""} title={canStakeBet ? "Drag a token onto the timeline to bet" : undefined}>
         <TokenPile tokenCount={Math.max(0, tokenCount - (betDrag ? 1 : 0))} label={isSittingOut ? "Sitting out" : "Your tokens"} isDimmed={isSittingOut} earnedTokenRoundId={earnedTokenRoundId} />
       </div>
     </footer>
 
-    {placementDrag ? <div className="pointer-events-none fixed left-0 top-0 z-50" style={{ transform: `translate(${placementDrag.pointerX - DRAGGED_CARD_HALF_SIZE_PIXELS}px, ${placementDrag.pointerY - DRAGGED_CARD_HALF_SIZE_PIXELS - DRAGGED_CARD_LIFT_PIXELS}px)` }}>
+    {placementDrag ? <div className="pointer-events-none fixed left-0 top-0 z-50" style={{ transform: `translate(${placementDrag.stageX - DRAGGED_CARD_HALF_SIZE_PIXELS}px, ${placementDrag.stageY - DRAGGED_CARD_HALF_SIZE_PIXELS - DRAGGED_CARD_LIFT_PIXELS}px)` }}>
       <div className="gameplay-wobble"><MysteryCard levels={audioLevels} className="shadow-[10px_10px_0_var(--shadow-color)]" /></div>
     </div> : null}
-    {betDrag ? <div className="pointer-events-none fixed left-0 top-0 z-50" style={{ transform: `translate(${betDrag.pointerX - DRAGGED_COIN_HALF_SIZE_PIXELS}px, ${betDrag.pointerY - DRAGGED_COIN_HALF_SIZE_PIXELS}px)` }}>
+    {betDrag ? <div className="pointer-events-none fixed left-0 top-0 z-50" style={{ transform: `translate(${betDrag.stageX - DRAGGED_COIN_HALF_SIZE_PIXELS}px, ${betDrag.stageY - DRAGGED_COIN_HALF_SIZE_PIXELS}px)` }}>
       <Coin size="large" className="gameplay-wobble" />
     </div> : null}
   </main>;
 }
 
 function GuessPill({ icon, placeholder, label, value, onChange, onSubmit, isClosed }: { icon: ReactNode; placeholder: string; label: string; value: string; onChange: (value: string) => void; onSubmit: () => void; isClosed: boolean }) {
-  return <label className={`flex h-[52px] short:h-[46px] very-short:h-[40px] w-full min-w-0 items-center gap-2.5 rounded-full border-2 border-border bg-card pl-4 pr-1.5 text-muted-foreground shadow-[3px_3px_0_var(--shadow-color)] sm:w-[260px] ${isClosed ? "opacity-60" : ""}`}>
+  return <label className={`flex h-[52px] w-full min-w-0 items-center gap-2.5 rounded-full border-2 border-border bg-card pl-4 pr-1.5 text-muted-foreground shadow-[3px_3px_0_var(--shadow-color)] sm:w-[260px] ${isClosed ? "opacity-60" : ""}`}>
     {icon}
     <input aria-label={label} value={isClosed ? "" : value} disabled={isClosed} onChange={(event) => onChange(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") onSubmit(); }} placeholder={placeholder} className="min-w-0 flex-1 bg-transparent text-sm text-card-foreground outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed" />
     <button type="button" onClick={onSubmit} disabled={isClosed || !value.trim()} aria-label={`Submit ${label.toLowerCase()}`} className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground transition-transform enabled:hover:scale-105 disabled:opacity-45">{isClosed ? <Lock className="size-4" strokeWidth={2.5} /> : <ArrowRight className="size-4" strokeWidth={2.5} />}</button>
