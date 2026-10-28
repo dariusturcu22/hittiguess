@@ -18,6 +18,7 @@
 | 52 | DJ audio delivery, leave a running session, voice fixes, layout fixes from the production playtest | Ready |
 | 51 | Admin console, seven-queue parallel source pipeline, usage and cost tracking | Ready; provider-key acceptance remains |
 | 53 | Separate song stream, voice and music quality, no-scroll game screens, lobby, join, and playlist fixes from the second playtest | Ready |
+| 54 | Third playtest fixes: game screen proportions and scaling, live spectator drag, clock-synced countdowns, voice rail join slot, start session from a playlist, page transitions, duration refresh, metadata source matching, catalog recheck and duplicates | Ready |
 
 The main game, catalog/import pipeline, participant history/statistics, prepared global difficulty, and automatic embedding indexing are implemented. Live deployment, media, and visual acceptance remain unfinished checks, not absent implementations.
 

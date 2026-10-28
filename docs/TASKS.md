@@ -143,6 +143,48 @@ Five branches off `dev`, one PR each, in this order: `feat/song-stream-and-voice
   - [x] The likely cause is a tier band holding fewer verified `sitelinks >= 5` rows than `players * win cards * headroom`, which fails the start with a 409; widen the sampling or surface the real message, and report the local counts per tier
 - [x] Tests: normalization units, deterministic shuffle, tier and custom integration including no duplicates and two starts differing in order, and an assert that no playlist rows are created
 
+## Story 54: Third playtest fixes
+
+A third playtest found audio working end to end and the problems below. The metadata items cover the 370
+songs in the production catalog; `opencode-tasks/data/year-audit.md` lists the songs with a wrong year,
+artist, or duplicate. Each task has a self-contained brief in `opencode-tasks/`.
+
+Layout and game screens:
+
+- [ ] Left rail icons spaced further apart at every height step
+- [ ] Game screens (lobby, round intro, every round phase, between rounds) laid out as the 1440x900 designs and scaled evenly to the window, replacing the per-element `short:`/`very-short:` shrinking
+- [ ] Lobby matches its design artboards in text size, spacing, and alignment
+- [ ] Gameplay matches its design artboards in text size, spacing, alignment, and timeline card size
+- [ ] The waveform has 5 bars everywhere in the app, driven by the song's frequency bands
+
+Gameplay behavior:
+
+- [ ] Countdowns use the server's clock: every response that carries a deadline also carries the server time, and clients correct for their own clock offset
+- [ ] Every player sees the active player's card move live while it is dragged, with the same waveform, as in the GameSessionCardDraggingSpectator design
+- [ ] The voice rail's Join button is the next slot under the people in the call, at the top when the call is empty
+
+Navigation:
+
+- [ ] Start session on a playlist creates a group when the user has none, and asks to use the current group or leave it and create a new one when the user has one
+- [ ] A logged-in visit to `/` redirects to `/playlists` before the landing page renders
+- [ ] A finished game goes straight to its results with a loader, without the "This game has ended" screen in between
+- [ ] Entering a game from the lobby shows a loader instead of a flash of the lobby
+
+Catalog and pipeline:
+
+- [ ] The duration refresh fetches songs that never had a duration, and keeps old durations when a refresh fails
+- [ ] MusicBrainz lookups find multi-artist songs and include the albums a recording appears on
+- [ ] Wikidata and Discogs matching rejects other artists' works, compilations, and non-song entities
+- [ ] The Wikipedia-assisted lock no longer takes the earliest of disagreeing years when only one source supports it
+- [ ] Recheck the catalog after the pipeline fixes and correct the songs in the year audit
+- [ ] A completed pipeline run attaches its video to an existing song with the same normalized artist and title instead of creating a duplicate, and the admin can merge the 12 existing duplicate pairs
+- [ ] The admin catalog shows songs added before pipeline tracking as "Before tracking"
+
+Tests:
+
+- [ ] Unit tests for each change above; backend tests for the server time field and the live drag relay; AI service tests for the new matching and lock rules against recorded source responses
+- [ ] Playwright screenshots of the lobby and each round phase at 1366x768, 1440x900, and 1920x1080 compared side by side with the design artboards
+
 ## Story 7: Production hosting
 
 Azure Container Apps hosts core and AI in one EU environment. Vercel hosts the frontend. Core stays single-replica because game and STOMP state are process-local. The whole-deployment ceiling is $20/month.

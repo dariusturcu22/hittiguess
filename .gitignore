@@ -52,3 +52,6 @@ Thumbs.db
 
 # --- LAN playtest HTTPS certificate (scripts/lan-https-proxy.mjs) ---
 .lan-https/
+
+# Design artboards extracted by opencode-tasks/tools/extract_artboard.py
+.design-artboards/
