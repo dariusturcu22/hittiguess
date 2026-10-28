@@ -40,6 +40,15 @@ import {
   resultsPath,
   secondsUntil,
 } from "@/lib/gameplay-round";
+import {
+  createPlacementPreviewThrottle,
+  placementPreviewFractions,
+  PLACEMENT_PREVIEW_DROPPED_PHASE,
+  PLACEMENT_PREVIEW_DRAGGING_PHASE,
+  PLACEMENT_PREVIEW_IDLE_PHASE,
+  type PlacementPreviewMessage,
+  type PlacementPreviewThrottle,
+} from "@/lib/placement-preview";
 import { GroupChatOverlay } from "@/components/group-chat-overlay";
 import { Coin, MysteryCard, PlayerAvatar, QuestionCard, SongCard, TokenPile } from "@/components/gameplay/game-pieces";
 import { GameplayTimeline, TIMELINE_CARD_SELECTOR } from "@/components/gameplay/gameplay-timeline";
@@ -62,6 +71,9 @@ const DRAGGED_CARD_HALF_SIZE_PIXELS = 84;
 // The dragged card floats above the pointer so the gap opening under it stays visible.
 const DRAGGED_CARD_LIFT_PIXELS = 118;
 const DRAGGED_COIN_HALF_SIZE_PIXELS = 26;
+const DEFAULT_PREVIEW_HORIZONTAL_FRACTION = 0.5;
+const DEFAULT_IDLE_PREVIEW_VERTICAL_FRACTION = -0.4;
+const DEFAULT_DRAGGING_PREVIEW_VERTICAL_FRACTION = 0;
 const SECONDS_PER_MINUTE = 60;
 const PERCENT = 100;
 const MINIMUM_SONG_VOLUME_PERCENT = 0;
@@ -80,6 +92,10 @@ interface CorrectGuessToast {
   displayName?: string;
   artistGuessed?: boolean;
   titleGuessed?: boolean;
+}
+
+interface SpectatorPlacementPreview extends PlacementPreviewMessage {
+  roundId?: number;
 }
 
 function guessResultMessage(result: GuessResult, guessedArtist: boolean): string {
@@ -250,7 +266,7 @@ export default function GameSessionPage({ params }: PageProps) {
   const [droppedGap, setDroppedGap] = useState<number | null>(null);
   const [betDrag, setBetDrag] = useState<PointerDrag | null>(null);
   const [stagedBetGap, setStagedBetGap] = useState<number | null>(null);
-  const [previewGap, setPreviewGap] = useState<{ roundId?: number; position: number | null } | null>(null);
+  const [receivedPlacementPreview, setReceivedPlacementPreview] = useState<SpectatorPlacementPreview | null>(null);
   const [artistGuess, setArtistGuess] = useState("");
   const [titleGuess, setTitleGuess] = useState("");
   const [feedbackMessage, setFeedbackMessage] = useState("");
@@ -264,8 +280,10 @@ export default function GameSessionPage({ params }: PageProps) {
   const [isIntroDismissed, setIsIntroDismissed] = useState(() => typeof window !== "undefined" && readIntroSeen(sessionId));
   const [now, setNow] = useState(() => Date.now());
   const trackReference = useRef<HTMLDivElement>(null);
+  const idleCardReference = useRef<HTMLDivElement>(null);
+  const previewSendReference = useRef<(preview: PlacementPreviewMessage) => void>(() => {});
+  const previewThrottleReference = useRef<PlacementPreviewThrottle | null>(null);
   const submittedStagedBetRoundReference = useRef<number | undefined>(undefined);
-  const lastPreviewReference = useRef<number | null | undefined>(undefined);
   const lastArtistGuessReference = useRef(false);
   const knownGroupIdReference = useRef<number | undefined>(undefined);
   useEffect(() => {
@@ -278,14 +296,20 @@ export default function GameSessionPage({ params }: PageProps) {
     setDroppedGap(null);
     setBetDrag(null);
     setStagedBetGap(null);
-    setPreviewGap(null);
+    setReceivedPlacementPreview(null);
     setFeedbackMessage("");
     setIsGuessResultCorrect(null);
   }
 
   const handleRoundEvent = useCallback((event: SessionRoundEvent) => {
     if (event.type === PLACEMENT_PREVIEW_EVENT) {
-      setPreviewGap({ roundId: event.payload?.roundId, position: event.payload?.position ?? null });
+      setReceivedPlacementPreview({
+        roundId: event.payload?.roundId,
+        position: event.payload?.position ?? null,
+        x: event.payload?.x,
+        y: event.payload?.y,
+        phase: event.payload?.phase ?? PLACEMENT_PREVIEW_IDLE_PHASE,
+      });
       return;
     }
     if (event.type === GUESS_CORRECT_EVENT) {
@@ -319,6 +343,19 @@ export default function GameSessionPage({ params }: PageProps) {
   }, [router, sessionId]);
   const realtime = useGameSessionRealtime(sessionId, handleRoundEvent, handleGuessResult, handleSessionEnded);
   const { placeBet, previewPlacement } = realtime;
+
+  useEffect(() => {
+    previewSendReference.current = previewPlacement;
+  }, [previewPlacement]);
+
+  useEffect(() => {
+    const throttle = createPlacementPreviewThrottle((preview) => previewSendReference.current(preview));
+    previewThrottleReference.current = throttle;
+    return () => {
+      throttle.cancel();
+      previewThrottleReference.current = null;
+    };
+  }, []);
 
   useEffect(() => {
     if (hasEnded && fallbackGroupId !== undefined) router.replace(resultsPath(sessionId, fallbackGroupId));
@@ -360,18 +397,36 @@ export default function GameSessionPage({ params }: PageProps) {
   const canSkipBetting = !isActivePlayer && !isDj && !myBet && tokenCount > 0 && !hasSkippedBetting;
   const isAwaitingPlacement = roundStatus === AWAITING_PLACEMENT_STATUS;
   const canStakeBet = role === "spectator" && tokenCount > 0 && !myBet && (roundStatus === COUNTDOWN_STATUS || roundStatus === BETTING_STATUS);
-  const activePlacementGap = placementDrag ? placementDrag.hoverGap : droppedGap;
   const colorIndexOf = (player?: PlayerDTO) => Math.max(0, players.findIndex((candidate) => candidate.id === player?.id));
+  const isIdlePlacement = isAwaitingPlacement && isActivePlayer && placementDrag === null && droppedGap === null;
+  const isDroppedPlacement = isAwaitingPlacement && isActivePlayer && placementDrag === null && droppedGap !== null;
 
-  // Spectators watch the active player's drag; the active player publishes it.
+  // The active player's card position is the only thing spectators cannot derive, so the
+  // active client publishes it: while floating before the grab, while dragging, and once
+  // it rests in the chosen gap.
   useEffect(() => {
-    if (!isActivePlayer || !isAwaitingPlacement) {
-      lastPreviewReference.current = undefined;
-      return;
-    }
-    if (lastPreviewReference.current === activePlacementGap) return;
-    if (previewPlacement(activePlacementGap)) lastPreviewReference.current = activePlacementGap;
-  }, [activePlacementGap, isActivePlayer, isAwaitingPlacement, previewPlacement]);
+    if (!isIdlePlacement) return;
+    const idleCard = idleCardReference.current;
+    const track = trackReference.current;
+    if (!idleCard || !track) return;
+    const cardBounds = idleCard.getBoundingClientRect();
+    const trackBounds = track.getBoundingClientRect();
+    if (trackBounds.width <= 0 || trackBounds.height <= 0) return;
+    previewThrottleReference.current?.sendNow({
+      position: null,
+      x: (cardBounds.left + cardBounds.width / 2 - trackBounds.left) / trackBounds.width,
+      y: (cardBounds.top + cardBounds.height / 2 - trackBounds.top) / trackBounds.height,
+      phase: PLACEMENT_PREVIEW_IDLE_PHASE,
+    });
+  }, [currentRound?.id, isIdlePlacement]);
+
+  useEffect(() => {
+    if (!isDroppedPlacement || droppedGap === null) return;
+    previewThrottleReference.current?.sendNow({
+      position: droppedGap,
+      phase: PLACEMENT_PREVIEW_DROPPED_PHASE,
+    });
+  }, [currentRound?.id, droppedGap, isDroppedPlacement]);
 
   // A token staged during the countdown is placed the moment the betting window opens.
   useEffect(() => {
@@ -392,7 +447,11 @@ export default function GameSessionPage({ params }: PageProps) {
   useEffect(() => {
     if (!isPlacementDragging) return;
     function movePlacement(event: PointerEvent) {
-      setPlacementDrag({ pointerX: event.clientX, pointerY: event.clientY, hoverGap: hoverGapAt(trackReference.current, betGapContextReference.current, event.clientX, event.clientY, false) });
+      const hoverGap = hoverGapAt(trackReference.current, betGapContextReference.current, event.clientX, event.clientY, false);
+      setPlacementDrag({ pointerX: event.clientX, pointerY: event.clientY, hoverGap });
+      const fractions = placementPreviewFractions(trackReference.current, event.clientX, event.clientY, DRAGGED_CARD_LIFT_PIXELS);
+      if (!fractions) return;
+      previewThrottleReference.current?.push({ position: hoverGap, ...fractions, phase: PLACEMENT_PREVIEW_DRAGGING_PHASE });
     }
     function dropPlacement(event: PointerEvent) {
       const gapIndex = hoverGapAt(trackReference.current, betGapContextReference.current, event.clientX, event.clientY, false);
@@ -453,7 +512,12 @@ export default function GameSessionPage({ params }: PageProps) {
   const isLocked = isPlacementLocked(roundStatus);
   const isRevealed = isRoundRevealed(roundStatus);
   const placedPosition = currentRound?.placedPosition;
-  const spectatorPreviewGap = previewGap && previewGap.roundId === currentRound?.id ? previewGap.position : null;
+  const spectatorPreview = receivedPlacementPreview && receivedPlacementPreview.roundId === currentRound?.id ? receivedPlacementPreview : null;
+  const spectatorPreviewGap = spectatorPreview?.position ?? null;
+  const spectatorCardPreview = isAwaitingPlacement && !isActivePlayer && spectatorPreview !== null && spectatorPreview.phase !== PLACEMENT_PREVIEW_DROPPED_PHASE ? spectatorPreview : null;
+  const spectatorCardX = spectatorCardPreview?.x ?? DEFAULT_PREVIEW_HORIZONTAL_FRACTION;
+  const spectatorCardY = spectatorCardPreview?.y
+    ?? (spectatorCardPreview?.phase === PLACEMENT_PREVIEW_IDLE_PHASE ? DEFAULT_IDLE_PREVIEW_VERTICAL_FRACTION : DEFAULT_DRAGGING_PREVIEW_VERTICAL_FRACTION);
   const playlists = groupQuery.data?.playlists ?? [];
   const playlistName = playlists.length === 1 ? playlists.at(0)?.name : playlists.length > 1 ? `${playlists.length} playlists` : "Auto-generated set";
   const playlistColor = playlists.at(0)?.color;
@@ -473,6 +537,9 @@ export default function GameSessionPage({ params }: PageProps) {
     if (!isActivePlayer || !isAwaitingPlacement) return;
     event.preventDefault();
     setPlacementDrag({ pointerX: event.clientX, pointerY: event.clientY, hoverGap: droppedGap });
+    const fractions = placementPreviewFractions(trackReference.current, event.clientX, event.clientY, DRAGGED_CARD_LIFT_PIXELS);
+    if (!fractions) return;
+    previewThrottleReference.current?.sendNow({ position: droppedGap, ...fractions, phase: PLACEMENT_PREVIEW_DRAGGING_PHASE });
   }
 
   function moveDroppedCard(event: KeyboardEvent<HTMLElement>) {
@@ -548,8 +615,11 @@ export default function GameSessionPage({ params }: PageProps) {
     if (placementDrag?.hoverGap !== null && placementDrag?.hoverGap !== undefined) slots.set(placementDrag.hoverGap, <DashedGap />);
     else if (!placementDrag && droppedGap !== null) slots.set(droppedGap, <div data-timeline-focus=""><MysteryCard isInteractive levels={audioLevels} label="Your card. Choose a timeline position." onPointerDown={startPlacementDrag} onKeyDown={moveDroppedCard} /></div>);
   }
-  if (isAwaitingPlacement && !isActivePlayer && spectatorPreviewGap !== null) {
-    slots.set(spectatorPreviewGap, <DashedGap tone="muted"><MysteryCard size="small" className="gameplay-wobble scale-90" /></DashedGap>);
+  if (isAwaitingPlacement && !isActivePlayer && spectatorPreviewGap !== null && spectatorPreview?.phase !== PLACEMENT_PREVIEW_DROPPED_PHASE) {
+    slots.set(spectatorPreviewGap, <DashedGap />);
+  }
+  if (isAwaitingPlacement && !isActivePlayer && spectatorPreviewGap !== null && spectatorPreview?.phase === PLACEMENT_PREVIEW_DROPPED_PHASE) {
+    slots.set(spectatorPreviewGap, <div data-timeline-focus=""><MysteryCard levels={audioLevels} /></div>);
   }
   if (isLocked && !isRevealed && placedPosition !== undefined) slots.set(placedPosition, <div data-timeline-focus=""><QuestionCard /></div>);
   if (isRevealed && placedPosition !== undefined) {
@@ -622,7 +692,7 @@ export default function GameSessionPage({ params }: PageProps) {
   if (isAwaitingPlacement && isActivePlayer && droppedGap === null && !placementDrag) {
     aboveTimeline = <div className="flex flex-col items-center gap-2.5 short:gap-2 very-short:gap-1.5">
       <span className="text-[11px] font-bold uppercase tracking-[2.5px] text-primary">Your card</span>
-      <div className="gameplay-card-float"><MysteryCard size="small" isInteractive levels={audioLevels} label="Your card. Choose a timeline position." onPointerDown={startPlacementDrag} onKeyDown={moveDroppedCard} /></div>
+      <div ref={idleCardReference} className="gameplay-card-float"><MysteryCard size="small" isInteractive levels={audioLevels} label="Your card. Choose a timeline position." onPointerDown={startPlacementDrag} onKeyDown={moveDroppedCard} /></div>
       <span className="flex items-center gap-1.5 text-[11px] text-muted-foreground"><ArrowDown className="size-3" strokeWidth={2.5} />Drag onto the timeline</span>
     </div>;
   } else if (isAwaitingPlacement && isDj) {
@@ -764,7 +834,20 @@ export default function GameSessionPage({ params }: PageProps) {
     <section className="relative min-h-0 flex-1" aria-label="Game stage">
       {songMesh.isPlaybackBlocked ? <button type="button" onClick={songMesh.resumePlayback} className="absolute left-0 top-0 z-30 inline-flex items-center gap-2 rounded-full border-2 border-primary bg-card px-4 py-2 text-xs font-semibold text-primary shadow-[3px_3px_0_var(--shadow-color)] transition-transform hover:-translate-y-0.5"><Volume2 className="size-3.5" />Click to enable sound</button> : null}
       <div className="absolute left-1/2 top-1/2 flex w-full max-w-[1100px] -translate-x-1/2 -translate-y-1/2 justify-center">
-        {currentRound ? <GameplayTimeline cards={cards} slots={slots} tiltGapIndex={tiltGapIndex} focusKey={focusKey} isDimmed={isTimelineDimmed} trackReference={trackReference} /> : <p className="py-12 text-sm text-muted-foreground">Your timeline will appear when the round starts.</p>}
+        <div className="relative w-full">
+          {currentRound ? <GameplayTimeline cards={cards} slots={slots} tiltGapIndex={tiltGapIndex} focusKey={focusKey} isDimmed={isTimelineDimmed} trackReference={trackReference} /> : <p className="py-12 text-center text-sm text-muted-foreground">Your timeline will appear when the round starts.</p>}
+          {spectatorCardPreview ? <div
+            data-spectator-card-preview=""
+            data-phase={spectatorCardPreview.phase}
+            aria-hidden="true"
+            className="pointer-events-none absolute z-20 -translate-x-1/2 -translate-y-1/2 opacity-[0.72] saturate-[0.7] transition-[left,top] duration-[60ms] ease-out"
+            style={{ left: `${spectatorCardX * PERCENT}%`, top: `${spectatorCardY * PERCENT}%` }}
+          >
+            {spectatorCardPreview.phase === PLACEMENT_PREVIEW_DRAGGING_PHASE
+              ? <div className="gameplay-wobble"><MysteryCard levels={audioLevels} className="shadow-[10px_10px_0_var(--shadow-color)]" /></div>
+              : <div className="gameplay-card-float"><MysteryCard size="small" levels={audioLevels} /></div>}
+          </div> : null}
+        </div>
       </div>
       {currentRound ? <p className="absolute bottom-[calc(50%+98px)] short:bottom-[calc(50%+86px)] very-short:bottom-[calc(50%+68px)] left-1/2 -translate-x-1/2 text-xs font-bold uppercase tracking-[3px] text-muted-foreground">Timeline</p> : null}
       {aboveTimeline ? <div className="absolute bottom-[calc(50%+132px)] short:bottom-[calc(50%+116px)] very-short:bottom-[calc(50%+92px)] left-1/2 flex -translate-x-1/2 justify-center">{aboveTimeline}</div> : null}
