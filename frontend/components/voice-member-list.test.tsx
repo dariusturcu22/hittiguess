@@ -30,4 +30,14 @@ describe("VoiceMemberList", () => {
     act(() => vi.advanceTimersByTime(EXIT_MILLISECONDS));
     expect(screen.queryByText("Sam")).not.toBeInTheDocument();
   });
+
+  it("renders the trailing slot after the members", () => {
+    const TRAILING_SLOT_COUNT = 1;
+    const trailingSlotText = "Join";
+    render(<VoiceMemberList members={MEMBERS} trailingSlot={<span>{trailingSlotText}</span>} />);
+    const trailingSlot = screen.getByText(trailingSlotText);
+
+    expect(trailingSlot.parentElement?.lastElementChild).toBe(trailingSlot);
+    expect(trailingSlot.parentElement?.children).toHaveLength(MEMBERS.length + TRAILING_SLOT_COUNT);
+  });
 });
