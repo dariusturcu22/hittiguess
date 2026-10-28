@@ -1290,3 +1290,9 @@ Why: the whole `dev` history was merged into `main` once the new version became 
 Decision: the Fly.io backend app is deleted and its configuration file, `backend/fly.toml`, is removed from the repository. Azure Container Apps is the only backend host.
 
 Why: production moved to Azure and the Fly app only kept an always-on machine billing. The 2026-07 decision to move off Fly.io stays in this file as history.
+
+## 2026-10-28 | Duration refresh treats a missing lookup time as due
+
+Decision: the six-hour duration refresh selects every song with a YouTube id whose duration was never fetched or whose fetch time is older than the 29-day retention, and returns never-fetched songs first. A song whose video no longer exists records the check time with a null duration, so the next check waits for the retention window instead of running every six hours. A batch that updates no rows stops the sweep and logs a warning. A song imported without a duration keeps an empty fetch time and is due on the next sweep, and changing a song's video clears both its duration and its fetch time.
+
+Why: the previous candidate query compared a null fetch time with the cutoff, which SQL evaluates as false, so the 50 songs created before durations existed were never selected and the AI service never received a duration request. Recording the check time for a missing video keeps it from occupying every batch. The zero-row guard prevents a sweep that cannot make progress from looping.
