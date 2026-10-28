@@ -232,7 +232,7 @@ test("lobby keeps its footer actions on screen in a short or zoomed window", asy
   }
 });
 
-test("lobby fits every desktop viewport without vertical scrolling", async ({ browser }) => {
+test("lobby fits every desktop viewport without vertical scrolling", async ({ browser }, testInfo) => {
   const page = await login(browser, ADMIN_ACCOUNT);
   let groupId: number | undefined;
 
@@ -253,6 +253,8 @@ test("lobby fits every desktop viewport without vertical scrolling", async ({ br
       for (const footerAction of LOBBY_FOOTER_ACTIONS) {
         await expect(page.getByRole("button", { name: footerAction })).toBeInViewport({ ratio: 1 });
       }
+
+      await page.screenshot({ path: testInfo.outputPath(`lobby-${viewport.width}x${viewport.height}.png`) });
     }
   } finally {
     if (groupId !== undefined) {
@@ -371,7 +373,7 @@ test("gameplay shell renders placement, betting, and DJ link-out states", async 
   }
 });
 
-test("gameplay session fits every desktop viewport without vertical scrolling", async ({ browser }) => {
+test("gameplay session fits every desktop viewport without vertical scrolling", async ({ browser }, testInfo) => {
   const page = await login(browser, ADMIN_ACCOUNT);
   const player = {
     id: PLAYER_ID,
@@ -416,6 +418,8 @@ test("gameplay session fits every desktop viewport without vertical scrolling", 
       ).toBeLessThanOrEqual(measurements.clientHeight);
 
       await expect(page.getByRole("button", { name: "Leave game" })).toBeInViewport({ ratio: 1 });
+
+      await page.screenshot({ path: testInfo.outputPath(`gameplay-${viewport.width}x${viewport.height}.png`) });
     }
   } finally {
     await page.context().close();
