@@ -16,6 +16,12 @@ const PUBLIC_JOIN_PREFIXES = ["/playlists/join/", "/groups/join/"];
 export default function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
+  // The hint cookie can outlive the session; the playlists page then sends the
+  // visitor to /login, so routing here only saves the landing render.
+  if (pathname === "/" && request.cookies.has("session_hint")) {
+    return NextResponse.redirect(new URL("/playlists", request.url));
+  }
+
   const isPublic =
     pathname === "/" ||
     PUBLIC_ROUTES.some((route) => pathname.startsWith(route)) ||
