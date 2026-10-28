@@ -1290,3 +1290,9 @@ Why: the whole `dev` history was merged into `main` once the new version became 
 Decision: the Fly.io backend app is deleted and its configuration file, `backend/fly.toml`, is removed from the repository. Azure Container Apps is the only backend host.
 
 Why: production moved to Azure and the Fly app only kept an always-on machine billing. The 2026-07 decision to move off Fly.io stays in this file as history.
+
+## 2026-10-28 | Starting a playlist session asks what to do with an existing group
+
+Decision: Start session on a playlist creates a group with the sidebar's defaults when the caller has none, then opens that lobby with the playlist preselected. A caller already in a group chooses between using that group and leaving it to create a new one. Leaving is disabled while the group has a running game.
+
+Why: the button previously sent a caller who already had a group to their lobby and showed a toast to everyone else, so a caller without a group could not start a session from a playlist. Replacing an existing group is the caller's own state, so it is an explicit choice rather than a side effect.
