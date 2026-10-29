@@ -1,6 +1,5 @@
 import re
 import time
-import unicodedata
 from functools import lru_cache
 
 import httpx
@@ -10,7 +9,7 @@ from app.metadata.sources.http_retry import get_with_backoff
 from app.metadata.sources.pace_state import STAGE_WIKIDATA, PaceWaitTooLong
 from app.metadata.sources.pacing import PersistedRequestPacer
 from app.metadata.sources.mediawiki_auth import build_authenticated_client
-from app.metadata.sources.util import METADATA_SOURCE_USER_AGENT, normalize_name, to_artist_list
+from app.metadata.sources.util import METADATA_SOURCE_USER_AGENT, contains_name, normalize_name, to_artist_list
 from app.observability.error_reporting import report_source_failure
 
 SOURCE_NAME = "wikidata"
@@ -35,14 +34,7 @@ _EXCLUDED_KEYWORDS = ("album", "ep", "record", "track", "recording")
 
 
 def _description_matches_any_artist(description: str, main_artists: list[str]) -> bool:
-    normalized_description = normalize_name(description)
-    if not normalized_description:
-        return False
-    for artist in main_artists:
-        normalized_artist = normalize_name(artist)
-        if normalized_artist and re.search(rf"(?<!\w){re.escape(normalized_artist)}(?!\w)", normalized_description):
-            return True
-    return False
+    return any(contains_name(description, artist) for artist in main_artists)
 
 
 def _description_matches_fallback(description: str, main_artists: list[str]) -> bool:
@@ -67,19 +59,15 @@ def _description_matches_fallback(description: str, main_artists: list[str]) -> 
     by_matches = re.findall(r"\bby\s+(.+)", normalized_description)
     if by_matches:
         first_by_clause = by_matches[0]
-        names_main_artist = any(
-            normalize_name(artist) in first_by_clause
-            for artist in main_artists
-            if normalize_name(artist)
-        )
+        names_main_artist = any(contains_name(first_by_clause, artist) for artist in main_artists)
         if not names_main_artist:
             return False
 
     return True
 
 
-def find_matching_candidates(matches: list[dict], artist: str | list[str]) -> list[dict]:
-    main_artists = to_artist_list(artist)
+def find_matching_candidates(matches: list[dict], main_artists: list[str]) -> list[dict]:
+    main_artists = to_artist_list(main_artists)
     artist_matches = [
         match for match in matches
         if _description_matches_any_artist(match.get("description") or "", main_artists)
@@ -169,14 +157,14 @@ def get_sitelinks_count(entity_id: str) -> int | None:
     return len(sitelinks)
 
 
-def pick_best_match(matches: list[dict], artist: str | list[str]) -> dict | None:
+def pick_best_match(matches: list[dict], main_artists: list[str]) -> dict | None:
     """A title-only search can rank an unrelated homonym first. Prefers whichever
     match's description mentions any main artist.
 
     When nothing does, falls back only to a candidate whose description indicates
     a song or single and does not name another artist, returning None if even
     that comes up empty."""
-    candidates = find_matching_candidates(matches, artist)
+    candidates = find_matching_candidates(matches, main_artists)
     return candidates[0] if candidates else None
 
 
@@ -223,17 +211,11 @@ def get_performer_labels(performer_ids: list[str]) -> list[str]:
 
 
 def _performer_matches_main_artist(performer_labels: list[str], main_artists: list[str]) -> bool:
-    for label in performer_labels:
-        normalized_label = normalize_name(label)
-        for artist in main_artists:
-            normalized_artist = normalize_name(artist)
-            if normalized_artist and (
-                normalized_artist == normalized_label
-                or normalized_artist in normalized_label
-                or normalized_label in normalized_artist
-            ):
-                return True
-    return False
+    return any(
+        contains_name(label, artist) or contains_name(artist, label)
+        for label in performer_labels
+        for artist in main_artists
+    )
 
 
 def _confirm_performer(entity: dict, main_artists: list[str]) -> bool:
@@ -290,12 +272,12 @@ def _resolve_candidate(entity_id: str, description: str | None, query_label: str
     }, entity
 
 
-def search_or_raise(title: str, artist: str | list[str]) -> list[dict]:
+def search_or_raise(title: str, main_artists: list[str]) -> list[dict]:
     """Looks up the track, confirms the performer against the main artists when
     P175 is present, and looks up its parent album via P361. Returns every
     candidate found so downstream reconciliation sees the full picture. A failed
     request raises."""
-    main_artists = to_artist_list(artist)
+    main_artists = to_artist_list(main_artists)
     matches = search_entity(title).get("search", [])
     candidate_matches = find_matching_candidates(matches, main_artists)
     if not candidate_matches:
@@ -317,11 +299,11 @@ def search_or_raise(title: str, artist: str | list[str]) -> list[dict]:
     return []
 
 
-def search(title: str, artist: str | list[str]) -> list[dict]:
+def search(title: str, main_artists: list[str]) -> list[dict]:
     """search_or_raise, reporting a failure and returning nothing instead of raising."""
     try:
-        return search_or_raise(title, artist)
+        return search_or_raise(title, main_artists)
     except Exception as wikidata_error:
-        artist_display = " & ".join(to_artist_list(artist))
+        artist_display = " & ".join(to_artist_list(main_artists))
         report_source_failure(SOURCE_NAME, wikidata_error, title, artist_display)
         return []

@@ -153,11 +153,22 @@ def parse_iso8601_duration_seconds(duration: str | None) -> int | None:
 
 
 def normalize_name(value: str | None) -> str:
+    """Lowercases a name, removes accents, and turns punctuation into spaces so
+    stylized and plain spellings compare as the same words."""
     decomposed = unicodedata.normalize("NFKD", value or "")
     without_diacritics = "".join(character for character in decomposed if not unicodedata.combining(character))
     without_punctuation = re.sub(r"[\W_]+", " ", without_diacritics)
     return re.sub(r"\s+", " ", without_punctuation).strip().lower()
 
 
-def to_artist_list(artist: list[str]) -> list[str]:
-    return [str(part).strip() for part in artist if str(part).strip()]
+def to_artist_list(artists: list[str]) -> list[str]:
+    return [str(artist).strip() for artist in artists if str(artist).strip()]
+
+
+def contains_name(text: str | None, name: str | None) -> bool:
+    """Whether the normalized name appears in the normalized text as whole words, so a
+    short name never matches inside a longer word."""
+    normalized_name = normalize_name(name)
+    if not normalized_name:
+        return False
+    return re.search(rf"(?<!\w){re.escape(normalized_name)}(?!\w)", normalize_name(text)) is not None
