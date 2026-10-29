@@ -154,12 +154,14 @@ describe("GroupLobbyPage start options", () => {
     expect(routerMock.replace).not.toHaveBeenCalledWith("/sessions/44");
   });
 
-  it("joins the game in progress while the group is locked", async () => {
+  it("shows the lobby loader, not the lobby, while joining a locked group's game", async () => {
     lobbyState.status = "LOCKED";
     lobbyState.cachedSessionId = 44;
     await renderPage();
 
     expect(routerMock.replace).toHaveBeenCalledWith("/sessions/44");
+    expect(screen.getByLabelText("Loading group")).toBeVisible();
+    expect(screen.queryByRole("button", { name: "Choose playlists" })).toBeNull();
   });
 
   it("saves the difficulty on Confirm without generating or starting", async () => {

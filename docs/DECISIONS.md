@@ -1302,3 +1302,9 @@ Why: a machine whose clock was 27 seconds behind showed 30 seconds left when the
 Decision: Start session on a playlist creates a group with the sidebar's defaults when the caller has none, then opens that lobby with the playlist preselected. A caller already in a group chooses between using that group and leaving it to create a new one. Leaving is disabled while the group has a running game.
 
 Why: the button previously sent a caller who already had a group to their lobby and showed a toast to everyone else, so a caller without a group could not start a session from a playlist. Replacing an existing group is the caller's own state, so it is an explicit choice rather than a side effect.
+
+## 2026-10-28 | Pages render a loader while a redirect they know about is pending
+
+Decision: a page that will redirect once another query resolves renders its loading state until the redirect happens, instead of rendering content it is about to replace. The logged-in redirect from `/` runs in `proxy.ts`, where the session hint cookie is readable before the landing page renders.
+
+Why: rendering the outgoing screen first produced a visible flash of content that was already obsolete, in the session page when a game had ended, in the lobby when a game was starting, and on the landing page for a logged-in visitor.

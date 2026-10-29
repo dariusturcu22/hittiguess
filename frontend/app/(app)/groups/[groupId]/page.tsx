@@ -500,7 +500,7 @@ export default function GroupLobbyPage({ params }: PageProps) {
     return <main className="p-10 text-destructive">This group link is invalid.</main>;
   }
 
-  if (groupQuery.isLoading) {
+  if (groupQuery.isLoading || isGroupInGame) {
     return (
       <main className="flex h-full min-h-0 flex-col overflow-hidden px-6 py-8 short:py-6 very-short:py-4 sm:px-14 sm:py-9">
         <div className="h-10 w-52 animate-pulse rounded bg-card" />
