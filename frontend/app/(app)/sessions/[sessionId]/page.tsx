@@ -706,6 +706,8 @@ function GameSessionScreen({ params }: PageProps) {
 
   // --- Element floating above the timeline ------------------------------------------
   let aboveTimeline: ReactNode = null;
+  // The design lifts the DJ's song card higher than every other element above the timeline.
+  let aboveTimelinePositionClassName = "bottom-[calc(50%+148px)]";
   if (isAwaitingPlacement && isActivePlayer && droppedGap === null && !placementDrag) {
     aboveTimeline = <div className="flex flex-col items-center gap-2.5">
       <span className="text-[11px] font-bold uppercase tracking-[2.5px] text-primary">Your card</span>
@@ -713,6 +715,7 @@ function GameSessionScreen({ params }: PageProps) {
       <span className="flex items-center gap-1.5 text-[11px] text-muted-foreground"><ArrowDown className="size-3" strokeWidth={2.5} />Drag onto the timeline</span>
     </div>;
   } else if (isAwaitingPlacement && isDj) {
+    aboveTimelinePositionClassName = "bottom-[calc(50%+178px)]";
     const linkOut = linkOutQuery.data;
     const watchUrl = linkOut?.watchUrl;
     aboveTimeline = <div className="flex w-max max-w-[calc(100vw-48px)] flex-col items-center gap-6 sm:flex-row sm:items-center sm:gap-8">
@@ -867,7 +870,7 @@ function GameSessionScreen({ params }: PageProps) {
         </div>
       </div>
       {currentRound ? <p className="absolute bottom-[calc(50%+98px)] left-1/2 -translate-x-1/2 text-[12px] font-bold uppercase tracking-[3px] text-muted-foreground">Timeline</p> : null}
-      {aboveTimeline ? <div className="absolute bottom-[calc(50%+148px)] left-1/2 flex -translate-x-1/2 justify-center">{aboveTimeline}</div> : null}
+      {aboveTimeline ? <div className={`absolute ${aboveTimelinePositionClassName} left-1/2 flex -translate-x-1/2 justify-center`}>{aboveTimeline}</div> : null}
       {caption ? <p className="absolute left-1/2 top-[calc(50%+98px)] w-max max-w-[calc(100%-16px)] -translate-x-1/2 text-center text-[12px] text-muted-foreground">{caption}</p> : null}
       {belowTimeline ? <div className="absolute left-1/2 top-[calc(50%+148px)] flex w-full -translate-x-1/2 justify-center px-3">{belowTimeline}</div> : null}
       <div aria-live="polite" className="absolute bottom-0 left-1/2 w-max max-w-full -translate-x-1/2"><p key={guessFeedbackSequence} className={`text-center text-xs ${isGuessResultCorrect === true ? "font-semibold text-green" : isGuessResultCorrect === false ? "incorrect-guess-feedback text-destructive" : "text-muted-foreground"}`}>{feedbackMessage}</p></div>
@@ -875,8 +878,8 @@ function GameSessionScreen({ params }: PageProps) {
 
     {isChatOpen ? <GroupChatOverlay groupId={session.groupId ?? 0} connectionState={groupRealtime.connectionState} sendChat={groupRealtime.sendChat} onClose={() => setIsChatOpen(false)} /> : null}
 
-    <footer className="flex shrink-0 flex-wrap items-end justify-between gap-4">
-      <div className="flex items-center gap-3">
+    <footer className="pointer-events-none absolute inset-x-[56px] bottom-[40px] flex items-end justify-between gap-4">
+      <div className="pointer-events-auto flex items-center gap-3">
         <div className="inline-flex items-center gap-4 rounded-full border-2 border-border bg-card py-2.5 pl-2.5 pr-5">
           <RolePill label="DJ" name={djPlayer?.displayName} colorIndex={colorIndexOf(djPlayer)} />
           <span className="h-7 w-px bg-border" />
@@ -884,7 +887,7 @@ function GameSessionScreen({ params }: PageProps) {
         </div>
         <button type="button" onClick={() => setIsChatOpen((isOpen) => !isOpen)} aria-label={isChatOpen ? "Close chat" : "Open chat"} className={`relative z-20 flex size-11 items-center justify-center rounded-full border-2 bg-card text-card-foreground transition-colors ${isChatOpen ? "border-primary text-primary" : "border-border hover:border-primary"}`}><MessageCircle className="size-[18px]" /></button>
       </div>
-      <div onPointerDown={startBetDrag} className={canStakeBet ? "cursor-grab touch-none select-none active:cursor-grabbing" : ""} title={canStakeBet ? "Drag a token onto the timeline to bet" : undefined}>
+      <div onPointerDown={startBetDrag} className={`pointer-events-auto ${canStakeBet ? "cursor-grab touch-none select-none active:cursor-grabbing" : ""}`} title={canStakeBet ? "Drag a token onto the timeline to bet" : undefined}>
         <TokenPile tokenCount={Math.max(0, tokenCount - (betDrag ? 1 : 0))} label={isSittingOut ? "Sitting out" : "Your tokens"} isDimmed={isSittingOut} earnedTokenRoundId={earnedTokenRoundId} />
       </div>
     </footer>
