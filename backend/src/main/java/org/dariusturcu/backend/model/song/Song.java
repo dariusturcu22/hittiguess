@@ -43,7 +43,13 @@ public class Song {
 
     public void recordOfficialDuration(Integer durationSeconds) {
         this.durationSeconds = durationSeconds != null && durationSeconds > 0 ? durationSeconds : null;
+        // A missing duration leaves the fetch time empty, which marks the song as due for the next refresh.
         this.durationFetchedAt = this.durationSeconds == null ? null : Instant.now();
+    }
+
+    public void clearOfficialDuration() {
+        this.durationSeconds = null;
+        this.durationFetchedAt = null;
     }
 
     private String color;

@@ -151,28 +151,28 @@ artist, or duplicate. Each task has a self-contained brief in `opencode-tasks/`.
 
 Layout and game screens:
 
-- [ ] Left rail icons spaced further apart at every height step
-- [ ] Game screens (lobby, round intro, every round phase, between rounds) laid out as the 1440x900 designs and scaled evenly to the window, replacing the per-element `short:`/`very-short:` shrinking
+- [x] Left rail icons spaced further apart at every height step
+- [x] Game screens (lobby, round intro, every round phase, between rounds) laid out as the 1440x900 designs and scaled evenly to the window, replacing the per-element `short:`/`very-short:` shrinking
 - [ ] Lobby matches its design artboards in text size, spacing, and alignment
 - [ ] Gameplay matches its design artboards in text size, spacing, alignment, and timeline card size
-- [ ] The waveform has 5 bars everywhere in the app, driven by the song's frequency bands
+- [x] The waveform has 5 bars everywhere in the app, driven by the song's frequency bands
 
 Gameplay behavior:
 
-- [ ] Countdowns use the server's clock: every response that carries a deadline also carries the server time, and clients correct for their own clock offset
-- [ ] Every player sees the active player's card move live while it is dragged, with the same waveform, as in the GameSessionCardDraggingSpectator design
-- [ ] The voice rail's Join button is the next slot under the people in the call, at the top when the call is empty
+- [x] Countdowns use the server's clock: every response that carries a deadline also carries the server time, and clients correct for their own clock offset
+- [x] Every player sees the active player's card move live while it is dragged, with the same waveform, as in the GameSessionCardDraggingSpectator design
+- [x] The voice rail's Join button is the next slot under the people in the call, at the top when the call is empty
 
 Navigation:
 
-- [ ] Start session on a playlist creates a group when the user has none, and asks to use the current group or leave it and create a new one when the user has one
-- [ ] A logged-in visit to `/` redirects to `/playlists` before the landing page renders
-- [ ] A finished game goes straight to its results with a loader, without the "This game has ended" screen in between
-- [ ] Entering a game from the lobby shows a loader instead of a flash of the lobby
+- [x] Start session on a playlist creates a group when the user has none, and asks to use the current group or leave it and create a new one when the user has one
+- [x] A logged-in visit to `/` redirects to `/playlists` before the landing page renders
+- [x] A finished game goes straight to its results with a loader, without the "This game has ended" screen in between
+- [x] Entering a game from the lobby shows a loader instead of a flash of the lobby
 
 Catalog and pipeline:
 
-- [ ] The duration refresh fetches songs that never had a duration, and keeps old durations when a refresh fails
+- [x] The duration refresh fetches songs that never had a duration, and keeps old durations when a refresh fails
 - [ ] MusicBrainz lookups find multi-artist songs and include the albums a recording appears on
 - [ ] Wikidata and Discogs matching rejects other artists' works, compilations, and non-song entities
 - [ ] The Wikipedia-assisted lock no longer takes the earliest of disagreeing years when only one source supports it

@@ -39,6 +39,7 @@ class SongDurationRefreshServiceTest {
     void refreshesSuccessiveBatchesAndRecordsUnavailableVideos() {
         when(repository.findDurationRefreshCandidates(any(), any()))
                 .thenReturn(List.of("known", "deleted"), List.of("next"), List.of());
+        when(repository.updateRefreshedDuration(anyString(), any(), any(), any())).thenReturn(1);
         server.expect(requestTo(ENDPOINT)).andExpect(content().json("{\"video_ids\":[\"known\",\"deleted\"]}"))
                 .andRespond(withSuccess("{\"durations\":{\"known\":210,\"deleted\":null}}", MediaType.APPLICATION_JSON));
         server.expect(requestTo(ENDPOINT)).andExpect(content().json("{\"video_ids\":[\"next\"]}"))
@@ -49,6 +50,16 @@ class SongDurationRefreshServiceTest {
         verify(repository).updateRefreshedDuration(eq("next"), eq(OFFICIAL_DURATION_SECONDS), any(Instant.class), any(Instant.class));
         verify(repository).clearExpiredDurations(any());
         verify(repository, times(EXPECTED_BATCH_SELECTIONS)).findDurationRefreshCandidates(any(), argThat(page -> page.getPageSize() == VIDEO_BATCH_SIZE));
+        server.verify();
+    }
+
+    @Test
+    void aBatchThatUpdatesNoSongsStopsTheSweep() {
+        when(repository.findDurationRefreshCandidates(any(), any())).thenReturn(List.of("known"));
+        server.expect(requestTo(ENDPOINT)).andRespond(withSuccess("{\"durations\":{\"known\":210}}", MediaType.APPLICATION_JSON));
+        service.refreshExpiredDurations();
+        verify(repository).updateRefreshedDuration(eq("known"), eq(OFFICIAL_DURATION_SECONDS), any(Instant.class), any(Instant.class));
+        verify(repository, times(1)).findDurationRefreshCandidates(any(), any());
         server.verify();
     }
 

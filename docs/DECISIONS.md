@@ -1291,6 +1291,42 @@ Decision: the Fly.io backend app is deleted and its configuration file, `backend
 
 Why: production moved to Azure and the Fly app only kept an always-on machine billing. The 2026-07 decision to move off Fly.io stays in this file as history.
 
+## 2026-10-28 | Countdowns run on the server's clock
+
+Decision: every `RoundDTO` carries `serverTime`, the server clock when the payload was built. Clients keep the median of the last five offsets between `serverTime` and their own clock and count every deadline against that corrected clock. The offset is not corrected for network latency, so it can be early by half a round trip, under 100ms in practice.
+
+Why: a machine whose clock was 27 seconds behind showed 30 seconds left when the round had 3, because every deadline was subtracted from the local clock. The server already publishes absolute deadlines, so the payload only needed to say what the server clock read when it built them.
+
+## 2026-10-28 | Starting a playlist session asks what to do with an existing group
+
+Decision: Start session on a playlist creates a group with the sidebar's defaults when the caller has none, then opens that lobby with the playlist preselected. A caller already in a group chooses between using that group and leaving it to create a new one. Leaving is disabled while the group has a running game.
+
+Why: the button previously sent a caller who already had a group to their lobby and showed a toast to everyone else, so a caller without a group could not start a session from a playlist. Replacing an existing group is the caller's own state, so it is an explicit choice rather than a side effect.
+
+## 2026-10-28 | Pages render a loader while a redirect they know about is pending
+
+Decision: a page that will redirect once another query resolves renders its loading state until the redirect happens, instead of rendering content it is about to replace. The logged-in redirect from `/` runs in `proxy.ts`, where the session hint cookie is readable before the landing page renders.
+
+Why: rendering the outgoing screen first produced a visible flash of content that was already obsolete, in the session page when a game had ended, in the lobby when a game was starting, and on the landing page for a logged-in visitor.
+
+## 2026-10-28 | Placement previews carry the card's position so every player sees the drag
+
+Decision: the active player's client publishes the placement preview as a phase (`IDLE`, `DRAGGING`, `DROPPED`), the hovered gap, and the card's center as fractions of the timeline track's box. The backend clamps the fractions and relays them on `PLACEMENT_PREVIEW` without persisting them, dropping previews beyond 30 per second per player. Every other client renders the same mystery card at those fractions with the same audio levels, small and floating in `IDLE`, full size and wobbling in `DRAGGING` with a 60ms position transition, and in the timeline gap in `DROPPED`.
+
+Why: gap indices alone left spectators with a static placeholder and no card before the drag started, while the active player was moving a card above the timeline. Fractions map one client's screen onto another's, so a drag looks the same on a phone and on a 1440px display. The rate limit keeps pointer movement from flooding the session topic, and the next frame carries the current position anyway.
+
+## 2026-10-28 | Game screens keep their design size and scale to the window
+
+Decision: the group lobby, the round intro, and every game session phase render inside a fixed 1288x900 stage, the design artboard minus its two 76px rails. The stage scales uniformly to the space it is given, centers, never scrolls, and stops at 1.25 so large monitors do not enlarge it. Elements inside the stage use their design size only, and the `short:` and `very-short:` height variants are gone from these screens. The stage exposes its scale through a context that converts pointer coordinates into stage coordinates, so drag and drop math stays in design units. Dialogs and popups that portal to the document body stay outside the stage and unscaled. The scale is rounded down to the six decimal places a serialized transform keeps, so the scaled box never overflows its host by a subpixel.
+
+Why: shrinking each element on its own schedule made some text and cards smaller while their neighbours stayed at design size, so the board no longer looked like the design at laptop heights. Scaling the whole board keeps every proportion, and converting pointer coordinates with the same scale keeps a dragged card under the pointer at any window size.
+
+## 2026-10-28 | Duration refresh treats a missing lookup time as due
+
+Decision: the six-hour duration refresh selects every song with a YouTube id whose duration was never fetched or whose fetch time is older than the 29-day retention, and returns never-fetched songs first. A song whose video no longer exists records the check time with a null duration, so the next check waits for the retention window instead of running every six hours. A batch that updates no rows stops the sweep and logs a warning. A song imported without a duration keeps an empty fetch time and is due on the next sweep, and changing a song's video clears both its duration and its fetch time.
+
+Why: the previous candidate query compared a null fetch time with the cutoff, which SQL evaluates as false, so the 50 songs created before durations existed were never selected and the AI service never received a duration request. Recording the check time for a missing video keeps it from occupying every batch. The zero-row guard prevents a sweep that cannot make progress from looping.
+
 ## 2026-10-29 | Catalog rows that predate pipeline tracking are LEGACY, not UNKNOWN
 
 Decision: a song with no pipeline run and no retained `pending_imports` row is `LEGACY` in both `pipeline` and `addedByKind`, shown as "Before tracking" in the admin catalog. `UNKNOWN` now means queue evidence exists but does not name the pipeline or the adder. Retained `pending_imports` rows count as evidence, so a song with only historical rows is `UNKNOWN`, not `LEGACY`. No `added_by` value is invented for legacy songs.

@@ -7,7 +7,11 @@ import PlaylistContent, { buildInviteMessage } from "./PlaylistContent";
 
 const routerPush = vi.fn();
 const leaveMutate = vi.fn();
-let membership: { id: number } | undefined = { id: 4 };
+const createGroupMutate = vi.fn();
+const leaveGroupMutate = vi.fn();
+let createGroupPending = false;
+let leaveGroupPending = false;
+let membership: { id: number; status?: string } | undefined = { id: 4, status: "OPEN" };
 let playlistMembers = [
   { userId: 11, displayName: "Alex", username: "alex", owner: true },
   { userId: 12, displayName: "Sam", username: "sam", owner: false },
@@ -65,7 +69,10 @@ vi.mock("@/hooks/generated/user-management/user-management", () => ({
 }));
 
 vi.mock("@/hooks/generated/group-management/group-management", () => ({
+  getGetActiveMembershipQueryKey: () => ["active-membership"],
   useGetActiveMembership: () => ({ data: membership }),
+  useCreateGroup: () => ({ mutate: createGroupMutate, isPending: createGroupPending }),
+  useLeaveGroup: () => ({ mutate: leaveGroupMutate, isPending: leaveGroupPending }),
 }));
 
 let activeImportResponse: { data?: unknown; isError: boolean } = { isError: true };
@@ -92,10 +99,16 @@ describe("PlaylistContent detail states", () => {
     expect(screen.getByText("Creation date unavailable")).toBeVisible();
     expect(screen.getByLabelText("Duration: Unavailable")).toBeInTheDocument();
   });
-  beforeEach(() => {
+  beforeEach(async () => {
     routerPush.mockReset();
     leaveMutate.mockReset();
-    membership = { id: 4 };
+    createGroupMutate.mockReset();
+    leaveGroupMutate.mockReset();
+    createGroupPending = false;
+    leaveGroupPending = false;
+    membership = { id: 4, status: "OPEN" };
+    const { toast } = await import("sonner");
+    vi.mocked(toast.error).mockClear();
     playlistSongs = [];
     playlistMembers = [
       { userId: 11, displayName: "Alex", username: "alex", owner: true },
@@ -162,23 +175,83 @@ describe("PlaylistContent detail states", () => {
     expect(screen.queryByText("Link copied")).toBeNull();
   });
 
-  it("starts a session through the active group with the playlist selected", async () => {
+  it("asks what to do with the current group and can use it", async () => {
     await renderContent();
 
     fireEvent.click(screen.getByRole("button", { name: "Start session" }));
 
+    expect(screen.getByRole("alertdialog")).toHaveTextContent("You're already in a group");
+    fireEvent.click(screen.getByRole("button", { name: "Use it in my group" }));
+
     expect(routerPush).toHaveBeenCalledWith("/groups/4?playlist=7");
+    expect(createGroupMutate).not.toHaveBeenCalled();
+    expect(leaveGroupMutate).not.toHaveBeenCalled();
   });
 
-  it("refuses to start without an active group", async () => {
+  it("creates a group and opens it with the playlist selected when there is none", async () => {
     membership = undefined;
+    createGroupMutate.mockImplementation((_variables, options) => options?.onSuccess?.({ id: 8 }));
+    await renderContent();
+
+    fireEvent.click(screen.getByRole("button", { name: "Start session" }));
+
+    expect(createGroupMutate).toHaveBeenCalledWith({ data: {} }, expect.objectContaining({ onSuccess: expect.any(Function) }));
+    expect(routerPush).toHaveBeenCalledWith("/groups/8?playlist=7");
+  });
+
+  it("shows a loading state on the start button while the group is created", async () => {
+    membership = undefined;
+    createGroupPending = true;
+    await renderContent();
+
+    expect(screen.getByRole("button", { name: "Creating group..." })).toBeDisabled();
+  });
+
+  it("leaves the current group and creates a new one", async () => {
+    leaveGroupMutate.mockImplementation((_variables, options) => options?.onSuccess?.());
+    createGroupMutate.mockImplementation((_variables, options) => options?.onSuccess?.({ id: 8 }));
+    await renderContent();
+
+    fireEvent.click(screen.getByRole("button", { name: "Start session" }));
+    fireEvent.click(screen.getByRole("button", { name: "Leave and create a new group" }));
+
+    expect(leaveGroupMutate).toHaveBeenCalledWith({ groupId: 4 }, expect.objectContaining({ onSuccess: expect.any(Function) }));
+    expect(createGroupMutate).toHaveBeenCalledWith({ data: {} }, expect.objectContaining({ onSuccess: expect.any(Function) }));
+    expect(routerPush).toHaveBeenCalledWith("/groups/8?playlist=7");
+  });
+
+  it("disables leaving a group that is in a game", async () => {
+    membership = { id: 4, status: "LOCKED" };
+    await renderContent();
+
+    fireEvent.click(screen.getByRole("button", { name: "Start session" }));
+
+    expect(screen.getByText("Your group is in a game right now.")).toBeVisible();
+    expect(screen.getByRole("button", { name: "Leave and create a new group" })).toBeDisabled();
+  });
+
+  it("shows the server message when creating the group fails", async () => {
+    membership = undefined;
+    createGroupMutate.mockImplementation((_variables, options) => options?.onError?.({ response: { data: { message: "You already have a group." } } }));
     const { toast } = await import("sonner");
     await renderContent();
 
     fireEvent.click(screen.getByRole("button", { name: "Start session" }));
 
-    expect(toast.error).toHaveBeenCalledWith("Join or create a group to start a session.");
+    expect(toast.error).toHaveBeenCalledWith("You already have a group.");
     expect(routerPush).not.toHaveBeenCalled();
+  });
+
+  it("shows the server message when leaving the group fails", async () => {
+    leaveGroupMutate.mockImplementation((_variables, options) => options?.onError?.({ response: { data: { message: "The group has a running game." } } }));
+    const { toast } = await import("sonner");
+    await renderContent();
+
+    fireEvent.click(screen.getByRole("button", { name: "Start session" }));
+    fireEvent.click(screen.getByRole("button", { name: "Leave and create a new group" }));
+
+    expect(toast.error).toHaveBeenCalledWith("The group has a running game.");
+    expect(createGroupMutate).not.toHaveBeenCalled();
   });
 
   it("shows an overflow count on the avatar stack past three members", async () => {

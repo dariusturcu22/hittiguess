@@ -19,6 +19,8 @@ import org.dariusturcu.backend.model.session.GuessStateDTO;
 import org.dariusturcu.backend.model.session.LeaderboardEntryDTO;
 import org.dariusturcu.backend.model.session.PlaceCardRequest;
 import org.dariusturcu.backend.model.session.PlacementPreviewDTO;
+import org.dariusturcu.backend.model.session.PlacementPreviewPhase;
+import org.dariusturcu.backend.model.session.PlacementPreviewRequest;
 import org.dariusturcu.backend.model.session.Player;
 import org.dariusturcu.backend.model.session.PlayerCard;
 import org.dariusturcu.backend.model.session.PlayerResultDTO;
@@ -46,6 +48,7 @@ import org.dariusturcu.backend.repository.PlayerRepository;
 import org.dariusturcu.backend.repository.PlaylistRepository;
 import org.dariusturcu.backend.repository.RoundRepository;
 import org.dariusturcu.backend.repository.SongRepository;
+import org.dariusturcu.backend.ratelimit.RateLimiterRegistry;
 import org.dariusturcu.backend.scheduling.GameSessionScheduler;
 import org.dariusturcu.backend.security.util.SecurityUtils;
 import org.dariusturcu.backend.util.GuessMatcher;
@@ -97,6 +100,12 @@ public class GameSessionService {
     private static final int FIRST_GAME_ROUND_NUMBER = 1;
     private static final int FIRST_RANK = 1;
     private static final int MINIMUM_CORRECT_ARTISTS_FOR_TOKEN = 1;
+    private static final int MAXIMUM_PLACEMENT_PREVIEWS_PER_SECOND = 30;
+    private static final Duration PLACEMENT_PREVIEW_WINDOW = Duration.ofSeconds(1);
+    private static final double PREVIEW_HORIZONTAL_MINIMUM = 0.0;
+    private static final double PREVIEW_HORIZONTAL_MAXIMUM = 1.0;
+    private static final double PREVIEW_VERTICAL_MINIMUM = -2.0;
+    private static final double PREVIEW_VERTICAL_MAXIMUM = 2.0;
 
     private final GameSessionRepository gameSessionRepository;
     private final PlayerRepository playerRepository;
@@ -116,6 +125,8 @@ public class GameSessionService {
     private final GameSessionScheduler gameSessionScheduler;
     private final ApplicationEventPublisher eventPublisher;
     private final GameSongList gameSongList;
+    private final RateLimiterRegistry placementPreviewRateLimiter =
+            new RateLimiterRegistry(MAXIMUM_PLACEMENT_PREVIEWS_PER_SECOND, PLACEMENT_PREVIEW_WINDOW);
 
     // Self-injected through the Spring proxy so that a scheduled callback (running on the
     // scheduler's own thread, not through a caller that already went through the proxy)
@@ -459,8 +470,13 @@ public class GameSessionService {
     // Relays where the active player's card currently sits so spectators can watch the
     // placement live. Silently ignored once the round has locked in, since a preview
     // racing the lock-in is harmless and not worth an error on the sender's socket.
+    // Previews beyond the per-player rate limit are dropped the same way: the next frame
+    // carries the current position anyway.
     @Transactional(readOnly = true)
-    public void previewPlacement(Long sessionId, Long userId, Integer position) {
+    public void previewPlacement(Long sessionId, Long userId, PlacementPreviewRequest request) {
+        if (!placementPreviewRateLimiter.tryConsume(sessionId + ":" + userId)) {
+            return;
+        }
         GameSession session = getSession(sessionId);
         Player player = findPlayerByUserId(session, userId);
         Round round = requireCurrentRound(session);
@@ -471,11 +487,21 @@ public class GameSessionService {
         if (round.getStatus() != RoundStatus.AWAITING_PLACEMENT) {
             return;
         }
-        if (position != null && (position < 0 || position > player.getTimeline().size())) {
+        if (request.position() != null && (request.position() < 0 || request.position() > player.getTimeline().size())) {
             throw new IllegalArgumentException("Placement position is out of range for this player's timeline");
         }
+        PlacementPreviewPhase phase = request.phase() == null ? PlacementPreviewPhase.IDLE : request.phase();
         eventPublisher.publishEvent(new SessionBroadcastEvent(SessionEventType.PLACEMENT_PREVIEW, sessionId,
-                new PlacementPreviewDTO(round.getId(), player.getId(), position)));
+                new PlacementPreviewDTO(round.getId(), player.getId(), request.position(),
+                        clamp(request.x(), PREVIEW_HORIZONTAL_MINIMUM, PREVIEW_HORIZONTAL_MAXIMUM),
+                        clamp(request.y(), PREVIEW_VERTICAL_MINIMUM, PREVIEW_VERTICAL_MAXIMUM), phase)));
+    }
+
+    private static Double clamp(Double value, double minimum, double maximum) {
+        if (value == null) {
+            return null;
+        }
+        return Math.max(minimum, Math.min(maximum, value));
     }
 
     public void lockInPlacement(Long sessionId, Long userId, PlaceCardRequest request) {

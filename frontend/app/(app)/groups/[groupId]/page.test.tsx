@@ -154,12 +154,14 @@ describe("GroupLobbyPage start options", () => {
     expect(routerMock.replace).not.toHaveBeenCalledWith("/sessions/44");
   });
 
-  it("joins the game in progress while the group is locked", async () => {
+  it("shows the lobby loader, not the lobby, while joining a locked group's game", async () => {
     lobbyState.status = "LOCKED";
     lobbyState.cachedSessionId = 44;
     await renderPage();
 
     expect(routerMock.replace).toHaveBeenCalledWith("/sessions/44");
+    expect(screen.getByLabelText("Loading group")).toBeVisible();
+    expect(screen.queryByRole("button", { name: "Choose playlists" })).toBeNull();
   });
 
   it("saves the difficulty on Confirm without generating or starting", async () => {
@@ -518,20 +520,20 @@ describe("GroupLobbyPage viewport layout", () => {
     expect(stage).not.toContainElement(screen.getByRole("button", { name: "Leave lobby" }));
   });
 
-  it("scales the orbit members, their crowns, and the join code on short screens", async () => {
+  it("keeps the orbit members, their crowns, and the join code at their design sizes", async () => {
     await renderPage();
 
     const joinCode = screen.getByText("ABCD");
-    expect(joinCode.className).toContain("short:text-[60px]");
-    expect(joinCode.className).toContain("very-short:text-[48px]");
+    expect(joinCode.className).toContain("sm:text-[76px]");
+    expect(joinCode.className).not.toContain("short:");
 
     const memberBlock = screen.getByText(/^Admin/).parentElement;
     const avatar = memberBlock?.querySelector(".avatar-initial");
-    expect(avatar?.className).toContain("short:size-[84px]");
-    expect(avatar?.className).toContain("very-short:size-[64px]");
+    expect(avatar?.className).toContain("sm:size-[108px]");
+    expect(avatar?.className).not.toContain("short:");
 
     const crown = memberBlock?.querySelector("svg.text-warning");
-    expect(crown?.getAttribute("class")).toContain("short:size-5");
-    expect(crown?.getAttribute("class")).toContain("very-short:size-4");
+    expect(crown?.getAttribute("class")).toContain("sm:size-7");
+    expect(crown?.getAttribute("class")).not.toContain("short:");
   });
 });
