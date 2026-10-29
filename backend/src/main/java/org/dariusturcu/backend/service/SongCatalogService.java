@@ -49,6 +49,10 @@ public class SongCatalogService {
         if (existingSong.isPresent() && !youtubeId.equals(existingSong.get().getYoutubeId())) {
             return existingSong.get();
         }
+        if (existingSong.isPresent() && existingSong.get().getVerificationStatus() == VerificationStatus.VERIFIED
+                && VerificationStatus.UNVERIFIED.name().equals(metadata.verificationStatus())) {
+            return existingSong.get();
+        }
         if (metadata.canonicalSongId() != null) {
             Song matchedSong = songRepository.findById(metadata.canonicalSongId())
                     .filter(candidate -> candidate.getVerificationStatus() == VerificationStatus.VERIFIED)
