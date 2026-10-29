@@ -65,6 +65,10 @@ Checks before opening a PR:
 | 15 | 15-lock-rule.md | fix/verification-lock-rule | AI service |
 | 16 | 16-recheck-catalog.md | chore/recheck-catalog | backend + admin UI |
 | 17 | 17-catalog-duplicates.md | fix/catalog-duplicates | backend + admin UI |
+| 18 | 18-placement-preview-without-database.md | fix/placement-preview-gate | backend |
+| 19 | 19-replace-group-atomically.md | fix/replace-group-atomically | backend + frontend |
+
+Tasks 18 and 19 fix problems found in the review of tasks 05 and 07. Do them first, before 09.
 
 `data/year-audit.md` lists the songs in production whose stored year is wrong, from an audit of all
 370 catalog songs. Tasks 13 to 16 refer to it.
