@@ -92,6 +92,20 @@ const QUEUED_ITEM = {
   addedByKind: "ADMIN_SEED",
 };
 
+const LEGACY_SONG = {
+  id: "song:1",
+  songId: 1,
+  youtubeId: "legacy-yt-id",
+  title: "Hey Mama",
+  artists: ["David Guetta"],
+  releaseYear: 2015,
+  status: "VERIFIED",
+  pipeline: "LEGACY",
+  createdAt: "2026-01-01T00:00:00Z",
+  addedBy: null,
+  addedByKind: "LEGACY",
+};
+
 function catalogPage(items: unknown[], page = 0) {
   return {
     items,
@@ -163,6 +177,22 @@ describe("SongCatalogPage", () => {
     expect(screen.getByText("Unknown")).toBeInTheDocument();
     expect(screen.getByText("Admin seed")).toBeInTheDocument();
     expect(screen.getByText("Showing 1 to 2 of 60 songs")).toBeInTheDocument();
+  });
+
+  it("labels rows that predate pipeline tracking in both columns", () => {
+    catalogHook.result = {
+      data: catalogPage([LEGACY_SONG]),
+      isLoading: false,
+      isError: false,
+    };
+
+    render(<SongCatalogPage />);
+
+    const labels = screen.getAllByText("Before tracking");
+    expect(labels).toHaveLength(2);
+    for (const label of labels) {
+      expect(label).toHaveClass("text-muted-foreground");
+    }
   });
 
   it("shows each status chip with its count", () => {
