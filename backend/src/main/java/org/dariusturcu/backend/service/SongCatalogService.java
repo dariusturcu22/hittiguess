@@ -133,6 +133,7 @@ public class SongCatalogService {
             }
         }
 
+        song.setNormalizedKey(GameSongList.normalizedKey(song));
         return songRepository.save(song);
     }
 }

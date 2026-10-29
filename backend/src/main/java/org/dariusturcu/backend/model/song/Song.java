@@ -37,6 +37,10 @@ public class Song {
 
     private Integer proposedReleaseYear;
 
+    // GameSongList.normalizedKey of the first main artist and the title, kept in sync by every
+    // path that saves a title or artists, so the pipeline finds the same song by index.
+    private String normalizedKey;
+
     private Instant proposedAt;
 
     private String youtubeId;

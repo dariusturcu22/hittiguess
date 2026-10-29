@@ -474,6 +474,7 @@ Every endpoint below calls `AdminAccessGuard` before its service operation. Requ
 | `POST /api/admin/songs/{id}/rerun` | No body | `PipelineRunDTO`, through the same run-now path |
 | `PUT /api/admin/songs/{id}` | `{releaseYear?, verificationStatus?}`, at least one required | `{affected}`; years range from 1000 to the current year, and verified songs require a known year. Updating clears any proposed release year |
 | `DELETE /api/admin/songs/{id}` | No body | `{affected}`; removes playlist links, alternate IDs, reports, confirmations, and artist rows, cancels active runs, and deletes the catalog song. A song in a current game's cards, rounds, or future-song queue returns 409 |
+| `POST /api/admin/songs/{keepId}/merge/{dropId}` | No body | `{affected}`; moves the dropped song's playlist links, alternate IDs, reports, and confirmations to the kept song (a link, report, or confirmation the kept song already has is dropped), adds the dropped song's video as an alternate ID of the kept song, cancels the dropped videos' active runs, and deletes the dropped song. Merging a song into itself returns 400; either song in a current game returns 409 |
 
 Each `QueueStageDTO` contains `stage`, `state` (`RUNNING`, `PAUSED`, `COOLING_DOWN`), `waiting`, `inProgress`, `retrying`, `doneToday`, `failed`, `currentDelayMs`, `cooldownUntil`, `averageResponseMs`, `estimatedDrainSeconds`, and `pausedReason`. Additive fields are `waitingDue`, `waitingScheduled`, `averageQueueWaitMs`, `jobsPerMinute`, `sourceRequestMs`, `concurrencyLimit`, and `finishedLastHour`.
 

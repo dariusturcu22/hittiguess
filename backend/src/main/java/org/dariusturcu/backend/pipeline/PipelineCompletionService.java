@@ -12,11 +12,11 @@ import org.springframework.transaction.annotation.Transactional;
 import tools.jackson.databind.JsonNode;
 
 import java.time.Instant;
-import java.util.Optional;
 
 @Service
 public class PipelineCompletionService {
     private static final String NORMALIZED_KEY_LOCK_PREFIX = "song-normalized-key:";
+    private static final int PRIMARY_ARTIST_INDEX = 0;
 
     private final PipelineJobService engine;
     private final PipelineJobRepository repository;
@@ -49,41 +49,32 @@ public class PipelineCompletionService {
             return;
         }
         SongMetadataResponse finalMetadata = payloads.finalMetadata(engine.jobsOfRun(run.id()));
-        SongMetadataResponse metadataToPersist = finalMetadata;
-        String primaryArtist = finalMetadata.mainArtists() != null && !finalMetadata.mainArtists().isEmpty()
-                ? finalMetadata.mainArtists().getFirst()
-                : "";
-        String normalizedKey = GameSongList.normalizedKey(primaryArtist, finalMetadata.title());
-        songRepository.acquireTransactionLock(NORMALIZED_KEY_LOCK_PREFIX + normalizedKey);
-
-        if (finalMetadata.canonicalSongId() == null) {
-            Optional<Song> duplicateSong = songRepository.findAllWithArtists().stream()
-                    .filter(song -> !run.youtubeId().equals(song.getYoutubeId()))
-                    .filter(song -> GameSongList.normalizedKey(song).equals(normalizedKey))
-                    .findFirst();
-
-            if (duplicateSong.isPresent()) {
-                metadataToPersist = new SongMetadataResponse(
-                        finalMetadata.title(),
-                        finalMetadata.mainArtists(),
-                        finalMetadata.featuredArtists(),
-                        finalMetadata.releaseYear(),
-                        finalMetadata.color(),
-                        finalMetadata.confidence(),
-                        finalMetadata.source(),
-                        finalMetadata.reasoning(),
-                        finalMetadata.verificationStatus(),
-                        finalMetadata.sitelinksCount(),
-                        finalMetadata.durationSeconds(),
-                        duplicateSong.get().getId());
-            }
-        }
-        Song song = catalog.persist(run.youtubeId(), metadataToPersist, null);
+        Song song = catalog.persist(run.youtubeId(), withSameSongMatch(run.youtubeId(), finalMetadata), null);
         core.update("""
                 UPDATE pending_imports SET status = 'DONE', patient_year = ?, processed_at = now() AT TIME ZONE 'UTC',
                     failure_reason = NULL
                 WHERE youtube_id = ? AND origin = ? AND status IN ('PENDING', 'PROCESSING')
                 """, song.getReleaseYear(), run.youtubeId(), run.origin().name());
         repository.finishRun(run.id(), PipelineRunStatus.DONE, Instant.now());
+    }
+
+    // Two videos of one song can finish the pipeline in parallel or miss the AI's embedding
+    // match, so the final artist and title are looked up among every stored song in any status
+    // by the indexed normalized key. The key's advisory lock is held until commit, so two
+    // completions of one key save one song.
+    private SongMetadataResponse withSameSongMatch(String youtubeId, SongMetadataResponse metadata) {
+        if (metadata.canonicalSongId() != null || metadata.title() == null || metadata.title().isBlank()
+                || metadata.mainArtists() == null || metadata.mainArtists().isEmpty()) {
+            return metadata;
+        }
+        String normalizedKey = GameSongList.normalizedKey(metadata.mainArtists().get(PRIMARY_ARTIST_INDEX), metadata.title());
+        songRepository.acquireTransactionLock(NORMALIZED_KEY_LOCK_PREFIX + normalizedKey);
+        return songRepository.findOthersWithNormalizedKey(normalizedKey, youtubeId).stream().findFirst()
+                .map(sameSong -> new SongMetadataResponse(
+                        metadata.title(), metadata.mainArtists(), metadata.featuredArtists(), metadata.releaseYear(),
+                        metadata.color(), metadata.confidence(), metadata.source(), metadata.reasoning(),
+                        metadata.verificationStatus(), metadata.sitelinksCount(), metadata.durationSeconds(),
+                        sameSong.getId()))
+                .orElse(metadata);
     }
 }

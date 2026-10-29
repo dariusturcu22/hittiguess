@@ -122,6 +122,7 @@ class SongCatalogServiceTest {
         Song result = catalogService.persist(YOUTUBE_ID, metadata, null);
 
         assertThat(result.getTitle()).isEqualTo("Correct Title");
+        assertThat(result.getNormalizedKey()).isEqualTo(GameSongList.normalizedKey("Artist", "Correct Title"));
         assertThat(result.getReleaseYear()).isEqualTo(PROPOSED_YEAR);
         assertThat(result.getProposedReleaseYear()).isNull();
         assertThat(result.getProposedAt()).isNull();

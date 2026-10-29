@@ -220,6 +220,7 @@ public class PlaylistService {
 
         Song newSong = songMapper.toEntity(request);
         newSong.setAddedBy(user);
+        newSong.setNormalizedKey(GameSongList.normalizedKey(newSong));
         applyConfirmedMetadata(newSong, request);
 
         Optional<Song> resolvedSong = songCatalogService.findKnownSong(request.youtubeId());
@@ -283,6 +284,7 @@ public class PlaylistService {
         checkEditorCanWriteEveryPlaylistWithSong(song);
 
         song = songMapper.updateEntity(song, request);
+        song.setNormalizedKey(GameSongList.normalizedKey(song));
 
         playlistRepository.save(playlist);
 
