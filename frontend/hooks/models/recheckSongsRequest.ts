@@ -6,6 +6,6 @@
  */
 
 export interface RecheckSongsRequest {
-  all?: boolean;
   songIds?: number[];
+  all?: boolean;
 }

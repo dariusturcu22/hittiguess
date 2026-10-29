@@ -13,6 +13,7 @@ import * as zod from 'zod';
 export const SearchCatalogQueryParams = zod.object({
   "query": zod.string().optional().describe('Search text, trimmed; at least 3 characters when present'),
   "status": zod.enum(['VERIFIED', 'NEEDS_REVIEW', 'IN_QUEUE', 'PROCESSING', 'ERROR']).optional().describe('Only rows with this status; counts ignore it'),
+  "proposedYear": zod.boolean().optional().describe('Only rows with a proposed release year'),
   "page": zod.int().optional().describe('0-based page number, default 0'),
   "size": zod.int().optional().describe('Rows per page, default and maximum 25')
 })

@@ -31,6 +31,16 @@ export const DeleteCatalogSongParams = zod.object({
 export const DeleteCatalogSongResponse = zod.unknown()
 
 /**
+ * @summary Merge a duplicate catalog song into another song
+ */
+export const MergeSongsParams = zod.object({
+  "keepId": zod.int(),
+  "dropId": zod.int()
+})
+
+export const MergeSongsResponse = zod.unknown()
+
+/**
  * @summary Run the pipeline again for a catalog song
  */
 export const RerunSongPipelineParams = zod.object({
@@ -38,4 +48,23 @@ export const RerunSongPipelineParams = zod.object({
 })
 
 export const RerunSongPipelineResponse = zod.unknown()
+
+/**
+ * @summary Queue low-priority recheck runs for songs, skipping those in active games
+ */
+export const RecheckSongsBody = zod.object({
+  "songIds": zod.array(zod.int()).optional(),
+  "all": zod.boolean().optional()
+})
+
+export const RecheckSongsResponse = zod.unknown()
+
+/**
+ * @summary Dismiss the proposed release year for a catalog song
+ */
+export const DismissProposalParams = zod.object({
+  "id": zod.int()
+})
+
+export const DismissProposalResponse = zod.unknown()
 
