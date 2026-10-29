@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useSyncExternalStore } from "react";
 
-export const VISUALIZER_BAND_COUNT = 20;
+export const VISUALIZER_BAND_COUNT = 5;
 export const SILENCE_FLOOR_LEVEL = 0;
 
 const FFT_SIZE = 2048;

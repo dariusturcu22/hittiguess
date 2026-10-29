@@ -13,6 +13,7 @@ import org.dariusturcu.backend.model.song.Song;
 import org.dariusturcu.backend.model.song.SongArtist;
 import org.dariusturcu.backend.repository.BetRepository;
 import org.junit.jupiter.api.Test;
+import tools.jackson.databind.json.JsonMapper;
 
 import java.time.Instant;
 import java.util.List;
@@ -71,6 +72,29 @@ class SessionMapperTest {
         assertThat(roundDTO.revealedColor()).isNull();
         assertThat(roundDTO.countdownEndsAt()).isNull();
         assertThat(roundDTO.nextRoundStartsAt()).isNull();
+    }
+
+    @Test
+    void roundCarriesTheServerTimeItWasBuiltAt() {
+        Round round = round(song("Flowers", 2023, "f38ba8", "Miley Cyrus"));
+        round.setStatus(RoundStatus.AWAITING_PLACEMENT);
+
+        Instant beforeMapping = Instant.now();
+        RoundDTO roundDTO = sessionMapper.toRoundDTO(round);
+        Instant afterMapping = Instant.now();
+
+        assertThat(roundDTO.serverTime()).isBetween(beforeMapping, afterMapping);
+    }
+
+    @Test
+    void serializedRoundIncludesTheServerTime() {
+        Round round = round(song("Flowers", 2023, "f38ba8", "Miley Cyrus"));
+        round.setStatus(RoundStatus.AWAITING_PLACEMENT);
+        RoundDTO roundDTO = sessionMapper.toRoundDTO(round);
+
+        String serializedRound = JsonMapper.builder().build().writeValueAsString(roundDTO);
+
+        assertThat(serializedRound).contains("serverTime");
     }
 
     private Round round(Song song) {

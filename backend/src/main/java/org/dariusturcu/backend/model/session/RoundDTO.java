@@ -9,6 +9,8 @@ import java.util.List;
 // bets lists every bet accepted so far this round against the active player's timeline,
 // one entry per distinct gap. The three deadlines drive every client's timers: the
 // countdown after lock-in, the betting window, and the reveal hold before the next round.
+// serverTime is the server's clock when this payload was built, so clients can correct
+// for their own clock offset instead of trusting the deadlines against local time.
 public record RoundDTO(
         Long id,
         int turnNumber,
@@ -27,5 +29,6 @@ public record RoundDTO(
         Instant placementEndsAt,
         Instant countdownEndsAt,
         Instant bettingWindowEndsAt,
-        Instant nextRoundStartsAt) {
+        Instant nextRoundStartsAt,
+        Instant serverTime) {
 }

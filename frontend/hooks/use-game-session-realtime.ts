@@ -10,6 +10,7 @@ import type { GameSessionDTO } from "@/hooks/models/gameSessionDTO";
 import type { RoundDTO } from "@/hooks/models/roundDTO";
 import { HISTORY_QUERY_KEY } from "@/hooks/game-history";
 import type { PlacementPreviewMessage, PlacementPreviewPhase } from "@/lib/placement-preview";
+import { recordServerTime } from "@/lib/server-clock";
 
 const WEBSOCKET_PATH = "/ws";
 const SESSION_ROUND_TOPIC = "/topic/sessions";
@@ -111,6 +112,7 @@ export function useGameSessionRealtime(
           let roundEvent: SessionRoundEvent | undefined;
           try {
             roundEvent = JSON.parse(message.body) as SessionRoundEvent;
+            recordServerTime(roundEvent.payload?.serverTime);
             onRoundEventReference.current?.(roundEvent);
           } catch (parseError) {
             console.warn(ROUND_EVENT_PARSE_FAILURE_MESSAGE, parseError);

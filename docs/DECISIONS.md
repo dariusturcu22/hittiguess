@@ -1291,6 +1291,24 @@ Decision: the Fly.io backend app is deleted and its configuration file, `backend
 
 Why: production moved to Azure and the Fly app only kept an always-on machine billing. The 2026-07 decision to move off Fly.io stays in this file as history.
 
+## 2026-10-28 | Countdowns run on the server's clock
+
+Decision: every `RoundDTO` carries `serverTime`, the server clock when the payload was built. Clients keep the median of the last five offsets between `serverTime` and their own clock and count every deadline against that corrected clock. The offset is not corrected for network latency, so it can be early by half a round trip, under 100ms in practice.
+
+Why: a machine whose clock was 27 seconds behind showed 30 seconds left when the round had 3, because every deadline was subtracted from the local clock. The server already publishes absolute deadlines, so the payload only needed to say what the server clock read when it built them.
+
+## 2026-10-28 | Starting a playlist session asks what to do with an existing group
+
+Decision: Start session on a playlist creates a group with the sidebar's defaults when the caller has none, then opens that lobby with the playlist preselected. A caller already in a group chooses between using that group and leaving it to create a new one. Leaving is disabled while the group has a running game.
+
+Why: the button previously sent a caller who already had a group to their lobby and showed a toast to everyone else, so a caller without a group could not start a session from a playlist. Replacing an existing group is the caller's own state, so it is an explicit choice rather than a side effect.
+
+## 2026-10-28 | Pages render a loader while a redirect they know about is pending
+
+Decision: a page that will redirect once another query resolves renders its loading state until the redirect happens, instead of rendering content it is about to replace. The logged-in redirect from `/` runs in `proxy.ts`, where the session hint cookie is readable before the landing page renders.
+
+Why: rendering the outgoing screen first produced a visible flash of content that was already obsolete, in the session page when a game had ended, in the lobby when a game was starting, and on the landing page for a logged-in visitor.
+
 ## 2026-10-28 | Placement previews carry the card's position so every player sees the drag
 
 Decision: the active player's client publishes the placement preview as a phase (`IDLE`, `DRAGGING`, `DROPPED`), the hovered gap, and the card's center as fractions of the timeline track's box. The backend clamps the fractions and relays them on `PLACEMENT_PREVIEW` without persisting them, dropping previews beyond 30 per second per player. Every other client renders the same mystery card at those fractions with the same audio levels, small and floating in `IDLE`, full size and wobbling in `DRAGGING` with a 60ms position transition, and in the timeline gap in `DROPPED`.

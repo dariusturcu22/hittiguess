@@ -65,6 +65,8 @@ type MockGameSession = Omit<typeof MID_GAME_SESSION, "currentRound"> & { current
 
 let mockSessionData: MockGameSession | null = MID_GAME_SESSION;
 let mockSessionIsLoading = false;
+let mockMembership: { id: number } | undefined = { id: 2 };
+let mockMembershipIsLoading = false;
 let mockCurrentUserId = ACTIVE_USER_ID;
 
 function withRound(round: Record<string, unknown>): MockGameSession {
@@ -99,7 +101,7 @@ vi.mock("@/hooks/generated/game-session/game-session", () => ({
 }));
 
 vi.mock("@/hooks/generated/group-management/group-management", () => ({
-  useGetActiveMembership: () => ({ data: { id: 2 } }),
+  useGetActiveMembership: () => ({ data: mockMembership, isLoading: mockMembershipIsLoading }),
   getGetActiveMembershipQueryKey: () => ["/api/groups/active"],
   useLeaveGroup: () => ({ mutate: leaveGroupMutate, isPending: false }),
   useGetGroup: () => ({ data: { playlists: [{ id: 5, name: "Midnight Radio", color: "cba6f7", songCount: 32, previewYoutubeIds: [] }] } }),
@@ -221,6 +223,8 @@ describe("GameSessionPage", () => {
     routerReplace.mockClear();
     mockSessionData = MID_GAME_SESSION;
     mockSessionIsLoading = false;
+    mockMembership = { id: 2 };
+    mockMembershipIsLoading = false;
     mockCurrentUserId = ACTIVE_USER_ID;
     mockSongVolume = 100;
     mockIsCapturing = false;
@@ -372,12 +376,23 @@ describe("GameSessionPage", () => {
     expect(routerReplace).toHaveBeenCalledWith("/groups/2");
   });
 
-  it("sends a player whose session is already gone to the group's results", async () => {
+  it("shows a loader, not the ended screen, while a purged session redirects to its group's results", async () => {
     mockSessionData = null;
     await renderPage();
 
     expect(routerReplace).toHaveBeenCalledWith("/sessions/1/results?group=2");
-    expect(screen.getByRole("link", { name: "Back to lobby" })).toHaveAttribute("href", "/groups/2");
+    expect(screen.getByLabelText("Loading game session")).toBeVisible();
+    expect(screen.queryByText("This game has ended.")).toBeNull();
+  });
+
+  it("shows the ended screen when a purged session has no group to return to", async () => {
+    mockSessionData = null;
+    mockMembership = undefined;
+    await renderPage();
+
+    expect(screen.getByText("This game has ended.")).toBeVisible();
+    expect(screen.getByRole("link", { name: "Back to playlists" })).toHaveAttribute("href", "/playlists");
+    expect(routerReplace).not.toHaveBeenCalled();
   });
 
   it("announces another player's correct guess without the answer", async () => {
