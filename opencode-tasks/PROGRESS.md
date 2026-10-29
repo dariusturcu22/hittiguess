@@ -7,10 +7,7 @@ then `opencode-tasks/README.md`, then the brief named under "Current task".
 
 ## Current task
 
-- Task: 10, `opencode-tasks/10-design-proportions-gameplay.md`
-- Branch: `fix/gameplay-design-proportions`
-- Step reached: code done, tests passing
-- Next step: open PR for task 10, then start task 14 off origin/main
+None. Every story 54 task is merged into main.
 
 ## Finished tasks
 
@@ -28,9 +25,14 @@ then `opencode-tasks/README.md`, then the brief named under "Current task".
 | 12 | fix/admin-catalog-origin | [#334](https://github.com/dariusturcu22/hittiguess/pull/334) | Songs with no pipeline evidence show "Before tracking" instead of "Unknown" |
 | 13 | fix/musicbrainz-recording-search | [#335](https://github.com/dariusturcu22/hittiguess/pull/335) | MusicBrainz uses the first main artist, keeps the top-scored original track group, and finds parent albums through the recording search |
 | 18 | fix/placement-preview-gate | [#336](https://github.com/dariusturcu22/hittiguess/pull/336) | Live drag previews validate against in-memory round state in `PlacementPreviewGate` and only touch Postgres on a cache miss |
-| 19 | fix/replace-group-atomically | [#337](https://github.com/dariusturcu22/hittiguess/pull/337) | Replacing a group runs in one server transaction through replaceCurrentGroup without client-side chained requests |
-| 09 | fix/lobby-design-proportions | [#338](https://github.com/dariusturcu22/hittiguess/pull/338) | Lobby matches its design artboards in text size, spacing, and alignment |
+| 19 | fix/replace-group-atomically | [#337](https://github.com/dariusturcu22/hittiguess/pull/337) | Replacing a group runs in one server transaction, locking both groups in id order |
+| 09 | fix/lobby-design-proportions | [#338](https://github.com/dariusturcu22/hittiguess/pull/338) | The lobby matches GroupLobbyDark with theme tokens for shadows and rings |
+| 10 | fix/gameplay-design-proportions | [#339](https://github.com/dariusturcu22/hittiguess/pull/339) | Gameplay matches its artboards; the footer is absolute so the timeline stays centered |
+| 14 | fix/source-matching | [#340](https://github.com/dariusturcu22/hittiguess/pull/340) | Wikidata and Discogs match main artists as whole words and drop compilations and unofficial releases |
+| 15 | fix/verification-lock-rule | [#341](https://github.com/dariusturcu22/hittiguess/pull/341) | A one-year cluster takes its earliest year only when two sources report it |
+| 16 | chore/recheck-catalog | [#342](https://github.com/dariusturcu22/hittiguess/pull/342) | Reruns propose year changes on verified songs; the duplicate check skips the song that owns the video |
+| 17 | fix/catalog-duplicates | [#343](https://github.com/dariusturcu22/hittiguess/pull/343) | Completions match an existing song by an indexed normalized key; admins can merge duplicate songs |
 
 ## Blocked or skipped
 
-- Task 16 ends with a production recheck of the whole catalog. Running that recheck, and accepting or dismissing its proposals, is the owner's step after the code is merged and deployed.
+- Task 16 and 17 rollout is the owner's step in production: merge the 12 duplicate pairs listed in PR 343 first, then recheck songs 1 to 50, then the rest of the catalog, and accept or dismiss the proposals against `opencode-tasks/data/year-audit.md`.
