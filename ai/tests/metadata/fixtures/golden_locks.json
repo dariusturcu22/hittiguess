@@ -1,0 +1,470 @@
+[
+  {
+    "id": "hey-mama",
+    "title": "Hey Mama",
+    "artist": "David Guetta & Nicki Minaj & Bebe Rexha & Afrojack",
+    "main_artists": [
+      "David Guetta",
+      "Nicki Minaj",
+      "Bebe Rexha",
+      "Afrojack"
+    ],
+    "expected_year": 2014,
+    "musicbrainz_candidates": [
+      {
+        "query": "album",
+        "title": "Listen",
+        "date": "2014-11-21"
+      }
+    ],
+    "discogs_candidates": [
+      {
+        "query": "album",
+        "title": "Listen",
+        "year": 2014
+      },
+      {
+        "query": "track",
+        "title": "Hey Mama",
+        "year": 2015
+      }
+    ],
+    "wikidata_candidates": [
+      {
+        "query": "track",
+        "entity_id": "Q19627447",
+        "date": "+2014-11-21T00:00:00Z"
+      }
+    ],
+    "wikipedia_entries": [
+      {
+        "page_title": "Hey Mama (David Guetta song)",
+        "extract": "Hey Mama is a song recorded in 2014."
+      }
+    ],
+    "wikipedia_extracted_year": 2014
+  },
+  {
+    "id": "la-isla-bonita",
+    "title": "La Isla Bonita",
+    "artist": "Madonna",
+    "main_artists": [
+      "Madonna"
+    ],
+    "expected_year": 1986,
+    "musicbrainz_candidates": [
+      {
+        "query": "album",
+        "title": "True Blue",
+        "date": "1986-06-30"
+      }
+    ],
+    "discogs_candidates": [
+      {
+        "query": "album",
+        "title": "True Blue",
+        "year": 1986
+      },
+      {
+        "query": "track",
+        "title": "La Isla Bonita",
+        "year": 1987
+      }
+    ],
+    "wikidata_candidates": [
+      {
+        "query": "track",
+        "entity_id": "Q650392",
+        "date": "+1986-06-30T00:00:00Z"
+      }
+    ],
+    "wikipedia_entries": [
+      {
+        "page_title": "La Isla Bonita",
+        "extract": "Released on True Blue in 1986."
+      }
+    ],
+    "wikipedia_extracted_year": 1986
+  },
+  {
+    "id": "rude-boy",
+    "title": "Rude Boy",
+    "artist": "Rihanna",
+    "main_artists": [
+      "Rihanna"
+    ],
+    "expected_year": 2009,
+    "musicbrainz_candidates": [
+      {
+        "query": "album",
+        "title": "Rated R",
+        "date": "2009-11-20"
+      }
+    ],
+    "discogs_candidates": [
+      {
+        "query": "album",
+        "title": "Rated R",
+        "year": 2009
+      },
+      {
+        "query": "track",
+        "title": "Rude Boy",
+        "year": 2010
+      }
+    ],
+    "wikidata_candidates": [
+      {
+        "query": "track",
+        "entity_id": "Q628352",
+        "date": "+2009-11-20T00:00:00Z"
+      }
+    ],
+    "wikipedia_entries": [
+      {
+        "page_title": "Rude Boy (song)",
+        "extract": "Featured on the 2009 album Rated R."
+      }
+    ],
+    "wikipedia_extracted_year": 2009
+  },
+  {
+    "id": "moves-like-jagger",
+    "title": "Moves Like Jagger",
+    "artist": "Maroon 5 & Christina Aguilera",
+    "main_artists": [
+      "Maroon 5",
+      "Christina Aguilera"
+    ],
+    "expected_year": 2011,
+    "musicbrainz_candidates": [
+      {
+        "query": "track",
+        "title": "Moves Like Jagger",
+        "date": "2011-06-21"
+      }
+    ],
+    "discogs_candidates": [
+      {
+        "query": "track",
+        "title": "Moves Like Jagger",
+        "year": 2011
+      }
+    ],
+    "wikidata_candidates": [
+      {
+        "query": "track",
+        "entity_id": "Q686256",
+        "date": "+2011-06-21T00:00:00Z"
+      }
+    ],
+    "wikipedia_entries": [
+      {
+        "page_title": "Moves Like Jagger",
+        "extract": "Released in June 2011."
+      }
+    ],
+    "wikipedia_extracted_year": 2011
+  },
+  {
+    "id": "hips-dont-lie",
+    "title": "Hips Don't Lie",
+    "artist": "Shakira & Wyclef Jean",
+    "main_artists": [
+      "Shakira",
+      "Wyclef Jean"
+    ],
+    "expected_year": 2006,
+    "musicbrainz_candidates": [
+      {
+        "query": "track",
+        "title": "Hips Don't Lie",
+        "date": "2006-02-28"
+      }
+    ],
+    "discogs_candidates": [
+      {
+        "query": "track",
+        "title": "Hips Don't Lie",
+        "year": 2006
+      }
+    ],
+    "wikidata_candidates": [
+      {
+        "query": "track",
+        "entity_id": "Q545464",
+        "date": "+2006-02-28T00:00:00Z"
+      }
+    ],
+    "wikipedia_entries": [
+      {
+        "page_title": "Hips Don't Lie",
+        "extract": "Released in February 2006."
+      }
+    ],
+    "wikipedia_extracted_year": 2006
+  },
+  {
+    "id": "burn",
+    "title": "Burn",
+    "artist": "Ellie Goulding",
+    "main_artists": [
+      "Ellie Goulding"
+    ],
+    "expected_year": 2013,
+    "musicbrainz_candidates": [
+      {
+        "query": "track",
+        "title": "Burn",
+        "date": "2013-07-05"
+      }
+    ],
+    "discogs_candidates": [
+      {
+        "query": "track",
+        "title": "Burn",
+        "year": 2013
+      }
+    ],
+    "wikidata_candidates": [
+      {
+        "query": "track",
+        "entity_id": "Q13717208",
+        "date": "+2013-07-05T00:00:00Z"
+      }
+    ],
+    "wikipedia_entries": [
+      {
+        "page_title": "Burn (Ellie Goulding song)",
+        "extract": "Released on Halcyon Days in July 2013."
+      }
+    ],
+    "wikipedia_extracted_year": 2013
+  },
+  {
+    "id": "dont-let-me-down",
+    "title": "Don't Let Me Down",
+    "artist": "The Chainsmokers & Daya",
+    "main_artists": [
+      "The Chainsmokers",
+      "Daya"
+    ],
+    "expected_year": 2016,
+    "musicbrainz_candidates": [
+      {
+        "query": "track",
+        "title": "Don't Let Me Down",
+        "date": "2016-02-05"
+      }
+    ],
+    "discogs_candidates": [
+      {
+        "query": "track",
+        "title": "Don't Let Me Down",
+        "year": 2016
+      }
+    ],
+    "wikidata_candidates": [
+      {
+        "query": "track",
+        "entity_id": "Q22905679",
+        "date": "+2016-02-05T00:00:00Z"
+      }
+    ],
+    "wikipedia_entries": [
+      {
+        "page_title": "Don't Let Me Down (The Chainsmokers song)",
+        "extract": "Released on February 5, 2016."
+      }
+    ],
+    "wikipedia_extracted_year": 2016
+  },
+  {
+    "id": "con-calma",
+    "title": "Con Calma",
+    "artist": "Daddy Yankee & Snow",
+    "main_artists": [
+      "Daddy Yankee",
+      "Snow"
+    ],
+    "expected_year": 2019,
+    "musicbrainz_candidates": [
+      {
+        "query": "track",
+        "title": "Con Calma",
+        "date": "2019-01-24"
+      }
+    ],
+    "discogs_candidates": [
+      {
+        "query": "track",
+        "title": "Con Calma",
+        "year": 2019
+      }
+    ],
+    "wikidata_candidates": [
+      {
+        "query": "track",
+        "entity_id": "Q61448696",
+        "date": "+2019-01-24T00:00:00Z"
+      }
+    ],
+    "wikipedia_entries": [
+      {
+        "page_title": "Con Calma",
+        "extract": "Released on January 24, 2019."
+      }
+    ],
+    "wikipedia_extracted_year": 2019
+  },
+  {
+    "id": "nemo",
+    "title": "Nemo",
+    "artist": "Nightwish",
+    "main_artists": [
+      "Nightwish"
+    ],
+    "expected_year": 2004,
+    "musicbrainz_candidates": [
+      {
+        "query": "track",
+        "title": "Nemo",
+        "date": "2004-04-19"
+      }
+    ],
+    "discogs_candidates": [
+      {
+        "query": "track",
+        "title": "Nemo",
+        "year": 2004
+      }
+    ],
+    "wikidata_candidates": [
+      {
+        "query": "track",
+        "entity_id": "Q133758",
+        "date": "+2004-04-19T00:00:00Z"
+      }
+    ],
+    "wikipedia_entries": [
+      {
+        "page_title": "Nemo (song)",
+        "extract": "Lead single from Once in 2004."
+      }
+    ],
+    "wikipedia_extracted_year": 2004
+  },
+  {
+    "id": "timber",
+    "title": "Timber",
+    "artist": "Pitbull & Kesha",
+    "main_artists": [
+      "Pitbull",
+      "Kesha"
+    ],
+    "expected_year": 2013,
+    "musicbrainz_candidates": [
+      {
+        "query": "track",
+        "title": "Timber",
+        "date": "2013-10-07"
+      }
+    ],
+    "discogs_candidates": [
+      {
+        "query": "track",
+        "title": "Timber",
+        "year": 2013
+      }
+    ],
+    "wikidata_candidates": [
+      {
+        "query": "track",
+        "entity_id": "Q15053744",
+        "date": "+2013-10-07T00:00:00Z"
+      }
+    ],
+    "wikipedia_entries": [
+      {
+        "page_title": "Timber (song)",
+        "extract": "Released on October 7, 2013."
+      }
+    ],
+    "wikipedia_extracted_year": 2013
+  },
+  {
+    "id": "heartbreak-hotel",
+    "title": "Heartbreak Hotel",
+    "artist": "C.C. Catch",
+    "main_artists": [
+      "C.C. Catch"
+    ],
+    "expected_year": 1986,
+    "musicbrainz_candidates": [
+      {
+        "query": "track",
+        "title": "Heartbreak Hotel",
+        "date": "1986-09-01"
+      }
+    ],
+    "discogs_candidates": [
+      {
+        "query": "track",
+        "title": "Heartbreak Hotel",
+        "year": 1986
+      }
+    ],
+    "wikidata_candidates": [
+      {
+        "query": "track",
+        "entity_id": "Q12345678",
+        "date": "+1986-09-01T00:00:00Z"
+      }
+    ],
+    "wikipedia_entries": [
+      {
+        "page_title": "Heartbreak Hotel (C.C. Catch song)",
+        "extract": "Released in 1986."
+      }
+    ],
+    "wikipedia_extracted_year": 1986
+  },
+  {
+    "id": "how-deep-is-your-love",
+    "title": "How Deep Is Your Love",
+    "artist": "Calvin Harris & Disciples",
+    "main_artists": [
+      "Calvin Harris",
+      "Disciples"
+    ],
+    "expected_year": 2015,
+    "musicbrainz_candidates": [
+      {
+        "query": "track",
+        "title": "How Deep Is Your Love",
+        "date": "2015-07-17"
+      }
+    ],
+    "discogs_candidates": [
+      {
+        "query": "track",
+        "title": "How Deep Is Your Love",
+        "year": 2015
+      }
+    ],
+    "wikidata_candidates": [
+      {
+        "query": "track",
+        "entity_id": "Q20686940",
+        "date": "+2015-07-17T00:00:00Z"
+      }
+    ],
+    "wikipedia_entries": [
+      {
+        "page_title": "How Deep Is Your Love (Calvin Harris song)",
+        "extract": "Released on July 17, 2015."
+      }
+    ],
+    "wikipedia_extracted_year": 2015
+  }
+]

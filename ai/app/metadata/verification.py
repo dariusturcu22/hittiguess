@@ -61,20 +61,28 @@ def _all_three_agree(
     )
 
 
+MINIMUM_SOURCE_COUNT_FOR_ASSISTED_LOCK = 3
+MAXIMUM_CLUSTER_SPREAD_YEARS = 1
+MINIMUM_SOURCES_FOR_EARLIEST_CLUSTER_YEAR = 2
+
+
 def _find_wikipedia_assisted_lock_year(candidate_years: list[int | None]) -> int | None:
     resolved_years = [candidate_year for candidate_year in candidate_years if candidate_year is not None]
-    minimum_source_count = 3
-    maximum_cluster_spread = 1
 
-    if len(resolved_years) < minimum_source_count:
+    if len(resolved_years) < MINIMUM_SOURCE_COUNT_FOR_ASSISTED_LOCK:
         return None
 
     for candidate_year in set(resolved_years):
-        if resolved_years.count(candidate_year) >= minimum_source_count:
+        if resolved_years.count(candidate_year) >= MINIMUM_SOURCE_COUNT_FOR_ASSISTED_LOCK:
             return candidate_year
 
-    if max(resolved_years) - min(resolved_years) <= maximum_cluster_spread:
-        return min(resolved_years)
+    if max(resolved_years) - min(resolved_years) <= MAXIMUM_CLUSTER_SPREAD_YEARS:
+        earliest_year = min(resolved_years)
+        if resolved_years.count(earliest_year) >= MINIMUM_SOURCES_FOR_EARLIEST_CLUSTER_YEAR:
+            return earliest_year
+
+        unique_years_ascending = sorted(set(resolved_years))
+        return max(unique_years_ascending, key=resolved_years.count)
 
     return None
 

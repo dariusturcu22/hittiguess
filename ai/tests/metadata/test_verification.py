@@ -1,3 +1,5 @@
+import json
+from pathlib import Path
 """Unit tests for the story 18 lock-evaluation logic.
 
 Tests cover:
@@ -241,8 +243,9 @@ class TestEvaluateLock:
     @pytest.mark.parametrize(
         ("candidate_years", "expected_year"),
         [
-            ([2009, 2010, 2010], 2009),
+            ([2009, 2010, 2010], 2010),
             ([2002, 2002, 2003, 2003], 2002),
+            ([2009, 2009, 2010], 2009),
         ],
     )
     def test_tight_year_clusters_lock_at_the_earliest_year(self, mocker, candidate_years, expected_year):
@@ -297,3 +300,55 @@ class TestRouteToVerificationStatus:
 
     def test_manual_review_maps_to_manual_entry(self):
         assert route_to_verification_status(VerificationRoute.MANUAL_REVIEW) == VerificationStatus.MANUAL_ENTRY
+
+GOLDEN_LOCKS_FIXTURES = Path(__file__).parent / "fixtures" / "golden_locks.json"
+
+
+class TestOneYearClusterRefinement:
+    def test_single_source_earliest_year_does_not_pull_cluster_down(self):
+        from app.metadata.verification import _find_wikipedia_assisted_lock_year
+
+        assert _find_wikipedia_assisted_lock_year([2015, 2016, 2016]) == 2016
+        assert _find_wikipedia_assisted_lock_year([2018, 2019, 2019, 2019]) == 2019
+        assert _find_wikipedia_assisted_lock_year([2003, 2004, 2004, 2004]) == 2004
+
+    def test_two_sources_support_earliest_year_in_cluster(self):
+        from app.metadata.verification import _find_wikipedia_assisted_lock_year
+
+        assert _find_wikipedia_assisted_lock_year([2015, 2015, 2016]) == 2015
+        assert _find_wikipedia_assisted_lock_year([2015, 2015, 2016, 2016]) == 2015
+
+    def test_exact_majority_rule_unaffected_by_outlier(self):
+        from app.metadata.verification import _find_wikipedia_assisted_lock_year
+
+        assert _find_wikipedia_assisted_lock_year([2016, 2016, 2016]) == 2016
+        assert _find_wikipedia_assisted_lock_year([2016, 2016, 2016, 2014]) == 2016
+
+
+@pytest.mark.parametrize(
+    "song_fixture",
+    json.loads(GOLDEN_LOCKS_FIXTURES.read_text(encoding="utf-8")),
+    ids=lambda fixture: fixture["id"],
+)
+def test_golden_lock_evaluation_for_catalog_songs(mocker, song_fixture):
+    extraction_result = mocker.MagicMock()
+    extraction_result.release_year = song_fixture.get("wikipedia_extracted_year")
+    extraction_result.confidence = "high"
+    mocker.patch(
+        "app.metadata.verification._run_wikipedia_extraction", return_value=extraction_result
+    )
+    reconciliation_mock = mocker.patch("app.metadata.verification._run_four_source_reconciliation")
+
+    release_year, confidence, route = evaluate_lock(
+        song_fixture["title"],
+        song_fixture["artist"],
+        song_fixture["musicbrainz_candidates"],
+        song_fixture["discogs_candidates"],
+        song_fixture["wikidata_candidates"],
+        song_fixture["wikipedia_entries"],
+    )
+
+    assert release_year == song_fixture["expected_year"]
+    assert confidence == "high"
+    assert route in {VerificationRoute.LOCKED, VerificationRoute.LOCKED_WITH_WIKIPEDIA}
+    reconciliation_mock.assert_not_called()

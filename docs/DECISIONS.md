@@ -1356,3 +1356,9 @@ Why: chaining two independent HTTP requests from the browser meant any failure o
 Decision: Discogs search queries use structured parameters (`artist`, `track`, and `type=release`), and results are filtered to match the main artists and exclude compilations, unofficial releases, and releases titled with "Various". Masterless release years are collected only as a fallback when no master-based candidate exists across the queried track and album for that song. When one or more master-based candidates exist, masterless candidates are discarded.
 
 Why: masterless releases include promo compilations, samplers, and unofficial bootlegs whose release years frequently predate the canonical release or misattribute a compilation date to the song. Canonical master releases take precedence whenever they are present, while masterless candidates remain available for niche or independent releases that lack a master entry on Discogs.
+
+## 2026-10-29 | One-year cluster lock requires at least two sources for the earliest year
+
+Decision: within the one-year source cluster lock path in `_find_wikipedia_assisted_lock_year`, the earliest year is selected only when at least two sources report it. If only a single source reports the earlier year, the lock selects the year supported by the most sources, with any tie broken in favor of the earlier year. The exact-majority rule requiring three or more identical years remains unchanged.
+
+Why: when sources disagree within a one-year window, a single dissenting source reporting the earlier year often reflects a promo compilation, pre-release sampler, or album reissue predating the official release of the song itself. Requiring two sources before accepting the earlier cluster bound prevents single-source outliers from locking a song one year too early.

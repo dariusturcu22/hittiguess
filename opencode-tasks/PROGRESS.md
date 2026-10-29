@@ -7,10 +7,10 @@ then `opencode-tasks/README.md`, then the brief named under "Current task".
 
 ## Current task
 
-- Task: 14, `opencode-tasks/14-wikidata-discogs-matching.md`
-- Branch: `fix/source-matching`
+- Task: 15, `opencode-tasks/15-lock-rule.md`
+- Branch: `fix/verification-lock-rule` (branched off `fix/source-matching`, builds on PR #340)
 - Step reached: code done, tests passing
-- Next step: open PR for task 14, then create branch for task 15 off task 14 branch
+- Next step: open PR for task 15, then create branch for task 16 off task 15 branch
 
 ## Finished tasks
 
@@ -31,6 +31,7 @@ then `opencode-tasks/README.md`, then the brief named under "Current task".
 | 19 | fix/replace-group-atomically | [#337](https://github.com/dariusturcu22/hittiguess/pull/337) | Replacing a group runs in one server transaction through replaceCurrentGroup without client-side chained requests |
 | 09 | fix/lobby-design-proportions | [#338](https://github.com/dariusturcu22/hittiguess/pull/338) | Lobby matches its design artboards in text size, spacing, and alignment |
 | 10 | fix/gameplay-design-proportions | [#339](https://github.com/dariusturcu22/hittiguess/pull/339) | Gameplay matches its design artboards in text size, spacing, alignment, and timeline card size |
+| 14 | fix/source-matching | [#340](https://github.com/dariusturcu22/hittiguess/pull/340) | Wikidata and Discogs matching rejects other artists' works, compilations, and non-song entities |
 
 ## Blocked or skipped
 
