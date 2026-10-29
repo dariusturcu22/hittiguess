@@ -304,4 +304,48 @@ class GroupLifecycleIntegrationTest {
         assertThat(memberRepository.findByUser(staleMember).orElseThrow().isInVoice()).isFalse();
         assertThat(memberRepository.findByUser(recentMember).orElseThrow().isInVoice()).isTrue();
     }
+
+    @Test
+    void creatingAGroupWithReplaceCurrentGroupLeavesThePreviousGroupAndPromotesTheNextMember() {
+        User firstAdmin = persistUser("replace-create-admin");
+        User secondMember = persistUser("replace-create-second");
+
+        authenticateAs(firstAdmin);
+        GroupDetailDTO firstGroup = groupService.createGroup(new CreateGroupRequest(null, null));
+        authenticateAs(secondMember);
+        groupService.joinGroup(new JoinGroupRequest(firstGroup.inviteCode(), null, null, null));
+
+        authenticateAs(firstAdmin);
+        GroupDetailDTO secondGroup = groupService.createGroup(new CreateGroupRequest(null, null, true));
+
+        assertThat(secondGroup.id()).isNotEqualTo(firstGroup.id());
+        assertThat(secondGroup.members()).hasSize(1);
+        assertThat(secondGroup.members().getFirst().displayName()).isEqualTo("replace-create-admin");
+
+        authenticateAs(secondMember);
+        GroupDetailDTO updatedFirstGroup = groupService.getGroup(firstGroup.id());
+        assertThat(updatedFirstGroup.members()).hasSize(1);
+        MemberDTO promotedMember = updatedFirstGroup.members().getFirst();
+        assertThat(promotedMember.displayName()).isEqualTo("replace-create-second");
+        assertThat(promotedMember.isAdmin()).isTrue();
+    }
+
+    @Test
+    void joiningAnotherGroupWithReplaceCurrentGroupLeavesThePreviousGroupAndDeletesEmptyGroup() {
+        User targetAdmin = persistUser("replace-join-target-admin");
+        User movingUser = persistUser("replace-join-moving-user");
+
+        authenticateAs(targetAdmin);
+        GroupDetailDTO targetGroup = groupService.createGroup(new CreateGroupRequest(null, null));
+
+        authenticateAs(movingUser);
+        GroupDetailDTO initialGroup = groupService.createGroup(new CreateGroupRequest(null, null));
+
+        GroupDetailDTO joinedGroup = groupService.joinGroup(
+                new JoinGroupRequest(targetGroup.inviteCode(), null, null, null, true));
+
+        assertThat(joinedGroup.id()).isEqualTo(targetGroup.id());
+        assertThat(joinedGroup.members()).hasSize(2);
+        assertThat(groupRepository.findById(initialGroup.id())).isEmpty();
+    }
 }

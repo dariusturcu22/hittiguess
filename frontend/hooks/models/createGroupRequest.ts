@@ -18,4 +18,5 @@ export interface CreateGroupRequest {
      * @pattern https://[a-z0-9-]+\.googleusercontent\.com/\S*
      */
   avatarUrl?: string;
+  replaceCurrentGroup?: boolean;
 }

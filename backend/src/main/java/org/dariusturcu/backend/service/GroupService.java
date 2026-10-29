@@ -78,7 +78,15 @@ public class GroupService {
 
     public GroupDetailDTO createGroup(CreateGroupRequest request) {
         User creator = SecurityUtils.getCurrentUser();
-        requireNoActiveMembership(creator);
+        List<GroupBroadcastEvent> leaveEvents = List.of();
+        if (request.shouldReplaceCurrentGroup()) {
+            Optional<Member> currentMembership = memberRepository.findByUser(creator);
+            if (currentMembership.isPresent()) {
+                leaveEvents = leaveCurrentGroupForReplacement(currentMembership.get(), creator);
+            }
+        } else {
+            requireNoActiveMembership(creator);
+        }
 
         Instant now = Instant.now();
         Group group = new Group();
@@ -94,6 +102,7 @@ public class GroupService {
         group.addMember(adminMember);
 
         Group savedGroup = groupRepository.save(group);
+        leaveEvents.forEach(eventPublisher::publishEvent);
         return groupMapper.toDetailDTO(savedGroup);
     }
 
@@ -123,7 +132,9 @@ public class GroupService {
             if (currentGroup.getId().equals(group.getId())) {
                 return groupMapper.toDetailDTO(group);
             }
-            throw new ConflictException("You are already in a group. Leave it first, then join this one.");
+            if (!request.shouldReplaceCurrentGroup()) {
+                throw new ConflictException("You are already in a group. Leave it first, then join this one.");
+            }
         }
 
         if (group.getRemovedUserIds().contains(user.getId())) {
@@ -136,10 +147,15 @@ public class GroupService {
             throw new ConflictException("This group is full");
         }
 
+        List<GroupBroadcastEvent> leaveEvents = currentMembership.isPresent()
+                ? leaveCurrentGroupForReplacement(currentMembership.get(), user)
+                : List.of();
+
         Member member = newMember(user, request.displayName(), request.avatarUrl(), false, Instant.now());
         group.addMember(member);
 
         Group savedGroup = groupRepository.save(group);
+        leaveEvents.forEach(eventPublisher::publishEvent);
         GroupDetailDTO result = groupMapper.toDetailDTO(savedGroup);
         eventPublisher.publishEvent(new GroupBroadcastEvent(GroupEventType.MEMBER_JOINED, result));
         return result;
@@ -245,15 +261,18 @@ public class GroupService {
         Group group = groupRepository.findByIdForUpdate(groupId)
                 .orElseThrow(() -> new ResourceNotFoundException(ResourceType.GROUP, groupId));
         Member member = requireMembership(group, SecurityUtils.getCurrentUser());
+        leaveMembership(group, member).forEach(eventPublisher::publishEvent);
+    }
+
+    private List<GroupBroadcastEvent> leaveMembership(Group group, Member member) {
         boolean wasAdmin = member.isAdmin();
 
         group.removeMember(member);
 
         if (!wasAdmin) {
             Group savedGroup = groupRepository.save(group);
-            eventPublisher.publishEvent(new GroupBroadcastEvent(
+            return List.of(new GroupBroadcastEvent(
                     GroupEventType.MEMBER_LEFT, groupMapper.toDetailDTO(savedGroup)));
-            return;
         }
 
         Optional<Member> nextAdmin = group.getMembers().stream()
@@ -263,9 +282,12 @@ public class GroupService {
             nextAdmin.get().setAdmin(true);
             Group savedGroup = groupRepository.save(group);
             GroupDetailDTO result = groupMapper.toDetailDTO(savedGroup);
-            eventPublisher.publishEvent(new GroupBroadcastEvent(GroupEventType.MEMBER_LEFT, result));
-            eventPublisher.publishEvent(new GroupBroadcastEvent(GroupEventType.ADMIN_CHANGED, result));
-        } else if (gameSessionRepository.findByGroupId(group.getId()).isEmpty()) {
+            return List.of(
+                    new GroupBroadcastEvent(GroupEventType.MEMBER_LEFT, result),
+                    new GroupBroadcastEvent(GroupEventType.ADMIN_CHANGED, result));
+        }
+
+        if (gameSessionRepository.findByGroupId(group.getId()).isEmpty()) {
             groupRepository.delete(group);
         }
         // Else: the last member left while a game session for this group still exists.
@@ -273,6 +295,21 @@ public class GroupService {
         // now-memberless group is left in place; the session's own 10-minute zero-connected-
         // players auto-abandon path purges it and reopens the group through
         // recordGameSessionEnded, which is what actually clears it out.
+        return List.of();
+    }
+
+    private List<GroupBroadcastEvent> leaveCurrentGroupForReplacement(Member currentMembership, User user) {
+        Long currentGroupId = currentMembership.getGroup().getId();
+        Group currentGroup = groupRepository.findByIdForUpdate(currentGroupId)
+                .orElse(currentMembership.getGroup());
+        Member currentMember = requireMembership(currentGroup, user);
+        if (currentGroup.getStatus() != GroupStatus.OPEN
+                || gameSessionRepository.findByGroupId(currentGroupId).isPresent()) {
+            throw new ConflictException("Cannot leave a group while a game session is running");
+        }
+        List<GroupBroadcastEvent> leaveEvents = leaveMembership(currentGroup, currentMember);
+        groupRepository.flush();
+        return leaveEvents;
     }
 
     public void disconnect(Long groupId) {

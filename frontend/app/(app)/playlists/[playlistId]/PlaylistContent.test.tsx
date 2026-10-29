@@ -207,16 +207,17 @@ describe("PlaylistContent detail states", () => {
     expect(screen.getByRole("button", { name: "Creating group..." })).toBeDisabled();
   });
 
-  it("leaves the current group and creates a new one", async () => {
-    leaveGroupMutate.mockImplementation((_variables, options) => options?.onSuccess?.());
+  it("leaves the current group and creates a new one in one request", async () => {
     createGroupMutate.mockImplementation((_variables, options) => options?.onSuccess?.({ id: 8 }));
     await renderContent();
 
     fireEvent.click(screen.getByRole("button", { name: "Start session" }));
     fireEvent.click(screen.getByRole("button", { name: "Leave and create a new group" }));
 
-    expect(leaveGroupMutate).toHaveBeenCalledWith({ groupId: 4 }, expect.objectContaining({ onSuccess: expect.any(Function) }));
-    expect(createGroupMutate).toHaveBeenCalledWith({ data: {} }, expect.objectContaining({ onSuccess: expect.any(Function) }));
+    expect(createGroupMutate).toHaveBeenCalledWith(
+      { data: { replaceCurrentGroup: true } },
+      expect.objectContaining({ onSuccess: expect.any(Function) }),
+    );
     expect(routerPush).toHaveBeenCalledWith("/groups/8?playlist=7");
   });
 
@@ -242,8 +243,8 @@ describe("PlaylistContent detail states", () => {
     expect(routerPush).not.toHaveBeenCalled();
   });
 
-  it("shows the server message when leaving the group fails", async () => {
-    leaveGroupMutate.mockImplementation((_variables, options) => options?.onError?.({ response: { data: { message: "The group has a running game." } } }));
+  it("shows the server message when replacing the group fails", async () => {
+    createGroupMutate.mockImplementation((_variables, options) => options?.onError?.({ response: { data: { message: "The group has a running game." } } }));
     const { toast } = await import("sonner");
     await renderContent();
 
@@ -251,7 +252,7 @@ describe("PlaylistContent detail states", () => {
     fireEvent.click(screen.getByRole("button", { name: "Leave and create a new group" }));
 
     expect(toast.error).toHaveBeenCalledWith("The group has a running game.");
-    expect(createGroupMutate).not.toHaveBeenCalled();
+    expect(routerPush).not.toHaveBeenCalled();
   });
 
   it("shows an overflow count on the avatar stack past three members", async () => {

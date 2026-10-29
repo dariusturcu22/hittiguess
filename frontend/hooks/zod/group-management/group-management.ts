@@ -24,7 +24,8 @@ export const createGroupBodyAvatarUrlRegExp = new RegExp('https://[a-z0-9-]+\\.g
 
 export const CreateGroupBody = zod.object({
   "displayName": zod.string().min(createGroupBodyDisplayNameMin).max(createGroupBodyDisplayNameMax).regex(createGroupBodyDisplayNameRegExp).optional(),
-  "avatarUrl": zod.string().min(createGroupBodyAvatarUrlMin).max(createGroupBodyAvatarUrlMax).regex(createGroupBodyAvatarUrlRegExp).optional()
+  "avatarUrl": zod.string().min(createGroupBodyAvatarUrlMin).max(createGroupBodyAvatarUrlMax).regex(createGroupBodyAvatarUrlRegExp).optional(),
+  "replaceCurrentGroup": zod.boolean().optional()
 })
 
 export const CreateGroupResponse = zod.unknown()
@@ -176,7 +177,8 @@ export const JoinGroupBody = zod.object({
   "inviteCode": zod.string().optional(),
   "joinCode": zod.string().optional(),
   "displayName": zod.string().min(joinGroupBodyDisplayNameMin).max(joinGroupBodyDisplayNameMax).regex(joinGroupBodyDisplayNameRegExp).optional(),
-  "avatarUrl": zod.string().min(joinGroupBodyAvatarUrlMin).max(joinGroupBodyAvatarUrlMax).regex(joinGroupBodyAvatarUrlRegExp).optional()
+  "avatarUrl": zod.string().min(joinGroupBodyAvatarUrlMin).max(joinGroupBodyAvatarUrlMax).regex(joinGroupBodyAvatarUrlRegExp).optional(),
+  "replaceCurrentGroup": zod.boolean().optional()
 })
 
 export const JoinGroupResponse = zod.unknown()

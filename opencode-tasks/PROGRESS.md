@@ -9,8 +9,8 @@ then `opencode-tasks/README.md`, then the brief named under "Current task".
 
 - Task: 19, `opencode-tasks/19-replace-group-atomically.md`
 - Branch: `fix/replace-group-atomically`
-- Step reached: branch created
-- Next step: implement `replaceCurrentGroup` in backend and frontend. Order from here: 19, 09, 10, 14, 15, 16, 17
+- Step reached: tests passing
+- Next step: open PR for task 19. Order from here: 09, 10, 14, 15, 16, 17
 
 ## Finished tasks
 
