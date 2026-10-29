@@ -29,7 +29,7 @@ def test_pick_best_match_falls_back_to_music_keyword_description():
 
 def test_pick_best_match_returns_none_when_nothing_matches():
     matches = [{"id": "Q1", "description": "a restaurant"}, {"id": "Q2", "description": "a film"}]
-    assert wikidata.pick_best_match(matches, "Nobody Mentioned") is None
+    assert wikidata.pick_best_match(matches, ["Nobody Mentioned"]) is None
 
 
 def test_pick_best_match_returns_none_for_empty_matches():
@@ -281,3 +281,9 @@ def test_wikidata_matches_bang_bang_jessie_j_ariana_nicki(mocker):
     assert len(candidates) >= 1
     assert candidates[0]["entity_id"] == "Q17468562"
     assert str(candidates[0]["date"]).startswith("+2014")
+
+
+def test_performer_check_does_not_match_a_name_inside_a_longer_name():
+    assert not wikidata._performer_matches_main_artist(["Asia"], ["Sia"])
+    assert wikidata._performer_matches_main_artist(["Sia"], ["Sia"])
+    assert wikidata._performer_matches_main_artist(["Daddy Yankee"], ["Daddy Yankee & Snow"])
