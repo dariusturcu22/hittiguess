@@ -28,12 +28,12 @@ const ACTIVE_IMPORT_REFRESH_MILLISECONDS = 5_000;
 
 // Height steps keep rail controls reachable before scrolling is needed.
 const RAIL_DIVIDER_CLASSES =
-  "w-8 h-0.5 my-3.5 short:my-2.5 very-short:my-1.5 shrink-0 rounded-full bg-sidebar-border";
+  "w-8 h-0.5 my-4 short:my-3 very-short:my-2 shrink-0 rounded-full bg-sidebar-border";
 
 const ADMIN_RAIL_DIVIDER_CLASSES =
   "w-8 h-0.5 mt-3 mb-2 short:mt-2.5 short:mb-1.5 very-short:mt-1.5 shrink-0 rounded-full bg-destructive/40";
 
-const RAIL_GROUP_GAP_CLASSES = "gap-5 short:gap-3.5 very-short:gap-2.5";
+const RAIL_GROUP_GAP_CLASSES = "gap-6 short:gap-5 very-short:gap-3.5";
 
 const ADMIN_RAIL_GROUP_GAP_CLASSES = "gap-2.5 short:gap-1.5 very-short:gap-1";
 
