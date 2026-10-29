@@ -13,6 +13,7 @@ import { useGetCurrentUser } from "@/hooks/generated/user-management/user-manage
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/shadcn/alert-dialog";
 import type { PlayerCardDTO } from "@/hooks/models/playerCardDTO";
 import type { PlayerDTO } from "@/hooks/models/playerDTO";
+import type { GameSessionDTO } from "@/hooks/models/gameSessionDTO";
 import { GUESS_CORRECT_EVENT, PLACEMENT_PREVIEW_EVENT, useGameSessionRealtime, type GuessResult, type SessionEnded, type SessionRoundEvent } from "@/hooks/use-game-session-realtime";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAudioDevices, MAX_SONG_VOLUME_PERCENT } from "@/hooks/use-audio-devices";
@@ -44,6 +45,7 @@ import { GroupChatOverlay } from "@/components/group-chat-overlay";
 import { Coin, MysteryCard, PlayerAvatar, QuestionCard, SongCard, TokenPile } from "@/components/gameplay/game-pieces";
 import { GameplayTimeline, TIMELINE_CARD_SELECTOR } from "@/components/gameplay/gameplay-timeline";
 import { RoundIntro } from "@/components/gameplay/round-intro";
+import { recordServerTime, useServerNow } from "@/lib/server-clock";
 
 const COMPLETED_SESSION_STATUS = "COMPLETED";
 const FIRST_ROUND_NUMBER = 1;
@@ -196,11 +198,16 @@ function BetCoin({ bettorName, colorIndex }: { bettorName?: string; colorIndex: 
   </div>;
 }
 
+function recordSessionClockOffset(session: GameSessionDTO): GameSessionDTO {
+  recordServerTime(session.currentRound?.serverTime);
+  return session;
+}
+
 export default function GameSessionPage({ params }: PageProps) {
   const { sessionId: sessionIdParam } = use(params);
   const sessionId = Number(sessionIdParam);
   const router = useRouter();
-  const sessionQuery = useGetSession(sessionId, { query: { retry: false } });
+  const sessionQuery = useGetSession(sessionId, { query: { retry: false, select: recordSessionClockOffset } });
   const currentUserQuery = useGetCurrentUser();
   const queryClient = useQueryClient();
   const activeMembershipQuery = useGetActiveMembership({ query: { retry: false } });
@@ -262,7 +269,6 @@ export default function GameSessionPage({ params }: PageProps) {
   const [correctGuessToast, setCorrectGuessToast] = useState<CorrectGuessToast | null>(null);
   const [isGuessResultCorrect, setIsGuessResultCorrect] = useState<boolean | null>(null);
   const [isIntroDismissed, setIsIntroDismissed] = useState(() => typeof window !== "undefined" && readIntroSeen(sessionId));
-  const [now, setNow] = useState(() => Date.now());
   const trackReference = useRef<HTMLDivElement>(null);
   const submittedStagedBetRoundReference = useRef<number | undefined>(undefined);
   const lastPreviewReference = useRef<number | null | undefined>(undefined);
@@ -337,11 +343,7 @@ export default function GameSessionPage({ params }: PageProps) {
   }, [isTurnNoticeVisible]);
 
   const isTimed = roundStatus === COUNTDOWN_STATUS || roundStatus === BETTING_STATUS || isRoundRevealed(roundStatus);
-  useEffect(() => {
-    if (!isTimed) return;
-    const interval = window.setInterval(() => setNow(Date.now()), CLOCK_TICK_MILLISECONDS);
-    return () => window.clearInterval(interval);
-  }, [isTimed]);
+  const now = useServerNow(isTimed ? CLOCK_TICK_MILLISECONDS : 0);
 
   const activePlayer = players.find((player) => player.id === currentRound?.activePlayerId);
   const djPlayer = players.find((player) => player.id === currentRound?.djPlayerId);
