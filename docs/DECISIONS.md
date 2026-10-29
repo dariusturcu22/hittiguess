@@ -1308,3 +1308,9 @@ Why: the button previously sent a caller who already had a group to their lobby 
 Decision: a page that will redirect once another query resolves renders its loading state until the redirect happens, instead of rendering content it is about to replace. The logged-in redirect from `/` runs in `proxy.ts`, where the session hint cookie is readable before the landing page renders.
 
 Why: rendering the outgoing screen first produced a visible flash of content that was already obsolete, in the session page when a game had ended, in the lobby when a game was starting, and on the landing page for a logged-in visitor.
+
+## 2026-10-28 | Placement previews carry the card's position so every player sees the drag
+
+Decision: the active player's client publishes the placement preview as a phase (`IDLE`, `DRAGGING`, `DROPPED`), the hovered gap, and the card's center as fractions of the timeline track's box. The backend clamps the fractions and relays them on `PLACEMENT_PREVIEW` without persisting them, dropping previews beyond 30 per second per player. Every other client renders the same mystery card at those fractions with the same audio levels, small and floating in `IDLE`, full size and wobbling in `DRAGGING` with a 60ms position transition, and in the timeline gap in `DROPPED`.
+
+Why: gap indices alone left spectators with a static placeholder and no card before the drag started, while the active player was moving a card above the timeline. Fractions map one client's screen onto another's, so a drag looks the same on a phone and on a 1440px display. The rate limit keeps pointer movement from flooding the session topic, and the next frame carries the current position anyway.
