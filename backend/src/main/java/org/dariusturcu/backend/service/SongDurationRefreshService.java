@@ -30,6 +30,7 @@ public class SongDurationRefreshService {
     public void refreshExpiredDurations() {
         Instant cutoff = Instant.now().minus(RETENTION);
         try {
+            log.info("Duration refresh: {} videos due", songRepository.countDurationRefreshCandidates(cutoff));
             List<String> videoIds;
             while (!(videoIds = songRepository.findDurationRefreshCandidates(cutoff, PageRequest.of(FIRST_PAGE, VIDEO_BATCH_SIZE))).isEmpty()) {
                 VideoDurationsResponse response = aiServiceRestClient.post().uri(VIDEO_DURATIONS_PATH)
@@ -38,9 +39,14 @@ public class SongDurationRefreshService {
                     throw new IllegalStateException("Incomplete YouTube duration response");
                 }
                 Instant checkedAt = Instant.now();
+                int updatedSongs = 0;
                 for (String videoId : videoIds) {
                     Integer duration = response.durations().get(videoId);
-                    songRepository.updateRefreshedDuration(videoId, duration != null && duration > 0 ? duration : null, checkedAt, cutoff);
+                    updatedSongs += songRepository.updateRefreshedDuration(videoId, duration != null && duration > 0 ? duration : null, checkedAt, cutoff);
+                }
+                if (updatedSongs == 0) {
+                    log.warn("Duration refresh: a batch updated no songs, so the sweep stopped");
+                    break;
                 }
             }
         } catch (RuntimeException refreshError) {
