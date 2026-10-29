@@ -279,7 +279,7 @@ class PipelineCutoverIntegrationTest {
     void catalogAndDashboardReadRunJobsOnlyOnTheNewPath() {
         var repository = new org.dariusturcu.backend.repository.AdminSongCatalogRepository(core);
         PipelineRun run = start(VIDEO_ID);
-        assertThat(repository.findPage(null, null, 25, 0)).singleElement().satisfies(row -> {
+        assertThat(repository.findPage(null, null, false, 25, 0)).singleElement().satisfies(row -> {
             assertThat(row.status()).isEqualTo(org.dariusturcu.backend.model.song.CatalogSongStatus.IN_QUEUE);
             assertThat(row.latestQueueOrigin()).isEqualTo(PendingImportOrigin.ADMIN_SEED);
         });
@@ -338,6 +338,63 @@ class PipelineCutoverIntegrationTest {
         assertThat(songs.count()).isEqualTo(1);
         assertThat(core.queryForObject("SELECT song_id FROM alternate_youtube_ids WHERE youtube_id = ?",
                 Long.class, OTHER_VIDEO)).isEqualTo(canonicalSongId);
+    }
+
+    @Test
+    void completionWithExistingNormalizedKeyAttachesAlternateIdAndCreatesNoSong() {
+        start(VIDEO_ID);
+        worker.work(PipelineStage.YOUTUBE_METADATA);
+        sources();
+        long existingSongId = songs.findByYoutubeId(VIDEO_ID).getFirst().getId();
+
+        stages.calls.clear();
+        stages.youtubeResult = null;
+        PipelineRun duplicate = start(OTHER_VIDEO);
+        worker.work(PipelineStage.YOUTUBE_METADATA);
+        sources();
+
+        assertThat(engine.findRun(duplicate.id()).orElseThrow().status()).isEqualTo(PipelineRunStatus.DONE);
+        assertThat(songs.count()).isEqualTo(1);
+        assertThat(core.queryForObject("SELECT song_id FROM alternate_youtube_ids WHERE youtube_id = ?",
+                Long.class, OTHER_VIDEO)).isEqualTo(existingSongId);
+    }
+
+    @Test
+    void twoParallelCompletionsOfTheSameKeyCreateOneSong() throws Exception {
+        PipelineRun firstRun = start(VIDEO_ID);
+        PipelineRun secondRun = start(OTHER_VIDEO);
+
+        worker.work(PipelineStage.YOUTUBE_METADATA);
+        worker.work(PipelineStage.YOUTUBE_METADATA);
+        worker.work(PipelineStage.MUSICBRAINZ);
+        worker.work(PipelineStage.MUSICBRAINZ);
+        worker.work(PipelineStage.DISCOGS);
+        worker.work(PipelineStage.DISCOGS);
+
+        var pool = Executors.newFixedThreadPool(2);
+        try {
+            var barrier = new java.util.concurrent.CyclicBarrier(2);
+            var firstFuture = pool.submit(() -> {
+                barrier.await(CONCURRENT_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+                worker.work(PipelineStage.WIKIDATA);
+                return null;
+            });
+            var secondFuture = pool.submit(() -> {
+                barrier.await(CONCURRENT_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+                worker.work(PipelineStage.WIKIDATA);
+                return null;
+            });
+
+            firstFuture.get(CONCURRENT_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+            secondFuture.get(CONCURRENT_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+        } finally {
+            pool.shutdownNow();
+        }
+
+        assertThat(songs.count()).isEqualTo(1);
+        assertThat(core.queryForObject("SELECT count(*) FROM alternate_youtube_ids", Long.class)).isEqualTo(1);
+        assertThat(engine.findRun(firstRun.id()).orElseThrow().status()).isEqualTo(PipelineRunStatus.DONE);
+        assertThat(engine.findRun(secondRun.id()).orElseThrow().status()).isEqualTo(PipelineRunStatus.DONE);
     }
 
     static class FakeStages implements AiStageClient {

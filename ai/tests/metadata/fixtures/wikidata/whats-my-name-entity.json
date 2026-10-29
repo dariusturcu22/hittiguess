@@ -1,0 +1,5 @@
+{
+  "entities": {
+    "Q16051784": {"claims": {"P577": [{"rank": "normal", "mainsnak": {"snaktype": "value", "datavalue": {"value": {"time": "+2010-10-26T00:00:00Z"}}}}], "P361": [{"mainsnak": {"datavalue": {"value": {"id": "Q208340"}}}}], "P175": [{"mainsnak": {"datavalue": {"value": {"id": "Q36844"}}}}, {"mainsnak": {"datavalue": {"value": {"id": "Q33240"}}}}]}}
+  }
+}

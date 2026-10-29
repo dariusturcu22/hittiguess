@@ -17,6 +17,7 @@ import type {
 import type {
   PipelineControlResultDTO,
   PipelineRunDTO,
+  RecheckSongsRequest,
   UpdateCatalogSongRequest
 } from '../../models';
 
@@ -225,3 +226,155 @@ export const useRerunSongPipeline = <TError = unknown,
       > => {
       return useMutation(getRerunSongPipelineMutationOptions(options), queryClient);
     }
+
+/**
+ * @summary Queue low-priority recheck runs for songs, skipping those in active games
+ */
+export const recheckSongs = (
+    recheckSongsRequest: RecheckSongsRequest,
+ options?: SecondParameter<typeof customInstance>,signal?: AbortSignal
+) => {
+      return customInstance<PipelineControlResultDTO>(
+      {url: `/api/admin/songs/recheck`, method: 'POST',
+      headers: {'Content-Type': 'application/json', },
+      data: recheckSongsRequest, signal
+    },
+      options);
+    }
+
+export const getRecheckSongsMutationKey = () => ['recheckSongs'] as const;
+
+export const getRecheckSongsMutationOptions = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof recheckSongs>>, TError,RecheckSongsMutationVariables, TContext>, request?: SecondParameter<typeof customInstance>}
+): UseMutationOptions<Awaited<ReturnType<typeof recheckSongs>>, TError,RecheckSongsMutationVariables, TContext> => {
+
+const mutationKey = getRecheckSongsMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof recheckSongs>>, RecheckSongsMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  recheckSongs(data,requestOptions)
+        }
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RecheckSongsMutationResult = NonNullable<Awaited<ReturnType<typeof recheckSongs>>>
+    export type RecheckSongsMutationBody = RecheckSongsRequest
+    export type RecheckSongsMutationError = unknown
+    export type RecheckSongsMutationVariables = {data: RecheckSongsRequest}
+
+export const useRecheckSongs = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof recheckSongs>>, TError,RecheckSongsMutationVariables, TContext>, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof recheckSongs>>,
+        TError,
+        RecheckSongsMutationVariables,
+        TContext
+      > => {
+      return useMutation(getRecheckSongsMutationOptions(options), queryClient);
+    }
+
+/**
+ * @summary Dismiss the proposed release year for a catalog song
+ */
+export const dismissProposal = (
+    id: number,
+ options?: SecondParameter<typeof customInstance>,signal?: AbortSignal
+) => {
+      return customInstance<PipelineControlResultDTO>(
+      {url: `/api/admin/songs/${id}/proposal`, method: 'DELETE', signal
+    },
+      options);
+    }
+
+export const getDismissProposalMutationKey = () => ['dismissProposal'] as const;
+
+export const getDismissProposalMutationOptions = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof dismissProposal>>, TError,DismissProposalMutationVariables, TContext>, request?: SecondParameter<typeof customInstance>}
+): UseMutationOptions<Awaited<ReturnType<typeof dismissProposal>>, TError,DismissProposalMutationVariables, TContext> => {
+
+const mutationKey = getDismissProposalMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof dismissProposal>>, DismissProposalMutationVariables> = (props) => {
+          const {id} = props ?? {};
+
+          return  dismissProposal(id,requestOptions)
+        }
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DismissProposalMutationResult = NonNullable<Awaited<ReturnType<typeof dismissProposal>>>
+    export type DismissProposalMutationError = unknown
+    export type DismissProposalMutationVariables = {id: number}
+
+export const useDismissProposal = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof dismissProposal>>, TError,DismissProposalMutationVariables, TContext>, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof dismissProposal>>,
+        TError,
+        DismissProposalMutationVariables,
+        TContext
+      > => {
+      return useMutation(getDismissProposalMutationOptions(options), queryClient);
+    }
+
+/**
+ * @summary Merge a duplicate catalog song into another song
+ */
+export const mergeSongs = (
+    keepId: number,
+    dropId: number,
+ options?: SecondParameter<typeof customInstance>,signal?: AbortSignal
+) => {
+      return customInstance<PipelineControlResultDTO>(
+      {url: `/api/admin/songs/${keepId}/merge/${dropId}`, method: 'POST', signal
+    },
+      options);
+    }
+
+export const getMergeSongsMutationKey = () => ['mergeSongs'] as const;
+
+export const getMergeSongsMutationOptions = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof mergeSongs>>, TError,MergeSongsMutationVariables, TContext>, request?: SecondParameter<typeof customInstance>}
+): UseMutationOptions<Awaited<ReturnType<typeof mergeSongs>>, TError,MergeSongsMutationVariables, TContext> => {
+
+const mutationKey = getMergeSongsMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof mergeSongs>>, MergeSongsMutationVariables> = (props) => {
+          const {keepId, dropId} = props ?? {};
+
+          return  mergeSongs(keepId, dropId, requestOptions)
+        }
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type MergeSongsMutationResult = NonNullable<Awaited<ReturnType<typeof mergeSongs>>>
+    export type MergeSongsMutationError = unknown
+    export type MergeSongsMutationVariables = {keepId: number; dropId: number}
+
+export const useMergeSongs = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof mergeSongs>>, TError,MergeSongsMutationVariables, TContext>, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof mergeSongs>>,
+        TError,
+        MergeSongsMutationVariables,
+        TContext
+      > => {
+      return useMutation(getMergeSongsMutationOptions(options), queryClient);
+    }
+

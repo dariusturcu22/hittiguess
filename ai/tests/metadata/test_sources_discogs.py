@@ -1,16 +1,25 @@
+import json
+from pathlib import Path
+
 import httpx
 import pytest
 import respx
 
 from app.metadata.sources import discogs
 
+DISCOGS_FIXTURES = Path(__file__).parent / "fixtures" / "discogs"
 
-def _release(title, year=None, master_id=None):
+
+def _release(title, year=None, master_id=None, artist=None, format_list=None):
     release = {"title": title}
     if year is not None:
         release["year"] = year
     if master_id is not None:
         release["master_id"] = master_id
+    if artist is not None:
+        release["artist"] = artist
+    if format_list is not None:
+        release["format"] = format_list
     return release
 
 
@@ -67,18 +76,17 @@ def test_masterless_release_years_skips_unparseable_year():
 
 def _discogs_response(request: httpx.Request) -> httpx.Response:
     if str(request.url).startswith(discogs.SEARCH_URL):
-        query = request.url.params.get("q", "")
-        if "Test Album" in query:
+        if request.url.params.get("release_title") == "Test Album":
             return httpx.Response(
                 200,
-                json={"results": [_release("Test Album", master_id=20)]},
+                json={"results": [_release("Test Artist - Test Album", master_id=20)]},
             )
         return httpx.Response(
             200,
             json={
                 "results": [
-                    _release("Test Song (Remix)", master_id=10),
-                    _release("Test Song (Bootleg)", year="1998"),
+                    _release("Test Artist - Test Song (Remix)", master_id=10),
+                    _release("Test Artist - Test Song (Bootleg)", year="1998"),
                 ]
             },
         )
@@ -96,13 +104,28 @@ def test_search_combines_track_and_album_candidates(mocker):
     mocker.patch("app.metadata.sources.pacing.time.sleep")
     respx.get(url__regex=r"api\.discogs\.com/").mock(side_effect=_discogs_response)
 
-    candidates = discogs.search("Test Song", "Test Artist", album="Test Album")
+    candidates = discogs.search("Test Song", ["Test Artist"], album="Test Album")
 
     track_candidates = [candidate for candidate in candidates if candidate["query"] == "track"]
     album_candidates = [candidate for candidate in candidates if candidate["query"] == "album"]
     assert {"query": "track", "title": "Master 10", "year": 2015} in track_candidates
-    assert {"query": "track", "title": "Test Song (Bootleg)", "year": 1998} in track_candidates
+    assert not any(candidate.get("title") == "Test Artist - Test Song (Bootleg)" for candidate in track_candidates)
     assert album_candidates == [{"query": "album", "title": "Master 20", "year": 2001}]
+
+
+@respx.mock
+def test_search_keeps_masterless_candidates_only_when_no_master_exists(mocker):
+    mocker.patch("app.metadata.sources.pacing.time.sleep")
+    respx.get(discogs.SEARCH_URL).mock(
+        return_value=httpx.Response(
+            200,
+            json={"results": [_release("Test Artist - Niche Song", year="2005")]},
+        )
+    )
+
+    candidates = discogs.search("Niche Song", ["Test Artist"])
+
+    assert candidates == [{"query": "track", "title": "Test Artist - Niche Song", "year": 2005}]
 
 
 @respx.mock
@@ -110,7 +133,7 @@ def test_search_skips_album_query_when_no_album_given(mocker):
     mocker.patch("app.metadata.sources.pacing.time.sleep")
     respx.get(url__regex=r"api\.discogs\.com/").mock(side_effect=_discogs_response)
 
-    candidates = discogs.search("Test Song", "Test Artist")
+    candidates = discogs.search("Test Song", ["Test Artist"])
 
     assert all(candidate["query"] == "track" for candidate in candidates)
 
@@ -120,7 +143,7 @@ def test_search_returns_empty_list_on_request_failure(mocker):
     mocker.patch("app.metadata.sources.pacing.time.sleep")
     respx.get(url__regex=r"api\.discogs\.com/").mock(return_value=httpx.Response(500))
 
-    assert discogs.search("Test Song", "Test Artist") == []
+    assert discogs.search("Test Song", ["Test Artist"]) == []
 
 
 @respx.mock
@@ -128,12 +151,62 @@ def test_search_release_sends_authenticated_query(mocker):
     mocker.patch("app.metadata.sources.pacing.time.sleep")
     route = respx.get(discogs.SEARCH_URL).mock(return_value=httpx.Response(200, json={"results": []}))
 
-    discogs.search_release("Test Song", "Test Artist")
+    discogs.search_release("Test Song", ["Test Artist"])
 
     request = route.calls.last.request
-    assert request.url.params["q"] == "Test Artist Test Song"
+    assert request.url.params["artist"] == "Test Artist"
+    assert request.url.params["track"] == "Test Song"
     assert request.url.params["type"] == "release"
+    assert "q" not in request.url.params
     assert request.headers["Authorization"] == discogs._auth_header()
+
+
+@respx.mock
+def test_discogs_cheap_thrills_sia_drops_unrelated_artist_and_old_year(mocker):
+    mocker.patch("app.metadata.sources.pacing.time.sleep")
+    releases_json = json.loads((DISCOGS_FIXTURES / "cheap-thrills-releases.json").read_text(encoding="utf-8"))
+    masters_json = json.loads((DISCOGS_FIXTURES / "cheap-thrills-masters.json").read_text(encoding="utf-8"))
+
+    def _mock_response(request: httpx.Request) -> httpx.Response:
+        if str(request.url).startswith(discogs.SEARCH_URL):
+            assert request.url.params["artist"] == "Sia"
+            assert request.url.params["track"] == "Cheap Thrills"
+            return httpx.Response(200, json=releases_json)
+        if "/masters/" in str(request.url):
+            master_id = str(request.url).rsplit("/", 1)[-1]
+            return httpx.Response(200, json=masters_json[master_id])
+        return httpx.Response(404)
+
+    respx.get(url__regex=r"api\.discogs\.com/").mock(side_effect=_mock_response)
+
+    candidates = discogs.search("Cheap Thrills", ["Sia"])
+    assert len(candidates) == 1
+    assert candidates[0]["year"] == 2016
+    assert not any(candidate["year"] == 1968 for candidate in candidates)
+
+
+@respx.mock
+def test_discogs_con_calma_drops_various_and_discards_masterless_candidates(mocker):
+    mocker.patch("app.metadata.sources.pacing.time.sleep")
+    releases_json = json.loads((DISCOGS_FIXTURES / "con-calma-releases.json").read_text(encoding="utf-8"))
+    masters_json = json.loads((DISCOGS_FIXTURES / "con-calma-masters.json").read_text(encoding="utf-8"))
+
+    def _mock_response(request: httpx.Request) -> httpx.Response:
+        if str(request.url).startswith(discogs.SEARCH_URL):
+            assert request.url.params["artist"] == "Daddy Yankee"
+            assert request.url.params["track"] == "Con Calma"
+            return httpx.Response(200, json=releases_json)
+        if "/masters/" in str(request.url):
+            master_id = str(request.url).rsplit("/", 1)[-1]
+            return httpx.Response(200, json=masters_json[master_id])
+        return httpx.Response(404)
+
+    respx.get(url__regex=r"api\.discogs\.com/").mock(side_effect=_mock_response)
+
+    candidates = discogs.search("Con Calma", ["Daddy Yankee", "Snow"])
+    assert len(candidates) == 1
+    assert candidates[0]["year"] == 2019
+    assert not any("various" in str(candidate.get("title", "")).lower() for candidate in candidates)
 
 
 def _rate_limit_headers(limit: int, remaining: int) -> dict[str, str]:
@@ -211,3 +284,11 @@ def test_rate_limiter_ignores_response_with_zero_limit(mocker):
 
     assert limiter.delay_seconds == starting_delay
     assert limiter.last_observed_utilization is None
+
+
+def test_matches_discogs_artist_compares_whole_words():
+    assert discogs._is_valid_release({"title": "Sia - Cheap Thrills"}, ["Sia"])
+    assert discogs._is_valid_release({"title": "Sia Feat. Sean Paul - Cheap Thrills"}, ["Sia"])
+    assert discogs._is_valid_release({"title": "Daddy Yankee Feat. Snow (2) - Con Calma"}, ["Daddy Yankee", "Snow"])
+    assert not discogs._is_valid_release({"title": "Siamese Dream - Disarm"}, ["Sia"])
+    assert not discogs._is_valid_release({"title": "Sian Evans - Hide U"}, ["Sia"])

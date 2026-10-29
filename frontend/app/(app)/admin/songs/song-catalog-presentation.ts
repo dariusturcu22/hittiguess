@@ -1,7 +1,7 @@
 export type CatalogStatus = "VERIFIED" | "NEEDS_REVIEW" | "IN_QUEUE" | "PROCESSING" | "ERROR";
 export type CatalogPipeline = "FAST" | "FULL" | "UNKNOWN" | "LEGACY";
 export type CatalogAddedByKind = "USER" | "ADMIN_SEED" | "UNKNOWN" | "LEGACY";
-export type QueueOrigin = "ADMIN_SEED" | "FAST_TIER_RECHECK" | "USER_ADD_RECHECK";
+export type QueueOrigin = "ADMIN_SEED" | "ADMIN_RECHECK" | "FAST_TIER_RECHECK" | "USER_ADD_RECHECK";
 export type QueueStatus = "PENDING" | "PROCESSING" | "DONE" | "FAILED";
 
 export const MINIMUM_SEARCH_LENGTH = 3;
@@ -12,7 +12,7 @@ export const FIRST_PAGE = 0;
 export const SEARCH_HINT =
   "Search runs after 3 characters and a short pause. Results come 25 at a time.";
 
-export type CatalogColumnKey = "title" | "artist" | "year" | "status" | "pipeline" | "added" | "addedBy";
+export type CatalogColumnKey = "title" | "artist" | "year" | "proposedYear" | "status" | "pipeline" | "added" | "addedBy";
 
 // Hidden columns remain available in the song drawer.
 export type CatalogColumnPriority = "essential" | "medium" | "low";
@@ -35,6 +35,7 @@ export const CATALOG_COLUMNS: CatalogColumn[] = [
   { key: "title", label: "Title", priority: "essential", sizeClassName: "min-w-0 flex-[3] @6xl:w-[270px] @6xl:flex-none" },
   { key: "artist", label: "Artist", priority: "essential", sizeClassName: "min-w-0 flex-[2] @6xl:w-[210px] @6xl:flex-none" },
   { key: "year", label: "Year", priority: "essential", sizeClassName: "w-[70px] shrink-0 @max-4xl:w-[56px]" },
+  { key: "proposedYear", label: "Proposed year", priority: "essential", sizeClassName: "w-[100px] shrink-0 @max-4xl:w-[84px]" },
   { key: "status", label: "Status", priority: "essential", sizeClassName: "w-[130px] shrink-0" },
   { key: "pipeline", label: "Pipeline", priority: "medium", sizeClassName: "w-[90px] shrink-0" },
   { key: "added", label: "Added", priority: "essential", sizeClassName: "w-[120px] shrink-0 @max-4xl:w-[96px]" },
@@ -74,11 +75,13 @@ export const STATUS_PRESENTATION: Record<CatalogStatus, StatusPresentation> = {
 export interface StatusFilter {
   label: string;
   status: CatalogStatus | null;
-  countKey: "all" | "verified" | "needsReview" | "inQueue" | "processing" | "error";
+  proposedYear?: boolean;
+  countKey: "all" | "verified" | "needsReview" | "inQueue" | "processing" | "error" | "proposedYear";
 }
 
 export const STATUS_FILTERS: StatusFilter[] = [
   { label: "All", status: null, countKey: "all" },
+  { label: "Proposed year", status: null, proposedYear: true, countKey: "proposedYear" },
   { label: "Verified", status: "VERIFIED", countKey: "verified" },
   { label: "Needs review", status: "NEEDS_REVIEW", countKey: "needsReview" },
   { label: "In queue", status: "IN_QUEUE", countKey: "inQueue" },
@@ -100,6 +103,7 @@ const UNKNOWN_LABEL = "Unknown";
 
 const QUEUE_ORIGIN_LABELS: Record<QueueOrigin, string> = {
   ADMIN_SEED: "Admin seed",
+  ADMIN_RECHECK: "Admin recheck",
   FAST_TIER_RECHECK: "Fast-tier import recheck",
   USER_ADD_RECHECK: "Added by hand, recheck",
 };

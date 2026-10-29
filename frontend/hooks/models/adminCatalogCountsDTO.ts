@@ -12,4 +12,5 @@ export interface AdminCatalogCountsDTO {
   inQueue: number;
   processing: number;
   error: number;
+  proposedYear?: number;
 }

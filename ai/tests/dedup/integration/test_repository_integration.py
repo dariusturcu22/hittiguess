@@ -165,3 +165,25 @@ def test_store_verified_song_embedding_persists_only_for_verified_songs(db_conne
     song_ids_with_embeddings = {song_id for (song_id,) in rows}
 
     assert song_ids_with_embeddings == {verified_song_id}
+
+
+def test_a_song_is_never_matched_against_its_own_video(db_connection):
+    embedding = _embedding(1.0)
+    song_id = _insert_song(
+        db_connection,
+        title="Con Calma",
+        release_year=2019,
+        artist_name="Daddy Yankee",
+        verification_status="VERIFIED",
+        embedding=embedding,
+    )
+    db_connection.run("UPDATE songs SET youtube_id = 'main-video' WHERE id = :song_id", song_id=song_id)
+    db_connection.run(
+        "INSERT INTO alternate_youtube_ids (youtube_id, song_id) VALUES ('alternate-video', :song_id)",
+        song_id=song_id,
+    )
+
+    assert repository.find_best_verified_match(embedding, excluded_youtube_id="main-video") is None
+    assert repository.find_best_verified_match(embedding, excluded_youtube_id="alternate-video") is None
+    assert repository.find_best_verified_match(embedding, excluded_youtube_id="new-video").id == song_id
+    assert repository.find_best_verified_match(embedding).id == song_id

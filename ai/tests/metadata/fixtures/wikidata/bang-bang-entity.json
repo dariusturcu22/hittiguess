@@ -1,0 +1,5 @@
+{
+  "entities": {
+    "Q17468562": {"claims": {"P577": [{"rank": "normal", "mainsnak": {"snaktype": "value", "datavalue": {"value": {"time": "+2014-07-29T00:00:00Z"}}}}], "P361": [{"mainsnak": {"datavalue": {"value": {"id": "Q17592845"}}}}], "P175": [{"mainsnak": {"datavalue": {"value": {"id": "Q18814"}}}}, {"mainsnak": {"datavalue": {"value": {"id": "Q151892"}}}}, {"mainsnak": {"datavalue": {"value": {"id": "Q162202"}}}}]}}
+  }
+}

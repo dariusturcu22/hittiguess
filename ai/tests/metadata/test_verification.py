@@ -10,8 +10,14 @@ Tests cover:
 - A no-answer song's verification_status is MANUAL_ENTRY
 """
 
-import pytest
+import json
+from pathlib import Path
 
+import httpx
+import pytest
+import respx
+
+from app.metadata.sources import discogs, musicbrainz, wikidata
 from app.metadata.verification import (
     VerificationRoute,
     VerificationStatus,
@@ -241,11 +247,12 @@ class TestEvaluateLock:
     @pytest.mark.parametrize(
         ("candidate_years", "expected_year"),
         [
-            ([2009, 2010, 2010], 2009),
+            ([2009, 2010, 2010], 2010),
             ([2002, 2002, 2003, 2003], 2002),
+            ([2009, 2009, 2010], 2009),
         ],
     )
-    def test_tight_year_clusters_lock_at_the_earliest_year(self, mocker, candidate_years, expected_year):
+    def test_tight_year_clusters_require_two_sources_for_earliest_year(self, mocker, candidate_years, expected_year):
         musicbrainz_year, discogs_year, wikidata_year, *wikipedia_years = candidate_years
         wikipedia_year = wikipedia_years[0] if wikipedia_years else None
         wikipedia_result = mocker.MagicMock(release_year=wikipedia_year, confidence="high")
@@ -297,3 +304,99 @@ class TestRouteToVerificationStatus:
 
     def test_manual_review_maps_to_manual_entry(self):
         assert route_to_verification_status(VerificationRoute.MANUAL_REVIEW) == VerificationStatus.MANUAL_ENTRY
+
+GOLDEN_FIXTURES_DIR = Path(__file__).parent / "fixtures" / "golden"
+
+
+def _load_golden_fixtures() -> list[dict]:
+    return [
+        json.loads(fixture_path.read_text(encoding="utf-8"))
+        for fixture_path in sorted(GOLDEN_FIXTURES_DIR.glob("*.json"))
+    ]
+
+
+class TestOneYearClusterRefinement:
+    def test_single_source_earliest_year_does_not_pull_cluster_down(self):
+        from app.metadata.verification import _find_wikipedia_assisted_lock_year
+
+        assert _find_wikipedia_assisted_lock_year([2015, 2016, 2016]) == 2016
+        assert _find_wikipedia_assisted_lock_year([2018, 2019, 2019, 2019]) == 2019
+        assert _find_wikipedia_assisted_lock_year([2003, 2004, 2004, 2004]) == 2004
+
+    def test_two_sources_support_earliest_year_in_cluster(self):
+        from app.metadata.verification import _find_wikipedia_assisted_lock_year
+
+        assert _find_wikipedia_assisted_lock_year([2015, 2015, 2016]) == 2015
+        assert _find_wikipedia_assisted_lock_year([2015, 2015, 2016, 2016]) == 2015
+
+    def test_exact_majority_rule_unaffected_by_outlier(self):
+        from app.metadata.verification import _find_wikipedia_assisted_lock_year
+
+        assert _find_wikipedia_assisted_lock_year([2016, 2016, 2016]) == 2016
+        assert _find_wikipedia_assisted_lock_year([2016, 2016, 2016, 2014]) == 2016
+
+
+@pytest.mark.parametrize(
+    "song_fixture",
+    _load_golden_fixtures(),
+    ids=lambda fixture: fixture["id"],
+)
+@respx.mock
+def test_golden_lock_evaluation_for_catalog_songs(mocker, song_fixture):
+    mocker.patch("app.metadata.sources.pacing.time.sleep")
+
+    def mb_respond(request: httpx.Request) -> httpx.Response:
+        if "release-group" in request.url.path:
+            return httpx.Response(200, json=song_fixture["musicbrainz"]["release_group"])
+        return httpx.Response(200, json=song_fixture["musicbrainz"]["recording"])
+
+    def discogs_respond(request: httpx.Request) -> httpx.Response:
+        if "database/search" in request.url.path:
+            return httpx.Response(200, json=song_fixture["discogs"]["releases"])
+        master_id = request.url.path.rstrip("/").split("/")[-1]
+        master = song_fixture["discogs"]["masters"].get(master_id, {})
+        return httpx.Response(200, json=master)
+
+    def wikidata_respond(request: httpx.Request) -> httpx.Response:
+        action = request.url.params.get("action")
+        if action == "wbsearchentities":
+            return httpx.Response(200, json=song_fixture["wikidata"]["search"])
+        if action == "wbgetentities":
+            ids = request.url.params.get("ids", "").split("|")
+            entities = {
+                eid: song_fixture["wikidata"]["entities"][eid]
+                for eid in ids
+                if eid in song_fixture["wikidata"]["entities"]
+            }
+            return httpx.Response(200, json={"entities": entities})
+        return httpx.Response(200, json={})
+
+    respx.get(url__regex=r"musicbrainz\.org/ws/2/(release-group|recording)/").mock(side_effect=mb_respond)
+    respx.get(url__regex=r"api\.discogs\.com/").mock(side_effect=discogs_respond)
+    respx.get(url__regex=r"wikidata\.org/w/api\.php").mock(side_effect=wikidata_respond)
+
+    musicbrainz_candidates = musicbrainz.search(song_fixture["title"], song_fixture["main_artists"])
+    discogs_candidates = discogs.search(song_fixture["title"], song_fixture["main_artists"])
+    wikidata_candidates = wikidata.search(song_fixture["title"], song_fixture["main_artists"])
+
+    extraction_result = mocker.MagicMock()
+    extraction_result.release_year = song_fixture.get("wikipedia_extracted_year")
+    extraction_result.confidence = "high"
+    mocker.patch(
+        "app.metadata.verification._run_wikipedia_extraction", return_value=extraction_result
+    )
+    reconciliation_mock = mocker.patch("app.metadata.verification._run_four_source_reconciliation")
+
+    release_year, confidence, route = evaluate_lock(
+        song_fixture["title"],
+        " & ".join(song_fixture["main_artists"]),
+        musicbrainz_candidates,
+        discogs_candidates,
+        wikidata_candidates,
+        [{"extract": f"{song_fixture['title']} was released in {song_fixture['expected_year']}."}],
+    )
+
+    assert release_year == song_fixture["expected_year"]
+    assert confidence == "high"
+    assert route in {VerificationRoute.LOCKED, VerificationRoute.LOCKED_WITH_WIKIPEDIA}
+    reconciliation_mock.assert_not_called()

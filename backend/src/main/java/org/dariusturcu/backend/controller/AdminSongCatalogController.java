@@ -35,12 +35,14 @@ public class AdminSongCatalogController {
             @RequestParam(required = false) String query,
             @Parameter(description = "Only rows with this status; counts ignore it")
             @RequestParam(required = false) CatalogSongStatus status,
+            @Parameter(description = "Only rows with a proposed release year")
+            @RequestParam(required = false) Boolean proposedYear,
             @Parameter(description = "0-based page number, default 0")
             @RequestParam(required = false) Integer page,
             @Parameter(description = "Rows per page, default and maximum 25")
             @RequestParam(required = false) Integer size) {
         adminAccessGuard.requireAdmin();
-        return ResponseEntity.ok(adminSongCatalogService.search(query, status, page, size));
+        return ResponseEntity.ok(adminSongCatalogService.search(query, status, proposedYear, page, size));
     }
 
     @Operation(summary = "Read-only song detail, admin only: catalog fields, stored verification status, "

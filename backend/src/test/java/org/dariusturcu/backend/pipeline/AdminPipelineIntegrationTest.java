@@ -1,6 +1,7 @@
 package org.dariusturcu.backend.pipeline;
 
 import org.dariusturcu.backend.exception.ConflictException;
+import org.dariusturcu.backend.model.admin.RecheckSongsRequest;
 import org.dariusturcu.backend.model.admin.UpdateCatalogSongRequest;
 import org.dariusturcu.backend.model.song.AdminCatalogSeedingRequest;
 import org.dariusturcu.backend.model.song.PendingImportOrigin;
@@ -347,6 +348,8 @@ class AdminPipelineIntegrationTest {
         var first = transaction(() -> admin.runNow(VIDEO));
         var rerun = transaction(() -> songs.rerun(song));
         assertThat(rerun.id()).isEqualTo(first.id());
+        assertThat(core.queryForObject("SELECT origin FROM pipeline_runs WHERE id = ?", String.class, first.id()))
+                .isEqualTo("ADMIN_SEED");
         assertThat(engine.jobsOfRun(first.id())).singleElement().satisfies(job -> assertThat(job.priority()).isPositive());
     }
 
@@ -413,6 +416,126 @@ class AdminPipelineIntegrationTest {
         core.update("INSERT INTO game_session_song_queue (session_id, queue_position, song_id) VALUES (?, 0, ?)", session, song);
         assertThatThrownBy(() -> transaction(() -> songs.delete(song))).isInstanceOf(ConflictException.class);
         assertThat(core.queryForObject("SELECT count(*) FROM songs WHERE id = ?", Long.class, song)).isEqualTo(1);
+    }
+
+    @Test
+    void mergeMovesPlaylistLinksAndAlternateIdsAndDeletesDroppedSong() {
+        long keepId = song(VIDEO);
+        long dropId = song(OTHER_VIDEO);
+
+        long userId = core.queryForObject("""
+                INSERT INTO users (username, email, role)
+                VALUES ('PlaylistOwner', 'owner@test.local', 'USER') RETURNING id
+                """, Long.class);
+        long playlistOne = core.queryForObject("""
+                INSERT INTO playlists (name, invite_code, owner_id)
+                VALUES ('Playlist 1', 'PL1', ?) RETURNING id
+                """, Long.class, userId);
+        long playlistTwo = core.queryForObject("""
+                INSERT INTO playlists (name, invite_code, owner_id)
+                VALUES ('Playlist 2', 'PL2', ?) RETURNING id
+                """, Long.class, userId);
+
+        core.update("INSERT INTO song_playlists (song_id, playlist_id) VALUES (?, ?)", keepId, playlistOne);
+        core.update("INSERT INTO song_playlists (song_id, playlist_id) VALUES (?, ?)", dropId, playlistOne);
+        core.update("INSERT INTO song_playlists (song_id, playlist_id) VALUES (?, ?)", dropId, playlistTwo);
+
+        core.update("INSERT INTO alternate_youtube_ids (youtube_id, song_id) VALUES ('drop_alt_video', ?)", dropId);
+
+        var result = transaction(() -> songs.merge(keepId, dropId));
+
+        int expectedPlaylistCount = 2;
+        assertThat(result.affected()).isEqualTo(1);
+        assertThat(core.queryForObject("SELECT count(*) FROM songs WHERE id = ?", Long.class, dropId)).isZero();
+        assertThat(core.queryForObject("SELECT count(*) FROM songs WHERE id = ?", Long.class, keepId)).isEqualTo(1);
+        assertThat(core.queryForObject("SELECT count(*) FROM song_playlists WHERE song_id = ?", Long.class, keepId))
+                .isEqualTo(expectedPlaylistCount);
+        assertThat(core.queryForObject("SELECT count(*) FROM song_playlists WHERE song_id = ?", Long.class, dropId)).isZero();
+        assertThat(core.queryForObject("SELECT song_id FROM alternate_youtube_ids WHERE youtube_id = 'drop_alt_video'", Long.class))
+                .isEqualTo(keepId);
+        assertThat(core.queryForObject("SELECT song_id FROM alternate_youtube_ids WHERE youtube_id = ?", Long.class, OTHER_VIDEO))
+                .isEqualTo(keepId);
+    }
+
+    @Test
+    void mergeRefusesWhileEitherSongIsInActiveGame() {
+        long keepId = song(VIDEO);
+        long dropId = song(OTHER_VIDEO);
+
+        long group = core.queryForObject("""
+                INSERT INTO groups (invite_code, join_code, status, dj_mode, win_condition_card_count, created_at, expires_at)
+                VALUES ('invite_mrg', 'MRGA', 'OPEN', 'FIXED', 5, now(), now() + interval '30 minutes') RETURNING id
+                """, Long.class);
+        long session = core.queryForObject("""
+                INSERT INTO game_sessions (group_id, status, dj_mode, win_condition_card_count, current_round_number, created_at)
+                VALUES (?, 'ACTIVE', 'FIXED', 5, 1, now()) RETURNING id
+                """, Long.class, group);
+        core.update("INSERT INTO game_session_song_queue (session_id, queue_position, song_id) VALUES (?, 0, ?)", session, dropId);
+
+        assertThatThrownBy(() -> transaction(() -> songs.merge(keepId, dropId))).isInstanceOf(ConflictException.class);
+
+        core.update("DELETE FROM game_session_song_queue WHERE session_id = ?", session);
+        core.update("INSERT INTO game_session_song_queue (session_id, queue_position, song_id) VALUES (?, 0, ?)", session, keepId);
+
+        assertThatThrownBy(() -> transaction(() -> songs.merge(keepId, dropId))).isInstanceOf(ConflictException.class);
+    }
+
+    @Test
+    void aSongRerunIsQueuedAsAnAdminRecheck() {
+        long song = song(VIDEO);
+        var rerun = transaction(() -> songs.rerun(song));
+        assertThat(core.queryForObject("SELECT origin FROM pipeline_runs WHERE id = ?", String.class, rerun.id()))
+                .isEqualTo("ADMIN_RECHECK");
+    }
+
+    @Test
+    void recheckEndpointSkipsSongsInActiveGamesAndQueuesTheRest() {
+        long activeSong = song(VIDEO);
+        long idleSong = song(OTHER_VIDEO);
+        long group = core.queryForObject("""
+                INSERT INTO groups (invite_code, join_code, status, dj_mode, win_condition_card_count, created_at, expires_at)
+                VALUES ('invite2', 'EFGH', 'OPEN', 'FIXED', 5, now(), now() + interval '30 minutes') RETURNING id
+                """, Long.class);
+        long session = core.queryForObject("""
+                INSERT INTO game_sessions (group_id, status, dj_mode, win_condition_card_count, current_round_number, created_at)
+                VALUES (?, 'ACTIVE', 'FIXED', 5, 1, now()) RETURNING id
+                """, Long.class, group);
+        core.update("INSERT INTO game_session_song_queue (session_id, queue_position, song_id) VALUES (?, 0, ?)", session, activeSong);
+
+        var result = transaction(() -> songs.recheck(new RecheckSongsRequest(List.of(activeSong, idleSong), false)));
+
+        assertThat(result.affected()).isEqualTo(1);
+        assertThat(core.queryForObject("SELECT count(*) FROM pipeline_runs WHERE youtube_id = ? AND lane = 'BACKFILL'",
+                Long.class, OTHER_VIDEO)).isEqualTo(1);
+        assertThat(core.queryForObject("SELECT count(*) FROM pipeline_runs WHERE youtube_id = ? AND lane = 'BACKFILL'",
+                Long.class, VIDEO)).isZero();
+        assertThat(core.queryForObject("SELECT origin FROM pipeline_runs WHERE youtube_id = ?", String.class, OTHER_VIDEO))
+                .isEqualTo("ADMIN_RECHECK");
+    }
+
+    @Test
+    void dismissProposalClearsProposedReleaseYearAndProposedAt() {
+        long song = song(VIDEO);
+        core.update("UPDATE songs SET proposed_release_year = 2014, proposed_at = now() WHERE id = ?", song);
+        assertThat(core.queryForObject("SELECT proposed_release_year FROM songs WHERE id = ?", Integer.class, song)).isEqualTo(2014);
+
+        var result = transaction(() -> songs.dismissProposal(song));
+
+        assertThat(result.affected()).isEqualTo(1);
+        assertThat(core.queryForObject("SELECT proposed_release_year FROM songs WHERE id = ?", Integer.class, song)).isNull();
+        assertThat(core.queryForObject("SELECT proposed_at FROM songs WHERE id = ?", java.time.Instant.class, song)).isNull();
+    }
+
+    @Test
+    void updatingSongClearsProposal() {
+        long song = song(VIDEO);
+        core.update("UPDATE songs SET proposed_release_year = 2014, proposed_at = now() WHERE id = ?", song);
+
+        transaction(() -> songs.update(song, new UpdateCatalogSongRequest(2014, VerificationStatus.VERIFIED)));
+
+        assertThat(core.queryForObject("SELECT release_year FROM songs WHERE id = ?", Integer.class, song)).isEqualTo(2014);
+        assertThat(core.queryForObject("SELECT proposed_release_year FROM songs WHERE id = ?", Integer.class, song)).isNull();
+        assertThat(core.queryForObject("SELECT proposed_at FROM songs WHERE id = ?", java.time.Instant.class, song)).isNull();
     }
 
     @Test

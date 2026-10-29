@@ -61,6 +61,17 @@ public interface SongRepository extends JpaRepository<Song, Long> {
     List<Song> findByAddedById(Long userId);
 
     @Query("""
+            select song from Song song
+            where song.normalizedKey = :normalizedKey
+              and (song.youtubeId is null or song.youtubeId <> :youtubeId)
+            order by song.id
+            """)
+    List<Song> findOthersWithNormalizedKey(@Param("normalizedKey") String normalizedKey, @Param("youtubeId") String youtubeId);
+
+    @Query("select distinct song from Song song left join fetch song.artists where song.normalizedKey is null")
+    List<Song> findWithoutNormalizedKey();
+
+    @Query("""
             select distinct song
             from Song song
             left join song.artists artist

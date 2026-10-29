@@ -1,0 +1,5 @@
+{
+  "entities": {
+    "Q744297": {"claims": {"P577": [{"rank": "normal", "mainsnak": {"snaktype": "value", "datavalue": {"value": {"time": "+2004-01-10T00:00:00Z"}}}}], "P361": [{"mainsnak": {"datavalue": {"value": {"id": "Q1125266"}}}}], "P175": [{"mainsnak": {"datavalue": {"value": {"id": "Q165911"}}}}, {"mainsnak": {"datavalue": {"value": {"id": "Q294449"}}}}, {"mainsnak": {"datavalue": {"value": {"id": "Q193676"}}}}]}}
+  }
+}

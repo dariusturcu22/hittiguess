@@ -17,6 +17,7 @@ public record AdminCatalogSongDTO(
         String title,
         @NotNull List<String> artists,
         Integer releaseYear,
+        Integer proposedReleaseYear,
         @NotNull CatalogSongStatus status,
         @NotNull CatalogPipeline pipeline,
         Instant createdAt,

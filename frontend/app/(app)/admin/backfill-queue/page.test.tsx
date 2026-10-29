@@ -103,6 +103,7 @@ vi.mock("@/hooks/generated/admin-song-pipeline/admin-song-pipeline", () => ({
   useRerunSongPipeline: (options: never) => mutation("rerun", options),
   useUpdateCatalogSong: (options: never) => mutation("update", options),
   useDeleteCatalogSong: (options: never) => mutation("delete", options),
+  useMergeSongs: (options: never) => mutation("merge", options),
 }));
 function render(component: React.ReactNode) {
   const client = new QueryClient();

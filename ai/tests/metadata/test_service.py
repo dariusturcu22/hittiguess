@@ -414,7 +414,7 @@ def test_structured_queries_strip_only_featured_artist_suffixes(mocker, display_
     assert result.title == display_title
 
 
-def test_structured_queries_use_the_artist_list_for_musicbrainz_and_the_joined_string_for_other_sources(mocker):
+def test_structured_queries_use_the_artist_list(mocker):
     musicbrainz_mock = mocker.patch.object(service.musicbrainz, "search", return_value=[])
     discogs_mock = mocker.patch.object(service.discogs, "search", return_value=[])
     wikidata_mock = mocker.patch.object(service.wikidata, "search", return_value=[])
@@ -426,8 +426,8 @@ def test_structured_queries_use_the_artist_list_for_musicbrainz_and_the_joined_s
     )
 
     musicbrainz_mock.assert_called_once_with("Cold Heart", ["Elton John", "Dua Lipa"])
-    discogs_mock.assert_called_once_with("Cold Heart", "Elton John & Dua Lipa")
-    wikidata_mock.assert_called_once_with("Cold Heart", "Elton John & Dua Lipa")
+    discogs_mock.assert_called_once_with("Cold Heart", ["Elton John", "Dua Lipa"])
+    wikidata_mock.assert_called_once_with("Cold Heart", ["Elton John", "Dua Lipa"])
     assert result.main_artists == ["Elton John", "Dua Lipa"]
 
 
