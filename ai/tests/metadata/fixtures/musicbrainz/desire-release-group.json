@@ -1,0 +1,100 @@
+{
+  "release-groups": [
+    {
+      "id": "ca436fb1-215c-4c81-a4fa-464adac18bfe",
+      "score": 100,
+      "title": "Desire",
+      "first-release-date": "2009",
+      "primary-type": "Single",
+      "secondary-types": [],
+      "artist-credit": [
+        {
+          "name": "Morris",
+          "artist": {
+            "name": "Morris"
+          }
+        }
+      ]
+    },
+    {
+      "id": "a1ce2bc5-d4f6-4158-a726-d345cc0f9b43",
+      "score": 45,
+      "title": "Desire Under the Elms",
+      "first-release-date": "2002-10-01",
+      "primary-type": "Album",
+      "secondary-types": [],
+      "artist-credit": [
+        {
+          "name": "Edward Thomas",
+          "artist": {
+            "name": "Edward Thomas"
+          }
+        },
+        {
+          "name": "Jerry Hadley",
+          "artist": {
+            "name": "Jerry Hadley"
+          }
+        },
+        {
+          "name": "James Morris",
+          "artist": {
+            "name": "James Morris"
+          }
+        },
+        {
+          "name": "Victoria Livengood",
+          "artist": {
+            "name": "Victoria Livengood"
+          }
+        },
+        {
+          "name": "Mel Ulrich",
+          "artist": {
+            "name": "Mel Ulrich"
+          }
+        },
+        {
+          "name": "Jeffrey Lentz",
+          "artist": {
+            "name": "Jeffrey Lentz"
+          }
+        },
+        {
+          "name": "London Symphony Orchestra",
+          "artist": {
+            "name": "London Symphony Orchestra"
+          }
+        },
+        {
+          "name": "George Manahan",
+          "artist": {
+            "name": "George Manahan"
+          }
+        }
+      ]
+    },
+    {
+      "id": "4167ad28-0dd8-45d0-990a-f143a5708233",
+      "score": 41,
+      "title": "My Love, My Desire / Pack Up All Your Rags",
+      "first-release-date": "1951-04",
+      "primary-type": "Single",
+      "secondary-types": [],
+      "artist-credit": [
+        {
+          "name": "Joe Morris Blues Cavalcade",
+          "artist": {
+            "name": "Joe Morris Blues Cavalcade"
+          }
+        },
+        {
+          "name": "Billy Mitchell",
+          "artist": {
+            "name": "Billy Mitchell"
+          }
+        }
+      ]
+    }
+  ]
+}

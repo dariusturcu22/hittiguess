@@ -1,0 +1,56 @@
+{
+  "release-groups": [
+    {
+      "id": "dd55e60b-0f07-468f-aca1-d9402e9baffc",
+      "score": 100,
+      "title": "Moves Like Jagger",
+      "first-release-date": "2011-06-21",
+      "primary-type": "Single",
+      "secondary-types": [],
+      "artist-credit": [
+        {
+          "name": "Maroon 5",
+          "artist": {
+            "name": "Maroon 5"
+          }
+        },
+        {
+          "name": "Christina Aguilera",
+          "artist": {
+            "name": "Christina Aguilera"
+          }
+        }
+      ]
+    },
+    {
+      "id": "4262920a-0698-4559-b3cf-c5265b5be526",
+      "score": 84,
+      "title": "Moves Like Jagger (remix)",
+      "first-release-date": "2011-10-04",
+      "primary-type": "Single",
+      "secondary-types": [
+        "Remix"
+      ],
+      "artist-credit": [
+        {
+          "name": "Maroon 5",
+          "artist": {
+            "name": "Maroon 5"
+          }
+        },
+        {
+          "name": "Christina Aguilera",
+          "artist": {
+            "name": "Christina Aguilera"
+          }
+        },
+        {
+          "name": "Mac Miller",
+          "artist": {
+            "name": "Mac Miller"
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -32,9 +32,9 @@ class VerificationStatus(StrEnum):
 
 def _extract_earliest_year(candidates: list[dict]) -> int | None:
     """Takes the earliest valid year across all candidates returned by a
-    single source, matching the spike's source_earliest_year logic. Each
-    source already runs a track+album query and returns both in one list;
-    this picks the minimum across the whole list."""
+    single source. MusicBrainz returns its track and parent-album candidates
+    in one list; sources that answer with a single query return that query's
+    candidates. This picks the minimum across whatever the source returned."""
     resolved_years = []
     for candidate in candidates:
         if "year" in candidate and candidate["year"] is not None:

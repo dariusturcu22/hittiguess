@@ -1,0 +1,526 @@
+{
+  "recordings": [
+    {
+      "id": "ace5e413-5278-4dcc-b261-81efae47088a",
+      "score": 100,
+      "title": "Desire",
+      "disambiguation": null,
+      "artist-credit": [
+        {
+          "name": "Morris",
+          "artist": {
+            "name": "Morris"
+          }
+        }
+      ],
+      "releases": [
+        {
+          "id": "db353ec0-64d2-428d-82f8-47c40833e1ea",
+          "status": "Official",
+          "date": "2009",
+          "release-group": {
+            "id": "bce15eaa-7af5-4667-94ad-8873a775cdb1",
+            "score": null,
+            "title": "Kiss My Hits 5",
+            "first-release-date": null,
+            "primary-type": "Album",
+            "secondary-types": [
+              "Compilation"
+            ],
+            "artist-credit": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "f2d75c47-6af6-4ada-ac60-56803a27ae6b",
+      "score": 100,
+      "title": "Desire",
+      "disambiguation": null,
+      "artist-credit": [
+        {
+          "name": "Morris",
+          "artist": {
+            "name": "Morris"
+          }
+        }
+      ],
+      "releases": [
+        {
+          "id": "db353ec0-64d2-428d-82f8-47c40833e1ea",
+          "status": "Official",
+          "date": "2009",
+          "release-group": {
+            "id": "bce15eaa-7af5-4667-94ad-8873a775cdb1",
+            "score": null,
+            "title": "Kiss My Hits 5",
+            "first-release-date": null,
+            "primary-type": "Album",
+            "secondary-types": [
+              "Compilation"
+            ],
+            "artist-credit": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "23dcb85a-0ad3-4371-a600-35c1bc259326",
+      "score": 100,
+      "title": "Desire",
+      "disambiguation": null,
+      "artist-credit": [
+        {
+          "name": "Morris",
+          "artist": {
+            "name": "Morris"
+          }
+        }
+      ],
+      "releases": [
+        {
+          "id": "b915eef9-c4c4-42b1-b11b-89a86b13320b",
+          "status": "Official",
+          "date": "2009",
+          "release-group": {
+            "id": "ca436fb1-215c-4c81-a4fa-464adac18bfe",
+            "score": null,
+            "title": "Desire",
+            "first-release-date": null,
+            "primary-type": "Single",
+            "secondary-types": [],
+            "artist-credit": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "857d2ad7-b1f5-4a3e-ad5c-27ff6b694422",
+      "score": 100,
+      "title": "Desire",
+      "disambiguation": null,
+      "artist-credit": [
+        {
+          "name": "Morris",
+          "artist": {
+            "name": "Morris"
+          }
+        }
+      ],
+      "releases": [
+        {
+          "id": "8de50391-b923-4094-81de-7f012816108d",
+          "status": "Official",
+          "date": "2011-05-27",
+          "release-group": {
+            "id": "d025a09c-6d67-472d-9955-43ebfcd5722e",
+            "score": null,
+            "title": "Mega House Top 100 2013",
+            "first-release-date": null,
+            "primary-type": "Album",
+            "secondary-types": [
+              "Compilation"
+            ],
+            "artist-credit": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "0b0a96d1-95a3-4c16-9c9e-e0f8fc814686",
+      "score": 100,
+      "title": "Desire",
+      "disambiguation": null,
+      "artist-credit": [
+        {
+          "name": "Morris",
+          "artist": {
+            "name": "Morris"
+          }
+        }
+      ],
+      "releases": [
+        {
+          "id": "d9ff11fb-64f3-42f8-9687-d087c183910d",
+          "status": "Official",
+          "date": null,
+          "release-group": {
+            "id": "59dc58f3-7301-4dc6-856b-ddca7bbc39dd",
+            "score": null,
+            "title": "Hot Hit",
+            "first-release-date": null,
+            "primary-type": "Album",
+            "secondary-types": [
+              "Compilation"
+            ],
+            "artist-credit": []
+          }
+        },
+        {
+          "id": "0e15a6a7-c20c-42bc-b267-ba048bb3df38",
+          "status": "Official",
+          "date": "2017-04-01",
+          "release-group": {
+            "id": "59dc58f3-7301-4dc6-856b-ddca7bbc39dd",
+            "score": null,
+            "title": "Hot Hit",
+            "first-release-date": null,
+            "primary-type": "Album",
+            "secondary-types": [
+              "Compilation"
+            ],
+            "artist-credit": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "2412a4f5-4b52-44d8-a3a4-937ef8582058",
+      "score": 91,
+      "title": "Desire",
+      "disambiguation": null,
+      "artist-credit": [
+        {
+          "name": "Artie Morris",
+          "artist": {
+            "name": "Artie Morris"
+          }
+        }
+      ],
+      "releases": [
+        {
+          "id": "acde64cf-6302-4510-b71d-909a07a9ddfb",
+          "status": "Official",
+          "date": "1996",
+          "release-group": {
+            "id": "b7ec6b15-4232-36f1-9948-94b60598fa2d",
+            "score": null,
+            "title": "Automatic Bop, Vol. 1: 31 Rockabilly Burners",
+            "first-release-date": null,
+            "primary-type": "Album",
+            "secondary-types": [
+              "Compilation"
+            ],
+            "artist-credit": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "ba3a45a5-8353-496a-bade-dfaaca1a9a4d",
+      "score": 85,
+      "title": "Desire",
+      "disambiguation": null,
+      "artist-credit": [
+        {
+          "name": "M. B. Morris",
+          "artist": {
+            "name": "M. B. Morris"
+          }
+        }
+      ],
+      "releases": [
+        {
+          "id": "9447ac6c-4dc7-4ab1-9eb6-a176971759a5",
+          "status": "Official",
+          "date": "2017-10-18",
+          "release-group": {
+            "id": "6a6e481f-7a55-4fcc-ad0b-36b5b65f33fb",
+            "score": null,
+            "title": "Reborn",
+            "first-release-date": null,
+            "primary-type": "Album",
+            "secondary-types": [],
+            "artist-credit": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "abd0b906-3f75-42c1-828e-5b78722ff83c",
+      "score": 84,
+      "title": "Desire Line",
+      "disambiguation": null,
+      "artist-credit": [
+        {
+          "name": "Morris Cowan",
+          "artist": {
+            "name": "Morris Cowan"
+          }
+        }
+      ],
+      "releases": [
+        {
+          "id": "d97668e6-84a3-40b8-88c2-90cddc05e327",
+          "status": null,
+          "date": "2011-03-16",
+          "release-group": {
+            "id": "4aff2977-9516-4443-a89b-11052d4f4df3",
+            "score": null,
+            "title": "Circa",
+            "first-release-date": null,
+            "primary-type": "Album",
+            "secondary-types": [],
+            "artist-credit": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "9e48c999-dba3-4234-b5fe-9ff0c33a1eb9",
+      "score": 77,
+      "title": "Desire (Play & Win radio edit)",
+      "disambiguation": null,
+      "artist-credit": [
+        {
+          "name": "Morris",
+          "artist": {
+            "name": "Morris"
+          }
+        }
+      ],
+      "releases": [
+        {
+          "id": "c450c66a-069a-417b-8fb2-78f80bd557cc",
+          "status": "Official",
+          "date": "2010-08-20",
+          "release-group": {
+            "id": "d7414473-b5a9-45e0-b630-932d4d6a1a9b",
+            "score": null,
+            "title": "538 Dance Smash 2010, Volume 4",
+            "first-release-date": null,
+            "primary-type": "Album",
+            "secondary-types": [
+              "Compilation"
+            ],
+            "artist-credit": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "e6cffaa4-bb2b-491f-8032-08871bfa6cc8",
+      "score": 77,
+      "title": "Desire (Play & Win radio edit)",
+      "disambiguation": null,
+      "artist-credit": [
+        {
+          "name": "Morris",
+          "artist": {
+            "name": "Morris"
+          }
+        }
+      ],
+      "releases": [
+        {
+          "id": "687e3355-dfaa-4101-a3f1-760875eae86a",
+          "status": "Official",
+          "date": "2009-05-07",
+          "release-group": {
+            "id": "8c38326f-8878-4e64-8285-0987b25d0e54",
+            "score": null,
+            "title": "Romania Loves the Minimal Beat",
+            "first-release-date": null,
+            "primary-type": "Album",
+            "secondary-types": [
+              "Compilation"
+            ],
+            "artist-credit": []
+          }
+        },
+        {
+          "id": "34ae7809-f3d8-41b3-8017-91f87463ed97",
+          "status": "Official",
+          "date": "2010",
+          "release-group": {
+            "id": "97e041de-f11b-4b05-ba50-02e7458a7960",
+            "score": null,
+            "title": "Now Dance Autumn, Part 3: 2010",
+            "first-release-date": null,
+            "primary-type": "Album",
+            "secondary-types": [
+              "Compilation"
+            ],
+            "artist-credit": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "85fef0b6-5da1-4594-9ee3-2b6200d872a8",
+      "score": 77,
+      "title": "Desire (Play & Win radio edit)",
+      "disambiguation": null,
+      "artist-credit": [
+        {
+          "name": "Morris",
+          "artist": {
+            "name": "Morris"
+          }
+        }
+      ],
+      "releases": [
+        {
+          "id": "864af146-9a04-4932-ac20-0fa9ce719daf",
+          "status": "Official",
+          "date": "2009-04-30",
+          "release-group": {
+            "id": "d8a225ea-afa2-47ac-9b32-a9cff6807946",
+            "score": null,
+            "title": "Supervara 2009",
+            "first-release-date": null,
+            "primary-type": "Album",
+            "secondary-types": [
+              "Compilation"
+            ],
+            "artist-credit": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "d006addb-33de-4e44-9dde-6ab5be813acc",
+      "score": 77,
+      "title": "Desire (Play & Win radio edit)",
+      "disambiguation": null,
+      "artist-credit": [
+        {
+          "name": "Morris",
+          "artist": {
+            "name": "Morris"
+          }
+        }
+      ],
+      "releases": [
+        {
+          "id": "1aa709fe-2f21-4370-9a23-0e67457d4528",
+          "status": "Official",
+          "date": "2020-04-30",
+          "release-group": {
+            "id": "d8a225ea-afa2-47ac-9b32-a9cff6807946",
+            "score": null,
+            "title": "Supervara 2009",
+            "first-release-date": null,
+            "primary-type": "Album",
+            "secondary-types": [
+              "Compilation"
+            ],
+            "artist-credit": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "e11e8ed2-8f4e-47c1-b38e-a5b1dae01471",
+      "score": 56,
+      "title": "My Love, My Desire",
+      "disambiguation": null,
+      "artist-credit": [
+        {
+          "name": "Joe Morris Blues Cavalcade",
+          "artist": {
+            "name": "Joe Morris Blues Cavalcade"
+          }
+        },
+        {
+          "name": "Billy Mitchell",
+          "artist": {
+            "name": "Billy Mitchell"
+          }
+        }
+      ],
+      "releases": [
+        {
+          "id": "bbdc8144-893e-4139-a38a-1f4814d105a7",
+          "status": "Official",
+          "date": "2004",
+          "release-group": {
+            "id": "58360f7a-93cb-4faa-a70b-6c3d2dd8f8fb",
+            "score": null,
+            "title": "Blues & Rhythm Series: The Chronological Joe Morris 1950-1953",
+            "first-release-date": null,
+            "primary-type": "Album",
+            "secondary-types": [
+              "Compilation"
+            ],
+            "artist-credit": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "6b5cbdd8-dea1-484a-b7e3-7775d77f6b28",
+      "score": 56,
+      "title": "My Love, My Desire",
+      "disambiguation": null,
+      "artist-credit": [
+        {
+          "name": "Billy Mitchell",
+          "artist": {
+            "name": "Billy Mitchell"
+          }
+        },
+        {
+          "name": "Joe Morris Blues Cavalcade",
+          "artist": {
+            "name": "Joe Morris Blues Cavalcade"
+          }
+        }
+      ],
+      "releases": [
+        {
+          "id": "265c4160-66c9-4bda-a6e1-8cd67470d62c",
+          "status": "Official",
+          "date": "2021",
+          "release-group": {
+            "id": "9e09bcb5-3d32-4806-a591-cf213cb138a5",
+            "score": null,
+            "title": "R&B In DC 1940-1960: Rhythm & Blues, Doo Wop, Rockin’ Rhythm And More",
+            "first-release-date": null,
+            "primary-type": "Album",
+            "secondary-types": [
+              "Compilation"
+            ],
+            "artist-credit": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "d418840c-d35f-4fd1-8fae-f39b3d49412f",
+      "score": 56,
+      "title": "My Love, My Desire",
+      "disambiguation": null,
+      "artist-credit": [
+        {
+          "name": "Joe Morris Blues Cavalcade",
+          "artist": {
+            "name": "Joe Morris Blues Cavalcade"
+          }
+        },
+        {
+          "name": "Billy Mitchell",
+          "artist": {
+            "name": "Billy Mitchell"
+          }
+        }
+      ],
+      "releases": [
+        {
+          "id": "4aa0f30d-4381-43f7-b292-0e165dcbb780",
+          "status": "Official",
+          "date": "1951-04",
+          "release-group": {
+            "id": "4167ad28-0dd8-45d0-990a-f143a5708233",
+            "score": null,
+            "title": "My Love, My Desire / Pack Up All Your Rags",
+            "first-release-date": null,
+            "primary-type": "Single",
+            "secondary-types": [],
+            "artist-credit": []
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -358,7 +358,7 @@ def test_precheck_falls_back_to_regex_cleaned_names_for_an_unidentifiable_submis
 
     service.resolve_metadata("https://youtube.com/watch?v=abc12345678")
 
-    musicbrainz_mock.assert_called_once_with("DJ Mixtape Vol 3 track 7", "randomuploader99")
+    musicbrainz_mock.assert_called_once_with("DJ Mixtape Vol 3 track 7", ["randomuploader99"])
 
 
 def test_verification_pipeline_reports_the_track_entity_sitelinks_count(mocker):
@@ -410,14 +410,14 @@ def test_structured_queries_strip_only_featured_artist_suffixes(mocker, display_
 
     result = service._run_verification_pipeline(display_title, ["Test Artist"], "8B5CF6", [])
 
-    musicbrainz_mock.assert_called_once_with(source_query_title, "Test Artist")
+    musicbrainz_mock.assert_called_once_with(source_query_title, ["Test Artist"])
     assert result.title == display_title
 
 
-def test_structured_queries_join_multiple_main_artists_for_display(mocker):
+def test_structured_queries_use_the_artist_list_for_musicbrainz_and_the_joined_string_for_other_sources(mocker):
     musicbrainz_mock = mocker.patch.object(service.musicbrainz, "search", return_value=[])
-    mocker.patch.object(service.discogs, "search", return_value=[])
-    mocker.patch.object(service.wikidata, "search", return_value=[])
+    discogs_mock = mocker.patch.object(service.discogs, "search", return_value=[])
+    wikidata_mock = mocker.patch.object(service.wikidata, "search", return_value=[])
     mocker.patch.object(service.wikipedia, "search", return_value=[])
     mocker.patch("app.metadata.service.evaluate_lock", return_value=_locked_verification_result())
 
@@ -425,7 +425,9 @@ def test_structured_queries_join_multiple_main_artists_for_display(mocker):
         "Cold Heart", ["Elton John", "Dua Lipa"], "8B5CF6", []
     )
 
-    musicbrainz_mock.assert_called_once_with("Cold Heart", "Elton John & Dua Lipa")
+    musicbrainz_mock.assert_called_once_with("Cold Heart", ["Elton John", "Dua Lipa"])
+    discogs_mock.assert_called_once_with("Cold Heart", "Elton John & Dua Lipa")
+    wikidata_mock.assert_called_once_with("Cold Heart", "Elton John & Dua Lipa")
     assert result.main_artists == ["Elton John", "Dua Lipa"]
 
 

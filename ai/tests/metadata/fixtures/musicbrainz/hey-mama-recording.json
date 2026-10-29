@@ -1,0 +1,3245 @@
+{
+  "recordings": [
+    {
+      "id": "7e5d4d9d-5c62-4917-beb9-4f96dd65787c",
+      "score": 100,
+      "title": "Hey Mama",
+      "disambiguation": null,
+      "artist-credit": [
+        {
+          "name": "David Guetta",
+          "artist": {
+            "name": "David Guetta"
+          }
+        },
+        {
+          "name": "Nicki Minaj",
+          "artist": {
+            "name": "Nicki Minaj"
+          }
+        },
+        {
+          "name": "Afrojack",
+          "artist": {
+            "name": "Afrojack"
+          }
+        }
+      ],
+      "releases": [
+        {
+          "id": "40d8834c-dbce-45c9-803c-6810c269c3fc",
+          "status": "Official",
+          "date": "2015",
+          "release-group": {
+            "id": "e31a4efa-a2ad-418b-af9b-7c4931f69d64",
+            "score": null,
+            "title": "Discoradio Compilation 8.0",
+            "first-release-date": null,
+            "primary-type": "Album",
+            "secondary-types": [
+              "Compilation",
+              "DJ-mix"
+            ],
+            "artist-credit": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "b9964981-0abe-4bdc-a257-f0f68cd026f9",
+      "score": 100,
+      "title": "Hey Mama",
+      "disambiguation": null,
+      "artist-credit": [
+        {
+          "name": "David Guetta",
+          "artist": {
+            "name": "David Guetta"
+          }
+        },
+        {
+          "name": "Nicki Minaj",
+          "artist": {
+            "name": "Nicki Minaj"
+          }
+        },
+        {
+          "name": "Afrojack",
+          "artist": {
+            "name": "Afrojack"
+          }
+        }
+      ],
+      "releases": [
+        {
+          "id": "debe297b-7153-49b3-8a68-53f2cfc6a3a0",
+          "status": "Official",
+          "date": "2015-06-19",
+          "release-group": {
+            "id": "77b9cc13-7281-4249-8b3f-7acb7155fc80",
+            "score": null,
+            "title": "The Voice Kesähitti 2015",
+            "first-release-date": null,
+            "primary-type": "Album",
+            "secondary-types": [
+              "Compilation"
+            ],
+            "artist-credit": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "5f0290c7-d88f-4067-aca2-9644d8718f6a",
+      "score": 94,
+      "title": "Hey Mama",
+      "disambiguation": null,
+      "artist-credit": [
+        {
+          "name": "David Guetta",
+          "artist": {
+            "name": "David Guetta"
+          }
+        },
+        {
+          "name": "Afrojack",
+          "artist": {
+            "name": "Afrojack"
+          }
+        },
+        {
+          "name": "Bebe Rexha",
+          "artist": {
+            "name": "Bebe Rexha"
+          }
+        },
+        {
+          "name": "Nicki Minaj",
+          "artist": {
+            "name": "Nicki Minaj"
+          }
+        }
+      ],
+      "releases": [
+        {
+          "id": "4e4e4f02-c0d9-40be-995e-81c736e26306",
+          "status": "Official",
+          "date": "2017",
+          "release-group": {
+            "id": "80a0c9fe-7457-451e-958d-ce44d374443a",
+            "score": null,
+            "title": "Party Mums: Your Ultimate Party Music",
+            "first-release-date": null,
+            "primary-type": "Album",
+            "secondary-types": [
+              "Compilation"
+            ],
+            "artist-credit": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "3d58691b-e258-4f6b-88be-d11953f809c5",
+      "score": 94,
+      "title": "Hey Mama",
+      "disambiguation": "part of “Running Trax Summer 2016” DJ-mix",
+      "artist-credit": [
+        {
+          "name": "David Guetta",
+          "artist": {
+            "name": "David Guetta"
+          }
+        },
+        {
+          "name": "Nicki Minaj",
+          "artist": {
+            "name": "Nicki Minaj"
+          }
+        },
+        {
+          "name": "Bebe Rexha",
+          "artist": {
+            "name": "Bebe Rexha"
+          }
+        },
+        {
+          "name": "Afrojack",
+          "artist": {
+            "name": "Afrojack"
+          }
+        }
+      ],
+      "releases": [
+        {
+          "id": "ce69e2c5-148d-4d04-a998-cb4f8e63af02",
+          "status": "Official",
+          "date": "2015-11-27",
+          "release-group": {
+            "id": "5ecade0a-e39d-4ac6-bf5c-1078d902ed59",
+            "score": null,
+            "title": "Running Trax Summer 2016",
+            "first-release-date": null,
+            "primary-type": "Album",
+            "secondary-types": [
+              "Compilation"
+            ],
+            "artist-credit": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "c8dd831e-aed1-4bb2-849a-ae22ad8ef5a0",
+      "score": 94,
+      "title": "Hey Mama",
+      "disambiguation": "album",
+      "artist-credit": [
+        {
+          "name": "David Guetta",
+          "artist": {
+            "name": "David Guetta"
+          }
+        },
+        {
+          "name": "Nicki Minaj",
+          "artist": {
+            "name": "Nicki Minaj"
+          }
+        },
+        {
+          "name": "Bebe Rexha",
+          "artist": {
+            "name": "Bebe Rexha"
+          }
+        },
+        {
+          "name": "Afrojack",
+          "artist": {
+            "name": "Afrojack"
+          }
+        }
+      ],
+      "releases": [
+        {
+          "id": "01709ee4-c7eb-468c-81af-fd276f3d0af0",
+          "status": "Promotion",
+          "date": "2015-03-16",
+          "release-group": {
+            "id": "375ca37d-e9ed-4eca-ac05-4f8573709387",
+            "score": null,
+            "title": "Hey Mama",
+            "first-release-date": null,
+            "primary-type": "Single",
+            "secondary-types": [],
+            "artist-credit": []
+          }
+        },
+        {
+          "id": "dd8e80f9-950c-4c88-b508-39bb2d58c74f",
+          "status": "Official",
+          "date": "2015-07-02",
+          "release-group": {
+            "id": "608fe900-ea88-4e61-a299-8b548ebf9121",
+            "score": null,
+            "title": "Absolute Summer Hits 2015",
+            "first-release-date": null,
+            "primary-type": "Album",
+            "secondary-types": [
+              "Compilation"
+            ],
+            "artist-credit": []
+          }
+        },
+        {
+          "id": "e853c5de-0f9a-4ac2-9d86-7562f06222ac",
+          "status": "Withdrawn",
+          "date": "2015-09-11",
+          "release-group": {
+            "id": "88f3c069-d5d4-460f-ad62-04fdfe082503",
+            "score": null,
+            "title": "Autumn Music 2015",
+            "first-release-date": null,
+            "primary-type": "Album",
+            "secondary-types": [
+              "Compilation"
+            ],
+            "artist-credit": []
+          }
+        },
+        {
+          "id": "3716fc69-e266-4de7-b66c-42f6a760d8a8",
+          "status": "Official",
+          "date": "2015-11-27",
+          "release-group": {
+            "id": "57115279-ee5f-4f7e-a484-148f55fa09ad",
+            "score": null,
+            "title": "Listen",
+            "first-release-date": null,
+            "primary-type": "Album",
+            "secondary-types": [],
+            "artist-credit": []
+          }
+        },
+        {
+          "id": "2208998c-97b9-4cd9-91d1-4fe6a9876b27",
+          "status": "Official",
+          "date": "2015-07-17",
+          "release-group": {
+            "id": "2de9b0f9-6c8d-4538-b63d-45cb81fa963f",
+            "score": null,
+            "title": "NRJ Party Hits 2015",
+            "first-release-date": null,
+            "primary-type": "Album",
+            "secondary-types": [
+              "Compilation"
+            ],
+            "artist-credit": []
+          }
+        },
+        {
+          "id": "3664a95a-dc06-425b-b413-cad15a4dc54e",
+          "status": "Withdrawn",
+          "date": null,
+          "release-group": {
+            "id": "86a53816-ddd7-43f3-9a78-fccd891cdcae",
+            "score": null,
+            "title": "Now That’s What I Call Music! 91",
+            "first-release-date": null,
+            "primary-type": "Album",
+            "secondary-types": [
+              "Compilation"
+            ],
+            "artist-credit": []
+          }
+        },
+        {
+          "id": "e40b61ed-c1d6-4502-9ca9-a37f5225e32f",
+          "status": "Official",
+          "date": "2015",
+          "release-group": {
+            "id": "5f0a8092-8fec-45b3-b9b2-acc3c8c553c9",
+            "score": null,
+            "title": "Now That’s What I Call Music 48",
+            "first-release-date": null,
+            "primary-type": "Album",
+            "secondary-types": [
+              "Compilation"
+            ],
+            "artist-credit": []
+          }
+        },
+        {
+          "id": "fea37095-4259-49df-9fea-a53716fa1e15",
+          "status": "Official",
+          "date": "",
+          "release-group": {
+            "id": "5d9d012f-a373-40ef-be07-3e136308763b",
+            "score": null,
+            "title": "Best of David Guetta",
+            "first-release-date": null,
+            "primary-type": "Album",
+            "secondary-types": [
+              "Compilation"
+            ],
+            "artist-credit": []
+          }
+        },
+        {
+          "id": "1ce20c6f-47e8-4e8a-a979-b812511f56c6",
+          "status": "Official",
+          "date": "2015-05-04",
+          "release-group": {
+            "id": "0aee2e5e-76b1-4b60-a738-101c267c5ecd",
+            "score": null,
+            "title": "NRJ Hit List 2015",
+            "first-release-date": null,
+            "primary-type": "Album",
+            "secondary-types": [
+              "Compilation"
+            ],
+            "artist-credit": []
+          }
+        },
+        {
+          "id": "eba4b7b8-d001-4727-8aaa-416ac57cb952",
+          "status": "Official",
+          "date": "2015-11-27",
+          "release-group": {
+            "id": "12b02083-d952-4b29-baff-869f0a66a336",
+            "score": null,
+            "title": "100% Hits: Best of 2015",
+            "first-release-date": null,
+            "primary-type": "Album",
+            "secondary-types": [
+              "Compilation"
+            ],
+            "artist-credit": []
+          }
+        },
+        {
+          "id": "847a5561-c79f-48cf-9b21-5bd02e930fb4",
+          "status": "Official",
+          "date": "2015-08-07",
+          "release-group": {
+            "id": "ca5b82ce-fb33-4b6f-8124-a9412ea54e8d",
+            "score": null,
+            "title": "Planète Rap 2015, Volume 2",
+            "first-release-date": null,
+            "primary-type": "Album",
+            "secondary-types": [
+              "Compilation"
+            ],
+            "artist-credit": []
+          }
+        },
+        {
+          "id": "1a30023f-2e58-44bb-a6a8-0e291f584e72",
+          "status": "Official",
+          "date": "2016",
+          "release-group": {
+            "id": "57115279-ee5f-4f7e-a484-148f55fa09ad",
+            "score": null,
+            "title": "Listen",
+            "first-release-date": null,
+            "primary-type": "Album",
+            "secondary-types": [],
+            "artist-credit": []
+          }
+        },
+        {
+          "id": "14bb5edb-93a3-400a-903c-23940b4f999c",
+          "status": "Official",
+          "date": "2015",
+          "release-group": {
+            "id": "d972f1d5-62d7-4e87-97f0-e33f7377c11d",
+            "score": null,
+            "title": "Kiss Kiss Play Summer 2015",
+            "first-release-date": null,
+            "primary-type": "Album",
+            "secondary-types": [
+              "Compilation"
+            ],
+            "artist-credit": []
+          }
+        },
+        {
+          "id": "250f3a54-0c1a-484b-89e5-92bc90e87945",
+          "status": "Official",
+          "date": "2015",
+          "release-group": {
+            "id": "dcb36575-59f7-4ece-bf55-a9c5220692a9",
+            "score": null,
+            "title": "Hit’s Summer!",
+            "first-release-date": null,
+            "primary-type": "Album",
+            "secondary-types": [
+              "Compilation"
+            ],
+            "artist-credit": []
+          }
+        },
+        {
+          "id": "e9dfe7ea-d340-4798-ab58-7a500fffc297",
+          "status": "Official",
+          "date": "2019-04-12",
+          "release-group": {
+            "id": "40cfec3f-856e-4bf6-94c4-cc97fb46474f",
+            "score": null,
+            "title": "100 Greatest Dance Tracks",
+            "first-release-date": null,
+            "primary-type": "Album",
+            "secondary-types": [
+              "Compilation"
+            ],
+            "artist-credit": []
+          }
+        },
+        {
+          "id": "a9f3ac09-bffe-4194-b49b-1e524b07e415",
+          "status": "Official",
+          "date": "2015-07-10",
+          "release-group": {
+            "id": "f94c4d96-ebe3-4883-8c7e-322e751bc171",
+            "score": null,
+            "title": "Radio 538: Hitzone 74",
+            "first-release-date": null,
+            "primary-type": "Album",
+            "secondary-types": [
+              "Compilation"
+            ],
+            "artist-credit": []
+          }
+        },
+        {
+          "id": "e35b5d23-17d4-47d3-9d9b-f7529654ff3f",
+          "status": "Official",
+          "date": "2015-12-09",
+          "release-group": {
+            "id": "57115279-ee5f-4f7e-a484-148f55fa09ad",
+            "score": null,
+            "title": "Listen",
+            "first-release-date": null,
+            "primary-type": "Album",
+            "secondary-types": [],
+            "artist-credit": []
+          }
+        },
+        {
+          "id": "3070ca84-5104-4da0-9eb4-abf27bdc72f6",
+          "status": "Official",
+          "date": null,
+          "release-group": {
+            "id": "66e975e3-bd2d-456f-af11-46d18d48e269",
+            "score": null,
+            "title": "New Year’s Eve Party",
+            "first-release-date": null,
+            "primary-type": "Album",
+            "secondary-types": [
+              "Compilation"
+            ],
+            "artist-credit": []
+          }
+        },
+        {
+          "id": "a8fea560-4c82-4dfc-81d3-b884ded86126",
+          "status": "Official",
+          "date": "2015",
+          "release-group": {
+            "id": "9dfc790d-5ef0-4894-abf3-b2f7b8a53d4e",
+            "score": null,
+            "title": "Bravo Hits 90",
+            "first-release-date": null,
+            "primary-type": "Album",
+            "secondary-types": [
+              "Compilation"
+            ],
+            "artist-credit": []
+          }
+        },
+        {
+          "id": "495c2e0e-5e00-4716-b6ab-c50352f61480",
+          "status": "Official",
+          "date": "2014-11-24",
+          "release-group": {
+            "id": "57115279-ee5f-4f7e-a484-148f55fa09ad",
+            "score": null,
+            "title": "Listen",
+            "first-release-date": null,
+            "primary-type": "Album",
+            "secondary-types": [],
+            "artist-credit": []
+          }
+        },
+        {
+          "id": "4f3f9538-8035-45ee-8881-7ce1a8e88cb3",
+          "status": "Official",
+          "date": "2022-04-15",
+          "release-group": {
+            "id": "6bac10bd-a256-4616-996c-c20adbb485f7",
+            "score": null,
+            "title": "Party All Night",
+            "first-release-date": null,
+            "primary-type": "Album",
+            "secondary-types": [
+              "Compilation"
+            ],
+            "artist-credit": []
+          }
+        },
+        {
+          "id": "fefc30ed-4099-4922-8c35-c3b140639c7a",
+          "status": "Official",
+          "date": "2015-06-29",
+          "release-group": {
+            "id": "fe7cb910-ea62-4927-be4c-7701445c4ca5",
+            "score": null,
+            "title": "Fun Radio: Fun List",
+            "first-release-date": null,
+            "primary-type": "Album",
+            "secondary-types": [
+              "Compilation"
+            ],
+            "artist-credit": []
+          }
+        },
+        {
+          "id": "a5b68ade-cf0b-4bf0-b3f0-64dc3567b05f",
+          "status": "Official",
+          "date": null,
+          "release-group": {
+            "id": "1f55d87e-8a46-4e40-a8f8-c9b4c2ec4364",
+            "score": null,
+            "title": "Memories of Summer",
+            "first-release-date": null,
+            "primary-type": "EP",
+            "secondary-types": [
+              "Compilation"
+            ],
+            "artist-credit": []
+          }
+        },
+        {
+          "id": "4b4d909f-c226-4e6c-aa96-0250fdeb2898",
+          "status": "Official",
+          "date": "2015-07-24",
+          "release-group": {
+            "id": "86a53816-ddd7-43f3-9a78-fccd891cdcae",
+            "score": null,
+            "title": "Now That’s What I Call Music! 91",
+            "first-release-date": null,
+            "primary-type": "Album",
+            "secondary-types": [
+              "Compilation"
+            ],
+            "artist-credit": []
+          }
+        },
+        {
+          "id": "59ef7547-759a-446f-b548-3d0f1b3e8953",
+          "status": "Official",
+          "date": "2019-04-05",
+          "release-group": {
+            "id": "57115279-ee5f-4f7e-a484-148f55fa09ad",
+            "score": null,
+            "title": "Listen",
+            "first-release-date": null,
+            "primary-type": "Album",
+            "secondary-types": [],
+            "artist-credit": []
+          }
+        },
+        {
+          "id": "11a07ab4-cdb6-40c8-ae6f-5990b5845e35",
+          "status": "Official",
+          "date": "2015-08-07",
+          "release-group": {
+            "id": "a33345b4-c53d-4c3b-9abe-4e2b7257210f",
+            "score": null,
+            "title": "Now That’s What I Call Music! 55",
+            "first-release-date": null,
+            "primary-type": "Album",
+            "secondary-types": [
+              "Compilation"
+            ],
+            "artist-credit": []
+          }
+        },
+        {
+          "id": "51136830-e83a-48bf-b451-a9cbe764e511",
+          "status": "Official",
+          "date": "2014",
+          "release-group": {
+            "id": "57115279-ee5f-4f7e-a484-148f55fa09ad",
+            "score": null,
+            "title": "Listen",
+            "first-release-date": null,
+            "primary-type": "Album",
+            "secondary-types": [],
+            "artist-credit": []
+          }
+        },
+        {
+          "id": "4acbe94e-27a9-4ff5-b556-09325a0bfd3a",
+          "status": "Official",
+          "date": "2014-11-21",
+          "release-group": {
+            "id": "57115279-ee5f-4f7e-a484-148f55fa09ad",
+            "score": null,
+            "title": "Listen",
+            "first-release-date": null,
+            "primary-type": "Album",
+            "secondary-types": [],
+            "artist-credit": []
+          }
+        },
+        {
+          "id": "e612b781-edc0-4954-bc0f-96c1eacf4b5f",
+          "status": "Official",
+          "date": "2019-07-05",
+          "release-group": {
+            "id": "9cce517e-273e-47bc-80de-4e8044d279f1",
+            "score": null,
+            "title": "Planète Rap 2019, Vol. 2",
+            "first-release-date": null,
+            "primary-type": "Album",
+            "secondary-types": [
+              "Compilation"
+            ],
+            "artist-credit": []
+          }
+        },
+        {
+          "id": "abfd3006-3921-43f6-b45e-c5d4d852d591",
+          "status": "Official",
+          "date": "2014-11-26",
+          "release-group": {
+            "id": "57115279-ee5f-4f7e-a484-148f55fa09ad",
+            "score": null,
+            "title": "Listen",
+            "first-release-date": null,
+            "primary-type": "Album",
+            "secondary-types": [],
+            "artist-credit": []
+          }
+        },
+        {
+          "id": "e35b5d23-17d4-47d3-9d9b-f7529654ff3f",
+          "status": "Official",
+          "date": "2015-12-09",
+          "release-group": {
+            "id": "57115279-ee5f-4f7e-a484-148f55fa09ad",
+            "score": null,
+            "title": "Listen",
+            "first-release-date": null,
+            "primary-type": "Album",
+            "secondary-types": [],
+            "artist-credit": []
+          }
+        },
+        {
+          "id": "0858fabf-9e41-4da1-a77a-05ccc0f53053",
+          "status": "Official",
+          "date": "2015-08-21",
+          "release-group": {
+            "id": "b6c19006-e6da-46c2-b4f8-6511398f0f73",
+            "score": null,
+            "title": "538 Dance Smash 2015, Volume 3",
+            "first-release-date": null,
+            "primary-type": "Album",
+            "secondary-types": [
+              "Compilation"
+            ],
+            "artist-credit": []
+          }
+        },
+        {
+          "id": "a472e126-cc26-4b38-841d-ace59d30298e",
+          "status": "Official",
+          "date": "2014-11-21",
+          "release-group": {
+            "id": "57115279-ee5f-4f7e-a484-148f55fa09ad",
+            "score": null,
+            "title": "Listen",
+            "first-release-date": null,
+            "primary-type": "Album",
+            "secondary-types": [],
+            "artist-credit": []
+          }
+        },
+        {
+          "id": "9a671517-87cd-495d-a8cf-ab2afadca22f",
+          "status": "Official",
+          "date": "2015-06-29",
+          "release-group": {
+            "id": "fa522b9d-f58d-4611-88aa-1275dd4b5696",
+            "score": null,
+            "title": "MNM Big Hits 2015, Vol. 2",
+            "first-release-date": null,
+            "primary-type": "Album",
+            "secondary-types": [
+              "Compilation"
+            ],
+            "artist-credit": []
+          }
+        },
+        {
+          "id": "4798a65b-dfb1-4144-99b2-1e3a8c973e1f",
+          "status": "Official",
+          "date": "2015-11-06",
+          "release-group": {
+            "id": "419106e8-507f-4095-8ec3-a6ec2c06786e",
+            "score": null,
+            "title": "Club Sounds: The Ultimate Club Dance Collection, Vol. 75",
+            "first-release-date": null,
+            "primary-type": "Album",
+            "secondary-types": [
+              "Compilation",
+              "DJ-mix"
+            ],
+            "artist-credit": []
+          }
+        },
+        {
+          "id": "1c53ba9c-4ada-4b1e-a50d-07a8f61029b6",
+          "status": "Official",
+          "date": "2015-07-10",
+          "release-group": {
+            "id": "f4ff94b3-dfd6-4059-ae25-4026b5713fd8",
+            "score": null,
+            "title": "FG. Tendances#Electro: Été summer 2015",
+            "first-release-date": null,
+            "primary-type": "Album",
+            "secondary-types": [
+              "Compilation"
+            ],
+            "artist-credit": []
+          }
+        },
+        {
+          "id": "f05cc599-7fed-4eca-ad9e-b06acf880e0c",
+          "status": "Official",
+          "date": "2015-11-27",
+          "release-group": {
+            "id": "57115279-ee5f-4f7e-a484-148f55fa09ad",
+            "score": null,
+            "title": "Listen",
+            "first-release-date": null,
+            "primary-type": "Album",
+            "secondary-types": [],
+            "artist-credit": []
+          }
+        },
+        {
+          "id": "22f43159-a5c7-4878-83fe-50895fe3eabc",
+          "status": "Official",
+          "date": "2015",
+          "release-group": {
+            "id": "57115279-ee5f-4f7e-a484-148f55fa09ad",
+            "score": null,
+            "title": "Listen",
+            "first-release-date": null,
+            "primary-type": "Album",
+            "secondary-types": [],
+            "artist-credit": []
+          }
+        },
+        {
+          "id": "5f794bdf-37a9-4301-a742-41f58b44977f",
+          "status": "Official",
+          "date": "2015",
+          "release-group": {
+            "id": "005683e2-ef64-458c-8481-09aa9aaace83",
+            "score": null,
+            "title": "Energy NRJ Hit Music Only! Best of 2015/1",
+            "first-release-date": null,
+            "primary-type": "Album",
+            "secondary-types": [
+              "Compilation"
+            ],
+            "artist-credit": []
+          }
+        },
+        {
+          "id": "68a38e84-ba51-4587-88b5-3c3f0c52c5d7",
+          "status": "Official",
+          "date": "2016-02-12",
+          "release-group": {
+            "id": "62babc93-6b84-4edf-8be4-29139dc61c87",
+            "score": null,
+            "title": "BRIT Awards 2016",
+            "first-release-date": null,
+            "primary-type": "Album",
+            "secondary-types": [
+              "Compilation"
+            ],
+            "artist-credit": []
+          }
+        },
+        {
+          "id": "85fd60b9-7fd8-4bb6-b461-24c8accbeeef",
+          "status": "Official",
+          "date": "2015-11-13",
+          "release-group": {
+            "id": "3f43f675-7cd4-4bcf-8b44-b390f6f613f2",
+            "score": null,
+            "title": "Clubland 28",
+            "first-release-date": null,
+            "primary-type": "Album",
+            "secondary-types": [
+              "Compilation"
+            ],
+            "artist-credit": []
+          }
+        },
+        {
+          "id": "a63601fe-811d-4cda-a83c-826682e3b097",
+          "status": "Official",
+          "date": "2016-06-15",
+          "release-group": {
+            "id": "68ea9310-94f2-4b8a-be92-1e7ecebf5ba9",
+            "score": null,
+            "title": "Ultratop: Hit Connection 2015.2",
+            "first-release-date": null,
+            "primary-type": "Album",
+            "secondary-types": [
+              "Compilation"
+            ],
+            "artist-credit": []
+          }
+        },
+        {
+          "id": "5b59f24c-4861-40e2-a6d0-d3f57e9b9d9b",
+          "status": null,
+          "date": null,
+          "release-group": {
+            "id": "a44905c0-85a5-433b-b11b-4ea728c7edb0",
+            "score": null,
+            "title": "NRJ Extravadance Summer 2015",
+            "first-release-date": null,
+            "primary-type": "Album",
+            "secondary-types": [
+              "Compilation"
+            ],
+            "artist-credit": []
+          }
+        },
+        {
+          "id": "1d9f56c3-b893-4a80-a5ec-2aa188f2c959",
+          "status": "Official",
+          "date": "2016-04-22",
+          "release-group": {
+            "id": "4d4e5e9a-38d9-4f59-ab1d-22dc2752dc8a",
+            "score": null,
+            "title": "NOW That’s What I Call Fitness",
+            "first-release-date": null,
+            "primary-type": "Album",
+            "secondary-types": [
+              "Compilation"
+            ],
+            "artist-credit": []
+          }
+        },
+        {
+          "id": "1de24f13-1525-4847-974f-ad9d875ad562",
+          "status": "Official",
+          "date": "2015-07-03",
+          "release-group": {
+            "id": "a22e0e39-b261-4e91-9e4f-2babb1943eb8",
+            "score": null,
+            "title": "Urban Dance 13",
+            "first-release-date": null,
+            "primary-type": "Album",
+            "secondary-types": [
+              "Compilation"
+            ],
+            "artist-credit": []
+          }
+        },
+        {
+          "id": "fc0ee63f-3157-484c-8427-ab4c1644e32d",
+          "status": "Official",
+          "date": "2015-11-20",
+          "release-group": {
+            "id": "f7aee805-6d76-4ab1-9e27-6870ab052d18",
+            "score": null,
+            "title": "Club Sounds: The Ultimate Club Dance Collection: Best of 2015",
+            "first-release-date": null,
+            "primary-type": "Album",
+            "secondary-types": [
+              "Compilation"
+            ],
+            "artist-credit": []
+          }
+        },
+        {
+          "id": "a61556b5-5368-48aa-bef2-a8ffd1aa7749",
+          "status": "Official",
+          "date": "2014-11-21",
+          "release-group": {
+            "id": "57115279-ee5f-4f7e-a484-148f55fa09ad",
+            "score": null,
+            "title": "Listen",
+            "first-release-date": null,
+            "primary-type": "Album",
+            "secondary-types": [],
+            "artist-credit": []
+          }
+        },
+        {
+          "id": "4540f543-9e08-4daa-9f99-f0d3f6313e06",
+          "status": "Official",
+          "date": "2015-03-17",
+          "release-group": {
+            "id": "375ca37d-e9ed-4eca-ac05-4f8573709387",
+            "score": null,
+            "title": "Hey Mama",
+            "first-release-date": null,
+            "primary-type": "Single",
+            "secondary-types": [],
+            "artist-credit": []
+          }
+        },
+        {
+          "id": "fc5c4518-cc1d-4459-8724-359e4e5f5f98",
+          "status": "Official",
+          "date": "2014-11-24",
+          "release-group": {
+            "id": "57115279-ee5f-4f7e-a484-148f55fa09ad",
+            "score": null,
+            "title": "Listen",
+            "first-release-date": null,
+            "primary-type": "Album",
+            "secondary-types": [],
+            "artist-credit": []
+          }
+        },
+        {
+          "id": "9d7f0e5c-d80d-4e5b-ad3e-7c3b098ceadd",
+          "status": "Official",
+          "date": "2014-11-21",
+          "release-group": {
+            "id": "57115279-ee5f-4f7e-a484-148f55fa09ad",
+            "score": null,
+            "title": "Listen",
+            "first-release-date": null,
+            "primary-type": "Album",
+            "secondary-types": [],
+            "artist-credit": []
+          }
+        },
+        {
+          "id": "9bbdb18c-ae67-4246-a742-cdcecd67b609",
+          "status": "Official",
+          "date": "2015-06-22",
+          "release-group": {
+            "id": "30ae7d55-339c-4fbc-b838-2033c03659d4",
+            "score": null,
+            "title": "NRJ Summer Hits Only 2015",
+            "first-release-date": null,
+            "primary-type": "Album",
+            "secondary-types": [
+              "Compilation"
+            ],
+            "artist-credit": []
+          }
+        },
+        {
+          "id": "17492c58-ea4f-4e9e-baca-e4a228d1792d",
+          "status": "Official",
+          "date": "2015-06-19",
+          "release-group": {
+            "id": "e323c215-7be3-4624-a4e1-2e40b29c1eaf",
+            "score": null,
+            "title": "Megahits: Sommer 2015",
+            "first-release-date": null,
+            "primary-type": "Album",
+            "secondary-types": [
+              "Compilation"
+            ],
+            "artist-credit": []
+          }
+        },
+        {
+          "id": "53dfa66d-5159-412a-9a4d-752fdc5ca93a",
+          "status": "Official",
+          "date": "2015-09-04",
+          "release-group": {
+            "id": "e8dc551b-0c2b-4f75-b278-65690a2e8e89",
+            "score": null,
+            "title": "The Dome, Volume 75",
+            "first-release-date": null,
+            "primary-type": "Album",
+            "secondary-types": [
+              "Compilation"
+            ],
+            "artist-credit": []
+          }
+        },
+        {
+          "id": "8c09c1ec-5736-457e-9daf-0cfbaa447c77",
+          "status": "Official",
+          "date": "2015-07-24",
+          "release-group": {
+            "id": "9dfc790d-5ef0-4894-abf3-b2f7b8a53d4e",
+            "score": null,
+            "title": "Bravo Hits 90",
+            "first-release-date": null,
+            "primary-type": "Album",
+            "secondary-types": [
+              "Compilation"
+            ],
+            "artist-credit": []
+          }
+        },
+        {
+          "id": "d962eec4-bbe8-4bf9-8ad3-3f447bf1ef83",
+          "status": "Official",
+          "date": "2015-11-27",
+          "release-group": {
+            "id": "57115279-ee5f-4f7e-a484-148f55fa09ad",
+            "score": null,
+            "title": "Listen",
+            "first-release-date": null,
+            "primary-type": "Album",
+            "secondary-types": [],
+            "artist-credit": []
+          }
+        },
+        {
+          "id": "3b48c347-ee2a-471c-8868-17ee794ded7c",
+          "status": "Official",
+          "date": "2015-11-20",
+          "release-group": {
+            "id": "3f469ad6-aded-4d66-b2cf-b44414db26bf",
+            "score": null,
+            "title": "538 Dance Smash 2015: Hits of the Year",
+            "first-release-date": null,
+            "primary-type": "Album",
+            "secondary-types": [
+              "Compilation"
+            ],
+            "artist-credit": []
+          }
+        },
+        {
+          "id": "aa6b1775-9e27-4e21-b7d1-4be5f1ce9704",
+          "status": "Official",
+          "date": "2015-07-24",
+          "release-group": {
+            "id": "7838d4d3-d4bb-41ee-84cd-0f84fb0fff4f",
+            "score": null,
+            "title": "Beach Party 2015",
+            "first-release-date": null,
+            "primary-type": "Album",
+            "secondary-types": [
+              "Compilation"
+            ],
+            "artist-credit": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "d54c9ea0-6923-4bf0-ba4a-e2606d776178",
+      "score": 94,
+      "title": "Hey Mama",
+      "disambiguation": "part of a “Ministry of Sound: The Annual 2016” DJ‐mix, UK",
+      "artist-credit": [
+        {
+          "name": "David Guetta",
+          "artist": {
+            "name": "David Guetta"
+          }
+        },
+        {
+          "name": "Nicki Minaj",
+          "artist": {
+            "name": "Nicki Minaj"
+          }
+        },
+        {
+          "name": "Bebe Rexha",
+          "artist": {
+            "name": "Bebe Rexha"
+          }
+        },
+        {
+          "name": "Afrojack",
+          "artist": {
+            "name": "Afrojack"
+          }
+        }
+      ],
+      "releases": [
+        {
+          "id": "b4cd66a1-5fde-4e28-8f79-c5c189f542ff",
+          "status": "Official",
+          "date": "2015-11-06",
+          "release-group": {
+            "id": "e29840f7-b4b7-425f-990c-99bc42e52540",
+            "score": null,
+            "title": "The Annual 2016",
+            "first-release-date": null,
+            "primary-type": "Album",
+            "secondary-types": [
+              "Compilation",
+              "DJ-mix"
+            ],
+            "artist-credit": []
+          }
+        },
+        {
+          "id": "f575f6de-0b45-457a-86e8-5d5b03e75034",
+          "status": "Official",
+          "date": "2015-11-05",
+          "release-group": {
+            "id": "e29840f7-b4b7-425f-990c-99bc42e52540",
+            "score": null,
+            "title": "The Annual 2016",
+            "first-release-date": null,
+            "primary-type": "Album",
+            "secondary-types": [
+              "Compilation",
+              "DJ-mix"
+            ],
+            "artist-credit": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "fd9dad44-169b-474b-a512-cd631da23b5c",
+      "score": 94,
+      "title": "Hey Mama",
+      "disambiguation": "part of “EDM: Electronic Dance Music 2015” DJ-mix",
+      "artist-credit": [
+        {
+          "name": "David Guetta",
+          "artist": {
+            "name": "David Guetta"
+          }
+        },
+        {
+          "name": "Nicki Minaj",
+          "artist": {
+            "name": "Nicki Minaj"
+          }
+        },
+        {
+          "name": "Bebe Rexha",
+          "artist": {
+            "name": "Bebe Rexha"
+          }
+        },
+        {
+          "name": "Afrojack",
+          "artist": {
+            "name": "Afrojack"
+          }
+        }
+      ],
+      "releases": [
+        {
+          "id": "db5115d2-d620-4531-bcb2-b94ebb05fd81",
+          "status": "Official",
+          "date": "2015-10-23",
+          "release-group": {
+            "id": "6460a7e6-3d2c-4d3f-a35b-5974d2dfecb9",
+            "score": null,
+            "title": "EDM: Electronic Dance Music 2015",
+            "first-release-date": null,
+            "primary-type": "Album",
+            "secondary-types": [
+              "Compilation"
+            ],
+            "artist-credit": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "ccfc6420-1ff9-4f62-a53e-ae8f622a93e5",
+      "score": 94,
+      "title": "Hey Mama",
+      "disambiguation": "part of “MuchDance 2016” DJ‐mix",
+      "artist-credit": [
+        {
+          "name": "David Guetta",
+          "artist": {
+            "name": "David Guetta"
+          }
+        },
+        {
+          "name": "Nicki Minaj",
+          "artist": {
+            "name": "Nicki Minaj"
+          }
+        },
+        {
+          "name": "Bebe Rexha",
+          "artist": {
+            "name": "Bebe Rexha"
+          }
+        },
+        {
+          "name": "Afrojack",
+          "artist": {
+            "name": "Afrojack"
+          }
+        }
+      ],
+      "releases": [
+        {
+          "id": "cab70f85-26f0-496f-8fae-aea89762f43f",
+          "status": "Official",
+          "date": "2015",
+          "release-group": {
+            "id": "7a2d4fe8-6027-446b-87fd-d3b851acb916",
+            "score": null,
+            "title": "MuchDance 2016",
+            "first-release-date": null,
+            "primary-type": "Album",
+            "secondary-types": [
+              "Compilation",
+              "DJ-mix"
+            ],
+            "artist-credit": []
+          }
+        },
+        {
+          "id": "2aa94158-9344-4ce2-9481-4d91a986eeba",
+          "status": "Promotion",
+          "date": "2016-12-31",
+          "release-group": {
+            "id": "ea77821d-e3bb-4305-b5d2-2742556396e5",
+            "score": null,
+            "title": "The Pinkprint: Live from Brooklyn",
+            "first-release-date": null,
+            "primary-type": "Broadcast",
+            "secondary-types": [
+              "Live"
+            ],
+            "artist-credit": []
+          }
+        },
+        {
+          "id": "1ed88af2-1cab-4b1e-8caf-e82f4e4188a6",
+          "status": "Official",
+          "date": "2015",
+          "release-group": {
+            "id": "7a2d4fe8-6027-446b-87fd-d3b851acb916",
+            "score": null,
+            "title": "MuchDance 2016",
+            "first-release-date": null,
+            "primary-type": "Album",
+            "secondary-types": [
+              "Compilation",
+              "DJ-mix"
+            ],
+            "artist-credit": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "ef8681e1-42c3-4027-ade2-7f5af52e998c",
+      "score": 94,
+      "title": "Hey Mama",
+      "disambiguation": "part of “Double Face 2015” DJ‐mix",
+      "artist-credit": [
+        {
+          "name": "David Guetta",
+          "artist": {
+            "name": "David Guetta"
+          }
+        },
+        {
+          "name": "Nicki Minaj",
+          "artist": {
+            "name": "Nicki Minaj"
+          }
+        },
+        {
+          "name": "Bebe Rexha",
+          "artist": {
+            "name": "Bebe Rexha"
+          }
+        },
+        {
+          "name": "Afrojack",
+          "artist": {
+            "name": "Afrojack"
+          }
+        }
+      ],
+      "releases": [
+        {
+          "id": "749f2eb1-4420-4e9a-bfbc-d2abd715c342",
+          "status": "Official",
+          "date": "2015-08-14",
+          "release-group": {
+            "id": "3a6aabdf-df44-4a0b-afbb-0926d00945ba",
+            "score": null,
+            "title": "Double Face 2015",
+            "first-release-date": null,
+            "primary-type": "Album",
+            "secondary-types": [
+              "Compilation",
+              "DJ-mix"
+            ],
+            "artist-credit": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "a7cfd03d-8d7c-4e5f-a77d-4ce23a70f9ed",
+      "score": 92,
+      "title": "Hey Mama (Afrojack remix)",
+      "disambiguation": "part of a “Big City Beats 23” DJ‐mix",
+      "artist-credit": [
+        {
+          "name": "David Guetta",
+          "artist": {
+            "name": "David Guetta"
+          }
+        },
+        {
+          "name": "Nicki Minaj",
+          "artist": {
+            "name": "Nicki Minaj"
+          }
+        }
+      ],
+      "releases": [
+        {
+          "id": "4d2ef366-7521-4f70-bee0-3bd6f51868f6",
+          "status": "Official",
+          "date": "2015-10-23",
+          "release-group": {
+            "id": "c320f4fc-6f16-4f14-a094-53007df6c788",
+            "score": null,
+            "title": "Big City Beats 23",
+            "first-release-date": null,
+            "primary-type": "Album",
+            "secondary-types": [
+              "Compilation",
+              "DJ-mix"
+            ],
+            "artist-credit": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "5da7e826-b76c-475c-a81c-18e0428014ea",
+      "score": 91,
+      "title": "Hey Mama (Instrumental)",
+      "disambiguation": null,
+      "artist-credit": [
+        {
+          "name": "David Guetta",
+          "artist": {
+            "name": "David Guetta"
+          }
+        },
+        {
+          "name": "Nicki Minaj",
+          "artist": {
+            "name": "Nicki Minaj"
+          }
+        },
+        {
+          "name": "Afrojack",
+          "artist": {
+            "name": "Afrojack"
+          }
+        }
+      ],
+      "releases": [
+        {
+          "id": "01709ee4-c7eb-468c-81af-fd276f3d0af0",
+          "status": "Promotion",
+          "date": "2015-03-16",
+          "release-group": {
+            "id": "375ca37d-e9ed-4eca-ac05-4f8573709387",
+            "score": null,
+            "title": "Hey Mama",
+            "first-release-date": null,
+            "primary-type": "Single",
+            "secondary-types": [],
+            "artist-credit": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "4bee0e89-afcd-47e2-a7d3-ff8419580472",
+      "score": 87,
+      "title": "Hey Mama (DJ Pitchugin remix)",
+      "disambiguation": null,
+      "artist-credit": [
+        {
+          "name": "David Guetta",
+          "artist": {
+            "name": "David Guetta"
+          }
+        },
+        {
+          "name": "Nicki Minaj",
+          "artist": {
+            "name": "Nicki Minaj"
+          }
+        }
+      ],
+      "releases": [
+        {
+          "id": "437b9d62-3c73-4f99-8526-28a3ed35d0fd",
+          "status": "Bootleg",
+          "date": null,
+          "release-group": {
+            "id": "dea3859a-2197-4963-a5ab-ed43139a62f2",
+            "score": null,
+            "title": "100 Winter Dance 2016",
+            "first-release-date": null,
+            "primary-type": "Album",
+            "secondary-types": [
+              "Compilation"
+            ],
+            "artist-credit": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "8ea8e9a1-f0c5-4de3-a9c7-8335b916f049",
+      "score": 86,
+      "title": "Hey Mama (extended)",
+      "disambiguation": null,
+      "artist-credit": [
+        {
+          "name": "David Guetta",
+          "artist": {
+            "name": "David Guetta"
+          }
+        },
+        {
+          "name": "Nicki Minaj",
+          "artist": {
+            "name": "Nicki Minaj"
+          }
+        },
+        {
+          "name": "Bebe Rexha",
+          "artist": {
+            "name": "Bebe Rexha"
+          }
+        },
+        {
+          "name": "Afrojack",
+          "artist": {
+            "name": "Afrojack"
+          }
+        }
+      ],
+      "releases": [
+        {
+          "id": "92ee13b6-8992-4beb-b10e-49575973fddd",
+          "status": "Official",
+          "date": "2015-05-04",
+          "release-group": {
+            "id": "c2bdbabb-24d5-46cc-b21b-6ce694e3414d",
+            "score": null,
+            "title": "Hey Mama (Remixes EP)",
+            "first-release-date": null,
+            "primary-type": "Single",
+            "secondary-types": [
+              "Remix"
+            ],
+            "artist-credit": []
+          }
+        },
+        {
+          "id": "a3cde664-ff96-47e0-8cdb-c98ef682585d",
+          "status": "Official",
+          "date": "2015",
+          "release-group": {
+            "id": "c2bdbabb-24d5-46cc-b21b-6ce694e3414d",
+            "score": null,
+            "title": "Hey Mama (Remixes EP)",
+            "first-release-date": null,
+            "primary-type": "Single",
+            "secondary-types": [
+              "Remix"
+            ],
+            "artist-credit": []
+          }
+        },
+        {
+          "id": "9dac60f0-8c67-49b4-ba57-9be8951f9eff",
+          "status": "Official",
+          "date": null,
+          "release-group": {
+            "id": "c2bdbabb-24d5-46cc-b21b-6ce694e3414d",
+            "score": null,
+            "title": "Hey Mama (Remixes EP)",
+            "first-release-date": null,
+            "primary-type": "Single",
+            "secondary-types": [
+              "Remix"
+            ],
+            "artist-credit": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "a5933a14-6208-4d01-a362-1ab56618f23c",
+      "score": 85,
+      "title": "Hey Mama (Afrojack remix)",
+      "disambiguation": "part of “Aquafan Compilation 2K15” DJ-mix",
+      "artist-credit": [
+        {
+          "name": "David Guetta",
+          "artist": {
+            "name": "David Guetta"
+          }
+        },
+        {
+          "name": "Nicki Minaj",
+          "artist": {
+            "name": "Nicki Minaj"
+          }
+        },
+        {
+          "name": "Afrojack",
+          "artist": {
+            "name": "Afrojack"
+          }
+        }
+      ],
+      "releases": [
+        {
+          "id": "52af779a-226c-49d9-bf9f-3a571bb8a8d2",
+          "status": "Official",
+          "date": "2015",
+          "release-group": {
+            "id": "8629d9ee-ac80-40e7-9d2a-9dc0ff567c94",
+            "score": null,
+            "title": "Aquafan Compilation 2K15",
+            "first-release-date": null,
+            "primary-type": "Album",
+            "secondary-types": [
+              "Compilation"
+            ],
+            "artist-credit": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "66c200e9-20f3-41a2-908e-ba01436a5d0e",
+      "score": 85,
+      "title": "Hey Mama (DISTO remix)",
+      "disambiguation": null,
+      "artist-credit": [
+        {
+          "name": "David Guetta",
+          "artist": {
+            "name": "David Guetta"
+          }
+        },
+        {
+          "name": "Nicki Minaj",
+          "artist": {
+            "name": "Nicki Minaj"
+          }
+        },
+        {
+          "name": "Afrojack",
+          "artist": {
+            "name": "Afrojack"
+          }
+        }
+      ],
+      "releases": [
+        {
+          "id": "c0f0aa1e-357f-4680-b28c-e39e982a13f2",
+          "status": "Official",
+          "date": "2015-05-27",
+          "release-group": {
+            "id": "5d77afdc-43f7-4f1d-acea-0a7cbc140d29",
+            "score": null,
+            "title": "Hey Mama (DISTO remix)",
+            "first-release-date": null,
+            "primary-type": "Single",
+            "secondary-types": [
+              "Remix"
+            ],
+            "artist-credit": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "24fdb4a4-db3e-4a5c-855b-1186368bd9de",
+      "score": 85,
+      "title": "Hey Mama (Afrojack Remix)",
+      "disambiguation": null,
+      "artist-credit": [
+        {
+          "name": "David Guetta",
+          "artist": {
+            "name": "David Guetta"
+          }
+        },
+        {
+          "name": "Nicki Minaj",
+          "artist": {
+            "name": "Nicki Minaj"
+          }
+        },
+        {
+          "name": "Afrojack",
+          "artist": {
+            "name": "Afrojack"
+          }
+        }
+      ],
+      "releases": [
+        {
+          "id": "6ee41d3a-d386-4e86-aef8-cd5024309f8b",
+          "status": "Official",
+          "date": null,
+          "release-group": {
+            "id": "b8066ac0-faa2-4afb-a76c-adfa61e4f28f",
+            "score": null,
+            "title": "40 Dance 2015",
+            "first-release-date": null,
+            "primary-type": "Album",
+            "secondary-types": [
+              "Compilation"
+            ],
+            "artist-credit": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "0b49c543-e9d2-45aa-9cf3-8b892d765342",
+      "score": 85,
+      "title": "Hey Mama (Glowinthedark remix)",
+      "disambiguation": null,
+      "artist-credit": [
+        {
+          "name": "David Guetta",
+          "artist": {
+            "name": "David Guetta"
+          }
+        },
+        {
+          "name": "Nicki Minaj",
+          "artist": {
+            "name": "Nicki Minaj"
+          }
+        },
+        {
+          "name": "Afrojack",
+          "artist": {
+            "name": "Afrojack"
+          }
+        }
+      ],
+      "releases": [
+        {
+          "id": "a3cde664-ff96-47e0-8cdb-c98ef682585d",
+          "status": "Official",
+          "date": "2015",
+          "release-group": {
+            "id": "c2bdbabb-24d5-46cc-b21b-6ce694e3414d",
+            "score": null,
+            "title": "Hey Mama (Remixes EP)",
+            "first-release-date": null,
+            "primary-type": "Single",
+            "secondary-types": [
+              "Remix"
+            ],
+            "artist-credit": []
+          }
+        },
+        {
+          "id": "9dac60f0-8c67-49b4-ba57-9be8951f9eff",
+          "status": "Official",
+          "date": null,
+          "release-group": {
+            "id": "c2bdbabb-24d5-46cc-b21b-6ce694e3414d",
+            "score": null,
+            "title": "Hey Mama (Remixes EP)",
+            "first-release-date": null,
+            "primary-type": "Single",
+            "secondary-types": [
+              "Remix"
+            ],
+            "artist-credit": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "9564e252-2014-4340-9ef8-8d69aed6c4fa",
+      "score": 81,
+      "title": "Hey Mama vs. The Whisperer",
+      "disambiguation": "part of a “Listen Again” DJ‐mix",
+      "artist-credit": [
+        {
+          "name": "David Guetta",
+          "artist": {
+            "name": "David Guetta"
+          }
+        },
+        {
+          "name": "Nicki Minaj",
+          "artist": {
+            "name": "Nicki Minaj"
+          }
+        },
+        {
+          "name": "Bebe Rexha",
+          "artist": {
+            "name": "Bebe Rexha"
+          }
+        },
+        {
+          "name": "Afrojack",
+          "artist": {
+            "name": "Afrojack"
+          }
+        },
+        {
+          "name": "David Guetta",
+          "artist": {
+            "name": "David Guetta"
+          }
+        },
+        {
+          "name": "Sia",
+          "artist": {
+            "name": "Sia"
+          }
+        }
+      ],
+      "releases": [
+        {
+          "id": "22f43159-a5c7-4878-83fe-50895fe3eabc",
+          "status": "Official",
+          "date": "2015",
+          "release-group": {
+            "id": "57115279-ee5f-4f7e-a484-148f55fa09ad",
+            "score": null,
+            "title": "Listen",
+            "first-release-date": null,
+            "primary-type": "Album",
+            "secondary-types": [],
+            "artist-credit": []
+          }
+        },
+        {
+          "id": "f05cc599-7fed-4eca-ad9e-b06acf880e0c",
+          "status": "Official",
+          "date": "2015-11-27",
+          "release-group": {
+            "id": "57115279-ee5f-4f7e-a484-148f55fa09ad",
+            "score": null,
+            "title": "Listen",
+            "first-release-date": null,
+            "primary-type": "Album",
+            "secondary-types": [],
+            "artist-credit": []
+          }
+        },
+        {
+          "id": "e35b5d23-17d4-47d3-9d9b-f7529654ff3f",
+          "status": "Official",
+          "date": "2015-12-09",
+          "release-group": {
+            "id": "57115279-ee5f-4f7e-a484-148f55fa09ad",
+            "score": null,
+            "title": "Listen",
+            "first-release-date": null,
+            "primary-type": "Album",
+            "secondary-types": [],
+            "artist-credit": []
+          }
+        },
+        {
+          "id": "3716fc69-e266-4de7-b66c-42f6a760d8a8",
+          "status": "Official",
+          "date": "2015-11-27",
+          "release-group": {
+            "id": "57115279-ee5f-4f7e-a484-148f55fa09ad",
+            "score": null,
+            "title": "Listen",
+            "first-release-date": null,
+            "primary-type": "Album",
+            "secondary-types": [],
+            "artist-credit": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "818e30c9-438f-438a-bc5f-5157acd213b6",
+      "score": 80,
+      "title": "Hey Mama (Afrojack remix)",
+      "disambiguation": "part of “Energy Mastermix 13” DJ‐mix",
+      "artist-credit": [
+        {
+          "name": "David Guetta",
+          "artist": {
+            "name": "David Guetta"
+          }
+        },
+        {
+          "name": "Nicki Minaj",
+          "artist": {
+            "name": "Nicki Minaj"
+          }
+        },
+        {
+          "name": "Bebe Rexha",
+          "artist": {
+            "name": "Bebe Rexha"
+          }
+        },
+        {
+          "name": "Afrojack",
+          "artist": {
+            "name": "Afrojack"
+          }
+        }
+      ],
+      "releases": [
+        {
+          "id": "c4a6cbad-1ff3-4025-b9a1-5a18be7cded9",
+          "status": "Official",
+          "date": "2015-09-25",
+          "release-group": {
+            "id": "973858b5-bc8f-4b2e-adbc-7ae09bab6559",
+            "score": null,
+            "title": "Energy Mastermix 13",
+            "first-release-date": null,
+            "primary-type": "Album",
+            "secondary-types": [
+              "Compilation",
+              "DJ-mix"
+            ],
+            "artist-credit": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "9b8b22d7-225a-40d7-96f1-4e250d808118",
+      "score": 80,
+      "title": "Hey Mama (Afrojack remix)",
+      "disambiguation": null,
+      "artist-credit": [
+        {
+          "name": "David Guetta",
+          "artist": {
+            "name": "David Guetta"
+          }
+        },
+        {
+          "name": "Nicki Minaj",
+          "artist": {
+            "name": "Nicki Minaj"
+          }
+        },
+        {
+          "name": "Bebe Rexha",
+          "artist": {
+            "name": "Bebe Rexha"
+          }
+        },
+        {
+          "name": "Afrojack",
+          "artist": {
+            "name": "Afrojack"
+          }
+        }
+      ],
+      "releases": [
+        {
+          "id": "c910b357-62f1-4e01-ae8d-c6369a7ded65",
+          "status": "Official",
+          "date": "2015",
+          "release-group": {
+            "id": "884489b4-3dd4-4799-b397-cfe4842909d9",
+            "score": null,
+            "title": "Floorfillers Annual 2016",
+            "first-release-date": null,
+            "primary-type": "Album",
+            "secondary-types": [
+              "Compilation",
+              "DJ-mix"
+            ],
+            "artist-credit": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "3a299c62-8ee2-49e8-866d-b4a29e734363",
+      "score": 80,
+      "title": "Hey Mama (Afrojack remix)",
+      "disambiguation": "part of a “Listen Again” DJ‐mix",
+      "artist-credit": [
+        {
+          "name": "David Guetta",
+          "artist": {
+            "name": "David Guetta"
+          }
+        },
+        {
+          "name": "Nicki Minaj",
+          "artist": {
+            "name": "Nicki Minaj"
+          }
+        },
+        {
+          "name": "Bebe Rexha",
+          "artist": {
+            "name": "Bebe Rexha"
+          }
+        },
+        {
+          "name": "Afrojack",
+          "artist": {
+            "name": "Afrojack"
+          }
+        }
+      ],
+      "releases": [
+        {
+          "id": "3716fc69-e266-4de7-b66c-42f6a760d8a8",
+          "status": "Official",
+          "date": "2015-11-27",
+          "release-group": {
+            "id": "57115279-ee5f-4f7e-a484-148f55fa09ad",
+            "score": null,
+            "title": "Listen",
+            "first-release-date": null,
+            "primary-type": "Album",
+            "secondary-types": [],
+            "artist-credit": []
+          }
+        },
+        {
+          "id": "22f43159-a5c7-4878-83fe-50895fe3eabc",
+          "status": "Official",
+          "date": "2015",
+          "release-group": {
+            "id": "57115279-ee5f-4f7e-a484-148f55fa09ad",
+            "score": null,
+            "title": "Listen",
+            "first-release-date": null,
+            "primary-type": "Album",
+            "secondary-types": [],
+            "artist-credit": []
+          }
+        },
+        {
+          "id": "f05cc599-7fed-4eca-ad9e-b06acf880e0c",
+          "status": "Official",
+          "date": "2015-11-27",
+          "release-group": {
+            "id": "57115279-ee5f-4f7e-a484-148f55fa09ad",
+            "score": null,
+            "title": "Listen",
+            "first-release-date": null,
+            "primary-type": "Album",
+            "secondary-types": [],
+            "artist-credit": []
+          }
+        },
+        {
+          "id": "e35b5d23-17d4-47d3-9d9b-f7529654ff3f",
+          "status": "Official",
+          "date": "2015-12-09",
+          "release-group": {
+            "id": "57115279-ee5f-4f7e-a484-148f55fa09ad",
+            "score": null,
+            "title": "Listen",
+            "first-release-date": null,
+            "primary-type": "Album",
+            "secondary-types": [],
+            "artist-credit": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "c2b35f79-a232-4b53-b1db-5b2c4501cdcb",
+      "score": 80,
+      "title": "Hey Mama (Afrojack remix)",
+      "disambiguation": null,
+      "artist-credit": [
+        {
+          "name": "David Guetta",
+          "artist": {
+            "name": "David Guetta"
+          }
+        },
+        {
+          "name": "Nicki Minaj",
+          "artist": {
+            "name": "Nicki Minaj"
+          }
+        },
+        {
+          "name": "Bebe Rexha",
+          "artist": {
+            "name": "Bebe Rexha"
+          }
+        },
+        {
+          "name": "Afrojack",
+          "artist": {
+            "name": "Afrojack"
+          }
+        }
+      ],
+      "releases": [
+        {
+          "id": "92ee13b6-8992-4beb-b10e-49575973fddd",
+          "status": "Official",
+          "date": "2015-05-04",
+          "release-group": {
+            "id": "c2bdbabb-24d5-46cc-b21b-6ce694e3414d",
+            "score": null,
+            "title": "Hey Mama (Remixes EP)",
+            "first-release-date": null,
+            "primary-type": "Single",
+            "secondary-types": [
+              "Remix"
+            ],
+            "artist-credit": []
+          }
+        },
+        {
+          "id": "a3cde664-ff96-47e0-8cdb-c98ef682585d",
+          "status": "Official",
+          "date": "2015",
+          "release-group": {
+            "id": "c2bdbabb-24d5-46cc-b21b-6ce694e3414d",
+            "score": null,
+            "title": "Hey Mama (Remixes EP)",
+            "first-release-date": null,
+            "primary-type": "Single",
+            "secondary-types": [
+              "Remix"
+            ],
+            "artist-credit": []
+          }
+        },
+        {
+          "id": "9dac60f0-8c67-49b4-ba57-9be8951f9eff",
+          "status": "Official",
+          "date": null,
+          "release-group": {
+            "id": "c2bdbabb-24d5-46cc-b21b-6ce694e3414d",
+            "score": null,
+            "title": "Hey Mama (Remixes EP)",
+            "first-release-date": null,
+            "primary-type": "Single",
+            "secondary-types": [
+              "Remix"
+            ],
+            "artist-credit": []
+          }
+        },
+        {
+          "id": "1d495bba-88ad-459b-9c7c-6f517cd05df4",
+          "status": "Official",
+          "date": "2015-09-18",
+          "release-group": {
+            "id": "d9c8427c-cee9-4f52-9ee8-3811bd56281b",
+            "score": null,
+            "title": "Sunshine Live, Vol. 55",
+            "first-release-date": null,
+            "primary-type": "Album",
+            "secondary-types": [
+              "Compilation"
+            ],
+            "artist-credit": []
+          }
+        },
+        {
+          "id": "5409de8e-e666-4f34-a15d-97383413fb68",
+          "status": "Official",
+          "date": "2015-08-28",
+          "release-group": {
+            "id": "7a77d0e8-2a01-48ee-9f47-180b8785a08c",
+            "score": null,
+            "title": "Future Trance 73",
+            "first-release-date": null,
+            "primary-type": "Album",
+            "secondary-types": [
+              "Compilation"
+            ],
+            "artist-credit": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "17fb31e8-a77c-4c71-b2c7-6c87284b9e2d",
+      "score": 80,
+      "title": "Hey Mama (GLOWINTHEDARK Remix)",
+      "disambiguation": "part of “Ministry of Sound: Maximum Bass Unleashed” DJ‐mix",
+      "artist-credit": [
+        {
+          "name": "David Guetta",
+          "artist": {
+            "name": "David Guetta"
+          }
+        },
+        {
+          "name": "Nicki Minaj",
+          "artist": {
+            "name": "Nicki Minaj"
+          }
+        },
+        {
+          "name": "Bebe Rexha",
+          "artist": {
+            "name": "Bebe Rexha"
+          }
+        },
+        {
+          "name": "Afrojack",
+          "artist": {
+            "name": "Afrojack"
+          }
+        }
+      ],
+      "releases": [
+        {
+          "id": "75bfdee7-cd9e-4841-8419-bc445128ce5e",
+          "status": "Official",
+          "date": "2015-10-23",
+          "release-group": {
+            "id": "80ff92c6-1a53-41ec-bef3-5c440d40c493",
+            "score": null,
+            "title": "Maximum Bass Unleashed",
+            "first-release-date": null,
+            "primary-type": "Album",
+            "secondary-types": [
+              "Compilation",
+              "DJ-mix"
+            ],
+            "artist-credit": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "e07f7718-41cc-422f-90b9-843ba84a2d5c",
+      "score": 80,
+      "title": "Hey Mama (Noodles remix)",
+      "disambiguation": null,
+      "artist-credit": [
+        {
+          "name": "David Guetta",
+          "artist": {
+            "name": "David Guetta"
+          }
+        },
+        {
+          "name": "Nicki Minaj",
+          "artist": {
+            "name": "Nicki Minaj"
+          }
+        },
+        {
+          "name": "Bebe Rexha",
+          "artist": {
+            "name": "Bebe Rexha"
+          }
+        },
+        {
+          "name": "Afrojack",
+          "artist": {
+            "name": "Afrojack"
+          }
+        }
+      ],
+      "releases": [
+        {
+          "id": "92ee13b6-8992-4beb-b10e-49575973fddd",
+          "status": "Official",
+          "date": "2015-05-04",
+          "release-group": {
+            "id": "c2bdbabb-24d5-46cc-b21b-6ce694e3414d",
+            "score": null,
+            "title": "Hey Mama (Remixes EP)",
+            "first-release-date": null,
+            "primary-type": "Single",
+            "secondary-types": [
+              "Remix"
+            ],
+            "artist-credit": []
+          }
+        },
+        {
+          "id": "a3cde664-ff96-47e0-8cdb-c98ef682585d",
+          "status": "Official",
+          "date": "2015",
+          "release-group": {
+            "id": "c2bdbabb-24d5-46cc-b21b-6ce694e3414d",
+            "score": null,
+            "title": "Hey Mama (Remixes EP)",
+            "first-release-date": null,
+            "primary-type": "Single",
+            "secondary-types": [
+              "Remix"
+            ],
+            "artist-credit": []
+          }
+        },
+        {
+          "id": "9dac60f0-8c67-49b4-ba57-9be8951f9eff",
+          "status": "Official",
+          "date": null,
+          "release-group": {
+            "id": "c2bdbabb-24d5-46cc-b21b-6ce694e3414d",
+            "score": null,
+            "title": "Hey Mama (Remixes EP)",
+            "first-release-date": null,
+            "primary-type": "Single",
+            "secondary-types": [
+              "Remix"
+            ],
+            "artist-credit": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "c7ec5338-967b-40ed-ab92-d2d5a106b810",
+      "score": 80,
+      "title": "Hey Mama (GLOWINTHEDARK remix)",
+      "disambiguation": null,
+      "artist-credit": [
+        {
+          "name": "David Guetta",
+          "artist": {
+            "name": "David Guetta"
+          }
+        },
+        {
+          "name": "Nicki Minaj",
+          "artist": {
+            "name": "Nicki Minaj"
+          }
+        },
+        {
+          "name": "Bebe Rexha",
+          "artist": {
+            "name": "Bebe Rexha"
+          }
+        },
+        {
+          "name": "Afrojack",
+          "artist": {
+            "name": "Afrojack"
+          }
+        }
+      ],
+      "releases": [
+        {
+          "id": "92ee13b6-8992-4beb-b10e-49575973fddd",
+          "status": "Official",
+          "date": "2015-05-04",
+          "release-group": {
+            "id": "c2bdbabb-24d5-46cc-b21b-6ce694e3414d",
+            "score": null,
+            "title": "Hey Mama (Remixes EP)",
+            "first-release-date": null,
+            "primary-type": "Single",
+            "secondary-types": [
+              "Remix"
+            ],
+            "artist-credit": []
+          }
+        },
+        {
+          "id": "d899bbc7-a937-4413-99bf-ed9204de3989",
+          "status": "Official",
+          "date": "2015-04-20",
+          "release-group": {
+            "id": "03d063bf-7ce6-4363-b746-0a62c25f7646",
+            "score": null,
+            "title": "Hey Mama (GLOWINTHEDARK remix)",
+            "first-release-date": null,
+            "primary-type": "Single",
+            "secondary-types": [
+              "Remix"
+            ],
+            "artist-credit": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "fe79e773-3f34-4a46-8d19-ba4481e8fefd",
+      "score": 80,
+      "title": "Hey Mama (Afrojack remix)",
+      "disambiguation": "part of “Ministry of Sound: Clubbers Guide Spring 2015” DJ‐mix",
+      "artist-credit": [
+        {
+          "name": "David Guetta",
+          "artist": {
+            "name": "David Guetta"
+          }
+        },
+        {
+          "name": "Nicki Minaj",
+          "artist": {
+            "name": "Nicki Minaj"
+          }
+        },
+        {
+          "name": "Bebe Rexha",
+          "artist": {
+            "name": "Bebe Rexha"
+          }
+        },
+        {
+          "name": "Afrojack",
+          "artist": {
+            "name": "Afrojack"
+          }
+        }
+      ],
+      "releases": [
+        {
+          "id": "f0a1131c-2b63-40bb-ac44-7254909f15b9",
+          "status": "Official",
+          "date": "2015-09-03",
+          "release-group": {
+            "id": "c5fd9527-cb03-46fe-8886-89e5cdeea0b4",
+            "score": null,
+            "title": "Clubbers Guide Spring 2015",
+            "first-release-date": null,
+            "primary-type": "Album",
+            "secondary-types": [
+              "Compilation",
+              "DJ-mix"
+            ],
+            "artist-credit": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "d5ff8b2d-cdc2-453f-a70e-949599a689cc",
+      "score": 80,
+      "title": "Hey Mama (Noodles remix)",
+      "disambiguation": "part of a “Listen Again” DJ‐mix",
+      "artist-credit": [
+        {
+          "name": "David Guetta",
+          "artist": {
+            "name": "David Guetta"
+          }
+        },
+        {
+          "name": "Nicki Minaj",
+          "artist": {
+            "name": "Nicki Minaj"
+          }
+        },
+        {
+          "name": "Bebe Rexha",
+          "artist": {
+            "name": "Bebe Rexha"
+          }
+        },
+        {
+          "name": "Afrojack",
+          "artist": {
+            "name": "Afrojack"
+          }
+        }
+      ],
+      "releases": [
+        {
+          "id": "3716fc69-e266-4de7-b66c-42f6a760d8a8",
+          "status": "Official",
+          "date": "2015-11-27",
+          "release-group": {
+            "id": "57115279-ee5f-4f7e-a484-148f55fa09ad",
+            "score": null,
+            "title": "Listen",
+            "first-release-date": null,
+            "primary-type": "Album",
+            "secondary-types": [],
+            "artist-credit": []
+          }
+        },
+        {
+          "id": "22f43159-a5c7-4878-83fe-50895fe3eabc",
+          "status": "Official",
+          "date": "2015",
+          "release-group": {
+            "id": "57115279-ee5f-4f7e-a484-148f55fa09ad",
+            "score": null,
+            "title": "Listen",
+            "first-release-date": null,
+            "primary-type": "Album",
+            "secondary-types": [],
+            "artist-credit": []
+          }
+        },
+        {
+          "id": "f05cc599-7fed-4eca-ad9e-b06acf880e0c",
+          "status": "Official",
+          "date": "2015-11-27",
+          "release-group": {
+            "id": "57115279-ee5f-4f7e-a484-148f55fa09ad",
+            "score": null,
+            "title": "Listen",
+            "first-release-date": null,
+            "primary-type": "Album",
+            "secondary-types": [],
+            "artist-credit": []
+          }
+        },
+        {
+          "id": "e35b5d23-17d4-47d3-9d9b-f7529654ff3f",
+          "status": "Official",
+          "date": "2015-12-09",
+          "release-group": {
+            "id": "57115279-ee5f-4f7e-a484-148f55fa09ad",
+            "score": null,
+            "title": "Listen",
+            "first-release-date": null,
+            "primary-type": "Album",
+            "secondary-types": [],
+            "artist-credit": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "17994013-4373-4d93-a5ab-e0d859e7b0c7",
+      "score": 80,
+      "title": "Hey Mama (Modern Machines remix)",
+      "disambiguation": null,
+      "artist-credit": [
+        {
+          "name": "David Guetta",
+          "artist": {
+            "name": "David Guetta"
+          }
+        },
+        {
+          "name": "Nicki Minaj",
+          "artist": {
+            "name": "Nicki Minaj"
+          }
+        },
+        {
+          "name": "Afrojack",
+          "artist": {
+            "name": "Afrojack"
+          }
+        }
+      ],
+      "releases": [
+        {
+          "id": "a3cde664-ff96-47e0-8cdb-c98ef682585d",
+          "status": "Official",
+          "date": "2015",
+          "release-group": {
+            "id": "c2bdbabb-24d5-46cc-b21b-6ce694e3414d",
+            "score": null,
+            "title": "Hey Mama (Remixes EP)",
+            "first-release-date": null,
+            "primary-type": "Single",
+            "secondary-types": [
+              "Remix"
+            ],
+            "artist-credit": []
+          }
+        },
+        {
+          "id": "9dac60f0-8c67-49b4-ba57-9be8951f9eff",
+          "status": "Official",
+          "date": null,
+          "release-group": {
+            "id": "c2bdbabb-24d5-46cc-b21b-6ce694e3414d",
+            "score": null,
+            "title": "Hey Mama (Remixes EP)",
+            "first-release-date": null,
+            "primary-type": "Single",
+            "secondary-types": [
+              "Remix"
+            ],
+            "artist-credit": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "8850186c-112f-4c1a-ab64-1d8eca9dae50",
+      "score": 77,
+      "title": "Hey Mama (Tyron Hapi Bootleg",
+      "disambiguation": null,
+      "artist-credit": [
+        {
+          "name": "David Guetta",
+          "artist": {
+            "name": "David Guetta"
+          }
+        },
+        {
+          "name": "Nicki Minaj",
+          "artist": {
+            "name": "Nicki Minaj"
+          }
+        },
+        {
+          "name": "Bebe Rexha",
+          "artist": {
+            "name": "Bebe Rexha"
+          }
+        },
+        {
+          "name": "Afrojack",
+          "artist": {
+            "name": "Afrojack"
+          }
+        }
+      ],
+      "releases": []
+    },
+    {
+      "id": "1f0158c3-8c4c-44a3-bb2b-166596784135",
+      "score": 75,
+      "title": "Hey Mama (Club Killers remix)",
+      "disambiguation": null,
+      "artist-credit": [
+        {
+          "name": "David Guetta",
+          "artist": {
+            "name": "David Guetta"
+          }
+        },
+        {
+          "name": "Nicki Minaj",
+          "artist": {
+            "name": "Nicki Minaj"
+          }
+        },
+        {
+          "name": "Bebe Rexha",
+          "artist": {
+            "name": "Bebe Rexha"
+          }
+        },
+        {
+          "name": "Afrojack",
+          "artist": {
+            "name": "Afrojack"
+          }
+        }
+      ],
+      "releases": [
+        {
+          "id": "92ee13b6-8992-4beb-b10e-49575973fddd",
+          "status": "Official",
+          "date": "2015-05-04",
+          "release-group": {
+            "id": "c2bdbabb-24d5-46cc-b21b-6ce694e3414d",
+            "score": null,
+            "title": "Hey Mama (Remixes EP)",
+            "first-release-date": null,
+            "primary-type": "Single",
+            "secondary-types": [
+              "Remix"
+            ],
+            "artist-credit": []
+          }
+        },
+        {
+          "id": "a3cde664-ff96-47e0-8cdb-c98ef682585d",
+          "status": "Official",
+          "date": "2015",
+          "release-group": {
+            "id": "c2bdbabb-24d5-46cc-b21b-6ce694e3414d",
+            "score": null,
+            "title": "Hey Mama (Remixes EP)",
+            "first-release-date": null,
+            "primary-type": "Single",
+            "secondary-types": [
+              "Remix"
+            ],
+            "artist-credit": []
+          }
+        },
+        {
+          "id": "9dac60f0-8c67-49b4-ba57-9be8951f9eff",
+          "status": "Official",
+          "date": null,
+          "release-group": {
+            "id": "c2bdbabb-24d5-46cc-b21b-6ce694e3414d",
+            "score": null,
+            "title": "Hey Mama (Remixes EP)",
+            "first-release-date": null,
+            "primary-type": "Single",
+            "secondary-types": [
+              "Remix"
+            ],
+            "artist-credit": []
+          }
+        },
+        {
+          "id": "c30952a4-1304-4042-ba5d-6631b182ee09",
+          "status": "Official",
+          "date": "2016",
+          "release-group": {
+            "id": "2a1944df-bbf3-419a-b3fc-b864be3e533e",
+            "score": null,
+            "title": "Michelle Bridges: Booty Blitz Trax",
+            "first-release-date": null,
+            "primary-type": "Album",
+            "secondary-types": [
+              "Compilation"
+            ],
+            "artist-credit": []
+          }
+        },
+        {
+          "id": "2317d627-2492-4feb-a762-db6b4b2f0736",
+          "status": "Official",
+          "date": "2015-12-18",
+          "release-group": {
+            "id": "81641da2-b6a7-45fe-ad17-67aba5359194",
+            "score": null,
+            "title": "Now That’s What I Call a Workout 2016",
+            "first-release-date": null,
+            "primary-type": "Album",
+            "secondary-types": [
+              "Compilation"
+            ],
+            "artist-credit": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "4435ef3a-167c-4e82-95d2-2cf498704adb",
+      "score": 75,
+      "title": "Hey Mama (Modern Machines remix)",
+      "disambiguation": null,
+      "artist-credit": [
+        {
+          "name": "David Guetta",
+          "artist": {
+            "name": "David Guetta"
+          }
+        },
+        {
+          "name": "Nicki Minaj",
+          "artist": {
+            "name": "Nicki Minaj"
+          }
+        },
+        {
+          "name": "Bebe Rexha",
+          "artist": {
+            "name": "Bebe Rexha"
+          }
+        },
+        {
+          "name": "Afrojack",
+          "artist": {
+            "name": "Afrojack"
+          }
+        }
+      ],
+      "releases": [
+        {
+          "id": "92ee13b6-8992-4beb-b10e-49575973fddd",
+          "status": "Official",
+          "date": "2015-05-04",
+          "release-group": {
+            "id": "c2bdbabb-24d5-46cc-b21b-6ce694e3414d",
+            "score": null,
+            "title": "Hey Mama (Remixes EP)",
+            "first-release-date": null,
+            "primary-type": "Single",
+            "secondary-types": [
+              "Remix"
+            ],
+            "artist-credit": []
+          }
+        },
+        {
+          "id": "1d5700f0-c714-4c8b-abfd-7c5902d12c18",
+          "status": "Official",
+          "date": "2015-10-09",
+          "release-group": {
+            "id": "358cee84-e04e-4eff-aead-308f6d654440",
+            "score": null,
+            "title": "Kontor Top of the Clubs 2015.04",
+            "first-release-date": null,
+            "primary-type": "Album",
+            "secondary-types": [
+              "Compilation"
+            ],
+            "artist-credit": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "b23ed9f8-f445-4af0-a5d0-db337f1d36d0",
+      "score": 75,
+      "title": "Hey Mama (Modern Machines remix)",
+      "disambiguation": "part of “Kontor: Top of the Clubs, Volume 68” DJ-mix",
+      "artist-credit": [
+        {
+          "name": "David Guetta",
+          "artist": {
+            "name": "David Guetta"
+          }
+        },
+        {
+          "name": "Nicki Minaj",
+          "artist": {
+            "name": "Nicki Minaj"
+          }
+        },
+        {
+          "name": "Bebe Rexha",
+          "artist": {
+            "name": "Bebe Rexha"
+          }
+        },
+        {
+          "name": "Afrojack",
+          "artist": {
+            "name": "Afrojack"
+          }
+        }
+      ],
+      "releases": [
+        {
+          "id": "e07a3784-ae33-4dfc-b4b8-732f612ffe88",
+          "status": "Official",
+          "date": "2015-10-09",
+          "release-group": {
+            "id": "d214a779-e6bf-4e32-91f6-b76413c25281",
+            "score": null,
+            "title": "Kontor: Top of the Clubs, Volume 68",
+            "first-release-date": null,
+            "primary-type": "Album",
+            "secondary-types": [
+              "Compilation",
+              "DJ-mix"
+            ],
+            "artist-credit": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "9c674a5d-d55e-4733-8d5b-d02912080637",
+      "score": 75,
+      "title": "Hey Mama (Club Killers remix)",
+      "disambiguation": "part of a “Listen Again” DJ‐mix",
+      "artist-credit": [
+        {
+          "name": "David Guetta",
+          "artist": {
+            "name": "David Guetta"
+          }
+        },
+        {
+          "name": "Nicki Minaj",
+          "artist": {
+            "name": "Nicki Minaj"
+          }
+        },
+        {
+          "name": "Bebe Rexha",
+          "artist": {
+            "name": "Bebe Rexha"
+          }
+        },
+        {
+          "name": "Afrojack",
+          "artist": {
+            "name": "Afrojack"
+          }
+        }
+      ],
+      "releases": [
+        {
+          "id": "22f43159-a5c7-4878-83fe-50895fe3eabc",
+          "status": "Official",
+          "date": "2015",
+          "release-group": {
+            "id": "57115279-ee5f-4f7e-a484-148f55fa09ad",
+            "score": null,
+            "title": "Listen",
+            "first-release-date": null,
+            "primary-type": "Album",
+            "secondary-types": [],
+            "artist-credit": []
+          }
+        },
+        {
+          "id": "f05cc599-7fed-4eca-ad9e-b06acf880e0c",
+          "status": "Official",
+          "date": "2015-11-27",
+          "release-group": {
+            "id": "57115279-ee5f-4f7e-a484-148f55fa09ad",
+            "score": null,
+            "title": "Listen",
+            "first-release-date": null,
+            "primary-type": "Album",
+            "secondary-types": [],
+            "artist-credit": []
+          }
+        },
+        {
+          "id": "e35b5d23-17d4-47d3-9d9b-f7529654ff3f",
+          "status": "Official",
+          "date": "2015-12-09",
+          "release-group": {
+            "id": "57115279-ee5f-4f7e-a484-148f55fa09ad",
+            "score": null,
+            "title": "Listen",
+            "first-release-date": null,
+            "primary-type": "Album",
+            "secondary-types": [],
+            "artist-credit": []
+          }
+        },
+        {
+          "id": "3716fc69-e266-4de7-b66c-42f6a760d8a8",
+          "status": "Official",
+          "date": "2015-11-27",
+          "release-group": {
+            "id": "57115279-ee5f-4f7e-a484-148f55fa09ad",
+            "score": null,
+            "title": "Listen",
+            "first-release-date": null,
+            "primary-type": "Album",
+            "secondary-types": [],
+            "artist-credit": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "35ddfd09-c63a-439a-9f42-4cb11a6f7108",
+      "score": 75,
+      "title": "Hey Mama (DJ LBR remix)",
+      "disambiguation": null,
+      "artist-credit": [
+        {
+          "name": "David Guetta",
+          "artist": {
+            "name": "David Guetta"
+          }
+        },
+        {
+          "name": "Nicki Minaj",
+          "artist": {
+            "name": "Nicki Minaj"
+          }
+        },
+        {
+          "name": "Bebe Rexha",
+          "artist": {
+            "name": "Bebe Rexha"
+          }
+        },
+        {
+          "name": "Afrojack",
+          "artist": {
+            "name": "Afrojack"
+          }
+        }
+      ],
+      "releases": [
+        {
+          "id": "92ee13b6-8992-4beb-b10e-49575973fddd",
+          "status": "Official",
+          "date": "2015-05-04",
+          "release-group": {
+            "id": "c2bdbabb-24d5-46cc-b21b-6ce694e3414d",
+            "score": null,
+            "title": "Hey Mama (Remixes EP)",
+            "first-release-date": null,
+            "primary-type": "Single",
+            "secondary-types": [
+              "Remix"
+            ],
+            "artist-credit": []
+          }
+        },
+        {
+          "id": "a3cde664-ff96-47e0-8cdb-c98ef682585d",
+          "status": "Official",
+          "date": "2015",
+          "release-group": {
+            "id": "c2bdbabb-24d5-46cc-b21b-6ce694e3414d",
+            "score": null,
+            "title": "Hey Mama (Remixes EP)",
+            "first-release-date": null,
+            "primary-type": "Single",
+            "secondary-types": [
+              "Remix"
+            ],
+            "artist-credit": []
+          }
+        },
+        {
+          "id": "9dac60f0-8c67-49b4-ba57-9be8951f9eff",
+          "status": "Official",
+          "date": null,
+          "release-group": {
+            "id": "c2bdbabb-24d5-46cc-b21b-6ce694e3414d",
+            "score": null,
+            "title": "Hey Mama (Remixes EP)",
+            "first-release-date": null,
+            "primary-type": "Single",
+            "secondary-types": [
+              "Remix"
+            ],
+            "artist-credit": []
+          }
+        },
+        {
+          "id": "2bbbe801-3c2b-4c8d-b9e2-e55720ab6ca2",
+          "status": "Official",
+          "date": "2015-09-18",
+          "release-group": {
+            "id": "ab046ec6-645a-4944-8403-81d8bf48e042",
+            "score": null,
+            "title": "Московский Марафон 2015: От мечты к реальности",
+            "first-release-date": null,
+            "primary-type": "Album",
+            "secondary-types": [
+              "Compilation"
+            ],
+            "artist-credit": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "c4e317f3-ad71-4006-b55a-54fe0fee58a8",
+      "score": 70,
+      "title": "Hey Mama (Renaissance Robot club mix)",
+      "disambiguation": "part of “Club Traxxx Fifteen” DJ‐mix",
+      "artist-credit": [
+        {
+          "name": "Dizzman",
+          "artist": {
+            "name": "Dizzman"
+          }
+        },
+        {
+          "name": "DJ Mich",
+          "artist": {
+            "name": "DJ Mich"
+          }
+        },
+        {
+          "name": "David Guetta",
+          "artist": {
+            "name": "David Guetta"
+          }
+        },
+        {
+          "name": "Nicki Minaj",
+          "artist": {
+            "name": "Nicki Minaj"
+          }
+        }
+      ],
+      "releases": [
+        {
+          "id": "4acbfa69-5088-44f7-98ce-f32aa531e63c",
+          "status": "Official",
+          "date": "2015-09-28",
+          "release-group": {
+            "id": "fea372e7-3dc3-46d9-bcb0-369e17c62d38",
+            "score": null,
+            "title": "Club Traxxx Fifteen",
+            "first-release-date": null,
+            "primary-type": "Album",
+            "secondary-types": [
+              "Compilation",
+              "DJ-mix"
+            ],
+            "artist-credit": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "23976149-62e4-4903-83bc-6b3ce178258e",
+      "score": 67,
+      "title": "Hey Mama (Cesqeaux & Jeremia Jones remix)",
+      "disambiguation": "part of a “Listen Again” DJ‐mix",
+      "artist-credit": [
+        {
+          "name": "David Guetta",
+          "artist": {
+            "name": "David Guetta"
+          }
+        },
+        {
+          "name": "Nicki Minaj",
+          "artist": {
+            "name": "Nicki Minaj"
+          }
+        },
+        {
+          "name": "Bebe Rexha",
+          "artist": {
+            "name": "Bebe Rexha"
+          }
+        },
+        {
+          "name": "Afrojack",
+          "artist": {
+            "name": "Afrojack"
+          }
+        }
+      ],
+      "releases": [
+        {
+          "id": "3716fc69-e266-4de7-b66c-42f6a760d8a8",
+          "status": "Official",
+          "date": "2015-11-27",
+          "release-group": {
+            "id": "57115279-ee5f-4f7e-a484-148f55fa09ad",
+            "score": null,
+            "title": "Listen",
+            "first-release-date": null,
+            "primary-type": "Album",
+            "secondary-types": [],
+            "artist-credit": []
+          }
+        },
+        {
+          "id": "22f43159-a5c7-4878-83fe-50895fe3eabc",
+          "status": "Official",
+          "date": "2015",
+          "release-group": {
+            "id": "57115279-ee5f-4f7e-a484-148f55fa09ad",
+            "score": null,
+            "title": "Listen",
+            "first-release-date": null,
+            "primary-type": "Album",
+            "secondary-types": [],
+            "artist-credit": []
+          }
+        },
+        {
+          "id": "f05cc599-7fed-4eca-ad9e-b06acf880e0c",
+          "status": "Official",
+          "date": "2015-11-27",
+          "release-group": {
+            "id": "57115279-ee5f-4f7e-a484-148f55fa09ad",
+            "score": null,
+            "title": "Listen",
+            "first-release-date": null,
+            "primary-type": "Album",
+            "secondary-types": [],
+            "artist-credit": []
+          }
+        },
+        {
+          "id": "e35b5d23-17d4-47d3-9d9b-f7529654ff3f",
+          "status": "Official",
+          "date": "2015-12-09",
+          "release-group": {
+            "id": "57115279-ee5f-4f7e-a484-148f55fa09ad",
+            "score": null,
+            "title": "Listen",
+            "first-release-date": null,
+            "primary-type": "Album",
+            "secondary-types": [],
+            "artist-credit": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "69402e6f-978b-47e6-9814-f27943b41b87",
+      "score": 62,
+      "title": "Hey Mama (Promo Only Clean Edit - No \"Na Na\" version)",
+      "disambiguation": null,
+      "artist-credit": [
+        {
+          "name": "David Guetta",
+          "artist": {
+            "name": "David Guetta"
+          }
+        },
+        {
+          "name": "Nicki Minaj",
+          "artist": {
+            "name": "Nicki Minaj"
+          }
+        },
+        {
+          "name": "Afrojack",
+          "artist": {
+            "name": "Afrojack"
+          }
+        }
+      ],
+      "releases": [
+        {
+          "id": "8c016717-c85a-43e0-bd3a-0be7103f08d7",
+          "status": "Promotion",
+          "date": "2015-04",
+          "release-group": {
+            "id": "89ef7ee8-348d-4dbe-b221-4610ebbeece0",
+            "score": null,
+            "title": "Promo Only: Mainstream Radio, April 2015",
+            "first-release-date": null,
+            "primary-type": "Album",
+            "secondary-types": [
+              "Compilation"
+            ],
+            "artist-credit": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "94e462d7-05a8-41f6-b00f-c380d82ab98b",
+      "score": 62,
+      "title": "Hey Mama +1 (Yastreb & Stefan Gobano mashup)",
+      "disambiguation": null,
+      "artist-credit": [
+        {
+          "name": "David Guetta",
+          "artist": {
+            "name": "David Guetta"
+          }
+        },
+        {
+          "name": "Nicki Minaj",
+          "artist": {
+            "name": "Nicki Minaj"
+          }
+        },
+        {
+          "name": "Afrojack",
+          "artist": {
+            "name": "Afrojack"
+          }
+        },
+        {
+          "name": "Martin Solveig",
+          "artist": {
+            "name": "Martin Solveig"
+          }
+        }
+      ],
+      "releases": [
+        {
+          "id": "437b9d62-3c73-4f99-8526-28a3ed35d0fd",
+          "status": "Bootleg",
+          "date": null,
+          "release-group": {
+            "id": "dea3859a-2197-4963-a5ab-ed43139a62f2",
+            "score": null,
+            "title": "100 Winter Dance 2016",
+            "first-release-date": null,
+            "primary-type": "Album",
+            "secondary-types": [
+              "Compilation"
+            ],
+            "artist-credit": []
+          }
+        }
+      ]
+    }
+  ]
+}

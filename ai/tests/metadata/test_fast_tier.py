@@ -47,7 +47,7 @@ def test_date_fast_answers_from_one_lane_only(mocker):
     assert result.lane == fast_tier.MUSICBRAINZ_LANE
     assert result.source == "fast-tier-musicbrainz"
     assert result.confidence == "low"
-    musicbrainz_search.assert_called_once_with("Test Song", "Test Artist")
+    musicbrainz_search.assert_called_once_with("Test Song", ["Test Artist"])
     wikipedia_search.assert_not_called()
 
 

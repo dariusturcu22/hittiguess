@@ -282,7 +282,7 @@ def test_disagreeing_sources_fetch_wikipedia_then_reconcile_on_both_paths(mocker
     assert staged["content"]["source"] == service.RECONCILED_SOURCE_LABEL
 
 
-def test_sources_are_queried_with_the_featured_suffix_stripped_and_artists_joined_on_both_paths(mocker):
+def test_sources_are_queried_with_the_featured_suffix_stripped_and_musicbrainz_gets_the_artist_list_on_both_paths(mocker):
     mocks = _all_agree(mocker)
 
     service.resolve_metadata(VIDEO_URL)
@@ -291,7 +291,7 @@ def test_sources_are_queried_with_the_featured_suffix_stripped_and_artists_joine
     with TestClient(app) as client:
         _resolve_through_stage_endpoints(client)
 
-    expected_query = ("Test Song", "Test Artist & Second Artist")
+    expected_query = ("Test Song", ["Test Artist", "Second Artist"])
     assert resolve_query.args[:len(expected_query)] == expected_query
     assert mocks.musicbrainz.call_args.args == expected_query
 
