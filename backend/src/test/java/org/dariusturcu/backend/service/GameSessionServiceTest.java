@@ -968,8 +968,10 @@ class GameSessionServiceTest {
 
         gameSessionService.previewPlacement(session.getId(), dj.getUser().getId(),
                 new PlacementPreviewRequest(0, 0.5, 0.5, PlacementPreviewPhase.DRAGGING));
+        gameSessionService.previewPlacement(session.getId(), dj.getUser().getId(),
+                new PlacementPreviewRequest(0, 0.5, 0.5, PlacementPreviewPhase.DRAGGING));
 
-        verify(gameSessionRepository, never()).findById(anyLong());
+        verify(gameSessionRepository, org.mockito.Mockito.times(1)).findById(session.getId());
         verify(eventPublisher, never()).publishEvent(any(Object.class));
     }
 

@@ -8,6 +8,9 @@ import org.dariusturcu.backend.websocket.SessionEventType;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.event.TransactionalEventListener;
 
+import java.time.Clock;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
@@ -17,6 +20,8 @@ import java.util.function.Supplier;
 // validate the sender, round status, and gap bounds without querying the database.
 @Component
 public class PlacementPreviewGate {
+
+    public static final Duration CACHE_MISS_CLOSED_TTL = Duration.ofMinutes(1);
 
     public record Entry(Long roundId, Long activePlayerUserId, Long activePlayerId, int activePlayerTimelineSize) {
         public static Entry fromRound(Round round) {
@@ -34,14 +39,30 @@ public class PlacementPreviewGate {
     public record Open(Entry entry) implements SessionState {
     }
 
-    public record Closed() implements SessionState {
+    public record Closed(Instant expiresAt) implements SessionState {
+        public Closed() {
+            this(null);
+        }
+
+        public boolean isExpired(Instant now) {
+            return expiresAt != null && now.isAfter(expiresAt);
+        }
     }
 
-    private static final SessionState CLOSED_STATE = new Closed();
+    private static final SessionState CLOSED_BETWEEN_ROUNDS = new Closed();
 
+    private final Clock clock;
     private final Map<Long, SessionState> statesBySessionId = new ConcurrentHashMap<>();
     private final Map<Long, Entry> pendingEntriesBySessionId = new ConcurrentHashMap<>();
     private final Map<Long, Object> loadLocksBySessionId = new ConcurrentHashMap<>();
+
+    public PlacementPreviewGate() {
+        this(Clock.systemUTC());
+    }
+
+    public PlacementPreviewGate(Clock clock) {
+        this.clock = clock;
+    }
 
     public void stageRound(Long sessionId, Round round) {
         if (sessionId == null) {
@@ -62,7 +83,7 @@ public class PlacementPreviewGate {
         }
         if (event.type() == SessionEventType.SESSION_ENDED) {
             pendingEntriesBySessionId.remove(sessionId);
-            statesBySessionId.put(sessionId, CLOSED_STATE);
+            statesBySessionId.remove(sessionId);
             loadLocksBySessionId.remove(sessionId);
             return;
         }
@@ -71,7 +92,7 @@ public class PlacementPreviewGate {
         }
         if (roundDTO.status() != RoundStatus.AWAITING_PLACEMENT) {
             pendingEntriesBySessionId.remove(sessionId);
-            statesBySessionId.put(sessionId, CLOSED_STATE);
+            statesBySessionId.put(sessionId, CLOSED_BETWEEN_ROUNDS);
             return;
         }
         Entry stagedEntry = pendingEntriesBySessionId.get(sessionId);
@@ -81,7 +102,14 @@ public class PlacementPreviewGate {
     }
 
     public Optional<Entry> getOrLoad(Long sessionId, Supplier<Optional<Entry>> loader) {
+        pruneExpiredEntries();
+
         SessionState cachedState = statesBySessionId.get(sessionId);
+        if (cachedState instanceof Closed closed && closed.isExpired(clock.instant())) {
+            statesBySessionId.remove(sessionId, cachedState);
+            loadLocksBySessionId.remove(sessionId);
+            cachedState = null;
+        }
         if (cachedState instanceof Open openState) {
             return Optional.of(openState.entry());
         }
@@ -91,6 +119,10 @@ public class PlacementPreviewGate {
         Object sessionLock = loadLocksBySessionId.computeIfAbsent(sessionId, ignoredSessionId -> new Object());
         synchronized (sessionLock) {
             SessionState recheckedState = statesBySessionId.get(sessionId);
+            if (recheckedState instanceof Closed closed && closed.isExpired(clock.instant())) {
+                statesBySessionId.remove(sessionId, recheckedState);
+                recheckedState = null;
+            }
             if (recheckedState instanceof Open openState) {
                 return Optional.of(openState.entry());
             }
@@ -98,8 +130,34 @@ public class PlacementPreviewGate {
                 return Optional.empty();
             }
             Optional<Entry> loadedEntry = loader.get();
-            statesBySessionId.put(sessionId, loadedEntry.<SessionState>map(Open::new).orElse(CLOSED_STATE));
+            if (loadedEntry.isPresent()) {
+                statesBySessionId.put(sessionId, new Open(loadedEntry.get()));
+            } else {
+                statesBySessionId.put(sessionId, new Closed(clock.instant().plus(CACHE_MISS_CLOSED_TTL)));
+            }
             return loadedEntry;
         }
+    }
+
+    public void pruneExpiredEntries() {
+        Instant now = clock.instant();
+        for (Map.Entry<Long, SessionState> mapEntry : statesBySessionId.entrySet()) {
+            if (mapEntry.getValue() instanceof Closed closed && closed.isExpired(now)) {
+                statesBySessionId.remove(mapEntry.getKey(), mapEntry.getValue());
+                loadLocksBySessionId.remove(mapEntry.getKey());
+            }
+        }
+    }
+
+    boolean hasSessionState(Long sessionId) {
+        return statesBySessionId.containsKey(sessionId);
+    }
+
+    boolean hasPendingEntry(Long sessionId) {
+        return pendingEntriesBySessionId.containsKey(sessionId);
+    }
+
+    boolean hasLoadLock(Long sessionId) {
+        return loadLocksBySessionId.containsKey(sessionId);
     }
 }

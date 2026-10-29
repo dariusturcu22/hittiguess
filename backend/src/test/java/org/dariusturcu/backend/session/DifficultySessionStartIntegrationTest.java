@@ -43,6 +43,7 @@ import org.dariusturcu.backend.repository.UserRepository;
 import org.dariusturcu.backend.scheduling.GameSessionScheduler;
 import org.dariusturcu.backend.security.UserPrincipal;
 import org.dariusturcu.backend.service.GameSessionService;
+import org.dariusturcu.backend.service.PlacementPreviewGate;
 import org.dariusturcu.backend.service.GameSongList;
 import org.dariusturcu.backend.service.GameSessionStartListener;
 import org.dariusturcu.backend.service.GroupService;
@@ -212,11 +213,17 @@ class DifficultySessionStartIntegrationTest {
                 GroupService groupService, PlaylistAccessService playlistAccessService,
                 PlaylistExpansionService playlistExpansionService, DifficultyTunedSongSelector difficultySelector,
                 PendingSessionSongPool pendingPool, SessionMapper sessionMapper, SessionResultsStore resultsStore,
-                GameSessionScheduler gameSessionScheduler, ApplicationEventPublisher eventPublisher) {
+                GameSessionScheduler gameSessionScheduler, ApplicationEventPublisher eventPublisher,
+                PlacementPreviewGate placementPreviewGate) {
             return new GameSessionService(gameSessionRepository, playerRepository, roundRepository, guessRepository,
                     betRepository, groupRepository, songRepository, playlistRepository, groupService,
                     playlistAccessService, playlistExpansionService, difficultySelector, pendingPool, sessionMapper,
-                    resultsStore, gameSessionScheduler, eventPublisher, new GameSongList());
+                    resultsStore, gameSessionScheduler, eventPublisher, new GameSongList(), placementPreviewGate);
+        }
+
+        @Bean
+        PlacementPreviewGate placementPreviewGate() {
+            return new PlacementPreviewGate();
         }
 
         @Bean

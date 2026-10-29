@@ -57,6 +57,7 @@ import org.dariusturcu.backend.websocket.GuessResultEvent;
 import org.dariusturcu.backend.websocket.SessionBroadcastEvent;
 import org.dariusturcu.backend.websocket.SessionEventType;
 
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationEventPublisher;
@@ -87,6 +88,7 @@ import java.util.stream.Collectors;
 // round-rotation (fixed vs rotating DJ), timer-scheduling, and betting-concurrency design
 // choices this class implements.
 @Service
+@RequiredArgsConstructor
 @Slf4j
 @Transactional
 public class GameSessionService {
@@ -135,72 +137,6 @@ public class GameSessionService {
     @Lazy
     private GameSessionService self;
 
-    public GameSessionService(
-            GameSessionRepository gameSessionRepository,
-            PlayerRepository playerRepository,
-            RoundRepository roundRepository,
-            GuessRepository guessRepository,
-            BetRepository betRepository,
-            GroupRepository groupRepository,
-            SongRepository songRepository,
-            PlaylistRepository playlistRepository,
-            GroupService groupService,
-            PlaylistAccessService playlistAccessService,
-            PlaylistExpansionService playlistExpansionService,
-            DifficultyTunedSongSelector difficultySelector,
-            PendingSessionSongPool pendingPool,
-            SessionMapper sessionMapper,
-            SessionResultsStore resultsStore,
-            GameSessionScheduler gameSessionScheduler,
-            ApplicationEventPublisher eventPublisher,
-            GameSongList gameSongList) {
-        this(gameSessionRepository, playerRepository, roundRepository, guessRepository, betRepository,
-                groupRepository, songRepository, playlistRepository, groupService, playlistAccessService,
-                playlistExpansionService, difficultySelector, pendingPool, sessionMapper, resultsStore,
-                gameSessionScheduler, eventPublisher, gameSongList, new PlacementPreviewGate());
-    }
-
-    @Autowired
-    public GameSessionService(
-            GameSessionRepository gameSessionRepository,
-            PlayerRepository playerRepository,
-            RoundRepository roundRepository,
-            GuessRepository guessRepository,
-            BetRepository betRepository,
-            GroupRepository groupRepository,
-            SongRepository songRepository,
-            PlaylistRepository playlistRepository,
-            GroupService groupService,
-            PlaylistAccessService playlistAccessService,
-            PlaylistExpansionService playlistExpansionService,
-            DifficultyTunedSongSelector difficultySelector,
-            PendingSessionSongPool pendingPool,
-            SessionMapper sessionMapper,
-            SessionResultsStore resultsStore,
-            GameSessionScheduler gameSessionScheduler,
-            ApplicationEventPublisher eventPublisher,
-            GameSongList gameSongList,
-            PlacementPreviewGate placementPreviewGate) {
-        this.gameSessionRepository = gameSessionRepository;
-        this.playerRepository = playerRepository;
-        this.roundRepository = roundRepository;
-        this.guessRepository = guessRepository;
-        this.betRepository = betRepository;
-        this.groupRepository = groupRepository;
-        this.songRepository = songRepository;
-        this.playlistRepository = playlistRepository;
-        this.groupService = groupService;
-        this.playlistAccessService = playlistAccessService;
-        this.playlistExpansionService = playlistExpansionService;
-        this.difficultySelector = difficultySelector;
-        this.pendingPool = pendingPool;
-        this.sessionMapper = sessionMapper;
-        this.resultsStore = resultsStore;
-        this.gameSessionScheduler = gameSessionScheduler;
-        this.eventPublisher = eventPublisher;
-        this.gameSongList = gameSongList;
-        this.placementPreviewGate = placementPreviewGate;
-    }
 
     // --- Session lifecycle -------------------------------------------------------
 
