@@ -1,37 +1,8 @@
 {
   "results": [
-    {
-      "id": 9140001,
-      "title": "Various - DMC Dance Mixes 230",
-      "artist": "Various",
-      "year": "2018",
-      "master_id": 0,
-      "format": [
-        "CD",
-        "Compilation"
-      ]
-    },
-    {
-      "id": 9140002,
-      "title": "Daddy Yankee Feat. Snow - Con Calma (Promo)",
-      "artist": "Daddy Yankee",
-      "year": "2018",
-      "master_id": 0,
-      "format": [
-        "CD",
-        "Promo"
-      ]
-    },
-    {
-      "id": 9140003,
-      "title": "Daddy Yankee Feat. Snow - Con Calma",
-      "artist": "Daddy Yankee",
-      "year": "2019",
-      "master_id": 1500000,
-      "format": [
-        "CD",
-        "Single"
-      ]
-    }
+    {"id": 15414847, "title": "Daddy Yankee, Snow (2) - Con Calma", "year": null, "master_id": 1560494, "format": ["CDr", "Promo"]},
+    {"id": 13228759, "title": "Daddy Yankee Feat. Snow (2) - Con Calma", "year": "2019", "master_id": 1560494, "format": ["File", "MP3", "Single"]},
+    {"id": 23895197, "title": "Daddy Yankee - Con Calma & Mis Grandes Éxitos", "year": "2019", "master_id": 2710595, "format": ["CD", "Album", "Compilation"]},
+    {"id": 12890001, "title": "Various - DMC Dance Mixes 226", "year": "2018", "master_id": null, "format": ["CD", "Promo", "Compilation"]}
   ]
 }

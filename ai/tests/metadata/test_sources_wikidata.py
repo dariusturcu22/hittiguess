@@ -14,7 +14,7 @@ def test_pick_best_match_prefers_artist_mentioned_in_description():
         {"id": "Q1", "description": "1985 song by a different artist"},
         {"id": "Q2", "description": "2013 song by Test Artist"},
     ]
-    best = wikidata.pick_best_match(matches, "Test Artist")
+    best = wikidata.pick_best_match(matches, ["Test Artist"])
     assert best["id"] == "Q2"
 
 
@@ -23,7 +23,7 @@ def test_pick_best_match_falls_back_to_music_keyword_description():
         {"id": "Q1", "description": "a restaurant"},
         {"id": "Q2", "description": "1999 single"},
     ]
-    best = wikidata.pick_best_match(matches, "Nobody Mentioned")
+    best = wikidata.pick_best_match(matches, ["Nobody Mentioned"])
     assert best["id"] == "Q2"
 
 
@@ -33,7 +33,7 @@ def test_pick_best_match_returns_none_when_nothing_matches():
 
 
 def test_pick_best_match_returns_none_for_empty_matches():
-    assert wikidata.pick_best_match([], "Test Artist") is None
+    assert wikidata.pick_best_match([], ["Test Artist"]) is None
 
 
 def test_extract_publication_date_prefers_preferred_rank():
@@ -105,7 +105,7 @@ def test_search_returns_track_and_album_candidates_via_part_of(mocker):
     mocker.patch("app.metadata.sources.pacing.time.sleep")
     respx.get("https://www.wikidata.org/w/api.php").mock(side_effect=_wikidata_response)
 
-    candidates = wikidata.search("Test Song", "Test Artist")
+    candidates = wikidata.search("Test Song", ["Test Artist"])
 
     assert len(candidates) == 2
     track_candidate, album_candidate = candidates
@@ -120,7 +120,7 @@ def test_search_returns_empty_list_when_no_match(mocker):
     mocker.patch("app.metadata.sources.pacing.time.sleep")
     respx.get("https://www.wikidata.org/w/api.php").mock(return_value=httpx.Response(200, json={"search": []}))
 
-    assert wikidata.search("Test Song", "Test Artist") == []
+    assert wikidata.search("Test Song", ["Test Artist"]) == []
 
 
 @respx.mock
@@ -128,7 +128,7 @@ def test_search_returns_empty_list_on_request_failure(mocker):
     mocker.patch("app.metadata.sources.pacing.time.sleep")
     respx.get("https://www.wikidata.org/w/api.php").mock(return_value=httpx.Response(500))
 
-    assert wikidata.search("Test Song", "Test Artist") == []
+    assert wikidata.search("Test Song", ["Test Artist"]) == []
 
 
 @respx.mock

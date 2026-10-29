@@ -33,7 +33,7 @@ TITLE_SPLIT_MAX_PARTS = 1
 FIRST_SPLIT_PART_INDEX = 0
 
 
-def _normalize_name(value: str) -> str:
+def normalize_name(value: str) -> str:
     """Lowercases a name, removes accents, and turns punctuation into spaces so
     stylized and plain spellings compare as the same words."""
     decomposed = unicodedata.normalize("NFKD", value or "")
@@ -42,7 +42,7 @@ def _normalize_name(value: str) -> str:
     return re.sub(r"\s+", " ", without_punctuation).strip().lower()
 
 
-def _to_artist_list(artist: str | list[str]) -> list[str]:
+def to_artist_list(artist: str | list[str]) -> list[str]:
     if isinstance(artist, str):
         return [part.strip() for part in re.split(r"[,&]", artist) if part.strip()]
     return [str(part).strip() for part in artist if str(part).strip()]
@@ -110,7 +110,7 @@ def _get(url: str, params: dict | None = None) -> dict:
 
 
 def search_release(title: str, artist: str | list[str], query_label: str = "track") -> dict:
-    main_artists = _to_artist_list(artist)
+    main_artists = to_artist_list(artist)
     first_main_artist = main_artists[FIRST_SPLIT_PART_INDEX] if main_artists else ""
     parameters = {"artist": first_main_artist, "type": "release"}
     if query_label == "album":
@@ -124,6 +124,22 @@ def get_master(master_id: int) -> dict:
     return _get(MASTER_URL_TEMPLATE.format(master_id=master_id))
 
 
+def _matches_discogs_artist(title: str, main_artists: list[str]) -> bool:
+    if " - " not in title:
+        return False
+    split_parts = title.split(" - ", 1)
+    prefix = normalize_name(split_parts[0])
+    if not prefix:
+        return False
+    for artist in main_artists:
+        normalized_artist = normalize_name(artist)
+        if not normalized_artist:
+            continue
+        if re.search(rf"^{re.escape(normalized_artist)}(?:\b|$)", prefix):
+            return True
+    return False
+
+
 def _is_valid_release(release: dict, main_artists: list[str]) -> bool:
     title = release.get("title") or ""
     if title.lower().startswith("various"):
@@ -133,28 +149,7 @@ def _is_valid_release(release: dict, main_artists: list[str]) -> bool:
     if any(excluded_format in formats for excluded_format in EXCLUDED_DISCOGS_FORMATS):
         return False
 
-    release_artist = release.get("artist") or ""
-    normalized_release_artist = _normalize_name(release_artist)
-    normalized_title = _normalize_name(title)
-
-    for artist in main_artists:
-        normalized_artist = _normalize_name(artist)
-        if not normalized_artist:
-            continue
-        if normalized_release_artist and (
-            normalized_release_artist == normalized_artist
-            or normalized_artist in normalized_release_artist
-        ):
-            return True
-        if normalized_title.startswith(normalized_artist):
-            return True
-        if " - " in title:
-            split_parts = title.split(" - ", TITLE_SPLIT_MAX_PARTS)
-            prefix = _normalize_name(split_parts[FIRST_SPLIT_PART_INDEX])
-            if prefix.startswith(normalized_artist) or normalized_artist in prefix:
-                return True
-
-    return False
+    return _matches_discogs_artist(title, main_artists)
 
 
 def find_master_ids(releases: list[dict], max_masters: int = MAX_DISTINCT_MASTERS) -> list[int]:
@@ -231,7 +226,7 @@ def search_or_raise(
     artists and drop compilations and unofficial releases. Masterless release
     years are kept only when no master-based candidate exists for the song.
     A failed request raises."""
-    main_artists = _to_artist_list(artist)
+    main_artists = to_artist_list(artist)
     track_masters, track_masterless = _query_candidates(title, main_artists, "track")
     album_masters, album_masterless = [], []
     if album:
@@ -251,6 +246,6 @@ def search(
     try:
         return search_or_raise(title, artist, album)
     except Exception as discogs_error:
-        artist_display = " & ".join(_to_artist_list(artist))
+        artist_display = " & ".join(to_artist_list(artist))
         report_source_failure(SOURCE_NAME, discogs_error, title, artist_display)
         return []

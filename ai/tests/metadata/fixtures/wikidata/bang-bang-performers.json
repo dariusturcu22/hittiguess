@@ -1,25 +1,7 @@
 {
   "entities": {
-    "Q18814": {
-      "labels": {
-        "en": {
-          "value": "Jessie J"
-        }
-      }
-    },
-    "Q151892": {
-      "labels": {
-        "en": {
-          "value": "Ariana Grande"
-        }
-      }
-    },
-    "Q162202": {
-      "labels": {
-        "en": {
-          "value": ""
-        }
-      }
-    }
+    "Q18814": {"labels": {"en": {"value": "Jessie J"}}},
+    "Q151892": {"labels": {"en": {"value": "Ariana Grande"}}},
+    "Q162202": {"labels": {"en": {"value": "Nicki Minaj"}}}
   }
 }
