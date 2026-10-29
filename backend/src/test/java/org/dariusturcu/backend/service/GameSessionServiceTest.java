@@ -150,22 +150,33 @@ class GameSessionServiceTest {
     // Built in setUp(), not as a field initializer: SessionMapper needs the betRepository
     // mock, which Mockito injects only after this instance's fields are constructed.
     private SessionMapper sessionMapper;
+    private PlacementPreviewGate placementPreviewGate;
     private GameSessionService gameSessionService;
     private final Map<Long, Song> songsById = new HashMap<>();
 
     @BeforeEach
     void setUp() {
         sessionMapper = new SessionMapper(betRepository);
+        placementPreviewGate = new PlacementPreviewGate();
         resultsStore = new SessionResultsStore(storedSessionResultsRepository, JsonMapper.builder().build());
         gameSessionService = new GameSessionService(
                 gameSessionRepository, playerRepository, roundRepository, guessRepository, betRepository,
                 groupRepository, songRepository, playlistRepository, groupService, playlistAccessService,
                 playlistExpansionService, difficultySelector, pendingPool, sessionMapper, resultsStore,
-                gameSessionScheduler, eventPublisher, new GameSongList(new Random(SHUFFLE_SEED)));
+                gameSessionScheduler, eventPublisher, new GameSongList(new Random(SHUFFLE_SEED)),
+                placementPreviewGate);
         // Self-injection (see GameSessionService's @Lazy self field): the production
         // context resolves this through the Spring proxy, a plain unit test wires it
         // directly to the instance under test.
         ReflectionTestUtils.setField(gameSessionService, "self", gameSessionService);
+
+        lenient().doAnswer(invocation -> {
+            Object event = invocation.getArgument(0);
+            if (event instanceof SessionBroadcastEvent broadcastEvent) {
+                placementPreviewGate.onSessionBroadcastEvent(broadcastEvent);
+            }
+            return null;
+        }).when(eventPublisher).publishEvent(any(Object.class));
 
         lenient().when(gameSessionRepository.save(any(GameSession.class))).thenAnswer(invocation -> invocation.getArgument(0));
         lenient().when(playerRepository.save(any(Player.class))).thenAnswer(invocation -> invocation.getArgument(0));
@@ -867,6 +878,153 @@ class GameSessionServiceTest {
                 new PlacementPreviewRequest(0, null, null, null));
 
         verify(eventPublisher, org.mockito.Mockito.never()).publishEvent(any(Object.class));
+    }
+
+    @Test
+    void anOutOfRangeGapInPlacementPreviewIsRejected() {
+        GameSession session = session(DjMode.ROTATING, 10);
+        Player active = player(session, 1L, 0, PlayerStatus.ACTIVE);
+        Player dj = player(session, 2L, 1, PlayerStatus.ACTIVE);
+        anchorCard(active, song(100, "Anchor A", 1990));
+        round(session, 10L, 1, active, dj, song(200, "Round Song", 2000));
+
+        assertThatThrownBy(() -> gameSessionService.previewPlacement(session.getId(), active.getUser().getId(),
+                new PlacementPreviewRequest(2, 0.5, 0.5, PlacementPreviewPhase.DRAGGING)))
+                .isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> gameSessionService.previewPlacement(session.getId(), active.getUser().getId(),
+                new PlacementPreviewRequest(-1, 0.5, 0.5, PlacementPreviewPhase.DRAGGING)))
+                .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    void aRoundStartPopulatesThePreviewGateSoABurstOfFramesNeverQueriesTheDatabase() {
+        Group group = groupWithTwoConnectedMembers();
+        when(groupRepository.findById(GROUP_ID)).thenReturn(Optional.of(group));
+        pendingPool.stage(GROUP_ID, catalogPool(STARTABLE_POOL_SIZE));
+        lenient().when(gameSessionRepository.save(any(GameSession.class))).thenAnswer(invocation -> {
+            GameSession saved = invocation.getArgument(0);
+            if (saved.getId() == null) {
+                saved.setId(1L);
+            }
+            long nextPlayerId = 1L;
+            for (Player player : saved.getPlayers()) {
+                if (player.getId() == null) {
+                    player.setId(nextPlayerId++);
+                }
+            }
+            return saved;
+        });
+        lenient().when(roundRepository.save(any(Round.class))).thenAnswer(invocation -> {
+            Round saved = invocation.getArgument(0);
+            if (saved.getId() == null) {
+                saved.setId(10L);
+            }
+            return saved;
+        });
+
+        GameSession startedSession = gameSessionService.startSession(GROUP_ID);
+        Player activePlayer = startedSession.getPlayers().getFirst();
+        org.mockito.Mockito.clearInvocations(gameSessionRepository, roundRepository, eventPublisher);
+        ReflectionTestUtils.setField(gameSessionService, "placementPreviewRateLimiter",
+                new org.dariusturcu.backend.ratelimit.RateLimiterRegistry(100, java.time.Duration.ofSeconds(1)));
+
+        for (int frameIndex = 0; frameIndex < 50; frameIndex++) {
+            gameSessionService.previewPlacement(startedSession.getId(), activePlayer.getUser().getId(),
+                    new PlacementPreviewRequest(0, 0.4, 0.2, PlacementPreviewPhase.DRAGGING));
+        }
+
+        verify(gameSessionRepository, never()).findById(anyLong());
+        verify(roundRepository, never()).findTopBySessionOrderByRoundNumberDesc(any());
+        verify(eventPublisher, org.mockito.Mockito.times(50)).publishEvent(any(SessionBroadcastEvent.class));
+    }
+
+    @Test
+    void aPreviewFrameAfterRoundScoredOrSessionEndedIsDroppedWithoutLoadingFromTheDatabase() {
+        GameSession session = session(DjMode.ROTATING, 10);
+        Player active = player(session, 1L, 0, PlayerStatus.ACTIVE);
+        Player dj = player(session, 2L, 1, PlayerStatus.ACTIVE);
+        anchorCard(active, song(100, "Anchor A", 1990));
+        anchorCard(dj, song(101, "Anchor B", 1990));
+        Round round = round(session, 10L, 1, active, dj, song(200, "Round Song", 2000));
+        gameSessionService.previewPlacement(session.getId(), active.getUser().getId(),
+                new PlacementPreviewRequest(0, 0.5, 0.5, PlacementPreviewPhase.DRAGGING));
+
+        round.setPlacementCorrect(false);
+        gameSessionService.scoreRoundEffect(round.getId());
+        org.mockito.Mockito.clearInvocations(gameSessionRepository, roundRepository, eventPublisher);
+
+        gameSessionService.previewPlacement(session.getId(), active.getUser().getId(),
+                new PlacementPreviewRequest(0, 0.5, 0.5, PlacementPreviewPhase.DRAGGING));
+
+        verify(gameSessionRepository, never()).findById(anyLong());
+        verify(eventPublisher, never()).publishEvent(any(Object.class));
+
+        runScheduledEffects();
+        gameSessionService.previewPlacement(session.getId(), dj.getUser().getId(),
+                new PlacementPreviewRequest(0, 0.5, 0.5, PlacementPreviewPhase.DRAGGING));
+
+        gameSessionService.abandonSession(session.getId());
+        org.mockito.Mockito.clearInvocations(gameSessionRepository, roundRepository, eventPublisher);
+
+        gameSessionService.previewPlacement(session.getId(), dj.getUser().getId(),
+                new PlacementPreviewRequest(0, 0.5, 0.5, PlacementPreviewPhase.DRAGGING));
+        gameSessionService.previewPlacement(session.getId(), dj.getUser().getId(),
+                new PlacementPreviewRequest(0, 0.5, 0.5, PlacementPreviewPhase.DRAGGING));
+
+        verify(gameSessionRepository, org.mockito.Mockito.times(1)).findById(session.getId());
+        verify(eventPublisher, never()).publishEvent(any(Object.class));
+    }
+
+    @Test
+    void aCacheMissLoadsTheSessionOnceAndServesSubsequentFramesFromMemory() {
+        GameSession session = session(DjMode.ROTATING, 10);
+        Player active = player(session, 1L, 0, PlayerStatus.ACTIVE);
+        Player dj = player(session, 2L, 1, PlayerStatus.ACTIVE);
+        anchorCard(active, song(100, "Anchor A", 1990));
+        round(session, 10L, 1, active, dj, song(200, "Round Song", 2000));
+
+        for (int frameIndex = 0; frameIndex < 25; frameIndex++) {
+            gameSessionService.previewPlacement(session.getId(), active.getUser().getId(),
+                    new PlacementPreviewRequest(0, 0.5, 0.5, PlacementPreviewPhase.DRAGGING));
+        }
+
+        verify(gameSessionRepository, org.mockito.Mockito.times(1)).findById(session.getId());
+        verify(roundRepository, org.mockito.Mockito.times(1)).findTopBySessionOrderByRoundNumberDesc(session);
+        verify(eventPublisher, org.mockito.Mockito.times(25)).publishEvent(any(SessionBroadcastEvent.class));
+    }
+
+    @Test
+    void startingTheNextRoundReplacesTheGateEntrySoThePreviousActivePlayerIsRejected() {
+        GameSession session = session(DjMode.ROTATING, 10);
+        Player playerA = player(session, 1L, 0, PlayerStatus.ACTIVE);
+        Player playerB = player(session, 2L, 1, PlayerStatus.ACTIVE);
+        anchorCard(playerA, song(100, "Anchor A", 1990));
+        anchorCard(playerB, song(101, "Anchor B", 1990));
+        Round firstRound = round(session, 10L, 1, playerA, playerB, song(200, "Round Song", 2000));
+        gameSessionService.previewPlacement(session.getId(), playerA.getUser().getId(),
+                new PlacementPreviewRequest(0, 0.5, 0.5, PlacementPreviewPhase.DRAGGING));
+
+        lenient().when(roundRepository.save(any(Round.class))).thenAnswer(invocation -> {
+            Round saved = invocation.getArgument(0);
+            if (saved.getId() == null) {
+                saved.setId(11L);
+            }
+            return saved;
+        });
+        firstRound.setPlacementCorrect(false);
+        gameSessionService.scoreRoundEffect(firstRound.getId());
+        runScheduledEffects();
+        org.mockito.Mockito.clearInvocations(gameSessionRepository, roundRepository, eventPublisher);
+
+        assertThatThrownBy(() -> gameSessionService.previewPlacement(session.getId(), playerA.getUser().getId(),
+                new PlacementPreviewRequest(0, 0.5, 0.5, PlacementPreviewPhase.DRAGGING)))
+                .isInstanceOf(AccessDeniedException.class);
+
+        gameSessionService.previewPlacement(session.getId(), playerB.getUser().getId(),
+                new PlacementPreviewRequest(0, 0.5, 0.5, PlacementPreviewPhase.DRAGGING));
+
+        verify(gameSessionRepository, never()).findById(anyLong());
+        verify(eventPublisher).publishEvent(any(SessionBroadcastEvent.class));
     }
 
     // --- Reveal hold before the next round ---------------------------------------------------

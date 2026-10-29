@@ -1339,6 +1339,12 @@ Decision: MusicBrainz queries use the first main artist from the precheck, and a
 
 Why: the joined artist phrase missed 55 of 101 multi-artist songs because MusicBrainz credits featured artists separately from the main artist string. The album lookup never ran without an album name, so a song released first on an album took its later single year. Keeping the first five results at any score also let unrelated low-score release groups set the year, such as Desire at 1951 and Try at 2003.
 
+## 2026-10-29 | Live placement previews validate against in-memory round state
+
+Decision: `PlacementPreviewGate` keeps each active session's placement-preview state in memory, updated from the committed `SessionBroadcastEvent` stream. A round event with status `AWAITING_PLACEMENT` stores the round id, the active player's user id and player id, and the active player's timeline size; any other round status or `SESSION_ENDED` closes the session's preview gate. `GameSessionService.previewPlacement` runs without a transaction and validates the sender, round status, and gap bounds from that in-memory entry. Only a cache miss, such as the first frame after a service restart while a round is already awaiting placement, loads the session from the database once under a per-session lock.
+
+Why: the active player's browser sends up to 20 preview frames per second while dragging a card. Loading the session, its players, its rounds, and the active player's timeline from Neon on every frame cost roughly 20 multi-query round trips per second and held database connections for checks whose inputs only change at round boundaries.
+
 ## 2026-10-29 | Replacing a group is one server transaction, never two client requests
 
 Decision: leaving a current group to create a new one or join another runs as a single database transaction via an optional `replaceCurrentGroup` flag on `CreateGroupRequest` and `JoinGroupRequest`. When true and the caller holds an active membership, the backend checks validity (codes, room capacity, group status), leaves the current membership, and creates or joins the target group in the same transaction. Membership leave events are published only when the whole operation commits. A running game session blocks replacement with a conflict error. The frontend makes one request for both flows rather than chaining a leave call into a create or join call.
