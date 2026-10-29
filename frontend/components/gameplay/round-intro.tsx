@@ -43,19 +43,19 @@ export function RoundIntro({ winConditionCardCount, roundNumber, countdownSecond
     <div role="status" aria-live="polite" className="absolute inset-0 z-40 flex flex-col items-center justify-center overflow-hidden bg-background bg-dotted px-6 text-center">
       <div className="flex flex-col items-center">
         <p className="mb-[18px] text-[13px] font-bold uppercase tracking-[4px] text-muted-foreground">Target: {winConditionCardCount} cards. Everyone finishes the round.</p>
-        <h2 className="mb-[44px] font-display text-[72px] text-foreground [text-shadow:5px_5px_0_rgba(0,0,0,0.4)]">Round {roundNumber}</h2>
+        <h2 className="mb-[44px] font-display text-[72px] text-foreground [text-shadow:5px_5px_0_var(--text-shadow-on-page)]">Round {roundNumber}</h2>
       </div>
       <div className="relative mb-[48px] size-[140px]">
         <svg viewBox={`0 0 ${RING_VIEWBOX_SIZE} ${RING_VIEWBOX_SIZE}`} className="size-full -rotate-90" aria-hidden="true">
           <circle cx={RING_CENTER} cy={RING_CENTER} r={RING_RADIUS} fill="none" strokeWidth="10" className="stroke-card" />
-          <circle cx={RING_CENTER} cy={RING_CENTER} r={RING_RADIUS} fill="none" strokeWidth="10" strokeLinecap="round" strokeDasharray={RING_CIRCUMFERENCE} className="stroke-accent" style={{ ["--ring-circumference" as string]: `${RING_CIRCUMFERENCE}`, animation: `gameplay-ring-drain ${countdownSeconds}s linear forwards` }} />
+          <circle cx={RING_CENTER} cy={RING_CENTER} r={RING_RADIUS} fill="none" strokeWidth="10" strokeLinecap="round" strokeDasharray={RING_CIRCUMFERENCE} className="stroke-primary" style={{ ["--ring-circumference" as string]: `${RING_CIRCUMFERENCE}`, animation: `gameplay-ring-drain ${countdownSeconds}s linear forwards` }} />
         </svg>
         <span className="absolute inset-0 flex items-center justify-center font-display text-[48px] text-foreground">{Math.max(secondsLeft, 1)}</span>
       </div>
       <div className="flex items-center gap-[56px]">
-        <RoleAnnouncement label="First DJ" labelClassName="text-primary" ringClassName="shadow-[0_0_0_4px_var(--background),0_0_0_9px_var(--primary)]" player={dj} />
+        <RoleAnnouncement label="First DJ" labelClassName="text-accent" ringClassName="shadow-[0_0_0_4px_var(--background),0_0_0_9px_var(--accent)]" player={dj} />
         <span className="h-[90px] w-[2px] bg-border" />
-        <RoleAnnouncement label="First turn" labelClassName="text-accent" ringClassName="shadow-[0_0_0_4px_var(--background),0_0_0_9px_var(--accent)]" player={activePlayer} animationDelay="-1.5s" />
+        <RoleAnnouncement label="First turn" labelClassName="text-primary" ringClassName="shadow-[0_0_0_4px_var(--background),0_0_0_9px_var(--primary)]" player={activePlayer} animationDelay="-1.5s" />
       </div>
     </div>
   );
