@@ -7,10 +7,10 @@ then `opencode-tasks/README.md`, then the brief named under "Current task".
 
 ## Current task
 
-- Task: 09, `opencode-tasks/09-design-proportions-lobby.md`
-- Branch: `fix/lobby-design-proportions`
-- Step reached: PR opened
-- Next step: task 10 (fix/gameplay-design-proportions)
+- Task: 10, `opencode-tasks/10-design-proportions-gameplay.md`
+- Branch: `fix/gameplay-design-proportions`
+- Step reached: code done, tests passing
+- Next step: open PR for task 10, then start task 14 off origin/main
 
 ## Finished tasks
 

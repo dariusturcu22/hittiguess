@@ -692,8 +692,8 @@ describe("GameSessionPage viewport layout", () => {
     expect(timelineLabel?.className).toContain("bottom-[calc(50%+98px)]");
     expect(timelineLabel?.className).not.toContain("short:");
 
-    const aboveTimeline = view.container.querySelector('[class*="bottom-[calc(50%+132px)]"]');
-    expect(aboveTimeline?.className).toContain("bottom-[calc(50%+132px)]");
+    const aboveTimeline = view.container.querySelector('[class*="bottom-[calc(50%+148px)]"]');
+    expect(aboveTimeline?.className).toContain("bottom-[calc(50%+148px)]");
     expect(aboveTimeline?.className).not.toContain("short:");
 
     const belowTimeline = view.container.querySelector('[class*="top-[calc(50%+148px)]"]');
@@ -705,7 +705,7 @@ describe("GameSessionPage viewport layout", () => {
     await renderPage();
 
     const card = screen.getByText("Torn").closest("article");
-    expect(card?.className).toContain("sm:size-[168px]");
+    expect(card?.className).toContain("size-[168px]");
     expect(card?.className).not.toContain("short:");
 
     const guessPill = screen.getByRole("textbox", { name: "Guess the artist" }).closest("label");
@@ -723,11 +723,11 @@ describe("GameSessionPage viewport layout", () => {
     await screen.findByText("First DJ");
 
     const intro = view.container.querySelector('[class*="absolute inset-0 z-40"]');
-    expect(intro?.className).toContain("gap-8");
+    expect(intro?.className).toContain("overflow-hidden");
     expect(intro?.className).not.toContain("short:");
 
-    const ring = view.container.querySelector('[class*="size-[130px]"]');
-    expect(ring?.className).toContain("size-[130px]");
+    const ring = view.container.querySelector('[class*="size-[140px]"]');
+    expect(ring?.className).toContain("size-[140px]");
     expect(ring?.className).not.toContain("short:");
   });
 });
