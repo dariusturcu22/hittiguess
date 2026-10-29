@@ -8,22 +8,24 @@ then `opencode-tasks/README.md`, then the brief named under "Current task".
 ## Current task
 
 - Task: 08, `opencode-tasks/08-game-screen-scale.md`
-- Branch: `fix/game-screen-scale` (not created yet)
-- Step reached: brief not read
-- Next step: read the brief, then create the branch off an up-to-date `main`
+- Branch: `fix/game-screen-scale`
+- Step reached: code, tests, and docs finished; PR open for review
+- Next step: 09 and 10 need this PR merged first, so start 11 `opencode-tasks/11-duration-refresh.md` next
 
 ## Finished tasks
 
 | Task | Branch | PR | Notes |
 |---|---|---|---|
-| 01 | `fix/left-rail-spacing` | https://github.com/dariusturcu22/hittiguess/pull/325 | Rail gap and divider steps; 5-bar rail fits admin at 1366x768, 1366x650, 1440x900, 1920x1080 |
-| 02 | `fix/voice-rail-join-slot` | https://github.com/dariusturcu22/hittiguess/pull/326 | `VoiceMemberList` has an optional `trailingSlot`; the join slot is first, or next after the members |
-| 03 | `fix/waveform-five-bars` | https://github.com/dariusturcu22/hittiguess/pull/327 | `VISUALIZER_BAND_COUNT = 5`; 7px pill bars with 6px gaps; new `game-pieces.test.tsx` |
-| 04 | `fix/countdown-clock-sync` | https://github.com/dariusturcu22/hittiguess/pull/328 | `RoundDTO.serverTime`; median offset module; session page, round intro, and away widget count on server time |
-| 05 | `fix/start-session-from-playlist` | https://github.com/dariusturcu22/hittiguess/pull/329 | Shared `useCreateGroupAndOpen`; playlist start creates or chooses a group; locked groups cannot be left |
-| 06 | `fix/page-transitions` | https://github.com/dariusturcu22/hittiguess/pull/330 | Proxy redirect for `/`; session loader while results redirect; lobby loader while locked; 491 frontend tests |
-| 07 | `feature/spectator-live-drag` | https://github.com/dariusturcu22/hittiguess/pull/331 | Preview phases and timeline fractions; spectator card floats, follows the drag, and lands in the gap; 495 frontend tests and 1076 backend tests |
+| 01 | fix/left-rail-spacing | #325 | Left rail icons spaced one height step wider |
+| 02 | fix/voice-rail-join-slot | #326 | The voice rail's join slot sits under the people in the call |
+| 03 | fix/waveform-five-bars | #327 | The waveform is five design-matched bars driven by frequency bands |
+| 04 | fix/countdown-clock-sync | #328 | Countdowns run on the server clock; deadline responses carry server time |
+| 05 | fix/start-session-from-playlist | #329 | Start session from a playlist creates a group or offers to leave the current one |
+| 06 | fix/page-transitions | #330 | Logged-in `/` redirects in `proxy.ts`; loaders cover known redirects |
+| 07 | feature/spectator-live-drag | #331 | Spectators see the active player's card move live during a drag |
+| 08 | fix/game-screen-scale | #332 | Lobby and session screens render in a fixed 1288x900 stage scaled to the window |
 
 ## Blocked or skipped
 
-Tasks 09 and 10 depend on task 08, and tasks 14 to 17 depend on task 13. Each waits for that task's PR before its branch starts.
+- Tasks 09 and 10 build on the shared game stage from task 08, so they wait for that PR to merge.
+- Tasks 14 to 17 build on the matching and lock rules from task 13, whose PR is not open yet.

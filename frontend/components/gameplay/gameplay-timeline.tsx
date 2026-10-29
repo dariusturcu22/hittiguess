@@ -61,7 +61,7 @@ export function GameplayTimeline({ cards, slots, tiltGapIndex = null, focusKey =
 
   return <div className="relative w-full max-w-[1100px]">
     <div ref={trackReference} data-timeline-track="" onScroll={updateScrollState} className="w-full overflow-x-auto overflow-y-hidden [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" style={{ maskImage: TIMELINE_EDGE_FADE, WebkitMaskImage: TIMELINE_EDGE_FADE }}>
-      <div className={`mx-auto flex w-max items-center gap-[18px] short:gap-3.5 very-short:gap-3 px-16 short:px-12 very-short:px-8 py-6 short:py-4 very-short:py-2 transition-[filter,opacity] duration-300 ${isDimmed ? "opacity-60 saturate-[0.55]" : ""}`}>
+      <div className={`mx-auto flex w-max items-center gap-[18px] px-16 py-6 transition-[filter,opacity] duration-300 ${isDimmed ? "opacity-60 saturate-[0.55]" : ""}`}>
         {timelineEntries(cards).map((entry) => {
           if (entry.kind === "gap") {
             const slot = slots.get(entry.gapIndex);
@@ -74,7 +74,7 @@ export function GameplayTimeline({ cards, slots, tiltGapIndex = null, focusKey =
         })}
       </div>
     </div>
-    <button type="button" aria-label="View earlier timeline cards" disabled={!scrollState.canScrollBack} onClick={() => scrollByCards(-1)} className="absolute -left-1.5 top-1/2 flex size-[42px] short:size-9 very-short:size-8 -translate-y-1/2 items-center justify-center rounded-full border-2 border-border bg-card text-card-foreground shadow-[3px_3px_0_var(--shadow-color)] transition-opacity disabled:opacity-40"><ChevronLeft className="size-[17px]" strokeWidth={2.5} /></button>
-    <button type="button" aria-label="View later timeline cards" disabled={!scrollState.canScrollForward} onClick={() => scrollByCards(1)} className="absolute -right-1.5 top-1/2 flex size-[42px] short:size-9 very-short:size-8 -translate-y-1/2 items-center justify-center rounded-full border-2 border-border bg-card text-card-foreground shadow-[3px_3px_0_var(--shadow-color)] transition-opacity disabled:opacity-40"><ChevronRight className="size-[17px]" strokeWidth={2.5} /></button>
+    <button type="button" aria-label="View earlier timeline cards" disabled={!scrollState.canScrollBack} onClick={() => scrollByCards(-1)} className="absolute -left-1.5 top-1/2 flex size-[42px] -translate-y-1/2 items-center justify-center rounded-full border-2 border-border bg-card text-card-foreground shadow-[3px_3px_0_var(--shadow-color)] transition-opacity disabled:opacity-40"><ChevronLeft className="size-[17px]" strokeWidth={2.5} /></button>
+    <button type="button" aria-label="View later timeline cards" disabled={!scrollState.canScrollForward} onClick={() => scrollByCards(1)} className="absolute -right-1.5 top-1/2 flex size-[42px] -translate-y-1/2 items-center justify-center rounded-full border-2 border-border bg-card text-card-foreground shadow-[3px_3px_0_var(--shadow-color)] transition-opacity disabled:opacity-40"><ChevronRight className="size-[17px]" strokeWidth={2.5} /></button>
   </div>;
 }

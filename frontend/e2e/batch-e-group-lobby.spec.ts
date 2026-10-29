@@ -40,6 +40,7 @@ const DESKTOP_VIEWPORTS = [
   { width: 1920, height: 1080 },
 ];
 const APP_SCROLL_CONTAINER_SELECTOR = ".bg-dotted";
+const VIEWPORT_EDGE_TOLERANCE_PIXELS = 0.5;
 const LOBBY_FOOTER_ACTIONS = ["Start game", "Leave lobby"];
 const PLAYER_ID = 10;
 const DJ_ID = 20;
@@ -69,6 +70,24 @@ async function appScrollMeasurements(page: Page): Promise<{ scrollHeight: number
     scrollHeight: element.scrollHeight,
     clientHeight: element.clientHeight,
   }));
+}
+
+// A scaled game stage can land an element's edge a fraction of a pixel past the
+// viewport, which IntersectionObserver reports as a ratio just under 1. This measures
+// the button's own box instead, with a half-pixel allowance for that rounding.
+async function expectButtonFullyOnScreen(page: Page, buttonName: string): Promise<void> {
+  const button = page.getByRole("button", { name: buttonName });
+  await expect.poll(async () => {
+    const buttonBox = await button.boundingBox();
+    const viewport = page.viewportSize();
+    if (!buttonBox || !viewport) return Number.POSITIVE_INFINITY;
+    return Math.max(
+      -buttonBox.x,
+      -buttonBox.y,
+      buttonBox.x + buttonBox.width - viewport.width,
+      buttonBox.y + buttonBox.height - viewport.height,
+    );
+  }, { message: `${buttonName} should stay fully on screen` }).toBeLessThanOrEqual(VIEWPORT_EDGE_TOLERANCE_PIXELS);
 }
 
 async function csrfHeaders(page: Page): Promise<Record<string, string>> {
@@ -222,7 +241,7 @@ test("lobby keeps its footer actions on screen in a short or zoomed window", asy
     await expect(page.getByRole("heading", { name: "Group Lobby" })).toBeVisible();
 
     for (const footerAction of LOBBY_FOOTER_ACTIONS) {
-      await expect(page.getByRole("button", { name: footerAction })).toBeInViewport({ ratio: 1 });
+      await expectButtonFullyOnScreen(page, footerAction);
     }
   } finally {
     if (groupId !== undefined) {
@@ -232,7 +251,7 @@ test("lobby keeps its footer actions on screen in a short or zoomed window", asy
   }
 });
 
-test("lobby fits every desktop viewport without vertical scrolling", async ({ browser }) => {
+test("lobby fits every desktop viewport without vertical scrolling", async ({ browser }, testInfo) => {
   const page = await login(browser, ADMIN_ACCOUNT);
   let groupId: number | undefined;
 
@@ -251,8 +270,10 @@ test("lobby fits every desktop viewport without vertical scrolling", async ({ br
       ).toBeLessThanOrEqual(measurements.clientHeight);
 
       for (const footerAction of LOBBY_FOOTER_ACTIONS) {
-        await expect(page.getByRole("button", { name: footerAction })).toBeInViewport({ ratio: 1 });
+        await expectButtonFullyOnScreen(page, footerAction);
       }
+
+      await page.screenshot({ path: testInfo.outputPath(`lobby-${viewport.width}x${viewport.height}.png`) });
     }
   } finally {
     if (groupId !== undefined) {
@@ -301,6 +322,9 @@ test("results screen exports the final ranking", async ({ browser }) => {
 
 test("gameplay shell renders placement, betting, and DJ link-out states", async ({ browser }) => {
   const page = await login(browser, ADMIN_ACCOUNT);
+  // A placement round that is already open. The round intro drains against the
+  // placement deadline, so a deadline in the past dismisses it at once.
+  const roundPlacementEndsAt = new Date().toISOString();
   const player = {
     id: PLAYER_ID,
     userId: PLAYER_ID,
@@ -329,7 +353,7 @@ test("gameplay shell renders placement, betting, and DJ link-out states", async 
     await page.route(`**${GAMEPLAY_SESSION_API_PATH}`, (route) => route.fulfill({ json: {
       ...baseSession,
       players: [player, dj],
-      currentRound: { roundNumber: 4, activePlayerId: PLAYER_ID, djPlayerId: DJ_ID, status: "AWAITING_PLACEMENT" },
+      currentRound: { roundNumber: 4, activePlayerId: PLAYER_ID, djPlayerId: DJ_ID, status: "AWAITING_PLACEMENT", placementEndsAt: roundPlacementEndsAt },
     } }));
     await page.goto(`/sessions/${GAMEPLAY_SESSION_ID}`);
     const card = page.getByRole("button", { name: "Your card. Choose a timeline position." });
@@ -358,7 +382,7 @@ test("gameplay shell renders placement, betting, and DJ link-out states", async 
     await page.route(`**${GAMEPLAY_SESSION_API_PATH}`, (route) => route.fulfill({ json: {
       ...baseSession,
       players: [player, dj],
-      currentRound: { roundNumber: 4, activePlayerId: PLAYER_ID, djPlayerId: DJ_ID, status: "AWAITING_PLACEMENT" },
+      currentRound: { roundNumber: 4, activePlayerId: PLAYER_ID, djPlayerId: DJ_ID, status: "AWAITING_PLACEMENT", placementEndsAt: roundPlacementEndsAt },
     } }));
     await page.route(`**${LINK_OUT_API_PATH}`, (route) => route.fulfill({
       json: { watchUrl: "https://www.youtube.com/watch?v=dQw4w9WgXcQ" },
@@ -371,7 +395,7 @@ test("gameplay shell renders placement, betting, and DJ link-out states", async 
   }
 });
 
-test("gameplay session fits every desktop viewport without vertical scrolling", async ({ browser }) => {
+test("gameplay session fits every desktop viewport without vertical scrolling", async ({ browser }, testInfo) => {
   const page = await login(browser, ADMIN_ACCOUNT);
   const player = {
     id: PLAYER_ID,
@@ -415,7 +439,9 @@ test("gameplay session fits every desktop viewport without vertical scrolling", 
         `${viewport.width}x${viewport.height}`,
       ).toBeLessThanOrEqual(measurements.clientHeight);
 
-      await expect(page.getByRole("button", { name: "Leave game" })).toBeInViewport({ ratio: 1 });
+      await expectButtonFullyOnScreen(page, "Leave game");
+
+      await page.screenshot({ path: testInfo.outputPath(`gameplay-${viewport.width}x${viewport.height}.png`) });
     }
   } finally {
     await page.context().close();

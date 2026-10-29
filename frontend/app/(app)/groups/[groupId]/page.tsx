@@ -35,6 +35,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { copyText } from "@/lib/clipboard";
 import { playlistTitleColor } from "@/lib/playlist-colors";
 import { GroupChatOverlay } from "@/components/group-chat-overlay";
+import { GameStage } from "@/components/gameplay/game-stage";
 import { PlaylistCoverMosaic } from "@/components/playlist-cover-mosaic";
 import {
   AlertDialog,
@@ -132,31 +133,31 @@ function LobbyMember({
   return (
     <div className={`absolute ${orbitPosition} lobby-float flex flex-col items-center`} style={{ animationDelay: floatDelay }}>
       <div className="relative">
-        {member.avatarUrl ? <img src={member.avatarUrl} alt={`${member.displayName || "Player"} avatar`} className={`size-[76px] short:size-[84px] rounded-full object-cover shadow-[0_0_0_3px_var(--background),0_0_0_8px_var(--green)] sm:size-[108px] very-short:size-[64px] ${member.isConnected ? "" : "opacity-50 grayscale"}`} /> : (
-          <div className={`avatar-initial flex size-[76px] short:size-[84px] items-center justify-center rounded-full font-display text-2xl short:text-[28px] shadow-[0_0_0_3px_var(--background),0_0_0_8px_var(--green)] sm:size-[108px] sm:text-[34px] very-short:size-[64px] very-short:text-[22px] ${colorClass} ${member.isConnected ? "" : "opacity-50 grayscale"}`}>
+        {member.avatarUrl ? <img src={member.avatarUrl} alt={`${member.displayName || "Player"} avatar`} className={`size-[76px] rounded-full object-cover shadow-[0_0_0_3px_var(--background),0_0_0_8px_var(--green)] sm:size-[108px] ${member.isConnected ? "" : "opacity-50 grayscale"}`} /> : (
+          <div className={`avatar-initial flex size-[76px] items-center justify-center rounded-full font-display text-2xl shadow-[0_0_0_3px_var(--background),0_0_0_8px_var(--green)] sm:size-[108px] sm:text-[34px] ${colorClass} ${member.isConnected ? "" : "opacity-50 grayscale"}`}>
             {memberInitial(member)}
           </div>
         )}
         {member.isAdmin ? (
-          <Crown className="absolute -right-2 -top-2 size-6 short:size-5 fill-warning text-warning drop-shadow-sm sm:size-7 very-short:size-4" />
+          <Crown className="absolute -right-2 -top-2 size-6 fill-warning text-warning drop-shadow-sm sm:size-7" />
         ) : null}
         {onRemove ? (
           <button
             type="button"
             onClick={() => onRemove(member)}
             aria-label={`Remove ${member.displayName || "Player"}`}
-            className="absolute -left-2 -top-2 flex size-7 short:size-6 very-short:size-5 items-center justify-center rounded-full border-2 border-background bg-destructive text-white shadow-sm transition-transform hover:scale-110"
+            className="absolute -left-2 -top-2 flex size-7 items-center justify-center rounded-full border-2 border-background bg-destructive text-white shadow-sm transition-transform hover:scale-110"
           >
             <UserX className="size-3.5" />
           </button>
         ) : null}
       </div>
-      <span className="mt-2 short:mt-1.5 very-short:mt-1 max-w-[148px] truncate font-semibold text-sm short:text-[13px] text-foreground sm:mt-3 sm:text-[15px] very-short:text-[11px]">
+      <span className="mt-2 max-w-[148px] truncate font-semibold text-sm text-foreground sm:mt-3 sm:text-[15px]">
         {member.displayName || "Player"}
         {isCurrentUser ? " (you)" : ""}
       </span>
       {onPromote ? (
-        <button type="button" onClick={() => onPromote(member)} aria-label={`Make ${member.displayName || "Player"} group admin`} className="mt-1 short:mt-0.5 very-short:mt-0.5 cursor-pointer text-xs short:text-[11px] very-short:text-[10px] font-semibold text-warning hover:underline">
+        <button type="button" onClick={() => onPromote(member)} aria-label={`Make ${member.displayName || "Player"} group admin`} className="mt-1 cursor-pointer text-xs font-semibold text-warning hover:underline">
           Make group admin
         </button>
       ) : null}
@@ -173,7 +174,7 @@ function LobbyLoadingState() {
       {Array.from({ length: LOADING_MEMBER_COUNT }, (_, index) => (
         <div
           key={index}
-          className={`absolute ${ORBIT_POSITIONS[index]} size-24 short:size-[84px] animate-pulse rounded-full bg-card sm:size-[108px] very-short:size-[64px]`}
+          className={`absolute ${ORBIT_POSITIONS[index]} size-24 animate-pulse rounded-full bg-card sm:size-[108px]`}
         />
       ))}
       <Loader2 className="size-8 animate-spin text-primary" aria-label="Loading group" />
@@ -205,6 +206,12 @@ function PlaylistPreselectCapture({ onCapture }: { onCapture: (playlistId: numbe
 }
 
 export default function GroupLobbyPage({ params }: PageProps) {
+  return <GameStage>
+    <GroupLobbyScreen params={params} />
+  </GameStage>;
+}
+
+function GroupLobbyScreen({ params }: PageProps) {
   const { groupId: groupIdParam } = use(params);
   const groupId = Number(groupIdParam);
   const router = useRouter();
@@ -502,7 +509,7 @@ export default function GroupLobbyPage({ params }: PageProps) {
 
   if (groupQuery.isLoading || isGroupInGame) {
     return (
-      <main className="flex h-full min-h-0 flex-col overflow-hidden px-6 py-8 short:py-6 very-short:py-4 sm:px-14 sm:py-9">
+      <main className="flex h-full min-h-0 flex-col overflow-hidden px-6 py-8 sm:px-14 sm:py-9">
         <div className="h-10 w-52 animate-pulse rounded bg-card" />
         <LobbyLoadingState />
       </main>
@@ -530,12 +537,12 @@ export default function GroupLobbyPage({ params }: PageProps) {
   }
 
   return (
-    <main className="flex h-full min-h-0 flex-col overflow-hidden px-6 py-8 short:py-6 very-short:py-4 sm:px-14 sm:py-9">
+    <main className="flex h-full min-h-0 flex-col overflow-hidden px-6 py-8 sm:px-14 sm:py-9">
       <Suspense fallback={null}>
         <PlaylistPreselectCapture onCapture={applyPlaylistPreselect} />
       </Suspense>
-      <header className="flex flex-col gap-4 short:gap-2.5 very-short:gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <h1 className="font-display text-[26px] text-foreground drop-shadow-sm sm:text-[32px] short:text-[26px] very-short:text-[22px]">
+      <header className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <h1 className="font-display text-[26px] text-foreground drop-shadow-sm sm:text-[32px]">
           Group Lobby
         </h1>
         {isCurrentUserAdmin ? (
@@ -611,19 +618,19 @@ export default function GroupLobbyPage({ params }: PageProps) {
       </header>
 
       {/* The stage fills the space left over, so the footer actions stay on screen without page scrolling. */}
-      <section className="flex min-h-0 flex-1 overflow-hidden py-10 short:py-6 very-short:py-4">
+      <section className="flex min-h-0 flex-1 overflow-hidden py-10">
         <div className="relative flex h-full min-h-0 w-full items-center justify-center">
         <div className="z-10 text-center">
-          <p className="mb-3 short:mb-2 very-short:mb-1.5 font-semibold text-[11px] uppercase tracking-[0.25em] text-muted-foreground">
+          <p className="mb-3 font-semibold text-[11px] uppercase tracking-[0.25em] text-muted-foreground">
             Enter code to join
           </p>
-          <p className="pl-3 font-display text-5xl short:text-[60px] very-short:text-[48px] tracking-[0.3em] text-foreground drop-shadow-sm sm:text-[76px]">
+          <p className="pl-3 font-display text-5xl tracking-[0.3em] text-foreground drop-shadow-sm sm:text-[76px]">
             {groupQuery.data.joinCode ?? "----"}
           </p>
           <button
             type="button"
             onClick={copyInviteLink}
-            className="mt-5 short:mt-4 very-short:mt-3 inline-flex items-center gap-2 text-[13px] font-semibold text-muted-foreground transition-colors hover:text-foreground"
+            className="mt-5 inline-flex items-center gap-2 text-[13px] font-semibold text-muted-foreground transition-colors hover:text-foreground"
           >
             <Clipboard className="size-4" />
             {copyFeedback || "Copy invite link"}
@@ -745,12 +752,12 @@ export default function GroupLobbyPage({ params }: PageProps) {
       {isSettingsOpen ? (
         <>
           <button type="button" aria-label="Close settings" onClick={() => setIsSettingsOpen(false)} className="fixed inset-0 z-10 cursor-default" />
-          <section aria-label="Group settings" className="absolute bottom-full left-0 z-20 mb-3 w-full max-w-[400px] rounded-[18px] border-[3px] border-border bg-card p-6 short:p-5 very-short:p-4 shadow-[6px_6px_0_rgba(0,0,0,0.35)] sm:left-[228px] sm:p-7">
-            <div className="mb-5 short:mb-4 very-short:mb-3 flex items-center justify-between">
+          <section aria-label="Group settings" className="absolute bottom-full left-0 z-20 mb-3 w-full max-w-[400px] rounded-[18px] border-[3px] border-border bg-card p-6 shadow-[6px_6px_0_rgba(0,0,0,0.35)] sm:left-[228px] sm:p-7">
+            <div className="mb-5 flex items-center justify-between">
               <h2 className="font-display text-lg text-card-foreground">Settings</h2>
               <button type="button" onClick={() => setIsSettingsOpen(false)} className="text-muted-foreground hover:text-card-foreground">Close</button>
             </div>
-            <div className="space-y-4 short:space-y-3 very-short:space-y-2">
+            <div className="space-y-4">
               <div className="flex items-center justify-between gap-3">
                 <span id="dj-mode-label" className="text-[13px] text-muted-foreground">DJ mode</span>
                 <Select value={selectedDjMode} onValueChange={(value) => setSelectedDjMode(value as "FIXED" | "ROTATING")}>
@@ -784,7 +791,7 @@ export default function GroupLobbyPage({ params }: PageProps) {
                 <input type="number" min={MINIMUM_WIN_CONDITION} value={winCondition} onChange={(event) => setWinCondition(Math.max(MINIMUM_WIN_CONDITION, Number(event.target.value)))} className="w-20 rounded-full border-2 border-border bg-background px-3 py-1.5 text-right text-sm font-semibold text-foreground outline-none" />
               </label>
             </div>
-            <div className="mt-6 short:mt-4 very-short:mt-3 flex gap-2.5"><button type="button" onClick={saveSettings} disabled={updateSettings.isPending} className="rounded-full bg-primary px-4 py-2.5 short:py-2 font-display text-xs text-primary-foreground disabled:opacity-60">{updateSettings.isPending ? "Saving" : "Save changes"}</button><button type="button" onClick={() => setIsSettingsOpen(false)} className="rounded-full border-2 border-border px-4 py-2.5 text-xs font-semibold text-card-foreground">Close</button></div>
+            <div className="mt-6 flex gap-2.5"><button type="button" onClick={saveSettings} disabled={updateSettings.isPending} className="rounded-full bg-primary px-4 py-2.5 font-display text-xs text-primary-foreground disabled:opacity-60">{updateSettings.isPending ? "Saving" : "Save changes"}</button><button type="button" onClick={() => setIsSettingsOpen(false)} className="rounded-full border-2 border-border px-4 py-2.5 text-xs font-semibold text-card-foreground">Close</button></div>
           </section>
         </>
       ) : null}
@@ -793,13 +800,13 @@ export default function GroupLobbyPage({ params }: PageProps) {
           Could not start the game: {startSessionError}
         </p>
       ) : null}
-      <footer className="flex shrink-0 flex-wrap items-center gap-3 short:gap-2.5 very-short:gap-2">
+      <footer className="flex shrink-0 flex-wrap items-center gap-3">
         {!isCurrentUserLoading && isCurrentUserAdmin ? (
           <button
             type="button"
             onClick={handleStartGame}
             disabled={startSession.isPending || groupQuery.data.status !== "OPEN"}
-            className="inline-flex items-center gap-2 rounded-full bg-accent px-5 py-3 short:py-2.5 very-short:py-2 font-display text-[13px] text-accent-foreground shadow-md disabled:cursor-not-allowed disabled:opacity-60"
+            className="inline-flex items-center gap-2 rounded-full bg-accent px-5 py-3 font-display text-[13px] text-accent-foreground shadow-md disabled:cursor-not-allowed disabled:opacity-60"
           >
             {startSession.isPending ? <Loader2 className="size-4 animate-spin" /> : <Play className="size-4 fill-current" />}
             Start game
@@ -821,7 +828,7 @@ export default function GroupLobbyPage({ params }: PageProps) {
           <button
             type="button"
             onClick={toggleChat}
-            className={`relative z-20 inline-flex items-center gap-2 rounded-full border-2 bg-card px-5 py-3 short:py-2.5 very-short:py-2 text-[13px] font-semibold text-card-foreground ${isChatOpen ? "border-primary text-primary" : "border-border"}`}
+            className={`relative z-20 inline-flex items-center gap-2 rounded-full border-2 bg-card px-5 py-3 text-[13px] font-semibold text-card-foreground ${isChatOpen ? "border-primary text-primary" : "border-border"}`}
           >
           <MessageCircle className="size-4" />
           Chat
@@ -830,7 +837,7 @@ export default function GroupLobbyPage({ params }: PageProps) {
           <button
             type="button"
             onClick={openSettings}
-            className="inline-flex items-center gap-2 rounded-full border-2 border-border bg-card px-5 py-3 short:py-2.5 very-short:py-2 text-[13px] font-semibold text-card-foreground"
+            className="inline-flex items-center gap-2 rounded-full border-2 border-border bg-card px-5 py-3 text-[13px] font-semibold text-card-foreground"
           >
             <Settings className="size-4" />
             Settings
@@ -842,7 +849,7 @@ export default function GroupLobbyPage({ params }: PageProps) {
             <button
               type="button"
               disabled={leaveGroup.isPending}
-              className="inline-flex items-center gap-2 rounded-full border-2 border-destructive bg-transparent px-5 py-3 short:py-2.5 very-short:py-2 text-[13px] font-semibold text-destructive disabled:opacity-60"
+              className="inline-flex items-center gap-2 rounded-full border-2 border-destructive bg-transparent px-5 py-3 text-[13px] font-semibold text-destructive disabled:opacity-60"
             >
               {leaveGroup.isPending ? <Loader2 className="size-4 animate-spin" /> : <LogOut className="size-4" />}
               Leave lobby

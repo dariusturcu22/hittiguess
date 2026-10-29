@@ -2,6 +2,7 @@ import { act, fireEvent, render, screen, waitFor, within } from "@testing-librar
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 import GameSessionPage from "./page";
+import { GAME_STAGE_HEIGHT, GAME_STAGE_WIDTH } from "@/components/gameplay/game-stage";
 
 let roundEventHandler: ((event: { type: string; payload?: Record<string, unknown> }) => void) | undefined;
 type MockGuessResult = { roundId?: number; artistCorrect?: boolean; titleCorrect?: boolean; tokenAwarded?: boolean; state?: Record<string, unknown> };
@@ -190,9 +191,14 @@ vi.mock("@/components/gameplay/game-pieces", async (importOriginal) => {
 
 const TIMELINE_TRACK_BOUNDS = { left: 100, top: 200, width: 1000, height: 200, right: 1100, bottom: 400, x: 100, y: 200, toJSON: () => ({}) };
 
+const UNSCALED_STAGE_BOUNDS = { left: 0, top: 0, width: GAME_STAGE_WIDTH, height: GAME_STAGE_HEIGHT, right: GAME_STAGE_WIDTH, bottom: GAME_STAGE_HEIGHT, x: 0, y: 0, toJSON: () => ({}) };
+const EMPTY_BOUNDS = { left: 0, top: 0, width: 0, height: 0, right: 0, bottom: 0, x: 0, y: 0, toJSON: () => ({}) };
+
 function mockTimelineTrackBounds() {
   return vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(function (this: HTMLElement) {
-    return (this.matches("[data-timeline-track]") ? TIMELINE_TRACK_BOUNDS : { left: 0, top: 0, width: 0, height: 0, right: 0, bottom: 0, x: 0, y: 0, toJSON: () => ({}) }) as DOMRect;
+    if (this.matches("[data-timeline-track]")) return TIMELINE_TRACK_BOUNDS as DOMRect;
+    if (this.matches("[data-game-stage-host], [data-game-stage]")) return UNSCALED_STAGE_BOUNDS as DOMRect;
+    return EMPTY_BOUNDS as DOMRect;
   });
 }
 
@@ -643,11 +649,14 @@ describe("GameSessionPage viewport layout", () => {
   it("pins the game root to the viewport without page scrolling", async () => {
     await renderPage();
     const root = screen.getByRole("main");
+    const stageHost = root.closest("[data-game-stage-host]");
 
     expect(root.className).toContain("h-full");
     expect(root.className).toContain("overflow-hidden");
     expect(root.className).not.toContain("min-h-full");
     expect(root.className).not.toContain("min-h-[680px]");
+    expect(stageHost?.className).toContain("h-full");
+    expect(stageHost?.className).toContain("overflow-hidden");
   });
 
   it("centres the loading state inside the viewport", async () => {
@@ -671,7 +680,7 @@ describe("GameSessionPage viewport layout", () => {
     expect(root.className).not.toContain("min-h-[720px]");
   });
 
-  it("drops the stage floor and scales the timeline offsets on short screens", async () => {
+  it("lays the timeline out at its design offsets", async () => {
     const view = render(<GameSessionPage params={SESSION_PARAMS} />);
     await screen.findByText("Your turn");
 
@@ -680,41 +689,45 @@ describe("GameSessionPage viewport layout", () => {
     expect(stage.className).not.toContain("min-h-[680px]");
 
     const timelineLabel = view.container.querySelector('[class*="bottom-[calc(50%+98px)]"]');
-    expect(timelineLabel?.className).toContain("short:bottom-[calc(50%+86px)]");
-    expect(timelineLabel?.className).toContain("very-short:bottom-[calc(50%+68px)]");
+    expect(timelineLabel?.className).toContain("bottom-[calc(50%+98px)]");
+    expect(timelineLabel?.className).not.toContain("short:");
 
     const aboveTimeline = view.container.querySelector('[class*="bottom-[calc(50%+132px)]"]');
-    expect(aboveTimeline?.className).toContain("short:bottom-[calc(50%+116px)]");
-    expect(aboveTimeline?.className).toContain("very-short:bottom-[calc(50%+92px)]");
+    expect(aboveTimeline?.className).toContain("bottom-[calc(50%+132px)]");
+    expect(aboveTimeline?.className).not.toContain("short:");
 
     const belowTimeline = view.container.querySelector('[class*="top-[calc(50%+148px)]"]');
-    expect(belowTimeline?.className).toContain("short:top-[calc(50%+130px)]");
-    expect(belowTimeline?.className).toContain("very-short:top-[calc(50%+102px)]");
+    expect(belowTimeline?.className).toContain("top-[calc(50%+148px)]");
+    expect(belowTimeline?.className).not.toContain("short:");
   });
 
-  it("scales the timeline cards, the guess pills, and the token pile on short screens", async () => {
+  it("keeps the timeline cards, the guess pills, and the token pile at their design sizes", async () => {
     await renderPage();
 
-    expect(screen.getByText("Torn").closest("article")?.className).toContain("very-short:size-[116px]");
+    const card = screen.getByText("Torn").closest("article");
+    expect(card?.className).toContain("sm:size-[168px]");
+    expect(card?.className).not.toContain("short:");
 
     const guessPill = screen.getByRole("textbox", { name: "Guess the artist" }).closest("label");
-    expect(guessPill?.className).toContain("short:h-[46px]");
-    expect(guessPill?.className).toContain("very-short:h-[40px]");
+    expect(guessPill?.className).toContain("h-[52px]");
+    expect(guessPill?.className).not.toContain("short:");
 
-    expect(screen.getByLabelText("Your tokens: 0").className).toContain("very-short:gap-1.5");
+    const tokenPile = screen.getByLabelText("Your tokens: 0");
+    expect(tokenPile.className).toContain("gap-2.5");
+    expect(tokenPile.className).not.toContain("short:");
   });
 
-  it("scales the round intro on short screens", async () => {
+  it("keeps the round intro at its design size", async () => {
     mockSessionData = { ...withRound({ roundNumber: 1, turnNumber: 1 }), currentRoundNumber: 1 };
     const view = render(<GameSessionPage params={SESSION_PARAMS} />);
     await screen.findByText("First DJ");
 
     const intro = view.container.querySelector('[class*="absolute inset-0 z-40"]');
-    expect(intro?.className).toContain("short:gap-6");
-    expect(intro?.className).toContain("very-short:gap-4");
+    expect(intro?.className).toContain("gap-8");
+    expect(intro?.className).not.toContain("short:");
 
     const ring = view.container.querySelector('[class*="size-[130px]"]');
-    expect(ring?.className).toContain("short:size-[110px]");
-    expect(ring?.className).toContain("very-short:size-[92px]");
+    expect(ring?.className).toContain("size-[130px]");
+    expect(ring?.className).not.toContain("short:");
   });
 });
