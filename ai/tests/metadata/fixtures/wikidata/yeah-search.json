@@ -1,44 +1,7 @@
 {
   "search": [
-    {
-      "id": "Q3497727",
-      "description": "album by Brownsville Station"
-    },
-    {
-      "id": "Q744297",
-      "description": "2004 single by Usher featuring Lil Jon and Ludacris"
-    },
-    {
-      "id": "Q206115",
-      "description": "2006 studio album by Def Leppard"
-    },
-    {
-      "id": "Q19898280",
-      "description": "album by Charlie Rouse"
-    },
-    {
-      "id": "Q17059242",
-      "description": "1998 single by Paul Brandt"
-    },
-    {
-      "id": "Q17059237",
-      "description": "2013 song performed by Fuel"
-    },
-    {
-      "id": "Q120794046",
-      "description": "2023 video game developed by Monkeycraft"
-    },
-    {
-      "id": "Q127524359",
-      "description": "video game series"
-    },
-    {
-      "id": "Q135452190",
-      "description": "2023 video game developed by YellowGames"
-    },
-    {
-      "id": "Q84155213",
-      "description": "2018 album by Kana Adachi"
-    }
+    {"id": "Q3497727", "description": "album by Brownsville Station"},
+    {"id": "Q744297", "description": "2004 single by Usher featuring Lil Jon and Ludacris"},
+    {"id": "Q206115", "description": "2006 studio album by Def Leppard"}
   ]
 }

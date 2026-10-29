@@ -1,4 +1,5 @@
 import re
+import unicodedata
 from urllib.parse import quote
 
 # MusicBrainz, Wikidata, and Wikipedia all require a descriptive User-Agent
@@ -149,3 +150,14 @@ def parse_iso8601_duration_seconds(duration: str | None) -> int | None:
     minutes = int(match.group("minutes") or 0)
     seconds = int(match.group("seconds") or 0)
     return hours * SECONDS_PER_HOUR + minutes * SECONDS_PER_MINUTE + seconds
+
+
+def normalize_name(value: str | None) -> str:
+    decomposed = unicodedata.normalize("NFKD", value or "")
+    without_diacritics = "".join(character for character in decomposed if not unicodedata.combining(character))
+    without_punctuation = re.sub(r"[\W_]+", " ", without_diacritics)
+    return re.sub(r"\s+", " ", without_punctuation).strip().lower()
+
+
+def to_artist_list(artist: list[str]) -> list[str]:
+    return [str(part).strip() for part in artist if str(part).strip()]

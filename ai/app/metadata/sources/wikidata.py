@@ -10,13 +10,14 @@ from app.metadata.sources.http_retry import get_with_backoff
 from app.metadata.sources.pace_state import STAGE_WIKIDATA, PaceWaitTooLong
 from app.metadata.sources.pacing import PersistedRequestPacer
 from app.metadata.sources.mediawiki_auth import build_authenticated_client
-from app.metadata.sources.util import METADATA_SOURCE_USER_AGENT
+from app.metadata.sources.util import METADATA_SOURCE_USER_AGENT, normalize_name, to_artist_list
 from app.observability.error_reporting import report_source_failure
 
 SOURCE_NAME = "wikidata"
 API_URL = "https://www.wikidata.org/w/api.php"
 REQUEST_TIMEOUT_SECONDS = 10.0
 DEFAULT_SEARCH_LIMIT = 20  # a common title can bury the real song many results down a narrow window
+MAX_WIKIDATA_CANDIDATE_ATTEMPTS = 3
 
 PUBLICATION_DATE_PROPERTY = "P577"
 PART_OF_PROPERTY = "P361"
@@ -33,34 +34,19 @@ _FALLBACK_KEYWORDS = ("song", "single")
 _EXCLUDED_KEYWORDS = ("album", "ep", "record", "track", "recording")
 
 
-def _normalize_name(value: str) -> str:
-    """Lowercases a name, removes accents, and turns punctuation into spaces so
-    stylized and plain spellings compare as the same words."""
-    decomposed = unicodedata.normalize("NFKD", value or "")
-    without_accents = "".join(character for character in decomposed if not unicodedata.combining(character))
-    without_punctuation = re.sub(r"[\W_]+", " ", without_accents)
-    return re.sub(r"\s+", " ", without_punctuation).strip().lower()
-
-
-def _to_artist_list(artist: str | list[str]) -> list[str]:
-    if isinstance(artist, str):
-        return [part.strip() for part in re.split(r"[,&]", artist) if part.strip()]
-    return [str(part).strip() for part in artist if str(part).strip()]
-
-
 def _description_matches_any_artist(description: str, main_artists: list[str]) -> bool:
-    normalized_description = _normalize_name(description)
+    normalized_description = normalize_name(description)
     if not normalized_description:
         return False
     for artist in main_artists:
-        normalized_artist = _normalize_name(artist)
+        normalized_artist = normalize_name(artist)
         if normalized_artist and re.search(rf"(?<!\w){re.escape(normalized_artist)}(?!\w)", normalized_description):
             return True
     return False
 
 
 def _description_matches_fallback(description: str, main_artists: list[str]) -> bool:
-    normalized_description = _normalize_name(description)
+    normalized_description = normalize_name(description)
     if not normalized_description:
         return False
 
@@ -82,9 +68,9 @@ def _description_matches_fallback(description: str, main_artists: list[str]) -> 
     if by_matches:
         first_by_clause = by_matches[0]
         names_main_artist = any(
-            _normalize_name(artist) in first_by_clause
+            normalize_name(artist) in first_by_clause
             for artist in main_artists
-            if _normalize_name(artist)
+            if normalize_name(artist)
         )
         if not names_main_artist:
             return False
@@ -93,7 +79,7 @@ def _description_matches_fallback(description: str, main_artists: list[str]) -> 
 
 
 def find_matching_candidates(matches: list[dict], artist: str | list[str]) -> list[dict]:
-    main_artists = _to_artist_list(artist)
+    main_artists = to_artist_list(artist)
     artist_matches = [
         match for match in matches
         if _description_matches_any_artist(match.get("description") or "", main_artists)
@@ -238,9 +224,9 @@ def get_performer_labels(performer_ids: list[str]) -> list[str]:
 
 def _performer_matches_main_artist(performer_labels: list[str], main_artists: list[str]) -> bool:
     for label in performer_labels:
-        normalized_label = _normalize_name(label)
+        normalized_label = normalize_name(label)
         for artist in main_artists:
-            normalized_artist = _normalize_name(artist)
+            normalized_artist = normalize_name(artist)
             if normalized_artist and (
                 normalized_artist == normalized_label
                 or normalized_artist in normalized_label
@@ -309,13 +295,13 @@ def search_or_raise(title: str, artist: str | list[str]) -> list[dict]:
     P175 is present, and looks up its parent album via P361. Returns every
     candidate found so downstream reconciliation sees the full picture. A failed
     request raises."""
-    main_artists = _to_artist_list(artist)
+    main_artists = to_artist_list(artist)
     matches = search_entity(title).get("search", [])
     candidate_matches = find_matching_candidates(matches, main_artists)
     if not candidate_matches:
         return []
 
-    for match in candidate_matches:
+    for match in candidate_matches[:MAX_WIKIDATA_CANDIDATE_ATTEMPTS]:
         track_candidate, track_entity = _resolve_candidate(match["id"], match.get("description"), "track")
         if not _confirm_performer(track_entity, main_artists):
             continue
@@ -336,6 +322,6 @@ def search(title: str, artist: str | list[str]) -> list[dict]:
     try:
         return search_or_raise(title, artist)
     except Exception as wikidata_error:
-        artist_display = " & ".join(_to_artist_list(artist))
+        artist_display = " & ".join(to_artist_list(artist))
         report_source_failure(SOURCE_NAME, wikidata_error, title, artist_display)
         return []
