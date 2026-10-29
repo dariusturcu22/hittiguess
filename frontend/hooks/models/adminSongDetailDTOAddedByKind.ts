@@ -11,6 +11,6 @@ export type AdminSongDetailDTOAddedByKind = typeof AdminSongDetailDTOAddedByKind
 export const AdminSongDetailDTOAddedByKind = {
   USER: 'USER',
   ADMIN_SEED: 'ADMIN_SEED',
-  UNKNOWN: 'UNKNOWN',
   LEGACY: 'LEGACY',
+  UNKNOWN: 'UNKNOWN',
 } as const;
