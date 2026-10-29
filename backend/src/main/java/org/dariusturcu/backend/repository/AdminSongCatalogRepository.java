@@ -66,7 +66,8 @@ public class AdminSongCatalogRepository {
                     latest_queue_row.origin AS latest_origin,
                     (COALESCE(queue_facts.has_run, false)
                         OR EXISTS (SELECT 1 FROM pending_imports history
-                            WHERE history.youtube_id = song.youtube_id)) AS has_pipeline_run,
+                            WHERE history.youtube_id = song.youtube_id
+                              AND history.origin <> 'ADMIN_RECHECK')) AS has_pipeline_run,
                     COALESCE(queue_facts.admin_seeded, false) AS admin_seeded,
                     song.created_at,
                     added_by_user.username AS added_by_username
@@ -74,7 +75,7 @@ public class AdminSongCatalogRepository {
                 LEFT JOIN users added_by_user ON added_by_user.id = song.added_by
                 LEFT JOIN LATERAL (
                     SELECT
-                        count(*) > 0 AS has_run,
+                        count(*) FILTER (WHERE queue.origin <> 'ADMIN_RECHECK') > 0 AS has_run,
                         bool_or(queue.status = 'PROCESSING') AS processing,
                         bool_or(queue.status = 'PENDING') AS pending,
                         bool_or(queue.origin IN ('FAST_TIER_RECHECK', 'USER_ADD_RECHECK')
@@ -194,18 +195,13 @@ public class AdminSongCatalogRepository {
         return LIKE_ANY_CHARACTERS + escapedText + LIKE_ANY_CHARACTERS;
     }
 
-    public List<AdminCatalogRow> findPage(String searchText, CatalogSongStatus status, int pageSize, long offset) {
-        return findPage(searchText, status, null, pageSize, offset);
-    }
-
-    public List<AdminCatalogRow> findPage(String searchText, CatalogSongStatus status, Boolean proposedOnly, int pageSize, long offset) {
+    public List<AdminCatalogRow> findPage(String searchText, CatalogSongStatus status, boolean proposedOnly, int pageSize, long offset) {
         return core.query(queueSource(PAGE_QUERY.formatted(songFilter(searchText), queueFilter(searchText),
                         filterClause(status, proposedOnly))), (resultSet, rowNumber) -> toRow(resultSet),
                 pageParameters(searchText, status, pageSize, offset));
     }
 
-    static String filterClause(CatalogSongStatus status, Boolean proposedOnly) {
-        boolean filterProposed = Boolean.TRUE.equals(proposedOnly);
+    static String filterClause(CatalogSongStatus status, boolean filterProposed) {
         if (status != null && filterProposed) {
             return STATUS_AND_PROPOSED_FILTER;
         }

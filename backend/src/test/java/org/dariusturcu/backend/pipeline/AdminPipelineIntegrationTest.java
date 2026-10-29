@@ -348,6 +348,8 @@ class AdminPipelineIntegrationTest {
         var first = transaction(() -> admin.runNow(VIDEO));
         var rerun = transaction(() -> songs.rerun(song));
         assertThat(rerun.id()).isEqualTo(first.id());
+        assertThat(core.queryForObject("SELECT origin FROM pipeline_runs WHERE id = ?", String.class, first.id()))
+                .isEqualTo("ADMIN_SEED");
         assertThat(engine.jobsOfRun(first.id())).singleElement().satisfies(job -> assertThat(job.priority()).isPositive());
     }
 
@@ -417,6 +419,14 @@ class AdminPipelineIntegrationTest {
     }
 
     @Test
+    void aSongRerunIsQueuedAsAnAdminRecheck() {
+        long song = song(VIDEO);
+        var rerun = transaction(() -> songs.rerun(song));
+        assertThat(core.queryForObject("SELECT origin FROM pipeline_runs WHERE id = ?", String.class, rerun.id()))
+                .isEqualTo("ADMIN_RECHECK");
+    }
+
+    @Test
     void recheckEndpointSkipsSongsInActiveGamesAndQueuesTheRest() {
         long activeSong = song(VIDEO);
         long idleSong = song(OTHER_VIDEO);
@@ -437,6 +447,8 @@ class AdminPipelineIntegrationTest {
                 Long.class, OTHER_VIDEO)).isEqualTo(1);
         assertThat(core.queryForObject("SELECT count(*) FROM pipeline_runs WHERE youtube_id = ? AND lane = 'BACKFILL'",
                 Long.class, VIDEO)).isZero();
+        assertThat(core.queryForObject("SELECT origin FROM pipeline_runs WHERE youtube_id = ?", String.class, OTHER_VIDEO))
+                .isEqualTo("ADMIN_RECHECK");
     }
 
     @Test

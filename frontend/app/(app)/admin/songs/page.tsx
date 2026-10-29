@@ -92,9 +92,7 @@ function CatalogRowCells({ song }: { song: AdminCatalogSongDTO }) {
       <span className={`${catalogColumnClassName("proposedYear")} text-[13px] text-card-foreground`}>
         {song.proposedReleaseYear != null ? (
           <span className="font-semibold text-accent">{song.proposedReleaseYear}</span>
-        ) : (
-          <span className="text-icon-muted">-</span>
-        )}
+        ) : null}
       </span>
       <span className={catalogColumnClassName("status")}>
         <StatusPill status={song.status} />

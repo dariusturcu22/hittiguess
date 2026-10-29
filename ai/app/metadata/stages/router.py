@@ -107,7 +107,7 @@ def youtube_metadata_stage(request: YoutubeMetadataStageRequest):
         with failures_attributed_to(StageProvider.YOUTUBE):
             youtube_data = youtube.fetch_youtube_metadata_or_raise(request.youtube_id)
         with failures_attributed_to(StageProvider.DEEPINFRA):
-            outcome = service.identify_from_youtube_data(youtube_data)
+            outcome = service.identify_from_youtube_data(youtube_data, request.youtube_id)
         return _youtube_stage_response(youtube_data, outcome)
 
     return _run_stage(STAGE_YOUTUBE_METADATA, run, request.youtube_id, None)
