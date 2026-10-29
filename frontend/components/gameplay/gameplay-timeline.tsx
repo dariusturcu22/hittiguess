@@ -60,7 +60,7 @@ export function GameplayTimeline({ cards, slots, tiltGapIndex = null, focusKey =
   }
 
   return <div className="relative w-full max-w-[1100px]">
-    <div ref={trackReference} onScroll={updateScrollState} className="w-full overflow-x-auto overflow-y-hidden [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" style={{ maskImage: TIMELINE_EDGE_FADE, WebkitMaskImage: TIMELINE_EDGE_FADE }}>
+    <div ref={trackReference} data-timeline-track="" onScroll={updateScrollState} className="w-full overflow-x-auto overflow-y-hidden [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" style={{ maskImage: TIMELINE_EDGE_FADE, WebkitMaskImage: TIMELINE_EDGE_FADE }}>
       <div className={`mx-auto flex w-max items-center gap-[18px] px-16 py-6 transition-[filter,opacity] duration-300 ${isDimmed ? "opacity-60 saturate-[0.55]" : ""}`}>
         {timelineEntries(cards).map((entry) => {
           if (entry.kind === "gap") {

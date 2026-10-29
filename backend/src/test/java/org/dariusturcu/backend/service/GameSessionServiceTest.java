@@ -10,6 +10,8 @@ import org.dariusturcu.backend.model.session.GenerateDifficultySetRequest;
 import org.dariusturcu.backend.model.session.GeneratedSongPreviewDTO;
 import org.dariusturcu.backend.model.session.PlaceCardRequest;
 import org.dariusturcu.backend.model.session.PlacementPreviewDTO;
+import org.dariusturcu.backend.model.session.PlacementPreviewPhase;
+import org.dariusturcu.backend.model.session.PlacementPreviewRequest;
 import org.dariusturcu.backend.model.session.Player;
 import org.dariusturcu.backend.model.session.PlayerCard;
 import org.dariusturcu.backend.model.session.PlayerStatus;
@@ -793,13 +795,52 @@ class GameSessionServiceTest {
         anchorCard(active, song(100, "Anchor A", 1990));
         round(session, 10L, 1, active, dj, song(200, "Round Song", 2000));
 
-        gameSessionService.previewPlacement(session.getId(), active.getUser().getId(), 1);
+        gameSessionService.previewPlacement(session.getId(), active.getUser().getId(),
+                new PlacementPreviewRequest(1, 0.5, -0.3, PlacementPreviewPhase.DRAGGING));
 
         org.mockito.ArgumentCaptor<Object> events = org.mockito.ArgumentCaptor.forClass(Object.class);
         verify(eventPublisher).publishEvent(events.capture());
         SessionBroadcastEvent event = (SessionBroadcastEvent) events.getValue();
         assertThat(event.type()).isEqualTo(SessionEventType.PLACEMENT_PREVIEW);
-        assertThat(event.payload()).isEqualTo(new PlacementPreviewDTO(10L, active.getId(), 1));
+        assertThat(event.payload()).isEqualTo(new PlacementPreviewDTO(
+                10L, active.getId(), 1, 0.5, -0.3, PlacementPreviewPhase.DRAGGING));
+    }
+
+    @Test
+    void placementPreviewCoordinatesAreClampedToTheTimelineRanges() {
+        GameSession session = session(DjMode.ROTATING, 10);
+        Player active = player(session, 1L, 0, PlayerStatus.ACTIVE);
+        Player dj = player(session, 2L, 1, PlayerStatus.ACTIVE);
+        round(session, 10L, 1, active, dj, song(200, "Round Song", 2000));
+
+        gameSessionService.previewPlacement(session.getId(), active.getUser().getId(),
+                new PlacementPreviewRequest(0, -1.0, -5.0, PlacementPreviewPhase.DRAGGING));
+        gameSessionService.previewPlacement(session.getId(), active.getUser().getId(),
+                new PlacementPreviewRequest(null, 2.0, 5.0, PlacementPreviewPhase.DRAGGING));
+
+        org.mockito.ArgumentCaptor<Object> events = org.mockito.ArgumentCaptor.forClass(Object.class);
+        verify(eventPublisher, org.mockito.Mockito.times(2)).publishEvent(events.capture());
+        assertThat(events.getAllValues())
+                .filteredOn(SessionBroadcastEvent.class::isInstance)
+                .map(event -> ((SessionBroadcastEvent) event).payload())
+                .containsExactly(
+                        new PlacementPreviewDTO(10L, active.getId(), 0, 0.0, -2.0, PlacementPreviewPhase.DRAGGING),
+                        new PlacementPreviewDTO(10L, active.getId(), null, 1.0, 2.0, PlacementPreviewPhase.DRAGGING));
+    }
+
+    @Test
+    void placementPreviewsBeyondTheRateLimitAreDroppedSilently() {
+        GameSession session = session(DjMode.ROTATING, 10);
+        Player active = player(session, 1L, 0, PlayerStatus.ACTIVE);
+        Player dj = player(session, 2L, 1, PlayerStatus.ACTIVE);
+        round(session, 10L, 1, active, dj, song(200, "Round Song", 2000));
+
+        for (int previewIndex = 0; previewIndex < 31; previewIndex++) {
+            gameSessionService.previewPlacement(session.getId(), active.getUser().getId(),
+                    new PlacementPreviewRequest(0, 0.5, 0.5, PlacementPreviewPhase.DRAGGING));
+        }
+
+        verify(eventPublisher, org.mockito.Mockito.times(30)).publishEvent(any(SessionBroadcastEvent.class));
     }
 
     @Test
@@ -809,7 +850,8 @@ class GameSessionServiceTest {
         Player dj = player(session, 2L, 1, PlayerStatus.ACTIVE);
         round(session, 10L, 1, active, dj, song(200, "Round Song", 2000));
 
-        assertThatThrownBy(() -> gameSessionService.previewPlacement(session.getId(), dj.getUser().getId(), 0))
+        assertThatThrownBy(() -> gameSessionService.previewPlacement(session.getId(), dj.getUser().getId(),
+                new PlacementPreviewRequest(0, null, null, null)))
                 .isInstanceOf(AccessDeniedException.class);
     }
 
@@ -821,7 +863,8 @@ class GameSessionServiceTest {
         Round round = round(session, 10L, 1, active, dj, song(200, "Round Song", 2000));
         round.setStatus(RoundStatus.COUNTDOWN);
 
-        gameSessionService.previewPlacement(session.getId(), active.getUser().getId(), 0);
+        gameSessionService.previewPlacement(session.getId(), active.getUser().getId(),
+                new PlacementPreviewRequest(0, null, null, null));
 
         verify(eventPublisher, org.mockito.Mockito.never()).publishEvent(any(Object.class));
     }

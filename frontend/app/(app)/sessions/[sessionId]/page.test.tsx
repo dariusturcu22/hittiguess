@@ -2,6 +2,7 @@ import { act, fireEvent, render, screen, waitFor, within } from "@testing-librar
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 import GameSessionPage from "./page";
+import { GAME_STAGE_HEIGHT, GAME_STAGE_WIDTH } from "@/components/gameplay/game-stage";
 
 let roundEventHandler: ((event: { type: string; payload?: Record<string, unknown> }) => void) | undefined;
 type MockGuessResult = { roundId?: number; artistCorrect?: boolean; titleCorrect?: boolean; tokenAwarded?: boolean; state?: Record<string, unknown> };
@@ -65,6 +66,8 @@ type MockGameSession = Omit<typeof MID_GAME_SESSION, "currentRound"> & { current
 
 let mockSessionData: MockGameSession | null = MID_GAME_SESSION;
 let mockSessionIsLoading = false;
+let mockMembership: { id: number } | undefined = { id: 2 };
+let mockMembershipIsLoading = false;
 let mockCurrentUserId = ACTIVE_USER_ID;
 
 function withRound(round: Record<string, unknown>): MockGameSession {
@@ -99,7 +102,7 @@ vi.mock("@/hooks/generated/game-session/game-session", () => ({
 }));
 
 vi.mock("@/hooks/generated/group-management/group-management", () => ({
-  useGetActiveMembership: () => ({ data: { id: 2 } }),
+  useGetActiveMembership: () => ({ data: mockMembership, isLoading: mockMembershipIsLoading }),
   getGetActiveMembershipQueryKey: () => ["/api/groups/active"],
   useLeaveGroup: () => ({ mutate: leaveGroupMutate, isPending: false }),
   useGetGroup: () => ({ data: { playlists: [{ id: 5, name: "Midnight Radio", color: "cba6f7", songCount: 32, previewYoutubeIds: [] }] } }),
@@ -172,6 +175,33 @@ vi.mock("@/components/group-chat-overlay", () => ({
   GroupChatOverlay: () => <aside aria-label="Chat" />,
 }));
 
+vi.mock("@/components/gameplay/game-pieces", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/components/gameplay/game-pieces")>();
+  const { createElement } = await import("react");
+  type MysteryCardProps = Parameters<typeof actual.MysteryCard>[0];
+  return {
+    ...actual,
+    MysteryCard: ({ levels, ...rest }: MysteryCardProps) => createElement(
+      "div",
+      { "data-audio-levels": levels?.join(",") ?? "" },
+      createElement(actual.MysteryCard, { ...rest, levels }),
+    ),
+  };
+});
+
+const TIMELINE_TRACK_BOUNDS = { left: 100, top: 200, width: 1000, height: 200, right: 1100, bottom: 400, x: 100, y: 200, toJSON: () => ({}) };
+
+const UNSCALED_STAGE_BOUNDS = { left: 0, top: 0, width: GAME_STAGE_WIDTH, height: GAME_STAGE_HEIGHT, right: GAME_STAGE_WIDTH, bottom: GAME_STAGE_HEIGHT, x: 0, y: 0, toJSON: () => ({}) };
+const EMPTY_BOUNDS = { left: 0, top: 0, width: 0, height: 0, right: 0, bottom: 0, x: 0, y: 0, toJSON: () => ({}) };
+
+function mockTimelineTrackBounds() {
+  return vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(function (this: HTMLElement) {
+    if (this.matches("[data-timeline-track]")) return TIMELINE_TRACK_BOUNDS as DOMRect;
+    if (this.matches("[data-game-stage-host], [data-game-stage]")) return UNSCALED_STAGE_BOUNDS as DOMRect;
+    return EMPTY_BOUNDS as DOMRect;
+  });
+}
+
 async function renderPage() {
   await act(async () => {
     render(<GameSessionPage params={SESSION_PARAMS} />);
@@ -199,6 +229,8 @@ describe("GameSessionPage", () => {
     routerReplace.mockClear();
     mockSessionData = MID_GAME_SESSION;
     mockSessionIsLoading = false;
+    mockMembership = { id: 2 };
+    mockMembershipIsLoading = false;
     mockCurrentUserId = ACTIVE_USER_ID;
     mockSongVolume = 100;
     mockIsCapturing = false;
@@ -233,10 +265,25 @@ describe("GameSessionPage", () => {
     expect(screen.getByText("Confirm your placement")).toBeVisible();
 
     fireEvent.keyDown(screen.getByRole("button", { name: "Your card. Choose a timeline position." }), { key: "ArrowLeft" });
-    await waitFor(() => expect(previewPlacement).toHaveBeenLastCalledWith(1));
+    await waitFor(() => expect(previewPlacement).toHaveBeenLastCalledWith({ position: 1, phase: "DROPPED" }));
 
     fireEvent.click(screen.getByRole("button", { name: "Lock in answer" }));
     expect(placeCard).toHaveBeenCalledWith(1);
+  });
+
+  it("publishes the dragged card position as fractions of the timeline box", async () => {
+    const rectSpy = mockTimelineTrackBounds();
+    try {
+      await renderPage();
+
+      fireEvent.pointerDown(screen.getByRole("button", { name: "Your card. Choose a timeline position." }), { clientX: 600, clientY: 350 });
+      expect(previewPlacement).toHaveBeenCalledWith({ position: null, x: 0.5, y: 0.16, phase: "DRAGGING" });
+
+      fireEvent.pointerMove(window, { clientX: 700, clientY: 400 });
+      await waitFor(() => expect(previewPlacement).toHaveBeenLastCalledWith(expect.objectContaining({ x: 0.6, y: 0.41, phase: "DRAGGING" })));
+    } finally {
+      rectSpy.mockRestore();
+    }
   });
 
   it("keeps the guess fields next to the lock-in button once the card is dropped", async () => {
@@ -335,12 +382,23 @@ describe("GameSessionPage", () => {
     expect(routerReplace).toHaveBeenCalledWith("/groups/2");
   });
 
-  it("sends a player whose session is already gone to the group's results", async () => {
+  it("shows a loader, not the ended screen, while a purged session redirects to its group's results", async () => {
     mockSessionData = null;
     await renderPage();
 
     expect(routerReplace).toHaveBeenCalledWith("/sessions/1/results?group=2");
-    expect(screen.getByRole("link", { name: "Back to lobby" })).toHaveAttribute("href", "/groups/2");
+    expect(screen.getByLabelText("Loading game session")).toBeVisible();
+    expect(screen.queryByText("This game has ended.")).toBeNull();
+  });
+
+  it("shows the ended screen when a purged session has no group to return to", async () => {
+    mockSessionData = null;
+    mockMembership = undefined;
+    await renderPage();
+
+    expect(screen.getByText("This game has ended.")).toBeVisible();
+    expect(screen.getByRole("link", { name: "Back to playlists" })).toHaveAttribute("href", "/playlists");
+    expect(routerReplace).not.toHaveBeenCalled();
   });
 
   it("announces another player's correct guess without the answer", async () => {
@@ -449,15 +507,40 @@ describe("GameSessionPage", () => {
 
   it("shows spectators the live placement preview", async () => {
     mockCurrentUserId = SPECTATOR_USER_ID;
+    useAudioLevelsSpy.mockReturnValue([0.1, 0.2, 0.3, 0.4, 0.5]);
     await renderPage();
 
     expect(screen.getByText("Watching live. It's not your turn to place a card.")).toBeVisible();
+    expect(document.querySelector("[data-spectator-card-preview]")).toBeNull();
+
     act(() => {
-      roundEventHandler?.({ type: "PLACEMENT_PREVIEW", payload: { roundId: 30, activePlayerId: 7, position: 1 } });
+      roundEventHandler?.({ type: "PLACEMENT_PREVIEW", payload: { roundId: 30, activePlayerId: 7, position: null, x: 0.4, y: -0.5, phase: "IDLE" } });
     });
 
-    expect(screen.getByRole("region", { name: "Game stage" }).querySelector(".gameplay-gap-pulse")).not.toBeNull();
+    const idleCard = document.querySelector<HTMLElement>("[data-spectator-card-preview]");
+    expect(idleCard).toHaveAttribute("data-phase", "IDLE");
+    expect(idleCard).toHaveStyle({ left: "40%", top: "-50%" });
+    expect(idleCard?.querySelector(".gameplay-card-float")).not.toBeNull();
+    expect(idleCard?.querySelector(".gameplay-wobble")).toBeNull();
+    expect(idleCard?.querySelector("[data-audio-levels]")).toHaveAttribute("data-audio-levels", "0.1,0.2,0.3,0.4,0.5");
     expect(screen.queryByRole("button", { name: "Your card. Choose a timeline position." })).toBeNull();
+
+    act(() => {
+      roundEventHandler?.({ type: "PLACEMENT_PREVIEW", payload: { roundId: 30, activePlayerId: 7, position: 1, x: 0.6, y: 0.2, phase: "DRAGGING" } });
+    });
+
+    const draggingCard = document.querySelector<HTMLElement>("[data-spectator-card-preview]");
+    expect(draggingCard).toHaveAttribute("data-phase", "DRAGGING");
+    expect(draggingCard).toHaveStyle({ left: "60%", top: "20%" });
+    expect(draggingCard?.querySelector(".gameplay-wobble")).not.toBeNull();
+    expect(screen.getByRole("region", { name: "Game stage" }).querySelector(".gameplay-gap-pulse")).not.toBeNull();
+
+    act(() => {
+      roundEventHandler?.({ type: "PLACEMENT_PREVIEW", payload: { roundId: 30, activePlayerId: 7, position: 1, phase: "DROPPED" } });
+    });
+
+    expect(document.querySelector("[data-spectator-card-preview]")).toBeNull();
+    expect(screen.getByRole("region", { name: "Game stage" }).querySelector("[data-timeline-focus] [data-audio-levels]")).toHaveAttribute("data-audio-levels", "0.1,0.2,0.3,0.4,0.5");
   });
 
   it("closes guessing and stops the active player's audio once the card is locked in", async () => {
