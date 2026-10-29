@@ -151,17 +151,17 @@ artist, or duplicate. Each task has a self-contained brief in `opencode-tasks/`.
 
 Layout and game screens:
 
-- [ ] Left rail icons spaced further apart at every height step
+- [x] Left rail icons spaced further apart at every height step
 - [ ] Game screens (lobby, round intro, every round phase, between rounds) laid out as the 1440x900 designs and scaled evenly to the window, replacing the per-element `short:`/`very-short:` shrinking
 - [ ] Lobby matches its design artboards in text size, spacing, and alignment
 - [ ] Gameplay matches its design artboards in text size, spacing, alignment, and timeline card size
-- [ ] The waveform has 5 bars everywhere in the app, driven by the song's frequency bands
+- [x] The waveform has 5 bars everywhere in the app, driven by the song's frequency bands
 
 Gameplay behavior:
 
 - [x] Countdowns use the server's clock: every response that carries a deadline also carries the server time, and clients correct for their own clock offset
 - [ ] Every player sees the active player's card move live while it is dragged, with the same waveform, as in the GameSessionCardDraggingSpectator design
-- [ ] The voice rail's Join button is the next slot under the people in the call, at the top when the call is empty
+- [x] The voice rail's Join button is the next slot under the people in the call, at the top when the call is empty
 
 Navigation:
 

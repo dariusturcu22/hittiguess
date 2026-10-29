@@ -1,6 +1,6 @@
 import { useEffect, useRef, type CSSProperties, type KeyboardEvent, type PointerEvent } from "react";
 
-import { SILENCE_FLOOR_LEVEL, VISUALIZER_BAND_COUNT } from "@/hooks/use-audio-levels";
+import { SILENCE_FLOOR_LEVEL } from "@/hooks/use-audio-levels";
 import { readableCardColor } from "@/lib/card-color";
 
 const CARD_TEXT_COLOR = "#1e1e2e";
@@ -9,7 +9,8 @@ const VISUALIZER_RESTING_PATTERN = [0.35, 0.75, 0.5, 0.9, 0.45];
 const VISUALIZER_QUIET_PERCENT = 22;
 const VISUALIZER_RANGE_PERCENT = 78;
 const VISUALIZER_MAXIMUM_LEVEL = 1;
-const VISUALIZER_BAR_GAP_RATIO = 0.3;
+const VISUALIZER_BAR_WIDTH_PIXELS = 7;
+const VISUALIZER_BAR_GAP_PIXELS = 6;
 const VISUALIZER_BAR_RADIUS_RATIO = 0.5;
 const VISUALIZER_COLOR_VARIABLE = "--green";
 const VISUALIZER_FALLBACK_COLOR = "#499f36";
@@ -27,20 +28,7 @@ function cardColor(color: string | undefined): string {
   return readableCardColor(color.startsWith("#") ? color : `#${color}`);
 }
 
-function restingLevels(bandCount: number): number[] {
-  const highestPatternIndex = VISUALIZER_RESTING_PATTERN.length - 1;
-  return Array.from({ length: bandCount }, (_, bandIndex) => {
-    const patternPosition = (bandIndex * highestPatternIndex) / (bandCount - 1);
-    const lowerPatternIndex = Math.floor(patternPosition);
-    const upperPatternIndex = Math.min(highestPatternIndex, lowerPatternIndex + 1);
-    const blend = patternPosition - lowerPatternIndex;
-    const lowerLevel = VISUALIZER_RESTING_PATTERN[lowerPatternIndex];
-    const upperLevel = VISUALIZER_RESTING_PATTERN[upperPatternIndex];
-    return lowerLevel + (upperLevel - lowerLevel) * blend;
-  });
-}
-
-const VISUALIZER_RESTING_LEVELS = restingLevels(VISUALIZER_BAND_COUNT);
+const VISUALIZER_RESTING_LEVELS = VISUALIZER_RESTING_PATTERN;
 
 function readVisualizerColor(canvas: HTMLCanvasElement): string {
   const color = getComputedStyle(canvas).getPropertyValue(VISUALIZER_COLOR_VARIABLE).trim();
@@ -66,16 +54,17 @@ function drawSoundBars(canvas: HTMLCanvasElement | null, levels: number[]): void
   context.setTransform(devicePixelRatio, 0, 0, devicePixelRatio, 0, 0);
   context.clearRect(0, 0, bounds.width, bounds.height);
   context.fillStyle = readVisualizerColor(canvas);
-  const slotWidth = bounds.width / levels.length;
-  const barWidth = slotWidth * (1 - VISUALIZER_BAR_GAP_RATIO);
-  const cornerRadius = Math.min(barWidth, bounds.height) * VISUALIZER_BAR_RADIUS_RATIO;
+  const barPitch = VISUALIZER_BAR_WIDTH_PIXELS + VISUALIZER_BAR_GAP_PIXELS;
+  const barsWidth = levels.length * barPitch - VISUALIZER_BAR_GAP_PIXELS;
+  const firstBarLeft = (bounds.width - barsWidth) / 2;
+  const cornerRadius = Math.min(VISUALIZER_BAR_WIDTH_PIXELS, bounds.height) * VISUALIZER_BAR_RADIUS_RATIO;
   levels.forEach((level, bandIndex) => {
     const boundedLevel = Math.min(VISUALIZER_MAXIMUM_LEVEL, Math.max(SILENCE_FLOOR_LEVEL, level));
     const barHeight = bounds.height * ((VISUALIZER_QUIET_PERCENT + boundedLevel * VISUALIZER_RANGE_PERCENT) / CSS_PERCENT_SCALE);
-    const barLeft = bandIndex * slotWidth + (slotWidth - barWidth) / 2;
+    const barLeft = firstBarLeft + bandIndex * barPitch;
     const barTop = (bounds.height - barHeight) / 2;
     context.beginPath();
-    context.roundRect(barLeft, barTop, barWidth, barHeight, cornerRadius);
+    context.roundRect(barLeft, barTop, VISUALIZER_BAR_WIDTH_PIXELS, barHeight, cornerRadius);
     context.fill();
   });
 }
