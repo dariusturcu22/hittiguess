@@ -173,7 +173,7 @@ Navigation:
 Catalog and pipeline:
 
 - [ ] The duration refresh fetches songs that never had a duration, and keeps old durations when a refresh fails
-- [ ] MusicBrainz lookups find multi-artist songs and include the albums a recording appears on
+- [x] MusicBrainz lookups find multi-artist songs and include the albums a recording appears on
 - [ ] Wikidata and Discogs matching rejects other artists' works, compilations, and non-song entities
 - [ ] The Wikipedia-assisted lock no longer takes the earliest of disagreeing years when only one source supports it
 - [ ] Recheck the catalog after the pipeline fixes and correct the songs in the year audit
