@@ -21,7 +21,7 @@ const TOKEN_PILE_MAXIMUM_COINS = 4;
 const TOKEN_PILE_COIN_OFFSET_PIXELS = 8;
 const TOKEN_PILE_COIN_ROTATIONS = [7, -9, 4, -5];
 
-export const CARD_SIZE_CLASSES = "size-[132px] sm:size-[168px]";
+export const CARD_SIZE_CLASSES = "size-[168px]";
 
 function cardColor(color: string | undefined): string {
   if (!color) return DEFAULT_CARD_COLOR;
@@ -71,9 +71,9 @@ function drawSoundBars(canvas: HTMLCanvasElement | null, levels: number[]): void
 
 export function SongCard({ artist, title, year, color, className = "", style }: { artist?: string; title?: string; year?: number | string; color?: string; className?: string; style?: CSSProperties }) {
   return <article style={{ background: cardColor(color), color: CARD_TEXT_COLOR, ...style }} className={`flex shrink-0 flex-col items-center justify-center gap-1.5 rounded-[22px] border-[5px] border-background p-3.5 text-center ${CARD_SIZE_CLASSES} ${className}`}>
-    <span className="line-clamp-2 text-[10px] font-bold uppercase sm:text-xs">{artist || "Unknown artist"}</span>
-    <strong className="font-display text-[32px] leading-none sm:text-[40px]">{year ?? "?"}</strong>
-    <span className="line-clamp-2 text-[10px] font-medium opacity-80 sm:text-[11px]">{title || "Untitled"}</span>
+    <span className="line-clamp-2 text-xs font-bold uppercase">{artist || "Unknown artist"}</span>
+    <strong className="font-display text-[40px] leading-none">{year ?? "?"}</strong>
+    <span className="line-clamp-2 text-[11px] font-medium opacity-80">{title || "Untitled"}</span>
   </article>;
 }
 
