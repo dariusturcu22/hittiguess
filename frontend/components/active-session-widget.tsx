@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { ArrowRight, Clock3, Coins, Radio } from "lucide-react";
 import { usePathname } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 
 import { useGetActiveMembership } from "@/hooks/generated/group-management/group-management";
 import { useGetActiveSessionForGroup, useGetSession } from "@/hooks/generated/game-session/game-session";
@@ -12,9 +12,16 @@ import { useGameSessionRealtime } from "@/hooks/use-game-session-realtime";
 import { useTurnSound } from "@/hooks/use-turn-sound";
 import { AWAITING_PLACEMENT_STATUS, BETTING_STATUS, COUNTDOWN_STATUS, REVEALED_STATUS, SCORED_STATUS, secondsUntil } from "@/lib/gameplay-round";
 import type { RoundDTO } from "@/hooks/models/roundDTO";
+import type { GameSessionDTO } from "@/hooks/models/gameSessionDTO";
+import { recordServerTime, useServerNow } from "@/lib/server-clock";
 
 const LOCKED_GROUP_STATUS = "LOCKED";
 const CLOCK_INTERVAL_MILLISECONDS = 1_000;
+
+function recordSessionClockOffset(session: GameSessionDTO): GameSessionDTO {
+  recordServerTime(session.currentRound?.serverTime);
+  return session;
+}
 
 export function phaseDeadline(round: RoundDTO | undefined): string | undefined {
   switch (round?.status) {
@@ -40,19 +47,19 @@ function phaseDescription(round: RoundDTO | undefined, playerName: string): stri
 
 export function ActiveSessionWidget() {
   const pathname = usePathname();
-  const [now, setNow] = useState(Date.now);
   const membershipQuery = useGetActiveMembership({ query: { retry: false } });
   const currentUserQuery = useGetCurrentUser();
   const groupId = membershipQuery.data?.id ?? 0;
   const sessionQuery = useGetActiveSessionForGroup(groupId, { query: { enabled: membershipQuery.data?.status === LOCKED_GROUP_STATUS, retry: false } });
   const sessionId = sessionQuery.data?.id;
-  const sessionDetailsQuery = useGetSession(sessionId ?? 0, { query: { enabled: sessionId !== undefined, retry: false } });
+  const sessionDetailsQuery = useGetSession(sessionId ?? 0, { query: { enabled: sessionId !== undefined, retry: false, select: recordSessionClockOffset } });
   const currentRound = sessionDetailsQuery.data?.currentRound;
   const players = sessionDetailsQuery.data?.players;
   const activePlayer = players?.find((player) => player.id === currentRound?.activePlayerId);
   const ownPlayer = players?.find((player) => player.userId === currentUserQuery.data?.id);
   const isAway = sessionId !== undefined && !pathname.startsWith(`/sessions/${sessionId}`);
-  useGameSessionRealtime(isAway ? sessionId ?? 0 : 0, () => setNow(Date.now()));
+  useGameSessionRealtime(isAway ? sessionId ?? 0 : 0);
+  const now = useServerNow(isAway ? CLOCK_INTERVAL_MILLISECONDS : 0);
   const isOwnTurn = ownPlayer?.id !== undefined && ownPlayer.id === currentRound?.activePlayerId && currentRound?.status === AWAITING_PLACEMENT_STATUS;
   const turnKey = sessionId !== undefined && currentRound?.id !== undefined ? `${sessionId}:${currentRound.id}` : undefined;
   const notifiedTurnsReference = useRef(new Set<string>());
@@ -64,12 +71,6 @@ export function ActiveSessionWidget() {
     notifiedTurnsReference.current.add(turnKey);
     playTurnSound();
   }, [isAway, isOwnTurn, playTurnSound, turnKey]);
-
-  useEffect(() => {
-    if (!isAway) return;
-    const interval = window.setInterval(() => setNow(Date.now()), CLOCK_INTERVAL_MILLISECONDS);
-    return () => window.clearInterval(interval);
-  }, [isAway]);
 
   if (!isAway || !sessionId) return null;
   const sessionPath = `/sessions/${sessionId}`;

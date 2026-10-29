@@ -1291,6 +1291,12 @@ Decision: the Fly.io backend app is deleted and its configuration file, `backend
 
 Why: production moved to Azure and the Fly app only kept an always-on machine billing. The 2026-07 decision to move off Fly.io stays in this file as history.
 
+## 2026-10-28 | Countdowns run on the server's clock
+
+Decision: every `RoundDTO` carries `serverTime`, the server clock when the payload was built. Clients keep the median of the last five offsets between `serverTime` and their own clock and count every deadline against that corrected clock. The offset is not corrected for network latency, so it can be early by half a round trip, under 100ms in practice.
+
+Why: a machine whose clock was 27 seconds behind showed 30 seconds left when the round had 3, because every deadline was subtracted from the local clock. The server already publishes absolute deadlines, so the payload only needed to say what the server clock read when it built them.
+
 ## 2026-10-28 | Starting a playlist session asks what to do with an existing group
 
 Decision: Start session on a playlist creates a group with the sidebar's defaults when the caller has none, then opens that lobby with the playlist preselected. A caller already in a group chooses between using that group and leaving it to create a new one. Leaving is disabled while the group has a running game.

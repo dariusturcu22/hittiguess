@@ -26,4 +26,5 @@ export interface RoundDTO {
   countdownEndsAt?: string;
   bettingWindowEndsAt?: string;
   nextRoundStartsAt?: string;
+  serverTime?: string;
 }

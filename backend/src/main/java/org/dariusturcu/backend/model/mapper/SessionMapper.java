@@ -72,7 +72,8 @@ public class SessionMapper {
                 round.getStatus() == RoundStatus.AWAITING_PLACEMENT ? round.getPlacementEndsAt() : null,
                 plusOrNull(round.getLockedInAt(), RoundTiming.LOCK_IN_COUNTDOWN),
                 round.getBettingWindowEndsAt(),
-                round.getStatus() == RoundStatus.SCORED ? plusOrNull(round.getScoredAt(), RoundTiming.REVEAL_HOLD) : null);
+                round.getStatus() == RoundStatus.SCORED ? plusOrNull(round.getScoredAt(), RoundTiming.REVEAL_HOLD) : null,
+                Instant.now());
     }
 
     private static Instant plusOrNull(Instant start, Duration length) {

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 
 import { PlayerAvatar } from "./game-pieces";
+import { serverNow } from "@/lib/server-clock";
 
 const RING_RADIUS = 60;
 const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
@@ -25,7 +26,7 @@ interface RoundIntroProps {
 // steady pace before the game screen takes over.
 export function RoundIntro({ winConditionCardCount, roundNumber, countdownSeconds, endsAt, dj, activePlayer, onFinished }: RoundIntroProps) {
   const remainingSeconds = useCallback(() => endsAt
-    ? Math.max(0, Math.ceil((Date.parse(endsAt) - Date.now()) / MILLISECONDS_PER_SECOND))
+    ? Math.max(0, Math.ceil((Date.parse(endsAt) - serverNow()) / MILLISECONDS_PER_SECOND))
     : countdownSeconds, [countdownSeconds, endsAt]);
   const [secondsLeft, setSecondsLeft] = useState(remainingSeconds);
 
