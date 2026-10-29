@@ -1,18 +1,6 @@
 {
   "entities": {
-    "Q36844": {
-      "labels": {
-        "en": {
-          "value": ""
-        }
-      }
-    },
-    "Q33240": {
-      "labels": {
-        "en": {
-          "value": "Drake"
-        }
-      }
-    }
+    "Q36844": {"labels": {"en": {"value": "Rihanna"}}},
+    "Q33240": {"labels": {"en": {"value": "Drake"}}}
   }
 }

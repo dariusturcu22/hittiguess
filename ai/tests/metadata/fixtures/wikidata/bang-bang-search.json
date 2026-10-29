@@ -1,44 +1,11 @@
 {
   "search": [
-    {
-      "id": "Q523052",
-      "description": "original song written and composed by Sonny Bono; first recorded by Cher"
-    },
-    {
-      "id": "Q26262643",
-      "description": "2016 single by Green Day"
-    },
-    {
-      "id": "Q104760826",
-      "description": "vocal track by Vanilla Fudge; 1967 studio recording; cover version"
-    },
-    {
-      "id": "Q140262465",
-      "description": "2007 album by Clifters"
-    },
-    {
-      "id": "Q141105996",
-      "description": "episode of Beauty in Black (S1 E6)"
-    },
-    {
-      "id": "Q14719604",
-      "description": "2014 film by Siddharth Anand"
-    },
-    {
-      "id": "Q17468562",
-      "description": "2014 song by Jessie J, Ariana Grande and Nicki Minaj"
-    },
-    {
-      "id": "Q11328444",
-      "description": "Japanese folk band (1971-1977)"
-    },
-    {
-      "id": "Q806439",
-      "description": "1981 song by Iggy Pop"
-    },
-    {
-      "id": "Q3912860",
-      "description": "2009 song by Melanie Fiona"
-    }
+    {"id": "Q523052", "description": "original song written and composed by Sonny Bono; first recorded by Cher"},
+    {"id": "Q26262643", "description": "2016 single by Green Day"},
+    {"id": "Q104760826", "description": "vocal track by Vanilla Fudge; 1967 studio recording; cover version"},
+    {"id": "Q140262465", "description": "2007 album by Clifters"},
+    {"id": "Q141105996", "description": "episode of Beauty in Black (S1 E6)"},
+    {"id": "Q14719604", "description": "2014 film by Siddharth Anand"},
+    {"id": "Q17468562", "description": "2014 song by Jessie J, Ariana Grande and Nicki Minaj"}
   ]
 }

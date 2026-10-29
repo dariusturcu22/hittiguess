@@ -104,7 +104,7 @@ def test_search_combines_track_and_album_candidates(mocker):
     mocker.patch("app.metadata.sources.pacing.time.sleep")
     respx.get(url__regex=r"api\.discogs\.com/").mock(side_effect=_discogs_response)
 
-    candidates = discogs.search("Test Song", "Test Artist", album="Test Album")
+    candidates = discogs.search("Test Song", ["Test Artist"], album="Test Album")
 
     track_candidates = [candidate for candidate in candidates if candidate["query"] == "track"]
     album_candidates = [candidate for candidate in candidates if candidate["query"] == "album"]
@@ -123,7 +123,7 @@ def test_search_keeps_masterless_candidates_only_when_no_master_exists(mocker):
         )
     )
 
-    candidates = discogs.search("Niche Song", "Test Artist")
+    candidates = discogs.search("Niche Song", ["Test Artist"])
 
     assert candidates == [{"query": "track", "title": "Test Artist - Niche Song", "year": 2005}]
 
@@ -133,7 +133,7 @@ def test_search_skips_album_query_when_no_album_given(mocker):
     mocker.patch("app.metadata.sources.pacing.time.sleep")
     respx.get(url__regex=r"api\.discogs\.com/").mock(side_effect=_discogs_response)
 
-    candidates = discogs.search("Test Song", "Test Artist")
+    candidates = discogs.search("Test Song", ["Test Artist"])
 
     assert all(candidate["query"] == "track" for candidate in candidates)
 
@@ -143,7 +143,7 @@ def test_search_returns_empty_list_on_request_failure(mocker):
     mocker.patch("app.metadata.sources.pacing.time.sleep")
     respx.get(url__regex=r"api\.discogs\.com/").mock(return_value=httpx.Response(500))
 
-    assert discogs.search("Test Song", "Test Artist") == []
+    assert discogs.search("Test Song", ["Test Artist"]) == []
 
 
 @respx.mock
@@ -151,7 +151,7 @@ def test_search_release_sends_authenticated_query(mocker):
     mocker.patch("app.metadata.sources.pacing.time.sleep")
     route = respx.get(discogs.SEARCH_URL).mock(return_value=httpx.Response(200, json={"results": []}))
 
-    discogs.search_release("Test Song", "Test Artist")
+    discogs.search_release("Test Song", ["Test Artist"])
 
     request = route.calls.last.request
     assert request.url.params["artist"] == "Test Artist"
@@ -284,3 +284,11 @@ def test_rate_limiter_ignores_response_with_zero_limit(mocker):
 
     assert limiter.delay_seconds == starting_delay
     assert limiter.last_observed_utilization is None
+
+
+def test_matches_discogs_artist_compares_whole_words():
+    assert discogs._is_valid_release({"title": "Sia - Cheap Thrills"}, ["Sia"])
+    assert discogs._is_valid_release({"title": "Sia Feat. Sean Paul - Cheap Thrills"}, ["Sia"])
+    assert discogs._is_valid_release({"title": "Daddy Yankee Feat. Snow (2) - Con Calma"}, ["Daddy Yankee", "Snow"])
+    assert not discogs._is_valid_release({"title": "Siamese Dream - Disarm"}, ["Sia"])
+    assert not discogs._is_valid_release({"title": "Sian Evans - Hide U"}, ["Sia"])
