@@ -219,9 +219,14 @@ public class AdminPipelineService {
 
     @Transactional
     public PipelineRunDTO runNow(String youtubeId) {
+        return runNow(youtubeId, PendingImportOrigin.ADMIN_SEED);
+    }
+
+    @Transactional
+    public PipelineRunDTO runNow(String youtubeId, PendingImportOrigin origin) {
         String parsed = youtubeId == null ? null : YoutubeLinkParser.parseVideoId(youtubeId).orElse(null);
         if (parsed == null) { throw new IllegalArgumentException("A valid YouTube video ID or link is required"); }
-        PipelineRun run = engine.startRun(parsed, PipelineLane.BACKFILL, PendingImportOrigin.ADMIN_SEED, null, null);
+        PipelineRun run = engine.startRun(parsed, PipelineLane.BACKFILL, origin, null, null);
         engine.bump(run.id());
         return run(run);
     }

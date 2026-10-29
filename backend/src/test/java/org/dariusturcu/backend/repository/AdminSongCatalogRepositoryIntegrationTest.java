@@ -159,7 +159,7 @@ class AdminSongCatalogRepositoryIntegrationTest {
 
     @Test
     void theCatalogListsSongsAndUnresolvedBacklogItemsNewestFirstWithUnknownDatesLast() {
-        List<AdminCatalogRow> rows = repository.findPage(null, null, WHOLE_CATALOG, FIRST_OFFSET);
+        List<AdminCatalogRow> rows = repository.findPage(null, null, false, WHOLE_CATALOG, FIRST_OFFSET);
 
         assertThat(titlesOrIds(rows)).containsExactly(BARBIE_GIRL, QUEUED_ONLY_ID, FAILED_ONLY_ID, ZI_MI, DRAGOSTEA,
                 SA_NU_MI, TAKE_FIVE, REQUEUED_ID, UNKNOWN_ORIGIN);
@@ -167,7 +167,7 @@ class AdminSongCatalogRepositoryIntegrationTest {
 
     @Test
     void eachRowCarriesItsStatusAndPipelineFacts() {
-        List<AdminCatalogRow> rows = repository.findPage(null, null, WHOLE_CATALOG, FIRST_OFFSET);
+        List<AdminCatalogRow> rows = repository.findPage(null, null, false, WHOLE_CATALOG, FIRST_OFFSET);
 
         AdminCatalogRow dragostea = rowFor(rows, DRAGOSTEA);
         assertThat(dragostea.status()).isEqualTo(CatalogSongStatus.VERIFIED);
@@ -205,7 +205,7 @@ class AdminSongCatalogRepositoryIntegrationTest {
 
     @Test
     void backlogItemsWithoutASongAreOneRowPerYoutubeIdPreferringTheActiveRow() {
-        List<AdminCatalogRow> rows = repository.findPage(null, null, WHOLE_CATALOG, FIRST_OFFSET);
+        List<AdminCatalogRow> rows = repository.findPage(null, null, false, WHOLE_CATALOG, FIRST_OFFSET);
 
         AdminCatalogRow queuedOnly = rowFor(rows, QUEUED_ONLY_ID);
         assertThat(queuedOnly.status()).isEqualTo(CatalogSongStatus.IN_QUEUE);
@@ -259,28 +259,28 @@ class AdminSongCatalogRepositoryIntegrationTest {
 
     @Test
     void retainedPendingImportsDoNotChangeCatalogRowsOrQueueCounts() {
-        List<AdminCatalogRow> originalRows = repository.findPage(null, null, WHOLE_CATALOG, FIRST_OFFSET);
+        List<AdminCatalogRow> originalRows = repository.findPage(null, null, false, WHOLE_CATALOG, FIRST_OFFSET);
         AdminSongCatalogRepository.QueueCounts originalCounts = repository.countQueue();
         jdbcTemplate.update("""
                 INSERT INTO pending_imports (youtube_id, origin, status, enqueued_at)
                 VALUES (?, 'ADMIN_SEED', 'PROCESSING', now())
                 """, "historical-only-id");
 
-        assertThat(repository.findPage(null, null, WHOLE_CATALOG, FIRST_OFFSET)).isEqualTo(originalRows);
+        assertThat(repository.findPage(null, null, false, WHOLE_CATALOG, FIRST_OFFSET)).isEqualTo(originalRows);
         assertThat(repository.countQueue()).isEqualTo(originalCounts);
     }
 
     @Test
     void theStatusFilterNarrowsTheRows() {
-        List<AdminCatalogRow> inQueue = repository.findPage(null, CatalogSongStatus.IN_QUEUE, WHOLE_CATALOG, FIRST_OFFSET);
+        List<AdminCatalogRow> inQueue = repository.findPage(null, CatalogSongStatus.IN_QUEUE, false, WHOLE_CATALOG, FIRST_OFFSET);
 
         assertThat(titlesOrIds(inQueue)).containsExactly(QUEUED_ONLY_ID, SA_NU_MI, REQUEUED_ID);
     }
 
     @Test
     void pagesFollowTheSameOrder() {
-        List<AdminCatalogRow> firstPage = repository.findPage(null, null, SMALL_PAGE, FIRST_OFFSET);
-        List<AdminCatalogRow> thirdPage = repository.findPage(null, null, SMALL_PAGE, THIRD_PAGE_OFFSET);
+        List<AdminCatalogRow> firstPage = repository.findPage(null, null, false, SMALL_PAGE, FIRST_OFFSET);
+        List<AdminCatalogRow> thirdPage = repository.findPage(null, null, false, SMALL_PAGE, THIRD_PAGE_OFFSET);
 
         assertThat(titlesOrIds(firstPage)).containsExactly(BARBIE_GIRL, QUEUED_ONLY_ID, FAILED_ONLY_ID, ZI_MI);
         assertThat(titlesOrIds(thirdPage)).containsExactly(UNKNOWN_ORIGIN);
@@ -288,7 +288,7 @@ class AdminSongCatalogRepositoryIntegrationTest {
 
     @Test
     void searchMatchesTitleCaseInsensitivelyAndCountsFollowTheSearch() {
-        List<AdminCatalogRow> rows = repository.findPage("ZI-M", null, WHOLE_CATALOG, FIRST_OFFSET);
+        List<AdminCatalogRow> rows = repository.findPage("ZI-M", null, false, WHOLE_CATALOG, FIRST_OFFSET);
 
         assertThat(titlesOrIds(rows)).containsExactly(ZI_MI);
         Map<CatalogSongStatus, Long> counts = repository.countByStatus("ZI-M");
@@ -298,17 +298,17 @@ class AdminSongCatalogRepositoryIntegrationTest {
 
     @Test
     void searchMatchesArtistNameBySubstring() {
-        assertThat(titlesOrIds(repository.findPage("brubeck", null, WHOLE_CATALOG, FIRST_OFFSET)))
+        assertThat(titlesOrIds(repository.findPage("brubeck", null, false, WHOLE_CATALOG, FIRST_OFFSET)))
                 .containsExactly(TAKE_FIVE);
     }
 
     @Test
     void searchMatchesAnExactYoutubeIdForSongsAndBacklogItems() {
-        assertThat(titlesOrIds(repository.findPage(ZI_MI_YOUTUBE_ID, null, WHOLE_CATALOG, FIRST_OFFSET)))
+        assertThat(titlesOrIds(repository.findPage(ZI_MI_YOUTUBE_ID, null, false, WHOLE_CATALOG, FIRST_OFFSET)))
                 .containsExactly(ZI_MI);
-        assertThat(titlesOrIds(repository.findPage(QUEUED_ONLY_ID, null, WHOLE_CATALOG, FIRST_OFFSET)))
+        assertThat(titlesOrIds(repository.findPage(QUEUED_ONLY_ID, null, false, WHOLE_CATALOG, FIRST_OFFSET)))
                 .containsExactly(QUEUED_ONLY_ID);
-        assertThat(repository.findPage("queued-only", null, WHOLE_CATALOG, FIRST_OFFSET)).isEmpty();
+        assertThat(repository.findPage("queued-only", null, false, WHOLE_CATALOG, FIRST_OFFSET)).isEmpty();
     }
 
     @Test
@@ -318,10 +318,19 @@ class AdminSongCatalogRepositoryIntegrationTest {
         insertSong("Track_One", 2001, "track-underscore-id", "VERIFIED", null, "2026-10-01T00:00:00Z");
         insertSong("TrackXOne", 2001, "track-letter-id", "VERIFIED", null, "2026-10-01T00:00:00Z");
 
-        assertThat(titlesOrIds(repository.findPage("100%", null, WHOLE_CATALOG, FIRST_OFFSET)))
+        assertThat(titlesOrIds(repository.findPage("100%", null, false, WHOLE_CATALOG, FIRST_OFFSET)))
                 .containsExactly("100% Pure Love");
-        assertThat(titlesOrIds(repository.findPage("k_O", null, WHOLE_CATALOG, FIRST_OFFSET)))
+        assertThat(titlesOrIds(repository.findPage("k_O", null, false, WHOLE_CATALOG, FIRST_OFFSET)))
                 .containsExactly("Track_One");
+    }
+
+    @Test
+    void filteringByProposedYearReturnsOnlySongsWithAProposal() {
+        jdbcTemplate.update("UPDATE songs SET proposed_release_year = 2014 WHERE title = ?", ZI_MI);
+        List<AdminCatalogRow> rows = repository.findPage(null, null, true, WHOLE_CATALOG, FIRST_OFFSET);
+        assertThat(titlesOrIds(rows)).containsExactly(ZI_MI);
+        assertThat(rows.getFirst().proposedReleaseYear()).isEqualTo(2014);
+        assertThat(repository.countProposed(null)).isEqualTo(1);
     }
 
     @Test

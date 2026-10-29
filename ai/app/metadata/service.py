@@ -180,18 +180,19 @@ def _build_duplicate_match_result(match: VerifiedSongMatch) -> SongMetadataResul
     )
 
 
-def _check_for_duplicate(title: str, artist: str) -> SongMetadataResult | None:
+def _check_for_duplicate(title: str, artist: str, youtube_id: str | None = None) -> SongMetadataResult | None:
     """Looks up whether this submission is a near-duplicate of an already
     verified song, using the free regex-cleaned title/artist: embedding
     similarity is fuzzy enough to still cluster correctly without spending
     an LLM call first just to get a more polished name. Any failure here
     (an unreachable database, an embedding API error) is swallowed and
     treated as no match, so the full pipeline below still runs rather than
-    failing the whole submission over a best-effort optimization."""
+    failing the whole submission over a best-effort optimization. The song that
+    already owns youtube_id is never the match."""
     try:
         normalized_text = normalize_artist_and_title(artist, title)
         embedding = generate_embedding(normalized_text)
-        best_match = find_best_verified_match(embedding)
+        best_match = find_best_verified_match(embedding, excluded_youtube_id=youtube_id)
     except Exception as duplicate_check_error:
         logger.warning("Duplicate-detection check failed, proceeding with the full pipeline: %s", duplicate_check_error)
         return None
@@ -344,13 +345,17 @@ class IdentifiedSubmission:
     duration_seconds: int | None = None
 
 
-def identify_from_youtube_data(youtube_data: dict[str, object]) -> MetadataResolveResponse | IdentifiedSubmission:
+def identify_from_youtube_data(
+    youtube_data: dict[str, object], youtube_id: str | None = None
+) -> MetadataResolveResponse | IdentifiedSubmission:
     """The first stage every submission takes once its YouTube metadata is fetched,
     shared by the full pipeline, the stage endpoints, and the fast tier: the non-music
     hard filter, the verified-duplicate check, and the combined pre-check LLM call
     with its content-safety gate. Returns a final response when the submission is
     rejected or matches a verified song, and the clean title, artists, and color
-    otherwise. Raises when the precheck call fails."""
+    otherwise. youtube_id, when given, keeps the duplicate check from matching the
+    song that already owns that video, so a rerun resolves the song again. Raises when
+    the precheck call fails."""
     category_id = str(youtube_data.get("category_id", "unknown"))
     duration_seconds = youtube_data.get("duration_seconds")
 
@@ -365,7 +370,7 @@ def identify_from_youtube_data(youtube_data: dict[str, object]) -> MetadataResol
 
     regex_title, regex_artist = _clean_title_and_artist(youtube_data)
 
-    duplicate_match_result = _check_for_duplicate(regex_title, regex_artist)
+    duplicate_match_result = _check_for_duplicate(regex_title, regex_artist, youtube_id)
     if duplicate_match_result is not None:
         duplicate_match_result = duplicate_match_result.model_copy(update={"duration_seconds": duration_seconds})
         return MetadataResolveResponse(status=SUCCESS_STATUS, model=settings.deepinfra_model, content=duplicate_match_result)

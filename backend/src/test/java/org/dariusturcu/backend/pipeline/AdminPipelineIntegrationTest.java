@@ -1,6 +1,7 @@
 package org.dariusturcu.backend.pipeline;
 
 import org.dariusturcu.backend.exception.ConflictException;
+import org.dariusturcu.backend.model.admin.RecheckSongsRequest;
 import org.dariusturcu.backend.model.admin.UpdateCatalogSongRequest;
 import org.dariusturcu.backend.model.song.AdminCatalogSeedingRequest;
 import org.dariusturcu.backend.model.song.PendingImportOrigin;
@@ -347,6 +348,8 @@ class AdminPipelineIntegrationTest {
         var first = transaction(() -> admin.runNow(VIDEO));
         var rerun = transaction(() -> songs.rerun(song));
         assertThat(rerun.id()).isEqualTo(first.id());
+        assertThat(core.queryForObject("SELECT origin FROM pipeline_runs WHERE id = ?", String.class, first.id()))
+                .isEqualTo("ADMIN_SEED");
         assertThat(engine.jobsOfRun(first.id())).singleElement().satisfies(job -> assertThat(job.priority()).isPositive());
     }
 
@@ -413,6 +416,64 @@ class AdminPipelineIntegrationTest {
         core.update("INSERT INTO game_session_song_queue (session_id, queue_position, song_id) VALUES (?, 0, ?)", session, song);
         assertThatThrownBy(() -> transaction(() -> songs.delete(song))).isInstanceOf(ConflictException.class);
         assertThat(core.queryForObject("SELECT count(*) FROM songs WHERE id = ?", Long.class, song)).isEqualTo(1);
+    }
+
+    @Test
+    void aSongRerunIsQueuedAsAnAdminRecheck() {
+        long song = song(VIDEO);
+        var rerun = transaction(() -> songs.rerun(song));
+        assertThat(core.queryForObject("SELECT origin FROM pipeline_runs WHERE id = ?", String.class, rerun.id()))
+                .isEqualTo("ADMIN_RECHECK");
+    }
+
+    @Test
+    void recheckEndpointSkipsSongsInActiveGamesAndQueuesTheRest() {
+        long activeSong = song(VIDEO);
+        long idleSong = song(OTHER_VIDEO);
+        long group = core.queryForObject("""
+                INSERT INTO groups (invite_code, join_code, status, dj_mode, win_condition_card_count, created_at, expires_at)
+                VALUES ('invite2', 'EFGH', 'OPEN', 'FIXED', 5, now(), now() + interval '30 minutes') RETURNING id
+                """, Long.class);
+        long session = core.queryForObject("""
+                INSERT INTO game_sessions (group_id, status, dj_mode, win_condition_card_count, current_round_number, created_at)
+                VALUES (?, 'ACTIVE', 'FIXED', 5, 1, now()) RETURNING id
+                """, Long.class, group);
+        core.update("INSERT INTO game_session_song_queue (session_id, queue_position, song_id) VALUES (?, 0, ?)", session, activeSong);
+
+        var result = transaction(() -> songs.recheck(new RecheckSongsRequest(List.of(activeSong, idleSong), false)));
+
+        assertThat(result.affected()).isEqualTo(1);
+        assertThat(core.queryForObject("SELECT count(*) FROM pipeline_runs WHERE youtube_id = ? AND lane = 'BACKFILL'",
+                Long.class, OTHER_VIDEO)).isEqualTo(1);
+        assertThat(core.queryForObject("SELECT count(*) FROM pipeline_runs WHERE youtube_id = ? AND lane = 'BACKFILL'",
+                Long.class, VIDEO)).isZero();
+        assertThat(core.queryForObject("SELECT origin FROM pipeline_runs WHERE youtube_id = ?", String.class, OTHER_VIDEO))
+                .isEqualTo("ADMIN_RECHECK");
+    }
+
+    @Test
+    void dismissProposalClearsProposedReleaseYearAndProposedAt() {
+        long song = song(VIDEO);
+        core.update("UPDATE songs SET proposed_release_year = 2014, proposed_at = now() WHERE id = ?", song);
+        assertThat(core.queryForObject("SELECT proposed_release_year FROM songs WHERE id = ?", Integer.class, song)).isEqualTo(2014);
+
+        var result = transaction(() -> songs.dismissProposal(song));
+
+        assertThat(result.affected()).isEqualTo(1);
+        assertThat(core.queryForObject("SELECT proposed_release_year FROM songs WHERE id = ?", Integer.class, song)).isNull();
+        assertThat(core.queryForObject("SELECT proposed_at FROM songs WHERE id = ?", java.time.Instant.class, song)).isNull();
+    }
+
+    @Test
+    void updatingSongClearsProposal() {
+        long song = song(VIDEO);
+        core.update("UPDATE songs SET proposed_release_year = 2014, proposed_at = now() WHERE id = ?", song);
+
+        transaction(() -> songs.update(song, new UpdateCatalogSongRequest(2014, VerificationStatus.VERIFIED)));
+
+        assertThat(core.queryForObject("SELECT release_year FROM songs WHERE id = ?", Integer.class, song)).isEqualTo(2014);
+        assertThat(core.queryForObject("SELECT proposed_release_year FROM songs WHERE id = ?", Integer.class, song)).isNull();
+        assertThat(core.queryForObject("SELECT proposed_at FROM songs WHERE id = ?", java.time.Instant.class, song)).isNull();
     }
 
     @Test

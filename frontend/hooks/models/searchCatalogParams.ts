@@ -16,6 +16,10 @@ query?: string;
  */
 status?: SearchCatalogStatus;
 /**
+ * Only rows with a proposed release year
+ */
+proposedYear?: boolean;
+/**
  * 0-based page number, default 0
  */
 page?: number;

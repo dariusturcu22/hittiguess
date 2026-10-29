@@ -6,7 +6,9 @@ import org.dariusturcu.backend.exception.ResourceType;
 import org.dariusturcu.backend.model.admin.PipelineControlResultDTO;
 import org.dariusturcu.backend.model.admin.PipelineRunDTO;
 import org.dariusturcu.backend.model.admin.SourceFindingDTO;
+import org.dariusturcu.backend.model.admin.RecheckSongsRequest;
 import org.dariusturcu.backend.model.admin.UpdateCatalogSongRequest;
+import org.dariusturcu.backend.model.song.PendingImportOrigin;
 import org.dariusturcu.backend.model.song.VerificationStatus;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -18,6 +20,7 @@ import tools.jackson.databind.ObjectMapper;
 
 import java.time.Year;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
@@ -63,7 +66,9 @@ public class AdminSongPipelineService {
     }
 
     @Transactional
-    public PipelineRunDTO rerun(long songId) { return pipeline.runNow(song(songId).get("youtube_id").toString()); }
+    public PipelineRunDTO rerun(long songId) {
+        return pipeline.runNow(song(songId).get("youtube_id").toString(), PendingImportOrigin.ADMIN_RECHECK);
+    }
 
     @Transactional
     public PipelineControlResultDTO update(long songId, UpdateCatalogSongRequest request) {
@@ -81,7 +86,7 @@ public class AdminSongPipelineService {
         if (VerificationStatus.VERIFIED.name().equals(status) && year < MINIMUM_YEAR) {
             throw new IllegalArgumentException("A verified song needs a release year");
         }
-        core.update("UPDATE songs SET release_year = ?, verification_status = ? WHERE id = ?", year, status, songId);
+        core.update("UPDATE songs SET release_year = ?, verification_status = ?, proposed_release_year = NULL, proposed_at = NULL WHERE id = ?", year, status, songId);
         return new PipelineControlResultDTO(1);
     }
 
@@ -96,11 +101,7 @@ public class AdminSongPipelineService {
                 .sorted().forEach(engine::discardRun);
         lockSong(youtubeId);
         core.queryForObject("SELECT id FROM songs WHERE id = ? FOR UPDATE", Long.class, songId);
-        boolean playing = Boolean.TRUE.equals(core.queryForObject("""
-                SELECT EXISTS (SELECT FROM rounds WHERE song_id = ?)
-                    OR EXISTS (SELECT FROM player_cards WHERE song_id = ?)
-                    OR EXISTS (SELECT FROM game_session_song_queue WHERE song_id = ?)
-                """, Boolean.class, songId, songId, songId));
+        boolean playing = isSongInActiveGame(songId);
         if (playing) { throw new ConflictException("The song is used by an active game"); }
         try {
             core.update("DELETE FROM song_playlists WHERE song_id = ?", songId);
@@ -118,6 +119,45 @@ public class AdminSongPipelineService {
     private Map<String, Object> song(long songId) {
         return core.queryForList("SELECT id, youtube_id, release_year, verification_status FROM songs WHERE id = ?", songId)
                 .stream().findFirst().orElseThrow(() -> new ResourceNotFoundException(ResourceType.SONG, songId));
+    }
+
+    @Transactional
+    public PipelineControlResultDTO dismissProposal(long songId) {
+        song(songId);
+        core.update("UPDATE songs SET proposed_release_year = NULL, proposed_at = NULL WHERE id = ?", songId);
+        return new PipelineControlResultDTO(1);
+    }
+
+    // Each run is queued in its own transaction, so a recheck of the whole catalog never
+    // holds one long transaction and every queued run is visible to the stage workers at once.
+    public PipelineControlResultDTO recheck(RecheckSongsRequest request) {
+        boolean recheckAll = request != null && Boolean.TRUE.equals(request.all());
+        if (request == null || (!recheckAll && (request.songIds() == null || request.songIds().isEmpty()))) {
+            throw new IllegalArgumentException("Either all must be true or songIds must not be empty");
+        }
+        String songFilter = recheckAll ? ""
+                : "AND song.id IN (" + String.join(",", Collections.nCopies(request.songIds().size(), "?")) + ")";
+        Object[] parameters = recheckAll ? new Object[0] : request.songIds().toArray();
+        List<String> youtubeIds = core.queryForList("""
+                SELECT song.youtube_id FROM songs song
+                WHERE song.youtube_id IS NOT NULL AND song.youtube_id <> ''
+                  AND NOT EXISTS (SELECT FROM rounds WHERE rounds.song_id = song.id)
+                  AND NOT EXISTS (SELECT FROM player_cards WHERE player_cards.song_id = song.id)
+                  AND NOT EXISTS (SELECT FROM game_session_song_queue queue WHERE queue.song_id = song.id)
+                  %s
+                ORDER BY song.id
+                """.formatted(songFilter), String.class, parameters);
+        youtubeIds.forEach(youtubeId ->
+                engine.startRun(youtubeId, PipelineLane.BACKFILL, PendingImportOrigin.ADMIN_RECHECK, null, null));
+        return new PipelineControlResultDTO(youtubeIds.size());
+    }
+
+    public boolean isSongInActiveGame(long songId) {
+        return Boolean.TRUE.equals(core.queryForObject("""
+                SELECT EXISTS (SELECT FROM rounds WHERE song_id = ?)
+                    OR EXISTS (SELECT FROM player_cards WHERE song_id = ?)
+                    OR EXISTS (SELECT FROM game_session_song_queue WHERE song_id = ?)
+                """, Boolean.class, songId, songId, songId));
     }
 
     private void lockSong(String youtubeId) {

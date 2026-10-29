@@ -9,11 +9,12 @@ import {
 } from "./song-catalog-presentation";
 
 describe("catalog columns", () => {
-  it("keeps the mockup's column order", () => {
+  it("keeps the mockup's column order with proposed year", () => {
     expect(CATALOG_COLUMNS.map((column) => column.label)).toEqual([
       "Title",
       "Artist",
       "Year",
+      "Proposed year",
       "Status",
       "Pipeline",
       "Added",
@@ -26,8 +27,8 @@ describe("catalog columns", () => {
     expect(catalogColumnClassName("pipeline")).toContain("hidden @4xl:block");
   });
 
-  it("never hides the title, artist, year, status, or added columns", () => {
-    for (const key of ["title", "artist", "year", "status", "added"] as const) {
+  it("never hides the title, artist, year, proposed year, status, or added columns", () => {
+    for (const key of ["title", "artist", "year", "proposedYear", "status", "added"] as const) {
       expect(catalogColumnClassName(key)).not.toContain("hidden");
     }
   });

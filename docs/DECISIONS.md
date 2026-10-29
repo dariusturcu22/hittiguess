@@ -1362,3 +1362,17 @@ Why: masterless releases include promo compilations, samplers, and unofficial bo
 Decision: within the one-year source cluster lock path in `_find_wikipedia_assisted_lock_year`, the earliest year is selected only when at least two sources report it. If only a single source reports the earlier year, the lock selects the year supported by the most sources, with any tie broken in favor of the earlier year. The exact-majority rule requiring three or more identical years remains unchanged.
 
 Why: when sources disagree within a one-year window, a single dissenting source reporting the earlier year often reflects a promo compilation, pre-release sampler, or album reissue predating the official release of the song itself. Requiring two sources before accepting the earlier cluster bound prevents single-source outliers from locking a song one year too early.
+
+---
+
+## 2026-10-29 | Pipeline reruns propose year updates on verified songs instead of overwriting them
+
+Decision: when a pipeline run completes for an already verified song, any differing year from the rerun is recorded as a proposal in `proposed_release_year` and `proposed_at`. The verified song's stored release year and verification status remain unchanged. When the rerun agrees with the stored year, any existing proposal is cleared. Administrators can review proposals in the song catalog and accept or dismiss them. Unverified songs continue to be updated directly on completion.
+
+Why: catalog rechecks verify batches of songs against updated pipeline heuristics. Automatically overwriting existing verified songs could introduce false corrections into active playlists and game sessions without human verification. Recording differences as proposals lets administrators audit discrepancies and accept valid changes without risk of unwanted mutation.
+
+## 2026-10-29 | A rerun of a catalog video skips its own song in the duplicate check and runs as an admin recheck
+
+Decision: the youtube-metadata stage passes the video ID to the verified-duplicate check, and the check never matches a song that already owns that video as its main or an alternate YouTube ID. An admin rerun of one song and the catalog recheck queue their runs with the new `ADMIN_RECHECK` origin instead of `ADMIN_SEED`. The catalog shows such a song's pipeline as `FULL`, and an `ADMIN_RECHECK` run is never evidence of who added the song. The catalog recheck queues each run in its own transaction.
+
+Why: every verified song with an embedding matched itself at distance zero, so the rerun returned the stored year as a duplicate and no proposal could ever appear; the recheck and the drawer's rerun did nothing for exactly the songs they exist to correct. Queuing the runs as `ADMIN_SEED` would also have relabelled every song added before tracking as an admin seed.

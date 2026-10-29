@@ -13,6 +13,7 @@ import org.dariusturcu.backend.repository.SongRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 
@@ -21,6 +22,7 @@ import java.util.Optional;
 public class SongCatalogService {
     private static final int MAIN_ARTIST_DISPLAY_ORDER_START = 0;
     private static final String SONG_LOCK_KEY_PREFIX = "song-youtube-id:";
+    private static final int UNRESOLVED_RELEASE_YEAR = 0;
 
     private final SongRepository songRepository;
     private final AlternateYoutubeIdRepository alternateYoutubeIdRepository;
@@ -49,7 +51,7 @@ public class SongCatalogService {
             return existingSong.get();
         }
         if (existingSong.isPresent() && existingSong.get().getVerificationStatus() == VerificationStatus.VERIFIED
-                && !VerificationStatus.VERIFIED.name().equals(metadata.verificationStatus())) {
+                && VerificationStatus.UNVERIFIED.name().equals(metadata.verificationStatus())) {
             return existingSong.get();
         }
         if (metadata.canonicalSongId() != null) {
@@ -72,8 +74,20 @@ public class SongCatalogService {
         if (song.getAddedBy() == null && addedBy != null) {
             song.setAddedBy(addedBy);
         }
+        // A verified year only changes when an admin accepts it, so a rerun that disagrees is
+        // kept as a proposal; a run that found no year leaves any earlier proposal alone.
         if (song.getVerificationStatus() == VerificationStatus.VERIFIED) {
             song.recordOfficialDuration(metadata.durationSeconds());
+            Integer rerunYear = metadata.releaseYear();
+            if (rerunYear != null && rerunYear > UNRESOLVED_RELEASE_YEAR) {
+                if (rerunYear != song.getReleaseYear()) {
+                    song.setProposedReleaseYear(rerunYear);
+                    song.setProposedAt(Instant.now());
+                } else {
+                    song.setProposedReleaseYear(null);
+                    song.setProposedAt(null);
+                }
+            }
             return songRepository.save(song);
         }
         song.setYoutubeId(youtubeId);

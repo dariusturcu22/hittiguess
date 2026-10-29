@@ -10,6 +10,7 @@ export type AdminQueueHistoryEntryDTOOrigin = typeof AdminQueueHistoryEntryDTOOr
 
 export const AdminQueueHistoryEntryDTOOrigin = {
   ADMIN_SEED: 'ADMIN_SEED',
+  ADMIN_RECHECK: 'ADMIN_RECHECK',
   FAST_TIER_RECHECK: 'FAST_TIER_RECHECK',
   USER_ADD_RECHECK: 'USER_ADD_RECHECK',
 } as const;
