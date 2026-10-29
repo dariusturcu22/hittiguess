@@ -58,6 +58,7 @@ vi.mock("@tanstack/react-query", async (importOriginal) => {
 vi.mock("@/hooks/generated/group-management/group-management", () => ({
   getGetActiveMembershipQueryKey: () => ["active-membership"],
   useCreateGroup: () => ({ mutate: createGroupMutate, isPending: false }),
+  useLeaveGroup: () => ({ mutate: vi.fn(), isPending: false }),
   useJoinGroup: () => ({ mutate: joinGroupMutate, isPending: false }),
   useGetActiveMembership: () => ({ data: activeMembership }),
 }));
@@ -378,9 +379,9 @@ describe("AppSidebar on short screens", () => {
     renderSidebar();
 
     const navigationGroup = screen.getByTitle("Your playlists").parentElement;
-    expect(navigationGroup?.className).toContain("gap-5");
-    expect(navigationGroup?.className).toContain("short:gap-3.5");
-    expect(navigationGroup?.className).toContain("very-short:gap-2.5");
+    expect(navigationGroup?.className).toContain("gap-6");
+    expect(navigationGroup?.className).toContain("short:gap-5");
+    expect(navigationGroup?.className).toContain("very-short:gap-3.5");
   });
 
   it("keeps every rail target at least 36 px at every height step", () => {

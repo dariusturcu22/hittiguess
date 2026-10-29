@@ -12,4 +12,5 @@ export const AdminCatalogSongDTOPipeline = {
   FAST: 'FAST',
   FULL: 'FULL',
   UNKNOWN: 'UNKNOWN',
+  LEGACY: 'LEGACY',
 } as const;

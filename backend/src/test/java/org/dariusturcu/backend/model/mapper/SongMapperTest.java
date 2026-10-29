@@ -95,6 +95,18 @@ class SongMapperTest {
     }
 
     @Test
+    void changingTheYouTubeIdClearsTheStoredDurationAndMakesTheSongDueAgain() {
+        Song song = songWithGenre(null);
+        int officialDurationSeconds = 210;
+        song.recordOfficialDuration(officialDurationSeconds);
+
+        Song updatedSong = songMapper.updateEntity(song, new UpdateSongRequest("Artist", "Title", 2000, "abcdefghijk", "abcdef", null));
+
+        assertThat(updatedSong.getDurationSeconds()).isNull();
+        assertThat(updatedSong.getDurationFetchedAt()).isNull();
+    }
+
+    @Test
     void updateEntityLeavesAnExistingGenreUntouchedSinceUpdateSongRequestHasNoGenreField() {
         Song song = songWithGenre("Alternative Rock");
 

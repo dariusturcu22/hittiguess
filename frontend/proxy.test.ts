@@ -49,6 +49,12 @@ describe("proxy middleware", () => {
     expect(response.headers.get("location")).toBeNull();
   });
 
+  it("sends a visitor with a session from the landing page to the playlists", () => {
+    const response = proxy(requestFor("/", "session_hint=1"));
+
+    expect(response.headers.get("location")).toBe("http://localhost:3000/playlists");
+  });
+
   it.each(["/login", "/register", ...PROTECTED_ROUTES])(
     "never redirects %s to a closed-beta screen, even with the retired gate variables set",
     (pathname) => {

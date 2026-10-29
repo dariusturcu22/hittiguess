@@ -12,4 +12,5 @@ export const AdminCatalogSongDTOAddedByKind = {
   USER: 'USER',
   ADMIN_SEED: 'ADMIN_SEED',
   UNKNOWN: 'UNKNOWN',
+  LEGACY: 'LEGACY',
 } as const;

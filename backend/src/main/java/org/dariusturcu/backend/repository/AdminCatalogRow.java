@@ -21,6 +21,7 @@ public record AdminCatalogRow(
         boolean hasUnfinishedRecheck,
         boolean hasFinishedRecheck,
         PendingImportOrigin latestQueueOrigin,
+        boolean hasPipelineRun,
         boolean hasAdminSeedRow,
         Instant createdAt,
         String addedByUsername) {

@@ -111,7 +111,7 @@ The dashboard shows catalog counts, queue totals, YouTube units against the dail
 
 ### Song catalog (story 51)
 
-The catalog shows every song plus queued or failed admin seeds that have no song yet, newest first, 25 per page. Rows include title, artists, year, status, pipeline, date and adder, with explicit unknown or pending values. Search starts after three characters and a short pause; an exact video ID is also accepted. Status chips carry counts for the current search.
+The catalog shows every song plus queued or failed admin seeds that have no song yet, newest first, 25 per page. Rows include title, artists, year, status, pipeline, date and adder, with explicit unknown, before tracking, or pending values. Search starts after three characters and a short pause; an exact video ID is also accepted. Status chips carry counts for the current search.
 
 The detail drawer shows metadata, per-source findings and earliest years from the latest run, the structured review reason when available, stored values in an expandable section, and queue history. Source sections are omitted without a run. Re-run pipeline, Set year, Set status, and Delete each require confirmation. Invalid years stay in the dialog with feedback; server errors keep confirmations open. Deleting removes playlist links and unfinished work, closes the drawer, and refreshes catalog data. Songs referenced by game rows cannot be deleted. The close control receives focus, Escape closes the drawer outside a confirmation, and focus returns to the previous control.
 

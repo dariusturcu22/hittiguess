@@ -1,6 +1,6 @@
 export type CatalogStatus = "VERIFIED" | "NEEDS_REVIEW" | "IN_QUEUE" | "PROCESSING" | "ERROR";
-export type CatalogPipeline = "FAST" | "FULL" | "UNKNOWN";
-export type CatalogAddedByKind = "USER" | "ADMIN_SEED" | "UNKNOWN";
+export type CatalogPipeline = "FAST" | "FULL" | "UNKNOWN" | "LEGACY";
+export type CatalogAddedByKind = "USER" | "ADMIN_SEED" | "UNKNOWN" | "LEGACY";
 export type QueueOrigin = "ADMIN_SEED" | "FAST_TIER_RECHECK" | "USER_ADD_RECHECK";
 export type QueueStatus = "PENDING" | "PROCESSING" | "DONE" | "FAILED";
 
@@ -86,10 +86,13 @@ export const STATUS_FILTERS: StatusFilter[] = [
   { label: "Error", status: "ERROR", countKey: "error" },
 ];
 
+const LEGACY_LABEL = "Before tracking";
+
 const PIPELINE_LABELS: Record<CatalogPipeline, string> = {
   FAST: "Fast",
   FULL: "Full",
   UNKNOWN: "Unknown",
+  LEGACY: LEGACY_LABEL,
 };
 
 const ADMIN_SEED_LABEL = "Admin seed";
@@ -134,7 +137,10 @@ export function addedByLabel(addedBy: string | undefined | null, addedByKind: Ca
   if (addedByKind === "USER" && addedBy) {
     return addedBy;
   }
-  return addedByKind === "ADMIN_SEED" ? ADMIN_SEED_LABEL : UNKNOWN_LABEL;
+  if (addedByKind === "ADMIN_SEED") {
+    return ADMIN_SEED_LABEL;
+  }
+  return addedByKind === "LEGACY" ? LEGACY_LABEL : UNKNOWN_LABEL;
 }
 
 export function formatCount(count: number | undefined): string {
@@ -181,7 +187,10 @@ export function detailMetaLine(detail: {
   addedByKind?: CatalogAddedByKind;
 }): string {
   const yearPart = detail.releaseYear ? `Year ${detail.releaseYear}` : "Year pending";
-  const pipelinePart = `${pipelineLabel(detail.pipeline).toLowerCase()} pipeline`;
+  const pipelinePart =
+    detail.pipeline === "LEGACY"
+      ? LEGACY_LABEL.toLowerCase()
+      : `${pipelineLabel(detail.pipeline).toLowerCase()} pipeline`;
   const addedPart = detail.createdAt
     ? `added ${formatCatalogDate(detail.createdAt)}`
     : "added on an unknown date";

@@ -172,6 +172,7 @@ class AdminSongCatalogRepositoryIntegrationTest {
         AdminCatalogRow dragostea = rowFor(rows, DRAGOSTEA);
         assertThat(dragostea.status()).isEqualTo(CatalogSongStatus.VERIFIED);
         assertThat(dragostea.latestQueueOrigin()).isEqualTo(PendingImportOrigin.ADMIN_SEED);
+        assertThat(dragostea.hasPipelineRun()).isTrue();
         assertThat(dragostea.hasAdminSeedRow()).isTrue();
         assertThat(dragostea.addedByUsername()).isNull();
         assertThat(dragostea.artists()).containsExactly("O-Zone");
@@ -196,6 +197,7 @@ class AdminSongCatalogRepositoryIntegrationTest {
         AdminCatalogRow unknownOrigin = rowFor(rows, UNKNOWN_ORIGIN);
         assertThat(unknownOrigin.status()).isEqualTo(CatalogSongStatus.NEEDS_REVIEW);
         assertThat(unknownOrigin.latestQueueOrigin()).isNull();
+        assertThat(unknownOrigin.hasPipelineRun()).isFalse();
         assertThat(unknownOrigin.hasAdminSeedRow()).isFalse();
         assertThat(unknownOrigin.releaseYear()).isNull();
         assertThat(unknownOrigin.createdAt()).isNull();
@@ -212,6 +214,7 @@ class AdminSongCatalogRepositoryIntegrationTest {
         assertThat(queuedOnly.artists()).isEmpty();
         assertThat(queuedOnly.rowKey()).startsWith("import:");
         assertThat(queuedOnly.latestQueueOrigin()).isEqualTo(PendingImportOrigin.ADMIN_SEED);
+        assertThat(queuedOnly.hasPipelineRun()).isTrue();
         assertThat(queuedOnly.createdAt()).isEqualTo(Instant.parse("2026-10-16T08:00:00Z"));
 
         assertThat(rows).filteredOn(row -> FAILED_ONLY_ID.equals(row.youtubeId())).hasSize(1);

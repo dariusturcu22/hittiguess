@@ -7,10 +7,10 @@ then `opencode-tasks/README.md`, then the brief named under "Current task".
 
 ## Current task
 
-- Task: none
-- Branch: no task branch in progress
-- Step reached: task 13 is open in PR #335, and every remaining task is blocked on review
-- Next step: wait for #332 and #335 to merge, then start tasks 09 and 10 or 14 to 17
+- Task: 09, `opencode-tasks/09-design-proportions-lobby.md`
+- Branch: `fix/lobby-design-proportions` (not created yet)
+- Step reached: not started; pull requests #325 to #335 are merged into `main`
+- Next step: create the branch off an up-to-date `main`
 
 ## Finished tasks
 
@@ -30,5 +30,4 @@ then `opencode-tasks/README.md`, then the brief named under "Current task".
 
 ## Blocked or skipped
 
-- Tasks 09 and 10 build on the shared game stage from task 08, so they wait for #332 to merge.
-- Tasks 14 to 17 build on the matching and lock rules from task 13, so they wait for #335 to merge.
+- Task 16 ends with a production recheck of the whole catalog. Running that recheck, and accepting or dismissing its proposals, is the owner's step after the code is merged and deployed.
