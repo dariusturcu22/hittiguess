@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { HeadphoneOff, MicOff } from "lucide-react";
 import Image from "next/image";
 import type { MemberDTO } from "@/hooks/models/memberDTO";
@@ -11,7 +11,7 @@ const AVATAR_SIZE_PIXELS = 46;
 const MEMBER_COLORS = ["bg-primary text-primary-foreground", "bg-accent text-accent-foreground", "bg-warning text-warning-foreground", "bg-secondary text-secondary-foreground"];
 const UNKNOWN_STATUS: VoiceStatus = { isMuted: false, isDeafened: false, isSpeaking: false };
 
-export function VoiceMemberList({ members, currentUserId, localStatus = UNKNOWN_STATUS, memberStatuses = {} }: { members: MemberDTO[]; currentUserId?: number; localStatus?: VoiceStatus; memberStatuses?: Record<number, VoiceStatus> }) {
+export function VoiceMemberList({ members, currentUserId, localStatus = UNKNOWN_STATUS, memberStatuses = {}, trailingSlot }: { members: MemberDTO[]; currentUserId?: number; localStatus?: VoiceStatus; memberStatuses?: Record<number, VoiceStatus>; trailingSlot?: ReactNode }) {
   const [retainedMembers, setRetainedMembers] = useState(members);
   const [previousMemberIds, setPreviousMemberIds] = useState(members.map((member) => member.userId).join(","));
   const memberIds = members.map((member) => member.userId).join(",");
@@ -44,5 +44,6 @@ export function VoiceMemberList({ members, currentUserId, localStatus = UNKNOWN_
         <span className="max-w-[64px] truncate text-[10px] text-sidebar-foreground">{name}</span>
       </div>;
     })}
+    {trailingSlot}
   </div>;
 }

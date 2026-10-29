@@ -113,6 +113,30 @@ describe("AppVoiceSidebar", () => {
     expect(screen.getByRole("button", { name: "Join call" })).toBeVisible();
   });
 
+  it("puts the join slot first when nobody is in the call", () => {
+    groupMembers = [{ id: 1, userId: 11, displayName: "Alex", isInVoice: false }];
+    render(<AppVoiceSidebar />);
+
+    const memberColumn = screen.getByRole("complementary", { name: "Voice sidebar" }).firstElementChild;
+    expect(memberColumn?.firstElementChild).toContainElement(screen.getByRole("button", { name: "Join call" }));
+    expect(screen.getByText("Join")).toBeVisible();
+  });
+
+  it("puts the join slot directly after the last member in the call", () => {
+    groupMembers = [
+      { id: 1, userId: 11, displayName: "Alex", isInVoice: false },
+      { id: 2, userId: 22, displayName: "Blair", isInVoice: true },
+      { id: 3, userId: 33, displayName: "Casey", isInVoice: true },
+    ];
+    render(<AppVoiceSidebar />);
+
+    const memberColumn = screen.getByRole("complementary", { name: "Voice sidebar" }).firstElementChild;
+    const joinSlot = screen.getByRole("button", { name: "Join call" }).parentElement;
+    const slots = Array.from(memberColumn?.children ?? []);
+    expect(slots.at(-1)).toBe(joinSlot);
+    expect(slots.filter((slot) => slot !== joinSlot)).toHaveLength(2);
+  });
+
   it("shows the rail with the join action outside a call on any page in a group", () => {
     groupMembers = [{ id: 1, userId: 11, displayName: "Alex", isInVoice: false }];
     render(<AppVoiceSidebar />);
