@@ -1290,3 +1290,9 @@ Why: the whole `dev` history was merged into `main` once the new version became 
 Decision: the Fly.io backend app is deleted and its configuration file, `backend/fly.toml`, is removed from the repository. Azure Container Apps is the only backend host.
 
 Why: production moved to Azure and the Fly app only kept an always-on machine billing. The 2026-07 decision to move off Fly.io stays in this file as history.
+
+## 2026-10-29 | Catalog rows that predate pipeline tracking are LEGACY, not UNKNOWN
+
+Decision: a song with no pipeline run and no retained `pending_imports` row is `LEGACY` in both `pipeline` and `addedByKind`, shown as "Before tracking" in the admin catalog. `UNKNOWN` now means queue evidence exists but does not name the pipeline or the adder. Retained `pending_imports` rows count as evidence, so a song with only historical rows is `UNKNOWN`, not `LEGACY`. No `added_by` value is invented for legacy songs.
+
+Why: the oldest catalog songs were recorded before the stage pipeline and backlog tracking existed, so empty evidence meant "unknown" and the owner read it as a broken label. Missing evidence now says so directly, while `UNKNOWN` stays for a real gap in rows that do exist.

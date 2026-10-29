@@ -178,7 +178,7 @@ Catalog and pipeline:
 - [ ] The Wikipedia-assisted lock no longer takes the earliest of disagreeing years when only one source supports it
 - [ ] Recheck the catalog after the pipeline fixes and correct the songs in the year audit
 - [ ] A completed pipeline run attaches its video to an existing song with the same normalized artist and title instead of creating a duplicate, and the admin can merge the 12 existing duplicate pairs
-- [ ] The admin catalog shows songs added before pipeline tracking as "Before tracking"
+- [x] The admin catalog shows songs added before pipeline tracking as "Before tracking"
 
 Tests:
 
