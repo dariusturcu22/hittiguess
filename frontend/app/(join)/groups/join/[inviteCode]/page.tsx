@@ -17,7 +17,6 @@ import {
   getGetActiveMembershipQueryKey,
   useGetActiveMembership,
   useJoinGroup,
-  useLeaveGroup,
 } from "@/hooks/generated/group-management/group-management";
 
 interface PageProps {
@@ -70,7 +69,8 @@ export default function JoinGroupPage({ params }: PageProps) {
     request: { skipAuthRedirect: true },
   });
   const { mutate: joinGroup, isPending } = useJoinGroup();
-  const { mutate: leaveGroup, isPending: isLeavingGroup } = useLeaveGroup();
+  const [isReplacingGroup, setIsReplacingGroup] = useState(false);
+  const isLeavingGroup = isPending && isReplacingGroup;
   const { data: activeMembership } = useGetActiveMembership({
     query: { enabled: Boolean(currentUser), retry: false },
     request: { skipAuthRedirect: true },
@@ -94,29 +94,36 @@ export default function JoinGroupPage({ params }: PageProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentUser]);
 
-  const submitJoin = () => {
+  const submitJoin = (replaceCurrentGroup = false) => {
     const trimmedName = displayName.trim();
     const changedFromAccountName =
       trimmedName && trimmedName !== currentUser?.username;
     const changedFromAccountAvatar =
       avatarUrl.trim() && avatarUrl.trim() !== currentUser?.imageUrl;
 
+    setIsReplacingGroup(replaceCurrentGroup);
     joinGroup(
       {
         data: {
           inviteCode,
           displayName: changedFromAccountName ? trimmedName : undefined,
           avatarUrl: changedFromAccountAvatar ? avatarUrl.trim() : undefined,
+          ...(replaceCurrentGroup ? { replaceCurrentGroup: true } : {}),
         },
       },
       {
         onSuccess: (group) => {
+          setIsReplacingGroup(false);
+          setJoinFailure(null);
           queryClient.invalidateQueries({
             queryKey: getGetActiveMembershipQueryKey(),
           });
           router.push(`/groups/${group.id}`);
         },
-        onError: (joinError) => setJoinFailure(joinFailureFromError(joinError)),
+        onError: (joinError) => {
+          setIsReplacingGroup(false);
+          setJoinFailure(joinFailureFromError(joinError));
+        },
       },
     );
   };
@@ -127,7 +134,7 @@ export default function JoinGroupPage({ params }: PageProps) {
       return;
     }
     setJoinFailure(null);
-    submitJoin();
+    submitJoin(false);
   };
 
   const handleLeaveAndRetry = () => {
@@ -135,19 +142,7 @@ export default function JoinGroupPage({ params }: PageProps) {
     if (currentGroupId === undefined) {
       return;
     }
-    leaveGroup(
-      { groupId: currentGroupId },
-      {
-        onSuccess: () => {
-          queryClient.invalidateQueries({
-            queryKey: getGetActiveMembershipQueryKey(),
-          });
-          setJoinFailure(null);
-          submitJoin();
-        },
-        onError: (leaveError) => setJoinFailure(joinFailureFromError(leaveError)),
-      },
-    );
+    submitJoin(true);
   };
 
   const avatarInitial =

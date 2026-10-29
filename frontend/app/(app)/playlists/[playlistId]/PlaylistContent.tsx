@@ -504,9 +504,7 @@ export default function PlaylistContent({
                       disabled={isCurrentGroupInGame || isLeavingGroup}
                       onClick={() => {
                         setIsGroupChoiceOpen(false);
-                        if (currentGroup?.id !== undefined) {
-                          leaveGroupAndCreateGroup(currentGroup.id, playlistId);
-                        }
+                        leaveGroupAndCreateGroup(playlistId);
                       }}
                       className="rounded-full border-2 border-border px-4 py-2 text-xs font-semibold text-card-foreground disabled:opacity-50"
                     >

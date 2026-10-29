@@ -7,7 +7,6 @@ import { toast } from "sonner";
 import {
   getGetActiveMembershipQueryKey,
   useCreateGroup,
-  useLeaveGroup,
 } from "@/hooks/generated/group-management/group-management";
 
 const API_ERROR_FALLBACK_MESSAGE = "Something went wrong. Try again.";
@@ -22,13 +21,12 @@ function apiErrorMessage(error: unknown): string {
 }
 
 // Creates a group from the same defaults everywhere and opens its lobby, optionally
-// preselecting a playlist. Leaving the current group is exposed as one action so the
-// caller only has to disable it while that group is in a game.
+// preselecting a playlist. Leaving the current group and creating a new one happens
+// in one server transaction through replaceCurrentGroup.
 export function useCreateGroupAndOpen() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const createGroup = useCreateGroup();
-  const leaveGroup = useLeaveGroup();
 
   function openGroup(groupId: number | undefined, playlistId?: number): void {
     if (groupId === undefined) return;
@@ -46,11 +44,11 @@ export function useCreateGroupAndOpen() {
     );
   }
 
-  function leaveGroupAndCreateGroup(groupId: number, playlistId: number): void {
-    leaveGroup.mutate(
-      { groupId },
+  function leaveGroupAndCreateGroup(playlistId?: number): void {
+    createGroup.mutate(
+      { data: { replaceCurrentGroup: true } },
       {
-        onSuccess: () => createGroupAndOpen(playlistId),
+        onSuccess: (group) => openGroup(group.id, playlistId),
         onError: (error) => toast.error(apiErrorMessage(error)),
       },
     );
@@ -61,6 +59,6 @@ export function useCreateGroupAndOpen() {
     createGroupAndOpen,
     leaveGroupAndCreateGroup,
     isCreatingGroup: createGroup.isPending,
-    isLeavingGroup: leaveGroup.isPending,
+    isLeavingGroup: createGroup.isPending,
   };
 }

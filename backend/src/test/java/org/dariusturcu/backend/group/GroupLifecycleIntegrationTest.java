@@ -44,6 +44,14 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.annotation.Propagation;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
@@ -303,5 +311,121 @@ class GroupLifecycleIntegrationTest {
 
         assertThat(memberRepository.findByUser(staleMember).orElseThrow().isInVoice()).isFalse();
         assertThat(memberRepository.findByUser(recentMember).orElseThrow().isInVoice()).isTrue();
+    }
+
+    @Test
+    void creatingAGroupWithReplaceCurrentGroupLeavesThePreviousGroupAndPromotesTheNextMember() {
+        User firstAdmin = persistUser("replace-create-admin");
+        User secondMember = persistUser("replace-create-second");
+
+        authenticateAs(firstAdmin);
+        GroupDetailDTO firstGroup = groupService.createGroup(new CreateGroupRequest(null, null));
+        authenticateAs(secondMember);
+        groupService.joinGroup(new JoinGroupRequest(firstGroup.inviteCode(), null, null, null));
+
+        authenticateAs(firstAdmin);
+        GroupDetailDTO secondGroup = groupService.createGroup(new CreateGroupRequest(null, null, true));
+
+        assertThat(secondGroup.id()).isNotEqualTo(firstGroup.id());
+        assertThat(secondGroup.members()).hasSize(1);
+        assertThat(secondGroup.members().getFirst().displayName()).isEqualTo("replace-create-admin");
+
+        authenticateAs(secondMember);
+        GroupDetailDTO updatedFirstGroup = groupService.getGroup(firstGroup.id());
+        assertThat(updatedFirstGroup.members()).hasSize(1);
+        MemberDTO promotedMember = updatedFirstGroup.members().getFirst();
+        assertThat(promotedMember.displayName()).isEqualTo("replace-create-second");
+        assertThat(promotedMember.isAdmin()).isTrue();
+    }
+
+    @Test
+    void joiningAnotherGroupWithReplaceCurrentGroupLeavesThePreviousGroupAndDeletesEmptyGroup() {
+        User targetAdmin = persistUser("replace-join-target-admin");
+        User movingUser = persistUser("replace-join-moving-user");
+
+        authenticateAs(targetAdmin);
+        GroupDetailDTO targetGroup = groupService.createGroup(new CreateGroupRequest(null, null));
+
+        authenticateAs(movingUser);
+        GroupDetailDTO initialGroup = groupService.createGroup(new CreateGroupRequest(null, null));
+
+        GroupDetailDTO joinedGroup = groupService.joinGroup(
+                new JoinGroupRequest(targetGroup.inviteCode(), null, null, null, true));
+
+        assertThat(joinedGroup.id()).isEqualTo(targetGroup.id());
+        assertThat(joinedGroup.members()).hasSize(2);
+        assertThat(groupRepository.findById(initialGroup.id())).isEmpty();
+    }
+
+    private static final int CONCURRENT_SWAP_THREADS = 2;
+    private static final int READY_TIMEOUT_SECONDS = 5;
+    private static final int SWAP_TIMEOUT_SECONDS = 10;
+
+    @Test
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
+    void concurrentOppositeGroupSwapsSucceedOrFailWithConflictNeverDeadlock() throws Exception {
+        User firstAdmin = persistUser("swap-first-admin-" + System.nanoTime());
+        User secondAdmin = persistUser("swap-second-admin-" + System.nanoTime());
+        User firstSwapper = persistUser("swap-first-swapper-" + System.nanoTime());
+        User secondSwapper = persistUser("swap-second-swapper-" + System.nanoTime());
+
+        authenticateAs(firstAdmin);
+        GroupDetailDTO firstGroup = groupService.createGroup(new CreateGroupRequest(null, null));
+        authenticateAs(firstSwapper);
+        groupService.joinGroup(new JoinGroupRequest(firstGroup.inviteCode(), null, null, null));
+
+        authenticateAs(secondAdmin);
+        GroupDetailDTO secondGroup = groupService.createGroup(new CreateGroupRequest(null, null));
+        authenticateAs(secondSwapper);
+        groupService.joinGroup(new JoinGroupRequest(secondGroup.inviteCode(), null, null, null));
+
+        ExecutorService executorService = Executors.newFixedThreadPool(CONCURRENT_SWAP_THREADS);
+        CountDownLatch readyLatch = new CountDownLatch(CONCURRENT_SWAP_THREADS);
+        CountDownLatch startLatch = new CountDownLatch(1);
+        CountDownLatch doneLatch = new CountDownLatch(CONCURRENT_SWAP_THREADS);
+
+        List<Throwable> thrownErrors = Collections.synchronizedList(new ArrayList<>());
+        List<GroupDetailDTO> successfulResults = Collections.synchronizedList(new ArrayList<>());
+
+        executorService.submit(() -> {
+            authenticateAs(firstSwapper);
+            readyLatch.countDown();
+            try {
+                startLatch.await();
+                GroupDetailDTO result = groupService.joinGroup(
+                        new JoinGroupRequest(secondGroup.inviteCode(), null, null, null, true));
+                successfulResults.add(result);
+            } catch (Throwable throwable) {
+                thrownErrors.add(throwable);
+            } finally {
+                doneLatch.countDown();
+            }
+        });
+
+        executorService.submit(() -> {
+            authenticateAs(secondSwapper);
+            readyLatch.countDown();
+            try {
+                startLatch.await();
+                GroupDetailDTO result = groupService.joinGroup(
+                        new JoinGroupRequest(firstGroup.inviteCode(), null, null, null, true));
+                successfulResults.add(result);
+            } catch (Throwable throwable) {
+                thrownErrors.add(throwable);
+            } finally {
+                doneLatch.countDown();
+            }
+        });
+
+        readyLatch.await(READY_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+        startLatch.countDown();
+        boolean completedInTime = doneLatch.await(SWAP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+        executorService.shutdown();
+
+        assertThat(completedInTime).isTrue();
+        assertThat(successfulResults.size() + thrownErrors.size()).isEqualTo(CONCURRENT_SWAP_THREADS);
+        for (Throwable throwable : thrownErrors) {
+            assertThat(throwable).isInstanceOf(ConflictException.class);
+        }
     }
 }

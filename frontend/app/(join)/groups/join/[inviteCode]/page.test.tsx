@@ -99,7 +99,7 @@ describe("JoinGroupPage", () => {
     expect(await screen.findByText(avatarUrlMessage)).toBeVisible();
   });
 
-  it("shows the server's conflict message and retries the join after leaving the current group", async () => {
+  it("shows the server's conflict message and retries the join with replaceCurrentGroup", async () => {
     const conflictMessage = "You are already in a group. Leave it first, then join this one.";
     const currentGroupId = 42;
     currentUserState = { data: { id: 11, username: "player" }, isLoading: false, isError: false };
@@ -107,7 +107,6 @@ describe("JoinGroupPage", () => {
     joinMutate.mockImplementation((_args, options) =>
       options?.onError?.({ response: { status: 409, data: { message: conflictMessage } } }),
     );
-    leaveGroupMutate.mockImplementation((_args, options) => options?.onSuccess?.());
     await renderPage();
 
     fireEvent.change(screen.getByRole("textbox"), { target: { value: "Star" } });
@@ -117,9 +116,9 @@ describe("JoinGroupPage", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Leave your current group and join this one" }));
 
-    await waitFor(() => expect(leaveGroupMutate).toHaveBeenCalledWith({ groupId: currentGroupId }, expect.anything()));
+    expect(joinMutate).toHaveBeenCalledTimes(2);
     const [retryPayload] = joinMutate.mock.lastCall ?? [];
-    expect(retryPayload.data).toMatchObject({ inviteCode: "WXYZ", displayName: "Star" });
+    expect(retryPayload.data).toMatchObject({ inviteCode: "WXYZ", displayName: "Star", replaceCurrentGroup: true });
   });
 
   it("keeps the invalid-link wording for a missing invite code and offers no leave action", async () => {

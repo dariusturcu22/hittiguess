@@ -921,4 +921,182 @@ class GroupServiceTest {
         assertThatThrownBy(() -> groupService.reconnectMember(10L, otherUser.getId()))
                 .isInstanceOf(AccessDeniedException.class);
     }
+
+    @Test
+    void createGroupWithReplaceCurrentGroupLeavesOldGroupAndPromotesRemainingMember() {
+        Group oldGroup = groupWithAdmin();
+        Member adminMember = oldGroup.getMembers().getFirst();
+        Member secondMember = memberOf(oldGroup, otherUser, false, Instant.now());
+        when(memberRepository.findByUser(adminUser)).thenReturn(Optional.of(adminMember));
+        when(groupRepository.findByIdForUpdate(10L)).thenReturn(Optional.of(oldGroup));
+        when(groupRepository.existsByJoinCode(anyString())).thenReturn(false);
+
+        GroupDetailDTO result = groupService.createGroup(new CreateGroupRequest("New Admin", null, true));
+
+        assertThat(result.members()).hasSize(1);
+        assertThat(result.members().getFirst().displayName()).isEqualTo("New Admin");
+        assertThat(oldGroup.getMembers()).doesNotContain(adminMember);
+        assertThat(secondMember.isAdmin()).isTrue();
+
+        ArgumentCaptor<GroupBroadcastEvent> eventsCaptor = ArgumentCaptor.forClass(GroupBroadcastEvent.class);
+        verify(eventPublisher, times(2)).publishEvent(eventsCaptor.capture());
+        assertThat(eventsCaptor.getAllValues())
+                .extracting(GroupBroadcastEvent::type)
+                .containsExactlyInAnyOrder(GroupEventType.MEMBER_LEFT, GroupEventType.ADMIN_CHANGED);
+    }
+
+    @Test
+    void createGroupWithReplaceCurrentGroupBroadcastsNothingWhenSavingNewGroupFails() {
+        Group oldGroup = groupWithAdmin();
+        Member adminMember = oldGroup.getMembers().getFirst();
+        when(memberRepository.findByUser(adminUser)).thenReturn(Optional.of(adminMember));
+        when(groupRepository.findByIdForUpdate(10L)).thenReturn(Optional.of(oldGroup));
+        when(groupRepository.existsByJoinCode(anyString())).thenReturn(false);
+        when(groupRepository.save(any(Group.class))).thenAnswer(invocation -> {
+            Group candidateGroup = invocation.getArgument(0);
+            if (candidateGroup.getId() == null) {
+                throw new RuntimeException("Database error saving new group");
+            }
+            return candidateGroup;
+        });
+
+        assertThatThrownBy(() -> groupService.createGroup(new CreateGroupRequest(null, null, true)))
+                .isInstanceOf(RuntimeException.class);
+
+        verify(eventPublisher, never()).publishEvent(any());
+    }
+
+    @Test
+    void createGroupWithReplaceCurrentGroupWhenCallerHasNoGroupCreatesNormally() {
+        when(memberRepository.findByUser(adminUser)).thenReturn(Optional.empty());
+        when(groupRepository.existsByJoinCode(anyString())).thenReturn(false);
+
+        GroupDetailDTO result = groupService.createGroup(new CreateGroupRequest(null, null, true));
+
+        assertThat(result.members()).hasSize(1);
+        assertThat(result.members().getFirst().isAdmin()).isTrue();
+    }
+
+    @Test
+    void createGroupWithReplaceCurrentGroupRejectsWhenCurrentGroupHasRunningGame() {
+        Group oldGroup = groupWithAdmin();
+        oldGroup.setStatus(GroupStatus.LOCKED);
+        Member adminMember = oldGroup.getMembers().getFirst();
+        when(memberRepository.findByUser(adminUser)).thenReturn(Optional.of(adminMember));
+        when(groupRepository.findByIdForUpdate(10L)).thenReturn(Optional.of(oldGroup));
+
+        assertThatThrownBy(() -> groupService.createGroup(new CreateGroupRequest(null, null, true)))
+                .isInstanceOf(ConflictException.class);
+
+        assertThat(oldGroup.getMembers()).contains(adminMember);
+        verify(eventPublisher, never()).publishEvent(any());
+    }
+
+    @Test
+    void joinGroupWithReplaceCurrentGroupMovesCallerToTargetGroup() {
+        Group oldGroup = groupWithAdmin();
+        Member secondMember = memberOf(oldGroup, otherUser, false, Instant.now());
+
+        User thirdUser = new User();
+        thirdUser.setId(3L);
+        thirdUser.setUsername("third-user");
+        thirdUser.setImageUrl("third-avatar.png");
+        thirdUser.setRole(Role.USER);
+
+        Group targetGroup = new Group();
+        targetGroup.setId(20L);
+        targetGroup.setInviteCode("target-invite");
+        targetGroup.setJoinCode("WXYZ");
+        targetGroup.setStatus(GroupStatus.OPEN);
+        targetGroup.setDjMode(DjMode.FIXED);
+        targetGroup.setWinConditionCardCount(5);
+        memberOf(targetGroup, thirdUser, true, Instant.now());
+
+        when(groupRepository.findByInviteCode("target-invite")).thenReturn(Optional.of(targetGroup));
+        when(memberRepository.findByUser(otherUser)).thenReturn(Optional.of(secondMember));
+        when(groupRepository.findByIdForUpdate(10L)).thenReturn(Optional.of(oldGroup));
+        when(groupRepository.findByIdForUpdate(20L)).thenReturn(Optional.of(targetGroup));
+        authenticateAs(otherUser);
+
+        GroupDetailDTO result = groupService.joinGroup(new JoinGroupRequest("target-invite", null, null, null, true));
+
+        assertThat(result.members()).hasSize(2);
+        assertThat(oldGroup.getMembers()).doesNotContain(secondMember);
+        assertThat(targetGroup.getMembers()).extracting(member -> member.getUser().getId())
+                .contains(otherUser.getId());
+
+        ArgumentCaptor<GroupBroadcastEvent> eventsCaptor = ArgumentCaptor.forClass(GroupBroadcastEvent.class);
+        verify(eventPublisher, times(2)).publishEvent(eventsCaptor.capture());
+        assertThat(eventsCaptor.getAllValues())
+                .extracting(GroupBroadcastEvent::type)
+                .containsExactly(GroupEventType.MEMBER_LEFT, GroupEventType.MEMBER_JOINED);
+    }
+
+    @Test
+    void joinGroupWithReplaceCurrentGroupToFullGroupLeavesCallerInOldGroupAndBroadcastsNothing() {
+        Group oldGroup = groupWithAdmin();
+        Member secondMember = memberOf(oldGroup, otherUser, false, Instant.now());
+
+        Group targetGroup = new Group();
+        targetGroup.setId(20L);
+        targetGroup.setStatus(GroupStatus.OPEN);
+        for (int fillerIndex = 0; fillerIndex < Group.MAX_MEMBERS; fillerIndex++) {
+            User fillerUser = new User();
+            fillerUser.setId(FIRST_FILLER_USER_ID + fillerIndex);
+            fillerUser.setUsername("filler-" + fillerIndex);
+            memberOf(targetGroup, fillerUser, fillerIndex == 0, Instant.now());
+        }
+
+        when(groupRepository.findByInviteCode("target-invite")).thenReturn(Optional.of(targetGroup));
+        when(memberRepository.findByUser(otherUser)).thenReturn(Optional.of(secondMember));
+        when(groupRepository.findByIdForUpdate(10L)).thenReturn(Optional.of(oldGroup));
+        when(groupRepository.findByIdForUpdate(20L)).thenReturn(Optional.of(targetGroup));
+        authenticateAs(otherUser);
+
+        assertThatThrownBy(() -> groupService.joinGroup(new JoinGroupRequest("target-invite", null, null, null, true)))
+                .isInstanceOf(ConflictException.class)
+                .hasMessageContaining("full");
+
+        assertThat(oldGroup.getMembers()).contains(secondMember);
+        verify(eventPublisher, never()).publishEvent(any());
+    }
+
+    @Test
+    void joinGroupWithReplaceCurrentGroupWithInvalidCodeLeavesCallerInOldGroupAndBroadcastsNothing() {
+        Group oldGroup = groupWithAdmin();
+        Member secondMember = memberOf(oldGroup, otherUser, false, Instant.now());
+        when(memberRepository.findByUser(otherUser)).thenReturn(Optional.of(secondMember));
+        when(groupRepository.findByInviteCode("invalid-invite")).thenReturn(Optional.empty());
+        authenticateAs(otherUser);
+
+        assertThatThrownBy(() -> groupService.joinGroup(new JoinGroupRequest("invalid-invite", null, null, null, true)))
+                .isInstanceOf(ResourceNotFoundException.class);
+
+        assertThat(oldGroup.getMembers()).contains(secondMember);
+        verify(eventPublisher, never()).publishEvent(any());
+    }
+
+    @Test
+    void joinGroupWithReplaceCurrentGroupRejectsWhenCurrentGroupHasRunningGame() {
+        Group oldGroup = groupWithAdmin();
+        oldGroup.setStatus(GroupStatus.LOCKED);
+        Member secondMember = memberOf(oldGroup, otherUser, false, Instant.now());
+
+        Group targetGroup = new Group();
+        targetGroup.setId(20L);
+        targetGroup.setStatus(GroupStatus.OPEN);
+        memberOf(targetGroup, adminUser, true, Instant.now());
+
+        when(groupRepository.findByInviteCode("target-invite")).thenReturn(Optional.of(targetGroup));
+        when(memberRepository.findByUser(otherUser)).thenReturn(Optional.of(secondMember));
+        when(groupRepository.findByIdForUpdate(10L)).thenReturn(Optional.of(oldGroup));
+        when(groupRepository.findByIdForUpdate(20L)).thenReturn(Optional.of(targetGroup));
+        authenticateAs(otherUser);
+
+        assertThatThrownBy(() -> groupService.joinGroup(new JoinGroupRequest("target-invite", null, null, null, true)))
+                .isInstanceOf(ConflictException.class);
+
+        assertThat(oldGroup.getMembers()).contains(secondMember);
+        verify(eventPublisher, never()).publishEvent(any());
+    }
 }

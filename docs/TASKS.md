@@ -180,7 +180,7 @@ Catalog and pipeline:
 - [ ] A completed pipeline run attaches its video to an existing song with the same normalized artist and title instead of creating a duplicate, and the admin can merge the 12 existing duplicate pairs
 - [x] The admin catalog shows songs added before pipeline tracking as "Before tracking"
 - [x] Live drag previews are validated from in-memory round state, without a database read per frame
-- [ ] Leaving a group and creating or joining another happens in one server transaction, so a failure keeps the user in their group
+- [x] Leaving a group and creating or joining another happens in one server transaction, so a failure keeps the user in their group
 
 Tests:
 

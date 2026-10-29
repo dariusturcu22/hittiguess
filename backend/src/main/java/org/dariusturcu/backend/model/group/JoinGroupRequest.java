@@ -5,7 +5,8 @@ import jakarta.validation.constraints.Size;
 
 // Exactly one of inviteCode or joinCode must be supplied; the service rejects
 // requests that give both or neither. displayName and avatarUrl are optional,
-// defaulting to the joining user's account values.
+// defaulting to the joining user's account values. When replaceCurrentGroup is true,
+// an existing active membership is left as part of the same transaction.
 public record JoinGroupRequest(
         String inviteCode,
         String joinCode,
@@ -14,5 +15,14 @@ public record JoinGroupRequest(
         String displayName,
         @Size(max = MemberIdentityConstraints.AVATAR_URL_MAX_LENGTH, message = MemberIdentityConstraints.AVATAR_URL_MESSAGE)
         @Pattern(regexp = MemberIdentityConstraints.AVATAR_URL_PATTERN, message = MemberIdentityConstraints.AVATAR_URL_MESSAGE)
-        String avatarUrl) {
+        String avatarUrl,
+        Boolean replaceCurrentGroup) {
+
+    public JoinGroupRequest(String inviteCode, String joinCode, String displayName, String avatarUrl) {
+        this(inviteCode, joinCode, displayName, avatarUrl, false);
+    }
+
+    public boolean shouldReplaceCurrentGroup() {
+        return Boolean.TRUE.equals(replaceCurrentGroup);
+    }
 }
