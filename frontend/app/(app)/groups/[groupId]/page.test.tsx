@@ -433,8 +433,8 @@ describe("GroupLobbyPage start options", () => {
     const footerWrapper = settingsPanel.parentElement;
 
     expect(settingsPanel.className).toContain("bottom-full");
-    expect(settingsPanel.className).toContain("mb-3");
-    expect(settingsPanel.className).toContain("sm:left-[228px]");
+    expect(settingsPanel.className).toContain("mb-[12px]");
+    expect(settingsPanel.className).toContain("left-[284px]");
     expect(footerWrapper?.className).toContain("relative");
     expect(footerWrapper).toContainElement(screen.getByRole("button", { name: "Leave lobby" }));
   });
@@ -447,11 +447,10 @@ describe("GroupLobbyPage start options", () => {
     const startOptions = screen.getByLabelText("Start options");
     const tierRow = screen.getByRole("button", { name: "Easy" }).parentElement;
 
-    expect(startOptions.className).toContain("w-auto");
-    expect(startOptions.className).not.toContain("w-[480px]");
-    expect(screen.queryByText("Songs are selected when the session starts.")).toBeNull();
+    expect(startOptions.className).toContain("w-[480px]");
+    expect(screen.getByText("Songs are selected when the session starts.")).toBeVisible();
     expect(tierRow).toContainElement(screen.getByRole("button", { name: "Custom" }));
-    expect(tierRow).toContainElement(screen.getByRole("button", { name: "Confirm" }));
+    expect(screen.getByRole("button", { name: "Confirm" })).toBeVisible();
 
     fireEvent.click(screen.getByRole("button", { name: "Easy" }));
     fireEvent.click(screen.getByRole("button", { name: "Confirm" }));
@@ -524,16 +523,16 @@ describe("GroupLobbyPage viewport layout", () => {
     await renderPage();
 
     const joinCode = screen.getByText("ABCD");
-    expect(joinCode.className).toContain("sm:text-[76px]");
+    expect(joinCode.className).toContain("text-[76px]");
     expect(joinCode.className).not.toContain("short:");
 
     const memberBlock = screen.getByText(/^Admin/).parentElement;
     const avatar = memberBlock?.querySelector(".avatar-initial");
-    expect(avatar?.className).toContain("sm:size-[108px]");
+    expect(avatar?.className).toContain("size-[108px]");
     expect(avatar?.className).not.toContain("short:");
 
     const crown = memberBlock?.querySelector("svg.text-warning");
-    expect(crown?.getAttribute("class")).toContain("sm:size-7");
+    expect(crown?.getAttribute("class")).toContain("size-[27px]");
     expect(crown?.getAttribute("class")).not.toContain("short:");
   });
 });

@@ -9,8 +9,8 @@ then `opencode-tasks/README.md`, then the brief named under "Current task".
 
 - Task: 09, `opencode-tasks/09-design-proportions-lobby.md`
 - Branch: `fix/lobby-design-proportions`
-- Step reached: branch created
-- Next step: extract lobby artboards and adjust lobby proportions. Order from here: 09, 10, 14, 15, 16, 17
+- Step reached: tests passing
+- Next step: open PR for task 09. Order from here: 09, 10, 14, 15, 16, 17
 
 ## Finished tasks
 

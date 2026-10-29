@@ -66,16 +66,44 @@ const MEMBER_COLORS = [
   "bg-accent text-accent-foreground",
 ];
 
-const ORBIT_POSITIONS = [
-  "left-[13%] top-[18%] -rotate-6",
-  "right-[13%] top-[12%] rotate-6",
-  "bottom-[9%] left-[19%] rotate-6",
-  "right-[9%] bottom-[12%] -rotate-6",
-  "left-[4%] bottom-[35%] -rotate-3",
-  "right-[3%] top-[39%] rotate-3",
-  "left-[35%] top-[4%] -rotate-2",
-  "right-[35%] bottom-[3%] rotate-2",
+interface OrbitSlotStyle {
+  top: string;
+  left: string;
+  transform: string;
+}
+
+const TWO_PLAYER_ORBIT_SLOTS: OrbitSlotStyle[] = [
+  { top: "calc(50% - 75px)", left: "calc(50% - 355px)", transform: "translate(-50%, -50%) rotate(-6deg)" },
+  { top: "calc(50% + 140px)", left: "calc(50% + 340px)", transform: "translate(-50%, -50%) rotate(5deg)" },
 ];
+
+const FOUR_PLAYER_ORBIT_SLOTS: OrbitSlotStyle[] = [
+  { top: "calc(50% - 145px)", left: "calc(50% - 260px)", transform: "translate(-50%, -50%) rotate(-7deg)" },
+  { top: "calc(50% - 195px)", left: "calc(50% + 245px)", transform: "translate(-50%, -50%) rotate(5deg)" },
+  { top: "calc(50% + 180px)", left: "calc(50% - 210px)", transform: "translate(-50%, -50%) rotate(6deg)" },
+  { top: "calc(50% + 160px)", left: "calc(50% + 295px)", transform: "translate(-50%, -50%) rotate(-5deg)" },
+];
+
+const EIGHT_PLAYER_ORBIT_SLOTS: OrbitSlotStyle[] = [
+  { top: "calc(50% - 40px)", left: "calc(50% - 335px)", transform: "translate(-50%, -50%) rotate(-6deg)" },
+  { top: "calc(50% - 215px)", left: "calc(50% - 245px)", transform: "translate(-50%, -50%) rotate(5deg)" },
+  { top: "calc(50% - 260px)", left: "calc(50% + 20px)", transform: "translate(-50%, -50%) rotate(-4deg)" },
+  { top: "calc(50% - 195px)", left: "calc(50% + 278px)", transform: "translate(-50%, -50%) rotate(6deg)" },
+  { top: "calc(50% + 27px)", left: "calc(50% + 348px)", transform: "translate(-50%, -50%) rotate(-5deg)" },
+  { top: "calc(50% + 213px)", left: "calc(50% + 240px)", transform: "translate(-50%, -50%) rotate(4deg)" },
+  { top: "calc(50% + 265px)", left: "calc(50% - 20px)", transform: "translate(-50%, -50%) rotate(-6deg)" },
+  { top: "calc(50% + 188px)", left: "calc(50% - 285px)", transform: "translate(-50%, -50%) rotate(5deg)" },
+];
+
+function getOrbitSlotStyle(slotIndex: number, totalMembers: number): OrbitSlotStyle {
+  if (totalMembers <= 2) {
+    return TWO_PLAYER_ORBIT_SLOTS[slotIndex % TWO_PLAYER_ORBIT_SLOTS.length];
+  }
+  if (totalMembers <= 4) {
+    return FOUR_PLAYER_ORBIT_SLOTS[slotIndex % FOUR_PLAYER_ORBIT_SLOTS.length];
+  }
+  return EIGHT_PLAYER_ORBIT_SLOTS[slotIndex % EIGHT_PLAYER_ORBIT_SLOTS.length];
+}
 
 const LOADING_MEMBER_COUNT = 4;
 const MINIMUM_WIN_CONDITION = 1;
@@ -117,53 +145,82 @@ function memberInitial(member: MemberDTO): string {
 
 function LobbyMember({
   member,
+  slotIndex,
+  totalMembers,
   isCurrentUser,
   onRemove,
   onPromote,
 }: {
   member: MemberDTO;
+  slotIndex: number;
+  totalMembers: number;
   isCurrentUser: boolean;
   onRemove?: (member: MemberDTO) => void;
   onPromote?: (member: MemberDTO) => void;
 }) {
   const colorClass = MEMBER_COLORS[stableMemberIndex(member, MEMBER_COLORS.length)];
-  const orbitPosition = ORBIT_POSITIONS[stableMemberIndex(member, ORBIT_POSITIONS.length)];
+  const orbitSlotStyle = getOrbitSlotStyle(slotIndex, totalMembers);
   const floatDelay = `${stableMemberIndex(member, LOBBY_FLOAT_STAGGER_CYCLE) * -LOBBY_FLOAT_STAGGER_SECONDS}s`;
+  const ringClass = member.isConnected
+    ? "shadow-[0_0_0_3px_var(--background),0_0_0_8px_var(--green)]"
+    : "shadow-[0_0_0_3px_var(--background),0_0_0_8px_#45475a] opacity-50 grayscale";
 
   return (
-    <div className={`absolute ${orbitPosition} lobby-float flex flex-col items-center`} style={{ animationDelay: floatDelay }}>
-      <div className="relative">
-        {member.avatarUrl ? <img src={member.avatarUrl} alt={`${member.displayName || "Player"} avatar`} className={`size-[76px] rounded-full object-cover shadow-[0_0_0_3px_var(--background),0_0_0_8px_var(--green)] sm:size-[108px] ${member.isConnected ? "" : "opacity-50 grayscale"}`} /> : (
-          <div className={`avatar-initial flex size-[76px] items-center justify-center rounded-full font-display text-2xl shadow-[0_0_0_3px_var(--background),0_0_0_8px_var(--green)] sm:size-[108px] sm:text-[34px] ${colorClass} ${member.isConnected ? "" : "opacity-50 grayscale"}`}>
-            {memberInitial(member)}
-          </div>
-        )}
-        {member.isAdmin ? (
-          <Crown className="absolute -right-2 -top-2 size-6 fill-warning text-warning drop-shadow-sm sm:size-7" />
-        ) : null}
-        {onRemove ? (
+    <div
+      className="absolute flex flex-col items-center pointer-events-auto"
+      style={{
+        top: orbitSlotStyle.top,
+        left: orbitSlotStyle.left,
+        transform: orbitSlotStyle.transform,
+      }}
+    >
+      <div className="lobby-float flex flex-col items-center" style={{ animationDelay: floatDelay }}>
+        <div className="relative">
+          {member.avatarUrl ? (
+            <img
+              src={member.avatarUrl}
+              alt={`${member.displayName || "Player"} avatar`}
+              className={`size-[108px] rounded-full object-cover ${ringClass}`}
+            />
+          ) : (
+            <div
+              className={`avatar-initial flex size-[108px] items-center justify-center rounded-full font-display text-[34px] ${colorClass} ${ringClass}`}
+            >
+              {memberInitial(member)}
+            </div>
+          )}
+          {member.isAdmin ? (
+            <Crown className="absolute -right-[10px] -top-[10px] size-[27px] fill-warning text-warning drop-shadow-[1px_1px_0_var(--background)]" />
+          ) : null}
+          {onRemove ? (
+            <button
+              type="button"
+              onClick={() => onRemove(member)}
+              aria-label={`Remove ${member.displayName || "Player"}`}
+              className="absolute -left-2 -top-2 flex size-7 items-center justify-center rounded-full border-2 border-background bg-destructive text-white shadow-sm transition-transform hover:scale-110"
+            >
+              <UserX className="size-3.5" />
+            </button>
+          ) : null}
+        </div>
+        <span className="mt-[9px] max-w-[148px] truncate font-semibold text-[15px] text-foreground">
+          {member.displayName || "Player"}
+          {isCurrentUser ? " (you)" : ""}
+        </span>
+        {onPromote ? (
           <button
             type="button"
-            onClick={() => onRemove(member)}
-            aria-label={`Remove ${member.displayName || "Player"}`}
-            className="absolute -left-2 -top-2 flex size-7 items-center justify-center rounded-full border-2 border-background bg-destructive text-white shadow-sm transition-transform hover:scale-110"
+            onClick={() => onPromote(member)}
+            aria-label={`Make ${member.displayName || "Player"} group admin`}
+            className="mt-1 cursor-pointer text-xs font-semibold text-warning hover:underline"
           >
-            <UserX className="size-3.5" />
+            Make group admin
           </button>
         ) : null}
+        {!member.isConnected ? (
+          <span className="mt-0.5 text-[10px] text-muted-foreground">Away</span>
+        ) : null}
       </div>
-      <span className="mt-2 max-w-[148px] truncate font-semibold text-sm text-foreground sm:mt-3 sm:text-[15px]">
-        {member.displayName || "Player"}
-        {isCurrentUser ? " (you)" : ""}
-      </span>
-      {onPromote ? (
-        <button type="button" onClick={() => onPromote(member)} aria-label={`Make ${member.displayName || "Player"} group admin`} className="mt-1 cursor-pointer text-xs font-semibold text-warning hover:underline">
-          Make group admin
-        </button>
-      ) : null}
-      {!member.isConnected ? (
-        <span className="mt-0.5 text-[10px] text-muted-foreground">Away</span>
-      ) : null}
     </div>
   );
 }
@@ -171,12 +228,20 @@ function LobbyMember({
 function LobbyLoadingState() {
   return (
     <div className="relative flex min-h-0 flex-1 items-center justify-center overflow-hidden">
-      {Array.from({ length: LOADING_MEMBER_COUNT }, (_, index) => (
-        <div
-          key={index}
-          className={`absolute ${ORBIT_POSITIONS[index]} size-24 animate-pulse rounded-full bg-card sm:size-[108px]`}
-        />
-      ))}
+      {Array.from({ length: LOADING_MEMBER_COUNT }, (_, index) => {
+        const slotStyle = getOrbitSlotStyle(index, LOADING_MEMBER_COUNT);
+        return (
+          <div
+            key={index}
+            className="absolute size-[108px] animate-pulse rounded-full bg-card"
+            style={{
+              top: slotStyle.top,
+              left: slotStyle.left,
+              transform: slotStyle.transform,
+            }}
+          />
+        );
+      })}
       <Loader2 className="size-8 animate-spin text-primary" aria-label="Loading group" />
     </div>
   );
@@ -509,7 +574,7 @@ function GroupLobbyScreen({ params }: PageProps) {
 
   if (groupQuery.isLoading || isGroupInGame) {
     return (
-      <main className="flex h-full min-h-0 flex-col overflow-hidden px-6 py-8 sm:px-14 sm:py-9">
+      <main className="flex h-full min-h-0 flex-col overflow-hidden px-[56px] pt-[36px] pb-[40px]">
         <div className="h-10 w-52 animate-pulse rounded bg-card" />
         <LobbyLoadingState />
       </main>
@@ -537,12 +602,12 @@ function GroupLobbyScreen({ params }: PageProps) {
   }
 
   return (
-    <main className="flex h-full min-h-0 flex-col overflow-hidden px-6 py-8 sm:px-14 sm:py-9">
+    <main className="flex h-full min-h-0 flex-col overflow-hidden px-[56px] pt-[36px] pb-[40px]">
       <Suspense fallback={null}>
         <PlaylistPreselectCapture onCapture={applyPlaylistPreselect} />
       </Suspense>
-      <header className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <h1 className="font-display text-[26px] text-foreground drop-shadow-sm sm:text-[32px]">
+      <header className="flex shrink-0 items-center justify-between">
+        <h1 className="font-display text-[32px] text-foreground [text-shadow:3px_3px_0_rgba(0,0,0,0.4)]">
           Group Lobby
         </h1>
         {isCurrentUserAdmin ? (
@@ -552,7 +617,7 @@ function GroupLobbyScreen({ params }: PageProps) {
               onClick={openTierPopup}
               title="Choose playlists"
               aria-label="Choose playlists"
-              className="inline-flex w-fit cursor-pointer items-center gap-2.5 rounded-full border-2 border-border bg-card py-2 pl-2 pr-4 transition-colors hover:border-primary/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+              className="inline-flex w-fit cursor-pointer items-center gap-[10px] rounded-full border-2 border-border bg-card p-[8px_16px_8px_8px] transition-colors hover:border-primary/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
             >
               <span
                 className="size-[26px] rounded-[8px]"
@@ -562,47 +627,51 @@ function GroupLobbyScreen({ params }: PageProps) {
                 {playlistChipLabel}
               </span>
               {featuredPlaylist ? (
-                <span className="text-xs text-muted-foreground">{savedTier ? "Selected at start" : `${groupPlaylistSongCount} songs`}</span>
+                <>
+                  <span className="size-1 rounded-full bg-muted-foreground/60" />
+                  <span className="text-[12px] text-muted-foreground">{savedTier ? "Selected at start" : `${groupPlaylistSongCount} songs`}</span>
+                </>
               ) : null}
             </button>
             {isTierPopupOpen ? (
               <>
                 <button type="button" aria-label="Close start options" onClick={closeTierPopup} className="fixed inset-0 z-10 cursor-default" />
-                <section aria-label="Start options" className="absolute right-0 top-full z-20 mt-2 w-auto rounded-[18px] border-[3px] border-border bg-card p-3 shadow-[6px_6px_0_rgba(0,0,0,0.35)]">
-                  <div className="flex items-center gap-1.5">
+                <section aria-label="Start options" className="absolute right-0 top-full z-20 mt-3 w-[480px] rounded-[18px] border-[3px] border-border bg-card p-5 shadow-[6px_6px_0_rgba(0,0,0,0.35)]">
+                  <div className="flex items-center justify-between gap-2 font-display text-[12px]">
                     {DIFFICULTY_TIERS.map((tier) => (
                       <button
                         key={tier}
                         type="button"
                         onClick={() => { setSelectedTier(tier); setPlaylistSource("tier"); setStartError(""); }}
                         aria-pressed={playlistSource === "tier" && selectedTier === tier}
-                        className={`cursor-pointer whitespace-nowrap rounded-full px-2.5 py-1.5 font-display text-[11px] ${playlistSource === "tier" && selectedTier === tier ? "bg-accent text-accent-foreground" : "border-2 border-border text-muted-foreground"}`}
+                        className={`inline-flex items-center gap-1 cursor-pointer whitespace-nowrap rounded-full border-2 px-3 py-2.5 font-display text-[12px] ${playlistSource === "tier" && selectedTier === tier ? "bg-primary text-primary-foreground border-primary" : "border-border text-muted-foreground"}`}
                       >
-                        <Gauge className={`mr-1 inline size-3.5 ${tier === "EASY" ? "text-green" : tier === "HARD" ? "text-destructive" : "text-warning"}`} />
+                        <Gauge className={`size-3.5 ${playlistSource === "tier" && selectedTier === tier ? "text-primary-foreground" : tier === "EASY" ? "text-green" : tier === "HARD" ? "text-destructive" : "text-warning"}`} />
                         {tier.charAt(0) + tier.slice(1).toLowerCase()}
                       </button>
                     ))}
-                    <span aria-hidden="true" className="mx-0.5 h-6 w-px bg-border" />
+                    <span aria-hidden="true" className="h-[28px] border-l border-border" />
                     <button
                       type="button"
                       onClick={openCustomPicker}
                       aria-pressed={playlistSource === "custom"}
-                      className={`cursor-pointer whitespace-nowrap rounded-full px-2.5 py-1.5 font-display text-[11px] ${playlistSource === "custom" ? "bg-accent text-accent-foreground" : "border-2 border-border text-muted-foreground"}`}
+                      className={`inline-flex items-center gap-1 cursor-pointer whitespace-nowrap rounded-full border-2 px-3 py-2.5 font-display text-[12px] ${playlistSource === "custom" ? "bg-primary text-primary-foreground border-primary" : "border-border text-muted-foreground"}`}
                     >
-                      <SlidersHorizontal className="mr-1 inline size-3.5" />
+                      <SlidersHorizontal className="size-3.5" />
                       Custom
                     </button>
-                    <button type="button" onClick={handleConfirmTier} disabled={updateSettings.isPending} className="rounded-full bg-primary px-3 py-1.5 font-display text-[11px] text-primary-foreground disabled:opacity-60">
-                      {updateSettings.isPending ? "Saving" : "Confirm"}
-                    </button>
                   </div>
+                  <button type="button" onClick={handleConfirmTier} disabled={updateSettings.isPending} className="mt-4 rounded-full bg-accent px-6 py-2.5 font-display text-[12px] text-accent-foreground disabled:opacity-60">
+                    {updateSettings.isPending ? "Saving" : "Confirm"}
+                  </button>
+                  <p className="mt-2 text-[12px] text-muted-foreground">Songs are selected when the session starts.</p>
                   {startError ? <p role="alert" className="mt-3 text-sm text-destructive">{startError}</p> : null}
                 </section>
               </>
             ) : null}
           </div>
         ) : (
-          <div className="inline-flex w-fit items-center gap-2.5 rounded-full border-2 border-border bg-card py-2 pl-2 pr-4">
+          <div className="inline-flex w-fit items-center gap-[10px] rounded-full border-2 border-border bg-card p-[8px_16px_8px_8px]">
             <span
               className="size-[26px] rounded-[8px]"
               style={{ backgroundColor: featuredPlaylist ? `#${featuredPlaylist.color}` : "var(--primary)" }}
@@ -611,36 +680,40 @@ function GroupLobbyScreen({ params }: PageProps) {
               {playlistChipLabel}
             </span>
             {featuredPlaylist ? (
-              <span className="text-xs text-muted-foreground">{savedTier ? "Selected at start" : `${groupPlaylistSongCount} songs`}</span>
+              <>
+                <span className="size-1 rounded-full bg-muted-foreground/60" />
+                <span className="text-[12px] text-muted-foreground">{savedTier ? "Selected at start" : `${groupPlaylistSongCount} songs`}</span>
+              </>
             ) : null}
           </div>
         )}
       </header>
 
       {/* The stage fills the space left over, so the footer actions stay on screen without page scrolling. */}
-      <section className="flex min-h-0 flex-1 overflow-hidden py-10">
-        <div className="relative flex h-full min-h-0 w-full items-center justify-center">
-        <div className="z-10 text-center">
-          <p className="mb-3 font-semibold text-[11px] uppercase tracking-[0.25em] text-muted-foreground">
+      <section className="relative flex min-h-0 flex-1 items-center justify-center overflow-hidden">
+        <div className="z-10 text-center pointer-events-auto">
+          <p className="mb-4 font-bold text-[12px] uppercase tracking-[3px] text-muted-foreground">
             Enter code to join
           </p>
-          <p className="pl-3 font-display text-5xl tracking-[0.3em] text-foreground drop-shadow-sm sm:text-[76px]">
+          <p className="pl-[18px] font-display text-[76px] tracking-[18px] text-foreground [text-shadow:5px_5px_0_rgba(0,0,0,0.4)]">
             {groupQuery.data.joinCode ?? "----"}
           </p>
           <button
             type="button"
             onClick={copyInviteLink}
-            className="mt-5 inline-flex items-center gap-2 text-[13px] font-semibold text-muted-foreground transition-colors hover:text-foreground"
+            className="mt-5 inline-flex items-center gap-[9px] text-[13px] font-semibold text-muted-foreground transition-colors hover:text-foreground"
           >
-            <Clipboard className="size-4" />
+            <Clipboard className="size-[15px]" />
             {copyFeedback || "Copy invite link"}
           </button>
         </div>
 
-        {members.map((member) => (
+        {members.map((member, memberIndex) => (
           <LobbyMember
             key={member.id ?? stableMemberNumber(member)}
             member={member}
+            slotIndex={memberIndex}
+            totalMembers={members.length}
             isCurrentUser={member.userId === currentUser?.id}
             onRemove={isCurrentUserAdmin && member.userId !== currentUser?.id ? setMemberPendingRemoval : undefined}
             onPromote={isCurrentUserAdmin && member.userId !== currentUser?.id ? setMemberPendingPromotion : undefined}
@@ -736,7 +809,6 @@ function GroupLobbyScreen({ params }: PageProps) {
             </section>
           </>
         ) : null}
-        </div>
       </section>
 
       <div className="relative shrink-0">
@@ -752,9 +824,9 @@ function GroupLobbyScreen({ params }: PageProps) {
       {isSettingsOpen ? (
         <>
           <button type="button" aria-label="Close settings" onClick={() => setIsSettingsOpen(false)} className="fixed inset-0 z-10 cursor-default" />
-          <section aria-label="Group settings" className="absolute bottom-full left-0 z-20 mb-3 w-full max-w-[400px] rounded-[18px] border-[3px] border-border bg-card p-6 shadow-[6px_6px_0_rgba(0,0,0,0.35)] sm:left-[228px] sm:p-7">
+          <section aria-label="Group settings" className="absolute bottom-full left-[284px] z-20 mb-[12px] w-[400px] rounded-[18px] border-[3px] border-border bg-card/95 backdrop-blur-sm p-[26px_28px] shadow-[6px_6px_0_rgba(0,0,0,0.35)]">
             <div className="mb-5 flex items-center justify-between">
-              <h2 className="font-display text-lg text-card-foreground">Settings</h2>
+              <h2 className="font-display text-[18px] text-card-foreground">Settings</h2>
               <button type="button" onClick={() => setIsSettingsOpen(false)} className="text-muted-foreground hover:text-card-foreground">Close</button>
             </div>
             <div className="space-y-4">
@@ -791,7 +863,14 @@ function GroupLobbyScreen({ params }: PageProps) {
                 <input type="number" min={MINIMUM_WIN_CONDITION} value={winCondition} onChange={(event) => setWinCondition(Math.max(MINIMUM_WIN_CONDITION, Number(event.target.value)))} className="w-20 rounded-full border-2 border-border bg-background px-3 py-1.5 text-right text-sm font-semibold text-foreground outline-none" />
               </label>
             </div>
-            <div className="mt-6 flex gap-2.5"><button type="button" onClick={saveSettings} disabled={updateSettings.isPending} className="rounded-full bg-primary px-4 py-2.5 font-display text-xs text-primary-foreground disabled:opacity-60">{updateSettings.isPending ? "Saving" : "Save changes"}</button><button type="button" onClick={() => setIsSettingsOpen(false)} className="rounded-full border-2 border-border px-4 py-2.5 text-xs font-semibold text-card-foreground">Close</button></div>
+            <div className="mt-6 flex gap-2.5">
+              <button type="button" onClick={saveSettings} disabled={updateSettings.isPending} className="rounded-full bg-accent px-4 py-2.5 font-display text-xs text-accent-foreground disabled:opacity-60">
+                {updateSettings.isPending ? "Saving" : "Save changes"}
+              </button>
+              <button type="button" onClick={() => setIsSettingsOpen(false)} className="rounded-full border-2 border-border px-4 py-2.5 text-xs font-semibold text-card-foreground">
+                Close
+              </button>
+            </div>
           </section>
         </>
       ) : null}
@@ -800,13 +879,13 @@ function GroupLobbyScreen({ params }: PageProps) {
           Could not start the game: {startSessionError}
         </p>
       ) : null}
-      <footer className="flex shrink-0 flex-wrap items-center gap-3">
+      <footer className="flex shrink-0 items-center gap-[14px]">
         {!isCurrentUserLoading && isCurrentUserAdmin ? (
           <button
             type="button"
             onClick={handleStartGame}
             disabled={startSession.isPending || groupQuery.data.status !== "OPEN"}
-            className="inline-flex items-center gap-2 rounded-full bg-accent px-5 py-3 font-display text-[13px] text-accent-foreground shadow-md disabled:cursor-not-allowed disabled:opacity-60"
+            className="inline-flex items-center gap-[9px] rounded-full bg-accent p-[13px_22px] font-display text-[13px] text-accent-foreground shadow-[4px_4px_0_rgba(0,0,0,0.4)] disabled:cursor-not-allowed disabled:opacity-60"
           >
             {startSession.isPending ? <Loader2 className="size-4 animate-spin" /> : <Play className="size-4 fill-current" />}
             Start game
@@ -825,11 +904,11 @@ function GroupLobbyScreen({ params }: PageProps) {
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
-          <button
-            type="button"
-            onClick={toggleChat}
-            className={`relative z-20 inline-flex items-center gap-2 rounded-full border-2 bg-card px-5 py-3 text-[13px] font-semibold text-card-foreground ${isChatOpen ? "border-primary text-primary" : "border-border"}`}
-          >
+        <button
+          type="button"
+          onClick={toggleChat}
+          className={`relative z-20 inline-flex items-center gap-[9px] rounded-full border-2 bg-card p-[13px_22px] text-[13px] font-semibold ${isChatOpen ? "border-pink text-pink" : "border-border text-card-foreground"}`}
+        >
           <MessageCircle className="size-4" />
           Chat
         </button>
@@ -837,7 +916,7 @@ function GroupLobbyScreen({ params }: PageProps) {
           <button
             type="button"
             onClick={openSettings}
-            className="inline-flex items-center gap-2 rounded-full border-2 border-border bg-card px-5 py-3 text-[13px] font-semibold text-card-foreground"
+            className="inline-flex items-center gap-[9px] rounded-full border-2 border-border bg-card p-[13px_22px] text-[13px] font-semibold text-card-foreground"
           >
             <Settings className="size-4" />
             Settings
@@ -849,7 +928,7 @@ function GroupLobbyScreen({ params }: PageProps) {
             <button
               type="button"
               disabled={leaveGroup.isPending}
-              className="inline-flex items-center gap-2 rounded-full border-2 border-destructive bg-transparent px-5 py-3 text-[13px] font-semibold text-destructive disabled:opacity-60"
+              className="inline-flex items-center gap-[9px] rounded-full border-2 border-destructive bg-transparent p-[13px_22px] text-[13px] font-semibold text-destructive disabled:opacity-60"
             >
               {leaveGroup.isPending ? <Loader2 className="size-4 animate-spin" /> : <LogOut className="size-4" />}
               Leave lobby
