@@ -163,7 +163,7 @@ function LobbyMember({
   const floatDelay = `${stableMemberIndex(member, LOBBY_FLOAT_STAGGER_CYCLE) * -LOBBY_FLOAT_STAGGER_SECONDS}s`;
   const ringClass = member.isConnected
     ? "shadow-[0_0_0_3px_var(--background),0_0_0_8px_var(--green)]"
-    : "shadow-[0_0_0_3px_var(--background),0_0_0_8px_#45475a] opacity-50 grayscale";
+    : "shadow-[0_0_0_3px_var(--background),0_0_0_8px_var(--border)] opacity-50 grayscale";
 
   return (
     <div
@@ -607,7 +607,7 @@ function GroupLobbyScreen({ params }: PageProps) {
         <PlaylistPreselectCapture onCapture={applyPlaylistPreselect} />
       </Suspense>
       <header className="flex shrink-0 items-center justify-between">
-        <h1 className="font-display text-[32px] text-foreground [text-shadow:3px_3px_0_rgba(0,0,0,0.4)]">
+        <h1 className="font-display text-[32px] text-foreground [text-shadow:3px_3px_0_var(--text-shadow-on-page)]">
           Group Lobby
         </h1>
         {isCurrentUserAdmin ? (
@@ -636,7 +636,7 @@ function GroupLobbyScreen({ params }: PageProps) {
             {isTierPopupOpen ? (
               <>
                 <button type="button" aria-label="Close start options" onClick={closeTierPopup} className="fixed inset-0 z-10 cursor-default" />
-                <section aria-label="Start options" className="absolute right-0 top-full z-20 mt-3 w-[480px] rounded-[18px] border-[3px] border-border bg-card p-5 shadow-[6px_6px_0_rgba(0,0,0,0.35)]">
+                <section aria-label="Start options" className="absolute right-0 top-full z-20 mt-3 w-[480px] rounded-[18px] border-[3px] border-border bg-card p-5 shadow-[6px_6px_0_var(--shadow-color)]">
                   <div className="flex items-center justify-between gap-2 font-display text-[12px]">
                     {DIFFICULTY_TIERS.map((tier) => (
                       <button
@@ -695,7 +695,7 @@ function GroupLobbyScreen({ params }: PageProps) {
           <p className="mb-4 font-bold text-[12px] uppercase tracking-[3px] text-muted-foreground">
             Enter code to join
           </p>
-          <p className="pl-[18px] font-display text-[76px] tracking-[18px] text-foreground [text-shadow:5px_5px_0_rgba(0,0,0,0.4)]">
+          <p className="pl-[18px] font-display text-[76px] tracking-[18px] text-foreground [text-shadow:5px_5px_0_var(--text-shadow-on-page)]">
             {groupQuery.data.joinCode ?? "----"}
           </p>
           <button
@@ -755,7 +755,7 @@ function GroupLobbyScreen({ params }: PageProps) {
         {isCustomPickerOpen ? (
           <>
             <button type="button" aria-label="Close playlist selection" onClick={closeCustomPicker} className="absolute inset-0 z-20 cursor-default bg-background/80" />
-            <section aria-label="Custom playlist selection" className="absolute inset-x-0 top-6 bottom-6 z-30 overflow-y-auto rounded-[18px] border-[3px] border-border bg-card p-6 shadow-[6px_6px_0_rgba(0,0,0,0.35)] sm:p-8">
+            <section aria-label="Custom playlist selection" className="absolute inset-x-0 top-6 bottom-6 z-30 overflow-y-auto rounded-[18px] border-[3px] border-border bg-card p-6 shadow-[6px_6px_0_var(--shadow-color)] sm:p-8">
               <div className="mb-5 flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <button type="button" onClick={backToTiers} className="text-muted-foreground hover:text-card-foreground">Back</button>
@@ -824,7 +824,7 @@ function GroupLobbyScreen({ params }: PageProps) {
       {isSettingsOpen ? (
         <>
           <button type="button" aria-label="Close settings" onClick={() => setIsSettingsOpen(false)} className="fixed inset-0 z-10 cursor-default" />
-          <section aria-label="Group settings" className="absolute bottom-full left-[284px] z-20 mb-[12px] w-[400px] rounded-[18px] border-[3px] border-border bg-card/95 backdrop-blur-sm p-[26px_28px] shadow-[6px_6px_0_rgba(0,0,0,0.35)]">
+          <section aria-label="Group settings" className="absolute bottom-full left-[284px] z-20 mb-[12px] w-[400px] rounded-[18px] border-[3px] border-border bg-card/95 backdrop-blur-sm p-[26px_28px] shadow-[6px_6px_0_var(--shadow-color)]">
             <div className="mb-5 flex items-center justify-between">
               <h2 className="font-display text-[18px] text-card-foreground">Settings</h2>
               <button type="button" onClick={() => setIsSettingsOpen(false)} className="text-muted-foreground hover:text-card-foreground">Close</button>
@@ -885,7 +885,7 @@ function GroupLobbyScreen({ params }: PageProps) {
             type="button"
             onClick={handleStartGame}
             disabled={startSession.isPending || groupQuery.data.status !== "OPEN"}
-            className="inline-flex items-center gap-[9px] rounded-full bg-accent p-[13px_22px] font-display text-[13px] text-accent-foreground shadow-[4px_4px_0_rgba(0,0,0,0.4)] disabled:cursor-not-allowed disabled:opacity-60"
+            className="inline-flex items-center gap-[9px] rounded-full bg-primary p-[13px_22px] font-display text-[13px] text-primary-foreground shadow-[4px_4px_0_var(--shadow-color)] disabled:cursor-not-allowed disabled:opacity-60"
           >
             {startSession.isPending ? <Loader2 className="size-4 animate-spin" /> : <Play className="size-4 fill-current" />}
             Start game
