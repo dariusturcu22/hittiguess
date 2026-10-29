@@ -728,8 +728,8 @@ function GameSessionScreen({ params }: PageProps) {
           </>
           : <>
             {watchUrl
-              ? <a href={youtubeLinkOutHref(watchUrl, navigator.userAgent)} target={YOUTUBE_LINK_OUT_TARGET} rel={YOUTUBE_LINK_OUT_REL} className="inline-flex items-center gap-[9px] rounded-full bg-primary p-[13px_22px] font-display text-[13px] text-primary-foreground shadow-[4px_4px_0_var(--shadow-color)] transition-transform hover:-translate-y-0.5">Open on YouTube to play<ExternalLink className="size-4" /></a>
-              : <span className="inline-flex items-center gap-[9px] rounded-full bg-primary p-[13px_22px] font-display text-[13px] text-primary-foreground opacity-55">Open on YouTube to play<ExternalLink className="size-4" /></span>}
+              ? <a href={youtubeLinkOutHref(watchUrl, navigator.userAgent)} target={YOUTUBE_LINK_OUT_TARGET} rel={YOUTUBE_LINK_OUT_REL} className="inline-flex items-center gap-[9px] rounded-full bg-primary p-[13px_24px] font-display text-[13px] text-primary-foreground shadow-[4px_4px_0_var(--shadow-color)] transition-transform hover:-translate-y-0.5">Open on YouTube to play<ExternalLink className="size-4" /></a>
+              : <span className="inline-flex items-center gap-[9px] rounded-full bg-primary p-[13px_24px] font-display text-[13px] text-primary-foreground opacity-55">Open on YouTube to play<ExternalLink className="size-4" /></span>}
             <p className="text-xs leading-relaxed text-muted-foreground">Play it out loud. Everyone else finds out what it is when the card gets revealed.</p>
             {songMesh.isCapturing
               ? <div className="inline-flex items-center gap-2 rounded-full border-2 border-warning bg-warning/10 px-3.5 py-1.5 text-[11px] font-bold text-warning"><Volume2 className="size-3.5" />Sharing your audio with the group</div>
@@ -776,7 +776,7 @@ function GameSessionScreen({ params }: PageProps) {
   let belowTimeline: ReactNode = null;
   if (isAwaitingPlacement && isActivePlayer && droppedGap !== null && !placementDrag) {
     belowTimeline = <div className="flex w-full max-w-[560px] flex-col items-center gap-4">
-      <button type="button" onClick={lockIn} className="inline-flex items-center gap-[9px] rounded-full bg-primary p-[13px_22px] font-display text-[13px] text-primary-foreground shadow-[4px_4px_0_var(--shadow-color)] transition-transform hover:-translate-y-0.5"><Lock className="size-4" strokeWidth={2.5} />Lock in answer</button>
+      <button type="button" onClick={lockIn} className="inline-flex items-center gap-[9px] rounded-full bg-primary p-[13px_26px] font-display text-[13px] text-primary-foreground shadow-[4px_4px_0_var(--shadow-color)] transition-transform hover:-translate-y-0.5"><Lock className="size-4" strokeWidth={2.5} />Lock in answer</button>
       {guessFields}
     </div>;
   } else if (isAwaitingPlacement && !isDj) {
