@@ -7,10 +7,10 @@ then `opencode-tasks/README.md`, then the brief named under "Current task".
 
 ## Current task
 
-- Task: 11, `opencode-tasks/11-duration-refresh.md`
-- Branch: `fix/duration-refresh`
-- Step reached: code, tests, and docs finished; PR #333 open for review
-- Next step: start 12 `opencode-tasks/12-admin-catalog-origin.md`
+- Task: 13, `opencode-tasks/13-musicbrainz-recording-search.md`
+- Branch: `fix/musicbrainz-recording-search` (not created yet)
+- Step reached: not started
+- Next step: create the branch off an up-to-date `main`
 
 ## Finished tasks
 
@@ -25,6 +25,7 @@ then `opencode-tasks/README.md`, then the brief named under "Current task".
 | 07 | feature/spectator-live-drag | [#331](https://github.com/dariusturcu22/hittiguess/pull/331) | Spectators see the active player's card move live during a drag |
 | 08 | fix/game-screen-scale | [#332](https://github.com/dariusturcu22/hittiguess/pull/332) | Lobby and session screens render in a fixed 1288x900 stage scaled to the window |
 | 11 | fix/duration-refresh | [#333](https://github.com/dariusturcu22/hittiguess/pull/333) | The refresh selects never-fetched songs, records missing videos, and stops on a zero-row batch |
+| 12 | fix/admin-catalog-origin | [#334](https://github.com/dariusturcu22/hittiguess/pull/334) | Songs with no pipeline evidence show "Before tracking" instead of "Unknown" |
 
 ## Blocked or skipped
 

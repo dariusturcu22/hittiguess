@@ -143,6 +143,10 @@ public class AdminSongCatalogService {
         List<PendingImport> queueRows = song.getYoutubeId() == null
                 ? List.of()
                 : catalogRepository.pipelineHistory(song.getYoutubeId());
+        List<PendingImport> retainedRows = song.getYoutubeId() == null
+                ? List.of()
+                : retainedHistory(song.getYoutubeId(), queueRows);
+        boolean hasPipelineRun = !queueRows.isEmpty() || !retainedRows.isEmpty();
         boolean hasAdminSeedRow = queueRows.stream()
                 .anyMatch(queueRow -> queueRow.getOrigin() == PendingImportOrigin.ADMIN_SEED);
         String addedByUsername = song.getAddedBy() == null ? null : song.getAddedBy().getUsername();
@@ -155,24 +159,26 @@ public class AdminSongCatalogService {
                 song.getArtists().stream().map(SongArtist::getName).toList(),
                 song.getReleaseYear() == UNRESOLVED_RELEASE_YEAR ? null : song.getReleaseYear(),
                 CatalogSongRules.songStatusFromRuns(song.getVerificationStatus(), queueRows),
-                CatalogSongRules.pipeline(queueRows),
+                CatalogSongRules.pipeline(queueRows, hasPipelineRun),
                 song.getCreatedAt(),
                 addedByUsername,
-                CatalogSongRules.addedByKind(addedByUsername, hasAdminSeedRow),
+                CatalogSongRules.addedByKind(addedByUsername, hasAdminSeedRow, hasPipelineRun),
                 song.getVerificationStatus(),
                 song.getConfidence(),
                 song.getWikidataSitelinksCount(),
                 songReportRepository.countBySongIdAndStatus(song.getId(), SongReportStatus.OPEN),
-                history(song.getYoutubeId(), queueRows), findings.sources(), findings.reviewReason());
+                history(queueRows, retainedRows), findings.sources(), findings.reviewReason());
     }
 
-    private List<AdminQueueHistoryEntryDTO> history(String youtubeId, List<PendingImport> runs) {
-        List<PendingImport> retainedRows = youtubeId == null ? List.of()
-                : pendingImportRepository.findByYoutubeIdOrderByEnqueuedAtAscIdAsc(youtubeId).stream()
-                        .filter(history -> runs.stream().noneMatch(run -> run.getOrigin() == history.getOrigin()
-                                && !history.getEnqueuedAt().isBefore(run.getEnqueuedAt())
-                                && (run.getProcessedAt() == null || !history.getEnqueuedAt().isAfter(run.getProcessedAt()))))
-                        .toList();
+    private List<PendingImport> retainedHistory(String youtubeId, List<PendingImport> runs) {
+        return pendingImportRepository.findByYoutubeIdOrderByEnqueuedAtAscIdAsc(youtubeId).stream()
+                .filter(history -> runs.stream().noneMatch(run -> run.getOrigin() == history.getOrigin()
+                        && !history.getEnqueuedAt().isBefore(run.getEnqueuedAt())
+                        && (run.getProcessedAt() == null || !history.getEnqueuedAt().isAfter(run.getProcessedAt()))))
+                .toList();
+    }
+
+    private static List<AdminQueueHistoryEntryDTO> history(List<PendingImport> runs, List<PendingImport> retainedRows) {
         return Stream.concat(runs.stream(), retainedRows.stream())
                 .sorted(Comparator.comparing(PendingImport::getEnqueuedAt))
                 .map(AdminSongCatalogService::toHistoryEntry).toList();
@@ -187,10 +193,10 @@ public class AdminSongCatalogService {
                 row.artists(),
                 row.releaseYear(),
                 row.status(),
-                CatalogSongRules.pipeline(row.hasUnfinishedRecheck(), row.hasFinishedRecheck(), row.latestQueueOrigin()),
+                CatalogSongRules.pipeline(row.hasUnfinishedRecheck(), row.hasFinishedRecheck(), row.latestQueueOrigin(), row.hasPipelineRun()),
                 row.createdAt(),
                 row.addedByUsername(),
-                CatalogSongRules.addedByKind(row.addedByUsername(), row.hasAdminSeedRow()));
+                CatalogSongRules.addedByKind(row.addedByUsername(), row.hasAdminSeedRow(), row.hasPipelineRun()));
     }
 
     private static AdminQueueHistoryEntryDTO toHistoryEntry(PendingImport queueRow) {

@@ -353,8 +353,8 @@ A group can cycle through `Lobby` → `InSession` → `Lobby` any number of time
 
 - Status: a song with an active pipeline run for its YouTube ID shows that row, `PROCESSING` before `PENDING` (`IN_QUEUE`). Without one, a latest failed run makes the song `ERROR`; otherwise a `VERIFIED` song is `VERIFIED`, and `NEEDS_REVIEW`, `UNVERIFIED`, and `MANUAL_ENTRY` songs are `NEEDS_REVIEW`. A pipeline run with no song is `PROCESSING`, `IN_QUEUE`, or `ERROR` once it failed.
 - Pipeline runs without a song: only non-cancelled `ADMIN_SEED` runs mapped to `PENDING`, `PROCESSING`, or `FAILED` whose YouTube ID has no song, one row per YouTube ID, preferring the processing row, then the pending row, then the newest failed one. Its `createdAt` is the oldest of those rows. Recheck rows always belong to a saved song and never appear on their own.
-- Pipeline: `FAST` while a recheck row (`FAST_TIER_RECHECK` or `USER_ADD_RECHECK`) is not `DONE`; `FULL` when the latest run is an `ADMIN_SEED` or a recheck row is `DONE`; `UNKNOWN` otherwise.
-- Added by: `USER` with the username when the song names an account; `ADMIN_SEED` with a null username when it does not and an admin seed run exists for its YouTube ID; `UNKNOWN` otherwise. Runs without a song are always `ADMIN_SEED`.
+- Pipeline: `FAST` while a recheck row (`FAST_TIER_RECHECK` or `USER_ADD_RECHECK`) is not `DONE`; `FULL` when the latest run is an `ADMIN_SEED` or a recheck row is `DONE`; `LEGACY` when the song has no pipeline run and no retained `pending_imports` row; `UNKNOWN` when queue evidence exists but does not decide the pipeline.
+- Added by: `USER` with the username when the song names an account; `ADMIN_SEED` with a null username when it does not and an admin seed run exists for its YouTube ID; `LEGACY` when the song has no pipeline run, no retained `pending_imports` row, and no account; `UNKNOWN` when queue evidence exists but names no adder. Runs without a song are always `ADMIN_SEED`.
 
 V43 adds the `pg_trgm` extension with trigram GIN indexes `songs_title_trgm_idx` and `song_artists_name_trgm_idx` for the substring search, `songs_youtube_id_idx` for the exact ID match, `pending_imports_youtube_id_idx` for each song's backlog rows, and `songs_created_at_idx`.
 
@@ -439,7 +439,7 @@ Only YouTube backfill leases check the remaining daily units through `ApiUsageSe
 
 `PipelineCompletionService` completes the last needed stage, constructs the final metadata (locally for an exact three-source lock), calls `SongCatalogService.persist`, records the patient year in recheck history, and marks the run `DONE` in one transaction. A save failure rolls everything back and returns the last stage to retry. Verified duplicates finish from the YouTube stage; rejected prechecks fail the run without creating source jobs. V41's database triggers schedule verified embeddings after the song transaction commits.
 
-The catalog list, counts, detail status, pipeline labels, and live queue history read runs and jobs. A latest failed run appears as an error when no run is active. The dashboard's waiting total includes the metadata jobs and the V41 embedding queue; embedding has no separate engine in-progress count. Retained `pending_imports` rows supply historical detail and patient years, never live catalog or dashboard queue counts.
+The catalog list, counts, detail status, pipeline labels, and live queue history read runs and jobs. A latest failed run appears as an error when no run is active. The dashboard's waiting total includes the metadata jobs and the V41 embedding queue; embedding has no separate engine in-progress count. Retained `pending_imports` rows supply historical detail, patient years, and the evidence that separates `LEGACY` from `UNKNOWN` in the admin catalog, never live catalog or dashboard queue counts.
 
 ### Stage pipeline verification
 

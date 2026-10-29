@@ -23,10 +23,13 @@ import java.util.Set;
  * backlog item with no song is PROCESSING, IN_QUEUE, or, once it failed, ERROR.
  *
  * <p>Pipeline: FAST while a recheck row (FAST_TIER_RECHECK or USER_ADD_RECHECK) is not DONE;
- * FULL when the latest backlog row is an ADMIN_SEED or a recheck row is DONE; UNKNOWN otherwise.
+ * FULL when the latest backlog row is an ADMIN_SEED or a recheck row is DONE; UNKNOWN when
+ * queue evidence exists but none of it decides the pipeline; LEGACY when there is no queue
+ * evidence at all.
  *
  * <p>Added by: USER when the song names an account, ADMIN_SEED when it does not and an admin
- * seed row exists for its YouTube ID, UNKNOWN otherwise.
+ * seed row exists for its YouTube ID, UNKNOWN when queue evidence exists but names no origin,
+ * and LEGACY when there is no queue evidence at all.
  *
  * <p>The catalog list query repeats the status rule in SQL so it can filter and count by status.
  */
@@ -89,17 +92,17 @@ public final class CatalogSongRules {
     }
 
     public static CatalogPipeline pipeline(boolean hasUnfinishedRecheck, boolean hasFinishedRecheck,
-                                           PendingImportOrigin latestQueueOrigin) {
+                                           PendingImportOrigin latestQueueOrigin, boolean hasPipelineRun) {
         if (hasUnfinishedRecheck) {
             return CatalogPipeline.FAST;
         }
         if (latestQueueOrigin == PendingImportOrigin.ADMIN_SEED || hasFinishedRecheck) {
             return CatalogPipeline.FULL;
         }
-        return CatalogPipeline.UNKNOWN;
+        return hasPipelineRun ? CatalogPipeline.UNKNOWN : CatalogPipeline.LEGACY;
     }
 
-    public static CatalogPipeline pipeline(Collection<PendingImport> queueRows) {
+    public static CatalogPipeline pipeline(Collection<PendingImport> queueRows, boolean hasPipelineRun) {
         boolean hasUnfinishedRecheck = queueRows.stream()
                 .anyMatch(queueRow -> isRecheck(queueRow.getOrigin()) && queueRow.getStatus() != PendingImportStatus.DONE);
         boolean hasFinishedRecheck = queueRows.stream()
@@ -108,13 +111,16 @@ public final class CatalogSongRules {
                 .max(ENQUEUE_ORDER)
                 .map(PendingImport::getOrigin)
                 .orElse(null);
-        return pipeline(hasUnfinishedRecheck, hasFinishedRecheck, latestQueueOrigin);
+        return pipeline(hasUnfinishedRecheck, hasFinishedRecheck, latestQueueOrigin, hasPipelineRun);
     }
 
-    public static CatalogAddedByKind addedByKind(String addedByUsername, boolean hasAdminSeedRow) {
+    public static CatalogAddedByKind addedByKind(String addedByUsername, boolean hasAdminSeedRow, boolean hasPipelineRun) {
         if (addedByUsername != null) {
             return CatalogAddedByKind.USER;
         }
-        return hasAdminSeedRow ? CatalogAddedByKind.ADMIN_SEED : CatalogAddedByKind.UNKNOWN;
+        if (hasAdminSeedRow) {
+            return CatalogAddedByKind.ADMIN_SEED;
+        }
+        return hasPipelineRun ? CatalogAddedByKind.UNKNOWN : CatalogAddedByKind.LEGACY;
     }
 }

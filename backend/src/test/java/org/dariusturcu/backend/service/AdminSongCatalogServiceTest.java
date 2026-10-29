@@ -13,6 +13,7 @@ import org.dariusturcu.backend.model.song.SongArtist;
 import org.dariusturcu.backend.model.song.SongReportStatus;
 import org.dariusturcu.backend.model.song.VerificationStatus;
 import org.dariusturcu.backend.model.song.CatalogSongStatus;
+import org.dariusturcu.backend.repository.AdminCatalogRow;
 import org.dariusturcu.backend.repository.AdminSongCatalogRepository;
 import org.dariusturcu.backend.repository.PendingImportRepository;
 import org.dariusturcu.backend.repository.SongReportRepository;
@@ -142,6 +143,35 @@ class AdminSongCatalogServiceTest {
     }
 
     @Test
+    void aCatalogRowWithoutPipelineEvidenceIsLegacy() {
+        AdminCatalogRow legacyRow = new AdminCatalogRow(
+                "song:" + SONG_ID,
+                SONG_ID,
+                YOUTUBE_ID,
+                "Hey Mama",
+                List.of("David Guetta"),
+                2015,
+                CatalogSongStatus.VERIFIED,
+                false,
+                false,
+                null,
+                false,
+                false,
+                ENQUEUED_AT,
+                null);
+        when(catalogRepository.countByStatus(null)).thenReturn(sampleCounts());
+        when(catalogRepository.findPage(null, null, AdminSongCatalogService.DEFAULT_PAGE_SIZE,
+                AdminSongCatalogService.FIRST_PAGE)).thenReturn(List.of(legacyRow));
+
+        AdminCatalogPageDTO page = service.search(null, null, null, null);
+
+        assertThat(page.items()).singleElement().satisfies(song -> {
+            assertThat(song.pipeline()).isEqualTo(CatalogPipeline.LEGACY);
+            assertThat(song.addedByKind()).isEqualTo(CatalogAddedByKind.LEGACY);
+        });
+    }
+
+    @Test
     void theDetailDerivesStatusPipelineAndAddedByFromTheQueueHistory() {
         Song song = new Song();
         song.setId(SONG_ID);
@@ -198,10 +228,30 @@ class AdminSongCatalogServiceTest {
 
         assertThat(detail.status()).isEqualTo(CatalogSongStatus.VERIFIED);
         assertThat(detail.pipeline()).isEqualTo(CatalogPipeline.UNKNOWN);
+        assertThat(detail.addedByKind()).isEqualTo(CatalogAddedByKind.UNKNOWN);
         assertThat(detail.queueHistory()).singleElement().satisfies(entry -> {
             assertThat(entry.origin()).isEqualTo(PendingImportOrigin.ADMIN_SEED);
             assertThat(entry.status()).isEqualTo(PendingImportStatus.PENDING);
         });
+    }
+
+    @Test
+    void aSongWithNoPipelineOrQueueRowsIsLegacy() {
+        Song song = new Song();
+        song.setId(SONG_ID);
+        song.setYoutubeId(YOUTUBE_ID);
+        song.setVerificationStatus(VerificationStatus.VERIFIED);
+        when(songRepository.findById(SONG_ID)).thenReturn(Optional.of(song));
+        when(catalogRepository.pipelineHistory(YOUTUBE_ID)).thenReturn(List.of());
+        when(pendingImportRepository.findByYoutubeIdOrderByEnqueuedAtAscIdAsc(YOUTUBE_ID)).thenReturn(List.of());
+        when(pipeline.findings(SONG_ID)).thenReturn(new org.dariusturcu.backend.pipeline.AdminSongPipelineService.Findings(null, null));
+
+        AdminSongDetailDTO detail = service.detail(SONG_ID);
+
+        assertThat(detail.status()).isEqualTo(CatalogSongStatus.VERIFIED);
+        assertThat(detail.pipeline()).isEqualTo(CatalogPipeline.LEGACY);
+        assertThat(detail.addedByKind()).isEqualTo(CatalogAddedByKind.LEGACY);
+        assertThat(detail.queueHistory()).isEmpty();
     }
 
     @Test

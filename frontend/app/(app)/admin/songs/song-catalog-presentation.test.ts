@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
 
-import { CATALOG_COLUMNS, catalogColumnClassName } from "./song-catalog-presentation";
+import {
+  addedByLabel,
+  CATALOG_COLUMNS,
+  catalogColumnClassName,
+  detailMetaLine,
+  pipelineLabel,
+} from "./song-catalog-presentation";
 
 describe("catalog columns", () => {
   it("keeps the mockup's column order", () => {
@@ -29,5 +35,20 @@ describe("catalog columns", () => {
   it("lets title and artist shrink with ellipsis instead of overflowing", () => {
     expect(catalogColumnClassName("title")).toContain("min-w-0");
     expect(catalogColumnClassName("artist")).toContain("min-w-0");
+  });
+});
+
+describe("legacy catalog rows", () => {
+  it("labels rows that predate pipeline tracking in the table and the detail drawer", () => {
+    expect(pipelineLabel("LEGACY")).toBe("Before tracking");
+    expect(addedByLabel(null, "LEGACY")).toBe("Before tracking");
+    expect(
+      detailMetaLine({
+        releaseYear: 2015,
+        pipeline: "LEGACY",
+        createdAt: "2026-01-01T00:00:00Z",
+        addedByKind: "LEGACY",
+      }),
+    ).toContain("before tracking");
   });
 });

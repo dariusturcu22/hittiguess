@@ -69,24 +69,30 @@ class CatalogSongRulesTest {
 
     @Test
     void anUnfinishedRecheckIsTheFastPipeline() {
-        assertThat(CatalogSongRules.pipeline(true, false, PendingImportOrigin.FAST_TIER_RECHECK))
+        assertThat(CatalogSongRules.pipeline(true, false, PendingImportOrigin.FAST_TIER_RECHECK, true))
                 .isEqualTo(CatalogPipeline.FAST);
-        assertThat(CatalogSongRules.pipeline(true, true, PendingImportOrigin.ADMIN_SEED))
+        assertThat(CatalogSongRules.pipeline(true, true, PendingImportOrigin.ADMIN_SEED, true))
                 .isEqualTo(CatalogPipeline.FAST);
     }
 
     @Test
     void anAdminSeedOrAFinishedRecheckIsTheFullPipeline() {
-        assertThat(CatalogSongRules.pipeline(false, false, PendingImportOrigin.ADMIN_SEED))
+        assertThat(CatalogSongRules.pipeline(false, false, PendingImportOrigin.ADMIN_SEED, true))
                 .isEqualTo(CatalogPipeline.FULL);
-        assertThat(CatalogSongRules.pipeline(false, true, PendingImportOrigin.USER_ADD_RECHECK))
+        assertThat(CatalogSongRules.pipeline(false, true, PendingImportOrigin.USER_ADD_RECHECK, true))
                 .isEqualTo(CatalogPipeline.FULL);
     }
 
     @Test
-    void noBacklogEvidenceIsAnUnknownPipeline() {
-        assertThat(CatalogSongRules.pipeline(false, false, null)).isEqualTo(CatalogPipeline.UNKNOWN);
-        assertThat(CatalogSongRules.pipeline(List.of())).isEqualTo(CatalogPipeline.UNKNOWN);
+    void queueEvidenceWithoutADecidingRowIsAnUnknownPipeline() {
+        assertThat(CatalogSongRules.pipeline(false, false, null, true)).isEqualTo(CatalogPipeline.UNKNOWN);
+        assertThat(CatalogSongRules.pipeline(List.of(), true)).isEqualTo(CatalogPipeline.UNKNOWN);
+    }
+
+    @Test
+    void noQueueEvidenceAtAllIsTheLegacyPipeline() {
+        assertThat(CatalogSongRules.pipeline(false, false, null, false)).isEqualTo(CatalogPipeline.LEGACY);
+        assertThat(CatalogSongRules.pipeline(List.of(), false)).isEqualTo(CatalogPipeline.LEGACY);
     }
 
     @Test
@@ -101,16 +107,18 @@ class CatalogSongRulesTest {
                 queueRow(2, PendingImportOrigin.ADMIN_SEED, PendingImportStatus.DONE, LATER),
                 queueRow(1, PendingImportOrigin.ADMIN_SEED, PendingImportStatus.FAILED, EARLIER));
 
-        assertThat(CatalogSongRules.pipeline(pendingRecheck)).isEqualTo(CatalogPipeline.FAST);
-        assertThat(CatalogSongRules.pipeline(failedRecheck)).isEqualTo(CatalogPipeline.FAST);
-        assertThat(CatalogSongRules.pipeline(finishedRecheck)).isEqualTo(CatalogPipeline.FULL);
-        assertThat(CatalogSongRules.pipeline(latestIsAdminSeed)).isEqualTo(CatalogPipeline.FULL);
+        assertThat(CatalogSongRules.pipeline(pendingRecheck, true)).isEqualTo(CatalogPipeline.FAST);
+        assertThat(CatalogSongRules.pipeline(failedRecheck, true)).isEqualTo(CatalogPipeline.FAST);
+        assertThat(CatalogSongRules.pipeline(finishedRecheck, true)).isEqualTo(CatalogPipeline.FULL);
+        assertThat(CatalogSongRules.pipeline(latestIsAdminSeed, true)).isEqualTo(CatalogPipeline.FULL);
     }
 
     @Test
-    void addedByIsTheUserThenAnAdminSeedThenUnknown() {
-        assertThat(CatalogSongRules.addedByKind(USERNAME, true)).isEqualTo(CatalogAddedByKind.USER);
-        assertThat(CatalogSongRules.addedByKind(null, true)).isEqualTo(CatalogAddedByKind.ADMIN_SEED);
-        assertThat(CatalogSongRules.addedByKind(null, false)).isEqualTo(CatalogAddedByKind.UNKNOWN);
+    void addedByIsTheUserThenAnAdminSeedThenUnknownThenLegacy() {
+        assertThat(CatalogSongRules.addedByKind(USERNAME, true, true)).isEqualTo(CatalogAddedByKind.USER);
+        assertThat(CatalogSongRules.addedByKind(null, true, true)).isEqualTo(CatalogAddedByKind.ADMIN_SEED);
+        assertThat(CatalogSongRules.addedByKind(null, false, true)).isEqualTo(CatalogAddedByKind.UNKNOWN);
+        assertThat(CatalogSongRules.addedByKind(null, false, false)).isEqualTo(CatalogAddedByKind.LEGACY);
+        assertThat(CatalogSongRules.addedByKind(USERNAME, false, false)).isEqualTo(CatalogAddedByKind.USER);
     }
 }

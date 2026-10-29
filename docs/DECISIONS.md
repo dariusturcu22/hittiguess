@@ -1326,3 +1326,9 @@ Why: shrinking each element on its own schedule made some text and cards smaller
 Decision: the six-hour duration refresh selects every song with a YouTube id whose duration was never fetched or whose fetch time is older than the 29-day retention, and returns never-fetched songs first. A song whose video no longer exists records the check time with a null duration, so the next check waits for the retention window instead of running every six hours. A batch that updates no rows stops the sweep and logs a warning. A song imported without a duration keeps an empty fetch time and is due on the next sweep, and changing a song's video clears both its duration and its fetch time.
 
 Why: the previous candidate query compared a null fetch time with the cutoff, which SQL evaluates as false, so the 50 songs created before durations existed were never selected and the AI service never received a duration request. Recording the check time for a missing video keeps it from occupying every batch. The zero-row guard prevents a sweep that cannot make progress from looping.
+
+## 2026-10-29 | Catalog rows that predate pipeline tracking are LEGACY, not UNKNOWN
+
+Decision: a song with no pipeline run and no retained `pending_imports` row is `LEGACY` in both `pipeline` and `addedByKind`, shown as "Before tracking" in the admin catalog. `UNKNOWN` now means queue evidence exists but does not name the pipeline or the adder. Retained `pending_imports` rows count as evidence, so a song with only historical rows is `UNKNOWN`, not `LEGACY`. No `added_by` value is invented for legacy songs.
+
+Why: the oldest catalog songs were recorded before the stage pipeline and backlog tracking existed, so empty evidence meant "unknown" and the owner read it as a broken label. Missing evidence now says so directly, while `UNKNOWN` stays for a real gap in rows that do exist.
