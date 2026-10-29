@@ -7,10 +7,16 @@ then `opencode-tasks/README.md`, then the brief named under "Current task".
 
 ## Current task
 
-- Task: 16, `opencode-tasks/16-recheck-catalog.md`
-- Branch: `chore/recheck-catalog` (branched off `fix/verification-lock-rule`, builds on PR #341)
-- Step reached: PR #342 open into main; paused to apply review changes to PRs 338, 339, 340, and 341
-- Next step: apply review changes to PRs 338, 339, 340, 341, cascade merges, then resume
+none
+
+## Open pull requests in merge order
+
+1. [#338](https://github.com/dariusturcu22/hittiguess/pull/338) (`fix/lobby-design-proportions`)
+2. [#339](https://github.com/dariusturcu22/hittiguess/pull/339) (`fix/gameplay-design-proportions`)
+3. [#340](https://github.com/dariusturcu22/hittiguess/pull/340) (`fix/source-matching`)
+4. [#341](https://github.com/dariusturcu22/hittiguess/pull/341) (`fix/verification-lock-rule`)
+5. [#342](https://github.com/dariusturcu22/hittiguess/pull/342) (`chore/recheck-catalog`)
+6. [#343](https://github.com/dariusturcu22/hittiguess/pull/343) (`fix/catalog-duplicates`)
 
 ## Finished tasks
 
@@ -34,6 +40,7 @@ then `opencode-tasks/README.md`, then the brief named under "Current task".
 | 14 | fix/source-matching | [#340](https://github.com/dariusturcu22/hittiguess/pull/340) | Wikidata and Discogs matching rejects other artists' works, compilations, and non-song entities |
 | 15 | fix/verification-lock-rule | [#341](https://github.com/dariusturcu22/hittiguess/pull/341) | The Wikipedia-assisted lock no longer takes the earliest of disagreeing years when only one source supports it |
 | 16 | chore/recheck-catalog | [#342](https://github.com/dariusturcu22/hittiguess/pull/342) | Verified song rechecks record release year proposals without overwriting, exposed via admin recheck and proposal drawer actions |
+| 17 | fix/catalog-duplicates | [#343](https://github.com/dariusturcu22/hittiguess/pull/343) | Duplicate completion attaches an alternate YouTube ID; admin merge moves links and deletes the dropped song |
 
 ## Blocked or skipped
 

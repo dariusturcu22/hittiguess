@@ -6,6 +6,7 @@ import {
   useUpdateCatalogSong,
   useDeleteCatalogSong,
   useRerunSongPipeline,
+  useMergeSongs,
 } from "@/hooks/generated/admin-song-pipeline/admin-song-pipeline";
 import { UpdateCatalogSongRequestVerificationStatus } from "@/hooks/models/updateCatalogSongRequestVerificationStatus";
 import type { AdminSongDetailDTO } from "@/hooks/models/adminSongDetailDTO";
@@ -27,9 +28,11 @@ export function SongPipelineActions({
   const rerun = useRerunSongPipeline({ mutation: feedback });
   const update = useUpdateCatalogSong({ mutation: feedback });
   const remove = useDeleteCatalogSong({ mutation: feedback });
+  const merge = useMergeSongs({ mutation: feedback });
   const [year, setYear] = React.useState(String(detail.releaseYear ?? ""));
   const [status, setStatus] = React.useState(detail.verificationStatus);
-  const pending = rerun.isPending || update.isPending || remove.isPending;
+  const [targetSongId, setTargetSongId] = React.useState("");
+  const pending = rerun.isPending || update.isPending || remove.isPending || merge.isPending;
   const id = detail.songId;
   return (
     <div className="mt-auto flex flex-wrap gap-2.5 pt-4">
@@ -98,6 +101,33 @@ export function SongPipelineActions({
               ),
             )}
           </select>
+        </label>
+      </ConfirmAction>
+      <ConfirmAction
+        label="Merge into..."
+        title="Merge into another song?"
+        description="Playlist links and alternate video IDs will move to the target song, this song's video will become an alternate ID, and this song will be deleted. This cannot be undone."
+        danger
+        pending={pending}
+        onConfirm={async () => {
+          const keepId = Number(targetSongId);
+          if (!Number.isInteger(keepId) || keepId <= 0 || keepId === id) {
+            toast.error("Enter a valid target song ID different from this song.");
+            throw new Error("Invalid target song ID");
+          }
+          await merge.mutateAsync({ keepId, dropId: id });
+          onDelete();
+        }}
+      >
+        <label className="text-sm">
+          Target song ID
+          <input
+            type="number"
+            className={`${inputClass} mt-2`}
+            placeholder="e.g. 42"
+            value={targetSongId}
+            onChange={(event) => setTargetSongId(event.target.value)}
+          />
         </label>
       </ConfirmAction>
       <ConfirmAction

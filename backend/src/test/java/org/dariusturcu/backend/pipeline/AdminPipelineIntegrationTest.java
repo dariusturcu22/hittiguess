@@ -419,6 +419,68 @@ class AdminPipelineIntegrationTest {
     }
 
     @Test
+    void mergeMovesPlaylistLinksAndAlternateIdsAndDeletesDroppedSong() {
+        long keepId = song(VIDEO);
+        long dropId = song(OTHER_VIDEO);
+
+        long userId = core.queryForObject("""
+                INSERT INTO users (username, email, role)
+                VALUES ('PlaylistOwner', 'owner@test.local', 'USER') RETURNING id
+                """, Long.class);
+        long playlistOne = core.queryForObject("""
+                INSERT INTO playlists (name, invite_code, owner_id)
+                VALUES ('Playlist 1', 'PL1', ?) RETURNING id
+                """, Long.class, userId);
+        long playlistTwo = core.queryForObject("""
+                INSERT INTO playlists (name, invite_code, owner_id)
+                VALUES ('Playlist 2', 'PL2', ?) RETURNING id
+                """, Long.class, userId);
+
+        core.update("INSERT INTO song_playlists (song_id, playlist_id) VALUES (?, ?)", keepId, playlistOne);
+        core.update("INSERT INTO song_playlists (song_id, playlist_id) VALUES (?, ?)", dropId, playlistOne);
+        core.update("INSERT INTO song_playlists (song_id, playlist_id) VALUES (?, ?)", dropId, playlistTwo);
+
+        core.update("INSERT INTO alternate_youtube_ids (youtube_id, song_id) VALUES ('drop_alt_video', ?)", dropId);
+
+        var result = transaction(() -> songs.merge(keepId, dropId));
+
+        int expectedPlaylistCount = 2;
+        assertThat(result.affected()).isEqualTo(1);
+        assertThat(core.queryForObject("SELECT count(*) FROM songs WHERE id = ?", Long.class, dropId)).isZero();
+        assertThat(core.queryForObject("SELECT count(*) FROM songs WHERE id = ?", Long.class, keepId)).isEqualTo(1);
+        assertThat(core.queryForObject("SELECT count(*) FROM song_playlists WHERE song_id = ?", Long.class, keepId))
+                .isEqualTo(expectedPlaylistCount);
+        assertThat(core.queryForObject("SELECT count(*) FROM song_playlists WHERE song_id = ?", Long.class, dropId)).isZero();
+        assertThat(core.queryForObject("SELECT song_id FROM alternate_youtube_ids WHERE youtube_id = 'drop_alt_video'", Long.class))
+                .isEqualTo(keepId);
+        assertThat(core.queryForObject("SELECT song_id FROM alternate_youtube_ids WHERE youtube_id = ?", Long.class, OTHER_VIDEO))
+                .isEqualTo(keepId);
+    }
+
+    @Test
+    void mergeRefusesWhileEitherSongIsInActiveGame() {
+        long keepId = song(VIDEO);
+        long dropId = song(OTHER_VIDEO);
+
+        long group = core.queryForObject("""
+                INSERT INTO groups (invite_code, join_code, status, dj_mode, win_condition_card_count, created_at, expires_at)
+                VALUES ('invite_mrg', 'MRGA', 'OPEN', 'FIXED', 5, now(), now() + interval '30 minutes') RETURNING id
+                """, Long.class);
+        long session = core.queryForObject("""
+                INSERT INTO game_sessions (group_id, status, dj_mode, win_condition_card_count, current_round_number, created_at)
+                VALUES (?, 'ACTIVE', 'FIXED', 5, 1, now()) RETURNING id
+                """, Long.class, group);
+        core.update("INSERT INTO game_session_song_queue (session_id, queue_position, song_id) VALUES (?, 0, ?)", session, dropId);
+
+        assertThatThrownBy(() -> transaction(() -> songs.merge(keepId, dropId))).isInstanceOf(ConflictException.class);
+
+        core.update("DELETE FROM game_session_song_queue WHERE session_id = ?", session);
+        core.update("INSERT INTO game_session_song_queue (session_id, queue_position, song_id) VALUES (?, 0, ?)", session, keepId);
+
+        assertThatThrownBy(() -> transaction(() -> songs.merge(keepId, dropId))).isInstanceOf(ConflictException.class);
+    }
+
+    @Test
     void aSongRerunIsQueuedAsAnAdminRecheck() {
         long song = song(VIDEO);
         var rerun = transaction(() -> songs.rerun(song));

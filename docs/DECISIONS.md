@@ -1376,3 +1376,18 @@ Why: catalog rechecks verify batches of songs against updated pipeline heuristic
 Decision: the youtube-metadata stage passes the video ID to the verified-duplicate check, and the check never matches a song that already owns that video as its main or an alternate YouTube ID. An admin rerun of one song and the catalog recheck queue their runs with the new `ADMIN_RECHECK` origin instead of `ADMIN_SEED`. The catalog shows such a song's pipeline as `FULL`, and an `ADMIN_RECHECK` run is never evidence of who added the song. The catalog recheck queues each run in its own transaction.
 
 Why: every verified song with an embedding matched itself at distance zero, so the rerun returned the stored year as a duplicate and no proposal could ever appear; the recheck and the drawer's rerun did nothing for exactly the songs they exist to correct. Queuing the runs as `ADMIN_SEED` would also have relabelled every song added before tracking as an admin seed.
+
+---
+
+## 2026-10-29 | Pipeline completion guards against duplicate songs by normalized key
+
+Decision: `PipelineCompletionService` computes a normalized key from the primary main artist and title before persisting a completed run. A Postgres transaction-level advisory lock keyed on the normalized key serializes parallel completions of the same track. If a song with the same normalized key exists in the catalog under any status, the completed video is linked as an alternate YouTube ID of that song rather than inserting a duplicate song row. An admin merge endpoint (`POST /api/admin/songs/{keepId}/merge/{dropId}`) moves playlist links and alternate IDs from the duplicate to the canonical song and deletes the duplicate, locking both songs in ascending ID order and refusing the merge while either song is in an active game session.
+
+Why: the identification-time duplicate check only evaluated already-verified songs with embeddings, allowing parallel batch imports of different videos for the same track to miss each other and store multiple copies of the same song in the catalog. Deterministic key normalization and advisory transaction locking at completion serialize parallel saves and preserve single canonical song entries.
+
+## 2026-10-29 | Songs store their normalized artist and title key for the completion guard
+
+Decision: `songs.normalized_key` (V52, indexed, not unique) holds `GameSongList.normalizedKey` of the first main artist and the title. The pipeline save, the playlist add, and the playlist metadata edit set it, and `SongNormalizedKeyBackfill` fills empty keys on startup. The completion guard looks up another song with the same key by that index instead of loading the catalog. A change to the normalization ships with a migration that sets the column back to NULL so the next startup recomputes it.
+
+Why: the guard first loaded every song with its artists on every completed run, which grows with the catalog and runs once per song during a full recheck. One indexed lookup per completion keeps the cost flat.
+

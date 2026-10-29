@@ -46,6 +46,7 @@ const detailHook = vi.hoisted(() => ({
 const pipelineHook = vi.hoisted(() => ({
   updateMutate: vi.fn(),
   dismissMutate: vi.fn(),
+  mergeMutateAsync: vi.fn(),
 }));
 
 vi.mock("@/hooks/generated/admin-song-pipeline/admin-song-pipeline", () => ({
@@ -65,6 +66,10 @@ vi.mock("@/hooks/generated/admin-song-pipeline/admin-song-pipeline", () => ({
   }),
   useDeleteCatalogSong: () => ({
     mutateAsync: vi.fn(),
+    isPending: false,
+  }),
+  useMergeSongs: () => ({
+    mutateAsync: pipelineHook.mergeMutateAsync,
     isPending: false,
   }),
 }));
@@ -495,6 +500,47 @@ describe("SongCatalogPage", () => {
     fireEvent.click(dismissButton);
     expect(pipelineHook.dismissMutate).toHaveBeenCalledWith({
       id: SONG_ID,
+    });
+  });
+
+  it("merges into another song from the detail drawer", async () => {
+    detailHook.result = {
+      data: {
+        songId: SONG_ID,
+        youtubeId: "zimi-yt-id",
+        title: "Zi-mi",
+        artists: ["Carla's Dreams"],
+        releaseYear: 2017,
+        status: "VERIFIED",
+        pipeline: "FAST",
+        createdAt: "2026-10-15T12:00:00Z",
+        addedBy: "mara.k",
+        addedByKind: "USER",
+        verificationStatus: "VERIFIED",
+        confidence: "high",
+        openReportCount: 0,
+        queueHistory: [],
+      },
+      isLoading: false,
+      isError: false,
+    };
+    render(<SongCatalogPage />);
+
+    fireEvent.click(screen.getByText("Zi-mi"));
+
+    const drawer = within(screen.getByRole("dialog", { name: "Song detail" }));
+    const mergeTrigger = drawer.getByRole("button", { name: "Merge into..." });
+    fireEvent.click(mergeTrigger);
+
+    const targetInput = screen.getByLabelText("Target song ID");
+    fireEvent.change(targetInput, { target: { value: "42" } });
+
+    const confirmButton = screen.getByRole("button", { name: "Confirm" });
+    fireEvent.click(confirmButton);
+
+    expect(pipelineHook.mergeMutateAsync).toHaveBeenCalledWith({
+      keepId: 42,
+      dropId: SONG_ID,
     });
   });
 });

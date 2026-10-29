@@ -132,6 +132,8 @@ class PipelineStageWorkerTest {
             context.registerBean(ApiUsageService.class, () -> usage);
             context.registerBean(org.dariusturcu.backend.service.SongCatalogService.class,
                     () -> mock(org.dariusturcu.backend.service.SongCatalogService.class));
+            context.registerBean(org.dariusturcu.backend.repository.SongRepository.class,
+                    () -> mock(org.dariusturcu.backend.repository.SongRepository.class));
             context.registerBean("coreJdbcTemplate", org.springframework.jdbc.core.JdbcTemplate.class,
                     () -> mock(org.springframework.jdbc.core.JdbcTemplate.class));
             context.registerBean(tools.jackson.databind.ObjectMapper.class, () -> new tools.jackson.databind.ObjectMapper());
