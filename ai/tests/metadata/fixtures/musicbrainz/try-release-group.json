@@ -1,54 +1,7 @@
 {
   "release-groups": [
-    {
-      "id": "747dab15-897d-4df6-90a0-4285cbde9265",
-      "score": 100,
-      "title": "Try",
-      "first-release-date": "2012-10-19",
-      "primary-type": "Single",
-      "secondary-types": [],
-      "artist-credit": [
-        {
-          "name": "P!nk",
-          "artist": {
-            "name": "P!nk"
-          }
-        }
-      ]
-    },
-    {
-      "id": "ea7a01f4-ea84-36ab-8a80-0258a61f8eaf",
-      "score": 94,
-      "title": "Try This",
-      "first-release-date": "2003-11-10",
-      "primary-type": "Album",
-      "secondary-types": [],
-      "artist-credit": [
-        {
-          "name": "P!nk",
-          "artist": {
-            "name": "P!nk"
-          }
-        }
-      ]
-    },
-    {
-      "id": "6515114f-0fe5-4074-b685-f9fc9c37438d",
-      "score": 78,
-      "title": "Live in Europe: From the 2004 Try This Tour",
-      "first-release-date": "2006-05-22",
-      "primary-type": "Album",
-      "secondary-types": [
-        "Live"
-      ],
-      "artist-credit": [
-        {
-          "name": "P!nk",
-          "artist": {
-            "name": "P!nk"
-          }
-        }
-      ]
-    }
+    {"id":"747dab15-897d-4df6-90a0-4285cbde9265","score":100,"title":"Try","first-release-date":"2012-10-19","primary-type":"Single","secondary-types":[],"artist-credit":[{"name":"P!nk","artist":{"name":"P!nk"}}]},
+    {"id":"ea7a01f4-ea84-36ab-8a80-0258a61f8eaf","score":94,"title":"Try This","first-release-date":"2003-11-10","primary-type":"Album","secondary-types":[],"artist-credit":[{"name":"P!nk","artist":{"name":"P!nk"}}]},
+    {"id":"6515114f-0fe5-4074-b685-f9fc9c37438d","score":78,"title":"Live in Europe: From the 2004 Try This Tour","first-release-date":"2006-05-22","primary-type":"Album","secondary-types":["Live"],"artist-credit":[{"name":"P!nk","artist":{"name":"P!nk"}}]}
   ]
 }
