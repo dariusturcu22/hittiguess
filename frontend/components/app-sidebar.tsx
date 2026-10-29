@@ -9,7 +9,8 @@ import { History, Moon, Sun } from "lucide-react";
 
 import { LogoBars } from "@/components/logo";
 import { NavUser } from "@/components/nav-user";
-import { getGetActiveMembershipQueryKey, useCreateGroup, useGetActiveMembership, useJoinGroup } from "@/hooks/generated/group-management/group-management";
+import { useGetActiveMembership, useJoinGroup } from "@/hooks/generated/group-management/group-management";
+import { useCreateGroupAndOpen } from "@/hooks/use-create-group-and-open";
 import { LobbyLauncher, joinCodeErrorMessage } from "@/components/lobby-launcher";
 import { getGetPlaylistQueryKey } from "@/hooks/generated/playlist-management/playlist-management";
 import { useActiveImport } from "@/hooks/generated/playlist-import-jobs/playlist-import-jobs";
@@ -138,7 +139,7 @@ export function AppSidebar() {
   const { data: activeGroup } = useGetActiveMembership({
     query: { retry: false },
   });
-  const createGroup = useCreateGroup();
+  const { openGroup, createGroupAndOpen, isCreatingGroup } = useCreateGroupAndOpen();
   const joinGroup = useJoinGroup();
   const { data: currentUser } = useGetCurrentUser({ query: { retry: false } });
   const isAdmin = currentUser?.role === UserDetailDTORole.ADMIN;
@@ -163,13 +164,11 @@ export function AppSidebar() {
 
   function enterLobby(groupId: number | undefined) {
     setIsLobbyMenuOpen(false);
-    if (groupId === undefined) return;
-    void queryClient.invalidateQueries({ queryKey: getGetActiveMembershipQueryKey() });
-    router.push(`/groups/${groupId}`);
+    openGroup(groupId);
   }
 
   function createLobby() {
-    createGroup.mutate({ data: {} }, { onSuccess: (group) => enterLobby(group.id) });
+    createGroupAndOpen();
   }
 
   function joinLobbyByCode(joinCode: string) {
@@ -235,7 +234,7 @@ export function AppSidebar() {
         </button>
         {isLobbyMenuOpen && !activeGroup ? (
           <LobbyLauncher
-            isCreating={createGroup.isPending}
+            isCreating={isCreatingGroup}
             isJoining={joinGroup.isPending}
             joinError={joinError}
             onCreate={createLobby}

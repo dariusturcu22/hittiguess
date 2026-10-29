@@ -68,6 +68,7 @@ import {
   SelectValue,
 } from "@/components/shadcn/select";
 import { useActiveImport } from "@/hooks/generated/playlist-import-jobs/playlist-import-jobs";
+import { useCreateGroupAndOpen } from "@/hooks/use-create-group-and-open";
 import { playlistTitleColor } from "@/lib/playlist-colors";
 import { copyText } from "@/lib/clipboard";
 import { countImportItems } from "@/lib/playlist-import-job";
@@ -75,6 +76,7 @@ import { formatPlaylistCreation, formatSongDuration } from "@/lib/playlist-metad
 import { PhantomEmptyState } from "@/components/phantom-empty-state";
 
 const ACTIVE_IMPORT_REFRESH_MILLISECONDS = 5_000;
+const GROUP_LOCKED_STATUS = "LOCKED";
 
 const MEMBER_STACK_VISIBLE_COUNT = 3;
 const MEMBER_STACK_TRIGGER_AVATAR_SIZE = 34;
@@ -159,6 +161,10 @@ export default function PlaylistContent({
 
   const { mutate: removeSong } = useDeleteSong();
   const { mutate: leavePlaylist } = useLeavePlaylist();
+  const { openGroup, createGroupAndOpen, leaveGroupAndCreateGroup, isCreatingGroup, isLeavingGroup } = useCreateGroupAndOpen();
+  const [isGroupChoiceOpen, setIsGroupChoiceOpen] = React.useState(false);
+  const currentGroup = activeMembershipQuery.data;
+  const isCurrentGroupInGame = currentGroup?.status === GROUP_LOCKED_STATUS;
 
   const [searchQuery, setSearchQuery] = React.useState("");
   const [linkCopied, setLinkCopied] = React.useState(false);
@@ -265,12 +271,11 @@ export default function PlaylistContent({
   };
 
   const handleStartSession = () => {
-    const groupId = activeMembershipQuery.data?.id;
-    if (!groupId) {
-      toast.error("Join or create a group to start a session.");
+    if (currentGroup?.id === undefined) {
+      createGroupAndOpen(playlistId);
       return;
     }
-    router.push(`/groups/${groupId}?playlist=${playlistId}`);
+    setIsGroupChoiceOpen(true);
   };
 
   if (isLoading || !playlist) {
@@ -332,9 +337,10 @@ export default function PlaylistContent({
               <Button
                 className="gap-2"
                 onClick={handleStartSession}
+                disabled={isCreatingGroup}
               >
-                <Play className="size-3.5 fill-current" />
-                Start session
+                {isCreatingGroup ? <LoaderCircle className="size-3.5 animate-spin" /> : <Play className="size-3.5 fill-current" />}
+                {isCreatingGroup ? "Creating group..." : "Start session"}
               </Button>
 
               <Button
@@ -470,6 +476,42 @@ export default function PlaylistContent({
                     >
                       Leave
                     </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+
+              <AlertDialog open={isGroupChoiceOpen} onOpenChange={setIsGroupChoiceOpen}>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>You&apos;re already in a group</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Start this playlist in your current group, or leave it and
+                      create a new one.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  {isCurrentGroupInGame ? (
+                    <p role="status" className="text-sm text-muted-foreground">
+                      Your group is in a game right now.
+                    </p>
+                  ) : null}
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction onClick={() => openGroup(currentGroup?.id, playlistId)}>
+                      Use it in my group
+                    </AlertDialogAction>
+                    <button
+                      type="button"
+                      disabled={isCurrentGroupInGame || isLeavingGroup}
+                      onClick={() => {
+                        setIsGroupChoiceOpen(false);
+                        if (currentGroup?.id !== undefined) {
+                          leaveGroupAndCreateGroup(currentGroup.id, playlistId);
+                        }
+                      }}
+                      className="rounded-full border-2 border-border px-4 py-2 text-xs font-semibold text-card-foreground disabled:opacity-50"
+                    >
+                      {isLeavingGroup ? "Leaving..." : "Leave and create a new group"}
+                    </button>
                   </AlertDialogFooter>
                 </AlertDialogContent>
               </AlertDialog>

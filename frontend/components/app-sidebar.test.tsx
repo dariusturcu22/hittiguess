@@ -58,6 +58,7 @@ vi.mock("@tanstack/react-query", async (importOriginal) => {
 vi.mock("@/hooks/generated/group-management/group-management", () => ({
   getGetActiveMembershipQueryKey: () => ["active-membership"],
   useCreateGroup: () => ({ mutate: createGroupMutate, isPending: false }),
+  useLeaveGroup: () => ({ mutate: vi.fn(), isPending: false }),
   useJoinGroup: () => ({ mutate: joinGroupMutate, isPending: false }),
   useGetActiveMembership: () => ({ data: activeMembership }),
 }));
