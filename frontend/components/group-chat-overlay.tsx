@@ -9,7 +9,7 @@ import { chatAvatarColorClass, formatChatMessageTime } from "@/lib/chat-display"
 
 const MAX_CHAT_MESSAGE_LENGTH = 500;
 const SCROLL_PIN_THRESHOLD_PIXELS = 24;
-const CHAT_PANEL_HEIGHT_CLASSES = "h-[min(70vh,560px)]";
+const CHAT_PANEL_MAX_HEIGHT_CLASSES = "max-h-[580px]";
 
 function initial(name?: string): string { return name?.trim().charAt(0).toUpperCase() || "?"; }
 
@@ -66,11 +66,11 @@ export function GroupChatOverlay({
         className="fixed inset-0 z-10 cursor-default"
       />
       <aside
-        className={`absolute z-30 flex ${CHAT_PANEL_HEIGHT_CLASSES} w-full max-w-[360px] flex-col rounded-[18px] border-[3px] border-border bg-card shadow-[6px_6px_0_rgba(0,0,0,0.35)] ${floating ? "bottom-full left-0 mb-3" : "bottom-0 left-0 sm:left-5"}`}
+        className={`absolute z-30 flex ${CHAT_PANEL_MAX_HEIGHT_CLASSES} w-[380px] flex-col rounded-[18px] border-[3px] border-border bg-card/95 backdrop-blur-sm shadow-[6px_6px_0_var(--shadow-color)] ${floating ? "bottom-full left-0 mb-[12px]" : "bottom-0 left-0 sm:left-5"}`}
       >
-        <header className="flex items-center justify-between border-b-2 border-border/70 px-4 py-3">
+        <header className="flex items-center justify-between border-b-2 border-border/70 px-5 py-4">
           <div>
-            <h2 className="font-display text-sm text-card-foreground">Chat</h2>
+            <h2 className="font-bold text-sm text-card-foreground">Chat</h2>
             <span className="text-[10px] text-muted-foreground">{connectionState === "connected" ? "Live" : "Reconnecting"}</span>
           </div>
           <Button type="button" variant="ghost" size="icon-xs" onClick={onClose} aria-label="Close chat" className="text-muted-foreground hover:text-card-foreground">
@@ -80,7 +80,7 @@ export function GroupChatOverlay({
         <div
           ref={messageListReference}
           onScroll={handleMessageListScroll}
-          className="flex-1 space-y-3 overflow-y-auto px-4 py-4"
+          className="flex-1 space-y-[13px] overflow-y-auto px-5 py-4 max-h-[440px]"
         >
           {orderedHistory.map((chatMessage) => (
             <article key={chatMessage.id ?? `${chatMessage.senderId}-${chatMessage.createdAt}`} className="flex gap-2.5">
@@ -99,11 +99,11 @@ export function GroupChatOverlay({
           {historyQuery.isLoading ? <p className="text-xs text-muted-foreground">Loading chat...</p> : null}
           {orderedHistory.length === 0 ? <p className="text-xs text-muted-foreground">No messages yet.</p> : null}
         </div>
-        <form onSubmit={(event) => { event.preventDefault(); submitMessage(); }} className="border-t-2 border-border/70 p-4">
-          <div className="flex items-center gap-2">
-            <input autoFocus value={message} maxLength={MAX_CHAT_MESSAGE_LENGTH} onChange={(event) => setMessage(event.target.value)} placeholder="Type a message..." aria-label="Chat message" className="min-w-0 flex-1 rounded-full border-2 border-border bg-background px-3 py-2 text-xs text-foreground outline-none placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring" />
-            <Button type="submit" size="icon-xs" disabled={!message.trim() || connectionState !== "connected"} aria-label="Send message" className="size-8 rounded-full">
-              <Send className="size-3.5" />
+        <form onSubmit={(event) => { event.preventDefault(); submitMessage(); }} className="border-t-2 border-border/70 px-4 py-3.5">
+          <div className="flex items-center gap-[9px]">
+            <input autoFocus value={message} maxLength={MAX_CHAT_MESSAGE_LENGTH} onChange={(event) => setMessage(event.target.value)} placeholder="Type a message..." aria-label="Chat message" className="min-w-0 flex-1 rounded-full border-2 border-border bg-background/85 px-4 py-2.5 text-xs text-foreground outline-none placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring" />
+            <Button type="submit" size="icon-xs" disabled={!message.trim() || connectionState !== "connected"} aria-label="Send message" className="size-[34px] shrink-0 rounded-full bg-accent text-accent-foreground hover:bg-accent/90 disabled:opacity-50">
+              <Send className="size-[15px]" />
             </Button>
           </div>
           <span className="mt-1 block text-right text-[10px] text-muted-foreground">{message.length}/{MAX_CHAT_MESSAGE_LENGTH}</span>

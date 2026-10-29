@@ -7,16 +7,10 @@ then `opencode-tasks/README.md`, then the brief named under "Current task".
 
 ## Current task
 
-none
-
-## Open pull requests in merge order
-
-1. [#338](https://github.com/dariusturcu22/hittiguess/pull/338) (`fix/lobby-design-proportions`)
-2. [#339](https://github.com/dariusturcu22/hittiguess/pull/339) (`fix/gameplay-design-proportions`)
-3. [#340](https://github.com/dariusturcu22/hittiguess/pull/340) (`fix/source-matching`)
-4. [#341](https://github.com/dariusturcu22/hittiguess/pull/341) (`fix/verification-lock-rule`)
-5. [#342](https://github.com/dariusturcu22/hittiguess/pull/342) (`chore/recheck-catalog`)
-6. [#343](https://github.com/dariusturcu22/hittiguess/pull/343) (`fix/catalog-duplicates`)
+- Task: 10, `opencode-tasks/10-design-proportions-gameplay.md`
+- Branch: `fix/gameplay-design-proportions`
+- Step reached: code done, tests passing
+- Next step: open PR for task 10, then start task 14 off origin/main
 
 ## Finished tasks
 
@@ -36,11 +30,6 @@ none
 | 18 | fix/placement-preview-gate | [#336](https://github.com/dariusturcu22/hittiguess/pull/336) | Live drag previews validate against in-memory round state in `PlacementPreviewGate` and only touch Postgres on a cache miss |
 | 19 | fix/replace-group-atomically | [#337](https://github.com/dariusturcu22/hittiguess/pull/337) | Replacing a group runs in one server transaction through replaceCurrentGroup without client-side chained requests |
 | 09 | fix/lobby-design-proportions | [#338](https://github.com/dariusturcu22/hittiguess/pull/338) | Lobby matches its design artboards in text size, spacing, and alignment |
-| 10 | fix/gameplay-design-proportions | [#339](https://github.com/dariusturcu22/hittiguess/pull/339) | Gameplay matches its design artboards in text size, spacing, alignment, and timeline card size |
-| 14 | fix/source-matching | [#340](https://github.com/dariusturcu22/hittiguess/pull/340) | Wikidata and Discogs matching rejects other artists' works, compilations, and non-song entities |
-| 15 | fix/verification-lock-rule | [#341](https://github.com/dariusturcu22/hittiguess/pull/341) | The Wikipedia-assisted lock no longer takes the earliest of disagreeing years when only one source supports it |
-| 16 | chore/recheck-catalog | [#342](https://github.com/dariusturcu22/hittiguess/pull/342) | Verified song rechecks record release year proposals without overwriting, exposed via admin recheck and proposal drawer actions |
-| 17 | fix/catalog-duplicates | [#343](https://github.com/dariusturcu22/hittiguess/pull/343) | Duplicate completion attaches an alternate YouTube ID; admin merge moves links and deletes the dropped song |
 
 ## Blocked or skipped
 
