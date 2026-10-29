@@ -1,0 +1,83 @@
+{
+  "entities": {
+    "Q17468562": {
+      "id": "Q17468562",
+      "claims": {
+        "P577": [
+          {
+            "rank": "normal",
+            "mainsnak": {
+              "snaktype": "value",
+              "datavalue": {
+                "value": {
+                  "time": "+2014-07-29T00:00:00Z",
+                  "timezone": 0,
+                  "before": 0,
+                  "after": 0,
+                  "precision": 11,
+                  "calendarmodel": "http://www.wikidata.org/entity/Q1985727"
+                },
+                "type": "time"
+              }
+            }
+          }
+        ],
+        "P361": [
+          {
+            "mainsnak": {
+              "datavalue": {
+                "value": {
+                  "entity-type": "item",
+                  "numeric-id": 17592845,
+                  "id": "Q17592845"
+                },
+                "type": "wikibase-entityid"
+              }
+            }
+          }
+        ],
+        "P175": [
+          {
+            "mainsnak": {
+              "snaktype": "value",
+              "datavalue": {
+                "value": {
+                  "entity-type": "item",
+                  "numeric-id": 18814,
+                  "id": "Q18814"
+                },
+                "type": "wikibase-entityid"
+              }
+            }
+          },
+          {
+            "mainsnak": {
+              "snaktype": "value",
+              "datavalue": {
+                "value": {
+                  "entity-type": "item",
+                  "numeric-id": 151892,
+                  "id": "Q151892"
+                },
+                "type": "wikibase-entityid"
+              }
+            }
+          },
+          {
+            "mainsnak": {
+              "snaktype": "value",
+              "datavalue": {
+                "value": {
+                  "entity-type": "item",
+                  "numeric-id": 162202,
+                  "id": "Q162202"
+                },
+                "type": "wikibase-entityid"
+              }
+            }
+          }
+        ]
+      }
+    }
+  }
+}

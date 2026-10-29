@@ -1,4 +1,6 @@
+import re
 import time
+import unicodedata
 
 import httpx
 
@@ -25,6 +27,25 @@ DELAY_DECREASE_MULTIPLIER = 0.9
 MIN_DELAY_SECONDS = 60 / DISCOGS_DOCUMENTED_LIMIT_PER_MINUTE  # never faster than the documented ceiling implies
 MAX_DELAY_SECONDS = 10.0
 BREACH_COOLDOWN_SECONDS = 8.0
+
+EXCLUDED_DISCOGS_FORMATS = frozenset({"compilation", "unofficial release"})
+TITLE_SPLIT_MAX_PARTS = 1
+FIRST_SPLIT_PART_INDEX = 0
+
+
+def _normalize_name(value: str) -> str:
+    """Lowercases a name, removes accents, and turns punctuation into spaces so
+    stylized and plain spellings compare as the same words."""
+    decomposed = unicodedata.normalize("NFKD", value or "")
+    without_accents = "".join(character for character in decomposed if not unicodedata.combining(character))
+    without_punctuation = re.sub(r"[\W_]+", " ", without_accents)
+    return re.sub(r"\s+", " ", without_punctuation).strip().lower()
+
+
+def _to_artist_list(artist: str | list[str]) -> list[str]:
+    if isinstance(artist, str):
+        return [part.strip() for part in re.split(r"[,&]", artist) if part.strip()]
+    return [str(part).strip() for part in artist if str(part).strip()]
 
 
 class DiscogsRateLimiter:
@@ -88,12 +109,52 @@ def _get(url: str, params: dict | None = None) -> dict:
     return response.json()
 
 
-def search_release(title: str, artist: str) -> dict:
-    return _get(SEARCH_URL, params={"q": f"{artist} {title}", "type": "release"})
+def search_release(title: str, artist: str | list[str], query_label: str = "track") -> dict:
+    main_artists = _to_artist_list(artist)
+    first_main_artist = main_artists[FIRST_SPLIT_PART_INDEX] if main_artists else ""
+    parameters = {"artist": first_main_artist, "type": "release"}
+    if query_label == "album":
+        parameters["release_title"] = title
+    else:
+        parameters["track"] = title
+    return _get(SEARCH_URL, params=parameters)
 
 
 def get_master(master_id: int) -> dict:
     return _get(MASTER_URL_TEMPLATE.format(master_id=master_id))
+
+
+def _is_valid_release(release: dict, main_artists: list[str]) -> bool:
+    title = release.get("title") or ""
+    if title.lower().startswith("various"):
+        return False
+
+    formats = [str(format_name).lower() for format_name in release.get("format", [])]
+    if any(excluded_format in formats for excluded_format in EXCLUDED_DISCOGS_FORMATS):
+        return False
+
+    release_artist = release.get("artist") or ""
+    normalized_release_artist = _normalize_name(release_artist)
+    normalized_title = _normalize_name(title)
+
+    for artist in main_artists:
+        normalized_artist = _normalize_name(artist)
+        if not normalized_artist:
+            continue
+        if normalized_release_artist and (
+            normalized_release_artist == normalized_artist
+            or normalized_artist in normalized_release_artist
+        ):
+            return True
+        if normalized_title.startswith(normalized_artist):
+            return True
+        if " - " in title:
+            split_parts = title.split(" - ", TITLE_SPLIT_MAX_PARTS)
+            prefix = _normalize_name(split_parts[FIRST_SPLIT_PART_INDEX])
+            if prefix.startswith(normalized_artist) or normalized_artist in prefix:
+                return True
+
+    return False
 
 
 def find_master_ids(releases: list[dict], max_masters: int = MAX_DISTINCT_MASTERS) -> list[int]:
@@ -125,19 +186,9 @@ def master_year(master: dict) -> int | None:
 def masterless_release_years(
     releases: list[dict], max_releases: int = MAX_RELEASES_TO_SCAN_FOR_MASTERS
 ) -> list[dict]:
-    """A release with no master_id (Discogs reports this as 0, not a
-    missing field, so find_master_ids' truthy check correctly excludes it)
-    still often carries its own `year` field directly in the search result,
-    a real, if less authoritative, signal that would otherwise be silently
-    discarded entirely, a niche release can have every one of its
-    correct-year appearances lack a master while only an unrelated release
-    happens to have one. Returns title/year pairs for releases
-    find_master_ids would otherwise drop, for the caller to merge in as
-    lower-confidence candidates alongside the master-based ones. A search
-    result's own `year` field comes back as a string, unlike a master
-    resource's `year`, which is an int; cast here so callers can compare or
-    sort masterless years against master-based ones without a
-    string-versus-int mismatch."""
+    """A release with no master_id still often carries its own `year` field directly
+    in the search result. Masterless releases are collected only as lower-confidence
+    fallback candidates when no master-based candidate exists for the song."""
     candidates = []
     for release in releases[:max_releases]:
         if release.get("master_id") or not release.get("year"):
@@ -150,44 +201,56 @@ def masterless_release_years(
     return candidates
 
 
-def _candidates_for_query(title: str, artist: str, query_label: str) -> list[dict]:
-    releases = search_release(title, artist).get("results", [])
+def _query_candidates(
+    title: str, main_artists: list[str], query_label: str
+) -> tuple[list[dict], list[dict]]:
+    raw_releases = search_release(title, main_artists, query_label).get("results", [])
+    releases = [release for release in raw_releases if _is_valid_release(release, main_artists)]
 
-    candidates = []
+    master_candidates = []
     for master_id in find_master_ids(releases):
         master = get_master(master_id)
         year = master_year(master)
         if year is not None:
-            candidates.append({"query": query_label, "title": master.get("title"), "year": year})
+            master_candidates.append(
+                {"query": query_label, "title": master.get("title"), "year": year}
+            )
 
-    for masterless_candidate in masterless_release_years(releases):
-        candidates.append(
-            {"query": query_label, "title": masterless_candidate["title"], "year": masterless_candidate["year"]}
-        )
+    masterless_candidates = [
+        {"query": query_label, "title": candidate["title"], "year": candidate["year"]}
+        for candidate in masterless_release_years(releases)
+    ]
+    return master_candidates, masterless_candidates
 
-    return candidates
 
-
-def search_or_raise(title: str, artist: str, album: str | None = None) -> list[dict]:
-    """Queries the submitted track and, when given, its parent album, so
-    the caller can take the earliest valid year across both rather than
-    trusting whichever query's top result happens to be a reissue (see
-    docs/DECISIONS.md's 2026-09 "Metadata pipeline call/reconcile shape"
-    entry). Returns every candidate found, both master-based and
-    masterless, not just a single selected best one, so downstream
-    reconciliation can see the full picture a single pick would hide. A failed request raises."""
-    candidates = _candidates_for_query(title, artist, "track")
-
+def search_or_raise(
+    title: str, artist: str | list[str], album: str | None = None
+) -> list[dict]:
+    """Queries the submitted track and, when given, its parent album using
+    structured search parameters. Releases are filtered to match the main
+    artists and drop compilations and unofficial releases. Masterless release
+    years are kept only when no master-based candidate exists for the song.
+    A failed request raises."""
+    main_artists = _to_artist_list(artist)
+    track_masters, track_masterless = _query_candidates(title, main_artists, "track")
+    album_masters, album_masterless = [], []
     if album:
-        candidates += _candidates_for_query(album, artist, "album")
+        album_masters, album_masterless = _query_candidates(album, main_artists, "album")
 
-    return candidates
+    all_masters = track_masters + album_masters
+    if all_masters:
+        return all_masters
+
+    return track_masterless + album_masterless
 
 
-def search(title: str, artist: str, album: str | None = None) -> list[dict]:
+def search(
+    title: str, artist: str | list[str], album: str | None = None
+) -> list[dict]:
     """search_or_raise, reporting a failure and returning nothing instead of raising."""
     try:
         return search_or_raise(title, artist, album)
     except Exception as discogs_error:
-        report_source_failure(SOURCE_NAME, discogs_error, title, artist)
+        artist_display = " & ".join(_to_artist_list(artist))
+        report_source_failure(SOURCE_NAME, discogs_error, title, artist_display)
         return []

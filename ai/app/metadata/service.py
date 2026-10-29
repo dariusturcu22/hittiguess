@@ -118,10 +118,7 @@ def run_structured_source_stage(
     candidates, unless raise_on_failure is set, in which case its error propagates."""
     source_query_title, main_artist_names = _source_query(title, main_artists)
     source_module = STRUCTURED_SOURCE_MODULES[source_name]
-    if source_name == MUSICBRAINZ_SOURCE:
-        source_artist_query: str | list[str] = main_artist_names
-    else:
-        source_artist_query = " & ".join(main_artist_names)
+    source_artist_query: list[str] = main_artist_names
     if raise_on_failure:
         candidates = source_module.search_or_raise(source_query_title, source_artist_query)
     else:

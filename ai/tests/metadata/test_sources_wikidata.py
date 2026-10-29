@@ -1,7 +1,12 @@
+import json
+from pathlib import Path
+
 import httpx
 import respx
 
 from app.metadata.sources import wikidata
+
+WIKIDATA_FIXTURES = Path(__file__).parent / "fixtures" / "wikidata"
 
 
 def test_pick_best_match_prefers_artist_mentioned_in_description():
@@ -150,3 +155,129 @@ def test_get_sitelinks_count_returns_none_on_request_failure(mocker):
     respx.get("https://www.wikidata.org/w/api.php").mock(return_value=httpx.Response(500))
 
     assert wikidata.get_sitelinks_count("Q1") is None
+
+
+@respx.mock
+def test_wikidata_matches_whats_my_name_rihanna_drake(mocker):
+    mocker.patch("app.metadata.sources.pacing.time.sleep")
+    search_json = json.loads((WIKIDATA_FIXTURES / "whats-my-name-search.json").read_text(encoding="utf-8"))
+    entity_json = json.loads((WIKIDATA_FIXTURES / "whats-my-name-entity.json").read_text(encoding="utf-8"))
+    performers_json = json.loads((WIKIDATA_FIXTURES / "whats-my-name-performers.json").read_text(encoding="utf-8"))
+
+    def _mock_response(request: httpx.Request) -> httpx.Response:
+        action = request.url.params.get("action")
+        if action == "wbsearchentities":
+            return httpx.Response(200, json=search_json)
+        if action == "wbgetentities":
+            ids = request.url.params.get("ids", "")
+            if ids == "Q16051784":
+                return httpx.Response(200, json=entity_json)
+            if "Q36844" in ids or "Q33240" in ids:
+                return httpx.Response(200, json=performers_json)
+            if ids == "Q208340":
+                return httpx.Response(
+                    200,
+                    json={
+                        "entities": {
+                            "Q208340": {
+                                "claims": {
+                                    "P577": [
+                                        {"rank": "normal", "mainsnak": {"snaktype": "value", "datavalue": {"value": {"time": "+2010-11-12T00:00:00Z"}}}}
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                )
+        return httpx.Response(404)
+
+    respx.get("https://www.wikidata.org/w/api.php").mock(side_effect=_mock_response)
+
+    candidates = wikidata.search("What's My Name?", ["Rihanna", "Drake"])
+    assert len(candidates) >= 1
+    assert candidates[0]["entity_id"] == "Q16051784"
+    assert str(candidates[0]["date"]).startswith("+2010")
+
+
+@respx.mock
+def test_wikidata_matches_yeah_usher_lil_jon_ludacris(mocker):
+    mocker.patch("app.metadata.sources.pacing.time.sleep")
+    search_json = json.loads((WIKIDATA_FIXTURES / "yeah-search.json").read_text(encoding="utf-8"))
+    entity_json = json.loads((WIKIDATA_FIXTURES / "yeah-entity.json").read_text(encoding="utf-8"))
+    performers_json = json.loads((WIKIDATA_FIXTURES / "yeah-performers.json").read_text(encoding="utf-8"))
+
+    def _mock_response(request: httpx.Request) -> httpx.Response:
+        action = request.url.params.get("action")
+        if action == "wbsearchentities":
+            return httpx.Response(200, json=search_json)
+        if action == "wbgetentities":
+            ids = request.url.params.get("ids", "")
+            if ids == "Q744297":
+                return httpx.Response(200, json=entity_json)
+            if any(performer_id in ids for performer_id in ("Q165911", "Q294449", "Q193676")):
+                return httpx.Response(200, json=performers_json)
+            if ids == "Q1125266":
+                return httpx.Response(
+                    200,
+                    json={
+                        "entities": {
+                            "Q1125266": {
+                                "claims": {
+                                    "P577": [
+                                        {"rank": "normal", "mainsnak": {"snaktype": "value", "datavalue": {"value": {"time": "+2004-03-23T00:00:00Z"}}}}
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                )
+        return httpx.Response(404)
+
+    respx.get("https://www.wikidata.org/w/api.php").mock(side_effect=_mock_response)
+
+    candidates = wikidata.search("Yeah!", ["Usher", "Lil Jon", "Ludacris"])
+    assert len(candidates) >= 1
+    assert candidates[0]["entity_id"] == "Q744297"
+    assert str(candidates[0]["date"]).startswith("+2004")
+
+
+@respx.mock
+def test_wikidata_matches_bang_bang_jessie_j_ariana_nicki(mocker):
+    mocker.patch("app.metadata.sources.pacing.time.sleep")
+    search_json = json.loads((WIKIDATA_FIXTURES / "bang-bang-search.json").read_text(encoding="utf-8"))
+    entity_json = json.loads((WIKIDATA_FIXTURES / "bang-bang-entity.json").read_text(encoding="utf-8"))
+    performers_json = json.loads((WIKIDATA_FIXTURES / "bang-bang-performers.json").read_text(encoding="utf-8"))
+
+    def _mock_response(request: httpx.Request) -> httpx.Response:
+        action = request.url.params.get("action")
+        if action == "wbsearchentities":
+            return httpx.Response(200, json=search_json)
+        if action == "wbgetentities":
+            ids = request.url.params.get("ids", "")
+            if ids == "Q17468562":
+                return httpx.Response(200, json=entity_json)
+            if "Q18814" in ids or "Q151892" in ids:
+                return httpx.Response(200, json=performers_json)
+            if ids == "Q17592845":
+                return httpx.Response(
+                    200,
+                    json={
+                        "entities": {
+                            "Q17592845": {
+                                "claims": {
+                                    "P577": [
+                                        {"rank": "normal", "mainsnak": {"snaktype": "value", "datavalue": {"value": {"time": "+2014-10-10T00:00:00Z"}}}}
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                )
+        return httpx.Response(404)
+
+    respx.get("https://www.wikidata.org/w/api.php").mock(side_effect=_mock_response)
+
+    candidates = wikidata.search("Bang Bang", ["Jessie J", "Ariana Grande", "Nicki Minaj"])
+    assert len(candidates) >= 1
+    assert candidates[0]["entity_id"] == "Q17468562"
+    assert str(candidates[0]["date"]).startswith("+2014")

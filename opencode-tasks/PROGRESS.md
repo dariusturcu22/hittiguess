@@ -7,10 +7,10 @@ then `opencode-tasks/README.md`, then the brief named under "Current task".
 
 ## Current task
 
-- Task: 09, `opencode-tasks/09-design-proportions-lobby.md`
-- Branch: `fix/lobby-design-proportions`
-- Step reached: not started
-- Next step: switch to branch off origin/main and extract lobby artboards. Order from here: 09, 10, 14, 15, 16, 17
+- Task: 14, `opencode-tasks/14-wikidata-discogs-matching.md`
+- Branch: `fix/source-matching`
+- Step reached: code done, tests passing
+- Next step: open PR for task 14, then create branch for task 15 off task 14 branch
 
 ## Finished tasks
 
@@ -29,6 +29,8 @@ then `opencode-tasks/README.md`, then the brief named under "Current task".
 | 13 | fix/musicbrainz-recording-search | [#335](https://github.com/dariusturcu22/hittiguess/pull/335) | MusicBrainz uses the first main artist, keeps the top-scored original track group, and finds parent albums through the recording search |
 | 18 | fix/placement-preview-gate | [#336](https://github.com/dariusturcu22/hittiguess/pull/336) | Live drag previews validate against in-memory round state in `PlacementPreviewGate` and only touch Postgres on a cache miss |
 | 19 | fix/replace-group-atomically | [#337](https://github.com/dariusturcu22/hittiguess/pull/337) | Replacing a group runs in one server transaction through replaceCurrentGroup without client-side chained requests |
+| 09 | fix/lobby-design-proportions | [#338](https://github.com/dariusturcu22/hittiguess/pull/338) | Lobby matches its design artboards in text size, spacing, and alignment |
+| 10 | fix/gameplay-design-proportions | [#339](https://github.com/dariusturcu22/hittiguess/pull/339) | Gameplay matches its design artboards in text size, spacing, alignment, and timeline card size |
 
 ## Blocked or skipped
 
