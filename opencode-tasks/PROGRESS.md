@@ -8,9 +8,9 @@ then `opencode-tasks/README.md`, then the brief named under "Current task".
 ## Current task
 
 - Task: 18, `opencode-tasks/18-placement-preview-without-database.md`
-- Branch: `fix/placement-preview-gate` (not created yet)
-- Step reached: not started; pull requests #325 to #335 are merged into `main`
-- Next step: create the branch off an up-to-date `main`. Order from here: 18, 19, 09, 10, 14, 15, 16, 17
+- Branch: `fix/placement-preview-gate`
+- Step reached: branch created
+- Next step: build `PlacementPreviewGate` and update `GameSessionService.previewPlacement`. Order from here: 18, 19, 09, 10, 14, 15, 16, 17
 
 ## Finished tasks
 
