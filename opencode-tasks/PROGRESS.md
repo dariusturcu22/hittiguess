@@ -7,10 +7,10 @@ then `opencode-tasks/README.md`, then the brief named under "Current task".
 
 ## Current task
 
-- Task: 19, `opencode-tasks/19-replace-group-atomically.md`
-- Branch: `fix/replace-group-atomically`
-- Step reached: tests passing
-- Next step: open PR for task 19. Order from here: 09, 10, 14, 15, 16, 17
+- Task: 09, `opencode-tasks/09-design-proportions-lobby.md`
+- Branch: `fix/lobby-design-proportions`
+- Step reached: not started
+- Next step: switch to branch off origin/main and extract lobby artboards. Order from here: 09, 10, 14, 15, 16, 17
 
 ## Finished tasks
 
@@ -28,6 +28,7 @@ then `opencode-tasks/README.md`, then the brief named under "Current task".
 | 12 | fix/admin-catalog-origin | [#334](https://github.com/dariusturcu22/hittiguess/pull/334) | Songs with no pipeline evidence show "Before tracking" instead of "Unknown" |
 | 13 | fix/musicbrainz-recording-search | [#335](https://github.com/dariusturcu22/hittiguess/pull/335) | MusicBrainz uses the first main artist, keeps the top-scored original track group, and finds parent albums through the recording search |
 | 18 | fix/placement-preview-gate | [#336](https://github.com/dariusturcu22/hittiguess/pull/336) | Live drag previews validate against in-memory round state in `PlacementPreviewGate` and only touch Postgres on a cache miss |
+| 19 | fix/replace-group-atomically | [#337](https://github.com/dariusturcu22/hittiguess/pull/337) | Replacing a group runs in one server transaction through replaceCurrentGroup without client-side chained requests |
 
 ## Blocked or skipped
 
