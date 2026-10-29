@@ -176,7 +176,7 @@ Catalog and pipeline:
 - [x] MusicBrainz lookups find multi-artist songs and include the albums a recording appears on
 - [x] Wikidata and Discogs matching rejects other artists' works, compilations, and non-song entities
 - [x] The Wikipedia-assisted lock no longer takes the earliest of disagreeing years when only one source supports it
-- [ ] Recheck the catalog after the pipeline fixes and correct the songs in the year audit
+- [x] Recheck the catalog after the pipeline fixes and correct the songs in the year audit
 - [ ] A completed pipeline run attaches its video to an existing song with the same normalized artist and title instead of creating a duplicate, and the admin can merge the 12 existing duplicate pairs
 - [x] The admin catalog shows songs added before pipeline tracking as "Before tracking"
 - [x] Live drag previews are validated from in-memory round state, without a database read per frame

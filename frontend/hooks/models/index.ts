@@ -117,6 +117,7 @@ export * from './queueOverviewDTO';
 export * from './queueStageDTO';
 export * from './queueStageDTOStage';
 export * from './queueStageDTOState';
+export * from './recheckSongsRequest';
 export * from './recommendedSongsDTO';
 export * from './recommendSongsParams';
 export * from './registerRequest';

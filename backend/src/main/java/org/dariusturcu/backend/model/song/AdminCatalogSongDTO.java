@@ -17,9 +17,16 @@ public record AdminCatalogSongDTO(
         String title,
         @NotNull List<String> artists,
         Integer releaseYear,
+        Integer proposedReleaseYear,
         @NotNull CatalogSongStatus status,
         @NotNull CatalogPipeline pipeline,
         Instant createdAt,
         String addedBy,
         @NotNull CatalogAddedByKind addedByKind) {
+    public AdminCatalogSongDTO(
+            String id, Long songId, String youtubeId, String title, List<String> artists,
+            Integer releaseYear, CatalogSongStatus status, CatalogPipeline pipeline,
+            Instant createdAt, String addedBy, CatalogAddedByKind addedByKind) {
+        this(id, songId, youtubeId, title, artists, releaseYear, null, status, pipeline, createdAt, addedBy, addedByKind);
+    }
 }

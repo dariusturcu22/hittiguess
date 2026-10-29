@@ -14,6 +14,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.time.Instant;
 import java.util.Optional;
 
 @Service
@@ -48,10 +49,6 @@ public class SongCatalogService {
         if (existingSong.isPresent() && !youtubeId.equals(existingSong.get().getYoutubeId())) {
             return existingSong.get();
         }
-        if (existingSong.isPresent() && existingSong.get().getVerificationStatus() == VerificationStatus.VERIFIED
-                && !VerificationStatus.VERIFIED.name().equals(metadata.verificationStatus())) {
-            return existingSong.get();
-        }
         if (metadata.canonicalSongId() != null) {
             Song matchedSong = songRepository.findById(metadata.canonicalSongId())
                     .filter(candidate -> candidate.getVerificationStatus() == VerificationStatus.VERIFIED)
@@ -74,6 +71,15 @@ public class SongCatalogService {
         }
         if (song.getVerificationStatus() == VerificationStatus.VERIFIED) {
             song.recordOfficialDuration(metadata.durationSeconds());
+            if (metadata.releaseYear() != null) {
+                if (metadata.releaseYear() != song.getReleaseYear()) {
+                    song.setProposedReleaseYear(metadata.releaseYear());
+                    song.setProposedAt(Instant.now());
+                } else {
+                    song.setProposedReleaseYear(null);
+                    song.setProposedAt(null);
+                }
+            }
             return songRepository.save(song);
         }
         song.setYoutubeId(youtubeId);

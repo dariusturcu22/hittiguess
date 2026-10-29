@@ -53,6 +53,7 @@ public class AdminSongCatalogRepository {
                     song.youtube_id,
                     song.title,
                     NULLIF(song.release_year, 0) AS release_year,
+                    song.proposed_release_year,
                     CASE
                         WHEN queue_facts.processing THEN 'PROCESSING'
                         WHEN queue_facts.pending THEN 'IN_QUEUE'
@@ -101,6 +102,7 @@ public class AdminSongCatalogRepository {
                     queue.youtube_id,
                     NULL::VARCHAR AS title,
                     NULL::INTEGER AS release_year,
+                    NULL::INTEGER AS proposed_release_year,
                     CASE queue.status
                         WHEN 'PROCESSING' THEN 'PROCESSING'
                         WHEN 'PENDING' THEN 'IN_QUEUE'
@@ -146,9 +148,14 @@ public class AdminSongCatalogRepository {
             ORDER BY page.created_at DESC NULLS LAST, page.row_kind, page.row_id DESC
             """;
     private static final String STATUS_FILTER = "WHERE catalog_status = ?";
+    private static final String PROPOSED_FILTER = "WHERE proposed_release_year IS NOT NULL";
+    private static final String STATUS_AND_PROPOSED_FILTER = "WHERE catalog_status = ? AND proposed_release_year IS NOT NULL";
 
     private static final String COUNT_QUERY = CATALOG_ROWS + """
             SELECT catalog_status, count(*) AS row_count FROM catalog GROUP BY catalog_status
+            """;
+    private static final String COUNT_PROPOSED_QUERY = CATALOG_ROWS + """
+            SELECT count(*) FROM catalog WHERE proposed_release_year IS NOT NULL
             """;
 
     private final JdbcTemplate core;
@@ -188,9 +195,33 @@ public class AdminSongCatalogRepository {
     }
 
     public List<AdminCatalogRow> findPage(String searchText, CatalogSongStatus status, int pageSize, long offset) {
+        return findPage(searchText, status, null, pageSize, offset);
+    }
+
+    public List<AdminCatalogRow> findPage(String searchText, CatalogSongStatus status, Boolean proposedOnly, int pageSize, long offset) {
         return core.query(queueSource(PAGE_QUERY.formatted(songFilter(searchText), queueFilter(searchText),
-                        status == null ? NO_FILTER : STATUS_FILTER)), (resultSet, rowNumber) -> toRow(resultSet),
+                        filterClause(status, proposedOnly))), (resultSet, rowNumber) -> toRow(resultSet),
                 pageParameters(searchText, status, pageSize, offset));
+    }
+
+    static String filterClause(CatalogSongStatus status, Boolean proposedOnly) {
+        boolean filterProposed = Boolean.TRUE.equals(proposedOnly);
+        if (status != null && filterProposed) {
+            return STATUS_AND_PROPOSED_FILTER;
+        }
+        if (status != null) {
+            return STATUS_FILTER;
+        }
+        if (filterProposed) {
+            return PROPOSED_FILTER;
+        }
+        return NO_FILTER;
+    }
+
+    public long countProposed(String searchText) {
+        String sql = queueSource(COUNT_PROPOSED_QUERY.formatted(songFilter(searchText), queueFilter(searchText)));
+        Long count = core.queryForObject(sql, Long.class, searchParameters(searchText).toArray());
+        return count == null ? 0L : count;
     }
 
     static String pageSql(String searchText, CatalogSongStatus status) {
@@ -281,6 +312,7 @@ public class AdminSongCatalogRepository {
                 resultSet.getString("title"),
                 artistNames(resultSet.getArray("artist_names")),
                 resultSet.getObject("release_year", Integer.class),
+                resultSet.getObject("proposed_release_year", Integer.class),
                 CatalogSongStatus.valueOf(resultSet.getString("catalog_status")),
                 resultSet.getBoolean("unfinished_recheck"),
                 resultSet.getBoolean("finished_recheck"),

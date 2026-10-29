@@ -7,10 +7,10 @@ then `opencode-tasks/README.md`, then the brief named under "Current task".
 
 ## Current task
 
-- Task: 15, `opencode-tasks/15-lock-rule.md`
-- Branch: `fix/verification-lock-rule` (branched off `fix/source-matching`, builds on PR #340)
-- Step reached: code done, tests passing
-- Next step: open PR for task 15, then create branch for task 16 off task 15 branch
+- Task: 16, `opencode-tasks/16-recheck-catalog.md`
+- Branch: `chore/recheck-catalog` (branched off `fix/verification-lock-rule`, builds on PR #341)
+- Step reached: code and tests complete, opening PR
+- Next step: push branch, open PR into main, record PR number, switch to task 17
 
 ## Finished tasks
 
@@ -32,6 +32,7 @@ then `opencode-tasks/README.md`, then the brief named under "Current task".
 | 09 | fix/lobby-design-proportions | [#338](https://github.com/dariusturcu22/hittiguess/pull/338) | Lobby matches its design artboards in text size, spacing, and alignment |
 | 10 | fix/gameplay-design-proportions | [#339](https://github.com/dariusturcu22/hittiguess/pull/339) | Gameplay matches its design artboards in text size, spacing, alignment, and timeline card size |
 | 14 | fix/source-matching | [#340](https://github.com/dariusturcu22/hittiguess/pull/340) | Wikidata and Discogs matching rejects other artists' works, compilations, and non-song entities |
+| 15 | fix/verification-lock-rule | [#341](https://github.com/dariusturcu22/hittiguess/pull/341) | The Wikipedia-assisted lock no longer takes the earliest of disagreeing years when only one source supports it |
 
 ## Blocked or skipped
 

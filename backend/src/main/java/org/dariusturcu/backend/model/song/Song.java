@@ -35,6 +35,10 @@ public class Song {
 
     private int releaseYear;
 
+    private Integer proposedReleaseYear;
+
+    private Instant proposedAt;
+
     private String youtubeId;
 
     private Integer durationSeconds;

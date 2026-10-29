@@ -26,6 +26,7 @@ import {
 interface CatalogParams {
   query?: string;
   status?: string;
+  proposedYear?: boolean;
   page?: number;
   size?: number;
 }
@@ -40,6 +41,30 @@ const catalogHook = vi.hoisted(() => ({
 const detailHook = vi.hoisted(() => ({
   result: {} as Record<string, unknown>,
   songIds: [] as number[],
+}));
+
+const pipelineHook = vi.hoisted(() => ({
+  updateMutateAsync: vi.fn(),
+  dismissMutateAsync: vi.fn(),
+}));
+
+vi.mock("@/hooks/generated/admin-song-pipeline/admin-song-pipeline", () => ({
+  useUpdateCatalogSong: () => ({
+    mutateAsync: pipelineHook.updateMutateAsync,
+    isPending: false,
+  }),
+  useDismissProposal: () => ({
+    mutateAsync: pipelineHook.dismissMutateAsync,
+    isPending: false,
+  }),
+  useRerunSongPipeline: () => ({
+    mutateAsync: vi.fn(),
+    isPending: false,
+  }),
+  useDeleteCatalogSong: () => ({
+    mutateAsync: vi.fn(),
+    isPending: false,
+  }),
 }));
 
 vi.mock("@/hooks/generated/admin-song-catalog/admin-song-catalog", () => ({
@@ -61,6 +86,7 @@ const COUNTS = {
   inQueue: 5,
   processing: 2,
   error: 1,
+  proposedYear: 3,
 };
 const TOTAL_SONGS = 60;
 const TOTAL_PAGES = 3;
@@ -216,6 +242,9 @@ describe("SongCatalogPage", () => {
     ).toBeInTheDocument();
     expect(
       chips.getByRole("button", { name: "Processing 2" }),
+    ).toBeInTheDocument();
+    expect(
+      chips.getByRole("button", { name: "Proposed year 3" }),
     ).toBeInTheDocument();
     expect(chips.getByRole("button", { name: "Error 1" })).toBeInTheDocument();
   });
@@ -403,5 +432,67 @@ describe("SongCatalogPage", () => {
       screen.getByText("Couldn't load the song catalog."),
     ).toBeInTheDocument();
     expect(catalogHook.refetch).toHaveBeenCalled();
+  });
+
+  it("filters by proposed year and resets to the first page", () => {
+    render(<SongCatalogPage />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Next" }));
+    expect(lastCatalogParams().page).toBe(1);
+
+    fireEvent.click(screen.getByRole("button", { name: "Proposed year 3" }));
+
+    expect(lastCatalogParams()).toMatchObject({
+      proposedYear: true,
+      page: 0,
+    });
+    expect(
+      screen.getByRole("button", { name: "Proposed year 3" }),
+    ).toHaveAttribute("aria-pressed", "true");
+  });
+
+  it("shows proposed year in detail drawer and accept and dismiss call the right endpoints", async () => {
+    detailHook.result = {
+      data: {
+        songId: SONG_ID,
+        youtubeId: "zimi-yt-id",
+        title: "Hey Mama",
+        artists: ["David Guetta"],
+        releaseYear: 2015,
+        proposedReleaseYear: 2014,
+        status: "VERIFIED",
+        pipeline: "FAST",
+        createdAt: "2026-10-15T12:00:00Z",
+        addedBy: "mara.k",
+        addedByKind: "USER",
+        verificationStatus: "VERIFIED",
+        confidence: "high",
+        openReportCount: 0,
+        queueHistory: [],
+      },
+      isLoading: false,
+      isError: false,
+    };
+    render(<SongCatalogPage />);
+
+    fireEvent.click(screen.getByText("Zi-mi"));
+
+    const drawer = within(screen.getByRole("dialog", { name: "Song detail" }));
+    expect(drawer.getByText("Proposed release year:")).toBeInTheDocument();
+    expect(drawer.getAllByText("2014")).toHaveLength(2);
+    expect(drawer.getByText("(stored: 2015)")).toBeInTheDocument();
+
+    const acceptButton = drawer.getByRole("button", { name: "Accept" });
+    fireEvent.click(acceptButton);
+    expect(pipelineHook.updateMutateAsync).toHaveBeenCalledWith({
+      id: SONG_ID,
+      data: { releaseYear: 2014 },
+    });
+
+    const dismissButton = drawer.getByRole("button", { name: "Dismiss" });
+    fireEvent.click(dismissButton);
+    expect(pipelineHook.dismissMutateAsync).toHaveBeenCalledWith({
+      id: SONG_ID,
+    });
   });
 });

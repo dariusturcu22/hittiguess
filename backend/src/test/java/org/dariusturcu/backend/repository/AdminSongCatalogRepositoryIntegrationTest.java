@@ -325,6 +325,15 @@ class AdminSongCatalogRepositoryIntegrationTest {
     }
 
     @Test
+    void filteringByProposedYearReturnsOnlySongsWithAProposal() {
+        jdbcTemplate.update("UPDATE songs SET proposed_release_year = 2014 WHERE title = ?", ZI_MI);
+        List<AdminCatalogRow> rows = repository.findPage(null, null, true, WHOLE_CATALOG, FIRST_OFFSET);
+        assertThat(titlesOrIds(rows)).containsExactly(ZI_MI);
+        assertThat(rows.getFirst().proposedReleaseYear()).isEqualTo(2014);
+        assertThat(repository.countProposed(null)).isEqualTo(1);
+    }
+
+    @Test
     void theTrigramIndexesExistAndServeTheSearch() {
         List<String> indexNames = jdbcTemplate.queryForList(
                 "SELECT indexname FROM pg_indexes WHERE indexdef ILIKE '%gin_trgm_ops%'", String.class);

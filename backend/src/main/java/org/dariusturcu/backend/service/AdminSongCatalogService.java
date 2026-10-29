@@ -102,30 +102,49 @@ public class AdminSongCatalogService {
     }
 
     public AdminCatalogPageDTO search(String query, CatalogSongStatus status, Integer page, Integer size) {
+        return search(query, status, null, page, size);
+    }
+
+    public AdminCatalogPageDTO search(String query, CatalogSongStatus status, Boolean proposedYear, Integer page, Integer size) {
         String searchText = normalizeSearchText(query);
         int resolvedPage = resolvePage(page);
         int pageSize = resolvePageSize(size);
 
         Map<CatalogSongStatus, Long> countsByStatus = catalogRepository.countByStatus(searchText);
+        long proposedCount = catalogRepository.countProposed(searchText);
+        AdminCatalogCountsDTO counts = toCounts(countsByStatus, proposedCount);
         long allCount = countsByStatus.values().stream().mapToLong(Long::longValue).sum();
-        long totalElements = status == null ? allCount : countsByStatus.get(status);
+        long totalElements;
+        if (Boolean.TRUE.equals(proposedYear)) {
+            totalElements = proposedCount;
+        } else if (status == null) {
+            totalElements = allCount;
+        } else {
+            totalElements = countsByStatus.get(status);
+        }
         long offset = (long) resolvedPage * pageSize;
 
-        List<AdminCatalogSongDTO> items = catalogRepository.findPage(searchText, status, pageSize, offset).stream()
+        List<AdminCatalogRow> rows = proposedYear == null
+                ? catalogRepository.findPage(searchText, status, pageSize, offset)
+                : catalogRepository.findPage(searchText, status, proposedYear, pageSize, offset);
+        List<AdminCatalogSongDTO> items = rows.stream()
                 .map(AdminSongCatalogService::toCatalogSong)
                 .toList();
-        int totalPages = (int) ((totalElements + pageSize - 1) / pageSize);
+        int totalPages = totalElements == 0 ? 0 : (int) ((totalElements + pageSize - 1) / pageSize);
 
-        return new AdminCatalogPageDTO(items, resolvedPage, pageSize, totalElements, totalPages,
-                toCounts(countsByStatus));
+        return new AdminCatalogPageDTO(items, resolvedPage, pageSize, totalElements, totalPages, counts);
     }
 
     /** Counts for the whole catalog, with no search text or status filter. */
     public AdminCatalogCountsDTO catalogCounts() {
-        return toCounts(catalogRepository.countByStatus(null));
+        return toCounts(catalogRepository.countByStatus(null), catalogRepository.countProposed(null));
     }
 
     private static AdminCatalogCountsDTO toCounts(Map<CatalogSongStatus, Long> countsByStatus) {
+        return toCounts(countsByStatus, 0L);
+    }
+
+    private static AdminCatalogCountsDTO toCounts(Map<CatalogSongStatus, Long> countsByStatus, long proposedCount) {
         long allCount = countsByStatus.values().stream().mapToLong(Long::longValue).sum();
         return new AdminCatalogCountsDTO(
                 allCount,
@@ -133,7 +152,8 @@ public class AdminSongCatalogService {
                 countsByStatus.get(CatalogSongStatus.NEEDS_REVIEW),
                 countsByStatus.get(CatalogSongStatus.IN_QUEUE),
                 countsByStatus.get(CatalogSongStatus.PROCESSING),
-                countsByStatus.get(CatalogSongStatus.ERROR));
+                countsByStatus.get(CatalogSongStatus.ERROR),
+                proposedCount);
     }
 
     @Transactional(readOnly = true)
@@ -158,6 +178,8 @@ public class AdminSongCatalogService {
                 song.getTitle(),
                 song.getArtists().stream().map(SongArtist::getName).toList(),
                 song.getReleaseYear() == UNRESOLVED_RELEASE_YEAR ? null : song.getReleaseYear(),
+                song.getProposedReleaseYear(),
+                song.getProposedAt(),
                 CatalogSongRules.songStatusFromRuns(song.getVerificationStatus(), queueRows),
                 CatalogSongRules.pipeline(queueRows, hasPipelineRun),
                 song.getCreatedAt(),
@@ -192,6 +214,7 @@ public class AdminSongCatalogService {
                 row.title(),
                 row.artists(),
                 row.releaseYear(),
+                row.proposedReleaseYear(),
                 row.status(),
                 CatalogSongRules.pipeline(row.hasUnfinishedRecheck(), row.hasFinishedRecheck(), row.latestQueueOrigin(), row.hasPipelineRun()),
                 row.createdAt(),

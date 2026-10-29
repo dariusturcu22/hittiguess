@@ -17,6 +17,7 @@ public record AdminCatalogRow(
         String title,
         List<String> artists,
         Integer releaseYear,
+        Integer proposedReleaseYear,
         CatalogSongStatus status,
         boolean hasUnfinishedRecheck,
         boolean hasFinishedRecheck,
@@ -25,4 +26,12 @@ public record AdminCatalogRow(
         boolean hasAdminSeedRow,
         Instant createdAt,
         String addedByUsername) {
+    public AdminCatalogRow(
+            String rowKey, Long songId, String youtubeId, String title, List<String> artists,
+            Integer releaseYear, CatalogSongStatus status, boolean hasUnfinishedRecheck,
+            boolean hasFinishedRecheck, PendingImportOrigin latestQueueOrigin, boolean hasPipelineRun,
+            boolean hasAdminSeedRow, Instant createdAt, String addedByUsername) {
+        this(rowKey, songId, youtubeId, title, artists, releaseYear, null, status, hasUnfinishedRecheck,
+                hasFinishedRecheck, latestQueueOrigin, hasPipelineRun, hasAdminSeedRow, createdAt, addedByUsername);
+    }
 }

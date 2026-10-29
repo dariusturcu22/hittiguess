@@ -10,5 +10,9 @@ public record AdminCatalogCountsDTO(
         @NotNull Long needsReview,
         @NotNull Long inQueue,
         @NotNull Long processing,
-        @NotNull Long error) {
+        @NotNull Long error,
+        Long proposedYear) {
+    public AdminCatalogCountsDTO(Long all, Long verified, Long needsReview, Long inQueue, Long processing, Long error) {
+        this(all, verified, needsReview, inQueue, processing, error, 0L);
+    }
 }
