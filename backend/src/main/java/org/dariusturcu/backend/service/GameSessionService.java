@@ -57,7 +57,6 @@ import org.dariusturcu.backend.websocket.GuessResultEvent;
 import org.dariusturcu.backend.websocket.SessionBroadcastEvent;
 import org.dariusturcu.backend.websocket.SessionEventType;
 
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationEventPublisher;
@@ -66,6 +65,7 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -87,7 +87,6 @@ import java.util.stream.Collectors;
 // round-rotation (fixed vs rotating DJ), timer-scheduling, and betting-concurrency design
 // choices this class implements.
 @Service
-@RequiredArgsConstructor
 @Slf4j
 @Transactional
 public class GameSessionService {
@@ -125,6 +124,7 @@ public class GameSessionService {
     private final GameSessionScheduler gameSessionScheduler;
     private final ApplicationEventPublisher eventPublisher;
     private final GameSongList gameSongList;
+    private final PlacementPreviewGate placementPreviewGate;
     private final RateLimiterRegistry placementPreviewRateLimiter =
             new RateLimiterRegistry(MAXIMUM_PLACEMENT_PREVIEWS_PER_SECOND, PLACEMENT_PREVIEW_WINDOW);
 
@@ -134,6 +134,73 @@ public class GameSessionService {
     @Autowired
     @Lazy
     private GameSessionService self;
+
+    public GameSessionService(
+            GameSessionRepository gameSessionRepository,
+            PlayerRepository playerRepository,
+            RoundRepository roundRepository,
+            GuessRepository guessRepository,
+            BetRepository betRepository,
+            GroupRepository groupRepository,
+            SongRepository songRepository,
+            PlaylistRepository playlistRepository,
+            GroupService groupService,
+            PlaylistAccessService playlistAccessService,
+            PlaylistExpansionService playlistExpansionService,
+            DifficultyTunedSongSelector difficultySelector,
+            PendingSessionSongPool pendingPool,
+            SessionMapper sessionMapper,
+            SessionResultsStore resultsStore,
+            GameSessionScheduler gameSessionScheduler,
+            ApplicationEventPublisher eventPublisher,
+            GameSongList gameSongList) {
+        this(gameSessionRepository, playerRepository, roundRepository, guessRepository, betRepository,
+                groupRepository, songRepository, playlistRepository, groupService, playlistAccessService,
+                playlistExpansionService, difficultySelector, pendingPool, sessionMapper, resultsStore,
+                gameSessionScheduler, eventPublisher, gameSongList, new PlacementPreviewGate());
+    }
+
+    @Autowired
+    public GameSessionService(
+            GameSessionRepository gameSessionRepository,
+            PlayerRepository playerRepository,
+            RoundRepository roundRepository,
+            GuessRepository guessRepository,
+            BetRepository betRepository,
+            GroupRepository groupRepository,
+            SongRepository songRepository,
+            PlaylistRepository playlistRepository,
+            GroupService groupService,
+            PlaylistAccessService playlistAccessService,
+            PlaylistExpansionService playlistExpansionService,
+            DifficultyTunedSongSelector difficultySelector,
+            PendingSessionSongPool pendingPool,
+            SessionMapper sessionMapper,
+            SessionResultsStore resultsStore,
+            GameSessionScheduler gameSessionScheduler,
+            ApplicationEventPublisher eventPublisher,
+            GameSongList gameSongList,
+            PlacementPreviewGate placementPreviewGate) {
+        this.gameSessionRepository = gameSessionRepository;
+        this.playerRepository = playerRepository;
+        this.roundRepository = roundRepository;
+        this.guessRepository = guessRepository;
+        this.betRepository = betRepository;
+        this.groupRepository = groupRepository;
+        this.songRepository = songRepository;
+        this.playlistRepository = playlistRepository;
+        this.groupService = groupService;
+        this.playlistAccessService = playlistAccessService;
+        this.playlistExpansionService = playlistExpansionService;
+        this.difficultySelector = difficultySelector;
+        this.pendingPool = pendingPool;
+        this.sessionMapper = sessionMapper;
+        this.resultsStore = resultsStore;
+        this.gameSessionScheduler = gameSessionScheduler;
+        this.eventPublisher = eventPublisher;
+        this.gameSongList = gameSongList;
+        this.placementPreviewGate = placementPreviewGate;
+    }
 
     // --- Session lifecycle -------------------------------------------------------
 
@@ -472,29 +539,37 @@ public class GameSessionService {
     // racing the lock-in is harmless and not worth an error on the sender's socket.
     // Previews beyond the per-player rate limit are dropped the same way: the next frame
     // carries the current position anyway.
-    @Transactional(readOnly = true)
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
     public void previewPlacement(Long sessionId, Long userId, PlacementPreviewRequest request) {
         if (!placementPreviewRateLimiter.tryConsume(sessionId + ":" + userId)) {
             return;
         }
-        GameSession session = getSession(sessionId);
-        Player player = findPlayerByUserId(session, userId);
-        Round round = requireCurrentRound(session);
-
-        if (!round.getActivePlayer().getId().equals(player.getId())) {
-            throw new AccessDeniedException("Only the active player can preview a placement this round");
-        }
-        if (round.getStatus() != RoundStatus.AWAITING_PLACEMENT) {
+        Optional<PlacementPreviewGate.Entry> gateEntry =
+                placementPreviewGate.getOrLoad(sessionId, () -> self.loadPlacementPreviewEntry(sessionId));
+        if (gateEntry.isEmpty()) {
             return;
         }
-        if (request.position() != null && (request.position() < 0 || request.position() > player.getTimeline().size())) {
+        PlacementPreviewGate.Entry entry = gateEntry.get();
+        if (!entry.activePlayerUserId().equals(userId)) {
+            throw new AccessDeniedException("Only the active player can preview a placement this round");
+        }
+        if (request.position() != null && (request.position() < 0 || request.position() > entry.activePlayerTimelineSize())) {
             throw new IllegalArgumentException("Placement position is out of range for this player's timeline");
         }
         PlacementPreviewPhase phase = request.phase() == null ? PlacementPreviewPhase.IDLE : request.phase();
         eventPublisher.publishEvent(new SessionBroadcastEvent(SessionEventType.PLACEMENT_PREVIEW, sessionId,
-                new PlacementPreviewDTO(round.getId(), player.getId(), request.position(),
+                new PlacementPreviewDTO(entry.roundId(), entry.activePlayerId(), request.position(),
                         clamp(request.x(), PREVIEW_HORIZONTAL_MINIMUM, PREVIEW_HORIZONTAL_MAXIMUM),
                         clamp(request.y(), PREVIEW_VERTICAL_MINIMUM, PREVIEW_VERTICAL_MAXIMUM), phase)));
+    }
+
+    @Transactional(readOnly = true)
+    public Optional<PlacementPreviewGate.Entry> loadPlacementPreviewEntry(Long sessionId) {
+        return gameSessionRepository.findById(sessionId)
+                .filter(session -> session.getStatus() == SessionStatus.IN_PROGRESS)
+                .map(this::getCurrentRound)
+                .filter(round -> round.getStatus() == RoundStatus.AWAITING_PLACEMENT)
+                .map(PlacementPreviewGate.Entry::fromRound);
     }
 
     private static Double clamp(Double value, double minimum, double maximum) {
@@ -1310,6 +1385,7 @@ public class GameSessionService {
     }
 
     private void publishRoundEvent(SessionEventType type, GameSession session, Round round) {
+        placementPreviewGate.stageRound(session.getId(), round);
         eventPublisher.publishEvent(new SessionBroadcastEvent(type, session.getId(), sessionMapper.toRoundDTO(round)));
     }
 }
