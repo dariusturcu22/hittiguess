@@ -82,7 +82,10 @@ public class GroupService {
         if (request.shouldReplaceCurrentGroup()) {
             Optional<Member> currentMembership = memberRepository.findByUser(creator);
             if (currentMembership.isPresent()) {
-                leaveEvents = leaveCurrentGroupForReplacement(currentMembership.get(), creator);
+                Long currentGroupId = currentMembership.get().getGroup().getId();
+                Group currentGroup = groupRepository.findByIdForUpdate(currentGroupId)
+                        .orElse(currentMembership.get().getGroup());
+                leaveEvents = leaveCurrentGroupForReplacement(currentGroup, creator);
             }
         } else {
             requireNoActiveMembership(creator);
@@ -118,21 +121,52 @@ public class GroupService {
             throw new RateLimitExceededException("Too many join code attempts. Wait a few minutes and try again.");
         }
 
-        Group group = hasInviteCode
-                ? groupRepository.findByInviteCodeForUpdate(request.inviteCode())
-                        .orElseThrow(() -> new ResourceNotFoundException(
-                                "Invite code {" + request.inviteCode() + "} not found"))
-                : groupRepository.findByJoinCodeForUpdate(request.joinCode().toUpperCase())
-                        .orElseThrow(() -> new ResourceNotFoundException(
-                                "Join code {" + request.joinCode() + "} not found"));
-
         Optional<Member> currentMembership = memberRepository.findByUser(user);
-        if (currentMembership.isPresent()) {
-            Group currentGroup = currentMembership.get().getGroup();
-            if (currentGroup.getId().equals(group.getId())) {
-                return groupMapper.toDetailDTO(group);
+        boolean replacingGroup = request.shouldReplaceCurrentGroup() && currentMembership.isPresent();
+
+        Group group;
+        Group currentGroup = null;
+
+        if (replacingGroup) {
+            Group targetLookup = hasInviteCode
+                    ? groupRepository.findByInviteCode(request.inviteCode())
+                            .orElseThrow(() -> new ResourceNotFoundException(
+                                    "Invite code {" + request.inviteCode() + "} not found"))
+                    : groupRepository.findByJoinCode(request.joinCode().toUpperCase())
+                            .orElseThrow(() -> new ResourceNotFoundException(
+                                    "Join code {" + request.joinCode() + "} not found"));
+
+            Long currentGroupId = currentMembership.get().getGroup().getId();
+            Long targetGroupId = targetLookup.getId();
+
+            if (currentGroupId.equals(targetGroupId)) {
+                return groupMapper.toDetailDTO(targetLookup);
             }
-            if (!request.shouldReplaceCurrentGroup()) {
+
+            Long firstId = Math.min(currentGroupId, targetGroupId);
+            Long secondId = Math.max(currentGroupId, targetGroupId);
+
+            Group firstLocked = groupRepository.findByIdForUpdate(firstId)
+                    .orElseThrow(() -> new ConflictException("Group is no longer available"));
+            Group secondLocked = groupRepository.findByIdForUpdate(secondId)
+                    .orElseThrow(() -> new ConflictException("Group is no longer available"));
+
+            currentGroup = currentGroupId.equals(firstId) ? firstLocked : secondLocked;
+            group = targetGroupId.equals(firstId) ? firstLocked : secondLocked;
+        } else {
+            group = hasInviteCode
+                    ? groupRepository.findByInviteCodeForUpdate(request.inviteCode())
+                            .orElseThrow(() -> new ResourceNotFoundException(
+                                    "Invite code {" + request.inviteCode() + "} not found"))
+                    : groupRepository.findByJoinCodeForUpdate(request.joinCode().toUpperCase())
+                            .orElseThrow(() -> new ResourceNotFoundException(
+                                    "Join code {" + request.joinCode() + "} not found"));
+
+            if (currentMembership.isPresent()) {
+                Group callerGroup = currentMembership.get().getGroup();
+                if (callerGroup.getId().equals(group.getId())) {
+                    return groupMapper.toDetailDTO(group);
+                }
                 throw new ConflictException("You are already in a group. Leave it first, then join this one.");
             }
         }
@@ -147,8 +181,8 @@ public class GroupService {
             throw new ConflictException("This group is full");
         }
 
-        List<GroupBroadcastEvent> leaveEvents = currentMembership.isPresent()
-                ? leaveCurrentGroupForReplacement(currentMembership.get(), user)
+        List<GroupBroadcastEvent> leaveEvents = currentGroup != null
+                ? leaveCurrentGroupForReplacement(currentGroup, user)
                 : List.of();
 
         Member member = newMember(user, request.displayName(), request.avatarUrl(), false, Instant.now());
@@ -298,10 +332,8 @@ public class GroupService {
         return List.of();
     }
 
-    private List<GroupBroadcastEvent> leaveCurrentGroupForReplacement(Member currentMembership, User user) {
-        Long currentGroupId = currentMembership.getGroup().getId();
-        Group currentGroup = groupRepository.findByIdForUpdate(currentGroupId)
-                .orElse(currentMembership.getGroup());
+    private List<GroupBroadcastEvent> leaveCurrentGroupForReplacement(Group currentGroup, User user) {
+        Long currentGroupId = currentGroup.getId();
         Member currentMember = requireMembership(currentGroup, user);
         if (currentGroup.getStatus() != GroupStatus.OPEN
                 || gameSessionRepository.findByGroupId(currentGroupId).isPresent()) {

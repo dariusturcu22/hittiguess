@@ -1012,9 +1012,10 @@ class GroupServiceTest {
         targetGroup.setWinConditionCardCount(5);
         memberOf(targetGroup, thirdUser, true, Instant.now());
 
-        when(groupRepository.findByInviteCodeForUpdate("target-invite")).thenReturn(Optional.of(targetGroup));
+        when(groupRepository.findByInviteCode("target-invite")).thenReturn(Optional.of(targetGroup));
         when(memberRepository.findByUser(otherUser)).thenReturn(Optional.of(secondMember));
         when(groupRepository.findByIdForUpdate(10L)).thenReturn(Optional.of(oldGroup));
+        when(groupRepository.findByIdForUpdate(20L)).thenReturn(Optional.of(targetGroup));
         authenticateAs(otherUser);
 
         GroupDetailDTO result = groupService.joinGroup(new JoinGroupRequest("target-invite", null, null, null, true));
@@ -1046,8 +1047,10 @@ class GroupServiceTest {
             memberOf(targetGroup, fillerUser, fillerIndex == 0, Instant.now());
         }
 
-        when(groupRepository.findByInviteCodeForUpdate("target-invite")).thenReturn(Optional.of(targetGroup));
+        when(groupRepository.findByInviteCode("target-invite")).thenReturn(Optional.of(targetGroup));
         when(memberRepository.findByUser(otherUser)).thenReturn(Optional.of(secondMember));
+        when(groupRepository.findByIdForUpdate(10L)).thenReturn(Optional.of(oldGroup));
+        when(groupRepository.findByIdForUpdate(20L)).thenReturn(Optional.of(targetGroup));
         authenticateAs(otherUser);
 
         assertThatThrownBy(() -> groupService.joinGroup(new JoinGroupRequest("target-invite", null, null, null, true)))
@@ -1060,12 +1063,16 @@ class GroupServiceTest {
 
     @Test
     void joinGroupWithReplaceCurrentGroupWithInvalidCodeLeavesCallerInOldGroupAndBroadcastsNothing() {
-        when(groupRepository.findByInviteCodeForUpdate("invalid-invite")).thenReturn(Optional.empty());
+        Group oldGroup = groupWithAdmin();
+        Member secondMember = memberOf(oldGroup, otherUser, false, Instant.now());
+        when(memberRepository.findByUser(otherUser)).thenReturn(Optional.of(secondMember));
+        when(groupRepository.findByInviteCode("invalid-invite")).thenReturn(Optional.empty());
         authenticateAs(otherUser);
 
         assertThatThrownBy(() -> groupService.joinGroup(new JoinGroupRequest("invalid-invite", null, null, null, true)))
                 .isInstanceOf(ResourceNotFoundException.class);
 
+        assertThat(oldGroup.getMembers()).contains(secondMember);
         verify(eventPublisher, never()).publishEvent(any());
     }
 
@@ -1080,9 +1087,10 @@ class GroupServiceTest {
         targetGroup.setStatus(GroupStatus.OPEN);
         memberOf(targetGroup, adminUser, true, Instant.now());
 
-        when(groupRepository.findByInviteCodeForUpdate("target-invite")).thenReturn(Optional.of(targetGroup));
+        when(groupRepository.findByInviteCode("target-invite")).thenReturn(Optional.of(targetGroup));
         when(memberRepository.findByUser(otherUser)).thenReturn(Optional.of(secondMember));
         when(groupRepository.findByIdForUpdate(10L)).thenReturn(Optional.of(oldGroup));
+        when(groupRepository.findByIdForUpdate(20L)).thenReturn(Optional.of(targetGroup));
         authenticateAs(otherUser);
 
         assertThatThrownBy(() -> groupService.joinGroup(new JoinGroupRequest("target-invite", null, null, null, true)))
