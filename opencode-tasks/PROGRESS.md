@@ -7,8 +7,8 @@ then `opencode-tasks/README.md`, then the brief named under "Current task".
 
 ## Current task
 
-- Task: 03, `opencode-tasks/03-waveform-five-bars.md`
-- Branch: `fix/waveform-five-bars` (not created yet)
+- Task: 04, `opencode-tasks/04-countdown-clock-sync.md`
+- Branch: `fix/countdown-clock-sync` (not created yet)
 - Step reached: not started
 - Next step: create the branch off an up-to-date `main`
 
@@ -18,6 +18,7 @@ then `opencode-tasks/README.md`, then the brief named under "Current task".
 |---|---|---|---|
 | 01 | `fix/left-rail-spacing` | https://github.com/dariusturcu22/hittiguess/pull/325 | Awaiting review |
 | 02 | `fix/voice-rail-join-slot` | https://github.com/dariusturcu22/hittiguess/pull/326 | Awaiting review |
+| 03 | `fix/waveform-five-bars` | https://github.com/dariusturcu22/hittiguess/pull/327 | Awaiting review |
 
 ## Blocked or skipped
 

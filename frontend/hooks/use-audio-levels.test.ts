@@ -52,6 +52,18 @@ function settleLevels(spectrum: Float32Array, initialLevels: number[]): number[]
 }
 
 describe("bandFrequencyEdges", () => {
+  it("uses five bands from 40 Hz to 16 kHz", () => {
+    const EXPECTED_BAND_COUNT = 5;
+    const LOWEST_BAND_FREQUENCY_HZ = 40;
+    const HIGHEST_BAND_FREQUENCY_HZ = 16000;
+    const edges = bandFrequencyEdges(SAMPLE_RATE_HERTZ);
+
+    expect(VISUALIZER_BAND_COUNT).toBe(EXPECTED_BAND_COUNT);
+    expect(edges[LOWEST_BAND_INDEX]).toBeCloseTo(LOWEST_BAND_FREQUENCY_HZ, RATIO_PRECISION);
+    expect(edges.at(-1)).toBeCloseTo(HIGHEST_BAND_FREQUENCY_HZ, RATIO_PRECISION);
+    expect(computeBandLevels(flatSpectrum(FLAT_SPECTRUM_DECIBELS), SAMPLE_RATE_HERTZ, [])).toHaveLength(EXPECTED_BAND_COUNT);
+  });
+
   it("spaces the bands logarithmically, so low bands cover narrower ranges", () => {
     const edges = bandFrequencyEdges(SAMPLE_RATE_HERTZ);
     expect(edges).toHaveLength(VISUALIZER_BAND_COUNT + 1);
