@@ -15,6 +15,7 @@ from app.metadata.sources import discogs, musicbrainz, wikidata, wikipedia, yout
 from app.metadata.sources.util import clean_youtube_text, extract_youtube_playlist_id, strip_featured_artist_suffix
 from app.metadata.verification import (
     VerificationRoute,
+    VerificationStatus,
     _all_three_agree,
     _extract_earliest_year,
     evaluate_lock,
@@ -57,6 +58,8 @@ LOCKED_SOURCE_LABEL = "musicbrainz+discogs+wikidata-lock"
 WIKIPEDIA_ASSISTED_LOCK_SOURCE_LABEL = "wikipedia-assisted-lock"
 RECONCILED_SOURCE_LABEL = "four-source-reconciliation"
 MANUAL_REVIEW_SOURCE_LABEL = "no-source-data"
+UPLOAD_YEAR_SOURCE_LABEL = "youtube-upload-year"
+UPLOAD_YEAR_CONFIDENCE = "low"
 
 
 def _clean_title_and_artist(youtube_data: dict[str, str]) -> tuple[str, str]:
@@ -215,12 +218,15 @@ def run_reconciliation_stage(
     sitelinks_count: int | None,
     *,
     raise_on_failure: bool = False,
+    upload_year: int | None = None,
 ) -> SongMetadataResult:
     """The finishing step of story 18's lock-or-LLM verification: when the three
     structured sources agree exactly, locks with no LLM call; otherwise reads
     Wikipedia with the extraction call and runs four-source reconciliation.
     title, main artists, and color come from the precheck call, not from a
-    separate display-synthesis call."""
+    separate display-synthesis call. When no source has any year, the video's upload
+    year is proposed for review instead of leaving the song without a year: an obscure
+    or recent song's official upload is usually its release."""
     source_query_title, main_artist_names = _source_query(title, main_artists)
     display_artists = " & ".join(main_artist_names)
     release_year, confidence, route = evaluate_lock(
@@ -233,6 +239,22 @@ def run_reconciliation_stage(
         raise_on_failure=raise_on_failure,
     )
     verification_status = route_to_verification_status(route)
+    if route == VerificationRoute.MANUAL_REVIEW and upload_year is not None:
+        return SongMetadataResult(
+            title=title,
+            main_artists=main_artists,
+            featured_artists=featured_artists,
+            release_year=upload_year,
+            color=color,
+            confidence=UPLOAD_YEAR_CONFIDENCE,
+            source=UPLOAD_YEAR_SOURCE_LABEL,
+            reasoning=(
+                f"No source, including Wikipedia, returned a year. The video was uploaded in {upload_year}, "
+                "proposed for review as the release year."
+            ),
+            verification_status=VerificationStatus.NEEDS_REVIEW.value,
+            sitelinks_count=sitelinks_count,
+        )
 
     source_label = {
         VerificationRoute.LOCKED: LOCKED_SOURCE_LABEL,

@@ -475,3 +475,23 @@ def test_resolve_metadata_falls_back_to_regex_names_as_single_main_artist(mocker
     service.resolve_metadata("https://youtube.com/watch?v=abc12345678")
 
     pipeline_mock.assert_called_once_with("Test Song", ["Test Artist"], "8B5CF6", [])
+
+
+def test_a_song_no_source_knows_is_proposed_for_review_with_its_upload_year(mocker):
+    mocker.patch.object(service, "evaluate_lock", return_value=(None, "low", service.VerificationRoute.MANUAL_REVIEW))
+
+    result = service.run_reconciliation_stage(
+        "Why We Lose", ["Cartoon"], [], "#123456", [], [], [], [], None, upload_year=2015)
+
+    assert result.release_year == 2015
+    assert result.verification_status == "NEEDS_REVIEW"
+    assert result.source == service.UPLOAD_YEAR_SOURCE_LABEL
+
+
+def test_without_an_upload_year_a_song_no_source_knows_stays_manual(mocker):
+    mocker.patch.object(service, "evaluate_lock", return_value=(None, "low", service.VerificationRoute.MANUAL_REVIEW))
+
+    result = service.run_reconciliation_stage("Why We Lose", ["Cartoon"], [], "#123456", [], [], [], [], None)
+
+    assert result.release_year is None
+    assert result.verification_status == "MANUAL_ENTRY"

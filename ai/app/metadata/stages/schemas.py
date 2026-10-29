@@ -24,6 +24,7 @@ class VideoFacts(StageModel):
     channel_title: str
     duration_seconds: int | None = None
     category_id: str
+    upload_year: int | None = None
 
 
 class YoutubeStageOutcome(StrEnum):

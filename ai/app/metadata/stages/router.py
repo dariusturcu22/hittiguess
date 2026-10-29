@@ -65,7 +65,13 @@ def _video_facts(youtube_data: dict[str, object]) -> VideoFacts:
         channel_title=str(youtube_data.get("channel_title", "")),
         duration_seconds=youtube_data.get("duration_seconds"),
         category_id=str(youtube_data.get("category_id", "")),
+        upload_year=_upload_year(youtube_data),
     )
+
+
+def _upload_year(youtube_data: dict[str, object]) -> int | None:
+    upload_year = str(youtube_data.get("upload_year", ""))
+    return int(upload_year) if upload_year.isdigit() else None
 
 
 def _youtube_stage_response(
@@ -181,6 +187,7 @@ def llm_reconcile_stage(request: ReconcileStageRequest):
             request.wikipedia_candidates,
             request.sitelinks_count,
             raise_on_failure=True,
+            upload_year=request.video.upload_year,
         )
         return service.finish_resolution(result, request.video.duration_seconds)
 
