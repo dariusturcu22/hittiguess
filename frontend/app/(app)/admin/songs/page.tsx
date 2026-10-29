@@ -89,6 +89,11 @@ function CatalogRowCells({ song }: { song: AdminCatalogSongDTO }) {
       <span className={`${catalogColumnClassName("year")} text-[13px] text-card-foreground`}>
         {song.releaseYear ?? <span className="text-icon-muted">pending</span>}
       </span>
+      <span className={`${catalogColumnClassName("proposedYear")} text-[13px] text-card-foreground`}>
+        {song.proposedReleaseYear != null ? (
+          <span className="font-semibold text-accent">{song.proposedReleaseYear}</span>
+        ) : null}
+      </span>
       <span className={catalogColumnClassName("status")}>
         <StatusPill status={song.status} />
       </span>
@@ -139,6 +144,7 @@ export default function SongCatalogPage() {
   const [typedSearch, setTypedSearch] = React.useState("");
   const [appliedSearch, setAppliedSearch] = React.useState<string | undefined>(undefined);
   const [statusFilter, setStatusFilter] = React.useState<CatalogStatus | null>(null);
+  const [proposedFilter, setProposedFilter] = React.useState<boolean | undefined>(undefined);
   const [page, setPage] = React.useState(FIRST_PAGE);
   const [selectedSongId, setSelectedSongId] = React.useState<number | null>(null);
 
@@ -157,6 +163,7 @@ export default function SongCatalogPage() {
     {
       query: appliedSearch,
       status: statusFilter ?? undefined,
+      proposedYear: proposedFilter,
       page,
       size: CATALOG_PAGE_SIZE,
     },
@@ -170,8 +177,9 @@ export default function SongCatalogPage() {
   const totalPages = catalogPage?.totalPages ?? 0;
   const shownPage = catalogPage?.page ?? page;
 
-  function selectStatus(nextStatus: CatalogStatus | null) {
-    setStatusFilter(nextStatus);
+  function selectFilter(filter: (typeof STATUS_FILTERS)[number]) {
+    setStatusFilter(filter.status);
+    setProposedFilter(filter.proposedYear);
     setPage(FIRST_PAGE);
   }
 
@@ -207,14 +215,17 @@ export default function SongCatalogPage() {
 
       <div className="mb-3.5 flex shrink-0 flex-wrap gap-2" role="group" aria-label="Filter by status">
         {STATUS_FILTERS.map((filter) => {
-          const isActive = statusFilter === filter.status;
+          const isActive =
+            filter.proposedYear != null
+              ? Boolean(proposedFilter)
+              : statusFilter === filter.status && !proposedFilter;
           const count = catalogPage?.counts?.[filter.countKey];
           return (
             <button
               key={filter.label}
               type="button"
               aria-pressed={isActive}
-              onClick={() => selectStatus(filter.status)}
+              onClick={() => selectFilter(filter)}
               className={`whitespace-nowrap rounded-full border-2 px-3.5 py-[7px] text-xs font-semibold ${
                 isActive
                   ? "border-accent bg-accent/12 text-accent dark:bg-accent/16"

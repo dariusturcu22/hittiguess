@@ -1,12 +1,11 @@
 import re
 import time
-import unicodedata
 from urllib.parse import quote
 
 from app.metadata.sources.http_retry import get_with_backoff
 from app.metadata.sources.pace_state import STAGE_MUSICBRAINZ
 from app.metadata.sources.pacing import PersistedRequestPacer
-from app.metadata.sources.util import METADATA_SOURCE_USER_AGENT, escape_lucene
+from app.metadata.sources.util import METADATA_SOURCE_USER_AGENT, escape_lucene, normalize_name
 from app.observability.error_reporting import report_source_failure
 
 SOURCE_NAME = "musicbrainz"
@@ -113,15 +112,6 @@ def _get(url: str) -> dict:
     return response.json()
 
 
-def _normalize_name(value: str) -> str:
-    """Lowercases a name, removes accents, and turns punctuation into spaces so
-    stylized and plain spellings compare as the same words."""
-    decomposed = unicodedata.normalize("NFKD", value or "")
-    without_accents = "".join(character for character in decomposed if not unicodedata.combining(character))
-    without_punctuation = re.sub(r"[\W_]+", " ", without_accents)
-    return re.sub(r"\s+", " ", without_punctuation).strip().lower()
-
-
 def _artist_credit_names(artist_credit: list[dict]) -> list[str]:
     names = []
     for credit in artist_credit:
@@ -139,11 +129,11 @@ def _artist_credit_display(artist_credit: list[dict]) -> str:
 
 
 def _artist_credit_matches(artist_credit: list[dict], main_artists: list[str]) -> bool:
-    normalized_credit = " ".join(_normalize_name(name) for name in _artist_credit_names(artist_credit))
+    normalized_credit = " ".join(normalize_name(name) for name in _artist_credit_names(artist_credit))
     if not normalized_credit:
         return False
     for artist in main_artists:
-        normalized_artist = _normalize_name(artist)
+        normalized_artist = normalize_name(artist)
         if normalized_artist and re.search(rf"(?<!\w){re.escape(normalized_artist)}(?!\w)", normalized_credit):
             return True
     return False
@@ -164,8 +154,8 @@ def _is_original_track_release_group(release_group: dict) -> bool:
 
 
 def _title_matches(candidate_title: str, song_title: str) -> bool:
-    candidate = _normalize_name(candidate_title)
-    song = _normalize_name(song_title)
+    candidate = normalize_name(candidate_title)
+    song = normalize_name(song_title)
     if not candidate or not song:
         return False
     if candidate == song:

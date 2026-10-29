@@ -2,6 +2,7 @@ from app.metadata.sources.util import (
     build_youtube_api_url,
     build_youtube_playlist_items_api_url,
     clean_youtube_text,
+    contains_name,
     escape_lucene,
     extract_youtube_playlist_id,
     extract_youtube_video_id,
@@ -148,3 +149,11 @@ def test_strip_featured_artist_suffix_preserves_place_name_with_ft_abbreviation(
 
 def test_strip_featured_artist_suffix_preserves_word_containing_ft():
     assert strip_featured_artist_suffix("Gift. Reprise") == "Gift. Reprise"
+
+
+def test_contains_name_matches_whole_words_only():
+    assert contains_name("2010 song by Rihanna ft. Drake", "Drake")
+    assert contains_name("Beyoncé", "Beyonce")
+    assert not contains_name("Siamese Dream", "Sia")
+    assert not contains_name("Asia", "Sia")
+    assert not contains_name("anything", "")

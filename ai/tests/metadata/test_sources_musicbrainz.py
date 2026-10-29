@@ -528,14 +528,14 @@ def test_the_musicbrainz_stage_passes_the_main_artist_list_end_to_end(mocker):
         (service.WIKIDATA_SOURCE, wikidata),
     ),
 )
-def test_other_structured_sources_receive_the_joined_artist_string(
+def test_other_structured_sources_receive_the_artist_list(
     source_name, source_module, mocker
 ):
     search = mocker.patch.object(source_module, "search", return_value=[])
 
     service.run_structured_source_stage(source_name, "Test Song", ["Test Artist", "Second Artist"])
 
-    search.assert_called_once_with("Test Song", "Test Artist & Second Artist")
+    search.assert_called_once_with("Test Song", ["Test Artist", "Second Artist"])
 
 
 @respx.mock

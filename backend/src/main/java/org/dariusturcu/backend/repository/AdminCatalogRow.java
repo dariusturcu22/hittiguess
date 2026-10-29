@@ -17,6 +17,7 @@ public record AdminCatalogRow(
         String title,
         List<String> artists,
         Integer releaseYear,
+        Integer proposedReleaseYear,
         CatalogSongStatus status,
         boolean hasUnfinishedRecheck,
         boolean hasFinishedRecheck,

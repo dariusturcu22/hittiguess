@@ -15,6 +15,7 @@ export interface AdminCatalogSongDTO {
   title?: string;
   artists: string[];
   releaseYear?: number;
+  proposedReleaseYear?: number;
   status: AdminCatalogSongDTOStatus;
   pipeline: AdminCatalogSongDTOPipeline;
   createdAt?: string;

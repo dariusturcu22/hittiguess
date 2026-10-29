@@ -3,6 +3,11 @@
 import React from "react";
 import { SongPipelineActions } from "./song-pipeline-actions";
 import { SourceFindings } from "./source-findings";
+import {
+  useUpdateCatalogSong,
+  useDismissProposal,
+} from "@/hooks/generated/admin-song-pipeline/admin-song-pipeline";
+import { useAdminMutationFeedback } from "../backfill-queue/pipeline-ui";
 
 import { useSongDetail } from "@/hooks/generated/admin-song-catalog/admin-song-catalog";
 import type { AdminQueueHistoryEntryDTO } from "@/hooks/models/adminQueueHistoryEntryDTO";
@@ -72,6 +77,11 @@ function DetailBody({
   detail: AdminSongDetailDTO;
   onDelete: () => void;
 }) {
+  const feedback = useAdminMutationFeedback();
+  const updateSong = useUpdateCatalogSong({ mutation: feedback });
+  const dismiss = useDismissProposal({ mutation: feedback });
+  const isPending = updateSong.isPending || dismiss.isPending;
+
   const artistNames =
     detail.artists.length > 0 ? detail.artists.join(", ") : "unknown";
   const queueHistory = detail.queueHistory;
@@ -94,6 +104,49 @@ function DetailBody({
         </span>
       </div>
 
+      {detail.proposedReleaseYear != null && (
+        <div className="mb-4 rounded-[12px] border-2 border-accent/40 bg-accent/10 p-3.5 text-xs">
+          <div className="flex items-center justify-between">
+            <div>
+              <span className="font-semibold text-accent">Proposed release year:</span>{" "}
+              <span className="font-display text-sm font-bold text-card-foreground">
+                {detail.proposedReleaseYear}
+              </span>
+              <span className="ml-2 text-muted-foreground">
+                (stored: {detail.releaseYear ?? "pending"})
+              </span>
+            </div>
+          </div>
+          <div className="mt-3 flex gap-2">
+            <button
+              type="button"
+              disabled={isPending}
+              onClick={() => {
+                if (detail.proposedReleaseYear != null) {
+                  updateSong.mutate({
+                    id: detail.songId,
+                    data: { releaseYear: detail.proposedReleaseYear },
+                  });
+                }
+              }}
+              className="rounded-full bg-accent px-3 py-1 font-display text-[10px] font-semibold text-accent-foreground hover:opacity-90 disabled:opacity-50"
+            >
+              Accept
+            </button>
+            <button
+              type="button"
+              disabled={isPending}
+              onClick={() => {
+                dismiss.mutate({ id: detail.songId });
+              }}
+              className="rounded-full bg-secondary px-3 py-1 font-display text-[10px] text-secondary-foreground hover:bg-secondary/80 disabled:opacity-50"
+            >
+              Dismiss
+            </button>
+          </div>
+        </div>
+      )}
+
       <SourceFindings
         sources={detail.sourceFindings}
         reason={detail.reviewReason}
@@ -107,6 +160,10 @@ function DetailBody({
           Stored values
         </div>
         <div className="mb-4 rounded-[12px] bg-background px-3.5 dark:bg-card py-2.5 text-xs">
+          <StoredValueRow label="Stored year" value={detail.releaseYear ?? "pending"} />
+          {detail.proposedReleaseYear != null && (
+            <StoredValueRow label="Proposed year" value={detail.proposedReleaseYear} />
+          )}
           <StoredValueRow label="YouTube ID" value={detail.youtubeId} />
           <StoredValueRow
             label="Verification status"

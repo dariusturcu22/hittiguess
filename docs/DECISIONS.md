@@ -1350,3 +1350,44 @@ Why: the active player's browser sends up to 20 preview frames per second while 
 Decision: leaving a current group to create a new one or join another runs as a single database transaction via an optional `replaceCurrentGroup` flag on `CreateGroupRequest` and `JoinGroupRequest`. When true and the caller holds an active membership, the backend checks validity (codes, room capacity, group status), leaves the current membership, and creates or joins the target group in the same transaction. Membership leave events are published only when the whole operation commits. A running game session blocks replacement with a conflict error. The frontend makes one request for both flows rather than chaining a leave call into a create or join call.
 
 Why: chaining two independent HTTP requests from the browser meant any failure on the second step left the user stranded with no group, having already relinquished admin rights or deleted their previous room. Combining both steps into one server transaction ensures that an invalid join or downstream failure leaves the original membership intact.
+
+## 2026-10-29 | Discogs masterless releases are kept only when no master-based candidate exists
+
+Decision: Discogs search queries use structured parameters (`artist`, `track`, and `type=release`), and results are filtered to match the main artists and exclude compilations, unofficial releases, and releases titled with "Various". Masterless release years are collected only as a fallback when no master-based candidate exists across the queried track and album for that song. When one or more master-based candidates exist, masterless candidates are discarded.
+
+Why: masterless releases include promo compilations, samplers, and unofficial bootlegs whose release years frequently predate the canonical release or misattribute a compilation date to the song. Canonical master releases take precedence whenever they are present, while masterless candidates remain available for niche or independent releases that lack a master entry on Discogs.
+
+## 2026-10-29 | One-year cluster lock requires at least two sources for the earliest year
+
+Decision: within the one-year source cluster lock path in `_find_wikipedia_assisted_lock_year`, the earliest year is selected only when at least two sources report it. If only a single source reports the earlier year, the lock selects the year supported by the most sources, with any tie broken in favor of the earlier year. The exact-majority rule requiring three or more identical years remains unchanged.
+
+Why: when sources disagree within a one-year window, a single dissenting source reporting the earlier year often reflects a promo compilation, pre-release sampler, or album reissue predating the official release of the song itself. Requiring two sources before accepting the earlier cluster bound prevents single-source outliers from locking a song one year too early.
+
+---
+
+## 2026-10-29 | Pipeline reruns propose year updates on verified songs instead of overwriting them
+
+Decision: when a pipeline run completes for an already verified song, any differing year from the rerun is recorded as a proposal in `proposed_release_year` and `proposed_at`. The verified song's stored release year and verification status remain unchanged. When the rerun agrees with the stored year, any existing proposal is cleared. Administrators can review proposals in the song catalog and accept or dismiss them. Unverified songs continue to be updated directly on completion.
+
+Why: catalog rechecks verify batches of songs against updated pipeline heuristics. Automatically overwriting existing verified songs could introduce false corrections into active playlists and game sessions without human verification. Recording differences as proposals lets administrators audit discrepancies and accept valid changes without risk of unwanted mutation.
+
+## 2026-10-29 | A rerun of a catalog video skips its own song in the duplicate check and runs as an admin recheck
+
+Decision: the youtube-metadata stage passes the video ID to the verified-duplicate check, and the check never matches a song that already owns that video as its main or an alternate YouTube ID. An admin rerun of one song and the catalog recheck queue their runs with the new `ADMIN_RECHECK` origin instead of `ADMIN_SEED`. The catalog shows such a song's pipeline as `FULL`, and an `ADMIN_RECHECK` run is never evidence of who added the song. The catalog recheck queues each run in its own transaction.
+
+Why: every verified song with an embedding matched itself at distance zero, so the rerun returned the stored year as a duplicate and no proposal could ever appear; the recheck and the drawer's rerun did nothing for exactly the songs they exist to correct. Queuing the runs as `ADMIN_SEED` would also have relabelled every song added before tracking as an admin seed.
+
+---
+
+## 2026-10-29 | Pipeline completion guards against duplicate songs by normalized key
+
+Decision: `PipelineCompletionService` computes a normalized key from the primary main artist and title before persisting a completed run. A Postgres transaction-level advisory lock keyed on the normalized key serializes parallel completions of the same track. If a song with the same normalized key exists in the catalog under any status, the completed video is linked as an alternate YouTube ID of that song rather than inserting a duplicate song row. An admin merge endpoint (`POST /api/admin/songs/{keepId}/merge/{dropId}`) moves playlist links and alternate IDs from the duplicate to the canonical song and deletes the duplicate, locking both songs in ascending ID order and refusing the merge while either song is in an active game session.
+
+Why: the identification-time duplicate check only evaluated already-verified songs with embeddings, allowing parallel batch imports of different videos for the same track to miss each other and store multiple copies of the same song in the catalog. Deterministic key normalization and advisory transaction locking at completion serialize parallel saves and preserve single canonical song entries.
+
+## 2026-10-29 | Songs store their normalized artist and title key for the completion guard
+
+Decision: `songs.normalized_key` (V52, indexed, not unique) holds `GameSongList.normalizedKey` of the first main artist and the title. The pipeline save, the playlist add, and the playlist metadata edit set it, and `SongNormalizedKeyBackfill` fills empty keys on startup. The completion guard looks up another song with the same key by that index instead of loading the catalog. A change to the normalization ships with a migration that sets the column back to NULL so the next startup recomputes it.
+
+Why: the guard first loaded every song with its artists on every completed run, which grows with the catalog and runs once per song during a full recheck. One indexed lookup per completion keeps the cost flat.
+

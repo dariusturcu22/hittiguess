@@ -19,6 +19,11 @@ _FIND_BEST_VERIFIED_MATCH_QUERY = """
     FROM songs s
     JOIN song_artists ON song_artists.song_id = s.id
     WHERE s.verification_status = :verified_status AND s.embedding IS NOT NULL
+      AND (CAST(:excluded_youtube_id AS VARCHAR) IS NULL OR (
+          s.youtube_id IS DISTINCT FROM :excluded_youtube_id
+          AND NOT EXISTS (
+              SELECT FROM alternate_youtube_ids alternate
+              WHERE alternate.song_id = s.id AND alternate.youtube_id = :excluded_youtube_id)))
     GROUP BY s.id
     ORDER BY cosine_distance ASC
     LIMIT 1
@@ -36,16 +41,21 @@ def _rows_as_dicts(connection, rows) -> list[dict]:
     return [dict(zip(column_names, row)) for row in rows]
 
 
-def find_best_verified_match(embedding: list[float]) -> VerifiedSongMatch | None:
+def find_best_verified_match(
+    embedding: list[float], excluded_youtube_id: str | None = None
+) -> VerifiedSongMatch | None:
     """Finds the closest verified song to the given embedding by cosine
     distance, if any verified song has a stored embedding at all. The caller
-    decides what distance counts as a high-confidence match."""
+    decides what distance counts as a high-confidence match. A song that already
+    owns excluded_youtube_id, as its main or an alternate video, is never the
+    match: rerunning a catalog video must resolve it again, not find itself."""
     connection = get_connection()
     try:
         rows = connection.run(
             _FIND_BEST_VERIFIED_MATCH_QUERY,
             query_embedding=Vector(embedding),
             verified_status=VERIFICATION_STATUS_VERIFIED,
+            excluded_youtube_id=excluded_youtube_id,
         )
         matching_rows = _rows_as_dicts(connection, rows)
     finally:

@@ -1,6 +1,9 @@
 package org.dariusturcu.backend.pipeline;
 
+import org.dariusturcu.backend.model.ai.SongMetadataResponse;
 import org.dariusturcu.backend.model.song.Song;
+import org.dariusturcu.backend.repository.SongRepository;
+import org.dariusturcu.backend.service.GameSongList;
 import org.dariusturcu.backend.service.SongCatalogService;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -12,18 +15,24 @@ import java.time.Instant;
 
 @Service
 public class PipelineCompletionService {
+    private static final String NORMALIZED_KEY_LOCK_PREFIX = "song-normalized-key:";
+    private static final int PRIMARY_ARTIST_INDEX = 0;
+
     private final PipelineJobService engine;
     private final PipelineJobRepository repository;
     private final StagePayloads payloads;
     private final SongCatalogService catalog;
+    private final SongRepository songRepository;
     private final JdbcTemplate core;
 
     public PipelineCompletionService(PipelineJobService engine, PipelineJobRepository repository,
-            StagePayloads payloads, SongCatalogService catalog, @Qualifier("coreJdbcTemplate") JdbcTemplate core) {
+            StagePayloads payloads, SongCatalogService catalog, SongRepository songRepository,
+            @Qualifier("coreJdbcTemplate") JdbcTemplate core) {
         this.engine = engine;
         this.repository = repository;
         this.payloads = payloads;
         this.catalog = catalog;
+        this.songRepository = songRepository;
         this.core = core;
     }
 
@@ -39,12 +48,33 @@ public class PipelineCompletionService {
         if (run.status() != PipelineRunStatus.ACTIVE || run.readyToSaveAt() == null) {
             return;
         }
-        Song song = catalog.persist(run.youtubeId(), payloads.finalMetadata(engine.jobsOfRun(run.id())), null);
+        SongMetadataResponse finalMetadata = payloads.finalMetadata(engine.jobsOfRun(run.id()));
+        Song song = catalog.persist(run.youtubeId(), withSameSongMatch(run.youtubeId(), finalMetadata), null);
         core.update("""
                 UPDATE pending_imports SET status = 'DONE', patient_year = ?, processed_at = now() AT TIME ZONE 'UTC',
                     failure_reason = NULL
                 WHERE youtube_id = ? AND origin = ? AND status IN ('PENDING', 'PROCESSING')
                 """, song.getReleaseYear(), run.youtubeId(), run.origin().name());
         repository.finishRun(run.id(), PipelineRunStatus.DONE, Instant.now());
+    }
+
+    // Two videos of one song can finish the pipeline in parallel or miss the AI's embedding
+    // match, so the final artist and title are looked up among every stored song in any status
+    // by the indexed normalized key. The key's advisory lock is held until commit, so two
+    // completions of one key save one song.
+    private SongMetadataResponse withSameSongMatch(String youtubeId, SongMetadataResponse metadata) {
+        if (metadata.canonicalSongId() != null || metadata.title() == null || metadata.title().isBlank()
+                || metadata.mainArtists() == null || metadata.mainArtists().isEmpty()) {
+            return metadata;
+        }
+        String normalizedKey = GameSongList.normalizedKey(metadata.mainArtists().get(PRIMARY_ARTIST_INDEX), metadata.title());
+        songRepository.acquireTransactionLock(NORMALIZED_KEY_LOCK_PREFIX + normalizedKey);
+        return songRepository.findOthersWithNormalizedKey(normalizedKey, youtubeId).stream().findFirst()
+                .map(sameSong -> new SongMetadataResponse(
+                        metadata.title(), metadata.mainArtists(), metadata.featuredArtists(), metadata.releaseYear(),
+                        metadata.color(), metadata.confidence(), metadata.source(), metadata.reasoning(),
+                        metadata.verificationStatus(), metadata.sitelinksCount(), metadata.durationSeconds(),
+                        sameSong.getId()))
+                .orElse(metadata);
     }
 }

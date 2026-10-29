@@ -28,6 +28,7 @@ CREATE_SCHEMA_STATEMENTS = (
         color VARCHAR(255),
         verification_status VARCHAR(255) NOT NULL DEFAULT 'UNVERIFIED',
         confidence VARCHAR(255),
+        youtube_id VARCHAR(255),
         embedding vector(1536)
     )
     """,
@@ -38,6 +39,13 @@ CREATE_SCHEMA_STATEMENTS = (
         name VARCHAR(255) NOT NULL,
         role VARCHAR(255) NOT NULL,
         display_order INTEGER NOT NULL
+    )
+    """,
+    """
+    CREATE TABLE alternate_youtube_ids (
+        id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+        youtube_id VARCHAR(255) NOT NULL UNIQUE,
+        song_id BIGINT NOT NULL REFERENCES songs (id)
     )
     """,
 )
@@ -93,7 +101,7 @@ def _clear_songs_between_tests(postgres_connection_url):
     yield
     connection = pg8000.native.Connection(**_parse_database_url(postgres_connection_url))
     try:
-        connection.run("TRUNCATE TABLE song_artists, songs RESTART IDENTITY CASCADE")
+        connection.run("TRUNCATE TABLE alternate_youtube_ids, song_artists, songs RESTART IDENTITY CASCADE")
     finally:
         connection.close()
 
