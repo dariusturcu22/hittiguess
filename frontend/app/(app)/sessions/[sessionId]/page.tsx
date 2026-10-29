@@ -205,7 +205,7 @@ function RolePill({ label, name, colorIndex, size = "small" }: { label: string; 
 
 function DashedGap({ tone = "primary", isSmall = false, children }: { tone?: "primary" | "green" | "muted"; isSmall?: boolean; children?: ReactNode }) {
   const toneClasses = tone === "green" ? "border-green" : tone === "muted" ? "border-muted-foreground/60" : "border-primary";
-  return <div data-timeline-focus="" className={`gameplay-gap-pulse flex h-[132px] items-center justify-center rounded-[22px] border-dashed sm:h-[168px] ${isSmall ? "w-16 rounded-2xl border-2" : "w-[118px] border-[3px] sm:w-[150px]"} ${toneClasses}`}>{children ?? <ArrowDown className={`size-5 ${tone === "green" ? "text-green" : tone === "muted" ? "text-muted-foreground" : "text-primary"}`} strokeWidth={2.5} />}</div>;
+  return <div data-timeline-focus="" className={`gameplay-gap-pulse flex h-[168px] items-center justify-center rounded-[22px] border-dashed ${isSmall ? "w-16 rounded-2xl border-2" : "w-[150px] border-[3px]"} ${toneClasses}`}>{children ?? <ArrowDown className={`size-5 ${tone === "green" ? "text-green" : tone === "muted" ? "text-muted-foreground" : "text-primary"}`} strokeWidth={2.5} />}</div>;
 }
 
 function BetCoin({ bettorName, colorIndex }: { bettorName?: string; colorIndex: number }) {
@@ -728,8 +728,8 @@ function GameSessionScreen({ params }: PageProps) {
           </>
           : <>
             {watchUrl
-              ? <a href={youtubeLinkOutHref(watchUrl, navigator.userAgent)} target={YOUTUBE_LINK_OUT_TARGET} rel={YOUTUBE_LINK_OUT_REL} className="inline-flex items-center gap-2.5 rounded-full bg-primary px-6 py-3 font-display text-[13px] text-primary-foreground shadow-[3px_3px_0_var(--shadow-color)] transition-transform hover:-translate-y-0.5">Open on YouTube to play<ExternalLink className="size-4" /></a>
-              : <span className="inline-flex items-center gap-2.5 rounded-full bg-primary px-6 py-3 font-display text-[13px] text-primary-foreground opacity-55">Open on YouTube to play<ExternalLink className="size-4" /></span>}
+              ? <a href={youtubeLinkOutHref(watchUrl, navigator.userAgent)} target={YOUTUBE_LINK_OUT_TARGET} rel={YOUTUBE_LINK_OUT_REL} className="inline-flex items-center gap-[9px] rounded-full bg-accent p-[13px_22px] font-display text-[13px] text-accent-foreground shadow-[4px_4px_0_rgba(0,0,0,0.4)] transition-transform hover:-translate-y-0.5">Open on YouTube to play<ExternalLink className="size-4" /></a>
+              : <span className="inline-flex items-center gap-[9px] rounded-full bg-accent p-[13px_22px] font-display text-[13px] text-accent-foreground opacity-55">Open on YouTube to play<ExternalLink className="size-4" /></span>}
             <p className="text-xs leading-relaxed text-muted-foreground">Play it out loud. Everyone else finds out what it is when the card gets revealed.</p>
             {songMesh.isCapturing
               ? <div className="inline-flex items-center gap-2 rounded-full border-2 border-warning bg-warning/10 px-3.5 py-1.5 text-[11px] font-bold text-warning"><Volume2 className="size-3.5" />Sharing your audio with the group</div>
@@ -776,7 +776,7 @@ function GameSessionScreen({ params }: PageProps) {
   let belowTimeline: ReactNode = null;
   if (isAwaitingPlacement && isActivePlayer && droppedGap !== null && !placementDrag) {
     belowTimeline = <div className="flex w-full max-w-[560px] flex-col items-center gap-4">
-      <button type="button" onClick={lockIn} className="inline-flex items-center gap-2.5 rounded-full bg-primary px-6 py-3 font-display text-[13px] text-primary-foreground shadow-[3px_3px_0_var(--shadow-color)] transition-transform hover:-translate-y-0.5"><Lock className="size-4" strokeWidth={2.5} />Lock in answer</button>
+      <button type="button" onClick={lockIn} className="inline-flex items-center gap-[9px] rounded-full bg-accent p-[13px_22px] font-display text-[13px] text-accent-foreground shadow-[4px_4px_0_rgba(0,0,0,0.4)] transition-transform hover:-translate-y-0.5"><Lock className="size-4" strokeWidth={2.5} />Lock in answer</button>
       {guessFields}
     </div>;
   } else if (isAwaitingPlacement && !isDj) {
@@ -792,7 +792,7 @@ function GameSessionScreen({ params }: PageProps) {
 
   const isSittingOut = isActivePlayer && (roundStatus === COUNTDOWN_STATUS || roundStatus === BETTING_STATUS);
 
-  return <main className="relative flex h-full min-h-0 flex-col overflow-hidden px-6 pb-8 pt-8 sm:px-14 sm:pb-10 sm:pt-9">
+  return <main className="relative flex h-full min-h-0 flex-col overflow-hidden px-[56px] pt-[36px] pb-[40px]">
     {showsIntro ? <RoundIntro winConditionCardCount={winConditionCardCount} roundNumber={roundNumber} countdownSeconds={ROUND_INTRO_SECONDS} endsAt={introEndsAt} dj={{ name: djPlayer?.displayName, colorIndex: colorIndexOf(djPlayer) }} activePlayer={{ name: activePlayer?.displayName, colorIndex: colorIndexOf(activePlayer) }} onFinished={dismissIntro} /> : null}
     {turnNoticePlayer && !showsIntro ? <div role="status" className="absolute left-1/2 top-6 z-30 flex w-[min(520px,calc(100%-32px))] -translate-x-1/2 items-center justify-between gap-4 rounded-full border-[3px] border-primary bg-card px-7 py-4 shadow-[6px_6px_0_var(--shadow-color)] animate-in fade-in-0 slide-in-from-top-2">
       <span className="flex min-w-0 items-center gap-3"><Bell className="size-6 shrink-0 text-primary" /><span className="truncate text-base font-bold text-primary">{turnNoticePlayer.id === currentPlayer?.id ? "Your turn: get ready" : `${turnNoticePlayer.displayName ?? "A player"}'s turn: get ready`}</span></span>
@@ -807,11 +807,11 @@ function GameSessionScreen({ params }: PageProps) {
 
     <header className="flex shrink-0 items-start justify-between gap-4">
       <div className="min-w-0">
-        <h1 className="font-display text-[26px] text-foreground [text-shadow:3px_3px_0_var(--text-shadow-on-page)] sm:text-[32px]">Round {roundNumber}</h1>
-        <div className="mt-2 flex flex-wrap items-center gap-2.5 text-xs text-muted-foreground">
+        <h1 className="font-display text-[32px] text-foreground [text-shadow:3px_3px_0_rgba(0,0,0,0.4)]">Round {roundNumber}</h1>
+        <div className="mt-2 flex items-center gap-2.5 text-[12px] text-muted-foreground">
           {statusDetail ? <span>{statusDetail}</span> : null}
           {statusDetail && statusLabel ? <StatusDot /> : null}
-          {statusLabel ? <strong className={`font-display text-xs font-normal ${statusClassName}`}>{statusLabel}</strong> : null}
+          {statusLabel ? <strong className={`font-display text-[12px] font-normal ${statusClassName}`}>{statusLabel}</strong> : null}
           <span className={`size-2 rounded-full ${realtime.connectionState === "connected" ? "bg-green" : "bg-muted-foreground"}`} role="img" aria-label={`Session connection ${realtime.connectionState}`} />
         </div>
         {currentPlayer && !isSharingTabAudioSupported ? <p className="mt-1.5 text-[11px] text-muted-foreground">This device can&apos;t share audio, so you are skipped as DJ. Use a computer to DJ.</p> : null}
@@ -819,7 +819,7 @@ function GameSessionScreen({ params }: PageProps) {
       <div className="flex shrink-0 items-center gap-3">
       <label className="inline-flex shrink-0 items-center gap-2 rounded-full border-2 border-border bg-card py-2 pl-3 pr-4">
         <Volume2 className="size-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
-        <span className="hidden text-[11px] font-semibold text-card-foreground sm:inline">Song volume</span>
+        <span className="text-[11px] font-semibold text-card-foreground">Song volume</span>
         <input type="range" aria-label="Song volume" min={MINIMUM_SONG_VOLUME_PERCENT} max={MAX_SONG_VOLUME_PERCENT} value={songVolume} onChange={(event) => setSongVolume(Number(event.target.value))} className="h-1 w-20 cursor-pointer accent-primary" />
       </label>
       <AlertDialog>
@@ -840,7 +840,7 @@ function GameSessionScreen({ params }: PageProps) {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-      <div className="hidden shrink-0 items-center gap-2.5 rounded-full border-2 border-border bg-card py-2 pl-2 pr-4 sm:inline-flex">
+      <div className="inline-flex shrink-0 items-center gap-2.5 rounded-full border-2 border-border bg-card py-2 pl-2 pr-4">
         <span className="size-[26px] rounded-lg" style={{ background: playlistColor ? (playlistColor.startsWith("#") ? playlistColor : `#${playlistColor}`) : "var(--accent)" }} />
         <span className="max-w-[200px] truncate text-[13px] font-semibold text-card-foreground">{playlistName}</span>
         {songCount > 0 ? <><StatusDot /><span className="text-xs text-muted-foreground">{songCount} songs</span></> : null}
@@ -866,9 +866,9 @@ function GameSessionScreen({ params }: PageProps) {
           </div> : null}
         </div>
       </div>
-      {currentRound ? <p className="absolute bottom-[calc(50%+98px)] left-1/2 -translate-x-1/2 text-xs font-bold uppercase tracking-[3px] text-muted-foreground">Timeline</p> : null}
-      {aboveTimeline ? <div className="absolute bottom-[calc(50%+132px)] left-1/2 flex -translate-x-1/2 justify-center">{aboveTimeline}</div> : null}
-      {caption ? <p className="absolute left-1/2 top-[calc(50%+98px)] w-max max-w-[calc(100%-16px)] -translate-x-1/2 text-center text-xs text-muted-foreground">{caption}</p> : null}
+      {currentRound ? <p className="absolute bottom-[calc(50%+98px)] left-1/2 -translate-x-1/2 text-[12px] font-bold uppercase tracking-[3px] text-muted-foreground">Timeline</p> : null}
+      {aboveTimeline ? <div className="absolute bottom-[calc(50%+148px)] left-1/2 flex -translate-x-1/2 justify-center">{aboveTimeline}</div> : null}
+      {caption ? <p className="absolute left-1/2 top-[calc(50%+98px)] w-max max-w-[calc(100%-16px)] -translate-x-1/2 text-center text-[12px] text-muted-foreground">{caption}</p> : null}
       {belowTimeline ? <div className="absolute left-1/2 top-[calc(50%+148px)] flex w-full -translate-x-1/2 justify-center px-3">{belowTimeline}</div> : null}
       <div aria-live="polite" className="absolute bottom-0 left-1/2 w-max max-w-full -translate-x-1/2"><p key={guessFeedbackSequence} className={`text-center text-xs ${isGuessResultCorrect === true ? "font-semibold text-green" : isGuessResultCorrect === false ? "incorrect-guess-feedback text-destructive" : "text-muted-foreground"}`}>{feedbackMessage}</p></div>
     </section>
@@ -899,9 +899,9 @@ function GameSessionScreen({ params }: PageProps) {
 }
 
 function GuessPill({ icon, placeholder, label, value, onChange, onSubmit, isClosed }: { icon: ReactNode; placeholder: string; label: string; value: string; onChange: (value: string) => void; onSubmit: () => void; isClosed: boolean }) {
-  return <label className={`flex h-[52px] w-full min-w-0 items-center gap-2.5 rounded-full border-2 border-border bg-card pl-4 pr-1.5 text-muted-foreground shadow-[3px_3px_0_var(--shadow-color)] sm:w-[260px] ${isClosed ? "opacity-60" : ""}`}>
+  return <label className={`flex h-[52px] w-[400px] min-w-0 items-center gap-2.5 rounded-full border-2 border-border bg-card pl-5 pr-2 text-muted-foreground shadow-[3px_3px_0_var(--shadow-color)] ${isClosed ? "opacity-60" : ""}`}>
     {icon}
-    <input aria-label={label} value={isClosed ? "" : value} disabled={isClosed} onChange={(event) => onChange(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") onSubmit(); }} placeholder={placeholder} className="min-w-0 flex-1 bg-transparent text-sm text-card-foreground outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed" />
-    <button type="button" onClick={onSubmit} disabled={isClosed || !value.trim()} aria-label={`Submit ${label.toLowerCase()}`} className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground transition-transform enabled:hover:scale-105 disabled:opacity-45">{isClosed ? <Lock className="size-4" strokeWidth={2.5} /> : <ArrowRight className="size-4" strokeWidth={2.5} />}</button>
+    <input aria-label={label} value={isClosed ? "" : value} disabled={isClosed} onChange={(event) => onChange(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") onSubmit(); }} placeholder={placeholder} className="min-w-0 flex-1 bg-transparent text-[13px] text-card-foreground outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed" />
+    <button type="button" onClick={onSubmit} disabled={isClosed || !value.trim()} aria-label={`Submit ${label.toLowerCase()}`} className="flex size-[34px] shrink-0 items-center justify-center rounded-full bg-accent text-accent-foreground transition-transform enabled:hover:scale-105 disabled:opacity-45">{isClosed ? <Lock className="size-[15px]" strokeWidth={2.5} /> : <ArrowRight className="size-[15px]" strokeWidth={2.5} />}</button>
   </label>;
 }
