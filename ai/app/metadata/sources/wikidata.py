@@ -124,13 +124,55 @@ def search_entity(title: str, limit: int = DEFAULT_SEARCH_LIMIT) -> dict:
     )
 
 
+FULL_TEXT_SEARCH_LIMIT = 5
+# Wikidata moved many names, people's especially, from "en" to the multilingual "mul" code,
+# so an English-only request returns no label at all for an entity like Rihanna.
+LABEL_LANGUAGES = "en|mul"
+ENGLISH_LANGUAGE = "en"
+MULTILINGUAL_LANGUAGE = "mul"
+
+
+def _english_text(values_by_language: dict) -> str | None:
+    for language in (ENGLISH_LANGUAGE, MULTILINGUAL_LANGUAGE):
+        value = values_by_language.get(language, {}).get("value")
+        if value:
+            return value
+    return None
+FIRST_MAIN_ARTIST_INDEX = 0
+
+
+def search_song_full_text(title: str, main_artists: list[str]) -> list[dict]:
+    """Full-text search over labels and descriptions with the title and the first main
+    artist. wbsearchentities only matches labels, so a short title like "Burn" returns
+    surnames and towns and never reaches the song, while "2013 single by Ellie Goulding"
+    is in the song's description. Returns search matches shaped like wbsearchentities
+    results (id, label, description), keeping only items whose label is the title."""
+    query = f"{title} {main_artists[FIRST_MAIN_ARTIST_INDEX]}" if main_artists else title
+    hits = _get({"action": "query", "list": "search", "srsearch": query,
+                 "srlimit": FULL_TEXT_SEARCH_LIMIT, "format": "json"}).get("query", {}).get("search", [])
+    entity_ids = [hit["title"] for hit in hits]
+    if not entity_ids:
+        return []
+    entities = _get({"action": "wbgetentities", "ids": "|".join(entity_ids), "props": "labels|descriptions",
+                     "languages": LABEL_LANGUAGES, "format": "json"}).get("entities", {})
+    matches = []
+    for entity_id in entity_ids:
+        entity = entities.get(entity_id, {})
+        label = _english_text(entity.get("labels", {}))
+        if normalize_name(label) != normalize_name(title):
+            continue
+        description = _english_text(entity.get("descriptions", {}))
+        matches.append({"id": entity_id, "label": label, "description": description})
+    return matches
+
+
 def get_entity(entity_id: str) -> dict:
     return _get(
         {
             "action": "wbgetentities",
             "ids": entity_id,
             "props": "labels|claims",
-            "languages": "en",
+            "languages": LABEL_LANGUAGES,
             "format": "json",
         }
     )
@@ -190,7 +232,7 @@ def get_performer_labels(performer_ids: list[str]) -> list[str]:
             "action": "wbgetentities",
             "ids": "|".join(performer_ids),
             "props": "labels",
-            "languages": "en",
+            "languages": LABEL_LANGUAGES,
             "format": "json",
         }
     )
@@ -198,15 +240,9 @@ def get_performer_labels(performer_ids: list[str]) -> list[str]:
     labels = []
     for entity_id in performer_ids:
         entity = entities.get(entity_id, {})
-        labels_dict = entity.get("labels", {})
-        english_label = labels_dict.get("en", {}).get("value")
-        if english_label:
-            labels.append(english_label)
-        elif labels_dict:
-            first_entry = next(iter(labels_dict.values()), {})
-            first_label = first_entry.get("value")
-            if first_label:
-                labels.append(first_label)
+        label = _english_text(entity.get("labels", {}))
+        if label:
+            labels.append(label)
     return labels
 
 
@@ -273,13 +309,16 @@ def _resolve_candidate(entity_id: str, description: str | None, query_label: str
 
 
 def search_or_raise(title: str, main_artists: list[str]) -> list[dict]:
-    """Looks up the track, confirms the performer against the main artists when
-    P175 is present, and looks up its parent album via P361. Returns every
+    """Looks up the track by full-text search on the title and first main artist, then
+    by title alone, confirms the performer against the main artists when P175 is present,
+    and looks up its parent album via P361. Returns every
     candidate found so downstream reconciliation sees the full picture. A failed
     request raises."""
     main_artists = to_artist_list(main_artists)
-    matches = search_entity(title).get("search", [])
-    candidate_matches = find_matching_candidates(matches, main_artists)
+    candidate_matches = find_matching_candidates(search_song_full_text(title, main_artists), main_artists)
+    if not candidate_matches:
+        matches = search_entity(title).get("search", [])
+        candidate_matches = find_matching_candidates(matches, main_artists)
     if not candidate_matches:
         return []
 
