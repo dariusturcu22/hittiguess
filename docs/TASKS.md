@@ -174,7 +174,7 @@ Catalog and pipeline:
 
 - [x] The duration refresh fetches songs that never had a duration, and keeps old durations when a refresh fails
 - [x] MusicBrainz lookups find multi-artist songs and include the albums a recording appears on
-- [ ] Wikidata and Discogs matching rejects other artists' works, compilations, and non-song entities
+- [x] Wikidata and Discogs matching rejects other artists' works, compilations, and non-song entities
 - [ ] The Wikipedia-assisted lock no longer takes the earliest of disagreeing years when only one source supports it
 - [ ] Recheck the catalog after the pipeline fixes and correct the songs in the year audit
 - [ ] A completed pipeline run attaches its video to an existing song with the same normalized artist and title instead of creating a duplicate, and the admin can merge the 12 existing duplicate pairs
