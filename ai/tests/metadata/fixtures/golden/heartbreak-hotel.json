@@ -1,0 +1,119 @@
+{
+  "id": "heartbreak-hotel",
+  "title": "Heartbreak Hotel",
+  "artist": "C.C. Catch",
+  "main_artists": ["C.C. Catch"],
+  "expected_year": 1986,
+  "wikipedia_extracted_year": 1986,
+  "musicbrainz": {
+    "release_group": {
+      "release-groups": [
+        {"id": "257ff2c5-78de-4129-bff4-e056325ef194", "score": 100, "title": "Welcome To The Heartbreak Hotel", "first-release-date": "1986-12-08", "primary-type": "Album", "secondary-types": [], "artist-credit": [{"name": "C.C. Catch", "artist": {"name": "C.C.Catch"}}]}
+      ]
+    },
+    "recording": {
+      "recordings": [
+        {"title": "Heartbreak Hotel", "score": 100, "disambiguation": null, "artist-credit": [{"name": "C.C. Catch", "artist": {"name": "C.C.Catch"}}], "releases": [{"status": "Official", "date": "1990-02", "release-group": {"id": "26e3ae6f-ff52-4712-a6f6-e07def2237fd", "title": "The Decade Remixes", "first-release-date": null, "primary-type": "Other", "secondary-types": [], "artist-credit": []}}, {"status": "Official", "date": "2011-10-23", "release-group": {"id": "32afb08b-a548-4c78-901b-21e3f60ab4c5", "title": "25th Anniversary Box", "first-release-date": null, "primary-type": "Album", "secondary-types": ["Compilation"], "artist-credit": []}}]},
+        {"title": "Heartbreak Hotel", "score": 100, "disambiguation": null, "artist-credit": [{"name": "C.C. Catch", "artist": {"name": "C.C.Catch"}}], "releases": [{"status": "Official", "date": "2014-10-10", "release-group": {"id": "83fa9344-7c7d-41aa-84e1-6db3020ce1f5", "title": "Das Beste aus Peter\u2019s Pop Show", "first-release-date": null, "primary-type": "Album", "secondary-types": ["Compilation"], "artist-credit": []}}]},
+        {"title": "Heartbreak Hotel", "score": 100, "disambiguation": null, "artist-credit": [{"name": "C.C. Catch", "artist": {"name": "C.C.Catch"}}], "releases": [{"status": "Official", "date": "1986-12-08", "release-group": {"id": "257ff2c5-78de-4129-bff4-e056325ef194", "title": "Welcome To The Heartbreak Hotel", "first-release-date": null, "primary-type": "Album", "secondary-types": [], "artist-credit": []}}]},
+        {"title": "Heartbreak Hotel", "score": 100, "disambiguation": null, "artist-credit": [{"name": "C.C. Catch", "artist": {"name": "C.C.Catch"}}], "releases": [{"status": "Official", "date": "2005", "release-group": {"id": "af42f93c-c07e-4fd2-b36b-0e186785331c", "title": "The 80's Album", "first-release-date": null, "primary-type": "Album", "secondary-types": ["Compilation"], "artist-credit": []}}]},
+        {"title": "Heartbreak Hotel", "score": 100, "disambiguation": null, "artist-credit": [{"name": "C.C. Catch", "artist": {"name": "C.C.Catch"}}], "releases": [{"status": "Official", "date": "1987", "release-group": {"id": "148d6732-177b-4173-a860-69bce20bd2e2", "title": "C.C.Catch", "first-release-date": null, "primary-type": "EP", "secondary-types": [], "artist-credit": []}}]},
+        {"title": "Heartbreak Hotel", "score": 100, "disambiguation": null, "artist-credit": [{"name": "C.C. Catch", "artist": {"name": "C.C.Catch"}}], "releases": [{"status": "Official", "date": "2006-02-15", "release-group": {"id": "6c398adf-191d-40ae-8a60-d2738f1e07c0", "title": "The Ultimate Collection: Eighties", "first-release-date": null, "primary-type": "Album", "secondary-types": ["Compilation"], "artist-credit": []}}]},
+        {"title": "Heartbreak Hotel", "score": 100, "disambiguation": null, "artist-credit": [{"name": "C.C. Catch", "artist": {"name": "C.C.Catch"}}], "releases": [{"status": null, "date": "1986", "release-group": {"id": "53c32fcd-56f8-404b-a1cc-d29e44a506d4", "title": "16 Top Hits - Highlights aus den Hitparaden", "first-release-date": null, "primary-type": "Album", "secondary-types": ["Compilation"], "artist-credit": []}}]},
+        {"title": "Heartbreak Hotel (instrumental)", "score": 94, "disambiguation": null, "artist-credit": [{"name": "C.C. Catch", "artist": {"name": "C.C.Catch"}}], "releases": [{"status": "Official", "date": "2011-10-23", "release-group": {"id": "32afb08b-a548-4c78-901b-21e3f60ab4c5", "title": "25th Anniversary Box", "first-release-date": null, "primary-type": "Album", "secondary-types": ["Compilation"], "artist-credit": []}}]},
+        {"title": "Heartbreak Hotel (Decade Remix)", "score": 89, "disambiguation": null, "artist-credit": [{"name": "C.C. Catch", "artist": {"name": "C.C.Catch"}}], "releases": [{"status": "Official", "date": "2007-11-23", "release-group": {"id": "b161a47f-436e-48e6-b449-4c1e294aec9f", "title": "Ultimate C.C. Catch", "first-release-date": null, "primary-type": "Album", "secondary-types": ["Compilation"], "artist-credit": []}}]},
+        {"title": "Heartbreak Hotel (Ren\u00e9 Hatersson's Point Of View Mix)", "score": 78, "disambiguation": null, "artist-credit": [{"name": "C.C. Catch", "artist": {"name": "C.C.Catch"}}], "releases": [{"status": "Bootleg", "date": "2002", "release-group": {"id": "3843e75e-fdfd-473d-be82-387996686ee2", "title": "The Hurricane Mix", "first-release-date": null, "primary-type": "Album", "secondary-types": ["Compilation"], "artist-credit": []}}]}
+      ]
+    }
+  },
+  "discogs": {
+    "releases": {
+      "results": [
+        {"id": 15779029, "title": "C.C. Catch - Heartbreak Hotel", "year": "1987", "master_id": 65287, "format": ["Vinyl", "7\"", "45 RPM", "Single", "Promo"]},
+        {"id": 3697535, "title": "C.C. Catch - Heartbreak Hotel \u00b7Room 69 - Mix\u00b7", "year": null, "master_id": 65287, "format": ["CDr", "Single", "Unofficial Release"]},
+        {"id": 1692431, "title": "C.C. Catch - Heartbreak Hotel", "year": "1986", "master_id": 65287, "format": ["Vinyl", "12\"", "Maxi-Single", "Stereo"]},
+        {"id": 572523, "title": "C.C. Catch - Heartbreak Hotel \u00b7Room 69 - Mix\u00b7", "year": "1986", "master_id": 65287, "format": ["Vinyl", "12\"", "45 RPM", "Maxi-Single"]},
+        {"id": 27447939, "title": "C.C. Catch - Heartbreak Hotel \u00b7Room 69 - Mix\u00b7", "year": "1986", "master_id": 65287, "format": ["Vinyl", "12\"", "45 RPM", "Maxi-Single"]},
+        {"id": 1440378, "title": "C.C. Catch - Heartbreak Hotel \u00b7Room 69 - Mix\u00b7", "year": "1986", "master_id": 65287, "format": ["Vinyl", "12\"", "45 RPM", "Maxi-Single", "Stereo"]},
+        {"id": 20615539, "title": "C.C. Catch - Heartbreak Hotel (Room 69 - Mix)", "year": "1986", "master_id": 65287, "format": ["Vinyl", "12\"", "45 RPM", "Maxi-Single", "Stereo"]},
+        {"id": 3172304, "title": "C.C. Catch - Heartbreak Hotel \u00b7Room 69 - Mix\u00b7", "year": "1986", "master_id": 65287, "format": ["Vinyl", "12\"", "45 RPM", "Maxi-Single", "Stereo"]},
+        {"id": 10024569, "title": "C.C. Catch - Heartbreak Hotel \u00b7Room 69 - Mix\u00b7", "year": "1986", "master_id": 65287, "format": ["Vinyl", "12\"", "45 RPM", "Maxi-Single"]},
+        {"id": 1397656, "title": "C.C. Catch - Heartbreak Hotel", "year": "1986", "master_id": 65287, "format": ["Vinyl", "7\"", "45 RPM", "Single"]},
+        {"id": 1611837, "title": "C.C. Catch - Heartbreak Hotel", "year": "1986", "master_id": 65287, "format": ["Vinyl", "7\"", "45 RPM", "Single", "Stereo"]},
+        {"id": 697681, "title": "C.C. Catch - Heartbreak Hotel", "year": "1986", "master_id": 65287, "format": ["Vinyl", "7\"", "45 RPM", "Single", "Stereo"]},
+        {"id": 10476535, "title": "C.C. Catch - Heartbreak Hotel", "year": "1986", "master_id": 65287, "format": ["Vinyl", "7\"", "45 RPM", "Single", "Stereo"]},
+        {"id": 7082829, "title": "C.C. Catch - Heartbreak Hotel", "year": "1986", "master_id": 65287, "format": ["Vinyl", "7\"", "45 RPM", "Single"]},
+        {"id": 12178544, "title": "C.C. Catch - Heartbreak Hotel ", "year": "1986", "master_id": 65287, "format": ["Vinyl", "7\"", "45 RPM", "Single"]},
+        {"id": 14882742, "title": "C.C. Catch - Heartbreak Hotel", "year": "1986", "master_id": 65287, "format": ["Vinyl", "7\"", "45 RPM", "Single", "Promo"]},
+        {"id": 14088575, "title": "C.C. Catch - Heartbreak Hotel", "year": "1986", "master_id": 65287, "format": ["Vinyl", "7\"", "45 RPM", "Single", "Stereo"]},
+        {"id": 37823304, "title": "C.C. Catch - Heartbreak Hotel", "year": "1987", "master_id": 65287, "format": ["Vinyl", "7\"", "45 RPM", "Single", "Stereo"]},
+        {"id": 20349430, "title": "C.C. Catch - Welcome To The Heartbreak Hotel", "year": "2021", "master_id": 65304, "format": ["CD", "Album", "Reissue", "Remastered", "Unofficial Release", "Stereo"]},
+        {"id": 439828, "title": "C.C. Catch - C.C.Catch", "year": "1987", "master_id": 1164050, "format": ["Vinyl", "7\"", "45 RPM", "EP", "Stereo"]},
+        {"id": 10123164, "title": "C.C. Catch - C.C.Catch", "year": "1987", "master_id": 1164050, "format": ["Vinyl", "7\"", "45 RPM", "EP", "Stereo"]},
+        {"id": 17045232, "title": "CC Catch* = C.C \u51f1\u897f* - Best Of '98 = \u8f5f\u5929\u96f7\u518d\u73fe", "year": "1998", "master_id": 249261, "format": ["CD", "Compilation"]},
+        {"id": 584213, "title": "C.C. Catch - Diamonds - Her Greatest Hits", "year": "1988", "master_id": 65321, "format": ["CD", "Compilation"]},
+        {"id": 12538923, "title": "C.C. Catch - Vol.2 - Welcome To The Heartbreak Hotel - '87'", "year": "1987", "master_id": 65304, "format": ["Cassette", "Album", "Unofficial Release", "Stereo"]},
+        {"id": 11626655, "title": "C.C. Catch - Diamonds - Her Greatest Hits", "year": "1992", "master_id": 65321, "format": ["CD", "Compilation", "Reissue"]},
+        {"id": 8844784, "title": "C.C. Catch - Diamonds - Her Greatest Hits", "year": "1988", "master_id": 65321, "format": ["CD", "Compilation", "Repress"]},
+        {"id": 15154430, "title": "C.C. Catch - Diamonds - Her Greatest Hits", "year": "1988", "master_id": 65321, "format": ["CD", "Compilation", "Club Edition"]},
+        {"id": 36079363, "title": "C.C. Catch - Diamonds (Her Greatest Hits)", "year": "2025", "master_id": 0, "format": ["CD", "Compilation", "Unofficial Release", "Stereo"]},
+        {"id": 36944031, "title": "\u897f\u897f\u51f1\u73fe* = C.C. Catch - \u7cbe\u9078\u8f2f - Diamonds", "year": "1988", "master_id": 65321, "format": ["Cassette", "Compilation"]},
+        {"id": 3559163, "title": "C.C. Catch - Diamonds - Her Greatest Hits", "year": "1988", "master_id": 65321, "format": ["CD", "Compilation"]},
+        {"id": 36235990, "title": "C.C. Catch - Diamonds - Her Greatest Hits", "year": null, "master_id": 65321, "format": ["CD", "Compilation", "Reissue"]},
+        {"id": 4570063, "title": "C.C. Catch - Diamonds - Her Greatest Hits", "year": "1988", "master_id": 65321, "format": ["CD", "Compilation"]},
+        {"id": 36117340, "title": "C.C. Catch - Diamonds - Her Greatest Hits", "year": null, "master_id": 65321, "format": ["CD", "Compilation", "Repress"]},
+        {"id": 14584246, "title": "C.C. Catch = \uc528\u00b7\uc528\u00b7\uce90\uce58* - Diamonds - Her Greatest Hits", "year": "1988", "master_id": 65321, "format": ["Cassette", "Compilation"]},
+        {"id": 2727524, "title": "Zarrillo* / C.C. Catch - La Notte Dei Pensieri / Heartbreak Hotel", "year": "1987", "master_id": 0, "format": ["Vinyl", "7\"", "45 RPM", "Jukebox"]},
+        {"id": 963220, "title": "C.C. Catch - Diamonds - Her Greatest Hits", "year": "1988", "master_id": 65321, "format": ["CD", "Compilation"]},
+        {"id": 10186674, "title": "C.C. Catch - Diamonds - Her Greatest Hits", "year": "1988", "master_id": 65321, "format": ["CD", "Compilation", "Unofficial Release"]},
+        {"id": 35546251, "title": "C.C. Catch - Super Disco Hits", "year": null, "master_id": 65337, "format": ["Cassette", "Compilation", "Reissue", "Unofficial Release"]},
+        {"id": 15703642, "title": "C.C. Catch - Diamonds (Her Greatest Hits)", "year": null, "master_id": 65321, "format": ["CD", "Compilation", "Unofficial Release"]},
+        {"id": 11290520, "title": "C.C. Catch - Diamonds (Her Greatest Hits)", "year": null, "master_id": 65321, "format": ["CD", "Compilation", "Unofficial Release", "Stereo"]},
+        {"id": 31577569, "title": "CC Catch* - The Best", "year": null, "master_id": 65321, "format": ["Cassette", "Compilation", "Unofficial Release", "Stereo"]},
+        {"id": 2496705, "title": "C.C. Catch - Diamonds (Her Greatest Hits)", "year": null, "master_id": 65321, "format": ["CD", "Compilation", "Unofficial Release", "Stereo"]},
+        {"id": 13829925, "title": "C.C. Catch - Diamonds - Her Greatest Hits", "year": "1988", "master_id": 65321, "format": ["CD", "Compilation"]},
+        {"id": 15577355, "title": "C.C. Catch - Diamonds - Her Greatest Hits", "year": "1994", "master_id": 65321, "format": ["Cassette", "Compilation", "Unofficial Release"]},
+        {"id": 15002341, "title": "C.C. Catch - Super Disco Hits", "year": null, "master_id": 65337, "format": ["Cassette", "Compilation", "Reissue", "Unofficial Release"]},
+        {"id": 13241959, "title": "CC Catch* - Best Of", "year": "1998", "master_id": 249261, "format": ["CD", "Compilation"]},
+        {"id": 24409154, "title": "C.C. Catch - Festival Sopot 89", "year": null, "master_id": 0, "format": ["Cassette", "Compilation", "Unofficial Release"]},
+        {"id": 9420155, "title": "CC Catch* - Best Of '98", "year": "1998", "master_id": 249261, "format": ["Cassette", "Compilation", "Unofficial Release"]},
+        {"id": 24150461, "title": "C.C. Catch - Welcome To The Heartbreak Hotel", "year": "1986", "master_id": 65304, "format": ["Cassette", "Album", "Unofficial Release"]},
+        {"id": 16244952, "title": "C.C. Catch - Catch The Hits", "year": "2007", "master_id": 1280110, "format": ["DVD", "DVD-Video", "PAL", "Compilation", "Unofficial Release"]}
+      ]
+    },
+    "masters": {
+      "65287": {"id": 65287, "title": "Heartbreak Hotel", "year": 1986}
+    }
+  },
+  "wikidata": {
+    "search": {
+      "search": [
+        {"id": "Q1343509", "description": "song written and composed by Mae Boren, Axton Thomas Durden and Elvis Presley; originally recorded by Elvis Presley and released in 1956"},
+        {"id": "Q135014666", "description": "2022 video game developed by Hexxx game studio"},
+        {"id": "Q134469732", "description": "vocal track by Casanovas; 2013 studio recording"},
+        {"id": "Q134376679", "description": "vocal track by Jill Johnson; 2006 studio recording"},
+        {"id": "Q134359475", "description": "2006 single by Jill Johnson"},
+        {"id": "Q56526475", "description": "episode of The Simpsons (S30 E2)"},
+        {"id": "Q1592454", "description": "1999 single by Whitney Houston, Faith Evans, Kelly Price"},
+        {"id": "Q109031829", "description": "vocal track by Elvis Presley; 1956 studio recording"},
+        {"id": "Q5893164", "description": "1986 single by C. C. Catch"},
+        {"id": "Q29592076", "description": "episode of Casualty"},
+        {"id": "Q30600907", "description": "episode of Castle (S4 E8)"},
+        {"id": "Q10518746", "description": "song written and composed by Johan Fransson, Tobias Lundgren, Tim Larsson, Henrik G\u00f6ranson and Yohio, originally performed by Yohio at Melodifestivalen 2013"},
+        {"id": "Q114460190", "description": "episode of Freddy's Nightmares (S2 E2)"},
+        {"id": "Q114544615", "description": "episode of Love That Girl! (S2 E13)"},
+        {"id": "Q109031762", "description": "1956 US 7\" single by Elvis Presley; RCA Victor \u2013 47-6420"},
+        {"id": "Q2254765", "description": "2006 film by Colin Nutley"},
+        {"id": "Q16746147", "description": "episode of Porridge"},
+        {"id": "Q109033095", "description": "vocal track by Connie Francis; 1959 studio recording; cover version"},
+        {"id": "Q107009590", "description": "vocal track by Carola H\u00e4ggkvist; 2011 studio recording"},
+        {"id": "Q109031602", "description": "1956 single by Elvis Presley"}
+      ]
+    },
+    "entities": {
+      "Q5893164": {"claims": {"P577": [{"rank": "normal", "mainsnak": {"snaktype": "value", "datavalue": {"value": {"time": "+1986-00-00T00:00:00Z", "timezone": 0, "before": 0, "after": 0, "precision": 9, "calendarmodel": "http://www.wikidata.org/entity/Q1985727"}, "type": "time"}}}], "P361": [{"rank": "normal", "mainsnak": {"snaktype": "value", "datavalue": {"value": {"entity-type": "item", "numeric-id": 1936798, "id": "Q1936798"}, "type": "wikibase-entityid"}}}], "P175": [{"rank": "normal", "mainsnak": {"snaktype": "value", "datavalue": {"value": {"entity-type": "item", "numeric-id": 75851, "id": "Q75851"}, "type": "wikibase-entityid"}}}]}, "labels": {"en": {"value": "Heartbreak Hotel"}}},
+      "Q75851": {"labels": {"en": {"value": "C. C. Catch"}}},
+      "Q1936798": {"claims": {"P577": [{"rank": "normal", "mainsnak": {"snaktype": "value", "datavalue": {"value": {"time": "+1986-00-00T00:00:00Z", "timezone": 0, "before": 0, "after": 0, "precision": 9, "calendarmodel": "http://www.wikidata.org/entity/Q1985727"}, "type": "time"}}}], "P361": [{"rank": "normal", "mainsnak": {"snaktype": "value", "datavalue": {"value": {"entity-type": "item", "numeric-id": 98582182, "id": "Q98582182"}, "type": "wikibase-entityid"}}}], "P175": [{"rank": "normal", "mainsnak": {"snaktype": "value", "datavalue": {"value": {"entity-type": "item", "numeric-id": 75851, "id": "Q75851"}, "type": "wikibase-entityid"}}}]}, "labels": {"en": {"value": "Welcome to the Heartbreak Hotel"}}}
+    }
+  }
+}
