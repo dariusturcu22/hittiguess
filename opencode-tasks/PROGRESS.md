@@ -9,8 +9,8 @@ then `opencode-tasks/README.md`, then the brief named under "Current task".
 
 - Task: 18, `opencode-tasks/18-placement-preview-without-database.md`
 - Branch: `fix/placement-preview-gate`
-- Step reached: code and unit tests done
-- Next step: run full backend test suite, archive completed tasks, and open PR. Order from here: 18, 19, 09, 10, 14, 15, 16, 17
+- Step reached: tests passing
+- Next step: push branch and open PR into `main`. Order from here: 18, 19, 09, 10, 14, 15, 16, 17
 
 ## Finished tasks
 
