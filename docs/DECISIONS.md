@@ -1370,3 +1370,11 @@ Why: when sources disagree within a one-year window, a single dissenting source 
 Decision: when a pipeline run completes for an already verified song, any differing year from the rerun is recorded as a proposal in `proposed_release_year` and `proposed_at`. The verified song's stored release year and verification status remain unchanged. When the rerun agrees with the stored year, any existing proposal is cleared. Administrators can review proposals in the song catalog and accept or dismiss them. Unverified songs continue to be updated directly on completion.
 
 Why: catalog rechecks verify batches of songs against updated pipeline heuristics. Automatically overwriting existing verified songs could introduce false corrections into active playlists and game sessions without human verification. Recording differences as proposals lets administrators audit discrepancies and accept valid changes without risk of unwanted mutation.
+
+---
+
+## 2026-10-29 | Pipeline completion guards against duplicate songs by normalized key
+
+Decision: `PipelineCompletionService` computes a normalized key from the primary main artist and title before persisting a completed run. A Postgres transaction-level advisory lock keyed on the normalized key serializes parallel completions of the same track. If a song with the same normalized key exists in the catalog under any status, the completed video is linked as an alternate YouTube ID of that song rather than inserting a duplicate song row. An admin merge endpoint (`POST /api/admin/songs/{keepId}/merge/{dropId}`) moves playlist links and alternate IDs from the duplicate to the canonical song and deletes the duplicate, locking both songs in ascending ID order and refusing the merge while either song is in an active game session.
+
+Why: the identification-time duplicate check only evaluated already-verified songs with embeddings, allowing parallel batch imports of different videos for the same track to miss each other and store multiple copies of the same song in the catalog. Deterministic key normalization and advisory transaction locking at completion serialize parallel saves and preserve single canonical song entries.

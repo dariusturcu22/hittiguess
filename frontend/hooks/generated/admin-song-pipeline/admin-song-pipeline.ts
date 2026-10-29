@@ -327,3 +327,54 @@ export const useDismissProposal = <TError = unknown,
       > => {
       return useMutation(getDismissProposalMutationOptions(options), queryClient);
     }
+
+/**
+ * @summary Merge a duplicate catalog song into another song
+ */
+export const mergeSongs = (
+    keepId: number,
+    dropId: number,
+ options?: SecondParameter<typeof customInstance>,signal?: AbortSignal
+) => {
+      return customInstance<PipelineControlResultDTO>(
+      {url: `/api/admin/songs/${keepId}/merge/${dropId}`, method: 'POST', signal
+    },
+      options);
+    }
+
+export const getMergeSongsMutationKey = () => ['mergeSongs'] as const;
+
+export const getMergeSongsMutationOptions = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof mergeSongs>>, TError,MergeSongsMutationVariables, TContext>, request?: SecondParameter<typeof customInstance>}
+): UseMutationOptions<Awaited<ReturnType<typeof mergeSongs>>, TError,MergeSongsMutationVariables, TContext> => {
+
+const mutationKey = getMergeSongsMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof mergeSongs>>, MergeSongsMutationVariables> = (props) => {
+          const {keepId, dropId} = props ?? {};
+
+          return  mergeSongs(keepId, dropId, requestOptions)
+        }
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type MergeSongsMutationResult = NonNullable<Awaited<ReturnType<typeof mergeSongs>>>
+    export type MergeSongsMutationError = unknown
+    export type MergeSongsMutationVariables = {keepId: number; dropId: number}
+
+export const useMergeSongs = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof mergeSongs>>, TError,MergeSongsMutationVariables, TContext>, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof mergeSongs>>,
+        TError,
+        MergeSongsMutationVariables,
+        TContext
+      > => {
+      return useMutation(getMergeSongsMutationOptions(options), queryClient);
+    }
+

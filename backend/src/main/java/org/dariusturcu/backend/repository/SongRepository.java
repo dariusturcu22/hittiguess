@@ -60,6 +60,9 @@ public interface SongRepository extends JpaRepository<Song, Long> {
 
     List<Song> findByAddedById(Long userId);
 
+    @Query("select distinct song from Song song left join fetch song.artists")
+    List<Song> findAllWithArtists();
+
     @Query("""
             select distinct song
             from Song song

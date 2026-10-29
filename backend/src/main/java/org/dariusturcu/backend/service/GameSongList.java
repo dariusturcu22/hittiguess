@@ -31,6 +31,7 @@ public class GameSongList {
 
     private static final Pattern COMBINING_MARKS = Pattern.compile("\\p{M}+");
     private static final Pattern BRACKETED_QUALIFIER = Pattern.compile("\\([^)]*\\)|\\[[^\\]]*\\]|\\{[^}]*\\}");
+    private static final Pattern FEAT_CLAUSE = Pattern.compile("\\s+(?:feat\\.?|ft\\.?|featuring)\\s+.*", Pattern.CASE_INSENSITIVE);
     private static final Pattern DASH_SUFFIX_QUALIFIER = Pattern.compile("\\s+[-\\u2013\\u2014]\\s+.*");
     private static final Pattern PUNCTUATION = Pattern.compile("\\p{P}");
     private static final Pattern WHITESPACE_RUN = Pattern.compile("\\s+");
@@ -63,8 +64,12 @@ public class GameSongList {
         return deduplicated;
     }
 
-    static String normalizedKey(Song song) {
-        return normalize(primaryArtistName(song)) + NORMALIZED_KEY_SEPARATOR + normalize(song.getTitle());
+    public static String normalizedKey(String primaryArtist, String title) {
+        return normalize(primaryArtist) + NORMALIZED_KEY_SEPARATOR + normalize(title);
+    }
+
+    public static String normalizedKey(Song song) {
+        return normalizedKey(primaryArtistName(song), song.getTitle());
     }
 
     private static String primaryArtistName(Song song) {
@@ -77,7 +82,7 @@ public class GameSongList {
     // Case, diacritics, bracketed or dash-suffixed qualifiers, and punctuation are dropped so
     // two spellings of the same artist and title normalize to one key; whitespace runs collapse
     // to single spaces so a reordered or respaced title still matches.
-    private static String normalize(String value) {
+    public static String normalize(String value) {
         if (value == null) {
             return MISSING_VALUE;
         }
@@ -85,7 +90,8 @@ public class GameSongList {
                 COMBINING_MARKS.matcher(Normalizer.normalize(value.toLowerCase(Locale.ROOT), Normalizer.Form.NFD))
                         .replaceAll(MISSING_VALUE);
         String qualifiersRemoved = BRACKETED_QUALIFIER.matcher(caseAndDiacriticsFolded).replaceAll(MISSING_VALUE);
-        String dashSuffixRemoved = DASH_SUFFIX_QUALIFIER.matcher(qualifiersRemoved).replaceAll(MISSING_VALUE);
+        String featRemoved = FEAT_CLAUSE.matcher(qualifiersRemoved).replaceAll(MISSING_VALUE);
+        String dashSuffixRemoved = DASH_SUFFIX_QUALIFIER.matcher(featRemoved).replaceAll(MISSING_VALUE);
         String punctuationRemoved = PUNCTUATION.matcher(dashSuffixRemoved).replaceAll(MISSING_VALUE);
         return WHITESPACE_RUN.matcher(punctuationRemoved).replaceAll(NORMALIZED_WHITESPACE).trim();
     }

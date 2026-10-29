@@ -55,8 +55,7 @@ public class SongCatalogService {
         }
         if (metadata.canonicalSongId() != null) {
             Song matchedSong = songRepository.findById(metadata.canonicalSongId())
-                    .filter(candidate -> candidate.getVerificationStatus() == VerificationStatus.VERIFIED)
-                    .orElseThrow(() -> new IllegalStateException("The duplicate match no longer refers to a verified song"));
+                    .orElseThrow(() -> new IllegalStateException("The duplicate match no longer refers to an existing song"));
             if (existingSong.isPresent()) {
                 return existingSong.get();
             }

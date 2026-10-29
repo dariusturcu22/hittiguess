@@ -114,6 +114,88 @@ public class AdminSongPipelineService {
         return new PipelineControlResultDTO(1);
     }
 
+    @Transactional
+    public PipelineControlResultDTO merge(long keepId, long dropId) {
+        if (keepId == dropId) {
+            throw new IllegalArgumentException("A song cannot be merged into itself");
+        }
+        Map<String, Object> keepSong = song(keepId);
+        Map<String, Object> dropSong = song(dropId);
+
+        long firstId = Math.min(keepId, dropId);
+        long secondId = Math.max(keepId, dropId);
+        core.queryForObject("SELECT id FROM songs WHERE id = ? FOR UPDATE", Long.class, firstId);
+        core.queryForObject("SELECT id FROM songs WHERE id = ? FOR UPDATE", Long.class, secondId);
+
+        String keepYoutubeId = (String) keepSong.get("youtube_id");
+        String dropYoutubeId = (String) dropSong.get("youtube_id");
+        if (keepYoutubeId != null) {
+            lockSong(keepYoutubeId);
+        }
+        if (dropYoutubeId != null) {
+            lockSong(dropYoutubeId);
+        }
+
+        if (isSongInActiveGame(keepId) || isSongInActiveGame(dropId)) {
+            throw new ConflictException("One of the songs is used by an active game");
+        }
+
+        List<String> dropVideoIds = new ArrayList<>(core.queryForList("SELECT youtube_id FROM alternate_youtube_ids WHERE song_id = ?", String.class, dropId));
+        if (dropYoutubeId != null) {
+            dropVideoIds.add(dropYoutubeId);
+        }
+        dropVideoIds.stream().sorted().forEach(jobs::lockVideo);
+        dropVideoIds.stream().flatMap(video -> core.queryForList(
+                        "SELECT id FROM pipeline_runs WHERE youtube_id = ? AND status IN ('ACTIVE', 'FAILED')", Long.class, video).stream())
+                .sorted().forEach(engine::discardRun);
+
+        core.update("UPDATE alternate_youtube_ids SET song_id = ? WHERE song_id = ?", keepId, dropId);
+        if (dropYoutubeId != null && !dropYoutubeId.equals(keepYoutubeId)) {
+            core.update("""
+                    INSERT INTO alternate_youtube_ids (youtube_id, song_id)
+                    VALUES (?, ?)
+                    ON CONFLICT (youtube_id) DO UPDATE SET song_id = EXCLUDED.song_id
+                    """, dropYoutubeId, keepId);
+        }
+
+        core.update("""
+                UPDATE song_playlists
+                SET song_id = ?
+                WHERE song_id = ?
+                  AND playlist_id NOT IN (SELECT playlist_id FROM song_playlists WHERE song_id = ?)
+                """, keepId, dropId, keepId);
+        core.update("DELETE FROM song_playlists WHERE song_id = ?", dropId);
+
+        core.update("UPDATE player_cards SET song_id = ? WHERE song_id = ?", keepId, dropId);
+        core.update("UPDATE rounds SET song_id = ? WHERE song_id = ?", keepId, dropId);
+        core.update("UPDATE game_session_song_queue SET song_id = ? WHERE song_id = ?", keepId, dropId);
+
+        core.update("""
+                UPDATE song_reports
+                SET song_id = ?
+                WHERE song_id = ?
+                  AND reporter_id NOT IN (SELECT reporter_id FROM song_reports WHERE song_id = ?)
+                """, keepId, dropId, keepId);
+        core.update("DELETE FROM song_reports WHERE song_id = ?", dropId);
+
+        core.update("""
+                UPDATE song_confirmations
+                SET song_id = ?
+                WHERE song_id = ?
+                  AND user_id NOT IN (SELECT user_id FROM song_confirmations WHERE song_id = ?)
+                """, keepId, dropId, keepId);
+        core.update("DELETE FROM song_confirmations WHERE song_id = ?", dropId);
+
+        try {
+            core.update("DELETE FROM song_artists WHERE song_id = ?", dropId);
+            core.update("DELETE FROM songs WHERE id = ?", dropId);
+        } catch (DataIntegrityViolationException referenced) {
+            throw new ConflictException("The song is still referenced by another operation");
+        }
+
+        return new PipelineControlResultDTO(1);
+    }
+
     private Map<String, Object> song(long songId) {
         return core.queryForList("SELECT id, youtube_id, release_year, verification_status FROM songs WHERE id = ?", songId)
                 .stream().findFirst().orElseThrow(() -> new ResourceNotFoundException(ResourceType.SONG, songId));

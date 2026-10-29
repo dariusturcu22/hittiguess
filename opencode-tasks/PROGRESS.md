@@ -7,10 +7,10 @@ then `opencode-tasks/README.md`, then the brief named under "Current task".
 
 ## Current task
 
-- Task: 16, `opencode-tasks/16-recheck-catalog.md`
-- Branch: `chore/recheck-catalog` (branched off `fix/verification-lock-rule`, builds on PR #341)
-- Step reached: PR #342 open into main; paused to apply review changes to PRs 338, 339, 340, and 341
-- Next step: apply review changes to PRs 338, 339, 340, 341, cascade merges, then resume
+- Task: 17, `opencode-tasks/17-catalog-duplicates.md`
+- Branch: `fix/catalog-duplicates` (branched off `chore/recheck-catalog`, builds on PR #342)
+- Step reached: Code and tests finished, all frontend, backend, and AI test suites passing; ready to push and open PR
+- Next step: push branch `fix/catalog-duplicates` and open PR into main
 
 ## Finished tasks
 

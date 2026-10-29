@@ -48,4 +48,11 @@ public class AdminSongPipelineController {
     @DeleteMapping("/{id}")
     @Operation(summary = "Delete a catalog song and its links, refused while an active game uses it")
     public PipelineControlResultDTO deleteCatalogSong(@PathVariable long id) { access.requireAdmin(); return songs.delete(id); }
+
+    @PostMapping("/{keepId}/merge/{dropId}")
+    @Operation(summary = "Merge a duplicate catalog song into another song")
+    public PipelineControlResultDTO mergeSongs(@PathVariable long keepId, @PathVariable long dropId) {
+        access.requireAdmin();
+        return songs.merge(keepId, dropId);
+    }
 }

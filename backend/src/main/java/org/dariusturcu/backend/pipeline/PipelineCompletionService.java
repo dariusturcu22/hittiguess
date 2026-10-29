@@ -1,6 +1,9 @@
 package org.dariusturcu.backend.pipeline;
 
+import org.dariusturcu.backend.model.ai.SongMetadataResponse;
 import org.dariusturcu.backend.model.song.Song;
+import org.dariusturcu.backend.repository.SongRepository;
+import org.dariusturcu.backend.service.GameSongList;
 import org.dariusturcu.backend.service.SongCatalogService;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -9,21 +12,27 @@ import org.springframework.transaction.annotation.Transactional;
 import tools.jackson.databind.JsonNode;
 
 import java.time.Instant;
+import java.util.Optional;
 
 @Service
 public class PipelineCompletionService {
+    private static final String NORMALIZED_KEY_LOCK_PREFIX = "song-normalized-key:";
+
     private final PipelineJobService engine;
     private final PipelineJobRepository repository;
     private final StagePayloads payloads;
     private final SongCatalogService catalog;
+    private final SongRepository songRepository;
     private final JdbcTemplate core;
 
     public PipelineCompletionService(PipelineJobService engine, PipelineJobRepository repository,
-            StagePayloads payloads, SongCatalogService catalog, @Qualifier("coreJdbcTemplate") JdbcTemplate core) {
+            StagePayloads payloads, SongCatalogService catalog, SongRepository songRepository,
+            @Qualifier("coreJdbcTemplate") JdbcTemplate core) {
         this.engine = engine;
         this.repository = repository;
         this.payloads = payloads;
         this.catalog = catalog;
+        this.songRepository = songRepository;
         this.core = core;
     }
 
@@ -39,7 +48,37 @@ public class PipelineCompletionService {
         if (run.status() != PipelineRunStatus.ACTIVE || run.readyToSaveAt() == null) {
             return;
         }
-        Song song = catalog.persist(run.youtubeId(), payloads.finalMetadata(engine.jobsOfRun(run.id())), null);
+        SongMetadataResponse finalMetadata = payloads.finalMetadata(engine.jobsOfRun(run.id()));
+        SongMetadataResponse metadataToPersist = finalMetadata;
+        String primaryArtist = finalMetadata.mainArtists() != null && !finalMetadata.mainArtists().isEmpty()
+                ? finalMetadata.mainArtists().getFirst()
+                : "";
+        String normalizedKey = GameSongList.normalizedKey(primaryArtist, finalMetadata.title());
+        songRepository.acquireTransactionLock(NORMALIZED_KEY_LOCK_PREFIX + normalizedKey);
+
+        if (finalMetadata.canonicalSongId() == null) {
+            Optional<Song> duplicateSong = songRepository.findAllWithArtists().stream()
+                    .filter(song -> !run.youtubeId().equals(song.getYoutubeId()))
+                    .filter(song -> GameSongList.normalizedKey(song).equals(normalizedKey))
+                    .findFirst();
+
+            if (duplicateSong.isPresent()) {
+                metadataToPersist = new SongMetadataResponse(
+                        finalMetadata.title(),
+                        finalMetadata.mainArtists(),
+                        finalMetadata.featuredArtists(),
+                        finalMetadata.releaseYear(),
+                        finalMetadata.color(),
+                        finalMetadata.confidence(),
+                        finalMetadata.source(),
+                        finalMetadata.reasoning(),
+                        finalMetadata.verificationStatus(),
+                        finalMetadata.sitelinksCount(),
+                        finalMetadata.durationSeconds(),
+                        duplicateSong.get().getId());
+            }
+        }
+        Song song = catalog.persist(run.youtubeId(), metadataToPersist, null);
         core.update("""
                 UPDATE pending_imports SET status = 'DONE', patient_year = ?, processed_at = now() AT TIME ZONE 'UTC',
                     failure_reason = NULL
