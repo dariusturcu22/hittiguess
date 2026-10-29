@@ -1,6 +1,7 @@
 import { act, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { GameSessionDTO } from "@/hooks/models/gameSessionDTO";
+import { resetServerClock } from "@/lib/server-clock";
 import { ActiveSessionWidget, phaseDeadline } from "./active-session-widget";
 
 const CURRENT_USER_ID = 11;
@@ -9,6 +10,10 @@ const OWN_PLAYER_ID = 6;
 const ROUND_ID = 30;
 const NOW = new Date("2026-10-09T12:00:00Z");
 const PHASE_END = "2026-10-09T12:00:10Z";
+const SERVER_AHEAD_MILLISECONDS = 30_000;
+const PHASE_LENGTH_MILLISECONDS = 10_000;
+const ELAPSED_MILLISECONDS = 3_000;
+const REMAINING_SECONDS_AFTER_ELAPSING = 7;
 const playSound = vi.fn();
 let pathname = "/playlists";
 let session: GameSessionDTO;
@@ -20,12 +25,15 @@ vi.mock("@/hooks/use-game-session-realtime", () => ({ useGameSessionRealtime: vi
 vi.mock("@/hooks/use-turn-sound", () => ({ useTurnSound: () => playSound }));
 vi.mock("@/hooks/generated/game-session/game-session", () => ({
   useGetActiveSessionForGroup: () => ({ data: { id: SESSION_ID } }),
-  useGetSession: () => ({ data: session }),
+  useGetSession: (_sessionId: number, options?: { query?: { select?: (session: GameSessionDTO) => GameSessionDTO } }) => ({
+    data: options?.query?.select ? options.query.select(session) : session,
+  }),
 }));
 
 beforeEach(() => {
   vi.useFakeTimers();
   vi.setSystemTime(NOW);
+  resetServerClock();
   playSound.mockClear();
   pathname = "/playlists";
   session = { currentRound: { id: ROUND_ID, roundNumber: 2, activePlayerId: OWN_PLAYER_ID, status: "AWAITING_PLACEMENT" }, players: [{ id: OWN_PLAYER_ID, userId: CURRENT_USER_ID, displayName: "Sam", tokenCount: 3 }] };
@@ -68,6 +76,19 @@ describe("ActiveSessionWidget", () => {
     expect(screen.getByText("Phase ends in 10s")).toBeVisible();
     act(() => vi.advanceTimersByTime(3_000));
     expect(screen.getByText("Phase ends in 7s")).toBeVisible();
+  });
+
+  it("counts the phase against the server clock when the browser clock is behind", () => {
+    session.currentRound = {
+      ...session.currentRound,
+      status: "COUNTDOWN",
+      serverTime: new Date(NOW.getTime() + SERVER_AHEAD_MILLISECONDS).toISOString(),
+      countdownEndsAt: new Date(NOW.getTime() + SERVER_AHEAD_MILLISECONDS + PHASE_LENGTH_MILLISECONDS).toISOString(),
+    };
+    render(<ActiveSessionWidget />);
+    expect(screen.getByText(`Phase ends in ${PHASE_LENGTH_MILLISECONDS / 1_000}s`)).toBeVisible();
+    act(() => vi.advanceTimersByTime(ELAPSED_MILLISECONDS));
+    expect(screen.getByText(`Phase ends in ${REMAINING_SECONDS_AFTER_ELAPSING}s`)).toBeVisible();
   });
 
   it("does not alert spectators or show the widget on the session route", () => {
