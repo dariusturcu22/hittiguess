@@ -15,8 +15,9 @@ SEARCH_URL = "https://api.discogs.com/database/search"
 MASTER_URL_TEMPLATE = "https://api.discogs.com/masters/{master_id}"
 REQUEST_TIMEOUT_SECONDS = 10.0
 
-MAX_DISTINCT_MASTERS = 3
 MAX_RELEASES_TO_SCAN_FOR_MASTERS = 15
+SEARCH_RESULTS_PER_PAGE = 100  # the most Discogs returns in one page; more releases, more chances to see the original edition
+MAX_SINGLE_MASTER_FETCHES = 2
 
 DISCOGS_DOCUMENTED_LIMIT_PER_MINUTE = 60  # authenticated tier
 RATE_LIMIT_TARGET_UTILIZATION = 0.67  # stay comfortably inside the documented ceiling
@@ -96,7 +97,7 @@ def _get(url: str, params: dict | None = None) -> dict:
 def search_release(title: str, main_artists: list[str], query_label: str = "track") -> dict:
     main_artists = to_artist_list(main_artists)
     first_main_artist = main_artists[FIRST_SPLIT_PART_INDEX] if main_artists else ""
-    parameters = {"artist": first_main_artist, "type": "release"}
+    parameters = {"artist": first_main_artist, "type": "release", "per_page": SEARCH_RESULTS_PER_PAGE}
     if query_label == "album":
         parameters["release_title"] = title
     else:
@@ -124,6 +125,29 @@ def _matches_discogs_artist(title: str, main_artists: list[str]) -> bool:
     return False
 
 
+def _release_name(release: dict) -> str:
+    """Discogs titles a release "Artist - Release name"; the part after the first dash is the
+    single's or album's own name."""
+    title = release.get("title") or ""
+    return title.split(" - ", TITLE_SPLIT_MAX_PARTS)[-1]
+
+
+def _release_year(release: dict) -> int | None:
+    try:
+        year = int(release.get("year") or 0)
+    except (TypeError, ValueError):
+        return None
+    return year or None
+
+
+def _names_the_song(release_name: str, song_title: str) -> bool:
+    """Whether a release is the song's own single or EP rather than an album that contains
+    it: its name is the song title, alone or followed by a qualifier such as (Remixes)."""
+    release = normalize_name(release_name)
+    song = normalize_name(song_title)
+    return bool(song) and (release == song or release.startswith(song + " "))
+
+
 def _is_valid_release(release: dict, main_artists: list[str]) -> bool:
     title = release.get("title") or ""
     if title.lower().startswith("various"):
@@ -134,24 +158,6 @@ def _is_valid_release(release: dict, main_artists: list[str]) -> bool:
         return False
 
     return _matches_discogs_artist(title, main_artists)
-
-
-def find_master_ids(releases: list[dict], max_masters: int = MAX_DISTINCT_MASTERS) -> list[int]:
-    """A single track can belong to more than one distinct master, its own
-    standalone single release and the album it also appears on, each with
-    its own master and its own year. Trusting whichever master a search
-    result lists first can pick a later single over an earlier album.
-    Returns every distinct master_id found among the first several results,
-    in first-seen order, not just one, so the caller can check all of them
-    and take the earliest valid year."""
-    seen_master_ids: list[int] = []
-    for release in releases[:MAX_RELEASES_TO_SCAN_FOR_MASTERS]:
-        master_id = release.get("master_id")
-        if master_id and master_id not in seen_master_ids:
-            seen_master_ids.append(master_id)
-        if len(seen_master_ids) >= max_masters:
-            break
-    return seen_master_ids
 
 
 def master_year(master: dict) -> int | None:
@@ -183,17 +189,34 @@ def masterless_release_years(
 def _query_candidates(
     title: str, main_artists: list[str], query_label: str
 ) -> tuple[list[dict], list[dict]]:
+    """Every search result contains the searched track, so each release's own year is
+    evidence of when the song was out. Results are grouped by master. For the song's own
+    single the master year is used, since the original pressing may not be among the
+    results. For an album the earliest matching release year is used instead of the
+    master year: a song added to a later edition of an album (a reissue or deluxe
+    edition) belongs to the album's master, whose year is the original edition's."""
     raw_releases = search_release(title, main_artists, query_label).get("results", [])
     releases = [release for release in raw_releases if _is_valid_release(release, main_artists)]
 
+    releases_by_master: dict[int, list[dict]] = {}
+    for release in releases:
+        if release.get("master_id"):
+            releases_by_master.setdefault(release["master_id"], []).append(release)
+
     master_candidates = []
-    for master_id in find_master_ids(releases):
-        master = get_master(master_id)
-        year = master_year(master)
+    single_master_fetches = 0
+    for master_id, master_releases in releases_by_master.items():
+        release_name = _release_name(master_releases[0])
+        release_years = [year for year in map(_release_year, master_releases) if year is not None]
+        year = min(release_years) if release_years else None
+        kind = "album"
+        if query_label == "track" and _names_the_song(release_name, title):
+            kind = "single"
+            if single_master_fetches < MAX_SINGLE_MASTER_FETCHES:
+                single_master_fetches += 1
+                year = master_year(get_master(master_id)) or year
         if year is not None:
-            master_candidates.append(
-                {"query": query_label, "title": master.get("title"), "year": year}
-            )
+            master_candidates.append({"query": query_label, "title": release_name, "year": year, "kind": kind})
 
     masterless_candidates = [
         {"query": query_label, "title": candidate["title"], "year": candidate["year"]}

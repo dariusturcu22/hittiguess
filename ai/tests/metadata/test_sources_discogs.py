@@ -23,25 +23,6 @@ def _release(title, year=None, master_id=None, artist=None, format_list=None):
     return release
 
 
-def test_find_master_ids_returns_distinct_ids_in_first_seen_order():
-    releases = [
-        _release("Test Song (Remix)", master_id=200),
-        _release("Test Song", master_id=100),
-        _release("Test Song (Reissue)", master_id=200),
-    ]
-    assert discogs.find_master_ids(releases) == [200, 100]
-
-
-def test_find_master_ids_excludes_releases_with_no_master():
-    releases = [_release("Test Song", master_id=0), _release("Test Song")]
-    assert discogs.find_master_ids(releases) == []
-
-
-def test_find_master_ids_caps_at_max_masters():
-    releases = [_release(f"Test Song {index}", master_id=index) for index in range(1, 6)]
-    assert discogs.find_master_ids(releases, max_masters=2) == [1, 2]
-
-
 def test_master_year_returns_year_when_present():
     assert discogs.master_year({"year": 1999}) == 1999
 
@@ -79,7 +60,7 @@ def _discogs_response(request: httpx.Request) -> httpx.Response:
         if request.url.params.get("release_title") == "Test Album":
             return httpx.Response(
                 200,
-                json={"results": [_release("Test Artist - Test Album", master_id=20)]},
+                json={"results": [_release("Test Artist - Test Album", year="2003", master_id=20)]},
             )
         return httpx.Response(
             200,
@@ -108,9 +89,9 @@ def test_search_combines_track_and_album_candidates(mocker):
 
     track_candidates = [candidate for candidate in candidates if candidate["query"] == "track"]
     album_candidates = [candidate for candidate in candidates if candidate["query"] == "album"]
-    assert {"query": "track", "title": "Master 10", "year": 2015} in track_candidates
-    assert not any(candidate.get("title") == "Test Artist - Test Song (Bootleg)" for candidate in track_candidates)
-    assert album_candidates == [{"query": "album", "title": "Master 20", "year": 2001}]
+    assert {"query": "track", "title": "Test Song (Remix)", "year": 2015, "kind": "single"} in track_candidates
+    assert not any(candidate.get("title") == "Test Song (Bootleg)" for candidate in track_candidates)
+    assert album_candidates == [{"query": "album", "title": "Test Album", "year": 2003, "kind": "album"}]
 
 
 @respx.mock
@@ -292,3 +273,17 @@ def test_matches_discogs_artist_compares_whole_words():
     assert discogs._is_valid_release({"title": "Daddy Yankee Feat. Snow (2) - Con Calma"}, ["Daddy Yankee", "Snow"])
     assert not discogs._is_valid_release({"title": "Siamese Dream - Disarm"}, ["Sia"])
     assert not discogs._is_valid_release({"title": "Sian Evans - Hide U"}, ["Sia"])
+
+
+@respx.mock
+def test_an_album_takes_the_year_of_the_edition_that_contains_the_track(mocker):
+    mocker.patch("app.metadata.sources.pacing.time.sleep")
+    deluxe_edition = _release("Beyonce - B'Day", year="2007", master_id=30, format_list=["CD", "Album"])
+    respx.get(url__regex=r"api\.discogs\.com/database/search").mock(
+        return_value=httpx.Response(200, json={"results": [deluxe_edition]}))
+    master_route = respx.get(url__regex=r"api\.discogs\.com/masters/")
+
+    candidates = discogs.search("Beautiful Liar", ["Beyonce"])
+
+    assert candidates == [{"query": "track", "title": "B'Day", "year": 2007, "kind": "album"}]
+    assert not master_route.called
