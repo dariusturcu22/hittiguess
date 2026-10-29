@@ -5,6 +5,7 @@ can corroborate a year when the three structured sources do not agree.
 """
 
 import logging
+from collections import Counter
 from enum import StrEnum
 
 from app.config import settings
@@ -61,30 +62,36 @@ def _all_three_agree(
     )
 
 
-MINIMUM_SOURCE_COUNT_FOR_ASSISTED_LOCK = 3
-MAXIMUM_CLUSTER_SPREAD_YEARS = 1
-MINIMUM_SOURCES_FOR_EARLIEST_CLUSTER_YEAR = 2
+MINIMUM_SUPPORTING_SOURCES = 2
+TRACK_QUERY = "track"
+ALBUM_QUERY = "album"
 
 
-def _find_wikipedia_assisted_lock_year(candidate_years: list[int | None]) -> int | None:
-    resolved_years = [candidate_year for candidate_year in candidate_years if candidate_year is not None]
+def _earliest_year_for_query(candidates: list[dict], query: str) -> int | None:
+    return _extract_earliest_year([candidate for candidate in candidates if candidate.get("query") == query])
 
-    if len(resolved_years) < MINIMUM_SOURCE_COUNT_FOR_ASSISTED_LOCK:
-        return None
 
-    for candidate_year in set(resolved_years):
-        if resolved_years.count(candidate_year) >= MINIMUM_SOURCE_COUNT_FOR_ASSISTED_LOCK:
-            return candidate_year
+def _earliest_supported_year(
+    musicbrainz_year: int | None,
+    discogs_year: int | None,
+    wikidata_candidates: list[dict],
+    wikipedia_year: int | None,
+) -> int | None:
+    """The earliest year that at least two sources report. A song's year is its earliest
+    release, and a later year from another source (a single after the album, a reissue)
+    never contradicts an earlier release, so later years do not outvote it; an earlier year
+    from a single source does not count, because that is where bootlegs, promos, and wrong
+    dates show up.
 
-    if max(resolved_years) - min(resolved_years) <= MAXIMUM_CLUSTER_SPREAD_YEARS:
-        earliest_year = min(resolved_years)
-        if resolved_years.count(earliest_year) >= MINIMUM_SOURCES_FOR_EARLIEST_CLUSTER_YEAR:
-            return earliest_year
-
-        unique_years_ascending = sorted(set(resolved_years))
-        return max(unique_years_ascending, key=resolved_years.count)
-
-    return None
+    Wikidata's album date is the album's original edition, which is wrong for a song only
+    added to a later edition, so it votes only when MusicBrainz, which checks the editions
+    that actually contain the recording, reports the same year."""
+    wikidata_track_year = _earliest_year_for_query(wikidata_candidates, TRACK_QUERY)
+    wikidata_album_year = _earliest_year_for_query(wikidata_candidates, ALBUM_QUERY)
+    album_vote = wikidata_album_year if wikidata_album_year == musicbrainz_year else None
+    votes = Counter(year for year in (musicbrainz_year, discogs_year, wikidata_track_year, album_vote, wikipedia_year) if year)
+    supported_years = [year for year, count in votes.items() if count >= MINIMUM_SUPPORTING_SOURCES]
+    return min(supported_years) if supported_years else None
 
 
 def evaluate_lock(
@@ -101,7 +108,7 @@ def evaluate_lock(
 
     Returns (release_year, confidence, route) where route is one of:
     - LOCKED: all three structured sources agreed, no LLM called
-    - LOCKED_WITH_WIKIPEDIA: Wikipedia corroborated three source years, no reconciliation called
+    - LOCKED_WITH_WIKIPEDIA: at least two sources support the earliest year, no reconciliation called
     - LLM_RECONCILED: sources disagreed, Wikipedia+reconciliation ran
     - MANUAL_REVIEW: no source, including Wikipedia, had any data
     """
@@ -116,8 +123,8 @@ def evaluate_lock(
     wikipedia_year = extraction_result.release_year if extraction_result else None
     wikipedia_confidence = extraction_result.confidence if extraction_result else None
 
-    wikipedia_assisted_lock_year = _find_wikipedia_assisted_lock_year(
-        [musicbrainz_year, discogs_year, wikidata_year, wikipedia_year]
+    wikipedia_assisted_lock_year = _earliest_supported_year(
+        musicbrainz_year, discogs_year, wikidata_candidates, wikipedia_year
     )
     if wikipedia_assisted_lock_year is not None:
         return wikipedia_assisted_lock_year, "high", VerificationRoute.LOCKED_WITH_WIKIPEDIA
