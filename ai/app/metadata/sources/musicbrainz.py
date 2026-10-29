@@ -1,12 +1,11 @@
 import re
 import time
-import unicodedata
 from urllib.parse import quote
 
 from app.metadata.sources.http_retry import get_with_backoff
 from app.metadata.sources.pace_state import STAGE_MUSICBRAINZ
 from app.metadata.sources.pacing import PersistedRequestPacer
-from app.metadata.sources.util import METADATA_SOURCE_USER_AGENT, escape_lucene
+from app.metadata.sources.util import METADATA_SOURCE_USER_AGENT, escape_lucene, normalize_name
 from app.observability.error_reporting import report_source_failure
 
 SOURCE_NAME = "musicbrainz"
@@ -111,15 +110,6 @@ def _get(url: str) -> dict:
     _rate_limiter.record_response_time(time.monotonic() - request_started_at)
     _rate_limiter.record_success()
     return response.json()
-
-
-def normalize_name(value: str) -> str:
-    """Lowercases a name, removes accents, and turns punctuation into spaces so
-    stylized and plain spellings compare as the same words."""
-    decomposed = unicodedata.normalize("NFKD", value or "")
-    without_accents = "".join(character for character in decomposed if not unicodedata.combining(character))
-    without_punctuation = re.sub(r"[\W_]+", " ", without_accents)
-    return re.sub(r"\s+", " ", without_punctuation).strip().lower()
 
 
 def _artist_credit_names(artist_credit: list[dict]) -> list[str]:
