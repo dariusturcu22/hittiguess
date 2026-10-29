@@ -7,10 +7,10 @@ then `opencode-tasks/README.md`, then the brief named under "Current task".
 
 ## Current task
 
-- Task: 09, `opencode-tasks/09-design-proportions-lobby.md`
-- Branch: `fix/lobby-design-proportions` (not created yet)
-- Step reached: not started; pull requests #325 to #335 are merged into `main`
-- Next step: create the branch off an up-to-date `main`
+- Task: 19, `opencode-tasks/19-replace-group-atomically.md`
+- Branch: `fix/replace-group-atomically` (not created yet)
+- Step reached: not started; PR #336 opened for task 18
+- Next step: create the branch off an up-to-date `main`. Order from here: 19, 09, 10, 14, 15, 16, 17
 
 ## Finished tasks
 
@@ -27,6 +27,7 @@ then `opencode-tasks/README.md`, then the brief named under "Current task".
 | 11 | fix/duration-refresh | [#333](https://github.com/dariusturcu22/hittiguess/pull/333) | The refresh selects never-fetched songs, records missing videos, and stops on a zero-row batch |
 | 12 | fix/admin-catalog-origin | [#334](https://github.com/dariusturcu22/hittiguess/pull/334) | Songs with no pipeline evidence show "Before tracking" instead of "Unknown" |
 | 13 | fix/musicbrainz-recording-search | [#335](https://github.com/dariusturcu22/hittiguess/pull/335) | MusicBrainz uses the first main artist, keeps the top-scored original track group, and finds parent albums through the recording search |
+| 18 | fix/placement-preview-gate | [#336](https://github.com/dariusturcu22/hittiguess/pull/336) | Live drag previews validate against in-memory round state in `PlacementPreviewGate` and only touch Postgres on a cache miss |
 
 ## Blocked or skipped
 
