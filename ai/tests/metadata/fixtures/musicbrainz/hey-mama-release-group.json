@@ -1,0 +1,8 @@
+{
+  "release-groups": [
+    {"id":"03d063bf-7ce6-4363-b746-0a62c25f7646","score":100,"title":"Hey Mama (GLOWINTHEDARK remix)","first-release-date":"2015-04-20","primary-type":"Single","secondary-types":["Remix"],"artist-credit":[{"name":"David Guetta","artist":{"name":"David Guetta"}}]},
+    {"id":"375ca37d-e9ed-4eca-ac05-4f8573709387","score":88,"title":"Hey Mama","first-release-date":"2015-03-16","primary-type":"Single","secondary-types":[],"artist-credit":[{"name":"David Guetta","artist":{"name":"David Guetta"}},{"name":"Nicki Minaj","artist":{"name":"Nicki Minaj"}},{"name":"Afrojack","artist":{"name":"Afrojack"}}]},
+    {"id":"5d77afdc-43f7-4f1d-acea-0a7cbc140d29","score":75,"title":"Hey Mama (DISTO remix)","first-release-date":"2015-05-27","primary-type":"Single","secondary-types":["Remix"],"artist-credit":[{"name":"David Guetta","artist":{"name":"David Guetta"}},{"name":"Nicki Minaj","artist":{"name":"Nicki Minaj"}},{"name":"Afrojack","artist":{"name":"Afrojack"}}]},
+    {"id":"c2bdbabb-24d5-46cc-b21b-6ce694e3414d","score":71,"title":"Hey Mama (Remixes EP)","first-release-date":"2015-05-04","primary-type":"Single","secondary-types":["Remix"],"artist-credit":[{"name":"David Guetta","artist":{"name":"David Guetta"}},{"name":"Nicki Minaj","artist":{"name":"Nicki Minaj"}},{"name":"Bebe Rexha","artist":{"name":"Bebe Rexha"}},{"name":"Afrojack","artist":{"name":"Afrojack"}}]}
+  ]
+}

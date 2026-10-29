@@ -63,15 +63,16 @@ class LaneDispatcher:
 lane_dispatcher = LaneDispatcher(EXPECTED_SECONDS_PER_SONG)
 
 
-def _musicbrainz_year(title: str, artist: str) -> int | None:
-    return _extract_earliest_year(musicbrainz.search(title, artist))
+def _musicbrainz_year(title: str, main_artists: list[str]) -> int | None:
+    return _extract_earliest_year(musicbrainz.search(title, main_artists))
 
 
-def _wikipedia_year(title: str, artist: str) -> int | None:
-    entries = wikipedia.search(title, artist)
+def _wikipedia_year(title: str, main_artists: list[str]) -> int | None:
+    display_artists = " & ".join(main_artists)
+    entries = wikipedia.search(title, display_artists)
     if not entries:
         return None
-    extraction = _run_wikipedia_extraction(title, artist, entries)
+    extraction = _run_wikipedia_extraction(title, display_artists, entries)
     return extraction.release_year if extraction else None
 
 
@@ -107,12 +108,11 @@ def identify(youtube_url: str) -> IdentifyResponse:
 
 
 def date_fast(title: str, main_artists: list[str]) -> FastDateResponse:
-    display_artists = " & ".join(main_artists)
     query_title = strip_featured_artist_suffix(title)
     for lane in lane_dispatcher.lane_order():
         with lane_dispatcher.occupy(lane):
             try:
-                release_year = LANE_LOOKUPS[lane](query_title, display_artists)
+                release_year = LANE_LOOKUPS[lane](query_title, main_artists)
             except Exception as lane_error:
                 logger.warning("Fast-tier %s lane failed for %r: %s", lane, title, lane_error)
                 release_year = None

@@ -7,9 +7,9 @@ then `opencode-tasks/README.md`, then the brief named under "Current task".
 
 ## Current task
 
-- Task: 13, `opencode-tasks/13-musicbrainz-recording-search.md`
-- Branch: `fix/musicbrainz-recording-search` (not created yet)
-- Step reached: not started
+- Task: 09, `opencode-tasks/09-design-proportions-lobby.md`
+- Branch: `fix/lobby-design-proportions` (not created yet)
+- Step reached: not started; pull requests #325 to #335 are merged into `main`
 - Next step: create the branch off an up-to-date `main`
 
 ## Finished tasks
@@ -26,8 +26,8 @@ then `opencode-tasks/README.md`, then the brief named under "Current task".
 | 08 | fix/game-screen-scale | [#332](https://github.com/dariusturcu22/hittiguess/pull/332) | Lobby and session screens render in a fixed 1288x900 stage scaled to the window |
 | 11 | fix/duration-refresh | [#333](https://github.com/dariusturcu22/hittiguess/pull/333) | The refresh selects never-fetched songs, records missing videos, and stops on a zero-row batch |
 | 12 | fix/admin-catalog-origin | [#334](https://github.com/dariusturcu22/hittiguess/pull/334) | Songs with no pipeline evidence show "Before tracking" instead of "Unknown" |
+| 13 | fix/musicbrainz-recording-search | [#335](https://github.com/dariusturcu22/hittiguess/pull/335) | MusicBrainz uses the first main artist, keeps the top-scored original track group, and finds parent albums through the recording search |
 
 ## Blocked or skipped
 
-- Tasks 09 and 10 build on the shared game stage from task 08, so they wait for #332 to merge.
-- Tasks 14 to 17 build on the matching and lock rules from task 13, whose PR is not open yet.
+- Task 16 ends with a production recheck of the whole catalog. Running that recheck, and accepting or dismissing its proposals, is the owner's step after the code is merged and deployed.

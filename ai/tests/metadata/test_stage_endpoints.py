@@ -20,6 +20,7 @@ from app.observability.logging_config import JsonLineFormatter
 VIDEO_ID = "abcdefghijk"
 YOUTUBE_VIDEOS_URL = "https://www.googleapis.com/youtube/v3/videos"
 MUSICBRAINZ_URL = "https://musicbrainz.org/ws/2/release-group/"
+MUSICBRAINZ_RECORDING_URL = "https://musicbrainz.org/ws/2/recording/"
 DISCOGS_SEARCH_URL = "https://api.discogs.com/database/search"
 INVALID_INTERNAL_API_KEY = "invalid-internal-key"
 DURATION_SECONDS = 215
@@ -353,7 +354,7 @@ def test_a_structured_source_stage_returns_candidates_and_the_earliest_year(clie
 
     assert response.status_code == HTTP_OK
     assert response.json() == {"candidates": candidates, "earliestYear": LOCKED_YEAR}
-    search_mock.assert_called_once_with("Test Song", "Test Artist")
+    search_mock.assert_called_once_with("Test Song", ["Test Artist"])
 
 
 @pytest.mark.parametrize("path", ["/stages/musicbrainz", "/stages/discogs", "/stages/wikidata"])
@@ -526,12 +527,18 @@ def test_a_wait_over_the_cap_returns_429_with_retry_after_and_sends_nothing(clie
 def test_a_wait_under_the_cap_is_slept_and_the_stage_proceeds(client, monkeypatch, mocker):
     monkeypatch.setattr(pace_state, "shared_store", CappedStore(SUB_SECOND_WAIT_SECONDS))
     sleep = mocker.patch("app.metadata.sources.pacing.time.sleep")
-    respx.get(url__startswith=MUSICBRAINZ_URL).mock(return_value=httpx.Response(HTTP_OK, json={"release-groups": []}))
+    respx.get(url__startswith=MUSICBRAINZ_URL).mock(
+        return_value=httpx.Response(HTTP_OK, json={"release-groups": []})
+    )
+    respx.get(url__startswith=MUSICBRAINZ_RECORDING_URL).mock(
+        return_value=httpx.Response(HTTP_OK, json={"recordings": []})
+    )
 
     response = client.post("/stages/musicbrainz", json=SOURCE_BODY, headers=_headers())
 
     assert response.status_code == HTTP_OK
-    sleep.assert_called_once_with(SUB_SECOND_WAIT_SECONDS)
+    assert sleep.call_count == 2
+    sleep.assert_called_with(SUB_SECOND_WAIT_SECONDS)
 
 
 def test_a_retry_after_is_never_below_one_second(client, mocker):
@@ -560,7 +567,12 @@ def test_resolve_sleeps_through_a_wait_over_the_cap_instead_of_returning_429(mon
     store = CappedStore(OVER_CAP_WAIT_SECONDS)
     monkeypatch.setattr(pace_state, "shared_store", store)
     sleep = mocker.patch("app.metadata.sources.pacing.time.sleep")
-    respx.get(url__startswith=MUSICBRAINZ_URL).mock(return_value=httpx.Response(HTTP_OK, json={"release-groups": []}))
+    respx.get(url__startswith=MUSICBRAINZ_URL).mock(
+        return_value=httpx.Response(HTTP_OK, json={"release-groups": []})
+    )
+    respx.get(url__startswith=MUSICBRAINZ_RECORDING_URL).mock(
+        return_value=httpx.Response(HTTP_OK, json={"recordings": []})
+    )
     _patch_identification(mocker)
     for source_module in (discogs, wikidata, wikipedia):
         mocker.patch.object(source_module, "search_or_raise", return_value=[])
@@ -568,5 +580,6 @@ def test_resolve_sleeps_through_a_wait_over_the_cap_instead_of_returning_429(mon
     response = service.resolve_metadata(f"https://www.youtube.com/watch?v={VIDEO_ID}")
 
     assert response.status == service.SUCCESS_STATUS
-    assert store.maximum_waits == [None]
-    sleep.assert_called_once_with(OVER_CAP_WAIT_SECONDS)
+    assert store.maximum_waits == [None, None]
+    assert sleep.call_count == 2
+    sleep.assert_called_with(OVER_CAP_WAIT_SECONDS)

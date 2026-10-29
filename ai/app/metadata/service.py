@@ -90,15 +90,16 @@ class SourceStageResult:
     sitelinks_count: int | None = None
 
 
-def _source_query(title: str, main_artists: list[str]) -> tuple[str, str]:
-    """Sources are queried without a featured-artist suffix on the title, and take the
-    main artists as one display string."""
-    return strip_featured_artist_suffix(title), " & ".join(main_artists)
+def _source_query(title: str, main_artists: list[str]) -> tuple[str, list[str]]:
+    """Sources are queried without a featured-artist suffix on the title and
+    receive the main artists as a list, so each source can choose its own
+    query form."""
+    return strip_featured_artist_suffix(title), list(main_artists)
 
 
-def _fetch_source(source_search, title: str, artist: str) -> object:
+def _fetch_source(source_search, title: str, artist_query: str | list[str]) -> object:
     try:
-        return source_search(title, artist)
+        return source_search(title, artist_query)
     except Exception as source_error:
         logger.warning("Metadata source %s failed, continuing without it: %s", source_search.__module__, source_error)
         return EMPTY_SOURCE_RESULT
@@ -115,12 +116,16 @@ def run_structured_source_stage(
     """Queries one structured source (MusicBrainz, Discogs, or Wikidata) for the
     precheck's title and main artists. A failing source counts as one with no
     candidates, unless raise_on_failure is set, in which case its error propagates."""
-    source_query_title, display_artists = _source_query(title, main_artists)
+    source_query_title, main_artist_names = _source_query(title, main_artists)
     source_module = STRUCTURED_SOURCE_MODULES[source_name]
-    if raise_on_failure:
-        candidates = source_module.search_or_raise(source_query_title, display_artists)
+    if source_name == MUSICBRAINZ_SOURCE:
+        source_artist_query: str | list[str] = main_artist_names
     else:
-        candidates = _fetch_source(source_module.search, source_query_title, display_artists)
+        source_artist_query = " & ".join(main_artist_names)
+    if raise_on_failure:
+        candidates = source_module.search_or_raise(source_query_title, source_artist_query)
+    else:
+        candidates = _fetch_source(source_module.search, source_query_title, source_artist_query)
     sitelinks_count = _track_sitelinks_count(candidates) if source_name == WIKIDATA_SOURCE else None
     return SourceStageResult(
         candidates=candidates, earliest_year=_extract_earliest_year(candidates), sitelinks_count=sitelinks_count
@@ -130,7 +135,8 @@ def run_structured_source_stage(
 def run_wikipedia_stage(title: str, main_artists: list[str], *, raise_on_failure: bool = False) -> list[dict]:
     """Fetches Wikipedia's lead-section entries, the input the reconciliation stage's
     extraction call reads. Only needed when the structured sources do not agree."""
-    source_query_title, display_artists = _source_query(title, main_artists)
+    source_query_title, main_artist_names = _source_query(title, main_artists)
+    display_artists = " & ".join(main_artist_names)
     if raise_on_failure:
         return wikipedia.search_or_raise(source_query_title, display_artists)
     return wikipedia.search(source_query_title, display_artists)
@@ -217,7 +223,8 @@ def run_reconciliation_stage(
     Wikipedia with the extraction call and runs four-source reconciliation.
     title, main artists, and color come from the precheck call, not from a
     separate display-synthesis call."""
-    source_query_title, display_artists = _source_query(title, main_artists)
+    source_query_title, main_artist_names = _source_query(title, main_artists)
+    display_artists = " & ".join(main_artist_names)
     release_year, confidence, route = evaluate_lock(
         source_query_title,
         display_artists,
