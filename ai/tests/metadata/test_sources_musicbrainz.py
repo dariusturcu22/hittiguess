@@ -217,7 +217,7 @@ def test_sources_query_with_only_the_first_main_artist(mocker):
 
     musicbrainz.search("Timber", ["Pitbull", "Kesha"])
 
-    assert len(seen_queries) == 2
+    assert len(seen_queries) == 3
     assert all('artist:"Pitbull"' in query for query in seen_queries)
     assert all("Kesha" not in query for query in seen_queries)
 
@@ -558,3 +558,33 @@ def test_a_failed_call_holds_every_caller_for_the_backed_off_delay(mocker):
 
     (slept_seconds,), unused_keywords = sleep.call_args
     assert slept_seconds == pytest.approx(limiter.delay_seconds)
+
+
+@respx.mock
+def test_a_romanized_title_finds_the_recording_stored_under_its_original_script(mocker):
+    mocker.patch("app.metadata.sources.pacing.time.sleep")
+    original_recording = {
+        "title": "狂乱 Hey Kids!!",
+        "score": 76,
+        "artist-credit": [{"name": "THE ORAL CIGARETTES", "artist": {"name": "THE ORAL CIGARETTES"}}],
+        "releases": [
+            {"title": "FIXION", "status": "Official", "date": "2016-01-05",
+             "release-group": {"primary-type": "Album", "secondary-types": []}},
+            {"title": "狂乱 Hey Kids!!", "status": "Official", "date": "2015-10-02",
+             "release-group": {"primary-type": "Single", "secondary-types": []}},
+            {"title": "Kyouran Hey Kids!!", "status": "Pseudo-Release", "date": None,
+             "release-group": {"primary-type": "Single", "secondary-types": []}},
+        ],
+    }
+
+    def respond(request: httpx.Request) -> httpx.Response:
+        query = request.url.params.get("query", "")
+        if "release-group" in request.url.path or query.startswith('recording:"'):
+            return httpx.Response(200, json={"release-groups": [], "recordings": []})
+        return httpx.Response(200, json={"recordings": [original_recording]})
+
+    respx.get(url__regex=r"musicbrainz\.org/ws/2/").mock(side_effect=respond)
+
+    candidates = musicbrainz.search("Kyouran Hey Kids!!", ["THE ORAL CIGARETTES"])
+
+    assert [candidate["date"] for candidate in candidates] == ["2015-10-02"]
