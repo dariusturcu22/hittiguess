@@ -90,6 +90,14 @@ class CatalogSongRulesTest {
     }
 
     @Test
+    void anAdminRecheckRunsTheFullPipelineButIsNoEvidenceOfWhoAddedTheSong() {
+        assertThat(CatalogSongRules.pipeline(false, false, PendingImportOrigin.ADMIN_RECHECK, false))
+                .isEqualTo(CatalogPipeline.FULL);
+        assertThat(CatalogSongRules.isAdditionEvidence(PendingImportOrigin.ADMIN_RECHECK)).isFalse();
+        assertThat(CatalogSongRules.isAdditionEvidence(PendingImportOrigin.ADMIN_SEED)).isTrue();
+    }
+
+    @Test
     void noQueueEvidenceAtAllIsTheLegacyPipeline() {
         assertThat(CatalogSongRules.pipeline(false, false, null, false)).isEqualTo(CatalogPipeline.LEGACY);
         assertThat(CatalogSongRules.pipeline(List.of(), false)).isEqualTo(CatalogPipeline.LEGACY);

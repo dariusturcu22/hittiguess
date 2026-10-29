@@ -23,13 +23,14 @@ import java.util.Set;
  * backlog item with no song is PROCESSING, IN_QUEUE, or, once it failed, ERROR.
  *
  * <p>Pipeline: FAST while a recheck row (FAST_TIER_RECHECK or USER_ADD_RECHECK) is not DONE;
- * FULL when the latest backlog row is an ADMIN_SEED or a recheck row is DONE; UNKNOWN when
+ * FULL when the latest backlog row is an ADMIN_SEED or ADMIN_RECHECK or a recheck row is DONE; UNKNOWN when
  * queue evidence exists but none of it decides the pipeline; LEGACY when there is no queue
  * evidence at all.
  *
  * <p>Added by: USER when the song names an account, ADMIN_SEED when it does not and an admin
  * seed row exists for its YouTube ID, UNKNOWN when queue evidence exists but names no origin,
- * and LEGACY when there is no queue evidence at all.
+ * and LEGACY when there is no queue evidence at all. ADMIN_RECHECK rows are not evidence of
+ * who added a song, so a rerun of a song added before tracking still shows LEGACY.
  *
  * <p>The catalog list query repeats the status rule in SQL so it can filter and count by status.
  */
@@ -38,11 +39,18 @@ public final class CatalogSongRules {
     private static final Set<PendingImportOrigin> RECHECK_ORIGINS =
             EnumSet.of(PendingImportOrigin.FAST_TIER_RECHECK, PendingImportOrigin.USER_ADD_RECHECK);
 
+    private static final Set<PendingImportOrigin> FULL_PIPELINE_ORIGINS =
+            EnumSet.of(PendingImportOrigin.ADMIN_SEED, PendingImportOrigin.ADMIN_RECHECK);
+
     private static final Comparator<PendingImport> ENQUEUE_ORDER = Comparator
             .comparing(PendingImport::getEnqueuedAt, Comparator.nullsFirst(Comparator.naturalOrder()))
             .thenComparing(PendingImport::getId, Comparator.nullsFirst(Comparator.naturalOrder()));
 
     private CatalogSongRules() {
+    }
+
+    public static boolean isAdditionEvidence(PendingImportOrigin origin) {
+        return origin != PendingImportOrigin.ADMIN_RECHECK;
     }
 
     public static boolean isRecheck(PendingImportOrigin origin) {
@@ -96,7 +104,7 @@ public final class CatalogSongRules {
         if (hasUnfinishedRecheck) {
             return CatalogPipeline.FAST;
         }
-        if (latestQueueOrigin == PendingImportOrigin.ADMIN_SEED || hasFinishedRecheck) {
+        if (FULL_PIPELINE_ORIGINS.contains(latestQueueOrigin) || hasFinishedRecheck) {
             return CatalogPipeline.FULL;
         }
         return hasPipelineRun ? CatalogPipeline.UNKNOWN : CatalogPipeline.LEGACY;

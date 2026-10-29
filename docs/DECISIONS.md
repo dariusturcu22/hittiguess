@@ -1371,6 +1371,12 @@ Decision: when a pipeline run completes for an already verified song, any differ
 
 Why: catalog rechecks verify batches of songs against updated pipeline heuristics. Automatically overwriting existing verified songs could introduce false corrections into active playlists and game sessions without human verification. Recording differences as proposals lets administrators audit discrepancies and accept valid changes without risk of unwanted mutation.
 
+## 2026-10-29 | A rerun of a catalog video skips its own song in the duplicate check and runs as an admin recheck
+
+Decision: the youtube-metadata stage passes the video ID to the verified-duplicate check, and the check never matches a song that already owns that video as its main or an alternate YouTube ID. An admin rerun of one song and the catalog recheck queue their runs with the new `ADMIN_RECHECK` origin instead of `ADMIN_SEED`. The catalog shows such a song's pipeline as `FULL`, and an `ADMIN_RECHECK` run is never evidence of who added the song. The catalog recheck queues each run in its own transaction.
+
+Why: every verified song with an embedding matched itself at distance zero, so the rerun returned the stored year as a duplicate and no proposal could ever appear; the recheck and the drawer's rerun did nothing for exactly the songs they exist to correct. Queuing the runs as `ADMIN_SEED` would also have relabelled every song added before tracking as an admin seed.
+
 ---
 
 ## 2026-10-29 | Pipeline completion guards against duplicate songs by normalized key

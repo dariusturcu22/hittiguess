@@ -29,6 +29,7 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
@@ -107,19 +108,19 @@ class AdminSongCatalogServiceTest {
 
     @Test
     void anInvalidRequestNeverReachesTheDatabase() {
-        assertThatThrownBy(() -> service.search("ab", null, null, null)).isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> service.search("ab", null, null, null, null)).isInstanceOf(IllegalArgumentException.class);
 
         verify(catalogRepository, never()).countByStatus(any());
-        verify(catalogRepository, never()).findPage(any(), any(), anyInt(), anyLong());
+        verify(catalogRepository, never()).findPage(any(), any(), anyBoolean(), anyInt(), anyLong());
     }
 
     @Test
     void totalsFollowTheStatusFilterWhileCountsCoverEveryStatus() {
         when(catalogRepository.countByStatus("zim")).thenReturn(sampleCounts());
-        when(catalogRepository.findPage(eq("zim"), eq(CatalogSongStatus.NEEDS_REVIEW), eq(SMALL_PAGE_SIZE), anyLong()))
+        when(catalogRepository.findPage(eq("zim"), eq(CatalogSongStatus.NEEDS_REVIEW), eq(false), eq(SMALL_PAGE_SIZE), anyLong()))
                 .thenReturn(List.of());
 
-        AdminCatalogPageDTO filteredPage = service.search(" zim ", CatalogSongStatus.NEEDS_REVIEW, null, SMALL_PAGE_SIZE);
+        AdminCatalogPageDTO filteredPage = service.search(" zim ", CatalogSongStatus.NEEDS_REVIEW, null, null, SMALL_PAGE_SIZE);
 
         long allCount = VERIFIED_COUNT + NEEDS_REVIEW_COUNT + IN_QUEUE_COUNT + PROCESSING_COUNT + ERROR_COUNT;
         assertThat(filteredPage.totalElements()).isEqualTo(NEEDS_REVIEW_COUNT);
@@ -132,14 +133,14 @@ class AdminSongCatalogServiceTest {
     @Test
     void theOffsetIsThePageTimesThePageSize() {
         when(catalogRepository.countByStatus(null)).thenReturn(sampleCounts());
-        when(catalogRepository.findPage(null, null, AdminSongCatalogService.DEFAULT_PAGE_SIZE, SECOND_PAGE_OFFSET))
+        when(catalogRepository.findPage(null, null, false, AdminSongCatalogService.DEFAULT_PAGE_SIZE, SECOND_PAGE_OFFSET))
                 .thenReturn(List.of());
 
-        AdminCatalogPageDTO secondPage = service.search(null, null, SECOND_PAGE, null);
+        AdminCatalogPageDTO secondPage = service.search(null, null, null, SECOND_PAGE, null);
 
         assertThat(secondPage.page()).isEqualTo(SECOND_PAGE);
         assertThat(secondPage.size()).isEqualTo(AdminSongCatalogService.DEFAULT_PAGE_SIZE);
-        verify(catalogRepository).findPage(null, null, AdminSongCatalogService.DEFAULT_PAGE_SIZE, SECOND_PAGE_OFFSET);
+        verify(catalogRepository).findPage(null, null, false, AdminSongCatalogService.DEFAULT_PAGE_SIZE, SECOND_PAGE_OFFSET);
     }
 
     @Test
@@ -151,6 +152,7 @@ class AdminSongCatalogServiceTest {
                 "Hey Mama",
                 List.of("David Guetta"),
                 2015,
+                null,
                 CatalogSongStatus.VERIFIED,
                 false,
                 false,
@@ -160,10 +162,10 @@ class AdminSongCatalogServiceTest {
                 ENQUEUED_AT,
                 null);
         when(catalogRepository.countByStatus(null)).thenReturn(sampleCounts());
-        when(catalogRepository.findPage(null, null, AdminSongCatalogService.DEFAULT_PAGE_SIZE,
+        when(catalogRepository.findPage(null, null, false, AdminSongCatalogService.DEFAULT_PAGE_SIZE,
                 AdminSongCatalogService.FIRST_PAGE)).thenReturn(List.of(legacyRow));
 
-        AdminCatalogPageDTO page = service.search(null, null, null, null);
+        AdminCatalogPageDTO page = service.search(null, null, null, null, null);
 
         assertThat(page.items()).singleElement().satisfies(song -> {
             assertThat(song.pipeline()).isEqualTo(CatalogPipeline.LEGACY);

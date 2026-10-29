@@ -279,7 +279,7 @@ class PipelineCutoverIntegrationTest {
     void catalogAndDashboardReadRunJobsOnlyOnTheNewPath() {
         var repository = new org.dariusturcu.backend.repository.AdminSongCatalogRepository(core);
         PipelineRun run = start(VIDEO_ID);
-        assertThat(repository.findPage(null, null, 25, 0)).singleElement().satisfies(row -> {
+        assertThat(repository.findPage(null, null, false, 25, 0)).singleElement().satisfies(row -> {
             assertThat(row.status()).isEqualTo(org.dariusturcu.backend.model.song.CatalogSongStatus.IN_QUEUE);
             assertThat(row.latestQueueOrigin()).isEqualTo(PendingImportOrigin.ADMIN_SEED);
         });

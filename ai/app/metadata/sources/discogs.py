@@ -1,6 +1,5 @@
 import re
 import time
-import unicodedata
 
 import httpx
 
@@ -8,7 +7,7 @@ from app.config import settings
 from app.metadata.sources.http_retry import get_with_backoff
 from app.metadata.sources.pace_state import STAGE_DISCOGS
 from app.metadata.sources.pacing import PersistedRequestPacer
-from app.metadata.sources.util import METADATA_SOURCE_USER_AGENT
+from app.metadata.sources.util import METADATA_SOURCE_USER_AGENT, normalize_name, to_artist_list
 from app.observability.error_reporting import report_source_failure
 
 SOURCE_NAME = "discogs"
@@ -31,21 +30,6 @@ BREACH_COOLDOWN_SECONDS = 8.0
 EXCLUDED_DISCOGS_FORMATS = frozenset({"compilation", "unofficial release"})
 TITLE_SPLIT_MAX_PARTS = 1
 FIRST_SPLIT_PART_INDEX = 0
-
-
-def normalize_name(value: str) -> str:
-    """Lowercases a name, removes accents, and turns punctuation into spaces so
-    stylized and plain spellings compare as the same words."""
-    decomposed = unicodedata.normalize("NFKD", value or "")
-    without_accents = "".join(character for character in decomposed if not unicodedata.combining(character))
-    without_punctuation = re.sub(r"[\W_]+", " ", without_accents)
-    return re.sub(r"\s+", " ", without_punctuation).strip().lower()
-
-
-def to_artist_list(artist: str | list[str]) -> list[str]:
-    if isinstance(artist, str):
-        return [part.strip() for part in re.split(r"[,&]", artist) if part.strip()]
-    return [str(part).strip() for part in artist if str(part).strip()]
 
 
 class DiscogsRateLimiter:
@@ -109,8 +93,8 @@ def _get(url: str, params: dict | None = None) -> dict:
     return response.json()
 
 
-def search_release(title: str, artist: str | list[str], query_label: str = "track") -> dict:
-    main_artists = to_artist_list(artist)
+def search_release(title: str, main_artists: list[str], query_label: str = "track") -> dict:
+    main_artists = to_artist_list(main_artists)
     first_main_artist = main_artists[FIRST_SPLIT_PART_INDEX] if main_artists else ""
     parameters = {"artist": first_main_artist, "type": "release"}
     if query_label == "album":
@@ -219,14 +203,14 @@ def _query_candidates(
 
 
 def search_or_raise(
-    title: str, artist: str | list[str], album: str | None = None
+    title: str, main_artists: list[str], album: str | None = None
 ) -> list[dict]:
     """Queries the submitted track and, when given, its parent album using
     structured search parameters. Releases are filtered to match the main
     artists and drop compilations and unofficial releases. Masterless release
     years are kept only when no master-based candidate exists for the song.
     A failed request raises."""
-    main_artists = to_artist_list(artist)
+    main_artists = to_artist_list(main_artists)
     track_masters, track_masterless = _query_candidates(title, main_artists, "track")
     album_masters, album_masterless = [], []
     if album:
@@ -240,12 +224,12 @@ def search_or_raise(
 
 
 def search(
-    title: str, artist: str | list[str], album: str | None = None
+    title: str, main_artists: list[str], album: str | None = None
 ) -> list[dict]:
     """search_or_raise, reporting a failure and returning nothing instead of raising."""
     try:
-        return search_or_raise(title, artist, album)
+        return search_or_raise(title, main_artists, album)
     except Exception as discogs_error:
-        artist_display = " & ".join(to_artist_list(artist))
+        artist_display = " & ".join(to_artist_list(main_artists))
         report_source_failure(SOURCE_NAME, discogs_error, title, artist_display)
         return []

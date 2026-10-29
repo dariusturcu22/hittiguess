@@ -1,7 +1,7 @@
 export type CatalogStatus = "VERIFIED" | "NEEDS_REVIEW" | "IN_QUEUE" | "PROCESSING" | "ERROR";
 export type CatalogPipeline = "FAST" | "FULL" | "UNKNOWN" | "LEGACY";
 export type CatalogAddedByKind = "USER" | "ADMIN_SEED" | "UNKNOWN" | "LEGACY";
-export type QueueOrigin = "ADMIN_SEED" | "FAST_TIER_RECHECK" | "USER_ADD_RECHECK";
+export type QueueOrigin = "ADMIN_SEED" | "ADMIN_RECHECK" | "FAST_TIER_RECHECK" | "USER_ADD_RECHECK";
 export type QueueStatus = "PENDING" | "PROCESSING" | "DONE" | "FAILED";
 
 export const MINIMUM_SEARCH_LENGTH = 3;
@@ -103,6 +103,7 @@ const UNKNOWN_LABEL = "Unknown";
 
 const QUEUE_ORIGIN_LABELS: Record<QueueOrigin, string> = {
   ADMIN_SEED: "Admin seed",
+  ADMIN_RECHECK: "Admin recheck",
   FAST_TIER_RECHECK: "Fast-tier import recheck",
   USER_ADD_RECHECK: "Added by hand, recheck",
 };

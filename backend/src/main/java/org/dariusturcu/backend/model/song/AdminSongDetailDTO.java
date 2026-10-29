@@ -39,13 +39,4 @@ public record AdminSongDetailDTO(
         this(songId, youtubeId, title, artists, releaseYear, null, null, status, pipeline, createdAt, addedBy, addedByKind,
                 verificationStatus, confidence, wikidataSitelinksCount, openReportCount, queueHistory, null, null);
     }
-
-    public AdminSongDetailDTO(Long songId, String youtubeId, String title, List<String> artists, Integer releaseYear,
-            CatalogSongStatus status, CatalogPipeline pipeline, Instant createdAt, String addedBy,
-            CatalogAddedByKind addedByKind, VerificationStatus verificationStatus, String confidence,
-            Integer wikidataSitelinksCount, Long openReportCount, List<AdminQueueHistoryEntryDTO> queueHistory,
-            List<SourceFindingDTO> sourceFindings, String reviewReason) {
-        this(songId, youtubeId, title, artists, releaseYear, null, null, status, pipeline, createdAt, addedBy, addedByKind,
-                verificationStatus, confidence, wikidataSitelinksCount, openReportCount, queueHistory, sourceFindings, reviewReason);
-    }
 }

@@ -35,7 +35,7 @@ class AdminDashboardServiceTest {
         AdminUsageDTO usage = new AdminUsageDTO(null, null, null, BigDecimal.ONE, BigDecimal.TEN,
                 LocalDate.of(2026, 10, 16));
         when(adminSongCatalogService.catalogCounts()).thenReturn(new AdminCatalogCountsDTO(
-                ALL_COUNT, VERIFIED_COUNT, NEEDS_REVIEW_COUNT, IN_QUEUE_COUNT, PROCESSING_COUNT, ERROR_COUNT));
+                ALL_COUNT, VERIFIED_COUNT, NEEDS_REVIEW_COUNT, IN_QUEUE_COUNT, PROCESSING_COUNT, ERROR_COUNT, 0L));
         when(catalogRepository.countQueue())
                 .thenReturn(new AdminSongCatalogRepository.QueueCounts(WAITING_ROWS, IN_PROGRESS_ROWS));
         when(apiUsageService.usage()).thenReturn(usage);
@@ -60,7 +60,7 @@ class AdminDashboardServiceTest {
                 WAITING_ROWS, org.dariusturcu.backend.pipeline.PipelineSettings.DEFAULT_YOUTUBE_RESERVE_UNITS, true, null);
         when(pipeline.queues()).thenReturn(queues);
         when(adminSongCatalogService.catalogCounts()).thenReturn(new AdminCatalogCountsDTO(
-                ALL_COUNT, VERIFIED_COUNT, NEEDS_REVIEW_COUNT, IN_QUEUE_COUNT, PROCESSING_COUNT, ERROR_COUNT));
+                ALL_COUNT, VERIFIED_COUNT, NEEDS_REVIEW_COUNT, IN_QUEUE_COUNT, PROCESSING_COUNT, ERROR_COUNT, 0L));
         when(catalogRepository.countQueue()).thenReturn(new AdminSongCatalogRepository.QueueCounts(WAITING_ROWS, IN_PROGRESS_ROWS));
         var dashboard = new AdminDashboardService(adminSongCatalogService, catalogRepository, apiUsageService, pipeline).dashboard();
         assertThat(dashboard.pipeline()).isSameAs(queues);

@@ -101,10 +101,6 @@ public class AdminSongCatalogService {
         return page;
     }
 
-    public AdminCatalogPageDTO search(String query, CatalogSongStatus status, Integer page, Integer size) {
-        return search(query, status, null, page, size);
-    }
-
     public AdminCatalogPageDTO search(String query, CatalogSongStatus status, Boolean proposedYear, Integer page, Integer size) {
         String searchText = normalizeSearchText(query);
         int resolvedPage = resolvePage(page);
@@ -115,7 +111,8 @@ public class AdminSongCatalogService {
         AdminCatalogCountsDTO counts = toCounts(countsByStatus, proposedCount);
         long allCount = countsByStatus.values().stream().mapToLong(Long::longValue).sum();
         long totalElements;
-        if (Boolean.TRUE.equals(proposedYear)) {
+        boolean proposedOnly = Boolean.TRUE.equals(proposedYear);
+        if (proposedOnly) {
             totalElements = proposedCount;
         } else if (status == null) {
             totalElements = allCount;
@@ -124,10 +121,7 @@ public class AdminSongCatalogService {
         }
         long offset = (long) resolvedPage * pageSize;
 
-        List<AdminCatalogRow> rows = proposedYear == null
-                ? catalogRepository.findPage(searchText, status, pageSize, offset)
-                : catalogRepository.findPage(searchText, status, proposedYear, pageSize, offset);
-        List<AdminCatalogSongDTO> items = rows.stream()
+        List<AdminCatalogSongDTO> items = catalogRepository.findPage(searchText, status, proposedOnly, pageSize, offset).stream()
                 .map(AdminSongCatalogService::toCatalogSong)
                 .toList();
         int totalPages = totalElements == 0 ? 0 : (int) ((totalElements + pageSize - 1) / pageSize);
@@ -138,10 +132,6 @@ public class AdminSongCatalogService {
     /** Counts for the whole catalog, with no search text or status filter. */
     public AdminCatalogCountsDTO catalogCounts() {
         return toCounts(catalogRepository.countByStatus(null), catalogRepository.countProposed(null));
-    }
-
-    private static AdminCatalogCountsDTO toCounts(Map<CatalogSongStatus, Long> countsByStatus) {
-        return toCounts(countsByStatus, 0L);
     }
 
     private static AdminCatalogCountsDTO toCounts(Map<CatalogSongStatus, Long> countsByStatus, long proposedCount) {
@@ -166,7 +156,8 @@ public class AdminSongCatalogService {
         List<PendingImport> retainedRows = song.getYoutubeId() == null
                 ? List.of()
                 : retainedHistory(song.getYoutubeId(), queueRows);
-        boolean hasPipelineRun = !queueRows.isEmpty() || !retainedRows.isEmpty();
+        boolean hasPipelineRun = Stream.concat(queueRows.stream(), retainedRows.stream())
+                .anyMatch(row -> CatalogSongRules.isAdditionEvidence(row.getOrigin()));
         boolean hasAdminSeedRow = queueRows.stream()
                 .anyMatch(queueRow -> queueRow.getOrigin() == PendingImportOrigin.ADMIN_SEED);
         String addedByUsername = song.getAddedBy() == null ? null : song.getAddedBy().getUsername();

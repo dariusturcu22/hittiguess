@@ -44,18 +44,20 @@ const detailHook = vi.hoisted(() => ({
 }));
 
 const pipelineHook = vi.hoisted(() => ({
-  updateMutateAsync: vi.fn(),
-  dismissMutateAsync: vi.fn(),
+  updateMutate: vi.fn(),
+  dismissMutate: vi.fn(),
   mergeMutateAsync: vi.fn(),
 }));
 
 vi.mock("@/hooks/generated/admin-song-pipeline/admin-song-pipeline", () => ({
   useUpdateCatalogSong: () => ({
-    mutateAsync: pipelineHook.updateMutateAsync,
+    mutate: pipelineHook.updateMutate,
+    mutateAsync: pipelineHook.updateMutate,
     isPending: false,
   }),
   useDismissProposal: () => ({
-    mutateAsync: pipelineHook.dismissMutateAsync,
+    mutate: pipelineHook.dismissMutate,
+    mutateAsync: pipelineHook.dismissMutate,
     isPending: false,
   }),
   useRerunSongPipeline: () => ({
@@ -489,14 +491,14 @@ describe("SongCatalogPage", () => {
 
     const acceptButton = drawer.getByRole("button", { name: "Accept" });
     fireEvent.click(acceptButton);
-    expect(pipelineHook.updateMutateAsync).toHaveBeenCalledWith({
+    expect(pipelineHook.updateMutate).toHaveBeenCalledWith({
       id: SONG_ID,
       data: { releaseYear: 2014 },
     });
 
     const dismissButton = drawer.getByRole("button", { name: "Dismiss" });
     fireEvent.click(dismissButton);
-    expect(pipelineHook.dismissMutateAsync).toHaveBeenCalledWith({
+    expect(pipelineHook.dismissMutate).toHaveBeenCalledWith({
       id: SONG_ID,
     });
   });

@@ -20,6 +20,7 @@ class SongCatalogServiceTest {
     private static final String YOUTUBE_ID = "video1234567";
     private static final int ORIGINAL_YEAR = 2015;
     private static final int PROPOSED_YEAR = 2014;
+    private static final int UNRESOLVED_YEAR = 0;
     private static final int DURATION = 210;
 
     private final SongRepository songRepository = mock(SongRepository.class);
@@ -77,6 +78,29 @@ class SongCatalogServiceTest {
         assertThat(result.getProposedAt()).isNull();
         assertThat(result.getVerificationStatus()).isEqualTo(VerificationStatus.VERIFIED);
         verify(songRepository).save(verifiedSong);
+    }
+
+    @Test
+    void completionOnVerifiedSongWithNoYearKeepsTheEarlierProposal() {
+        Song verifiedSong = new Song();
+        verifiedSong.setId(1L);
+        verifiedSong.setYoutubeId(YOUTUBE_ID);
+        verifiedSong.setReleaseYear(ORIGINAL_YEAR);
+        verifiedSong.setProposedReleaseYear(PROPOSED_YEAR);
+        verifiedSong.setVerificationStatus(VerificationStatus.VERIFIED);
+
+        when(songRepository.findByYoutubeId(YOUTUBE_ID)).thenReturn(List.of(verifiedSong));
+        when(songRepository.save(any(Song.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        SongMetadataResponse metadata = new SongMetadataResponse(
+                "Hey Mama", List.of("David Guetta"), List.of(), UNRESOLVED_YEAR, "#FF0000",
+                "low", "NONE", "No source answered", "MANUAL_ENTRY", null, DURATION, null);
+
+        Song result = catalogService.persist(YOUTUBE_ID, metadata, null);
+
+        assertThat(result.getReleaseYear()).isEqualTo(ORIGINAL_YEAR);
+        assertThat(result.getProposedReleaseYear()).isEqualTo(PROPOSED_YEAR);
+        assertThat(result.getVerificationStatus()).isEqualTo(VerificationStatus.VERIFIED);
     }
 
     @Test

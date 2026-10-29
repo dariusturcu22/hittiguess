@@ -31,6 +31,7 @@ import java.util.Map;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
@@ -88,7 +89,7 @@ class AdminSongCatalogControllerTest {
     void anAdminGetsTheCatalogPage() throws Exception {
         authenticateWithRole(Role.ADMIN);
         when(catalogRepository.countByStatus(isNull())).thenReturn(oneVerifiedSong());
-        when(catalogRepository.findPage(isNull(), isNull(), anyInt(), anyLong())).thenReturn(List.of());
+        when(catalogRepository.findPage(isNull(), isNull(), eq(false), anyInt(), anyLong())).thenReturn(List.of());
 
         mockMvc.perform(get(CATALOG_PATH))
                 .andExpect(status().isOk())

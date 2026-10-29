@@ -9,7 +9,6 @@ import org.dariusturcu.backend.model.admin.SourceFindingDTO;
 import org.dariusturcu.backend.model.admin.RecheckSongsRequest;
 import org.dariusturcu.backend.model.admin.UpdateCatalogSongRequest;
 import org.dariusturcu.backend.model.song.PendingImportOrigin;
-import java.util.Collections;
 import org.dariusturcu.backend.model.song.VerificationStatus;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -21,6 +20,7 @@ import tools.jackson.databind.ObjectMapper;
 
 import java.time.Year;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
@@ -66,7 +66,9 @@ public class AdminSongPipelineService {
     }
 
     @Transactional
-    public PipelineRunDTO rerun(long songId) { return pipeline.runNow(song(songId).get("youtube_id").toString()); }
+    public PipelineRunDTO rerun(long songId) {
+        return pipeline.runNow(song(songId).get("youtube_id").toString(), PendingImportOrigin.ADMIN_RECHECK);
+    }
 
     @Transactional
     public PipelineControlResultDTO update(long songId, UpdateCatalogSongRequest request) {
@@ -208,32 +210,28 @@ public class AdminSongPipelineService {
         return new PipelineControlResultDTO(1);
     }
 
-    @Transactional
+    // Each run is queued in its own transaction, so a recheck of the whole catalog never
+    // holds one long transaction and every queued run is visible to the stage workers at once.
     public PipelineControlResultDTO recheck(RecheckSongsRequest request) {
-        if (request == null || (!Boolean.TRUE.equals(request.all()) && (request.songIds() == null || request.songIds().isEmpty()))) {
+        boolean recheckAll = request != null && Boolean.TRUE.equals(request.all());
+        if (request == null || (!recheckAll && (request.songIds() == null || request.songIds().isEmpty()))) {
             throw new IllegalArgumentException("Either all must be true or songIds must not be empty");
         }
-        List<Map<String, Object>> candidateSongs;
-        if (Boolean.TRUE.equals(request.all())) {
-            candidateSongs = core.queryForList("SELECT id, youtube_id FROM songs ORDER BY id ASC");
-        } else {
-            String placeholders = String.join(",", Collections.nCopies(request.songIds().size(), "?"));
-            candidateSongs = core.queryForList("SELECT id, youtube_id FROM songs WHERE id IN (" + placeholders + ") ORDER BY id ASC",
-                    request.songIds().toArray());
-        }
-        int queuedCount = 0;
-        for (Map<String, Object> candidateSong : candidateSongs) {
-            long candidateSongId = ((Number) candidateSong.get("id")).longValue();
-            if (isSongInActiveGame(candidateSongId)) {
-                continue;
-            }
-            String youtubeId = (String) candidateSong.get("youtube_id");
-            if (youtubeId != null && !youtubeId.isBlank()) {
-                engine.startRun(youtubeId, PipelineLane.BACKFILL, PendingImportOrigin.ADMIN_SEED, null, null);
-                queuedCount++;
-            }
-        }
-        return new PipelineControlResultDTO(queuedCount);
+        String songFilter = recheckAll ? ""
+                : "AND song.id IN (" + String.join(",", Collections.nCopies(request.songIds().size(), "?")) + ")";
+        Object[] parameters = recheckAll ? new Object[0] : request.songIds().toArray();
+        List<String> youtubeIds = core.queryForList("""
+                SELECT song.youtube_id FROM songs song
+                WHERE song.youtube_id IS NOT NULL AND song.youtube_id <> ''
+                  AND NOT EXISTS (SELECT FROM rounds WHERE rounds.song_id = song.id)
+                  AND NOT EXISTS (SELECT FROM player_cards WHERE player_cards.song_id = song.id)
+                  AND NOT EXISTS (SELECT FROM game_session_song_queue queue WHERE queue.song_id = song.id)
+                  %s
+                ORDER BY song.id
+                """.formatted(songFilter), String.class, parameters);
+        youtubeIds.forEach(youtubeId ->
+                engine.startRun(youtubeId, PipelineLane.BACKFILL, PendingImportOrigin.ADMIN_RECHECK, null, null));
+        return new PipelineControlResultDTO(youtubeIds.size());
     }
 
     public boolean isSongInActiveGame(long songId) {

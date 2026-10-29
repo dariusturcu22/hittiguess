@@ -123,7 +123,7 @@ function DetailBody({
               disabled={isPending}
               onClick={() => {
                 if (detail.proposedReleaseYear != null) {
-                  void updateSong.mutateAsync({
+                  updateSong.mutate({
                     id: detail.songId,
                     data: { releaseYear: detail.proposedReleaseYear },
                   });
@@ -137,7 +137,7 @@ function DetailBody({
               type="button"
               disabled={isPending}
               onClick={() => {
-                void dismiss.mutateAsync({ id: detail.songId });
+                dismiss.mutate({ id: detail.songId });
               }}
               className="rounded-full bg-secondary px-3 py-1 font-display text-[10px] text-secondary-foreground hover:bg-secondary/80 disabled:opacity-50"
             >
