@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   cardTiltAwayFromGap,
@@ -7,8 +7,10 @@ import {
   isGapCorrectForYear,
   isGapOpenForBet,
   predictNextTurn,
+  secondsUntil,
   timelineEntries,
 } from "./gameplay-round";
+import { recordServerTime, resetServerClock, serverNow } from "./server-clock";
 
 const CARDS = [
   { songId: 1, title: "Torn", releaseYear: 1998 },
@@ -91,5 +93,31 @@ describe("predictNextTurn", () => {
 
     expect(nextActive?.displayName).toBe("Ana");
     expect(nextDj?.displayName).toBe("Ben");
+  });
+});
+
+describe("secondsUntil", () => {
+  const CLIENT_NOW = Date.parse("2026-10-09T12:00:00Z");
+  const SERVER_AHEAD_MILLISECONDS = 30_000;
+  const PHASE_LENGTH_MILLISECONDS = 10_000;
+  const MILLISECONDS_PER_SECOND = 1_000;
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(CLIENT_NOW);
+    resetServerClock();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+    resetServerClock();
+  });
+
+  it("returns the server-relative value when the browser clock is behind", () => {
+    recordServerTime(new Date(CLIENT_NOW + SERVER_AHEAD_MILLISECONDS).toISOString());
+    const deadline = new Date(CLIENT_NOW + SERVER_AHEAD_MILLISECONDS + PHASE_LENGTH_MILLISECONDS).toISOString();
+
+    expect(secondsUntil(deadline, Date.now())).toBe((SERVER_AHEAD_MILLISECONDS + PHASE_LENGTH_MILLISECONDS) / MILLISECONDS_PER_SECOND);
+    expect(secondsUntil(deadline, serverNow())).toBe(PHASE_LENGTH_MILLISECONDS / MILLISECONDS_PER_SECOND);
   });
 });

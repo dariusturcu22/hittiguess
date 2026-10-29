@@ -9,7 +9,8 @@ import { History, Moon, Sun } from "lucide-react";
 
 import { LogoBars } from "@/components/logo";
 import { NavUser } from "@/components/nav-user";
-import { getGetActiveMembershipQueryKey, useCreateGroup, useGetActiveMembership, useJoinGroup } from "@/hooks/generated/group-management/group-management";
+import { useGetActiveMembership, useJoinGroup } from "@/hooks/generated/group-management/group-management";
+import { useCreateGroupAndOpen } from "@/hooks/use-create-group-and-open";
 import { LobbyLauncher, joinCodeErrorMessage } from "@/components/lobby-launcher";
 import { getGetPlaylistQueryKey } from "@/hooks/generated/playlist-management/playlist-management";
 import { useActiveImport } from "@/hooks/generated/playlist-import-jobs/playlist-import-jobs";
@@ -28,12 +29,12 @@ const ACTIVE_IMPORT_REFRESH_MILLISECONDS = 5_000;
 
 // Height steps keep rail controls reachable before scrolling is needed.
 const RAIL_DIVIDER_CLASSES =
-  "w-8 h-0.5 my-3.5 short:my-2.5 very-short:my-1.5 shrink-0 rounded-full bg-sidebar-border";
+  "w-8 h-0.5 my-4 short:my-3 very-short:my-2 shrink-0 rounded-full bg-sidebar-border";
 
 const ADMIN_RAIL_DIVIDER_CLASSES =
   "w-8 h-0.5 mt-3 mb-2 short:mt-2.5 short:mb-1.5 very-short:mt-1.5 shrink-0 rounded-full bg-destructive/40";
 
-const RAIL_GROUP_GAP_CLASSES = "gap-5 short:gap-3.5 very-short:gap-2.5";
+const RAIL_GROUP_GAP_CLASSES = "gap-6 short:gap-5 very-short:gap-3.5";
 
 const ADMIN_RAIL_GROUP_GAP_CLASSES = "gap-2.5 short:gap-1.5 very-short:gap-1";
 
@@ -138,7 +139,7 @@ export function AppSidebar() {
   const { data: activeGroup } = useGetActiveMembership({
     query: { retry: false },
   });
-  const createGroup = useCreateGroup();
+  const { openGroup, createGroupAndOpen, isCreatingGroup } = useCreateGroupAndOpen();
   const joinGroup = useJoinGroup();
   const { data: currentUser } = useGetCurrentUser({ query: { retry: false } });
   const isAdmin = currentUser?.role === UserDetailDTORole.ADMIN;
@@ -163,13 +164,11 @@ export function AppSidebar() {
 
   function enterLobby(groupId: number | undefined) {
     setIsLobbyMenuOpen(false);
-    if (groupId === undefined) return;
-    void queryClient.invalidateQueries({ queryKey: getGetActiveMembershipQueryKey() });
-    router.push(`/groups/${groupId}`);
+    openGroup(groupId);
   }
 
   function createLobby() {
-    createGroup.mutate({ data: {} }, { onSuccess: (group) => enterLobby(group.id) });
+    createGroupAndOpen();
   }
 
   function joinLobbyByCode(joinCode: string) {
@@ -235,7 +234,7 @@ export function AppSidebar() {
         </button>
         {isLobbyMenuOpen && !activeGroup ? (
           <LobbyLauncher
-            isCreating={createGroup.isPending}
+            isCreating={isCreatingGroup}
             isJoining={joinGroup.isPending}
             joinError={joinError}
             onCreate={createLobby}
