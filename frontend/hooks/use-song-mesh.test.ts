@@ -1,7 +1,7 @@
 import { act, renderHook } from "@testing-library/react";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { getSongCaptureStream, stopSongCapture } from "@/lib/song-capture";
+import { getSongCaptureStream, startSongCapture, stopSongCapture } from "@/lib/song-capture";
 import { recordAudioShareOutcome } from "@/lib/audio-share-outcome";
 import { applySongOpusParameters, SONG_BITRATE_BITS_PER_SECOND, useSongMesh, type SongMeshOptions } from "./use-song-mesh";
 
@@ -307,7 +307,7 @@ describe("useSongMesh capture and sender track", () => {
     const { result, rerender } = renderHook((options: SongMeshOptions) => useSongMesh(options), { initialProps: callerOptions });
     await connectSignals();
     await act(async () => {
-      await result.current.shareSong();
+      await startSongCapture();
     });
 
     expect(attachedTrack(latestPeer())).toBe(display.audioTrack);
@@ -322,10 +322,10 @@ describe("useSongMesh capture and sender track", () => {
     voiceAudio.volume = 0.7;
     const voicePause = vi.spyOn(voiceAudio, "pause");
 
-    const { result, rerender } = renderHook((options: SongMeshOptions) => useSongMesh(options), { initialProps: callerOptions });
+    const { rerender } = renderHook((options: SongMeshOptions) => useSongMesh(options), { initialProps: callerOptions });
     await connectSignals();
     await act(async () => {
-      await result.current.shareSong();
+      await startSongCapture();
     });
 
     rerender({ ...callerOptions, isSongRevealed: true });
@@ -337,14 +337,14 @@ describe("useSongMesh capture and sender track", () => {
     expect(voiceAudio.volume).toBeCloseTo(0.7);
   });
 
-  it("prompts for the share only once per match", async () => {
+  it("asks for the share once per match and reuses it for every turn", async () => {
     const { result } = renderHook(() => useSongMesh(callerOptions));
 
     await act(async () => {
-      await result.current.shareSong();
+      await startSongCapture();
     });
     await act(async () => {
-      await result.current.shareSong();
+      await startSongCapture();
     });
 
     expect(mocks.getDisplayMedia).toHaveBeenCalledTimes(1);
@@ -358,15 +358,15 @@ describe("useSongMesh capture and sender track", () => {
     mocks.getDisplayMedia.mockResolvedValue(silentDisplay.displayStream);
 
     const { result } = renderHook(() => useSongMesh(callerOptions));
-    let shared = true;
+    let shareResult: Awaited<ReturnType<typeof startSongCapture>> | undefined;
     await act(async () => {
-      shared = await result.current.shareSong();
+      shareResult = await startSongCapture();
     });
 
-    expect(shared).toBe(false);
+    expect(shareResult?.errorKind).toBe("no-audio-track");
     expect(result.current.isCapturing).toBe(false);
-    expect(result.current.shareErrorMessage).toContain("Chrome");
-    expect(result.current.shareErrorMessage).toContain("try again");
+    expect(shareResult?.errorMessage).toContain("Chrome");
+    expect(shareResult?.errorMessage).toContain("try again");
     expect(recordAudioShareOutcome).toHaveBeenCalledWith(expect.objectContaining({ browser: "Chrome", displaySurface: "monitor", audioTrackCount: 0 }));
   });
 });
@@ -471,7 +471,7 @@ describe("useSongMesh stop conditions", () => {
     const rendered = renderHook((options: SongMeshOptions) => useSongMesh(options), { initialProps: callerOptions });
     await connectSignals();
     await act(async () => {
-      await rendered.result.current.shareSong();
+      await startSongCapture();
     });
     return { ...rendered, peer: latestPeer() };
   }

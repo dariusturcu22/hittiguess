@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore
 import { Client } from "@stomp/stompjs";
 
 import { useGetVoiceTurnCredentials } from "@/hooks/generated/group-management/group-management";
-import { getSongCaptureStream, getSongCaptureTrack, startSongCapture, stopSongCapture, subscribeSongCapture } from "@/lib/song-capture";
+import { getSongCaptureStream, getSongCaptureTrack, stopSongCapture, subscribeSongCapture } from "@/lib/song-capture";
 
 const WEBSOCKET_PATH = "/ws";
 const SESSION_SIGNAL_PREFIX = "/app/sessions";
@@ -69,10 +69,7 @@ export interface SongMeshOptions {
 }
 
 export interface SongMesh {
-  // Must run straight from a click, because getDisplayMedia needs the click's user activation.
-  shareSong: () => Promise<boolean>;
   isCapturing: boolean;
-  shareErrorMessage: string | null;
   isPlaybackBlocked: boolean;
   resumePlayback: () => void;
   // What the visualizer should analyze: the DJ's own capture while their turn is playing,
@@ -184,9 +181,11 @@ async function applySenderBitrate(sender: RTCRtpSender, maxBitrateBitsPerSecond:
 
 // A second mesh, separate from voice: one peer connection per pair of session players
 // carrying a single audio transceiver. Every player joins as a listener the moment the
-// session is known, with no microphone and no click. The DJ's captured track is swapped
-// into that transceiver with replaceTrack while their turn plays, so changing who is
-// sending never renegotiates. The lower user id offers, matching the voice mesh.
+// session is known, with no microphone and no click. Each DJ's share starts once on the
+// audio check and runs for the whole match; its track is swapped into the transceivers
+// with replaceTrack only while that player's DJ turn plays and the song is hidden, and
+// out again afterwards, so the connections stay up and changing who is sending never
+// renegotiates. The lower user id offers, matching the voice mesh.
 export function useSongMesh(options: SongMeshOptions): SongMesh {
   const {
     sessionId,
@@ -202,7 +201,6 @@ export function useSongMesh(options: SongMeshOptions): SongMesh {
     hasGroupMembership,
   } = options;
 
-  const [shareErrorMessage, setShareErrorMessage] = useState<string | null>(null);
   const [isPlaybackBlocked, setIsPlaybackBlocked] = useState(false);
   const [isSignalConnected, setIsSignalConnected] = useState(false);
   const [peerResetCount, setPeerResetCount] = useState(0);
@@ -466,16 +464,6 @@ export function useSongMesh(options: SongMeshOptions): SongMesh {
     stopSongCapture();
   }, [isSessionOpen]);
 
-  const shareSong = useCallback(async () => {
-    if (getSongCaptureStream()) {
-      setShareErrorMessage(null);
-      return true;
-    }
-    const result = await startSongCapture();
-    setShareErrorMessage(result.errorMessage);
-    return result.errorMessage === null;
-  }, []);
-
   const resumePlayback = useCallback(() => {
     const remoteAudio = [...remoteAudioReference.current.values()];
     void Promise.allSettled(remoteAudio.map((audio) => audio.play())).then((results) => {
@@ -484,9 +472,7 @@ export function useSongMesh(options: SongMeshOptions): SongMesh {
   }, []);
 
   return {
-    shareSong,
     isCapturing: capturedStream !== null,
-    shareErrorMessage,
     isPlaybackBlocked,
     resumePlayback,
     visualizerStream: shouldSendSong ? capturedStream : activeRemoteStream,
