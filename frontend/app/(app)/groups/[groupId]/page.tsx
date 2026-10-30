@@ -521,7 +521,9 @@ function GroupLobbyScreen({ params }: PageProps) {
 
   function openSettings() {
     setSelectedDjMode(groupQuery.data?.djMode ?? "ROTATING");
-    setSelectedFixedDjMemberId(groupQuery.data?.fixedDjMemberId ?? undefined);
+    const storedFixedDjMemberId = groupQuery.data?.fixedDjMemberId ?? undefined;
+    const isStoredFixedDjStillMember = members.some((member) => member.id === storedFixedDjMemberId);
+    setSelectedFixedDjMemberId(isStoredFixedDjStillMember ? storedFixedDjMemberId : undefined);
     setWinCondition(groupQuery.data?.winConditionCardCount ?? MINIMUM_WIN_CONDITION);
     closeAllPopups();
     setIsSettingsOpen(true);
@@ -543,7 +545,7 @@ function GroupLobbyScreen({ params }: PageProps) {
         data: {
           djMode: selectedDjMode,
           winConditionCardCount: winCondition,
-          fixedDjMemberId: selectedFixedDjMemberId,
+          fixedDjMemberId: selectedDjMode === "FIXED" ? selectedFixedDjMemberId : undefined,
         },
       },
       {

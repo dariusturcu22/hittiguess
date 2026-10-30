@@ -273,7 +273,7 @@ RefreshToken
   └── expiresAt
 ```
 
-`Group` also carries a `joinCode` (unique 4-letter code, alongside the existing invite link, story 39) and a nullable `fixedDjMemberId` (the admin's chosen fixed DJ when `djMode` is `FIXED`, V23; unset falls back to the earliest-joined-member behavior). See `ARCHITECTURE.md` for the rest of `Group`'s shape.
+`Group` also carries a `joinCode` (unique 4-letter code, alongside the existing invite link, story 39) and a nullable `fixedDjMemberId` (the admin's chosen fixed DJ when `djMode` is `FIXED`, V23; unset falls back to the earliest-joined-member behavior; a settings update only validates and stores it while `djMode` is `FIXED`, so a stale id never blocks switching to `ROTATING`). See `ARCHITECTURE.md` for the rest of `Group`'s shape.
 
 ```
 PlaylistImportJob

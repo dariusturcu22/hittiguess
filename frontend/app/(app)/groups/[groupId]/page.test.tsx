@@ -29,7 +29,11 @@ let lobbyMembers = [
 // One router for the whole file: next/navigation's useRouter returns a stable instance,
 // and a fresh object per render would change every callback that depends on it.
 const routerMock = vi.hoisted(() => ({ replace: vi.fn(), push: vi.fn() }));
-const lobbyState = vi.hoisted(() => ({ status: "OPEN", cachedSessionId: undefined as number | undefined }));
+const lobbyState = vi.hoisted(() => ({
+  status: "OPEN",
+  cachedSessionId: undefined as number | undefined,
+  fixedDjMemberId: undefined as number | undefined,
+}));
 const lobbyQueryState = vi.hoisted(() => ({ isLoading: false, isError: false }));
 
 vi.mock("next/navigation", () => ({
@@ -46,6 +50,7 @@ vi.mock("@/hooks/generated/group-management/group-management", () => ({
       id: 1,
       status: lobbyState.status,
       djMode: "ROTATING",
+      fixedDjMemberId: lobbyState.fixedDjMemberId,
       winConditionCardCount: 5,
       joinCode: "ABCD",
       inviteCode: "invite-code",
@@ -128,6 +133,7 @@ describe("GroupLobbyPage start options", () => {
   beforeEach(() => {
     lobbyState.status = "OPEN";
     lobbyState.cachedSessionId = undefined;
+    lobbyState.fixedDjMemberId = undefined;
     routerMock.replace.mockClear();
     generateMutate.mockReset();
     startWithSongsMutate.mockReset();
@@ -281,6 +287,19 @@ describe("GroupLobbyPage start options", () => {
       expect.anything(),
     );
     expect(toastMocks.success).toHaveBeenCalledWith("Settings saved");
+  });
+
+  it("saves rotating without the fixed DJ of a member who has since left", async () => {
+    lobbyState.fixedDjMemberId = 999;
+    await renderPage();
+
+    fireEvent.click(screen.getByRole("button", { name: "Settings" }));
+    fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
+
+    expect(updateSettingsMutate).toHaveBeenCalledWith(
+      { groupId: 1, data: { djMode: "ROTATING", winConditionCardCount: 5, fixedDjMemberId: undefined } },
+      expect.anything(),
+    );
   });
 
   it("shows the min-players popup only when starting below the minimum", async () => {
