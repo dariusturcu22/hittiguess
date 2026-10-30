@@ -2488,3 +2488,11 @@ The owner verified the enabled stage pipeline on a real production playlist on 2
 - [x] Review the complete diff for the cleanup pull request against dev
 
 Validation: the clean Windows backend run covers 1,035 tests and retains 20 documented loopback errors. The 168-test cleanup regression and failure recheck passes, including the pacing and local database failures from the full run. AI tests pass 395/395; frontend tests pass 410/410. Type checking and the production build pass; lint has only the three existing warnings. The WSL application starts with the flag absent, readiness returns 200, and the saved OpenAPI spec omits both removed endpoints. No migration is included.
+
+## Rotating DJ report
+
+A two-player production game reported as rotating kept the owner as DJ every turn. With two players a rotating session swaps the active player and the DJ every turn, so a DJ who never changes and never takes a turn means the session ran in fixed mode. Every new group starts in fixed mode with the first member as DJ, and the lobby showed the mode only inside the settings popup.
+
+- [x] Tests: two-player rotating and fixed rotation over consecutive turns, including a player who cannot share audio
+- [x] The lobby shows the stored DJ mode, and the fixed DJ's name, next to Settings for every member; tests
+- [x] Desktop Firefox reports that it cannot share audio, since its screen share carries no audio track; the skip notice says the player DJs only when nobody else can; tests
