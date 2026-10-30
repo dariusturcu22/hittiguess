@@ -1,7 +1,7 @@
 # Year pipeline observations (2026-10-30)
 
 Benchmark: the 369 production catalog songs from `opencode-tasks/data/catalog-export.csv`, deduplicated to
-357 by first main artist and title, in `catalog.csv`. 290 have a labelled year (labels by Claude from
+357 by first main artist and title, in `catalog.csv`. 308 have a labelled year (labels by Claude from
 release history; notes column says where a label is a judgment call). 61 Romanian, NCS, and other obscure
 songs are unlabelled and need the owner's year. Every source's answer is recorded in `captures/<source>/`.
 
@@ -11,26 +11,22 @@ Run it again, from `ai/`:
     (same for discogs, wikidata, wikipedia; one process each)
     .venv/Scripts/python.exe -m benchmark.evaluate --songs benchmark/catalog.csv --misses production --unlabelled
 
-## Score on the 290 labelled catalog songs
+## Score on the 308 labelled catalog songs
 
 | Rule | Correct | Wrong | Left to reconciliation and review |
 |---|---|---|---|
-| production (merged in PR 346) | 273 | 6 | 11 |
-| task 15 one-year cluster rule, same source answers | 237 | 5 | 48 |
+| production (merged in PR 346) | 293 | 4 | 11 |
+| task 15 one-year cluster rule, same source answers | 256 | 4 | 48 |
 
 The 65-song set in `songs.csv` scores 64 correct, 0 wrong, 1 left to review.
 
 "Left to review" is not a wrong year: the song goes to the four-source reconciliation call and is stored
 NEEDS_REVIEW instead of VERIFIED. These numbers replay the lock only; reconciliation's answers are not scored.
 
-## The 6 wrong years
+## The 4 wrong years
 
-Labels that may be wrong rather than the pipeline (owner to decide):
-- No Face No Name No Number (Modern Talking): every source says 2000. Labelled 1985 because the song first
-  appeared on Let's Talk About Love (1985); the catalog video is probably the 2000 re-recording, in which case
-  2000 is right.
-- Feel Good (Syn Cole): MusicBrainz, Discogs, and Wikipedia say 2016; labelled 2015.
-- Limitless (Elektronomia): MusicBrainz and Discogs say 2017; labelled 2016.
+No Face No Name No Number (2000, the catalog video is the re-recording), Feel Good (2016), and Limitless (2017)
+were labelling mistakes; the sources were right and the labels are corrected.
 
 Two against two, the rule takes the earlier year:
 - What Is Love (Haddaway): MusicBrainz and Wikidata 1992, Discogs and Wikipedia 1993. Labelled 1993.
