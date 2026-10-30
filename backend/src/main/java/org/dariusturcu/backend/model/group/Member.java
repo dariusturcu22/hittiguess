@@ -54,6 +54,16 @@ public class Member {
     @Column(nullable = false)
     private boolean canShareAudio = true;
 
+    // The member's share during the pre-game audio check, reset to NOT_SHARED each time a
+    // check starts. Never CANNOT_SHARE: that comes from canShareAudio.
+    @Enumerated(EnumType.STRING)
+    @Column(name = "audio_check_status", nullable = false)
+    private AudioCheckStatus audioCheckStatus = AudioCheckStatus.NOT_SHARED;
+
+    public AudioCheckStatus effectiveAudioCheckStatus() {
+        return canShareAudio ? audioCheckStatus : AudioCheckStatus.CANNOT_SHARE;
+    }
+
     @Column(nullable = false, updatable = false)
     private Instant joinedAt;
 }

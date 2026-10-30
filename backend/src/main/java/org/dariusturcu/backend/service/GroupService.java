@@ -4,6 +4,7 @@ import org.dariusturcu.backend.exception.ConflictException;
 import org.dariusturcu.backend.exception.RateLimitExceededException;
 import org.dariusturcu.backend.exception.ResourceNotFoundException;
 import org.dariusturcu.backend.exception.ResourceType;
+import org.dariusturcu.backend.model.group.AudioCheckStatus;
 import org.dariusturcu.backend.model.group.CreateGroupRequest;
 import org.dariusturcu.backend.model.group.DjMode;
 import org.dariusturcu.backend.model.group.Group;
@@ -174,7 +175,7 @@ public class GroupService {
         if (group.getRemovedUserIds().contains(user.getId())) {
             throw new ConflictException("You were removed from this group");
         }
-        if (group.getStatus() != GroupStatus.OPEN) {
+        if (group.getStatus() == GroupStatus.LOCKED) {
             throw new ConflictException("This group has already started a game session");
         }
         if (group.isFull()) {
@@ -225,7 +226,7 @@ public class GroupService {
         Group group = groupRepository.findByIdForUpdate(groupId)
                 .orElseThrow(() -> new ResourceNotFoundException(ResourceType.GROUP, groupId));
         if (group.getStatus() != GroupStatus.OPEN) {
-            throw new ConflictException("Settings cannot change while a session is running");
+            throw new ConflictException("Settings cannot change during the audio check or while a session is running");
         }
         requireAdmin(group, SecurityUtils.getCurrentUser());
 
@@ -260,10 +261,96 @@ public class GroupService {
         return result;
     }
 
-    public GroupDetailDTO startGameSession(Long groupId) {
+    // The admin's Start game in the lobby: opens the audio check instead of the game. Every
+    // member's share status starts over, and the pre-session timer restarts so a check
+    // nobody finishes still lets the group expire.
+    public GroupDetailDTO beginAudioCheck(Long groupId) {
         Group group = groupRepository.findByIdForUpdate(groupId)
                 .orElseThrow(() -> new ResourceNotFoundException(ResourceType.GROUP, groupId));
         if (group.getStatus() != GroupStatus.OPEN) {
+            throw new ConflictException("This group is already checking audio or playing");
+        }
+        requireAdmin(group, SecurityUtils.getCurrentUser());
+
+        group.setStatus(GroupStatus.AUDIO_CHECK);
+        group.setExpiresAt(Instant.now().plus(PRE_SESSION_WINDOW));
+        resetAudioCheckStatuses(group);
+        return saveAndBroadcast(group, GroupEventType.AUDIO_CHECK_STARTED);
+    }
+
+    public GroupDetailDTO reportAudioCheckStatus(Long groupId, AudioCheckStatus status) {
+        if (status == AudioCheckStatus.CANNOT_SHARE) {
+            throw new IllegalArgumentException("The browser capability report decides whether a member can share audio");
+        }
+        Group group = groupRepository.findByIdForUpdate(groupId)
+                .orElseThrow(() -> new ResourceNotFoundException(ResourceType.GROUP, groupId));
+        Member member = requireMembership(group, SecurityUtils.getCurrentUser());
+        if (group.getStatus() != GroupStatus.AUDIO_CHECK) {
+            throw new ConflictException("This group is not checking audio");
+        }
+        if (member.getAudioCheckStatus() == status) {
+            return groupMapper.toDetailDTO(group);
+        }
+        member.setAudioCheckStatus(status);
+        return saveAndBroadcast(group, GroupEventType.AUDIO_CHECK_UPDATED);
+    }
+
+    // The host gives up on a rotating check and makes one member whose share already
+    // passed the fixed DJ for this game; that DJ never takes a guessing turn.
+    public GroupDetailDTO switchToFixedDj(Long groupId, Long memberId) {
+        Group group = groupRepository.findByIdForUpdate(groupId)
+                .orElseThrow(() -> new ResourceNotFoundException(ResourceType.GROUP, groupId));
+        requireAdmin(group, SecurityUtils.getCurrentUser());
+        if (group.getStatus() != GroupStatus.AUDIO_CHECK) {
+            throw new ConflictException("This group is not checking audio");
+        }
+        Member target = group.getMembers().stream()
+                .filter(candidate -> candidate.getId().equals(memberId))
+                .findFirst()
+                .orElseThrow(() -> new ResourceNotFoundException(ResourceType.MEMBER, memberId));
+        if (!target.isConnected() || target.effectiveAudioCheckStatus() != AudioCheckStatus.OK) {
+            throw new ConflictException("Only a connected member whose audio share passed the test can be the fixed DJ");
+        }
+        group.setDjMode(DjMode.FIXED);
+        group.setFixedDjMemberId(target.getId());
+        return saveAndBroadcast(group, GroupEventType.AUDIO_CHECK_UPDATED);
+    }
+
+    public GroupDetailDTO cancelAudioCheck(Long groupId) {
+        Group group = groupRepository.findByIdForUpdate(groupId)
+                .orElseThrow(() -> new ResourceNotFoundException(ResourceType.GROUP, groupId));
+        requireAdmin(group, SecurityUtils.getCurrentUser());
+        if (group.getStatus() != GroupStatus.AUDIO_CHECK) {
+            throw new ConflictException("This group is not checking audio");
+        }
+        group.setStatus(GroupStatus.OPEN);
+        resetAudioCheckStatuses(group);
+        return saveAndBroadcast(group, GroupEventType.AUDIO_CHECK_CANCELLED);
+    }
+
+    // The host's Start game on the audio check screen. The requirement is checked here,
+    // never trusted from the client.
+    public GroupDetailDTO startGameAfterAudioCheck(Long groupId) {
+        Group group = groupRepository.findByIdForUpdate(groupId)
+                .orElseThrow(() -> new ResourceNotFoundException(ResourceType.GROUP, groupId));
+        requireAdmin(group, SecurityUtils.getCurrentUser());
+        if (group.getStatus() != GroupStatus.AUDIO_CHECK) {
+            throw new ConflictException("This group is not checking audio");
+        }
+        String blockingReason = AudioCheckRules.blockingReason(group);
+        if (blockingReason != null) {
+            throw new ConflictException(blockingReason);
+        }
+        return startGameSession(groupId);
+    }
+
+    // The transition into a running game. GameSessionStartListener creates the session off
+    // the GAME_SESSION_STARTED broadcast in the same transaction. The only HTTP path into it
+    // is startGameAfterAudioCheck, which checks the audio requirement first.
+    public GroupDetailDTO startGameSession(Long groupId) {
+        Group group = groupRepository.findByIdForUpdate(groupId)
+                .orElseThrow(() -> new ResourceNotFoundException(ResourceType.GROUP, groupId));
+        if (group.getStatus() == GroupStatus.LOCKED) {
             throw new ConflictException("A session is already running for this group");
         }
         requireAdmin(group, SecurityUtils.getCurrentUser());
@@ -274,6 +361,17 @@ public class GroupService {
         Group savedGroup = groupRepository.save(group);
         GroupDetailDTO result = groupMapper.toDetailDTO(savedGroup);
         eventPublisher.publishEvent(new GroupBroadcastEvent(GroupEventType.GAME_SESSION_STARTED, result));
+        return result;
+    }
+
+    private void resetAudioCheckStatuses(Group group) {
+        group.getMembers().forEach(member -> member.setAudioCheckStatus(AudioCheckStatus.NOT_SHARED));
+    }
+
+    private GroupDetailDTO saveAndBroadcast(Group group, GroupEventType eventType) {
+        Group savedGroup = groupRepository.save(group);
+        GroupDetailDTO result = groupMapper.toDetailDTO(savedGroup);
+        eventPublisher.publishEvent(new GroupBroadcastEvent(eventType, result));
         return result;
     }
 
@@ -335,7 +433,7 @@ public class GroupService {
     private List<GroupBroadcastEvent> leaveCurrentGroupForReplacement(Group currentGroup, User user) {
         Long currentGroupId = currentGroup.getId();
         Member currentMember = requireMembership(currentGroup, user);
-        if (currentGroup.getStatus() != GroupStatus.OPEN
+        if (currentGroup.getStatus() == GroupStatus.LOCKED
                 || gameSessionRepository.findByGroupId(currentGroupId).isPresent()) {
             throw new ConflictException("Cannot leave a group while a game session is running");
         }
@@ -428,7 +526,7 @@ public class GroupService {
         if (admin.getId().equals(memberId)) {
             throw new IllegalArgumentException("Leave the group instead of removing yourself");
         }
-        if (group.getStatus() != GroupStatus.OPEN) {
+        if (group.getStatus() == GroupStatus.LOCKED) {
             throw new ConflictException("Members can't be removed while a game session is running");
         }
 
@@ -460,13 +558,17 @@ public class GroupService {
         setVoicePresenceAndBroadcast(groupId, false);
     }
 
-    // The member's browser reports whether it can capture audio. Nothing is broadcast: the
-    // flag is only read when a session starts and when the DJ rotation picks the next DJ.
+    // The member's browser reports whether it can capture audio. It is read when a session
+    // starts and when the DJ rotation picks the next DJ, and it is broadcast only during the
+    // audio check, whose requirement it changes.
     public void reportAudioCapability(Long groupId, boolean canShareAudio) {
         Group group = findGroup(groupId);
         Member member = requireMembership(group, SecurityUtils.getCurrentUser());
         member.setCanShareAudio(canShareAudio);
         memberRepository.save(member);
+        if (group.getStatus() == GroupStatus.AUDIO_CHECK) {
+            eventPublisher.publishEvent(new GroupBroadcastEvent(GroupEventType.AUDIO_CHECK_UPDATED, groupMapper.toDetailDTO(group)));
+        }
     }
 
     private void setVoicePresenceAndBroadcast(Long groupId, boolean inVoice) {

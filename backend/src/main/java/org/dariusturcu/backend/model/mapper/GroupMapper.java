@@ -4,9 +4,11 @@ import org.dariusturcu.backend.model.group.Group;
 import org.dariusturcu.backend.model.group.GroupDetailDTO;
 import org.dariusturcu.backend.model.group.GroupInvitePreviewDTO;
 import org.dariusturcu.backend.model.group.GroupInvitePreviewMemberDTO;
+import org.dariusturcu.backend.model.group.GroupStatus;
 import org.dariusturcu.backend.model.group.Member;
 import org.dariusturcu.backend.model.group.MemberDTO;
 import org.dariusturcu.backend.security.util.SecurityUtils;
+import org.dariusturcu.backend.service.AudioCheckRules;
 
 import org.springframework.stereotype.Component;
 import lombok.RequiredArgsConstructor;
@@ -27,7 +29,8 @@ public class GroupMapper {
                 member.isAdmin(),
                 member.isConnected(),
                 member.isInVoice(),
-                member.getJoinedAt()
+                member.getJoinedAt(),
+                member.effectiveAudioCheckStatus()
         );
     }
 
@@ -73,7 +76,8 @@ public class GroupMapper {
                         .map(this::toMemberDTO)
                         .toList(),
                 group.getExpiresAt(),
-                group.getDifficultyTier()
+                group.getDifficultyTier(),
+                group.getStatus() == GroupStatus.AUDIO_CHECK ? AudioCheckRules.toDTO(group) : null
         );
     }
 }

@@ -66,7 +66,8 @@ class GroupMapperTest {
         // the per-group identity: a structural guarantee, not just a value check.
         assertThat(Arrays.stream(MemberDTO.class.getRecordComponents()).map(RecordComponent::getName))
                 .containsExactlyInAnyOrder(
-                "id", "userId", "displayName", "avatarUrl", "isAdmin", "isConnected", "isInVoice", "joinedAt");
+                "id", "userId", "displayName", "avatarUrl", "isAdmin", "isConnected", "isInVoice", "joinedAt",
+                "audioCheckStatus");
 
         GroupDetailDTO groupDetailDTO = groupMapper.toDetailDTO(group);
         assertThat(groupDetailDTO.members()).containsExactly(memberDTO);
