@@ -1,6 +1,7 @@
-import { describe, expect, it } from "vitest";
+import { renderHook } from "@testing-library/react";
+import { describe, expect, it, vi } from "vitest";
 
-import { SILENCE_FLOOR_LEVEL, VISUALIZER_BAND_COUNT, bandFrequencyEdges, computeBandLevels } from "./use-audio-levels";
+import { SILENCE_FLOOR_LEVEL, VISUALIZER_BAND_COUNT, bandFrequencyEdges, computeBandLevels, useAudioLevels } from "./use-audio-levels";
 
 const SAMPLE_RATE_HERTZ = 44100;
 const FFT_SIZE = 2048;
@@ -137,5 +138,33 @@ describe("computeBandLevels", () => {
     expect(lowestBandLevels[HIGHEST_BAND_INDEX]).toBe(SILENCE_FLOOR_LEVEL);
     expect(highestBandLevels[HIGHEST_BAND_INDEX]).toBeGreaterThan(SILENCE_FLOOR_LEVEL);
     expect(highestBandLevels[LOWEST_BAND_INDEX]).toBe(SILENCE_FLOOR_LEVEL);
+  });
+});
+
+describe("useAudioLevels wiring", () => {
+  it("feeds only the given stream into the analyser and never to the speaker output", () => {
+    const speakerOutput = { speakerOutput: true };
+    const analyser = { fftSize: 0, smoothingTimeConstant: 0, minDecibels: 0, maxDecibels: 0, frequencyBinCount: 4, getFloatFrequencyData: vi.fn(), disconnect: vi.fn() };
+    const source = { connect: vi.fn(), disconnect: vi.fn() };
+    const createMediaStreamSource = vi.fn(() => source);
+    class FakeAudioContext {
+      destination = speakerOutput;
+      sampleRate = SAMPLE_RATE_HERTZ;
+      createMediaStreamSource = createMediaStreamSource;
+      createAnalyser = () => analyser;
+      resume = () => Promise.resolve();
+      close = () => Promise.resolve();
+    }
+    vi.stubGlobal("AudioContext", FakeAudioContext);
+    const songStream = {} as MediaStream;
+
+    renderHook(() => useAudioLevels(songStream));
+
+    expect(createMediaStreamSource).toHaveBeenCalledTimes(1);
+    expect(createMediaStreamSource).toHaveBeenCalledWith(songStream);
+    expect(source.connect).toHaveBeenCalledTimes(1);
+    expect(source.connect).toHaveBeenCalledWith(analyser);
+    expect(source.connect).not.toHaveBeenCalledWith(speakerOutput);
+    vi.unstubAllGlobals();
   });
 });
