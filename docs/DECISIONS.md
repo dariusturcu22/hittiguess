@@ -1436,3 +1436,15 @@ Decision: besides the 65-song `songs.csv`, `ai/benchmark/catalog.csv` holds the 
 Why: 65 songs were too few to show how the lock behaves on the songs the product actually holds, including niche and non-English tracks. The catalog set measures a rule change against the real distribution before it ships.
 
 ---
+
+## 2026-10-30 | Every DJ shares once on an audio check before the game
+
+Decision: Start game in the lobby opens an audio check instead of the game. The check is a group status, `AUDIO_CHECK`, between `OPEN` and `LOCKED`, so members can still join and leave and the requirement follows them live; the session and its players are created only when the host starts the game from the check. A rotating game needs every connected member to share and pass the test, a fixed game only its DJ, and nobody able to share blocks every start. The host can switch to a fixed DJ chosen among members whose share passed. The server checks the requirement on start. The test passes once the shared track's level stays above about -40 dBFS for half a second; a share without an audio track fails at once.
+
+Each share runs for the whole match. The song mesh keeps one peer connection per pair of players for the whole session and swaps the DJ's long-lived track into the senders with `replaceTrack` only during that player's DJ turn before the reveal. Keeping the connections and swapping tracks was chosen over opening connections per turn because a turn change then never renegotiates, listeners stay connected, and a slow ICE setup can never cut into a turn.
+
+A running game pauses while a player it needs has no working share: every remaining player who can DJ in a rotating game, the DJ in a fixed one. Round timers do nothing while paused and the current phase restarts with a full deadline on resume. A fixed DJ who leaves hands the role for the rest of the game to a remaining player who can share and is not taking the current turn, preferring one whose share passed; a replacement without one pauses the game until their share passes. The pause is driven by reports from the player's browser (share ended, or a reload without a share), not by socket presence, because leaving the session page to use the rest of the app also closes the session socket.
+
+Why: per-turn sharing asked every DJ for the screen picker mid-game and found missing audio only when a song was already playing. A rotating game needs everyone to share for fairness, since each player DJs equally often, and checking all shares before the first turn finds the browsers that cannot share while the group can still switch to a fixed DJ.
+
+---

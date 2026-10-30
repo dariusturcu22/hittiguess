@@ -92,7 +92,7 @@ A successful single-song preview is remembered in memory for ten minutes, keyed 
 
 A group is the persistent wrapper a game session lives inside. Anyone can create one, whoever does becomes its admin. Membership is invite-link based, capped at 8 members, and a user can belong to at most one group at a time.
 
-The admin controls the game settings (playlist(s), DJ mode, win-condition card count); every member sees those settings change in real time, non-admins see them read-only. Chat and voice are live from the moment the group is created. Only the admin can start a game session; once started, the group locks, no new members can join.
+The admin controls the game settings (playlist(s), DJ mode, win-condition card count); every member sees those settings change in real time, non-admins see them read-only. Chat and voice are live from the moment the group is created. Only the admin can start a game session. Start game opens an audio check first, a group status between the lobby and the game in which members can still join and the required DJs share and test their audio; once the game starts, the group locks, no new members can join.
 
 Lifecycle runs on fixed timers, not activity tracking:
 
@@ -136,7 +136,7 @@ Sync through WebSocket/STOMP for both the group and the game session. REST for g
 
 The DJ is never shown an embedded YouTube player.
 
-- Remote sessions: the DJ first shares the screen or tab audio through the browser picker, then opens the real YouTube page in a new browser tab. The captured audio travels on its own session-scoped peer connections, one per listener, separate from the voice mesh, so a player hears the song without joining the voice call. The capture stays alive for the whole match and is attached to the song senders only during the DJ's own turn until the reveal, and detached the rest of the time. Each player's card bars follow the song stream.
+- Remote sessions: every DJ shares the entire screen with system audio once, on the audio check before the game, where an analyser on the shared track confirms it carries sound; on their turn they open the real YouTube page in a new browser tab. The captured audio travels on its own session-scoped peer connections, one per listener, separate from the voice mesh, so a player hears the song without joining the voice call. The capture lives in a page-independent module for the whole match, and its track is swapped into the song senders with `replaceTrack` only during that player's DJ turn until the reveal and swapped out the rest of the time, so the connections stay up and a change of DJ never renegotiates. A share that stops is reported to the server, which pauses the game until a new share passes the test. Each player's card bars follow the song stream.
 - In-person sessions: the DJ opens the real YouTube app through a deep link (Android intent, iOS universal link, falling back to a plain browser link if the app isn't installed) and plays through the device speaker.
 - Physical cards: the QR code encodes the YouTube video ID directly. Scanning opens the real YouTube app or site.
 - Playback itself is manual, on the DJ's device, there's no remote play or pause on YouTube's own player. The DJ holds no other in-app controls: pause, play, and closing the tab or app all happen on YouTube itself, not mirrored into the game. "Open YouTube Link" is the DJ's only in-app action.

@@ -12,7 +12,7 @@ On joining, a player is prompted to set a per-group display name and avatar, def
 
 Chat and voice are open from the moment the group exists, voice is a standing room anyone can join or leave freely, not a call someone starts. Only the admin can configure the game settings, playlist(s), DJ mode, win-condition card count, everyone else sees them update live but can't change them.
 
-Only the admin can start a game session. Once started, the group is locked to new members. A group can play more than one game session over its lifetime, the admin can start another once one finishes.
+Only the admin can start a game session. Start game in the lobby opens an audio check first, see Audio check below; the game itself starts from there. Once started, the group is locked to new members. A group can play more than one game session over its lifetime, the admin can start another once one finishes.
 
 A group doesn't last forever: it's deleted if the admin doesn't start a game session within 30 minutes of creating it, or within 30 minutes of the previous one ending. If the admin leaves the group outright, another member takes over as admin; if no one's left, the group is deleted. Closing the app doesn't remove anyone, only leaving on purpose does, reopening the app points a player back to their still-active group if they have one.
 
@@ -80,7 +80,7 @@ Text chat renders as a semi-transparent overlay in the bottom-left corner, toggl
 - For remote sessions, that browser tab is captured through WebRTC and streamed to the other players.
 - Non-DJ players never see a YouTube embed or the YouTube app, only the game UI.
 - Reveal happens automatically once the betting window closes; nobody, DJ included, triggers it by hand.
-- A DJ who has not yet shared audio is asked first: a "Share your audio first" action opens the browser's screen-share picker (Entire screen with system audio, or the YouTube tab), and only then does "Open on YouTube to play" appear. The share stays alive for the rest of the match, so later rounds do not ask again, and its audio reaches the other players only while that player is the DJ and the song is still hidden. YouTube opens in a new tab. The captured song travels on its own peer connections, separate from voice, so every player receives it without joining the voice call. Every player's card bars follow the DJ's audio, never a microphone. Browsers that cannot share the song's audio DJ only when no other player can, and see a dismissible warning in the lobby and the game screen (listeners are warned too when the DJ cannot share). The capture asks for the entire screen with system audio, because the YouTube tab does not exist yet when the share is requested. Where that works:
+- Every DJ shares their audio once, on the audio check before the game, and keeps that share running until the game ends. DJ turns never ask for a share: the DJ sees "Open on YouTube to play" straight away, and the running share's audio reaches the other players only while that player is the DJ and the song is still hidden. YouTube opens in a new tab. The captured song travels on its own peer connections, separate from voice, so every player receives it without joining the voice call. Every player's card bars follow the DJ's audio, never a microphone. Browsers that cannot share the song's audio DJ only when no other player can, and see a dismissible warning in the lobby and the game screen (listeners are warned too when the DJ cannot share). The capture asks for the entire screen with system audio, because the YouTube tab does not exist yet when the share is requested. Where that works:
 
 | Browser and platform | Shares the song | Source |
 | --- | --- | --- |
@@ -95,6 +95,21 @@ Text chat renders as a semi-transparent overlay in the bottom-left corner, toggl
 
 Chromium browsers on macOS and Linux can share a tab's audio, but the app does not use it. New groups start in rotating DJ mode.
 - Players can voice chat and text chat with the rest of their group, available from group creation, not just during a game session. See [ARCHITECTURE.md](ARCHITECTURE.md) for how this works.
+
+## Audio check
+
+Start game in the lobby moves the group into an audio check that every member sees. Members can still join and leave, which changes who has to share at once; the settings stay locked.
+
+- A rotating game needs every connected player to share and pass the test, since everyone DJs equally often. A player whose browser cannot share blocks the start and sees the fix: open the game in Chrome or Edge on a Windows computer or a Mac.
+- A fixed game needs only its DJ. Everyone else waits for that player.
+- The host can switch a rotating check to a fixed DJ, chosen among players whose share passed. That DJ never takes a guessing turn.
+- When nobody in the group can share, the game cannot start, and the only way out is Back to lobby, which cancels the check.
+
+Each required player shares the entire screen with system audio once. The test reads the shared track's level and passes once it stays above a small threshold for half a second; a share with no audio track fails at once with the help text about ticking Share system audio, and a share that carries no sound for twenty seconds shows as No audio detected while the test keeps listening. The game tab's own sound is left out of the share, so the test asks the player to play anything else, for example a song on YouTube. Every player's status updates live for everyone. The host's Start game stays disabled until every required player has passed, and the server checks the same rule.
+
+## Stopped share
+
+If a share the game needs stops mid-game, because Stop sharing was clicked, the shared screen closed, or the page reloaded, the game pauses for everyone with "<name> stopped sharing, waiting for them to share again". That player gets the share and the test inline, and the game resumes once the test passes, with the current phase's timer starting over. Placing a card and betting wait while the game is paused. A rotating game needs every remaining player who can share; a fixed game needs only its DJ. A player who leaves drops out of the requirement, so a game paused for them resumes. A fixed DJ who leaves hands the role, for the rest of the game, to a remaining player who can share and is not taking the current turn, preferring one whose share already passed; a replacement without a share pauses the game until theirs passes. With nobody left who can share, the DJ role rotates as before and the game goes on without shared audio.
 
 ## Ads
 
