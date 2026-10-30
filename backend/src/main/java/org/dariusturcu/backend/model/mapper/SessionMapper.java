@@ -13,6 +13,7 @@ import org.dariusturcu.backend.model.session.RoundStatus;
 import org.dariusturcu.backend.model.session.RoundTiming;
 import org.dariusturcu.backend.model.song.Song;
 import org.dariusturcu.backend.repository.BetRepository;
+import org.dariusturcu.backend.service.SessionAudioRules;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
@@ -43,6 +44,7 @@ public class SessionMapper {
                 player.getStatus(),
                 player.isConnected(),
                 player.isCanDj(),
+                player.getAudioStatus(),
                 player.getTotalArtistsGuessed(),
                 player.getTotalTitlesGuessed(),
                 player.getTimeline().stream().map(this::toCardDTO).toList());
@@ -97,6 +99,9 @@ public class SessionMapper {
                 session.getWinConditionCardCount(),
                 session.getCurrentGameRoundNumber(),
                 session.getPlayers().stream().map(this::toPlayerDTO).toList(),
-                currentRound != null ? toRoundDTO(currentRound) : null);
+                currentRound != null ? toRoundDTO(currentRound) : null,
+                session.getPausedAt(),
+                SessionAudioRules.requiredSharers(session).stream().map(Player::getId).toList(),
+                SessionAudioRules.blockingSharers(session).stream().map(Player::getId).toList());
     }
 }

@@ -1796,7 +1796,7 @@ class GameSessionServiceTest {
 
         gameSessionService.startSessionWithSongs(GROUP_ID, new StartSessionWithSongsRequest(songIds));
 
-        verify(groupService).startGameSession(GROUP_ID);
+        verify(groupService).beginAudioCheck(GROUP_ID);
         assertThat(pendingPool.take(GROUP_ID)).contains(songIds);
     }
 
@@ -1839,7 +1839,7 @@ class GameSessionServiceTest {
         Group group = groupWithTwoConnectedMembers();
         when(groupRepository.findByIdForUpdate(GROUP_ID)).thenReturn(Optional.of(group));
         List<Long> songIds = catalogPool(STARTABLE_POOL_SIZE);
-        doThrow(new ConflictException("Group already locked")).when(groupService).startGameSession(GROUP_ID);
+        doThrow(new ConflictException("Group already locked")).when(groupService).beginAudioCheck(GROUP_ID);
 
         assertThatThrownBy(() -> gameSessionService.startSessionWithSongs(
                         GROUP_ID, new StartSessionWithSongsRequest(songIds)))
@@ -1932,7 +1932,7 @@ class GameSessionServiceTest {
         gameSessionService.startCustomSession(GROUP_ID, new StartCustomSessionRequest(CUSTOM_PLAYLIST_ID, null));
 
         verify(playlistAccessService).requireRead(eq(playlist), any(User.class));
-        verify(groupService).startGameSession(GROUP_ID);
+        verify(groupService).beginAudioCheck(GROUP_ID);
         assertThat(pendingPool.take(GROUP_ID)).contains(songIds);
     }
 
@@ -1974,7 +1974,7 @@ class GameSessionServiceTest {
 
         gameSessionService.startCustomSession(GROUP_ID, new StartCustomSessionRequest(null, PASTED_PLAYLIST_LINK));
 
-        verify(groupService).startGameSession(GROUP_ID);
+        verify(groupService).beginAudioCheck(GROUP_ID);
         assertThat(pendingPool.take(GROUP_ID)).contains(songIds);
     }
 

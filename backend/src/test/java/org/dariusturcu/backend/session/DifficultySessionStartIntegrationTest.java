@@ -389,6 +389,8 @@ class DifficultySessionStartIntegrationTest {
 
         List<Long> reviewedIds = previews.stream().map(GeneratedSongPreviewDTO::id).toList();
         gameSessionService.startSessionWithSongs(createdGroup.id(), new StartSessionWithSongsRequest(reviewedIds));
+        assertThat(gameSessionRepository.findByGroupId(createdGroup.id())).isEmpty();
+        groupService.startGameSession(createdGroup.id());
 
         GameSession session = gameSessionRepository.findByGroupId(createdGroup.id()).orElseThrow();
         assertThat(session.getPlayers()).hasSize(2);
@@ -406,6 +408,8 @@ class DifficultySessionStartIntegrationTest {
 
         authenticateAs(admin);
         gameSessionService.startCustomSession(createdGroup.id(), new StartCustomSessionRequest(playlist.getId(), null));
+        assertThat(gameSessionRepository.findByGroupId(createdGroup.id())).isEmpty();
+        groupService.startGameSession(createdGroup.id());
 
         GameSession session = gameSessionRepository.findByGroupId(createdGroup.id()).orElseThrow();
         assertThat(playedSongIds(session)).containsExactlyInAnyOrderElementsOf(playlistSongIds);
@@ -425,6 +429,8 @@ class DifficultySessionStartIntegrationTest {
         authenticateAs(admin);
         gameSessionService.startCustomSession(
                 createdGroup.id(), new StartCustomSessionRequest(null, "https://youtube.com/playlist?list=stubbed"));
+        assertThat(gameSessionRepository.findByGroupId(createdGroup.id())).isEmpty();
+        groupService.startGameSession(createdGroup.id());
 
         GameSession session = gameSessionRepository.findByGroupId(createdGroup.id()).orElseThrow();
         assertThat(playedSongIds(session)).containsExactlyInAnyOrderElementsOf(knownIds);

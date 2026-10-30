@@ -3,6 +3,7 @@ package org.dariusturcu.backend.service;
 import org.dariusturcu.backend.exception.ConflictException;
 import org.dariusturcu.backend.exception.ResourceNotFoundException;
 import org.dariusturcu.backend.exception.ResourceType;
+import org.dariusturcu.backend.model.group.AudioCheckStatus;
 import org.dariusturcu.backend.model.group.DjMode;
 import org.dariusturcu.backend.model.group.Group;
 import org.dariusturcu.backend.model.group.GroupDetailDTO;
@@ -103,6 +104,7 @@ public class GameSessionService {
     private static final int MINIMUM_CORRECT_ARTISTS_FOR_TOKEN = 1;
     private static final int MAXIMUM_PLACEMENT_PREVIEWS_PER_SECOND = 30;
     private static final Duration PLACEMENT_PREVIEW_WINDOW = Duration.ofSeconds(1);
+    private static final String PAUSED_MESSAGE = "The game is paused until the DJ's audio share works again";
     private static final double PREVIEW_HORIZONTAL_MINIMUM = 0.0;
     private static final double PREVIEW_HORIZONTAL_MAXIMUM = 1.0;
     private static final double PREVIEW_VERTICAL_MINIMUM = -2.0;
@@ -154,7 +156,7 @@ public class GameSessionService {
         // Every start path funnels its candidate songs through one dedupe-and-shuffle step, so
         // the song list a session plays from is built the same way whether the songs came from
         // a staged review, the group's playlists, or the difficulty selector.
-        List<Song> selectedPool = pendingPool.take(groupId)
+        List<Song> selectedPool = pendingPool.peek(groupId)
                 .map(this::resolvePoolSongs)
                 .orElseGet(() -> group.getDifficultyTier() == null ? defaultSongPool(group)
                         : difficultySelector.selectPreparedInternational(group.getDifficultyTier(),
@@ -183,6 +185,7 @@ public class GameSessionService {
             player.setStatus(PlayerStatus.ACTIVE);
             player.setConnected(true);
             player.setCanDj(member.isCanShareAudio());
+            player.setAudioStatus(member.effectiveAudioCheckStatus() == AudioCheckStatus.OK ? AudioCheckStatus.OK : null);
             player.setTotalArtistsGuessed(0);
             player.setTotalTitlesGuessed(0);
             session.addPlayer(player);
@@ -196,6 +199,7 @@ public class GameSessionService {
         session.setSongQueue(songQueue);
 
         GameSession savedSession = gameSessionRepository.save(session);
+        pendingPool.discard(groupId);
 
         List<Player> ordered = savedSession.getPlayers().stream()
                 .sorted(Comparator.comparingInt(Player::getTurnOrder))
@@ -215,6 +219,33 @@ public class GameSessionService {
 
         createRound(savedSession, firstActive, firstDj);
         return savedSession;
+    }
+
+    // The lobby's Start game. Checks that there are enough players and songs before anyone
+    // is asked to share audio, then opens the audio check; the game starts from there. The
+    // song list itself is built when the game starts, for the players connected then.
+    public GroupDetailDTO beginAudioCheck(Long groupId) {
+        Group group = groupRepository.findByIdForUpdate(groupId)
+                .orElseThrow(() -> new ResourceNotFoundException(ResourceType.GROUP, groupId));
+        requireGroupAdmin(group);
+        List<Member> connectedMembers = connectedMembers(group);
+        if (connectedMembers.size() < MINIMUM_PLAYERS) {
+            throw new ConflictException("Not enough connected members to start a session");
+        }
+        pendingPool.discard(groupId);
+        List<Song> candidatePool = group.getDifficultyTier() == null ? defaultSongPool(group)
+                : difficultySelector.selectPreparedInternational(group.getDifficultyTier(),
+                connectedMembers.size() * group.getWinConditionCardCount() * DIFFICULTY_POOL_HEADROOM);
+        requireEnoughSongs(gameSongList.distinct(candidatePool).size(), connectedMembers.size(), group.getWinConditionCardCount());
+        return groupService.beginAudioCheck(groupId);
+    }
+
+    // Back to the lobby from the audio check. A song list staged for this game is dropped
+    // with it, so a later start builds its own.
+    public GroupDetailDTO cancelAudioCheck(Long groupId) {
+        GroupDetailDTO result = groupService.cancelAudioCheck(groupId);
+        pendingPool.discard(groupId);
+        return result;
     }
 
     // Compatibility preview endpoint. The lobby persists its tier and selects songs at Start.
@@ -284,7 +315,7 @@ public class GameSessionService {
 
         pendingPool.stage(group.getId(), resolvedPool.stream().map(Song::getId).toList());
         try {
-            return groupService.startGameSession(group.getId());
+            return groupService.beginAudioCheck(group.getId());
         } catch (RuntimeException startFailure) {
             pendingPool.discard(group.getId());
             throw startFailure;
@@ -526,6 +557,7 @@ public class GameSessionService {
         if (round.getStatus() != RoundStatus.AWAITING_PLACEMENT) {
             throw new ConflictException("This round has already locked in a placement");
         }
+        requireNotPaused(session);
 
         boolean isCorrect = isPlacementCorrect(player, request.position(), round.getSong().getReleaseYear());
         round.setPlacedPosition(request.position());
@@ -542,7 +574,7 @@ public class GameSessionService {
     // Effect method for the post-countdown timer.
     public void startBettingWindowEffect(Long roundId) {
         Round round = roundRepository.findById(roundId).orElse(null);
-        if (round == null || round.getStatus() != RoundStatus.COUNTDOWN) {
+        if (round == null || round.getStatus() != RoundStatus.COUNTDOWN || isPaused(round.getSession())) {
             return;
         }
 
@@ -569,6 +601,7 @@ public class GameSessionService {
         if (round.getStatus() != RoundStatus.BETTING) {
             throw new ConflictException("Betting is not open for this round");
         }
+        requireNotPaused(session);
         boolean isEligible = eligibleBettors(round).stream().anyMatch(bettor -> bettor.getId().equals(player.getId()));
         if (!isEligible) {
             throw new AccessDeniedException("This player cannot bet on this round");
@@ -609,6 +642,7 @@ public class GameSessionService {
         if (round.getStatus() != RoundStatus.BETTING) {
             return;
         }
+        requireNotPaused(session);
         boolean isEligible = eligibleBettors(round).stream().anyMatch(bettor -> bettor.getId().equals(player.getId()));
         if (!isEligible) {
             throw new AccessDeniedException("Only a player who can still bet this round can skip betting");
@@ -668,7 +702,7 @@ public class GameSessionService {
     // window is skipped (no eligible bettor, or an explicit skip-betting action).
     public void revealEffect(Long roundId) {
         Round round = roundRepository.findById(roundId).orElse(null);
-        if (round == null || round.getStatus() == RoundStatus.SCORED) {
+        if (round == null || round.getStatus() == RoundStatus.SCORED || isPaused(round.getSession())) {
             return;
         }
         if (round.getRevealedAt() == null) {
@@ -767,7 +801,7 @@ public class GameSessionService {
             return;
         }
         GameSession session = round.getSession();
-        if (session.getStatus() != SessionStatus.IN_PROGRESS) {
+        if (session.getStatus() != SessionStatus.IN_PROGRESS || isPaused(session)) {
             return;
         }
         boolean isLatestRound = roundRepository.findTopBySessionOrderByRoundNumberDesc(session)
@@ -1142,11 +1176,15 @@ public class GameSessionService {
 
         Round currentRound = getCurrentRound(session);
         boolean isUnscoredRound = currentRound != null && currentRound.getStatus() != RoundStatus.SCORED;
+        if (session.getDjMode() == DjMode.FIXED && player.getId().equals(session.getFixedDjPlayerId())) {
+            handOverFixedDjRole(session, isUnscoredRound ? currentRound.getActivePlayer() : null, player);
+        }
         if (isUnscoredRound && currentRound.getActivePlayer().getId().equals(player.getId())) {
             currentRound.setPlacementCorrect(false);
             currentRound.setPlacedPosition(null);
             roundRepository.save(currentRound);
             self.scoreRoundEffect(currentRound.getId());
+            reevaluateAudioPause(session);
             return;
         }
         if (isUnscoredRound && currentRound.getDjPlayer().getId().equals(player.getId())) {
@@ -1155,22 +1193,165 @@ public class GameSessionService {
         if (endSessionWhenTooFewPlayersRemain(session)) {
             return;
         }
+        reevaluateAudioPause(session);
         if (currentRound != null) {
             publishRoundEvent(SessionEventType.PLAYER_LEFT, session, currentRound);
         }
     }
 
-    // The DJ left before the reveal: the next eligible player who is not the active player
-    // takes over the current round's DJ role, so the song still gets played. With nobody
-    // left to take it, the too-few-players check right after ends the session.
+    // The DJ left before the reveal: another remaining player who is not the active player
+    // takes over the current round's DJ role, so the song still gets played. The fixed DJ
+    // comes first, then a player whose share already passed, then one who can share, each in
+    // turn order. With nobody left to take it, the too-few-players check right after ends
+    // the session.
     private void handOverDjRole(GameSession session, Round round, Player leavingDj) {
-        try {
-            Player replacement = findNextEligiblePlayer(session, leavingDj.getTurnOrder(), Set.of(round.getActivePlayer().getId()));
-            round.setDjPlayer(replacement);
-            roundRepository.save(round);
-        } catch (ConflictException noEligiblePlayer) {
+        Long activePlayerId = round.getActivePlayer().getId();
+        Optional<Player> replacement = session.getPlayers().stream()
+                .filter(candidate -> candidate.getStatus() == PlayerStatus.ACTIVE)
+                .filter(candidate -> !candidate.getId().equals(activePlayerId))
+                .min(Comparator.comparing((Player candidate) -> !candidate.getId().equals(session.getFixedDjPlayerId()))
+                        .thenComparing(candidate -> candidate.getAudioStatus() != AudioCheckStatus.OK)
+                        .thenComparing(candidate -> !candidate.isCanDj())
+                        .thenComparingInt(candidate -> turnDistance(session, leavingDj, candidate)));
+        if (replacement.isEmpty()) {
             log.debug("No player left to take over as DJ for round {}", round.getId());
+            return;
         }
+        round.setDjPlayer(replacement.get());
+        roundRepository.save(round);
+    }
+
+    // A fixed DJ who leaves hands the role to a remaining player who can share audio and is
+    // not taking the current turn, preferring one whose share already passed, for the rest
+    // of the game. A replacement without a working share has to share first, which the pause
+    // rule enforces. With nobody able to share, the rotation fallback in advanceRound applies.
+    private void handOverFixedDjRole(GameSession session, Player currentActivePlayer, Player leavingDj) {
+        Long currentActivePlayerId = currentActivePlayer != null ? currentActivePlayer.getId() : null;
+        Optional<Player> replacement = session.getPlayers().stream()
+                .filter(candidate -> candidate.getStatus() == PlayerStatus.ACTIVE && candidate.isCanDj())
+                .filter(candidate -> !candidate.getId().equals(currentActivePlayerId))
+                .min(Comparator.comparing((Player candidate) -> candidate.getAudioStatus() != AudioCheckStatus.OK)
+                        .thenComparingInt(candidate -> turnDistance(session, leavingDj, candidate)));
+        if (replacement.isEmpty()) {
+            return;
+        }
+        Player newFixedDj = replacement.get();
+        session.setFixedDjPlayerId(newFixedDj.getId());
+        gameSessionRepository.save(session);
+        if (newFixedDj.getAudioStatus() != AudioCheckStatus.OK) {
+            newFixedDj.setAudioStatus(AudioCheckStatus.NOT_SHARED);
+            playerRepository.save(newFixedDj);
+        }
+    }
+
+    private int turnDistance(GameSession session, Player from, Player to) {
+        int playerCount = session.getPlayers().size();
+        return Math.floorMod(to.getTurnOrder() - from.getTurnOrder(), playerCount);
+    }
+
+    // --- Audio share pause --------------------------------------------------------
+
+    // A player's browser reports their own share while the game runs: a stopped share, a
+    // new share being tested, a passed test, or a share without sound. The game pauses as
+    // soon as a player it needs is without a working share and resumes once every one of
+    // them has one again.
+    public void reportPlayerAudioStatus(Long sessionId, Long userId, AudioCheckStatus status) {
+        if (status == AudioCheckStatus.CANNOT_SHARE) {
+            throw new IllegalArgumentException("The browser capability report decides whether a player can share audio");
+        }
+        GameSession session = getSession(sessionId);
+        if (session.getStatus() != SessionStatus.IN_PROGRESS) {
+            throw new ConflictException("This session is not running");
+        }
+        Player player = findPlayerByUserId(session, userId);
+        if (player.getStatus() == PlayerStatus.LEFT) {
+            throw new ConflictException("This player has left the session");
+        }
+        if (player.getAudioStatus() == status) {
+            return;
+        }
+        player.setAudioStatus(status);
+        playerRepository.save(player);
+        if (!reevaluateAudioPause(session)) {
+            publishSessionEvent(SessionEventType.AUDIO_STATUS_CHANGED, session);
+        }
+    }
+
+    // Pauses or resumes the session to match its required players' shares. Returns whether
+    // it changed anything, which it has already broadcast.
+    private boolean reevaluateAudioPause(GameSession session) {
+        if (session.getStatus() != SessionStatus.IN_PROGRESS) {
+            return false;
+        }
+        boolean shouldPause = !SessionAudioRules.blockingSharers(session).isEmpty();
+        if (shouldPause && session.getPausedAt() == null) {
+            session.setPausedAt(Instant.now());
+            gameSessionRepository.save(session);
+            publishSessionEvent(SessionEventType.SESSION_PAUSED, session);
+            return true;
+        }
+        if (!shouldPause && session.getPausedAt() != null) {
+            session.setPausedAt(null);
+            gameSessionRepository.save(session);
+            Round round = getCurrentRound(session);
+            if (round != null) {
+                restartRoundTimer(round, Instant.now());
+            }
+            publishSessionEvent(SessionEventType.SESSION_RESUMED, session);
+            return true;
+        }
+        return false;
+    }
+
+    // Every timer that fired during the pause did nothing, so the current phase starts over
+    // with a full-length deadline from the moment the game resumes.
+    private void restartRoundTimer(Round round, Instant resumedAt) {
+        Long roundId = round.getId();
+        switch (round.getStatus()) {
+            case AWAITING_PLACEMENT -> {
+                round.setPlacementEndsAt(resumedAt.plus(RoundTiming.PLACEMENT_WINDOW));
+                roundRepository.save(round);
+                gameSessionScheduler.scheduleAt(round.getPlacementEndsAt(), () -> self.placementTimeoutEffect(roundId));
+                Long activePlayerId = round.getActivePlayer().getId();
+                gameSessionScheduler.scheduleAfter(Duration.ofSeconds(ACTIVE_PLAYER_TURN_TIMEOUT_SECONDS),
+                        () -> self.turnTimeoutEffect(activePlayerId));
+            }
+            case COUNTDOWN -> {
+                round.setLockedInAt(resumedAt);
+                roundRepository.save(round);
+                gameSessionScheduler.scheduleAfter(RoundTiming.LOCK_IN_COUNTDOWN, () -> self.startBettingWindowEffect(roundId));
+            }
+            case BETTING -> {
+                round.setBettingWindowEndsAt(resumedAt.plus(RoundTiming.BETTING_WINDOW));
+                roundRepository.save(round);
+                gameSessionScheduler.scheduleAt(round.getBettingWindowEndsAt(), () -> self.revealEffect(roundId));
+            }
+            case REVEALED -> gameSessionScheduler.scheduleAt(resumedAt, () -> self.revealEffect(roundId));
+            case SCORED -> {
+                round.setScoredAt(resumedAt);
+                roundRepository.save(round);
+                gameSessionScheduler.scheduleAfter(RoundTiming.REVEAL_HOLD, () -> self.advanceRoundEffect(roundId));
+            }
+        }
+    }
+
+    private boolean isPaused(GameSession session) {
+        return session.getPausedAt() != null;
+    }
+
+    private void requireNotPaused(GameSession session) {
+        if (isPaused(session)) {
+            throw new ConflictException(PAUSED_MESSAGE);
+        }
+    }
+
+    private void publishSessionEvent(SessionEventType type, GameSession session) {
+        Round round = getCurrentRound(session);
+        if (round != null) {
+            publishRoundEvent(type, session, round);
+            return;
+        }
+        eventPublisher.publishEvent(new SessionBroadcastEvent(type, session.getId(), null));
     }
 
     // Effect method for the idle placement timer. The active player is still connected, so
@@ -1180,7 +1361,7 @@ public class GameSessionService {
     public void placementTimeoutEffect(Long roundId) {
         Round round = roundRepository.findById(roundId).orElse(null);
         if (round == null || round.getStatus() != RoundStatus.AWAITING_PLACEMENT
-                || round.getSession().getStatus() != SessionStatus.IN_PROGRESS) {
+                || round.getSession().getStatus() != SessionStatus.IN_PROGRESS || isPaused(round.getSession())) {
             return;
         }
         if (round.getPlacementEndsAt() != null && Instant.now().isBefore(round.getPlacementEndsAt())) {
@@ -1202,6 +1383,9 @@ public class GameSessionService {
         }
 
         GameSession session = player.getSession();
+        if (isPaused(session)) {
+            return;
+        }
         Round currentRound = getCurrentRound(session);
         if (currentRound == null || currentRound.getStatus() != RoundStatus.AWAITING_PLACEMENT
                 || !currentRound.getActivePlayer().getId().equals(playerId)) {
@@ -1251,7 +1435,7 @@ public class GameSessionService {
                 () -> self.checkAutoAbandonEffect(sessionId));
 
         Round round = getCurrentRound(session);
-        if (round != null) {
+        if (round != null && !isPaused(session)) {
             rescheduleRoundTimer(round, recoveredAt);
         }
     }

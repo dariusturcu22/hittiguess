@@ -1,5 +1,6 @@
 package org.dariusturcu.backend.model.session;
 
+import org.dariusturcu.backend.model.group.AudioCheckStatus;
 import org.dariusturcu.backend.model.user.User;
 
 import jakarta.persistence.*;
@@ -63,6 +64,13 @@ public class Player {
     // capture audio, so the DJ rotation passes them over.
     @Column(name = "can_dj", nullable = false)
     private boolean canDj = true;
+
+    // The player's audio share while the game runs. OK when their share passed the audio
+    // check, null when they never shared. Any other value on a player who has to share
+    // pauses the game until a new share passes the test.
+    @Enumerated(EnumType.STRING)
+    @Column(name = "audio_status")
+    private AudioCheckStatus audioStatus;
 
     @Column(name = "total_artists_guessed", nullable = false)
     private int totalArtistsGuessed;

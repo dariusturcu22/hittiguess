@@ -1,6 +1,7 @@
 package org.dariusturcu.backend.controller;
 
 import org.dariusturcu.backend.exception.ResourceNotFoundException;
+import org.dariusturcu.backend.model.group.AudioCheckStatusRequest;
 import org.dariusturcu.backend.model.mapper.SessionMapper;
 import org.dariusturcu.backend.model.session.GameSession;
 import org.dariusturcu.backend.model.session.GameSessionDTO;
@@ -12,6 +13,7 @@ import org.dariusturcu.backend.service.GameSessionService;
 import org.dariusturcu.backend.service.SessionResultsStore;
 
 import io.swagger.v3.oas.annotations.Operation;
+import jakarta.validation.Valid;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -19,6 +21,7 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -70,6 +73,14 @@ public class GameSessionController {
     @PostMapping("/{sessionId}/leave")
     public ResponseEntity<Void> leaveSession(@PathVariable Long sessionId) {
         gameSessionService.leavePlayer(sessionId, SecurityUtils.getCurrentUserId());
+        return ResponseEntity.noContent().build();
+    }
+
+    @Operation(summary = "Report the calling player's own audio share while the game runs, a required DJ without a working share pauses the game")
+    @PostMapping("/{sessionId}/audio-status")
+    public ResponseEntity<Void> reportAudioStatus(@PathVariable Long sessionId,
+                                                  @Valid @RequestBody AudioCheckStatusRequest request) {
+        gameSessionService.reportPlayerAudioStatus(sessionId, SecurityUtils.getCurrentUserId(), request.status());
         return ResponseEntity.noContent().build();
     }
 
