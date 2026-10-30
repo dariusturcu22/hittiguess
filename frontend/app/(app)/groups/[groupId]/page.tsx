@@ -35,6 +35,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { copyText } from "@/lib/clipboard";
 import { playlistTitleColor } from "@/lib/playlist-colors";
 import { GroupChatOverlay } from "@/components/group-chat-overlay";
+import { AudioShareWarning, useBrowserCanShareAudio } from "@/components/audio-share-warning";
 import { GameStage } from "@/components/gameplay/game-stage";
 import { PlaylistCoverMosaic } from "@/components/playlist-cover-mosaic";
 import {
@@ -282,6 +283,7 @@ function GroupLobbyScreen({ params }: PageProps) {
   const router = useRouter();
   const pathname = usePathname();
   const queryClient = useQueryClient();
+  const browserCanShareAudio = useBrowserCanShareAudio();
   const [copyFeedback, setCopyFeedback] = useState("");
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isTierPopupOpen, setIsTierPopupOpen] = useState(false);
@@ -883,6 +885,7 @@ function GroupLobbyScreen({ params }: PageProps) {
           Could not start the game: {startSessionError}
         </p>
       ) : null}
+      <div className="mb-3 shrink-0"><AudioShareWarning canShareAudio={browserCanShareAudio} isDj={false} djCanShareAudio={undefined} /></div>
       <footer className="flex shrink-0 items-center gap-[14px]">
         {!isCurrentUserLoading && isCurrentUserAdmin ? (
           <button

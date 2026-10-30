@@ -16,6 +16,7 @@ export interface PlayerDTO {
   tokenCount?: number;
   status?: PlayerDTOStatus;
   isConnected?: boolean;
+  canDj?: boolean;
   totalArtistsGuessed?: number;
   totalTitlesGuessed?: number;
   timeline?: PlayerCardDTO[];
