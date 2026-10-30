@@ -63,8 +63,8 @@ const STATUS_TEXT_CLASSES: Record<AudioShareStatus, string> = {
 };
 
 export function AudioStatusBadge({ status }: { status: AudioShareStatus }) {
-  return <div className="flex items-center justify-end gap-2.5 sm:min-w-[250px]">
-    <span className={`text-right text-[13px] font-semibold sm:text-sm ${STATUS_TEXT_CLASSES[status]}`}>{STATUS_LABELS[status]}</span>
+  return <div className="flex items-center justify-start gap-2.5 sm:min-w-[250px] sm:justify-end">
+    <span className={`text-[13px] font-semibold sm:text-right sm:text-sm ${STATUS_TEXT_CLASSES[status]}`}>{STATUS_LABELS[status]}</span>
     <StatusIcon status={status} />
   </div>;
 }
@@ -90,7 +90,7 @@ export interface AudioCheckRowProps {
 export function AudioCheckRow({ name, colorIndex, status, isAdmin = false, isYou = false, detail, onShareAgain, isLast = false }: AudioCheckRowProps) {
   const fixDetail = status === CANNOT_SHARE_STATUS ? (isYou && detail ? `${detail}. ${BROWSER_FIX_MESSAGE}` : BROWSER_FIX_MESSAGE) : detail;
   return <li className={`py-[11px] ${isLast ? "" : "border-b-2 border-border"}`} data-audio-status={status}>
-    <div className="flex items-center gap-3.5">
+    <div className="flex flex-wrap items-center gap-x-3.5 gap-y-1.5 sm:flex-nowrap">
       <PlayerAvatar name={name} colorIndex={colorIndex} className="size-10 text-[15px]" />
       <div className="min-w-0 flex-1">
         <div className="flex min-w-0 items-center gap-2 text-base font-semibold text-card-foreground">
@@ -101,7 +101,7 @@ export function AudioCheckRow({ name, colorIndex, status, isAdmin = false, isYou
         {fixDetail ? <p className="mt-0.5 text-xs text-muted-foreground">{fixDetail}</p> : null}
       </div>
       {status === FAILED_STATUS && onShareAgain ? <button type="button" onClick={onShareAgain} className="shrink-0 whitespace-nowrap rounded-full border-2 border-muted-foreground/70 bg-secondary px-3.5 py-1.5 text-[13px] font-semibold text-card-foreground transition-colors hover:border-primary">Share again</button> : null}
-      <AudioStatusBadge status={status} />
+      <div className="flex basis-full pl-[54px] sm:basis-auto sm:pl-0"><AudioStatusBadge status={status} /></div>
     </div>
     {status === FAILED_STATUS ? <NoSoundHelp /> : null}
   </li>;
