@@ -36,7 +36,14 @@ const PLATFORM_PATTERNS: ReadonlyArray<readonly [RegExp, string]> = [
 
 // Chromium-only display-media hints: exclude the game tab itself from the picker and
 // offer system audio, so the DJ shares the whole screen's audio (or the YouTube tab's).
+// Whole-screen system audio would also carry the game tab's own output, which is every
+// other player's voice, so restrictOwnAudio keeps that tab out of the captured track.
+interface SongAudioConstraints extends MediaTrackConstraints {
+  restrictOwnAudio?: boolean;
+}
+
 interface SongDisplayConstraints extends DisplayMediaStreamOptions {
+  audio: SongAudioConstraints;
   selfBrowserSurface?: "exclude" | "include";
   systemAudio?: "exclude" | "include";
 }
@@ -116,7 +123,7 @@ export async function startSongCapture(): Promise<SongCaptureResult> {
   const browser = describeBrowser(userAgent);
   const constraints: SongDisplayConstraints = {
     video: true,
-    audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false, channelCount: CHANNEL_COUNT_STEREO },
+    audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false, channelCount: CHANNEL_COUNT_STEREO, restrictOwnAudio: true },
     selfBrowserSurface: SELF_BROWSER_SURFACE,
     systemAudio: SYSTEM_AUDIO,
   };
