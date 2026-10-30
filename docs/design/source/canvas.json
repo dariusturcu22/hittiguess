@@ -1250,6 +1250,15 @@
       "h": 900,
       "title": "Admin: single stage queue, light",
       "page": "page-1"
+    },
+    {
+      "file": "AdminSongRecheckDark.dc.html",
+      "x": 12680,
+      "y": 31304,
+      "w": 1440,
+      "h": 4020,
+      "title": "Admin: recheck songs, dark",
+      "page": "page-1"
     }
   ],
   "annotations": [
