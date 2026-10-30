@@ -817,7 +817,7 @@ function GameSessionScreen({ params }: PageProps) {
           {statusLabel ? <strong className={`font-display text-[12px] font-normal ${statusClassName}`}>{statusLabel}</strong> : null}
           <span className={`size-2 rounded-full ${realtime.connectionState === "connected" ? "bg-green" : "bg-muted-foreground"}`} role="img" aria-label={`Session connection ${realtime.connectionState}`} />
         </div>
-        {currentPlayer && !isSharingTabAudioSupported ? <p className="mt-1.5 text-[11px] text-muted-foreground">This device can&apos;t share audio, so you are skipped as DJ. Use a computer to DJ.</p> : null}
+        {currentPlayer && !isSharingTabAudioSupported ? <p className="mt-1.5 text-[11px] text-muted-foreground">This browser can&apos;t share audio, so you DJ only when nobody else can. Use Chrome or Edge on a computer to share the song.</p> : null}
       </div>
       <div className="flex shrink-0 items-center gap-3">
       <label className="inline-flex shrink-0 items-center gap-2 rounded-full border-2 border-border bg-card py-2 pl-3 pr-4">

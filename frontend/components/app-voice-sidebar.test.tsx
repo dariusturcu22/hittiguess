@@ -237,10 +237,10 @@ describe("AppVoiceSidebar", () => {
     expect(reportAudioCapability).toHaveBeenCalledWith({ groupId: 4, data: { canShareAudio: true } });
   });
 
-  it("reports capture support from desktop Firefox while the flag is set", () => {
+  it("reports that desktop Firefox cannot capture audio", () => {
     vi.spyOn(window.navigator, "userAgent", "get").mockReturnValue("Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:140.0) Gecko/20100101 Firefox/140.0");
     render(<AppVoiceSidebar />);
 
-    expect(reportAudioCapability).toHaveBeenCalledWith({ groupId: 4, data: { canShareAudio: true } });
+    expect(reportAudioCapability).toHaveBeenCalledWith({ groupId: 4, data: { canShareAudio: false } });
   });
 });

@@ -1397,3 +1397,9 @@ Decision: a song's year is the earliest date the song itself was out, as a singl
 
 Why: the first catalog recheck proposed wrong years for Burn, Moves Like Jagger, Hips Don't Lie, and Beautiful Liar. Each was added to a later edition of an album, and Discogs's master and Wikidata's parent album both report the original edition's year, so two sources agreed on the wrong year. Wikidata answered nothing for many famous songs because a short title never reached the song in a label search and Wikidata moved names such as Rihanna's to `mul`. A later year from another source never contradicts an earlier release, while a lone earlier year is where bootlegs, promos, and wrong dates appear. On the benchmark the previous rule locked 61 correct and 1 wrong year with 3 left to review; the new rule locks 64 correct and none wrong, with 1 left to review.
 
+
+## 2026-10 | Desktop Firefox is skipped as DJ again
+
+Decision: desktop Firefox reports that it cannot share audio, so the DJ rotation passes over a Firefox player whenever another player can DJ. Safari stays behind the try-and-log flag.
+
+Why: Firefox has not implemented audio capture in getDisplayMedia. MDN's browser compatibility data lists audio capture, system audio, and window audio as unsupported in Firefox, and Mozilla's implementation bug (bugzilla 1541425) is still open, so a Firefox share always comes back without an audio track.

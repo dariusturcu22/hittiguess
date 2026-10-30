@@ -2,7 +2,7 @@ const YOUTUBE_ANDROID_PACKAGE = "com.google.android.youtube";
 const ANDROID_USER_AGENT_PATTERN = /Android/i;
 const MOBILE_USER_AGENT_PATTERN = /Android|iPhone|iPad|iPod/i;
 const CHROMIUM_USER_AGENT_PATTERN = /Chrome|Chromium|CriOS|Edg\//i;
-const NON_CAPTURING_USER_AGENT_PATTERN = /Firefox|FxiOS/i;
+const FIREFOX_USER_AGENT_PATTERN = /Firefox|FxiOS/i;
 const URL_SCHEME_PATTERN = /^https?:\/\//;
 
 export const YOUTUBE_LINK_OUT_TARGET = "_blank";
@@ -20,17 +20,18 @@ export function youtubeLinkOutHref(watchUrl: string, userAgent: string): string 
   return `intent://${intentPath}#Intent;package=${YOUTUBE_ANDROID_PACKAGE};scheme=https;S.browser_fallback_url=${fallbackUrl};end`;
 }
 
-// Firefox and Safari are documented as returning no audio track from a screen share, but
-// that was never tested against them. They are allowed to try until a real test in each
-// browser says otherwise; flipping this to false restores the Chromium-only gating.
+// Safari is documented as returning no audio track from a screen share, but that was never
+// tested against it. It is allowed to try until a real test says otherwise; flipping this to
+// false restores the Chromium-only gating.
 export const ALLOW_ALL_DESKTOP_BROWSERS_AS_DJ = true;
 
 // Only desktop Chromium browsers (Chrome, Edge, Opera, Brave) return an audio track from a
-// screen share; Firefox and Safari return none, so those players cannot DJ. Phones hand
-// playback to the YouTube app and play it out loud in the room instead.
+// screen share. Firefox has not implemented audio capture in getDisplayMedia, so a Firefox
+// player is never offered the share. Phones hand playback to the YouTube app and play it out
+// loud in the room instead.
 export function canShareTabAudio(userAgent: string): boolean {
   if (MOBILE_USER_AGENT_PATTERN.test(userAgent)) return false;
+  if (FIREFOX_USER_AGENT_PATTERN.test(userAgent)) return false;
   if (ALLOW_ALL_DESKTOP_BROWSERS_AS_DJ) return true;
-  if (NON_CAPTURING_USER_AGENT_PATTERN.test(userAgent)) return false;
   return CHROMIUM_USER_AGENT_PATTERN.test(userAgent);
 }
