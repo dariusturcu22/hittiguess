@@ -67,6 +67,10 @@ Scoring the recorded answers needs no network access. `--misses <rule>` lists th
 
 `tests/metadata/test_year_benchmark.py` replays `songs.csv` through the lock offline, and fails if the lock takes a wrong year or leaves more songs unresolved than allowed.
 
+## Checking the task list
+
+`python scripts/archive_completed_tasks.py` moves every fully ticked section of `docs/TASKS.md` into `docs/ARCHIVE.md` and removes the matching `docs/PROJECT_STATE.md` row for a story marked Implemented. Run it before opening a pull request that touches `docs/TASKS.md`. With the `--check` flag it only reports what would move and exits with status 1 when something would. No test reads `TASKS.md`; the script is the only automated check on it.
+
 ## Local stage pipeline
 
 Admin backfill and patient rechecks always use the persisted stage queues. No cutover flag is required. A leftover `PIPELINE_STAGES_ENABLED` variable is ignored; the owner can remove it from production after the cleanup merges. The stage concurrency settings, polling intervals, and `PIPELINE_YOUTUBE_RESERVE_UNITS` remain supported. The sequential drain quota setting is removed.

@@ -1,31 +1,237 @@
 # TASKS.md: Active work
 
-Only unfinished work belongs here. [PROJECT_STATE.md](PROJECT_STATE.md) defines story readiness; [ROADMAP.md](ROADMAP.md) sets priority. Completed implementation and audit evidence belong in [ARCHIVE.md](ARCHIVE.md).
+Only unfinished work belongs here. [PROJECT_STATE.md](PROJECT_STATE.md) defines story readiness; [ROADMAP.md](ROADMAP.md) sets the order and the release milestone. Completed implementation and audit evidence belong in [ARCHIVE.md](ARCHIVE.md).
+
+## How to pick the next task
+
+Read the sections top to bottom. The next task is the first unticked `- [ ]` item that is not skipped. Skip every item that starts with `Owner:` (it needs a decision, an account, or a manual step from the project owner), every section whose heading starts with `In progress` (another session owns that branch), and any item whose `Depends on:` line names work that is still unticked. Tick the item in the same pull request as the work. Sections run in dependency order: the in-progress branches, catalog accuracy, gameplay fixes, the frontend completion, production operations, and finally the Release sections that gate the public launch.
+
+Sub-bullets (`Where`, `Done when`, `Depends on`, `Tests`) belong to their task and are not separate tasks. Every task is meant to be doable by one agent alone from its text; when it is not, fix the text first.
 
 Frontend implementation and tests belong to story 28. Feature work requires a Ready story and tasks checked against current code. Story 34 replaces the existing abuse-event log stubs with analytics writes; it does not change enforcement.
 
-## Release: Reconnect recovery
+## In progress: audio check before the game (branch `feature/audio-check`)
 
-- [ ] Recover session, private guess, DJ link-out, group membership, chat history, and completed-session state after events missed during disconnection
-- [ ] Unit and browser tests: missed phase changes, game completion, membership/chat events, and navigation continuity
+This belongs to story 52. Another session owns this branch. Do not pick these items as the next task and do not edit this branch's code. Pressing Start game in the lobby opens an audio check shown to every member instead of starting the game. Every required DJ shares their audio once, passes a sound test, and keeps the share running for the whole game. Rotating needs every player to pass, fixed needs only the DJ. The game pauses when a required share stops, and the screen offers "Switch to a fixed DJ". The design is `AudioCheckDark.dc.html` and `AudioCheckLight.dc.html` (PR 355). The branch's own copy of this task list is the source of truth until it merges.
+
+- [ ] Backend: group phase `AUDIO_CHECK` between the lobby and the game, with a per-member audio status (`NOT_SHARED`, `TESTING`, `OK`, `FAILED`, `CANNOT_SHARE` derived from the browser capability), reset on entry; members can still join or leave and settings stay locked
+- [ ] Backend: requirement rules (rotating needs every connected member to pass, fixed needs only the chosen DJ, a member who cannot share blocks a rotating start, nobody able to share blocks every start)
+- [ ] Backend: endpoints to report a status, start the game after a server-side requirement check, switch to a fixed DJ among members who passed, and cancel back to the lobby, each broadcast to the group
+- [ ] Backend: per-player audio status in the session, so a required DJ whose share stops pauses the game for everyone, timers stop while paused and restart with fresh deadlines on resume, and placement and betting are refused while paused
+- [ ] Backend: a fixed DJ who leaves hands the role to a player who can share, preferring one who already passed; a rotating player who leaves drops out of the requirement
+- [ ] Backend: Flyway migration for the member and player audio status and the session pause time
+- [ ] Backend unit tests: the requirement rules, entering, reporting, switching, cancelling and starting the check, pausing and resuming a session, and a leaving DJ
+- [ ] Frontend: audio check screen in the lobby route for the six designed states (host list, own card before sharing, own card testing, fixed DJ waiting, everyone ready, nobody can share)
+- [ ] Frontend: audio test that passes once an analyser on the shared track stays above a threshold for half a second, and fails at once when the share has no audio track
+- [ ] Frontend: DJ turns reuse the share from the check instead of asking each turn, and the song mesh swaps the long-lived track in only during that player's DJ turns
+- [ ] Frontend: paused-game banner naming the player whose share stopped, with an inline re-share and re-test
+- [ ] Frontend: API client update, Vitest coverage for the screen states, the threshold and the banner, and a visual check of every state at 1440x900 and 375x812 in both themes
+- [ ] Docs: GAME_DESIGN, SYSTEM_REFERENCE, ARCHITECTURE, and a DECISIONS entry for the audio check
+
+## In progress: recheck whole catalog (branch `feature/recheck-whole-catalog`)
+
+This belongs to story 55. Another session owns this branch. Do not pick these items as the next task. The branch already has the Recheck whole catalog button on the admin song catalog (confirm, then queue every song through the pipeline), `GET /api/admin/songs/recheck-candidates` (`RecheckCandidateDTO`: song id, title, artists, in-active-game flag, last pipeline finish), and the dark mockup `AdminSongRecheckDark.dc.html`.
+
+- [ ] Admin recheck page grouped by month of the last pipeline finish, with a checkbox per song and per month, select all, a confirmation that states the count, and a result toast reporting queued songs and those skipped because they are in an active game; it posts the chosen ids to `POST /api/admin/songs/recheck`
+- [ ] Light mockup `AdminSongRecheckLight.dc.html` and canvas equality validation
+- [ ] Frontend tests for grouping, selection, confirmation and the toast; backend tests for the candidates endpoint (admin-only, active-game flag)
+
+## Story 55: Catalog accuracy
+
+- [ ] Bulk accept proposed release years. A verified song whose rerun finds a different year keeps its year and stores `proposedReleaseYear` and `proposedAt` (`SongCatalogService.java`, around lines 77 to 88), and today an admin accepts each one separately with `PUT /api/admin/songs/{id}` or dismisses it with `DELETE /api/admin/songs/{id}/proposal` (`AdminSongPipelineController`, `AdminSongPipelineService`). After a whole-catalog recheck that is hundreds of single clicks.
+  - Where: `AdminSongPipelineController`, `AdminSongPipelineService`, the admin songs page `frontend/app/(app)/admin/songs/page.tsx` and its detail drawer, the generated API client in `frontend/hooks/generated`.
+  - Backend: `POST /api/admin/songs/proposals/accept` taking `songIds`, which in one transaction sets each song's release year to its proposed year and clears the proposal; songs without a proposal and songs in an active game are skipped and reported by id; a matching dismiss endpoint clears proposals without changing years. Admin only.
+  - Frontend: a "Proposed year" filter on the song catalog showing current and proposed year side by side, a checkbox per row, select all on the page, "Accept selected" and "Dismiss selected" with a confirmation that states the count, and a toast with accepted and skipped counts.
+  - Tests: service unit tests (accept, skip without proposal, skip in active game), MockMvc admin and non-admin access, a real-row integration test that years change and proposals clear, and frontend tests for selection, confirmation and the toast.
+  - Depends on: nothing. Most useful after `feature/recheck-whole-catalog` merges.
+- [ ] Owner: after the recheck branch merges, run the whole-catalog recheck in production, then bulk accept the proposals that are correct and fix the remaining wrong years from the year audit by hand in the song drawer
+- [ ] Owner: merge the 12 known duplicate song pairs in production with `POST /api/admin/songs/{keepId}/merge/{dropId}` (the endpoint exists; the duplicate list is in the admin catalog)
+- [ ] Add the uniqueness constraints once the duplicates are merged: a unique index on `songs(youtube_id)` and a partial unique index on `pending_imports(youtube_id)` for rows still pending or processing, in a new Flyway migration after V52
+  - Where: `backend/src/main/resources/db/migration`, `PendingImportStatus`, `SongCatalogService`, the import services that catch constraint violations.
+  - Done when: the migration applies on a database with no duplicates, a concurrent double insert fails with a handled conflict instead of a 500, and an integration test proves that cleanup keeps playlist and alternate-ID links and that the indexes reject concurrent duplicates.
+  - Depends on: the Owner merge task above, since the migration fails on a database that still has duplicate pairs.
+- [ ] Owner: run the per-tier eligible-song count query from PR 318 against the production database and confirm each tier holds enough verified songs (`sitelinks >= 5`) for the game sizes players use; if a tier is short, import more songs
+
+## Story 57: Gameplay fixes and acceptance
+
+- [ ] Recover missed events after a reconnect. On connect, `use-game-session-realtime.ts` invalidates only the session query and `use-group-realtime.ts` invalidates the group, so a player who was offline across a phase change can keep a stale guess state, DJ link-out, active membership, chat history, or results.
+  - Where: `frontend/hooks/use-game-session-realtime.ts`, `frontend/hooks/use-group-realtime.ts`, `frontend/components/group-chat-overlay.tsx`, the session page.
+  - Done when: every STOMP (re)connect refetches session, guess state, current round link-out, group, active membership, chat history, and results once the game is completed; a game that completed while offline sends the player to its results; a group removal that happened while offline shows the removed state.
+  - Tests: Vitest for each refetch on reconnect (extend `use-game-session-realtime.test.ts`, add one for `use-group-realtime.ts`), and a Playwright case that drops and restores the socket across a phase change.
+- [ ] Stop `GET /api/playlists/{playlistId}/import-jobs/active` from logging a 404 in the browser console when no job is active. It currently answers 404 for "no active job" (`PlaylistImportJobController`). Return 204 No Content, update `SYSTEM_REFERENCE.md`, regenerate the client, adjust `frontend/lib/playlist-import-job.ts` callers and their tests, and append the contract change to `DECISIONS.md`.
+- [ ] Playwright coverage of the game screens. Extend the existing lobby and gameplay specs to the 8-member lobby, each lobby popup, round intro, betting, reveal, between rounds, and game over at 1366x768, 1440x900, and 1920x1080 and at 125% and 150% zoom, including a check that the round subtitle is never covered by the guessing card; compare screenshots side by side with the design artboards. The e2e suite does not run in CI, so run it locally and record the result in the PR.
+  - Where: `frontend/e2e`.
+  - Depends on: the audio check branch, since it changes the lobby and the first round.
+- [ ] Check in a real browser that attaching the song track at the start of the DJ's turn has no audible start-up delay, and pre-attach shortly before the song starts if there is one (`frontend/hooks/use-song-mesh.ts`)
+- [ ] Check the sound-bar canvas at several zoom levels in a real browser: `devicePixelRatio` handling, a static resting state without audio, and `prefers-reduced-motion` respected (`drawSoundBars` in `frontend/components/gameplay/game-pieces.tsx`)
+- [ ] Owner: two real Chrome windows with system audio, one DJ and one listener who never joined voice, over the course of a whole game, and report the result; an attempt from Firefox and Safari confirms they are shown the cannot-share warning
+- [ ] Owner: Cloudflare TURN check. Both credentials are set on core; connect two devices on different networks with forced relay and confirm voice and the song stream still arrive. Add backend integration coverage if the HTTP-boundary tests leave gaps.
 
 ## Story 28: Frontend completion
 
-- [ ] Build two-factor setup, provisioning QR, confirmation, one-time backup codes, disable, and second login using TOTP or backup codes; backend endpoints exist
-- [ ] Unit and backend-backed browser tests: two-factor success, invalid codes, disable proof, and one-use backup codes
-- [ ] Compare all app routes/states at 1440x900 in both themes; include identity/truncation, popups, playlist actions, tier selection, imports, gameplay/countdowns, results, admin, and history
+The backend for account management and two-factor sign-in exists: `PATCH /api/users/me`, `GET /api/users/me/export`, `DELETE /api/users/me`, and `/auth/2fa/setup`, `/auth/2fa/confirm`, `/auth/2fa/disable`, `/auth/2fa/verify`. The frontend has no screens for any of them; only the generated hooks exist.
+
+- [ ] Account settings route `/settings` (linked from the user menu in `frontend/components/nav-user.tsx`) with three parts: edit username and email (`PATCH /api/users/me`), download a personal data export (`GET /api/users/me/export`, saved as a JSON file), and delete the account behind a typed confirmation (`DELETE /api/users/me`, then clear the session and go to the landing page). Needs an approved mockup first: add dark and light account artboards to the design board and update `FRONTEND_CONTENT.md` and `FRONTEND_IMPLEMENTATION_GUIDE.md`.
+  - Done when: each action works against the real backend, errors are shown in the page, the route is protected by the proxy, and unit tests cover permission, failure and confirmation paths.
+- [ ] Two-factor screens on the settings route: setup with provisioning QR and secret, confirmation code entry, one-time backup codes shown once, disable with proof, and a second step on login that accepts a TOTP code or a backup code (`frontend/app/(marketing)/(auth)/(credentials)/login/page.tsx`)
+  - Depends on: the account settings route above.
+- [ ] Unit and backend-backed browser tests for two-factor: success, invalid code, disable proof, and one-use backup codes
+- [ ] Compare all app routes and states at 1440x900 in both themes against the design board: identity and truncation, popups, playlist actions, tier selection, imports, gameplay and countdowns, results, admin, and history; fix every difference
 - [ ] Compare only the landing page on mobile at 390x844 in both themes
-- [ ] Complete contrast, keyboard, reduced-motion, and route-navigation checks; add focused unit/browser tests for coverage gaps
 - [ ] Review the exact Joined-tab copy
 
 ## Story 47: Mockup reconciliation
 
-- [ ] Update remaining source artboards and the published canvas to match approved requirements found during story 28's visual pass; validate source/canvas equality
+- [ ] Update the remaining source artboards and the published canvas to match the requirements approved during story 28's visual pass (account settings, audio check, recheck page), and validate that source and canvas are equal
+  - Depends on: the Story 28 visual comparison.
 
-## Release: Multiplayer acceptance
+## Story 7: Production hosting
 
-- [ ] Verify the production Cloudflare TURN credentials (both variables are set on core) with two devices on different networks and force TURN relay; add backend integration coverage if HTTP-boundary tests leave gaps
-- [x] Two-client HTTPS test: full game, round advancement, current DJ link-out, voice join/leave and delivery, tab-audio capture, reconnect, and results
+Azure Container Apps hosts core and AI in one EU environment. Vercel hosts the frontend. Core stays single-replica because game and STOMP state are process-local. The whole-deployment ceiling is $20/month.
+
+- [x] Restrict the new YouTube API key to the YouTube Data API; the exposed key is deleted
+- [ ] Owner: add Azure cost anomaly alerts and a $12 shutdown Action Group that stops both Container Apps; the Log Analytics daily cap (0.25 GB, 30-day retention) and the $20 budget with email alerts are in place. An agent can write the script in `scripts/azure` once the Owner confirms what the action group does
+- [ ] Owner: cost-control test, running the alerts and shutdown against an isolated resource group
+- [ ] Load test core and AI: a repeatable script in `scripts/loadtest` that opens N concurrent games of 4 to 8 players (login, group, session, STOMP, placements and bets, voice and song signaling) and reports CPU, memory, WebSocket count and game-action latency; set the container resource limits from the result, and add an active-game admission limit in core with a tested busy response (HTTP 503 with a clear message when a session is started over the limit)
+- [ ] Compare the C1-only JIT setting against the default under the same load test and keep the one that meets the latency target; both Azure apps run one always-on replica. Depends on: the load test above
+- [x] Verify Vercel root frontend, production branch main, domain, API origin, and shared auth cookies
+- [ ] Owner: confirm password-reset email arrives in production from the real sender domain (Google login, signup, verification, login, and the Resend domain and sender are working)
+- [x] Add HTTP liveness/readiness probes to both apps
+- [ ] Deployment smoke test script `scripts/smoke-test-production.sh` that checks the health endpoints, the HTTPS API, a WSS STOMP connect, the protected-route `session_hint` redirect, and that core reaches AI; run it against production and record the result
+- [ ] Owner: production two-device acceptance of login, import, a full game, reconnect, voice, DJ audio, and results; do it after the audio check merges
+- [ ] Plan the move to one Hetzner server before the Azure trial credit ends: write the deployment (compose file, reverse proxy with TLS, secrets) into `docs/ARCHITECTURE.md` and `scripts`, rehearse it in isolation, and prepare DNS cutover and rollback. Owner: the Hetzner account and the cutover date. Finish it before the public launch so the launch runs on its final host
+- [ ] Owner: decide whether production deployments require GitHub environment reviewers
+
+## Story 8: Production databases
+
+Both Neon projects are provisioned. Core owns schema migrations; AI connects only to the transactional database.
+
+- [ ] Inspect both production Flyway histories (core ends at V52 in the repo), core pgvector and indexes, and the analytics tables, and record any drift
+- [ ] Verify intended TLS URLs and service boundaries, including deployed AI access to core and no browser credentials or AI access to analytics
+- [ ] Measure the first request after Neon's idle suspend and change pool settings only if the wake time breaks a request
+- [ ] Owner: configure Neon storage and compute notifications. Then document the backup export (point-in-time restore window, a scheduled logical dump) in `docs/DEV_SETUP.md` and rehearse restoring both databases into an isolated project; this is the restore test the Release 3 sign-off refers to
+- [ ] Owner: decide whether the songs in the development database enter production; if yes, an agent performs only an approved catalog-only import
+
+## Story 38: Production observability
+
+- [ ] Production Sentry and OpenTelemetry settings are set on both apps; remaining: metrics through a Grafana Alloy container (core's `/actuator/prometheus` needs a login, so expose it on an internal-only management port first), import the dashboard, and add core uptime monitoring
+- [ ] Verify real metrics, logs, traces, and error delivery; add a credential-gated delivery integration test without secret output
+
+## Release 1: Legal and compliance
+
+Story 56 covers the six Release sections, which hold everything the public launch needs before the first announcement. The app is already open to anyone (the closed-beta gate was removed, see `DECISIONS.md`), so these items are launch blockers for marketing, not for access. Drafts live in `docs/legal`; they describe the app as of 2026-09-12 and are out of date (they name Supabase as the database and omit voice, chat, game history, analytics tables, error reporting, email and the LLM providers). None of this is legal advice; the Owner items need a person to decide or sign off.
+
+- [ ] Owner: decide the legal basics the other tasks in this section depend on and record them in `DECISIONS.md`: the person or entity named as data controller, a contact mailbox on the project's own domain (the drafts use a personal address), the minimum age (13 or 16, 16 being the EU default), the governing law, and whether a lawyer reviews the final texts
+- [ ] Rewrite `docs/legal/privacy-policy.md` to match what the app does today, as plain statements of fact.
+  - Where: `docs/legal/privacy-policy.md`; facts come from the entities in `backend/src/main/java/org/dariusturcu/backend/model`, `analytics`, `history`, `research`, and the auth and email config.
+  - Must cover: account data (username, email, password hash, Google identifier, two-factor secret and backup codes), per-group display names and avatars, playlists and songs, group chat messages, voice (peer to peer, not recorded or stored by the server, relayed by Cloudflare TURN only when a direct link fails), game history and statistics, internal analytics events, IP addresses used for rate limiting and server logs, and error reports.
+  - Must list the processors and what each receives: Vercel (frontend hosting), Microsoft Azure Container Apps (backend hosting), Neon (databases), Cloudflare (TURN relay), Resend (transactional email), Sentry and Grafana Cloud (error reports, traces, metrics, logs), Google (sign-in and the YouTube API), DeepInfra and OpenAI (song metadata only, never account data), and YouTube (playback on its own site; link to the Google Privacy Policy as the YouTube API Services terms require).
+  - Done when: it states retention for every data category (see the retention task below), international transfers, the rights to access, correct, export and delete with the real routes, the age rule, and the cookie facts; the Supabase statement is gone.
+  - Depends on: the Owner decision task above.
+- [ ] Rewrite `docs/legal/terms-of-service.md`: acceptable use including chat and voice conduct, the licence users grant for names, playlists and avatars they publish, the copyright and takedown route (see the copyright task), suspension and termination, age, governing law, the YouTube Terms of Service reference, and a clear statement that song data comes from third parties and years can be wrong. Depends on: the Owner decision task above.
+- [ ] Owner: have the final privacy policy and terms reviewed if a lawyer is wanted, then tell the agent the texts are approved
+- [ ] Publish the policies as pages: `/privacy`, `/terms`, and a `/legal` index, rendered from the markdown in `docs/legal` (read at build time, so the repo files stay the single source), reachable without login.
+  - Where: `frontend/app/(marketing)`, `PUBLIC_ROUTES` in `frontend/proxy.ts`, the landing footer in `frontend/app/(marketing)/(landing)/page.tsx` (its Legal links are plain text today), the user menu.
+  - Done when: both pages render in both themes, show the last-updated date, are linked from the landing footer, the register page, and the user menu, and have tests for rendering and for being public.
+  - Depends on: the two rewrite tasks above (publish placeholders only if the Owner approves).
+- [ ] Ask for consent at sign-up: a required checkbox "I am at least N years old and accept the Terms and Privacy Policy" on `/register`, and the same acceptance for a first Google sign-in; store the accepted terms version and time on the user (new Flyway migration, `User` entity, `AuthController` registration request and the OAuth success handler), and re-prompt when the version changes.
+  - Done when: registration without the box is rejected by the API, not only by the form; existing users are asked on next login; backend and frontend tests cover both.
+  - Depends on: the Owner decision task (age) and the page publishing task (links).
+- [ ] Data retention: define a period for each data category in the privacy policy and implement what is missing. Known gaps: no purge of accounts that never verified their email, and unclear lifetimes for expired refresh tokens, password-reset tokens, finished pipeline jobs, and chat history of deleted groups. Existing: analytics events 365 days (`AnalyticsRetentionSweeper`), group expiry (`GroupExpirySweeper`), Log Analytics 30 days.
+  - Done when: a scheduled sweeper removes each category past its period, each sweeper has an integration test, and the policy states the same numbers.
+- [ ] Account deletion and export completeness: an integration test that creates a user with playlists, group membership, chat messages, history rows, a two-factor secret and an avatar, runs `DELETE /api/users/me`, and asserts that no personal data remains anywhere (including the history database via `AccountHistoryDeleted`); another that asserts the export (`PersonalDataExportService`) contains every category the privacy policy promises. Fix every gap found.
+- [ ] Cookie and storage audit: list every cookie and browser storage key the site sets (`access_token`, `refresh_token`, `session_hint`, `XSRF-TOKEN`, the theme and audio-device preferences, the Sentry SDK) and state in the privacy policy that they are strictly necessary. Add a consent banner only if the audit finds a non-essential cookie or tracker; if the launch analytics task adds one, use a cookieless tool so no banner is needed.
+- [ ] Copyright and takedown route: add a section to the terms and a `/copyright` page (or a section of `/terms`) with the contact address, what a notice must contain, and what happens next; give admins a fast way to remove a reported playlist, avatar, or song and keep a record of the takedown. Depends on: the Owner decision task (contact address).
+- [ ] YouTube API Services compliance review against the current Developer Policies and Terms of Service: the privacy policy links to the Google Privacy Policy and names YouTube API Services; the terms bind users to the YouTube Terms of Service; no embedded player (already true); stored YouTube API data respects the refresh and retention limits (durations use a 29-day cycle; check titles, channel names and thumbnails stored by the pipeline); display and branding rules are followed; the daily quota is enough for launch traffic.
+  - Done when: a checklist of each policy item with the code that satisfies it is added to `docs/ARCHITECTURE.md`, and gaps are fixed.
+- [ ] Owner: decide whether capturing YouTube playback audio through screen share and relaying it to the other players is acceptable under the YouTube Terms of Service and music licensing for a public product, and record the decision in `DECISIONS.md`. If it is not, the remote DJ flow needs a different design before launch.
+- [ ] Credits and licences: add a `/credits` page, linked from the footer, that attributes every data source and states its licence and required notice: MusicBrainz (core data CC0, supplementary data CC BY-NC-SA), Discogs (API terms and attribution), Wikidata (CC0), Wikipedia (CC BY-SA, with a link to the article used), YouTube, and the open-source fonts and libraries shipped to the browser. Verify each against its current terms and fix `DECISIONS.md` if a licence changed. Depends on: the footer task in Release 2.
+
+## Release 2: Site basics
+
+- [ ] Shared public footer for the landing, legal, credits, about and contact pages with links to Privacy, Terms, Copyright, Credits, About, Contact, and GitHub; replace the plain-text spans in `frontend/app/(marketing)/(landing)/page.tsx`. Tests: the links render and point to public routes.
+- [ ] Contact page `/contact` with the project mailbox, a link to GitHub issues, and how to report abuse or a wrong song year. Depends on: the Owner decision task in Release 1.
+- [ ] About page `/about`: what hittiguess is, how a round works in four sentences, that it is free, open source and has no ads or trackers, and who builds it. Tests: renders, linked from the footer.
+- [ ] 404 and error pages: `not-found.tsx`, `error.tsx` and `global-error.tsx` in `frontend/app`, styled with the design tokens in both themes, offering a way home or to login, with `global-error.tsx` reporting to Sentry. Tests: an unknown route shows the 404 page, a thrown render error shows the error page.
+- [ ] SEO metadata: `metadata` in the root layout (title template, description, `metadataBase` from the production URL, canonical URL, theme color) and per-page titles and descriptions for the landing and public pages; authenticated app routes and invite links are `noindex`. Currently no page exports metadata.
+- [ ] `sitemap.ts` and `robots.ts` in `frontend/app`: list the public pages, disallow the app routes, invite links and `/admin`, and point to the sitemap. Test the generated output.
+- [ ] Open Graph and Twitter share images: `opengraph-image` and `twitter-image` at 1200x630 with the logo and tagline, plus `openGraph` and `twitter` metadata; invite links get a generic preview. The brand assets are in `logo-export/` on the owner's machine (untracked); an agent without them asks the Owner to commit the needed files first. Depends on: the SEO metadata task.
+- [ ] Favicon and app icon set: `frontend/app` already has `icon.svg`, `favicon.ico` and `apple-icon.png`; add a web app manifest with 192 and 512 pixel icons (one maskable), `theme-color`, and check the icons in light and dark tab bars. Source files come from `logo-export/` as above.
+- [ ] Owner: email deliverability for the sending domain used by Resend (verification and password reset mail): publish SPF, DKIM and a DMARC policy at the DNS provider, then send test mail to Gmail, Outlook and iCloud accounts and confirm it lands in the inbox
+- [ ] Email content: verification and reset messages carry the product name, the contact address, a plain-text part, and a note that the message was triggered by a sign-up or reset request. Where: `backend/src/main/java/org/dariusturcu/backend/config/EmailConfig.java` and the email service. Test: the rendered message contains each part.
+
+## Release 3: Security audit
+
+Existing protections to build on: JWT cookie authentication (`JwtAuthenticationFilter`), CSRF tokens with a double-submit cookie, an IP and user rate limiter (`RateLimitingFilter`), `AdminAccessGuard`, STOMP channel and subscription interceptors, a Content-Security-Policy and Referrer-Policy on the frontend, and production start-up guards. The tasks below check each one, add what is missing, and leave a test behind.
+
+- [ ] Endpoint authorization matrix: a generated test that walks every mapping in the Spring handler registry and asserts that each route outside the public allow-list in `SecurityConfig` answers 401 without a session, that every `/api/admin/**` route answers 403 for a normal user, and that the public allow-list is exactly the intended list; plus ownership tests (a user cannot read or change another user's playlists, groups, sessions, songs, exports or avatars by changing an id). Fix every gap. Where: `backend/src/test`, `SecurityConfig`, `AdminAccessGuard`, the services.
+- [ ] CSRF and cookie review: re-read the `ignoringRequestMatchers` list in `SecurityConfig` (refresh and password-reset are exempt), confirm each exempt route is safe without a token, confirm the production cookies are `Secure`, `HttpOnly` where possible, and `SameSite` as intended with the right domain, and add an integration test that a state-changing request without the token is rejected on a sample of routes.
+- [ ] CORS: production allowed origins are exactly the production frontend origins, no wildcard with credentials, and the preflight answer lists only the methods and headers used. Test the configured origin list against a foreign origin.
+- [ ] Rate limiting review: confirm the limiter keys on the real client address behind Azure's proxy (forwarded header handling and spoofing), and add or tighten limits for registration, login, password reset and verification mail sends, song submission and import, reports, chat messages, STOMP sends (chat, drag preview, signaling), and the avatar upload. Tests: each limit returns 429 after the threshold and recovers.
+- [ ] Input validation and injection: every request DTO has bean validation with length and format limits; the avatar upload checks type, size and dimensions; names and chat text are rendered as text only (search the frontend for raw HTML insertion); native SQL uses parameters; the URL and playlist import paths cannot be pointed at internal addresses. Add tests for the limits found missing.
+- [ ] Secrets handling: scan the full git history with a secret scanner, rotate anything found, confirm `.env` files are untracked and `.env.example` holds placeholders, turn on GitHub secret scanning and push protection, and list every production secret with where it is stored and who can rotate it in `docs/DEV_SETUP.md`. Owner: perform the key rotations in the provider consoles.
+- [ ] Dependency vulnerability scans in CI and a clean first run: `npm audit` for the frontend, a Maven dependency check (OWASP dependency-check or the GitHub dependency graph) for core, and `uv` with `pip-audit` for the AI service; add `.github/dependabot.yml` for all three ecosystems and GitHub code scanning; fail the PR check on high or critical findings and fix or document every current one.
+- [ ] Security headers: the frontend sends only a CSP and Referrer-Policy (`frontend/next.config.ts`). Add `Strict-Transport-Security`, `X-Content-Type-Options`, `Permissions-Policy` (microphone and display capture for the site only), and `Cross-Origin-Opener-Policy`, check what the API answers, and replace `'unsafe-inline'` in `script-src` with nonces if Next allows it. Verify with an online header scanner and keep voice, screen share and the noise filter working. Tests: header values asserted in a config test.
+- [ ] WebSocket security: confirm the handshake rejects unauthenticated and foreign-origin connections, that every subscription and send destination checks session or group membership (`StompSubscriptionAuthorizationInterceptor`, `StompAuthenticationChannelInterceptor`, the signaling controllers), that message sizes are bounded, and that a removed member's sockets close (`UserSocketCloser`). Tests: a non-member cannot subscribe to or send on another group's or session's destinations.
+- [ ] Moderation of user content: chat messages, display names, group and playlist names, public playlists on Explore, and avatars can carry abuse. Add a report action for playlists, users and chat messages (songs already have reports: `SongReportController`, `AdminSongReportController`), an admin review queue for them, the ability for an admin to suspend an account or hide a public playlist, and per-player mute of chat. Owner decision first on the policy (what is removed, response time); record it in `DECISIONS.md`. Depends on: the Owner decision in Release 1 for the contact route.
+- [ ] Admin hardening: require two-factor for admin accounts, add an audit log of admin actions (pipeline controls, merges, year changes, deletions, suspensions) with an admin view, and confirm the admin routes are not indexed or linked for normal users. Depends on: the two-factor screens in Story 28.
+- [ ] Dynamic scan: run OWASP ZAP baseline against a staging or local full stack, triage the findings, and keep the report summary in the PR description. Depends on: the other tasks in this section.
+- [ ] Owner: backups and restore are tracked under Story 8 (the Neon export and isolated restore rehearsal); sign off here that the restore worked and the recovery targets are acceptable before launch
+
+## Release 4: Reliability and operations
+
+Story 7 holds the cost alerts, load test and active-game admission limit, and Story 38 holds metrics and delivery checks. The tasks below add what a public launch needs on top of them.
+
+- [ ] Alert rules and an uptime monitor: after Story 38, define alerts for 5xx rate, p95 latency, core or AI container restarts, database connection failures, a stalled pipeline stage, YouTube quota near the daily limit, and LLM spend, plus external uptime checks for the site, the API health endpoint, and a WebSocket connect. Owner: create the monitoring account and the notification route (email or phone), then an agent configures the rules as code or documents them in `docs/ARCHITECTURE.md`.
+- [ ] Error tracking verified end to end for the frontend, core, and AI: release tagging, source maps uploaded for the frontend, personal data scrubbing (no default PII, no tokens, no chat text), sampling rates, and one alert rule per service. Test by triggering one error per service in a non-production environment.
+- [ ] Log hygiene and retention: grep the logs of a full game for emails, tokens, cookies, IP addresses and chat text, remove or mask what appears, and set and document retention for application logs and traces. Test: a log-capture test on login, password reset and chat asserts none of those values is written.
+- [ ] LLM and third-party spend limits: the pipeline tracks LLM cost but has no ceiling. Add configurable daily and monthly cost ceilings in core that pause the LLM stages and raise the dashboard banner when reached, with tests; document the YouTube, Resend, Cloudflare TURN and Neon plan limits and what happens at each. Owner: set hard monthly caps in the DeepInfra, OpenAI, Cloudflare and Resend consoles.
+- [ ] Signup spike safeguards: confirm what happens when many accounts register at once (email send limits, database connections on the Neon plan, single-replica core) and add a switch that turns registration into a waitlist message without a deploy. Depends on: the Story 7 load test.
+- [ ] Incident runbook `docs/RUNBOOK.md`: restart a service, roll back a deploy, pause the pipeline, rotate each secret, restore a database, disable registration, and where each dashboard lives. Depends on: the tasks above and the rollback task in Release 6.
+- [ ] Owner: decide whether a public status page is wanted; if yes, an agent wires it to the uptime checks
+
+## Release 5: Product polish
+
+- [ ] Owner: decide the mobile scope for launch. Today only the landing page is responsive; phones cannot DJ because they cannot share audio, but they can play. Options: desktop only with a clear notice on phones, or phone support for joining, guessing and betting. Record the choice in `DECISIONS.md` and `GAME_DESIGN.md`.
+- [ ] Implement the mobile decision: either a notice shown on phone-sized screens when entering the app or a lobby, with the supported browsers, or responsive lobby and gameplay layouts for the chosen screens with mockups first. Depends on: the Owner decision above.
+- [ ] Onboarding: a "How to play" screen reachable from the landing page and the lobby that explains a round, tokens and betting, the DJ role and the audio check, plus a first-run prompt for new accounts that opens it once. Needs a mockup and copy in `FRONTEND_CONTENT.md` first. Tests: the prompt appears once per account and can be dismissed.
+- [ ] Empty, loading, and error states: audit every list and page (playlists, explore, search, history, groups, import, admin) for all three states using `phantom-empty-state` and the shared alert style, and fix those missing. Tests: each page renders its empty and error state.
+- [ ] Accessibility pass: keyboard-only play-through of sign-up, playlist creation, lobby, a full game and results; a keyboard alternative for dragging a card onto the timeline; focus trapping and return in dialogs; live regions for phase changes, countdowns and results; AA contrast in both themes; reduced-motion respected everywhere; names and roles on icon-only buttons. Add axe checks to the Playwright specs for every route and fix findings. Replaces the older contrast and keyboard task in Story 28.
+- [ ] Performance budget: record Lighthouse results for the landing page and the lobby on a throttled mobile profile and desktop, set targets (landing LCP under 2.5 s, no layout shift, a JavaScript budget per route), lazy-load the noise filter WebAssembly and the Sentry replay code if not already, and add a bundle-size check to the frontend build in CI. Tests: the CI check fails when a budget is exceeded.
+- [ ] Browser support notice: detect unsupported browsers for voice and screen share (Safari, Firefox, phones) and show the same kind of dismissible note the audio warning uses on sign-up and the lobby, with the supported list from `GAME_DESIGN.md`. Depends on: the mobile decision.
+
+## Release 6: Launch
+
+- [ ] Owner: confirm the launch date, the public domain redirects (apex and www), and that the production environment is the one being announced
+- [ ] Catalog readiness: a launch needs enough verified songs for new groups. Set the target per tier (for example 300 songs each at Easy, Medium and Hard) with the Owner, import and verify until the counts are met, accept the proposed years, and check that the Explore page has at least a handful of good public playlists. Owner: curate the starter playlists. Depends on: the Catalog accuracy section.
+- [ ] Landing page copy and structure: hero, how it works in three steps, screenshots, a short FAQ (free, ads, accounts, supported browsers, where the music plays), and calls to action to register, matching the design board. Mobile layout is already in scope for this page. Needs copy in `FRONTEND_CONTENT.md` first. Depends on: the onboarding and mobile tasks.
+- [ ] Privacy-friendly analytics: Owner decides the tool (a cookieless hosted service or a self-hosted one) and the account; an agent then adds the script with the CSP updated in `frontend/next.config.ts`, records only page views and sign-up and game-start events, honours Do Not Track, and updates the privacy policy and credits. No consent banner may be needed. Depends on: the cookie audit in Release 1.
+- [ ] Marketing assets in a `docs/launch` folder or the owner's own storage: screenshots at 1440x900 in both themes (lobby, round, reveal, results), a 30 to 60 second demo video script and shot list, and the logo kit from `logo-export/`. Owner: record and edit the video. Depends on: the visual pass in Story 28.
+- [ ] LinkedIn post and launch copy: draft the post, a short announcement for other channels, and a one-paragraph project description in `docs/launch/announcement.md`, in the plain style of the repo. Owner: edit and publish. Depends on: the marketing assets task.
+- [ ] Pre-launch checklist `docs/launch/checklist.md`: one line for every task in Releases 1 to 5 with its proof (page URL, test name, or console screenshot), the production smoke test (health, HTTPS API, WSS, login, import, full two-device game with voice and DJ audio, results), a mobile check of the landing page, and a final read-through of the legal pages. Depends on: all other tasks above.
+- [ ] Rollback plan in `docs/RUNBOOK.md`: how to return core and AI to the previous Azure Container Apps revision, how to promote the previous Vercel deployment, why Flyway migrations are forward-only and the rule that a migration shipped in the launch release must be backward compatible with the previous app version, a database backup taken immediately before launch, and who decides to roll back. Rehearse the backend and frontend rollback once in the isolated environment. Depends on: the Story 7 Hetzner plan, which changes where the backend runs.
+- [ ] Launch-day watch: a short written plan for the first 48 hours (who watches which dashboard, alert thresholds, the registration switch, where feedback arrives) added to the runbook. Owner: staff the watch.
+- [ ] Owner: after launch, review the feedback channel and the issue templates in `.github/ISSUE_TEMPLATE` and decide what goes into the next roadmap round
+
+## Story 34: Usage analytics, definition required
+
+Core participant history/statistics and analytics difficulty research already exist. Raw analytics retention is 365 days. This story covers internal usage and abuse visibility with no third-party trackers.
+
+- [ ] Confirm event fields against current code. `AnalyticsEventRecorder` and the eight `AnalyticsEventType` values (session start and end, login, failed login, playlist created, song submitted, rate limit exceeded, report submitted) exist, but only abuse-visibility stubs call them; list for each type where it must be written and which fields it carries
+- [ ] Implement approved event writes, replace abuse-event stubs, and build internal aggregates/repeated-abuse visibility
+- [ ] Define and implement the reviewed notice or consent behavior
+- [ ] Integration tests: event records and dashboard/query aggregates
+
+## Deferred work
+
+- [ ] Story 30: after enough real research data exists, train personalized difficulty, schedule retraining, and monitor against the shipped aggregate baseline; test held-out predictions and retraining/staleness detection
+- [ ] Story 41: tune source-match confidence using real submissions and route uncertain cases to manual review without rejecting niche tracks; define classifier/review tests with the approved thresholds
+- [ ] Story 24: add a gather-boundary per-source timeout and unit tests when the latency budget requires it; request-level timeouts already exist
+- [ ] Define curated metadata evidence fields, provenance, retention/refresh, access, and a Ready story with persistence/access/retention tests before populating metadataRaw
+- [ ] Flutter: replace embedded playback with official YouTube app/site link-out and test the DJ action; mobile remains deprioritized
+- [ ] Optional: removed-item exit motion beyond voice departure, with reduced-motion tests
+
+Genre enrichment and automatic Topic-upload upgrades are dropped. Pattern-based user moderation remains an unscoped future idea after usage/abuse data exists.
 
 ## Story 52: Live playtest fixes
 
@@ -33,14 +239,12 @@ A Chrome and Firefox playtest on the production site found that DJ audio never r
 
 DJ audio (the most important batch):
 
-- [ ] Confirm in a two-Chrome production run that the DJ's shared audio reaches the other players; if it does not, log the display-capture result (surface type, audio track present), the outgoing track state, and the receiving peer's incoming track and playback state
+- [x] Confirm in a two-Chrome production run that the DJ's shared audio reaches the other players (the third playtest found audio working end to end)
 - [x] Share once per match: a DJ who has not yet shared is asked for the screen share with system audio first, and only then does the Open on YouTube button appear; the share stays alive for the rest of the match, so later rounds do not ask again
 - [x] Share the DJ's audio only during that player's own DJ turn: outside it the captured audio is not mixed into the voice stream and nobody receives it, and the audio stops when the DJ locks in; only the current DJ's audio is sent to the other players, never to the DJ; unit tests for the gating
 - [x] Detect browsers that cannot capture audio (Firefox, Safari), report the capability to the server when a player joins, and skip those players in DJ rotation; they still play and guess, and see a short notice explaining why; a rotation with no capable player shows the group a clear message; unit and backend integration tests
 - [x] Open the YouTube link in a new tab of the same browser window, not a popup window
-- [ ] Simplify the DJ view: one primary action, short instructions, no duplicated controls
 - [x] The card's sound wave moves for every player from the DJ's audio and ignores voice chat; the DJ's own wave follows the shared audio
-- [ ] Two-browser test: share-once across rounds, missing audio track message, unsupported browser handling, wave source (unit tests are in place)
 
 Leaving and ending:
 
@@ -55,313 +259,4 @@ Voice controls:
 Visual:
 
 - [x] Card colors that are too dark on the dark theme get a readable variant; check every song color
-- [ ] Browser test that the round subtitle is never covered by the guessing card at 100%, 125%, and 150% scaling; the stage's minimum height was raised
-- [ ] The `/api/playlists/{id}/import-jobs/active` 404 still shows in the console; changing that response needs an API contract decision
 - [x] Investigated the `wss://api.hittiguess.com/ws` closed-before-established message: it appears when a page unmounts its socket while connecting and needs no change
-
-## Story 53: Second playtest fixes
-
-A second production playtest found the game borderline playable but buggy: the song only reaches players who joined voice, voice and music degrade each other, the game screens scroll, and several lobby and playlist problems. Every item was checked against the code before it was written here.
-
-Five branches off `dev`, one PR each, in this order: `feat/song-stream-and-voice-quality` (A), `fix/no-scroll-game-ui` (B), `fix/lobby-chat-playlist-ui` (C), `fix/invite-join` (D), `fix/game-song-list` (E). Each PR carries its own tests and docs.
-
-### Part A: separate song stream and voice quality (branch `feat/song-stream-and-voice-quality`)
-
-- [x] Song mesh: a second set of peer connections per game session, signalled over STOMP and keyed by the session, that every player joins automatically as a listener with no microphone and no voice join; backend relay limited to the session's players
-  - [x] Backend `SongSignalingController` (`@MessageMapping("/sessions/{sessionId}/song/signal")`), `SessionDestinations.songSignalQueue(sessionId)` as `/queue/sessions/{sessionId}/song-signal`, authorization through `PlayerRepository.existsBySessionIdAndUserId` for sender and target, relay through `convertAndSendToUser`; the group TURN credentials endpoint is reused
-  - [x] Backend tests: a non-player is rejected, a player of another session is rejected, the relay reaches only the target
-  - [x] Frontend song hook: one persistent `sendrecv` connection per pair for the whole session, the lower user id offers, the sender track swaps with `replaceTrack` when the DJ changes, and a fresh offer after a peer failure like voice's `peerResetCount`; a player who reloads or joins mid-session recovers
-- [x] The DJ's captured audio is attached to the song connections only during the DJ's own turn until the reveal and is detached (`replaceTrack(null)`) at all other times, not muted; the share prompt still appears once per match
-  - [x] The capture stays alive for the whole match, is used directly as the sender track, and is tapped by the visualizer only, never routed through the voice mixer
-  - [ ] Attaching at turn start produces no audible glitch: check for a start-up delay and pre-attach shortly before the song starts if there is one
-  - [x] Tests: attach and detach on turn changes, one share per match, no renegotiation when the DJ changes
-- [x] Remove all song and tab audio from the voice mesh; voice carries only the microphone; lock-in silences only the song stream for the active player, never the DJ's voice
-  - [x] Remove the tab mixer, `startTabAudio`, `setTabAudioBroadcasting`, `isSharingTabAudio`, and the tab error plumbing from `use-voice-mesh.ts`; voice never changes the song's quality or routing and never needs a voice join
-  - [x] Keep the `shouldSilenceDjForActivePlayer` semantics (`COUNTDOWN`, `BETTING`, `REVEALED`, `SCORED`) and retarget them from the DJ's incoming audio element to the song element
-  - [x] Tests: the voice hook carries no tab code, lock-in mutes only the song element
-- [x] Song quality: capture with echo cancellation, noise suppression, and auto gain off, `contentHint` music, stereo Opus at 128 kbps with a single constant for the bitrate; document the bandwidth maths
-  - [x] SDP munging in both directions (`stereo=1; sprop-stereo=1`, `maxaveragebitrate=128000`, `useinbandfec=1`, `maxplaybackrate=48000`) plus `RTCRtpSender.setParameters` max bitrate taken from one named constant, so 192 kbps is a one-line change
-  - [x] Document roughly bitrate x listeners for DJ upload in `ARCHITECTURE.md`
-- [x] Voice quality: explicit echo cancellation, noise suppression, and auto gain, a noise gate with a sensitivity slider, and an RNNoise filter toggle with a fallback; a Windows tip about call ducking in the voice settings
-  - [x] Open the microphone with `echoCancellation: true`, `noiseSuppression: true`, `autoGainControl: true`, `channelCount: 1`, `contentHint` speech, and cap the sender at about 40 kbps
-  - [x] Add `@sapphi-red/web-noise-suppressor`, pinned to an exact version at least two weeks old after a licence check, default on, and fall back to the plain constraints when the worklet fails
-  - [x] Persist the gate sensitivity and the filter toggle in the shared audio-device store; the Windows tip is a collapsible hint shown only on Windows
-  - [x] Tests: the explicit constraints, the gate threshold with attack and release, the RNNoise fallback
-- [x] Song volume slider, reachable from the voice settings and from the game page, independent of the speaker volume and working without joining voice
-  - [x] Tests: the volume store and the game-page control
-- [x] Visualizer rewrite: the song stream only, log-spaced bands, dB scaling, smoothing, 16 to 24 bars, clean rendering with no stray pixels
-  - [x] `fftSize` 2048, `smoothingTimeConstant` about 0.8, `minDecibels` about -90, `maxDecibels` about -10, 40 Hz to 16 kHz log bands from the context sample rate, a gentle spectral tilt, per-bar attack and release, heights from dB values
-  - [ ] Canvas rendering with `devicePixelRatio` handling, a static resting state when there is no audio, and `prefers-reduced-motion` respected; check the card border and background at several zoom levels in a real browser
-  - [x] Tests: the band maths (log spacing, tilt, smoothing) against a fake analyser
-- [x] Stop the screen capture when the session ends, the player leaves the game or the group, the page unloads, or the share bar is stopped
-  - [x] Stop all tracks and detach the song sender on each of those events; a route change inside the app does not stop the capture
-  - [x] Tests: one per stop path
-- [ ] Let Firefox and Safari try the share prompt on desktop, log the result of each attempt (browser, surface, audio track count) to the console and Sentry, keep the old gating behind one flag; record the findings here
-  - [x] The frontend has no Sentry SDK today: add `@sentry/nextjs`, initialise it from a DSN environment variable, and record each share outcome as a breadcrumb alongside the `console.info` line
-  - [x] When no audio track comes back, show the browser name with a retry and keep the round moving; the message tells players the DJ has no audio
-  - [ ] Collect a Firefox and a Safari result, then decide whether to restore the skip
-- [x] The voice rail lists who is in the call before a player joins, on the lobby and the session page
-  - [x] Hide the rail only when the user is in no group; keep the Join button at the bottom
-- [x] Handle autoplay blocked on a listener: a small "Click to enable sound" affordance on the session page and a retry on the first user gesture
-- [ ] Manual, for the owner: two real Chrome windows with system audio, one DJ and one listener who never joined voice; a Firefox and a Safari attempt; report the results here
-
-### Part B: no-scroll game screens (branch `fix/no-scroll-game-ui`)
-
-- [x] The group lobby, loading screens, and every round phase fit the viewport with no scrolling; website pages keep scrolling; checked at 1366x768, 1440x900, 1920x1080, and 125% and 150% zoom
-  - [x] Wrap the two game routes with `h-full overflow-hidden` and keep `results` scrollable; a `sessions/[sessionId]/layout.tsx` would also wrap `results`, so either wrap inside each page root or reset `results` in its own layout
-  - [x] Remove the `min-h-[720px]`, `min-h-[680px]`, and `min-h-[480px]` values and scale content with `short:`/`very-short:` variants, `clamp()`, or container queries; the timeline, tokens, buttons, and cards stay visible and usable
-  - [ ] The round subtitle stays clear of the DJ/guessing card at every listed size (confirm by eye at 125% and 150% zoom)
-  - [x] Lobby popups may scroll inside their own panel only when their content genuinely exceeds it
-- [x] Assert against the real scroll container (the `(app)` layout's `overflow-y-auto` div), not `documentElement`, which `h-screen overflow-hidden` already clips
-- [ ] Playwright covers the lobby and one gameplay phase at 1366x768, 1440x900, and 1920x1080; extend it to the 8-member lobby, each lobby popup, round intro, betting, reveal, between-rounds loading, game over, and 125% and 150% zoom, and run it (e2e does not run in CI)
-
-### Part C: lobby, chat, and playlist-selection UI (branch `fix/lobby-chat-playlist-ui`)
-
-- [x] Settings opens with the same gap above the footer buttons as the chat, anchored to the same footer wrapper
-- [x] Chat: stable avatar color per sender from `senderId`, 24-hour time with `hourCycle: "h23"`, newest message at the bottom, and a taller panel
-  - [x] Reverse the newest-first history in the client without changing the API contract, auto-scroll to the bottom on open and on each new message, and stay put when the reader has scrolled up
-- [x] Playlist options popup in one compact row with Confirm inline (Easy, Medium, Hard, divider, Custom, Confirm), a smaller footprint than `w-[480px]`, and the "Songs are selected when the session starts" line removed; keep the error alert
-- [x] Left sidebar icons spaced slightly wider than now, not as wide as before (`RAIL_GROUP_GAP_CLASSES` around `gap-5`, scaling down for `short`/`very-short`), fitting at 1366x768 and 150% zoom without scrolling the rail
-- [x] Tests: extend `group-chat-overlay.test.tsx` and the lobby page tests for the new chat, popup, and rail behaviour
-
-### Part D: invite link and joining (branch `fix/invite-join`)
-
-- [x] Joining a group the user already belongs to returns that group; joining while in another group gives a clear message with a leave option; the join page shows the server's real message and says invalid only for a missing code
-  - [x] Reorder `joinGroup`: resolve the group first, then branch on the caller's membership (`memberRepository.findByUser`); the same group returns the detail with no new member and no `MEMBER_JOINED` event, a different group gives a "leave it first" 409
-  - [x] Join page: read the server message for 409 and keep "That invite link isn't valid." for 404 only; the leave-and-retry button uses the cached active membership for the other group's id
-- [x] A group deleted when its last member left is a plain 404 today, so the link is dead with no way to say "this group has ended" unless a tombstone is added; keep the generic wording and note it
-- [x] Tests: backend idempotent join, cross-group 409, and the existing removed and full cases; frontend join page cases for each message; update `docs/SYSTEM_REFERENCE.md` if the endpoint description changes
-
-### Part E: playlist generation for a game (branch `fix/game-song-list`)
-
-- [x] At Start, build the game's song list once for both difficulty and custom: remove duplicates by normalized artist and title, shuffle, and keep it only in the session
-  - [x] Normalized key: lowercase, strip diacritics and punctuation, drop bracketed and dash-suffixed qualifiers; keep the first occurrence; share one normalization for both paths
-  - [x] Inject `Random` so the shuffle is deterministic under test
-- [x] Reproduce why Easy, Medium, and Hard did not generate a playlist, fix the cause, and show a clear message when a start fails
-  - [x] Run the core locally in WSL against throwaway Postgres: the local catalog holds 29 verified songs (26 in international scope; EASY 10, MEDIUM 9, HARD 7), too few for a 30-card start; selection now widens across tiers and names the real counts
-- [ ] Run the per-tier eligible-song count query from PR 318 against the production database and confirm the catalog is large enough for the game sizes players use; if not, import more songs
-  - [x] The likely cause is a tier band holding fewer verified `sitelinks >= 5` rows than `players * win cards * headroom`, which fails the start with a 409; widen the sampling or surface the real message, and report the local counts per tier
-- [x] Tests: normalization units, deterministic shuffle, tier and custom integration including no duplicates and two starts differing in order, and an assert that no playlist rows are created
-
-## Story 54: Third playtest fixes
-
-A third playtest found audio working end to end and the problems below. The metadata items cover the 370
-songs in the production catalog; `opencode-tasks/data/year-audit.md` lists the songs with a wrong year,
-artist, or duplicate. Each task has a self-contained brief in `opencode-tasks/`.
-
-Layout and game screens:
-
-- [x] Left rail icons spaced further apart at every height step
-- [x] Game screens (lobby, round intro, every round phase, between rounds) laid out as the 1440x900 designs and scaled evenly to the window, replacing the per-element `short:`/`very-short:` shrinking
-- [x] Lobby matches its design artboards in text size, spacing, and alignment
-- [x] Gameplay matches its design artboards in text size, spacing, alignment, and timeline card size
-- [x] The waveform has 5 bars everywhere in the app, driven by the song's frequency bands
-
-Gameplay behavior:
-
-- [x] Countdowns use the server's clock: every response that carries a deadline also carries the server time, and clients correct for their own clock offset
-- [x] Every player sees the active player's card move live while it is dragged, with the same waveform, as in the GameSessionCardDraggingSpectator design
-- [x] The voice rail's Join button is the next slot under the people in the call, at the top when the call is empty
-
-Navigation:
-
-- [x] Start session on a playlist creates a group when the user has none, and asks to use the current group or leave it and create a new one when the user has one
-- [x] A logged-in visit to `/` redirects to `/playlists` before the landing page renders
-- [x] A finished game goes straight to its results with a loader, without the "This game has ended" screen in between
-- [x] Entering a game from the lobby shows a loader instead of a flash of the lobby
-
-Catalog and pipeline:
-
-- [x] The duration refresh fetches songs that never had a duration, and keeps old durations when a refresh fails
-- [x] MusicBrainz lookups find multi-artist songs and include the albums a recording appears on
-- [x] Wikidata and Discogs matching rejects other artists' works, compilations, and non-song entities
-- [x] The lock takes the earliest year at least two sources report among MusicBrainz, Discogs, Wikidata's track date, and the Wikipedia extraction, replacing the one-year cluster rule; Wikidata's album date votes only when MusicBrainz reports the same year (PR 346)
-- [x] Discogs dates an album by the earliest matching release that contains the track, Wikidata finds songs by title and first main artist and reads multilingual labels, and MusicBrainz finds a recording stored under its original script (PR 346)
-- [x] A song no source knows is proposed for review with its video's upload year instead of having no year (PR 346)
-- [x] A request rejected for a replaced CSRF token is retried once with the current token (PR 347)
-- [x] The year benchmark in `ai/benchmark` covers the 65-song set and the production catalog (357 distinct songs, 308 labelled), with the misses and tie-breakers tried recorded in `OBSERVATIONS.md` (PR 348, PR 349)
-- [ ] Recheck the catalog after the pipeline fixes and correct the songs in the year audit
-- [x] A completed pipeline run attaches its video to an existing song with the same normalized artist and title instead of creating a duplicate, and the admin can merge the 12 existing duplicate pairs
-- [x] The admin catalog shows songs added before pipeline tracking as "Before tracking"
-- [x] Live drag previews are validated from in-memory round state, without a database read per frame
-- [x] Leaving a group and creating or joining another happens in one server transaction, so a failure keeps the user in their group
-
-Tests:
-
-- [ ] Unit tests for each change above; backend tests for the server time field and the live drag relay
-- [x] AI service tests for the lock rules against recorded source responses: `tests/metadata/test_year_benchmark.py` replays `ai/benchmark/songs.csv` offline
-- [ ] Playwright screenshots of the lobby and each round phase at 1366x768, 1440x900, and 1920x1080 compared side by side with the design artboards
-
-## Rotating DJ report
-
-A two-player production game reported as rotating kept the owner as DJ every turn. With two players a rotating session swaps the active player and the DJ every turn, so a DJ who never changes and never takes a turn means the session ran in fixed mode. Every new group starts in fixed mode with the first member as DJ, and the lobby showed the mode only inside the settings popup.
-
-- [x] Tests: two-player rotating and fixed rotation over consecutive turns, including a player who cannot share audio
-- [x] The lobby shows the stored DJ mode, and the fixed DJ's name, next to Settings for every member; tests
-- [x] Desktop Firefox reports that it cannot share audio, since its screen share carries no audio track; the skip notice says the player DJs only when nobody else can; tests
-
-## Story 7: Production hosting
-
-Azure Container Apps hosts core and AI in one EU environment. Vercel hosts the frontend. Core stays single-replica because game and STOMP state are process-local. The whole-deployment ceiling is $20/month.
-
-- [x] Restrict the new YouTube API key to the YouTube Data API; the exposed key is deleted
-- [ ] Add anomaly alerts and a $12 shutdown Action Group; the Log Analytics daily cap (0.25 GB, 30-day retention) and the $20 budget with email alerts are in place
-- [ ] Cost-control test: alerts and shutdown against an isolated resource group
-- [ ] Load-test core/AI CPU, memory, WebSockets, and game-action latency; validate resource limits and add a tested active-game admission limit with a clear busy response
-- [ ] Test the throughput limit of the C1-only JIT setting under game load; both Azure apps run one always-on replica
-- [x] Verify Vercel root frontend, production branch dev, domain, API origin, and shared auth cookies
-- [ ] Verify password-reset email delivery in production; Google login, signup, verification, login, and the Resend domain and sender are working
-- [x] Add HTTP liveness/readiness probes to both apps
-- [ ] Deployment smoke test: health, HTTPS API, WSS STOMP, protected-route session_hint cookie, and internal core-to-AI requests
-- [ ] Production two-device acceptance: login, import, full game, reconnect, voice, DJ audio, and results; fix the issues found in the live demo first
-- [ ] Plan the move to one Hetzner server before the Azure trial credit ends: document the deployment, rehearse it in isolation, and prepare DNS cutover and rollback
-- [ ] Optional: decide whether production deployments require GitHub environment reviewers
-
-## Story 8: Production databases
-
-Both Neon projects are provisioned. Core owns schema migrations; AI connects only to the transactional database.
-
-- [ ] Inspect both Flyway histories, core pgvector/indexes, and analytics tables
-- [ ] Verify intended TLS URLs and service boundaries, including deployed AI access to core and no browser credentials or AI access to analytics
-- [ ] Test the first request after idle suspend; change pool settings only if needed
-- [ ] Configure storage/compute notifications and document backup exports; rehearse isolated restoration of both databases
-- [ ] Decide whether existing songs should enter Beta and perform only an approved catalog-only import
-
-## Story 38: Production observability
-
-- [ ] Production Sentry and OpenTelemetry settings are set on both apps; remaining: metrics through a Grafana Alloy container (core's `/actuator/prometheus` needs a login, so expose it on an internal-only management port first), import the dashboard, and add core uptime monitoring
-- [ ] Verify real metrics, logs, traces, and error delivery; add a credential-gated delivery integration test without secret output
-
-## Backend follow-ups
-
-- [ ] Story 24: verify concurrent source gathering preserves immediate-work priority over the patient backlog, with an integration test
-- [ ] Merge existing catalog duplicates and add unique songs(youtube_id) and active pending_imports indexes
-- [ ] Integration tests: cleanup preserves playlist/alternate-ID links and indexes reject concurrent duplicates
-
-## Story 51: Admin console and parallel source pipeline
-
-The admin area becomes a console with its own sidebar section, a dashboard, a backfill queue, a song catalog, and the report queue. Backfill and user imports run through seven persisted queues, one per stage: YouTube metadata, MusicBrainz, Discogs, Wikidata, Wikipedia, LLM reconciliation, and embedding. Each queue works at its own pace, and a song is finalized once every stage it needs is done. Wikipedia is queued for a song only when MusicBrainz, Discogs, and Wikidata disagree. The admin screens use approved dark and light mockups. LLM usage has no limit and is tracked with an estimated cost from the official prices. The stage path has no daily 200-song drain cap. The sequential drain and cutover flag are removed after the owner confirmed the production playlist test.
-
-Pipeline and data:
-
-- [x] Cutover: authenticated AI stage client with provider failure mapping, per-stage scheduled workers, cheap due-work checks, and no-attempt pace rescheduling
-- [x] Cutover: transactional ready-run persistence, patient-year recording, and V41 embedding execution without engine embedding jobs
-- [x] Admin batches and user rechecks always enqueue stage runs; the sequential drain and cutover flag are removed
-- [x] User-lane priority, configurable YouTube reserve, and run-based catalog and dashboard reads
-- [x] Cutover unit tests: worker decisions, stage payloads, error mapping, reserve behavior, and dependency transitions
-- [x] Cutover integration tests: agreeing and disagreeing years, retry and key pause, permanent failure, lease recovery, lane priority, reserve, atomic save and duplicates, and unconditional stage bean registration
-- [x] Pipeline docs: unconditional stages, embedding contracts, decision entry, and production verification
-
-- [x] AI stage endpoints: internal authentication, video identification and precheck verdict, source candidates and earliest years, reconciliation, and sanitized provider errors
-- [x] AI stage equivalence tests: agreeing years, disagreement, empty source, precheck rejection, and YouTube failure; existing AI tests remain passing
-- [x] Persisted source pacing: V45 stage rows, atomic slot reservations, cooldowns, response averages, in-memory fallback, and stage-only 30-second wait cap with retryAfterSeconds
-- [x] Pacing tests: SQL, fallback, wait cap, concurrent increasing reservations, and core Testcontainers migration coverage
-- [x] AI stage documentation: endpoint contracts, error and retry bodies, pacing table, architecture, and decision entry
-
-- [x] Core migration (V44): per-stage job table (video run, batch, stage, status, attempts, lease, next attempt, result, failing stage, real failure reason), batch table, runs with one active run per YouTube ID, and per-stage pause controls; constraints covered by the engine integration tests
-- [x] Job engine leasing: one job per call per stage with `FOR UPDATE SKIP LOCKED`, user imports first, then priority, then age, with retry backoff; the leased-job pattern of the embedding queue is the template; covered by concurrent-worker integration tests
-- [x] Stage workers lease jobs from their own queue at the source's pace; pace and cooldown state survive restarts
-- [x] Stage dependency rules: the three sources run in parallel after YouTube metadata; agreeing years skip Wikipedia and reconciliation; Wikipedia is added after the first three sources answer otherwise; the run is marked ready to save without an engine embedding job; unit-tested transition table and both paths in integration tests
-- [x] Join step: save the ready song and finish its run in one transaction; V41 triggers queue verified embeddings
-- [x] User imports use the same queues with priority over the backlog, replacing the drain pause in `MetadataPriorityCoordinator`
-- [x] Engine failure handling: classify failures as transient (outage, rejected key, rate limit, timeout, shutdown) or permanent (video unavailable, no usable metadata); transient failures retry with backoff and an attempt count; the real reason and failing stage are stored on the job; unit and integration tests
-- [x] Stage workers report failures through the engine, so a transient error never marks a song failed
-- [x] Engine: a rejected API key pauses its stage and returns the job without using an attempt or failing the run; integration test
-- [ ] Real provider calls report rejected or exhausted keys, and a paused stage raises a dashboard banner
-- [x] Engine: jobs whose lease expired are reclaimed inside each lease call, and a lost lease counts as an attempt; integration tests
-- [x] A restart or redeploy resumes work without waiting for the daily timer
-- [x] Remove the daily drain cap on the stage path; the backlog stops when remaining YouTube units fall below a reserve kept for user imports
-- [x] The AI service records YouTube units and LLM tokens per call; cost estimates use the official per-unit prices kept as named constants with the date they were read
-
-Admin API:
-
-- [x] Queue API: stage state, counts, pace, cooldown, response averages, estimates, paged jobs, and paged runs with stage progress for the Songs tab
-- [x] Control API: stage and global pause/resume, run retry/discard/bump, retry all failed, batch list/cancel, enqueue, and run one now
-- [x] Batch reporting: additive skipped-duplicate count column and enqueue response batch ID, with migration and duplicate-reporting tests
-- [x] Song controls: per-source findings and review reason in detail, rerun, year/status update, and catalog delete with playlist and alternate-ID cleanup
-- [x] Dashboard API: backward-compatible stage queues, paused-stage banner reasons, and YouTube reserve fields
-- [x] Queue/control tests: service units, admin/user/validation MockMvc coverage, and real-row Testcontainers checks for every control
-- [x] Regenerate the frontend API client from the local backend spec and commit only intended additions separately
-- [x] Queue API documentation: request/response contracts and completed task boxes
-
-- [x] `/api/users/me` returns the account role; remove the 403 probe in the admin layout
-- [x] Usage endpoint: `GET /api/admin/usage` returns YouTube units against the daily limit with the next midnight Pacific reset, and DeepInfra and OpenAI calls, tokens, and estimated cost for the UTC day and month, backed by the daily usage table
-- [x] Dashboard endpoint v1: `GET /api/admin/dashboard` returns the catalog counts (verified, needs review, in queue, processing, error, total), queue totals (waiting and in progress across every origin), and the usage view with YouTube units against the daily 10,000-unit default with its midnight Pacific reset and LLM and embedding usage with estimated cost for today and the month
-- [x] Dashboard endpoint, per-queue depth: waiting, in progress, and failed per stage queue, once the stage queues exist
-- [x] Queue endpoint: waiting, in progress, done, and failed counts per stage, current pace, cooldown state, average response time, estimated time to drain, and the list of songs still needing work; a per-stage job list with lane (user import or backfill), attempts, next attempt, and last error
-- [x] Control service methods: pause and resume per stage, retry and discard a failed run, cancel a batch, and bump a run above every waiting job; integration tests
-- [x] Controls endpoints: pause and resume per queue and for the whole backlog; retry, retry all, and discard failed items; cancel a batch; run one YouTube ID now at top priority; re-run the pipeline for one song
-- [x] Batches: each submitted playlist or ID list is a batch with progress, skipped duplicates, and an estimate
-- [x] Song catalog endpoint: server-side search by title or artist with a minimum of three characters, 25 results per page, and a trigram index so a search never scans the whole table; each row has title, artists, release year, status (processing, in queue, verified, needs review, error), pipeline (fast or full, from the queue origin), date added, and added by (admin seed when empty)
-- [x] Song detail endpoint, read only: the catalog fields, stored verification status, confidence, and sitelinks, open report count, and the queue history for its YouTube ID
-- [x] Song detail additions once the stage queues exist: what each source found, why the song is verified or needs review, and the actions to set year or status, re-run, or delete
-
-Frontend:
-
-- [x] Backfill pages: overview stage cards, batches, enqueue and run-now forms, and a Songs tab with real progress and run controls
-- [x] Page API support: artist and batch fields, global run-state filters/counts, read-only embedding progress, immediate waiting retries, and stage-scoped retry-all; backend tests and regenerated bindings
-- [x] Stage page: stage counts, pace samples, paged jobs, status filters, pause/resume, and retry failed work
-- [x] Dashboard completion: queue table, rejected-key pause reasons with Resume, and user reserve figures
-- [x] Song drawer completion: source findings, review reason, rerun, year/status edits, and confirmed deletion
-- [x] Navigation: Backfill queue rail entry and stage routes; obsolete catalog-backlog route removed
-- [x] Admin page tests: each screen and action, confirmation dialogs, loading/empty/error states, mutation failures, and accessible controls
-- [x] Admin visual verification: real local backend, approved mockups at 1440x900 in light and dark themes, including the song drawer
-- [x] Admin page docs: content requirements, implementation guide, and checked tasks for verified work
-
-- [x] Admin section in the sidebar in its own accent color with Dashboard, Backfill queue, Song catalog, and Reports, visible only to admins
-- [x] Song catalog page (debounced search, status filters, pagination) and read-only song detail drawer
-- [x] Dashboard page v1 at `/admin`: catalog count tiles, YouTube quota with reset countdown, and AI usage with estimated cost, refreshed every 30 seconds
-- [x] Dashboard queue table, rejected-key banner and reserve figures, and the backfill queue (per-queue panel, a page per stage queue, batches, failed items with reasons, song list)
-- [x] Design dark and light mockups for the admin sidebar section, dashboard, backfill queue, song catalog, and song detail; replace the catalog backlog mockup and its 400-song quota figure; validate source and canvas equality
-
-Tests:
-
-- [x] Unit tests: failure classification, retry backoff, and the stage dependency rules including the conditional Wikipedia stage
-- [x] Unit tests: status and pipeline derivation, cost estimation, and the YouTube reserve rule
-- [x] Integration tests: job leasing under concurrent workers and user-import priority in the job engine
-- [x] Integration tests: restart recovery, usage counters, role in `/api/users/me`, the dashboard, queue, and catalog endpoints, minimum search length, page size, and search index use, and admin-only access
-- [x] Frontend unit and browser tests: admin sidebar visibility by role, dashboard figures, per-queue panel, pause and retry actions, catalog search limits, and detail drawer
-- [x] Update `ARCHITECTURE.md`, `SYSTEM_REFERENCE.md`, `FRONTEND_CONTENT.md`, and `FRONTEND_IMPLEMENTATION_GUIDE.md` for the new endpoints, queues, and screens
-
-Production and cleanup:
-
-- [x] Owner confirmation that the enabled stage pipeline passes a small real playlist in production; earlier stacked branches merged into dev
-- [x] Cleanup after that confirmation: remove the old sequential drain and flag, retain pending-import history, update docs, run all required tests, and archive completed tasks
-
-Production fixes from the first enabled playlist (throughput and admin metrics):
-
-- [x] Stage workers keep leasing due jobs in a bounded burst instead of one job per tick
-- [x] Per-stage concurrency limits replace the exclusive lease, configurable per stage, on a bounded executor sized to the limits
-- [x] In-process wake-ups start a stage as soon as its jobs are created or become due, with a longer idle poll
-- [x] Queue metrics from `pipeline_jobs`: average job duration, average queue wait, throughput, source request time
-- [x] Drain estimates per stage from measured throughput, concurrency, and source pace, plus an overall estimate
-- [x] Embedding row filled from the V41 queue, with a migration recording claim and storage times
-- [x] Count definitions checked and documented: expired leases, failed jobs of discarded runs, the UTC day
-- [x] Finished jobs clear their failure fields, and read paths hide stale failure data on finished jobs
-- [x] AI service logs transient upstream failures as warnings without the error reporter, and serves enough concurrent stage calls
-- [x] Tests: drain and metric formulas, concurrency limit under parallel workers, burst, wake-ups, metric queries, throughput with a slow fake AI client, stale failure data, AI log levels
-- [x] Update `SYSTEM_REFERENCE.md`, `ARCHITECTURE.md`, and `DECISIONS.md`
-
-Later, once the console exists: an audit log of admin actions, catalog health checks (duplicates, missing embeddings, missing durations), a list of safety rejections, and a catalog CSV export.
-
-## Story 34: Usage analytics, definition required
-
-Core participant history/statistics and analytics difficulty research already exist. Raw analytics retention is 365 days. This story covers internal usage and abuse visibility with no third-party trackers.
-
-- [ ] Confirm event fields and tasks against current code for session start/end, login/failed login, playlist creation, submission, rate-limit, report, and injection events
-- [ ] Implement approved event writes, replace abuse-event stubs, and build internal aggregates/repeated-abuse visibility
-- [ ] Define and implement the reviewed notice or consent behavior
-- [ ] Integration tests: event records and dashboard/query aggregates
-
-## Deferred work
-
-- [ ] Story 28: define account mockups and build correction, deletion, and personal-export controls; add unit/browser permissions and failure tests
-- [ ] Story 28: build privacy/terms routes from reviewed copy; update providers including Neon, data inventory, retention, and remaining export scope; test routes/disclosures
-- [ ] Story 30: after enough real research data exists, train personalized difficulty, schedule retraining, and monitor against the shipped aggregate baseline; test held-out predictions and retraining/staleness detection
-- [ ] Story 41: tune source-match confidence using real submissions and route uncertain cases to manual review without rejecting niche tracks; define classifier/review tests with the approved thresholds
-- [ ] Story 24: add a gather-boundary per-source timeout and unit tests when the latency budget requires it; request-level timeouts already exist
-- [ ] Define curated metadata evidence fields, provenance, retention/refresh, access, and a Ready story with persistence/access/retention tests before populating metadataRaw
-- [ ] Flutter: replace embedded playback with official YouTube app/site link-out and test the DJ action; mobile remains deprioritized
-- [ ] Optional: removed-item exit motion beyond voice departure, with reduced-motion tests
-
-Genre enrichment and automatic Topic-upload upgrades are dropped. Pattern-based user moderation remains an unscoped future idea after usage/abuse data exists.
