@@ -175,7 +175,11 @@ Catalog and pipeline:
 - [x] The duration refresh fetches songs that never had a duration, and keeps old durations when a refresh fails
 - [x] MusicBrainz lookups find multi-artist songs and include the albums a recording appears on
 - [x] Wikidata and Discogs matching rejects other artists' works, compilations, and non-song entities
-- [x] The Wikipedia-assisted lock no longer takes the earliest of disagreeing years when only one source supports it
+- [x] The lock takes the earliest year at least two sources report among MusicBrainz, Discogs, Wikidata's track date, and the Wikipedia extraction, replacing the one-year cluster rule; Wikidata's album date votes only when MusicBrainz reports the same year (PR 346)
+- [x] Discogs dates an album by the earliest matching release that contains the track, Wikidata finds songs by title and first main artist and reads multilingual labels, and MusicBrainz finds a recording stored under its original script (PR 346)
+- [x] A song no source knows is proposed for review with its video's upload year instead of having no year (PR 346)
+- [x] A request rejected for a replaced CSRF token is retried once with the current token (PR 347)
+- [x] The year benchmark in `ai/benchmark` covers the 65-song set and the production catalog (357 distinct songs, 308 labelled), with the misses and tie-breakers tried recorded in `OBSERVATIONS.md` (PR 348, PR 349)
 - [ ] Recheck the catalog after the pipeline fixes and correct the songs in the year audit
 - [x] A completed pipeline run attaches its video to an existing song with the same normalized artist and title instead of creating a duplicate, and the admin can merge the 12 existing duplicate pairs
 - [x] The admin catalog shows songs added before pipeline tracking as "Before tracking"
@@ -184,7 +188,8 @@ Catalog and pipeline:
 
 Tests:
 
-- [ ] Unit tests for each change above; backend tests for the server time field and the live drag relay; AI service tests for the new matching and lock rules against recorded source responses
+- [ ] Unit tests for each change above; backend tests for the server time field and the live drag relay
+- [x] AI service tests for the lock rules against recorded source responses: `tests/metadata/test_year_benchmark.py` replays `ai/benchmark/songs.csv` offline
 - [ ] Playwright screenshots of the lobby and each round phase at 1366x768, 1440x900, and 1920x1080 compared side by side with the design artboards
 
 ## Story 7: Production hosting

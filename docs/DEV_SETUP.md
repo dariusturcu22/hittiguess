@@ -42,6 +42,31 @@ export JAVA_HOME="$HOME/.jdks/<jdk-25-directory>"
 
 `npm run api:gen` in `frontend/` generates `hooks/generated`, `hooks/models`, and `hooks/zod` from the running backend's spec. The generator version is pinned by `package-lock.json`. Run `npm ci` in `frontend/` first: an older installed `orval` generates different code and rewrites well over a hundred unrelated files. With the pinned version the diff contains only real contract changes.
 
+## Running the AI tests
+
+Run `pytest` from `ai/` with the virtual environment (`.venv/Scripts/python.exe -m pytest tests -q` on Windows). Integration tests start Postgres through Testcontainers and need Docker running. On Windows, set `TESTCONTAINERS_HOST_OVERRIDE=127.0.0.1` first: `localhost` resolves to IPv6 there, and without the override each connection stalls for about a minute.
+
+## Running the year benchmark
+
+`ai/benchmark` measures the year lock against songs with known release years: `songs.csv` (65 songs) and `catalog.csv` (369 rows from the production catalog, 308 labelled). `captures/<source>/<slug>.json` holds each source's recorded answer, and `OBSERVATIONS.md` records the latest results. Run the commands from `ai/`.
+
+Recording answers queries the live sources and the extraction model, so it makes real API calls that cost money and time. It needs the keys in `ai/.env` (OpenAI, Discogs, and the Wikidata and Wikipedia bot logins; see `ai/.env.example`). Run one process per source so a slow source does not hold the others up. Add `--songs benchmark/catalog.csv` for the catalog set and `--refresh` to record songs that already have a capture again:
+
+```
+.venv/Scripts/python.exe -m benchmark.capture --source musicbrainz
+.venv/Scripts/python.exe -m benchmark.capture --source discogs --songs benchmark/catalog.csv
+```
+
+MusicBrainz pacing state lives in the `stage_pace` table of the local database, so start `make db` first. Without the database the pacer falls back to in-memory pacing, which waits longer between requests.
+
+Scoring the recorded answers needs no network access. `--misses <rule>` lists the songs a rule gets wrong and `--unlabelled` prints the lock's year for songs without a known year:
+
+```
+.venv/Scripts/python.exe -m benchmark.evaluate --songs benchmark/catalog.csv --misses production --unlabelled
+```
+
+`tests/metadata/test_year_benchmark.py` replays `songs.csv` through the lock offline, and fails if the lock takes a wrong year or leaves more songs unresolved than allowed.
+
 ## Local stage pipeline
 
 Admin backfill and patient rechecks always use the persisted stage queues. No cutover flag is required. A leftover `PIPELINE_STAGES_ENABLED` variable is ignored; the owner can remove it from production after the cleanup merges. The stage concurrency settings, polling intervals, and `PIPELINE_YOUTUBE_RESERVE_UNITS` remain supported. The sequential drain quota setting is removed.
