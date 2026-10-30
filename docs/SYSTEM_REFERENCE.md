@@ -131,12 +131,12 @@ All six stage endpoints require `X-Internal-Api-Key`. Stage request and response
 
 | POST path | Request | Successful response |
 |---|---|---|
-| `/stages/youtube-metadata` | `{youtubeId}` (video ID or link) | `{outcome, video, title, artists, featuredArtists, color, rejectionReason, rejectionDetail, result}`. `video` contains `videoTitle`, `channelTitle`, `durationSeconds`, and `categoryId`. `outcome` is `IDENTIFIED`, `REJECTED`, or `DUPLICATE`. Identified results carry the accepted precheck's identity; rejection carries its reason. Rejected and duplicate outcomes carry the final response in `result`; identified results leave it null. The duplicate check never matches the song that already owns the requested video, as its main or an alternate ID, so a rerun of a catalog video resolves it again. |
+| `/stages/youtube-metadata` | `{youtubeId}` (video ID or link) | `{outcome, video, title, artists, featuredArtists, color, rejectionReason, rejectionDetail, result}`. `video` contains `videoTitle`, `channelTitle`, `durationSeconds`, `categoryId`, and `uploadYear` (null when the upload date is unknown). `outcome` is `IDENTIFIED`, `REJECTED`, or `DUPLICATE`. Identified results carry the accepted precheck's identity; rejection carries its reason. Rejected and duplicate outcomes carry the final response in `result`; identified results leave it null. The duplicate check never matches the song that already owns the requested video, as its main or an alternate ID, so a rerun of a catalog video resolves it again. |
 | `/stages/musicbrainz` | `{title, artists, youtubeId?}` | `{candidates, earliestYear}` |
 | `/stages/discogs` | Same source request | `{candidates, earliestYear}` |
 | `/stages/wikidata` | Same source request | `{candidates, earliestYear, sitelinksCount}` |
 | `/stages/wikipedia` | Same source request | `{candidates, earliestYear}`. Candidates contain lead-section extracts; `earliestYear` is null because structured LLM extraction happens during reconciliation. |
-| `/stages/llm-reconcile` | `{title, artists, featuredArtists?, color, video, musicbrainzCandidates?, discogsCandidates?, wikidataCandidates?, wikipediaCandidates?, sitelinksCount?, youtubeId?}` | The final `MetadataResolveResponse`, including the submitted video's duration. Three matching structured years return the locked result without Wikipedia extraction or reconciliation calls. |
+| `/stages/llm-reconcile` | `{title, artists, featuredArtists?, color, video, musicbrainzCandidates?, discogsCandidates?, wikidataCandidates?, wikipediaCandidates?, sitelinksCount?, youtubeId?}` | The final `MetadataResolveResponse`, including the submitted video's duration. Exact agreement among the MusicBrainz, Discogs, and Wikidata years returns the locked result without Wikipedia extraction or reconciliation calls. When no source has a year, the result proposes `video.uploadYear` as a low-confidence `NEEDS_REVIEW` year. |
 
 Source candidates use the same curated fields as resolve. `earliestYear` is always present and is null when no structured year exists. Wikidata's optional sitelinks count remains null if that auxiliary lookup fails. Source requests remove featured-artist suffixes from titles and join main artists with ` & `, matching resolve. Reconciliation retains the Wikipedia-assisted lock and manual-entry paths. Missing candidate lists default to empty lists; missing sitelinks default to null.
 
@@ -253,6 +253,11 @@ Song
   ├── verificationStatus (UNVERIFIED default, VERIFIED, NEEDS_REVIEW, MANUAL_ENTRY; see the state
   │     diagram below; story 18's lock-evaluation pipeline that moves it is built)
   ├── confidence (nullable, populated by the metadata pipeline)
+  ├── proposedReleaseYear, proposedAt (nullable, V50, a different year resolved by a pipeline rerun
+  │     on a verified song; releaseYear stays unchanged until an admin accepts or dismisses it)
+  ├── normalizedKey (nullable, indexed, not unique, V52, the first main artist and title as
+  │     GameSongList normalizes them, used by the completion guard to find an existing copy)
+  ├── durationSeconds, durationFetchedAt (nullable, the official upload duration and when it was fetched)
   ├── metadataRaw (nullable compatibility field, not populated by the current pipeline)
   ├── playlists: Set<Playlist>  (@ManyToMany, mappedBy "songs"; a song can belong to more than one
   │     playlist since story 15, and to zero, a song is a standalone catalog entity independent of
@@ -287,7 +292,7 @@ PlaylistImportJobItem
 
 Tracks a playlist-scoped background YouTube import (story 47) so a user can keep browsing while it resolves; the playlist detail view reads the active job to render pending songs greyed out (V24). Each item moves from `PENDING` (waiting for a free slot) through `IDENTIFYING` and `DATING` (its two fast-tier stages) to `RESOLVED`, `ALREADY_KNOWN`, or `UNRESOLVED`, and a resolved song joins the playlist the moment it settles.
 
-Schema changes go through Flyway migrations in `backend/src/main/resources/db/migration/`, not Hibernate's `ddl-auto`, which is set to `validate`. Core migrations run through V40: V37 replaces playlist invite codes, V38 stores playlist creation time and song duration, V39 indexes due durations, and V40 adds history, prepared difficulty, and research delivery. Earlier migrations include V28 records accepted two-factor time steps and login failures, V29 adds betting skips, V30 adds placement deadlines, V31 and V32 persist session results, V33 records import quota usage, V34 records removed group users, V35 adds full-pass round numbers, and V36 adds a backlog row's origin and its provisional and patient years. V26 adds the playlist description and V27 adds raw video-info fields to playlist-import job items.
+Schema changes go through Flyway migrations in `backend/src/main/resources/db/migration/`, not Hibernate's `ddl-auto`, which is set to `validate`. Core migrations run through V52: V37 replaces playlist invite codes, V38 stores playlist creation time and song duration, V39 indexes due durations, and V40 adds history, prepared difficulty, and research delivery. V41 queues verified songs for embedding, V42 records daily API usage, V43 adds the song creation time, V44 adds the persisted stage pipeline, V45 stores source pacing, V46 counts a batch's skipped duplicates, V47 records embedding claim and storage times, V48 stores when a member's socket dropped, V49 records whether a browser can share audio, V50 stores a proposed release year, V51 adds the `ADMIN_RECHECK` run origin, and V52 adds the song's normalized key. Earlier migrations include V28 records accepted two-factor time steps and login failures, V29 adds betting skips, V30 adds placement deadlines, V31 and V32 persist session results, V33 records import quota usage, V34 records removed group users, V35 adds full-pass round numbers, and V36 adds a backlog row's origin and its provisional and patient years. V26 adds the playlist description and V27 adds raw video-info fields to playlist-import job items.
 
 ### Prepared difficulty and retained history
 
