@@ -11,7 +11,6 @@ import {
   pageClass,
   scrollingTableCardClass,
 } from "../backfill-queue/pipeline-ui";
-import { RecheckCatalogButton } from "./recheck-catalog-button";
 import { SongDetailDrawer } from "./song-detail-drawer";
 import {
   addedByLabel,
@@ -197,9 +196,6 @@ export default function SongCatalogPage() {
           </span>
         </div>
         <p className="text-[13px] text-muted-foreground">Every song with its status, pipeline, and who added it.</p>
-        <div className="mt-3">
-          <RecheckCatalogButton songCount={catalogPage?.counts?.all} />
-        </div>
       </div>
 
       <div className="mb-3.5 flex shrink-0 flex-wrap items-center gap-x-3.5 gap-y-2">

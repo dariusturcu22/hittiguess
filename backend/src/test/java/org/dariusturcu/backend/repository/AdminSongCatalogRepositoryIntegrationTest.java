@@ -71,6 +71,7 @@ class AdminSongCatalogRepositoryIntegrationTest {
 
     @BeforeEach
     void seedCatalog() {
+        jdbcTemplate.execute("TRUNCATE game_session_song_queue, game_sessions, groups RESTART IDENTITY CASCADE");
         jdbcTemplate.execute("TRUNCATE pipeline_runs, song_embedding_queue, songs, song_artists, pending_imports, users RESTART IDENTITY CASCADE");
         long maraId = insertUser("mara.k");
         long lenaId = insertUser("lena88");

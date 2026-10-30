@@ -99,6 +99,7 @@ class PipelineCutoverIntegrationTest {
     void reset() {
         core.execute("ALTER TABLE songs DROP CONSTRAINT IF EXISTS cutover_test_save_failure");
         core.execute("TRUNCATE songs, pipeline_runs, import_batches, pending_imports RESTART IDENTITY CASCADE");
+        core.execute("TRUNCATE game_session_song_queue, game_sessions, groups RESTART IDENTITY CASCADE");
         core.update("UPDATE stage_controls SET paused = false, paused_reason = NULL, paused_at = NULL");
         stages.calls.clear();
         stages.failure = null;
@@ -395,6 +396,94 @@ class PipelineCutoverIntegrationTest {
         assertThat(core.queryForObject("SELECT count(*) FROM alternate_youtube_ids", Long.class)).isEqualTo(1);
         assertThat(engine.findRun(firstRun.id()).orElseThrow().status()).isEqualTo(PipelineRunStatus.DONE);
         assertThat(engine.findRun(secondRun.id()).orElseThrow().status()).isEqualTo(PipelineRunStatus.DONE);
+    }
+
+    private static final String STORED_TITLE = "Stored title";
+    private static final int STORED_YEAR = 1980;
+
+    private long insertStoredSong(String youtubeId, String verificationStatus) {
+        core.execute("TRUNCATE game_session_song_queue, game_sessions, groups RESTART IDENTITY CASCADE");
+        long songId = core.queryForObject("""
+                INSERT INTO songs (title, release_year, youtube_id, verification_status, created_at)
+                VALUES (?, ?, ?, ?, now()) RETURNING id
+                """, Long.class, STORED_TITLE, STORED_YEAR, youtubeId, verificationStatus);
+        core.update("INSERT INTO song_artists (song_id, name, role, display_order) VALUES (?, 'Stored artist', 'MAIN', 0)",
+                songId);
+        return songId;
+    }
+
+    private void putSongInActiveGameQueue(long songId) {
+        core.update("""
+                INSERT INTO groups (invite_code, join_code, status, dj_mode, win_condition_card_count, created_at)
+                VALUES ('invite', 'ABCD', 'IN_GAME', 'ROTATING', 10, now())
+                """);
+        core.update("""
+                INSERT INTO game_sessions (group_id, status, dj_mode, win_condition_card_count, current_round_number, created_at)
+                SELECT id, 'ACTIVE', 'ROTATING', 10, 1, now() FROM groups
+                """);
+        core.update("INSERT INTO game_session_song_queue (session_id, queue_position, song_id) SELECT id, 0, ? FROM game_sessions",
+                songId);
+    }
+
+    private PipelineRun runRecheckToCompletion(String youtubeId) {
+        PipelineRun run = engine.startRun(youtubeId, PipelineLane.BACKFILL, PendingImportOrigin.ADMIN_RECHECK, null, null);
+        worker.work(PipelineStage.YOUTUBE_METADATA);
+        sources();
+        return run;
+    }
+
+    @Test
+    void aRecheckOutsideAGameRewritesAnUnverifiedSong() {
+        long songId = insertStoredSong(VIDEO_ID, "NEEDS_REVIEW");
+
+        PipelineRun run = runRecheckToCompletion(VIDEO_ID);
+
+        assertThat(engine.findRun(run.id()).orElseThrow().status()).isEqualTo(PipelineRunStatus.DONE);
+        assertThat(core.queryForObject("SELECT release_year FROM songs WHERE id = ?", Integer.class, songId)).isEqualTo(YEAR);
+        assertThat(core.queryForObject("SELECT title FROM songs WHERE id = ?", String.class, songId)).isEqualTo("Test song");
+    }
+
+    @Test
+    void aRecheckThatFinishesWhileAGameHoldsTheSongLeavesItsYearTitleAndArtistsUntouched() {
+        long songId = insertStoredSong(VIDEO_ID, "NEEDS_REVIEW");
+        putSongInActiveGameQueue(songId);
+
+        PipelineRun run = runRecheckToCompletion(VIDEO_ID);
+
+        assertThat(engine.findRun(run.id()).orElseThrow().status()).isEqualTo(PipelineRunStatus.DONE);
+        assertThat(songs.count()).isEqualTo(1);
+        assertThat(core.queryForObject("SELECT release_year FROM songs WHERE id = ?", Integer.class, songId)).isEqualTo(STORED_YEAR);
+        assertThat(core.queryForObject("SELECT title FROM songs WHERE id = ?", String.class, songId)).isEqualTo(STORED_TITLE);
+        assertThat(core.queryForObject("SELECT verification_status FROM songs WHERE id = ?", String.class, songId))
+                .isEqualTo("NEEDS_REVIEW");
+        assertThat(core.queryForList("SELECT name FROM song_artists WHERE song_id = ?", String.class, songId))
+                .containsExactly("Stored artist");
+        assertThat(core.queryForObject("SELECT count(*) FROM game_session_song_queue WHERE song_id = ?", Long.class, songId))
+                .isEqualTo(1);
+    }
+
+    @Test
+    void aVerifiedSongInAGameKeepsItsYearAndGetsNoProposalUntilTheGameEnds() {
+        long songId = insertStoredSong(VIDEO_ID, "VERIFIED");
+        putSongInActiveGameQueue(songId);
+
+        runRecheckToCompletion(VIDEO_ID);
+
+        assertThat(core.queryForObject("SELECT release_year FROM songs WHERE id = ?", Integer.class, songId)).isEqualTo(STORED_YEAR);
+        assertThat(core.queryForObject("SELECT proposed_release_year FROM songs WHERE id = ?", Integer.class, songId)).isNull();
+    }
+
+    @Test
+    void aRecheckOfAnAlternateVideoOfAGameSongCreatesNoSongAndChangesNothing() {
+        long songId = insertStoredSong(VIDEO_ID, "NEEDS_REVIEW");
+        core.update("INSERT INTO alternate_youtube_ids (youtube_id, song_id) VALUES (?, ?)", OTHER_VIDEO, songId);
+        putSongInActiveGameQueue(songId);
+
+        PipelineRun run = runRecheckToCompletion(OTHER_VIDEO);
+
+        assertThat(engine.findRun(run.id()).orElseThrow().status()).isEqualTo(PipelineRunStatus.DONE);
+        assertThat(songs.count()).isEqualTo(1);
+        assertThat(core.queryForObject("SELECT release_year FROM songs WHERE id = ?", Integer.class, songId)).isEqualTo(STORED_YEAR);
     }
 
     static class FakeStages implements AiStageClient {
