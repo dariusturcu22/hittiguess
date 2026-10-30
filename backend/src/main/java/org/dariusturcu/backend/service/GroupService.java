@@ -57,7 +57,7 @@ public class GroupService {
     static final int MAX_JOIN_CODE_ATTEMPTS_PER_WINDOW = 10;
     static final Duration JOIN_CODE_ATTEMPT_WINDOW = Duration.ofMinutes(10);
 
-    private static final DjMode DEFAULT_DJ_MODE = DjMode.FIXED;
+    private static final DjMode DEFAULT_DJ_MODE = DjMode.ROTATING;
     private static final int MIN_WIN_CONDITION_CARD_COUNT = 5;
     private static final int SMALL_GROUP_MAX_SIZE = 3;
     private static final int MAX_WIN_CONDITION_CARD_COUNT_SMALL_GROUP = 20;
