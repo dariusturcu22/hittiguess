@@ -10,14 +10,6 @@ Sub-bullets (`Where`, `Done when`, `Depends on`, `Tests`) belong to their task a
 
 Frontend implementation and tests belong to story 28. Feature work requires a Ready story and tasks checked against current code. Story 34 replaces the existing abuse-event log stubs with analytics writes; it does not change enforcement.
 
-## In progress: recheck whole catalog (branch `feature/recheck-whole-catalog`)
-
-This belongs to story 55. Another session owns this branch. Do not pick these items as the next task. The branch already has the Recheck whole catalog button on the admin song catalog (confirm, then queue every song through the pipeline), `GET /api/admin/songs/recheck-candidates` (`RecheckCandidateDTO`: song id, title, artists, in-active-game flag, last pipeline finish), and the dark mockup `AdminSongRecheckDark.dc.html`.
-
-- [ ] Admin recheck page grouped by month of the last pipeline finish, with a checkbox per song and per month, select all, a confirmation that states the count, and a result toast reporting queued songs and those skipped because they are in an active game; it posts the chosen ids to `POST /api/admin/songs/recheck`
-- [ ] Light mockup `AdminSongRecheckLight.dc.html` and canvas equality validation
-- [ ] Frontend tests for grouping, selection, confirmation and the toast; backend tests for the candidates endpoint (admin-only, active-game flag)
-
 ## Story 55: Catalog accuracy
 
 - [ ] Bulk accept proposed release years. A verified song whose rerun finds a different year keeps its year and stores `proposedReleaseYear` and `proposedAt` (`SongCatalogService.java`, around lines 77 to 88), and today an admin accepts each one separately with `PUT /api/admin/songs/{id}` or dismisses it with `DELETE /api/admin/songs/{id}/proposal` (`AdminSongPipelineController`, `AdminSongPipelineService`). After a whole-catalog recheck that is hundreds of single clicks.
@@ -36,6 +28,15 @@ This belongs to story 55. Another session owns this branch. Do not pick these it
 
 ## Story 57: Gameplay fixes and acceptance
 
+- [ ] Pause the game when a required DJ's tab closes and never comes back. Today the pause starts only when the player's browser reports that the share ended, so a closed tab leaves the game running without that DJ's audio. Use the session's presence or socket disconnect (with a short grace period for reloads) to mark the DJ's audio status as not shared and pause, and resume through the existing re-share and test flow.
+  - Where: `GameSessionService` pause logic, the STOMP disconnect handling, `frontend/hooks/use-song-mesh.ts`.
+  - Tests: backend test that a disconnected required DJ pauses the session after the grace period and a reconnect within it does not.
+- [ ] Notice a stopped share while the player is on another page. The share's track `ended` event is only reported from the session page, so a DJ who stops sharing elsewhere in the app is noticed only on return. Report the status from wherever the long-lived capture lives (the app shell), so the pause starts at once.
+  - Tests: Vitest that the track ending outside the session page reports the not-shared status.
+- [ ] Keep a staged song list across a backend restart during the audio check. Start with songs and start custom stage their songs in memory, so a restart during the check loses them and the start falls back to the group's playlists. Persist the staged list with the group's audio check (migration) and clear it on start or cancel.
+  - Tests: integration test that a staged list survives reloading the group from the database.
+- [ ] Regenerate the API client with orval against a running backend and replace the hand-written audio check and recheck candidate types; the generated output must match without behaviour changes.
+- [ ] Light mockup `AdminSongRecheckLight.dc.html` for the admin recheck page, registered in the canvas.
 - [ ] Recover missed events after a reconnect. On connect, `use-game-session-realtime.ts` invalidates only the session query and `use-group-realtime.ts` invalidates the group, so a player who was offline across a phase change can keep a stale guess state, DJ link-out, active membership, chat history, or results.
   - Where: `frontend/hooks/use-game-session-realtime.ts`, `frontend/hooks/use-group-realtime.ts`, `frontend/components/group-chat-overlay.tsx`, the session page.
   - Done when: every STOMP (re)connect refetches session, guess state, current round link-out, group, active membership, chat history, and results once the game is completed; a game that completed while offline sends the player to its results; a group removal that happened while offline shows the removed state.
