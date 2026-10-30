@@ -671,6 +671,66 @@ class GameSessionServiceTest {
     }
 
     @Test
+    void rotatingDjModeWithTwoPlayersSwapsTheActivePlayerAndTheDjEveryTurn() {
+        GameSession session = session(DjMode.ROTATING, 10);
+        Player owner = player(session, 1L, 0, PlayerStatus.ACTIVE);
+        Player friend = player(session, 2L, 1, PlayerStatus.ACTIVE);
+
+        Round secondTurn = nextRoundAfter(session, 10L, owner, friend);
+        assertThat(secondTurn.getActivePlayer().getId()).isEqualTo(friend.getId());
+        assertThat(secondTurn.getDjPlayer().getId()).isEqualTo(owner.getId());
+
+        Round thirdTurn = nextRoundAfter(session, 11L, friend, owner);
+        assertThat(thirdTurn.getActivePlayer().getId()).isEqualTo(owner.getId());
+        assertThat(thirdTurn.getDjPlayer().getId()).isEqualTo(friend.getId());
+    }
+
+    @Test
+    void rotatingDjModeWithTwoPlayersStillHandsTheDjRoleToAPlayerWhoCannotShareAudio() {
+        GameSession session = session(DjMode.ROTATING, 10);
+        Player owner = player(session, 1L, 0, PlayerStatus.ACTIVE);
+        Player friend = player(session, 2L, 1, PlayerStatus.ACTIVE);
+        friend.setCanDj(false);
+
+        Round nextTurn = nextRoundAfter(session, 10L, friend, owner);
+
+        assertThat(nextTurn.getActivePlayer().getId()).isEqualTo(owner.getId());
+        assertThat(nextTurn.getDjPlayer().getId()).isEqualTo(friend.getId());
+    }
+
+    @Test
+    void fixedDjModeWithTwoPlayersKeepsTheSameDjAndActivePlayerEveryTurn() {
+        GameSession session = session(DjMode.FIXED, 10);
+        Player owner = player(session, 1L, 0, PlayerStatus.ACTIVE);
+        Player friend = player(session, 2L, 1, PlayerStatus.ACTIVE);
+        session.setFixedDjPlayerId(owner.getId());
+        lenient().when(playerRepository.findById(owner.getId())).thenReturn(Optional.of(owner));
+
+        Round nextTurn = nextRoundAfter(session, 10L, friend, owner);
+
+        assertThat(nextTurn.getActivePlayer().getId()).isEqualTo(friend.getId());
+        assertThat(nextTurn.getDjPlayer().getId()).isEqualTo(owner.getId());
+    }
+
+    private Round nextRoundAfter(GameSession session, long finishedRoundId, Player activePlayer, Player djPlayer) {
+        session.getPlayers().forEach(player -> player.setTimeline(new ArrayList<>()));
+        session.getPlayers().forEach(player -> anchorCard(player, song(100 + player.getId(), "Anchor " + player.getId(), 1990)));
+        Round finishedRound = round(session, finishedRoundId, (int) finishedRoundId, activePlayer, djPlayer,
+                song(200 + finishedRoundId, "Round Song " + finishedRoundId, 2000));
+        finishedRound.setPlacementCorrect(false);
+        org.mockito.Mockito.clearInvocations(roundRepository, gameSessionScheduler);
+
+        gameSessionService.scoreRoundEffect(finishedRound.getId());
+        runScheduledEffects();
+
+        org.mockito.ArgumentCaptor<Round> captor = org.mockito.ArgumentCaptor.forClass(Round.class);
+        verify(roundRepository, org.mockito.Mockito.atLeastOnce()).save(captor.capture());
+        return captor.getAllValues().stream()
+                .filter(candidate -> candidate != finishedRound)
+                .findFirst().orElseThrow();
+    }
+
+    @Test
     void roundRotationSkipsPlayersMarkedLeft() {
         GameSession session = session(DjMode.ROTATING, 10);
         Player playerA = player(session, 1L, 0, PlayerStatus.ACTIVE);
