@@ -6,6 +6,9 @@ declare module "axios" {
   }
 }
 
+const FORBIDDEN_STATUS = 403;
+const CSRF_REJECTION_PATTERN = /CSRF token/i;
+
 export const AXIOS_INSTANCE = axios.create({
   baseURL: process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080",
   withCredentials: true,
@@ -40,6 +43,18 @@ AXIOS_INSTANCE.interceptors.response.use(
     const originalRequest = error.config;
     const url = originalRequest?.url ?? "";
     const isAuthEndpoint = url.includes("/auth/");
+
+    // Parallel first requests can each receive a fresh XSRF-TOKEN cookie, so a mutation sent
+    // in that window carries a token the server has already replaced. The request interceptor
+    // reads the cookie again, so one retry sends the current token.
+    if (
+      error.response?.status === FORBIDDEN_STATUS &&
+      CSRF_REJECTION_PATTERN.test(String(error.response?.data?.message ?? "")) &&
+      !originalRequest._csrfRetry
+    ) {
+      originalRequest._csrfRetry = true;
+      return AXIOS_INSTANCE(originalRequest);
+    }
 
     if (
       error.response?.status === 401 &&
