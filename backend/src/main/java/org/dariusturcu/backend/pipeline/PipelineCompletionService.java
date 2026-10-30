@@ -1,7 +1,6 @@
 package org.dariusturcu.backend.pipeline;
 
 import org.dariusturcu.backend.model.ai.SongMetadataResponse;
-import org.dariusturcu.backend.model.song.Song;
 import org.dariusturcu.backend.repository.SongRepository;
 import org.dariusturcu.backend.service.GameSongList;
 import org.dariusturcu.backend.service.SongCatalogService;
@@ -49,13 +48,31 @@ public class PipelineCompletionService {
             return;
         }
         SongMetadataResponse finalMetadata = payloads.finalMetadata(engine.jobsOfRun(run.id()));
-        Song song = catalog.persist(run.youtubeId(), withSameSongMatch(run.youtubeId(), finalMetadata), null);
+        Integer playingSongYear = releaseYearOfSongInActiveGame(run.youtubeId());
+        int savedYear = playingSongYear != null ? playingSongYear
+                : catalog.persist(run.youtubeId(), withSameSongMatch(run.youtubeId(), finalMetadata), null).getReleaseYear();
         core.update("""
                 UPDATE pending_imports SET status = 'DONE', patient_year = ?, processed_at = now() AT TIME ZONE 'UTC',
                     failure_reason = NULL
                 WHERE youtube_id = ? AND origin = ? AND status IN ('PENDING', 'PROCESSING')
-                """, song.getReleaseYear(), run.youtubeId(), run.origin().name());
+                """, savedYear, run.youtubeId(), run.origin().name());
         repository.finishRun(run.id(), PipelineRunStatus.DONE, Instant.now());
+    }
+
+    // A game reads a song's year, title, and artists live while it runs, so a finished run never
+    // rewrites a song an active game holds. The run still finishes and the song keeps its stored
+    // values; a recheck started after the game ends picks it up. The same song lookup covers
+    // alternate video IDs.
+    private Integer releaseYearOfSongInActiveGame(String youtubeId) {
+        return core.queryForList("""
+                SELECT song.release_year FROM songs song
+                WHERE (song.youtube_id = ?
+                       OR song.id IN (SELECT alternate.song_id FROM alternate_youtube_ids alternate WHERE alternate.youtube_id = ?))
+                  AND (EXISTS (SELECT FROM rounds WHERE rounds.song_id = song.id)
+                       OR EXISTS (SELECT FROM player_cards WHERE player_cards.song_id = song.id)
+                       OR EXISTS (SELECT FROM game_session_song_queue queue WHERE queue.song_id = song.id))
+                ORDER BY song.id
+                """, Integer.class, youtubeId, youtubeId).stream().findFirst().orElse(null);
     }
 
     // Two videos of one song can finish the pipeline in parallel or miss the AI's embedding

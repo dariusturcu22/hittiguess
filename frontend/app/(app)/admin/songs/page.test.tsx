@@ -196,6 +196,15 @@ describe("SongCatalogPage", () => {
     ).toBeInTheDocument();
   });
 
+  it("links to the recheck songs page", () => {
+    render(<SongCatalogPage />);
+
+    expect(screen.getByRole("link", { name: "Recheck songs" })).toHaveAttribute(
+      "href",
+      "/admin/songs/recheck",
+    );
+  });
+
   it("renders song rows and queue items with their fallbacks", () => {
     render(<SongCatalogPage />);
 

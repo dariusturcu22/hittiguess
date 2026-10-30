@@ -7,8 +7,10 @@ import lombok.RequiredArgsConstructor;
 import org.dariusturcu.backend.model.song.AdminCatalogPageDTO;
 import org.dariusturcu.backend.model.song.AdminSongDetailDTO;
 import org.dariusturcu.backend.model.song.CatalogSongStatus;
+import org.dariusturcu.backend.model.song.RecheckCandidateDTO;
 import org.dariusturcu.backend.security.AdminAccessGuard;
 import org.dariusturcu.backend.service.AdminSongCatalogService;
+import java.util.List;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -43,6 +45,15 @@ public class AdminSongCatalogController {
             @RequestParam(required = false) Integer size) {
         adminAccessGuard.requireAdmin();
         return ResponseEntity.ok(adminSongCatalogService.search(query, status, proposedYear, page, size));
+    }
+
+    @Operation(summary = "Every song with a YouTube ID for choosing songs to recheck, admin only: title, artists, "
+            + "year, verification status, whether an active game uses it, and when it last finished the pipeline "
+            + "(or was added), newest first")
+    @GetMapping("/recheck-candidates")
+    public ResponseEntity<List<RecheckCandidateDTO>> recheckCandidates() {
+        adminAccessGuard.requireAdmin();
+        return ResponseEntity.ok(adminSongCatalogService.recheckCandidates());
     }
 
     @Operation(summary = "Read-only song detail, admin only: catalog fields, stored verification status, "

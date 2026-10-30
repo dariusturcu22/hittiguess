@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import Link from "next/link";
 import { keepPreviousData } from "@tanstack/react-query";
 
 import { useSearchCatalog } from "@/hooks/generated/admin-song-catalog/admin-song-catalog";
@@ -186,7 +187,8 @@ export default function SongCatalogPage() {
   return (
     <div className="relative flex h-full min-w-0 flex-1">
     <div className={`${pageClass} box-border`}>
-      <div className="mb-5 shrink-0">
+      <div className="mb-5 flex shrink-0 items-start justify-between gap-4">
+        <div>
         <div className="mb-1 flex items-center gap-2.5">
           <h1 className="font-display text-[30px] text-accent [text-shadow:3px_3px_0_var(--text-shadow-on-page)]">
             Song catalog
@@ -196,6 +198,13 @@ export default function SongCatalogPage() {
           </span>
         </div>
         <p className="text-[13px] text-muted-foreground">Every song with its status, pipeline, and who added it.</p>
+        </div>
+        <Link
+          href="/admin/songs/recheck"
+          className="rounded-full bg-primary px-[18px] py-2.5 font-display text-[11px] text-primary-foreground shadow-sm"
+        >
+          Recheck songs
+        </Link>
       </div>
 
       <div className="mb-3.5 flex shrink-0 flex-wrap items-center gap-x-3.5 gap-y-2">
