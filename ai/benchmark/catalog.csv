@@ -1,0 +1,370 @@
+title,main_artists,expected_year,note,song_id,stored_year,stored_status
+Lovers on the Sun,David Guetta,2014,,1,2014,VERIFIED
+Titanium,David Guetta,2011,,2,2011,VERIFIED
+Say My Name,David Guetta|Bebe Rexha|J Balvin,2018,,3,2018,NEEDS_REVIEW
+Papi,Jennifer Lopez,2011,,4,2011,VERIFIED
+Apologize,OneRepublic,2007,,5,2007,VERIFIED
+Heaven,INNA,2016,,6,2016,NEEDS_REVIEW
+Nirvana,INNA,2017,,7,2017,VERIFIED
+Hung Up,Madonna,2005,,8,2005,VERIFIED
+Genie In a Bottle,Christina Aguilera,1999,,9,1999,VERIFIED
+4 Minutes,Madonna,2008,,10,2008,VERIFIED
+Dark Horse,Katy Perry|Juicy J,2013,,11,2013,NEEDS_REVIEW
+Black Widow,Iggy Azalea|Rita Ora,2014,,12,2014,VERIFIED
+Ruleta,INNA,2017,,13,2017,VERIFIED
+Rude Boy,Rihanna,2009,,14,2010,VERIFIED
+La La La,Naughty Boy|Sam Smith,2013,,15,2013,VERIFIED
+Toxicity,System Of A Down,2001,,16,2001,VERIFIED
+I'm Good (Blue),David Guetta|Bebe Rexha,2022,,17,2022,VERIFIED
+Marabou,Antonia,2013,,18,2013,VERIFIED
+Locked Away,R. City|Adam Levine,2015,,19,2015,VERIFIED
+Umbrella,Rihanna|JAY-Z,2007,,20,2007,VERIFIED
+Say It Right,Nelly Furtado,2006,,21,2006,VERIFIED
+The Greatest,Sia|Kendrick Lamar,2016,,22,2016,NEEDS_REVIEW
+Dangerous,David Guetta,2014,,23,2014,VERIFIED
+The Lazy Song,Bruno Mars,2010,,24,2010,VERIFIED
+It's My Life,Bon Jovi,2000,,25,2000,VERIFIED
+I Am Machine,Three Days Grace,2014,,26,2014,VERIFIED
+New Rules,Dua Lipa,2017,,27,2017,VERIFIED
+Everybody's Fool,Evanescence,2003,also on the 2000 demo album Origin; the hit is 2003,28,2003,VERIFIED
+Worth It,Fifth Harmony|Kid Ink,2015,,29,2015,VERIFIED
+La Isla Bonita,Madonna,1986,,30,1987,VERIFIED
+All That She Wants,Ace of Base,1992,,31,1992,VERIFIED
+Move Your Body,Sia,2016,,32,2017,NEEDS_REVIEW
+Rhythm Is a Dancer,SNAP!,1992,,33,1992,VERIFIED
+Got 2 Luv U,Sean Paul,2011,,34,2011,VERIFIED
+Policeman,Eva Simons|Konshens,2015,,35,2015,NEEDS_REVIEW
+My Immortal,Evanescence,2003,also on the 2000 demo album Origin; the hit is 2003,36,2003,VERIFIED
+Locked out of Heaven,Bruno Mars,2012,,37,2012,VERIFIED
+In the End,Linkin Park,2000,,38,2000,VERIFIED
+Zombie,The Cranberries,1994,,39,1994,VERIFIED
+4 Minutes,Madonna,2008,,40,2008,VERIFIED
+Bleeding Love,Leona Lewis,2007,,41,2007,VERIFIED
+Rockabye,Clean Bandit,2016,,42,2016,VERIFIED
+Hey Mama,David Guetta,2014,,43,2015,VERIFIED
+Training Season,Dua Lipa,2024,,44,2024,VERIFIED
+Love The Way You Lie,Eminem|Rihanna,2010,,45,2010,VERIFIED
+Halo,Beyoncé,2008,,46,2008,NEEDS_REVIEW
+Animal I Have Become,Three Days Grace,2006,,47,2006,VERIFIED
+Burn,Ellie Goulding,2013,,48,2012,VERIFIED
+How You Remind Me,Nickelback,2001,,49,2001,VERIFIED
+Sweet but Psycho,Ava Max,2018,,50,2018,VERIFIED
+TAKEDOWN,JEONGYEON|JIHYO|CHAEYOUNG,2025,,51,2025,VERIFIED
+How It’s Done,HUNTR/X|EJAE|AUDREY NUNA|REI AMI|KPop Demon Hunters Cast,2025,,52,2025,NEEDS_REVIEW
+Golden,HUNTR/X|EJAE|AUDREY NUNA|REI AMI,2025,,53,2025,NEEDS_REVIEW
+Your Idol,Sony Pictures Animation,2025,,54,2025,NEEDS_REVIEW
+What It Sounds Like,HUNTR/X|EJAE|AUDREY NUNA|REI AMI,2025,,55,2025,VERIFIED
+That's My Name,Akcent,,"unlabelled, confirm with the owner",56,2009,VERIFIED
+Sun is Up,INNA,2010,,57,2010,VERIFIED
+Stereo Love,Edward Maya,2009,,58,2009,VERIFIED
+Desire,Morris,,"unlabelled, confirm with the owner",59,2009,NEEDS_REVIEW
+Tenerife,Dj Sava,,"unlabelled, confirm with the owner",60,2013,NEEDS_REVIEW
+My Passion,Akcent,,"unlabelled, confirm with the owner",61,2011,NEEDS_REVIEW
+Deja Vu,INNA,2009,,62,2009,VERIFIED
+Amazing,INNA,2009,,63,2009,VERIFIED
+Aroma,Dj Sava,,"unlabelled, confirm with the owner",64,2013,NEEDS_REVIEW
+Shining Heart,Laurentiu Duta,,"unlabelled, confirm with the owner",65,2012,NEEDS_REVIEW
+Mi-e dor de noi,DJ Project,,"unlabelled, confirm with the owner",66,2010,NEEDS_REVIEW
+Dalinda,Alex Mica,2011,,67,2011,NEEDS_REVIEW
+Mr. Saxobeat,Alexandra Stan,2010,,68,2010,NEEDS_REVIEW
+I'm Sorry,Akcent,,"unlabelled, confirm with the owner",69,2012,NEEDS_REVIEW
+Trag aer in piept,Celia,,"unlabelled, confirm with the owner",70,2007,NEEDS_REVIEW
+Sweet Love,Liviu Hodor|Mona,,"unlabelled, confirm with the owner",71,2011,NEEDS_REVIEW
+Could U,Andreea Banica,,"unlabelled, confirm with the owner",72,2012,NEEDS_REVIEW
+Sexy Bitch,David Guetta,2009,,73,2009,VERIFIED
+Never Be Alone,Deepside Deejays,2011,,74,2011,NEEDS_REVIEW
+Samba,Andreea Banica,,"unlabelled, confirm with the owner",75,2009,NEEDS_REVIEW
+Raisa,Fly Project,,"unlabelled, confirm with the owner",76,2006,NEEDS_REVIEW
+Love in Brasil,Andreea Banica,,"unlabelled, confirm with the owner",77,2010,NEEDS_REVIEW
+Big in Japan,Alphaville,1984,,78,1984,VERIFIED
+Poker Face,Lady Gaga,2008,,79,2008,VERIFIED
+Poison,Alice Cooper,1989,,80,1989,VERIFIED
+SexyBack,Justin Timberlake,2006,,81,2006,VERIFIED
+Apologize,Timbaland|OneRepublic,2007,,82,2007,VERIFIED
+DJ Got Us Fallin' In Love,Usher,2010,,83,2010,VERIFIED
+Just the Way You Are,Bruno Mars,2010,,84,2010,VERIFIED
+No One,Alicia Keys,2007,,85,2007,VERIFIED
+Shallow,Lady Gaga|Bradley Cooper,2018,,86,2018,VERIFIED
+Alejandro,Lady Gaga,2009,,87,2009,VERIFIED
+Somebody That I Used To Know,Gotye|Kimbra,2011,,88,2011,VERIFIED
+We Are Young,Fun.,2011,,89,2011,VERIFIED
+The Monster,Eminem|Rihanna,2013,,90,2013,NEEDS_REVIEW
+International Love,Pitbull|Chris Brown,2011,,91,2011,VERIFIED
+Temperature,Sean Paul,2005,,92,2005,VERIFIED
+Timber,Pitbull|Kesha,2013,,93,2013,NEEDS_REVIEW
+Blurred Lines,Robin Thicke|T.I.|Pharrell,2013,,94,2013,VERIFIED
+On The Floor,Jennifer Lopez|Pitbull,2011,,95,2011,VERIFIED
+Low,Flo Rida,2007,,96,2007,VERIFIED
+Hips Don't Lie,Shakira|Wyclef Jean,2006,,97,2005,VERIFIED
+Gimme More,Britney Spears,2007,,98,2007,VERIFIED
+Yeah!,Usher|Lil Jon|Ludacris,2004,,99,2004,NEEDS_REVIEW
+Stereo Love,Edward Maya,2009,,100,2009,VERIFIED
+Butterfly,Smile.dk,1998,,101,1998,VERIFIED
+California Gurls,Katy Perry|Snoop Dogg,2010,,102,2010,VERIFIED
+Pump It,The Black Eyed Peas,2005,,103,2005,VERIFIED
+LoveGame,Lady Gaga,2008,,104,2008,VERIFIED
+Take It Off,Kesha,2010,,105,2010,VERIFIED
+(When You Gonna) Give It Up to Me,Sean Paul|Keyshia Cole,2006,,106,2006,VERIFIED
+Rabiosa,Shakira|El Cata,2010,,107,2010,VERIFIED
+Fireball,Pitbull,2014,,108,2014,VERIFIED
+I Kissed A Girl,Katy Perry,2008,,109,2008,VERIFIED
+Only Girl (In The World),Rihanna,2010,,110,2010,VERIFIED
+GDFR,Flo Rida,2014,,111,2014,VERIFIED
+APT.,ROSÉ|Bruno Mars,2024,,112,2024,VERIFIED
+I Gotta Feeling,The Black Eyed Peas,2009,,113,2009,VERIFIED
+Single Ladies (Put a Ring on It),Beyoncé,2008,,114,2008,VERIFIED
+Believe,Cher,1998,,115,1998,VERIFIED
+Cheap Thrills,Sia,2015,first out 17 Dec 2015 with the album pre-order,116,2015,VERIFIED
+Smack That,Akon|Eminem,2006,,117,2006,VERIFIED
+Can't Hold Us,Macklemore|Ryan Lewis,2011,,118,2011,VERIFIED
+Gangnam Style,PSY,2012,,119,2012,VERIFIED
+Destination Calabria,Alex Gaudino,2006,,120,2006,VERIFIED
+Sun Is Up,INNA,2010,,121,2010,VERIFIED
+Barbie Girl,Aqua,1997,,122,1997,VERIFIED
+Danza Kuduro,Lucenzo|Don Omar,2010,,123,2010,NEEDS_REVIEW
+Don't Let Me Down,The Chainsmokers|Daya,2016,,124,2015,VERIFIED
+Around the World (La La La La La),A Touch Of Class,2000,,125,2000,VERIFIED
+What Is Love,Haddaway,1993,stored 1992; released 1993,126,1992,VERIFIED
+Price Tag,Jessie J|B.o.B,2011,,127,2011,VERIFIED
+All The Things She Said,t.A.T.u.,2002,,128,2002,VERIFIED
+Candy Shop,50 Cent|Olivia,2005,,129,2005,VERIFIED
+Moves Like Jagger,Maroon 5|Christina Aguilera,2011,,130,2010,VERIFIED
+Alors on danse,Stromae,2009,,131,2009,VERIFIED
+Toxic,Britney Spears,2003,,132,2003,VERIFIED
+Die Young,Kesha,2012,,133,2012,VERIFIED
+"Whenever, Wherever",Shakira,2001,,134,2001,VERIFIED
+Chandelier,Sia,2014,,135,2014,VERIFIED
+Judas,Lady Gaga,2011,,136,2011,VERIFIED
+Hot,INNA,2008,,137,2008,NEEDS_REVIEW
+Blow,Kesha,2010,,138,2010,VERIFIED
+Coco Jamboo,Mr. President,1996,,139,1996,VERIFIED
+Brother Louie Mix '98,Modern Talking,1998,the '98 mix is its own song,140,1986,NEEDS_REVIEW
+You Spin Me Round (Like a Record),Dead Or Alive,1984,,141,1984,VERIFIED
+Rasputin,Boney M.,1978,,142,1978,VERIFIED
+Empire State Of Mind,JAY-Z|Alicia Keys,2009,,143,2009,VERIFIED
+Bring Me To Life,Evanescence,2003,,144,2003,VERIFIED
+Smells Like Teen Spirit,Nirvana,1991,,145,1991,VERIFIED
+Chop Suey!,System of a Down,2001,,146,2001,VERIFIED
+Still Loving You,Scorpions,1984,,147,1984,VERIFIED
+MONTERO (Call Me By Your Name),Lil Nas X,2021,,148,2021,VERIFIED
+Wind Of Change,Scorpions,1990,,149,1990,VERIFIED
+edamame,bbno$|Rich Brian,2021,,150,2021,NEEDS_REVIEW
+Levitating,Dua Lipa,2020,,151,2020,VERIFIED
+You Give Love A Bad Name,Bon Jovi,1986,,152,1986,VERIFIED
+Don't Stop Believin',Journey,1981,,153,1981,VERIFIED
+I Want It All,Queen,1989,,154,1989,VERIFIED
+No Face No Name No Number,Modern Talking,1985,first on Let's Talk About Love 1985; re-recorded 2000,155,2000,VERIFIED
+INDUSTRY BABY,Lil Nas X|Jack Harlow,2021,,156,2021,VERIFIED
+Crazy In Love,Beyoncé|Jay-Z,2003,,157,2003,VERIFIED
+Astronaut In The Ocean,Masked Wolf,2019,,158,2019,VERIFIED
+Telephone,Lady Gaga|Beyoncé,2009,,159,2009,VERIFIED
+Give Me Everything,Pitbull|Afrojack|Ne-Yo,2011,,160,2011,VERIFIED
+Rain Over Me,Pitbull|Marc Anthony,2011,,161,2011,VERIFIED
+What's My Name?,Rihanna|Drake,2010,,162,2010,NEEDS_REVIEW
+Forever Young,Alphaville,1984,,163,1984,VERIFIED
+Where Have You Been,Rihanna,2011,,164,2011,VERIFIED
+This Is What You Came For,Calvin Harris,2016,,165,2016,VERIFIED
+Diamonds,Rihanna,2012,,166,2012,VERIFIED
+S&M,Rihanna,2010,,167,2010,VERIFIED
+We Found Love,Rihanna|Calvin Harris,2011,,168,2011,VERIFIED
+Don't Stop The Music,Rihanna,2007,,169,2007,VERIFIED
+Man Down,Rihanna,2010,,170,2010,VERIFIED
+In The Heat Of The Night,Sandra,1985,,171,1985,VERIFIED
+Work,Rihanna|Drake,2016,,172,2016,NEEDS_REVIEW
+Hot N Cold,Katy Perry,2008,,173,2008,VERIFIED
+Maria Magdalena,Sandra,1985,,174,1985,VERIFIED
+TiK ToK,Kesha,2009,,175,2009,VERIFIED
+Call Me Maybe,Carly Rae Jepsen,2011,,176,2011,VERIFIED
+Coace Doamne prunele,Petrica Mitu Stoian,,"unlabelled, confirm with the owner",177,0,MANUAL_ENTRY
+Applause,Lady Gaga,2013,,178,2013,VERIFIED
+"Boom, Boom, Boom, Boom!!",Vengaboys,1998,,179,1998,VERIFIED
+Rock You Like a Hurricane,Scorpions,1984,,180,1984,VERIFIED
+It's Raining Men,Geri Halliwell,2001,,181,2001,VERIFIED
+Fa Muiere Taitei,Nicolae Guta,,"unlabelled, confirm with the owner",182,2002,NEEDS_REVIEW
+Con Calma,Daddy Yankee|Snow,2019,,183,2018,VERIFIED
+Going Under,Evanescence,2003,,184,2003,VERIFIED
+Hail to the King,Avenged Sevenfold,2013,,185,2013,VERIFIED
+Pump It,The Black Eyed Peas,2005,,186,2005,VERIFIED
+Fresh,Puya,,"unlabelled, confirm with the owner",187,1999,NEEDS_REVIEW
+LaLa Song,Grasu XXL,,"unlabelled, confirm with the owner",188,2011,NEEDS_REVIEW
+Tot Mai Sus,Guess Who,,"unlabelled, confirm with the owner",189,2011,VERIFIED
+Minim doi,Alex Velea,,"unlabelled, confirm with the owner",190,2012,NEEDS_REVIEW
+LaLa Song,Grasu XXL|Guess Who,,"unlabelled, confirm with the owner",191,2011,NEEDS_REVIEW
+Oficial imi merge bine,Simplu,,"unlabelled, confirm with the owner",192,2007,NEEDS_REVIEW
+Take on Me,a-ha,1984,,193,1984,VERIFIED
+Onoare,Guess Who,,"unlabelled, confirm with the owner",194,2012,NEEDS_REVIEW
+Billie Jean,Michael Jackson,1982,,195,1982,VERIFIED
+Breaking the Habit,Linkin Park,2003,,196,2003,VERIFIED
+How You Like That,BLACKPINK,2020,,197,2020,VERIFIED
+Sleeping Sun,Nightwish,1999,,198,1999,VERIFIED
+Nemo,Nightwish,2004,,199,2003,VERIFIED
+Firework,Katy Perry,2010,,200,2010,VERIFIED
+Bad Romance,Lady Gaga,2009,,201,2009,VERIFIED
+Party In The U.S.A.,Miley Cyrus,2009,,202,2009,VERIFIED
+Wrecking Ball,Miley Cyrus,2013,,203,2013,VERIFIED
+Wake Me Up,Avicii,2013,,204,2013,VERIFIED
+Replay,Iyaz,2009,,205,2009,VERIFIED
+You Belong With Me,Taylor Swift,2008,,206,2008,VERIFIED
+Problem,Ariana Grande|Iggy Azalea,2014,,207,2014,VERIFIED
+Born This Way,Lady Gaga,2011,,208,2011,VERIFIED
+Bang Bang,Jessie J|Ariana Grande|Nicki Minaj,2014,,209,2014,NEEDS_REVIEW
+Holding Out for a Hero,Bonnie Tyler,1984,,210,1984,VERIFIED
+Whistle,Flo Rida,2012,,211,2012,VERIFIED
+Hangover,Taio Cruz|Flo Rida,2011,,212,2011,VERIFIED
+Last Friday Night (T.G.I.F.),Katy Perry,2010,,213,2010,VERIFIED
+How Deep Is Your Love,Calvin Harris|Disciples,2015,,214,1977,NEEDS_REVIEW
+Hello,OMFG,2014,,215,2014,VERIFIED
+On & On,Cartoon|Jéja|Daniel Levi,2015,,216,2015,NEEDS_REVIEW
+Heroes Tonight,Janji|Johnning,2015,,217,2015,NEEDS_REVIEW
+I Love You,OMFG,,"unlabelled, confirm with the owner",218,2016,NEEDS_REVIEW
+Mortals,Warriyo,2016,,219,2016,NEEDS_REVIEW
+Invincible,DEAF KEV,2015,,220,2015,NEEDS_REVIEW
+Sky High,Elektronomia,2016,,221,2016,NEEDS_REVIEW
+Why We Lose,Cartoon|Jéja,2015,,222,0,MANUAL_ENTRY
+My Heart,Different Heaven|EH!DE,2014,,223,2014,NEEDS_REVIEW
+Blank,Disfigure,2013,,224,2013,NEEDS_REVIEW
+Shine,Spektrem,2013,,225,2013,NEEDS_REVIEW
+Symbolism,Electro-Light,2014,,226,2014,NEEDS_REVIEW
+Invisible,Julius Dreisig|Zeus X Crona,2018,,227,2018,NEEDS_REVIEW
+Cradles,Sub Urban,2019,,228,2019,VERIFIED
+Superhero,Unknown Brain|Chris Linton,2016,,229,2016,NEEDS_REVIEW
+Feel Good,Syn Cole,2015,,230,2015,VERIFIED
+Nekozilla,Different Heaven,2015,,231,2015,NEEDS_REVIEW
+Ark,Ship Wrek|Zookeepers,2016,,232,2016,NEEDS_REVIEW
+Firefly,Jim Yosef,2015,,233,2015,NEEDS_REVIEW
+Where We Started,Lost Sky|Jex,2019,,234,2019,NEEDS_REVIEW
+Energy,Elektronomia,2016,,235,2016,NEEDS_REVIEW
+Hellcat,Desmeon,2015,,236,2015,NEEDS_REVIEW
+Limitless,Elektronomia,2016,,237,2016,VERIFIED
+Shootin Stars,Aero Chord|Ddark,,"unlabelled, confirm with the owner",238,2014,NEEDS_REVIEW
+Turn It Up,Anikdote,,"unlabelled, confirm with the owner",239,2016,NEEDS_REVIEW
+C U Again,Cartoon|Jéja|Mikk Mäe|Futuristik,,"unlabelled, confirm with the owner",240,0,MANUAL_ENTRY
+High,JPB,2015,,241,2015,NEEDS_REVIEW
+Adventure,JJD,2016,,242,2016,NEEDS_REVIEW
+Fearless,Lost Sky,2017,,243,2017,NEEDS_REVIEW
+Pill,Heuse|Zeus x Crona,2016,,244,2016,NEEDS_REVIEW
+FRIENDS,Marshmello|Anne-Marie,2018,,245,2018,VERIFIED
+Alone,Marshmello,2016,,246,2016,VERIFIED
+Safe & Sound,Different Heaven,2016,,247,2016,NEEDS_REVIEW
+Blue (Da Ba Dee),Eiffel 65,1998,,248,1998,VERIFIED
+Dreams,Lost Sky,,"unlabelled, confirm with the owner",249,2018,NEEDS_REVIEW
+Everytime We Touch,Cascada,2005,,250,2005,VERIFIED
+Blue (Da Ba Dee) (DJ Ponte Ice Pop Radio),Eiffel 65,1998,,251,1998,NEEDS_REVIEW
+Around the World,ATC,2000,,252,2000,VERIFIED
+Be My Lover,La Bouche,1995,,253,1995,VERIFIED
+Bad Boy,Cascada,,"unlabelled, confirm with the owner",254,2004,VERIFIED
+Cheri Cheri Lady,Modern Talking,1985,,255,1985,VERIFIED
+Never Gonna Give You Up,Rick Astley,1987,,256,1987,VERIFIED
+Cause You Are Young,C.C. Catch,1986,,257,1986,NEEDS_REVIEW
+Dragostea din tei,O-Zone,2003,,258,2003,VERIFIED
+Livin' On A Prayer,Bon Jovi,1986,,259,1986,VERIFIED
+Despre tine,O-Zone,2002,,260,2002,NEEDS_REVIEW
+Toca toca,Fly Project,2013,,261,2013,VERIFIED
+Sexy And I Know It,LMFAO,2011,,262,2011,VERIFIED
+DotA,Basshunter,2006,,263,2006,VERIFIED
+Caramelldansen,Caramella Girls,,"unlabelled, confirm with the owner",264,2001,NEEDS_REVIEW
+Livin' la Vida Loca,Ricky Martin,1999,,265,1999,VERIFIED
+Macarena (Bayside Boys Remix),Los Del Rio,1995,,266,1995,NEEDS_REVIEW
+Carolina,Fantastick,,"unlabelled, confirm with the owner",267,1999,NEEDS_REVIEW
+Da vina pe VOLTAJ,Voltaj,,"unlabelled, confirm with the owner",268,2012,NEEDS_REVIEW
+Ecou,Elena,,"unlabelled, confirm with the owner",269,2013,NEEDS_REVIEW
+Oarecare,Smiley,,"unlabelled, confirm with the owner",270,2015,VERIFIED
+Emotii,3 Sud Est,,"unlabelled, confirm with the owner",271,2000,NEEDS_REVIEW
+Gura ta,Delia|Deepcentral,,"unlabelled, confirm with the owner",272,2016,NEEDS_REVIEW
+Strazile din Bucuresti,Florian Rus|Mira,,"unlabelled, confirm with the owner",273,2019,NEEDS_REVIEW
+Vara nu dorm,Connect-R,,"unlabelled, confirm with the owner",274,2012,NEEDS_REVIEW
+Vals,Smiley,,"unlabelled, confirm with the owner",275,2018,NEEDS_REVIEW
+Tequila,Blacklist,,"unlabelled, confirm with the owner",276,1958,NEEDS_REVIEW
+Sus pe toc,Shift,,"unlabelled, confirm with the owner",277,2013,NEEDS_REVIEW
+Manifest,Guess Who,,"unlabelled, confirm with the owner",278,2010,NEEDS_REVIEW
+Te Rog,Carla's Dreams,,"unlabelled, confirm with the owner",279,2015,NEEDS_REVIEW
+Perfect Fără Tine,Vama,,"unlabelled, confirm with the owner",280,2013,NEEDS_REVIEW
+Cât de departe,Holograf,,"unlabelled, confirm with the owner",281,2012,NEEDS_REVIEW
+Inevitabil va fi bine,Andra,,"unlabelled, confirm with the owner",282,2013,NEEDS_REVIEW
+Acasă,Smiley,,"unlabelled, confirm with the owner",283,2013,VERIFIED
+Pleacă,VUNK,,"unlabelled, confirm with the owner",284,2012,NEEDS_REVIEW
+Taxi,What's UP,,"unlabelled, confirm with the owner",285,2014,NEEDS_REVIEW
+Și îngerii au demonii lor,Dan Bittman,,"unlabelled, confirm with the owner",286,2015,NEEDS_REVIEW
+Acele,Carla's Dreams,,"unlabelled, confirm with the owner",287,2016,VERIFIED
+Avioane De Hartie,Shift|Andra,,"unlabelled, confirm with the owner",288,2016,NEEDS_REVIEW
+Da-te-n dragostea mea,Connect-R,,"unlabelled, confirm with the owner",289,2013,NEEDS_REVIEW
+Da-o Tare,Cabron|Smiley|Guess Who,,"unlabelled, confirm with the owner",290,2013,NEEDS_REVIEW
+"Te Pup, Pa Pa!",J.Yolo,,"unlabelled, confirm with the owner",291,2012,NEEDS_REVIEW
+"Da, mama",Delia,,"unlabelled, confirm with the owner",292,2015,NEEDS_REVIEW
+In lipsa mea,Smiley|Uzzi,,"unlabelled, confirm with the owner",293,2008,VERIFIED
+Where Is The Love?,The Black Eyed Peas,2003,,294,2003,VERIFIED
+Sus pe toc,Shift|Marius Moga,,"unlabelled, confirm with the owner",295,2013,NEEDS_REVIEW
+Gasca mea,HI-Q,,"unlabelled, confirm with the owner",296,2004,NEEDS_REVIEW
+Runaway (U & I),Galantis,2014,,297,2014,VERIFIED
+Morsmordre,Crazy Donkey,,"unlabelled, confirm with the owner",298,2020,NEEDS_REVIEW
+Faint,Linkin Park,2003,,299,2003,VERIFIED
+Dilemma,Nelly|Kelly Rowland,2002,,300,2002,VERIFIED
+Stereo Hearts,Gym Class Heroes,2011,,301,2011,VERIFIED
+What I've Done,Linkin Park,2007,,302,2007,VERIFIED
+Let Me Blow Ya Mind,Eve|Gwen Stefani,2001,,303,2001,VERIFIED
+Sweet Child O' Mine,Guns N' Roses,1987,,304,1987,VERIFIED
+Crazy,Gnarls Barkley,2006,,305,2006,VERIFIED
+Try,P!nk,2012,,306,2012,NEEDS_REVIEW
+Without Me,Eminem,2002,,307,2002,VERIFIED
+Family Affair,Mary J. Blige,2001,,308,2001,VERIFIED
+Paper Planes,M.I.A.,2007,,309,2007,VERIFIED
+Ms. Jackson,Outkast,2000,,310,2000,VERIFIED
+Wake Me Up When September Ends,Green Day,2004,,311,2004,VERIFIED
+Buttons,The Pussycat Dolls,2005,,312,2005,VERIFIED
+Beautiful Girls,Sean Kingston,2007,,313,2007,VERIFIED
+E.T.,Katy Perry,2010,,314,2010,VERIFIED
+Tukoh Taka,Keen - Remixes,2022,,315,2022,NEEDS_REVIEW
+365,Charli xcx,2024,,316,2024,VERIFIED
+Beautiful Liar,Beyoncé|Shakira,2007,,317,2006,VERIFIED
+Rock That Body,The Black Eyed Peas,2009,,318,2009,VERIFIED
+La La La (Brazil 2014),Shakira|Carlinhos Brown,2014,,319,2014,NEEDS_REVIEW
+Not Afraid,Eminem,2010,,320,2010,VERIFIED
+In Da Club,50 Cent,2003,,321,2003,VERIFIED
+Judas,Lady Gaga,2011,,322,2011,VERIFIED
+Survivor,Destiny's Child,2001,,323,2001,VERIFIED
+Circus,Britney Spears,2008,,324,2008,VERIFIED
+Du hast,Rammstein,1997,,325,1997,VERIFIED
+Kings & Queens,Ava Max,2020,,326,2020,VERIFIED
+One More Night,Maroon 5,2012,,327,2012,VERIFIED
+Starships,Nicki Minaj,2012,,328,2012,VERIFIED
+It's Raining Men,The Weather Girls,1982,,329,1982,VERIFIED
+大展鴻圖 (Blueprint Supreme),揽佬SKAI ISYOURGOD|AR劉夫陽,,"unlabelled, confirm with the owner",330,0,MANUAL_ENTRY
+怪物,YOASOBI,2021,,331,2021,VERIFIED
+KICK BACK,Kenshi Yonezu,2022,,332,2022,VERIFIED
+Crossing Field,LiSA,2012,,333,2012,VERIFIED
+Kyouran Hey Kids!!,THE ORAL CIGARETTES,2015,,334,0,MANUAL_ENTRY
+This game,Konomi Suzuki,2014,,335,2014,NEEDS_REVIEW
+Inferno,Mrs. GREEN APPLE,2019,,336,1987,NEEDS_REVIEW
+Rhythm Is a Dancer,Snap!,1992,,337,1992,VERIFIED
+Stayin' Alive,Bee Gees,1977,,338,1977,VERIFIED
+Heartbreak Hotel,C.C. Catch,1986,,339,1956,NEEDS_REVIEW
+Unravel,TK from Ling tosite sigure,2014,,340,2014,NEEDS_REVIEW
+Mr. Vain,Culture Beat,1993,,341,1993,VERIFIED
+"Take My Breath Away (Love Theme from ""Top Gun"")",Berlin,1986,,342,1986,VERIFIED
+The Edge of Glory,Lady Gaga,2011,,343,2011,VERIFIED
+Bleeding Love,Leona Lewis,2007,,344,2007,VERIFIED
+Remember the Name,Fort Minor,2005,,345,2005,VERIFIED
+Black and Yellow,Wiz Khalifa,2010,,346,2010,VERIFIED
+Talk Dirty,Jason Derulo,2013,,347,2013,VERIFIED
+Say It Right,Nelly Furtado,2006,,348,2006,VERIFIED
+The Final Countdown,Europe,1986,,349,1986,VERIFIED
+Unfaithful,Rihanna,2006,,350,2006,VERIFIED
+Unstoppable,Sia,2016,,351,2016,VERIFIED
+365,Charli XCX,2024,,352,2024,VERIFIED
+Airplanes,B.o.B,2010,,353,2010,VERIFIED
+Russian Roulette,Rihanna,2009,,354,2009,VERIFIED
+Rap God,Eminem,2013,,355,2013,VERIFIED
+Just Give Me a Reason,P!nk|Nate Ruess,2012,,356,2012,VERIFIED
+Havana,Camila Cabello,2017,,357,2017,VERIFIED
+Kings & Queens,Ava Max,2020,,358,2020,VERIFIED
+Me And My Broken Heart,Rixton,2014,,359,2014,VERIFIED
+Broken Angel,Arash,2010,,360,2010,VERIFIED
+I Adore You,HUGEL|Topic|Arash|Daecolm,2024,,361,2024,VERIFIED
+One Day,Arash,2014,,362,2014,VERIFIED
+Panda,Desiigner,2015,,363,2015,VERIFIED
+Need You Now,Lady Antebellum,2009,,364,2009,VERIFIED
+Bailando,Paradisio,1996,,365,1996,VERIFIED
+Youth of the Nation,P.O.D.,2001,,366,2001,VERIFIED
+Don't Speak,No Doubt,1995,,367,1995,VERIFIED
+I Don't Fuck With You,Big Sean|E-40,2014,,368,2014,NEEDS_REVIEW
+Stand My Ground,Within Temptation,2004,,369,2004,VERIFIED
