@@ -32,7 +32,11 @@ Two against two, the rule takes the earlier year:
 - What Is Love (Haddaway): MusicBrainz and Wikidata 1992, Discogs and Wikipedia 1993. Labelled 1993.
 - Be My Lover (La Bouche): MusicBrainz and Wikidata 1994, Discogs and Wikipedia 1995. Labelled 1995.
   Both look like a late-year promo or regional first release; if the owner's rule counts those, the labels
-  are wrong, otherwise the tie needs a tie-breaker (for example Wikipedia's year when it is one side of a tie).
+  are wrong, otherwise the tie needs a tie-breaker. Tried on 2026-10-30: letting Wikipedia's side win a
+  two-against-two tie fixes these two but breaks Hey Mama and Last Friday Night, where the earlier side is the
+  album and Wikipedia states the later single (293 correct either way). Keeping the earlier year when an album
+  that contains the song backs it gives 294 but breaks Need You Now. With four ties in 308 songs every variant
+  trades one right answer for another, so the rule is unchanged and ties are left to the admin drawer.
 
 Remix treated as the original:
 - Macarena (Bayside Boys Remix): Discogs and Wikipedia matched the original 1993 Macarena; MusicBrainz and
