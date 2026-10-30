@@ -192,6 +192,14 @@ Tests:
 - [x] AI service tests for the lock rules against recorded source responses: `tests/metadata/test_year_benchmark.py` replays `ai/benchmark/songs.csv` offline
 - [ ] Playwright screenshots of the lobby and each round phase at 1366x768, 1440x900, and 1920x1080 compared side by side with the design artboards
 
+## Rotating DJ report
+
+A two-player production game reported as rotating kept the owner as DJ every turn. With two players a rotating session swaps the active player and the DJ every turn, so a DJ who never changes and never takes a turn means the session ran in fixed mode. Every new group starts in fixed mode with the first member as DJ, and the lobby showed the mode only inside the settings popup.
+
+- [x] Tests: two-player rotating and fixed rotation over consecutive turns, including a player who cannot share audio
+- [x] The lobby shows the stored DJ mode, and the fixed DJ's name, next to Settings for every member; tests
+- [x] Desktop Firefox reports that it cannot share audio, since its screen share carries no audio track; the skip notice says the player DJs only when nobody else can; tests
+
 ## Story 7: Production hosting
 
 Azure Container Apps hosts core and AI in one EU environment. Vercel hosts the frontend. Core stays single-replica because game and STOMP state are process-local. The whole-deployment ceiling is $20/month.

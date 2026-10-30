@@ -156,6 +156,16 @@ class GroupServiceTest {
     }
 
     @Test
+    void createGroupStartsInRotatingDjMode() {
+        when(memberRepository.existsByUser(adminUser)).thenReturn(false);
+        when(groupRepository.existsByJoinCode(anyString())).thenReturn(false);
+
+        GroupDetailDTO result = groupService.createGroup(new CreateGroupRequest(null, null));
+
+        assertThat(result.djMode()).isEqualTo(DjMode.ROTATING);
+    }
+
+    @Test
     void createGroupUsesRequestedDisplayNameAndAvatarWhenGiven() {
         when(memberRepository.existsByUser(adminUser)).thenReturn(false);
         when(groupRepository.existsByJoinCode(anyString())).thenReturn(false);

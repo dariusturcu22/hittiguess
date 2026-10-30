@@ -35,6 +35,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { copyText } from "@/lib/clipboard";
 import { playlistTitleColor } from "@/lib/playlist-colors";
 import { GroupChatOverlay } from "@/components/group-chat-overlay";
+import { AudioShareWarning, useBrowserCanShareAudio } from "@/components/audio-share-warning";
 import { GameStage } from "@/components/gameplay/game-stage";
 import { PlaylistCoverMosaic } from "@/components/playlist-cover-mosaic";
 import {
@@ -282,6 +283,7 @@ function GroupLobbyScreen({ params }: PageProps) {
   const router = useRouter();
   const pathname = usePathname();
   const queryClient = useQueryClient();
+  const browserCanShareAudio = useBrowserCanShareAudio();
   const [copyFeedback, setCopyFeedback] = useState("");
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isTierPopupOpen, setIsTierPopupOpen] = useState(false);
@@ -321,6 +323,10 @@ function GroupLobbyScreen({ params }: PageProps) {
   const groupPlaylists = groupQuery.data?.playlists ?? [];
   const featuredPlaylist = groupPlaylists[0];
   const savedTier = groupQuery.data?.difficultyTier;
+  const storedFixedDjMember = members.find((member) => member.id === groupQuery.data?.fixedDjMemberId);
+  const djModeSummary = groupQuery.data?.djMode === "ROTATING"
+    ? "DJ: Rotating"
+    : `DJ: Fixed, ${storedFixedDjMember?.displayName || "first to join"}`;
   const playlistChipLabel = savedTier ? `${savedTier.charAt(0)}${savedTier.slice(1).toLowerCase()} difficulty` : groupPlaylists.length === 0
     ? "No playlist selected"
     : groupPlaylists.length === 1
@@ -881,6 +887,7 @@ function GroupLobbyScreen({ params }: PageProps) {
           Could not start the game: {startSessionError}
         </p>
       ) : null}
+      <div className="mb-3 shrink-0"><AudioShareWarning canShareAudio={browserCanShareAudio} isDj={false} djCanShareAudio={undefined} /></div>
       <footer className="flex shrink-0 items-center gap-[14px]">
         {!isCurrentUserLoading && isCurrentUserAdmin ? (
           <button
@@ -924,6 +931,7 @@ function GroupLobbyScreen({ params }: PageProps) {
             Settings
           </button>
         ) : null}
+        <span className="text-[12px] text-muted-foreground">{djModeSummary}</span>
         <div className="flex-1" />
         <AlertDialog>
           <AlertDialogTrigger asChild>

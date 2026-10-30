@@ -32,6 +32,7 @@ const routerMock = vi.hoisted(() => ({ replace: vi.fn(), push: vi.fn() }));
 const lobbyState = vi.hoisted(() => ({
   status: "OPEN",
   cachedSessionId: undefined as number | undefined,
+  djMode: "ROTATING",
   fixedDjMemberId: undefined as number | undefined,
 }));
 const lobbyQueryState = vi.hoisted(() => ({ isLoading: false, isError: false }));
@@ -49,7 +50,7 @@ vi.mock("@/hooks/generated/group-management/group-management", () => ({
     data: lobbyQueryState.isLoading || lobbyQueryState.isError ? undefined : {
       id: 1,
       status: lobbyState.status,
-      djMode: "ROTATING",
+      djMode: lobbyState.djMode,
       fixedDjMemberId: lobbyState.fixedDjMemberId,
       winConditionCardCount: 5,
       joinCode: "ABCD",
@@ -133,6 +134,7 @@ describe("GroupLobbyPage start options", () => {
   beforeEach(() => {
     lobbyState.status = "OPEN";
     lobbyState.cachedSessionId = undefined;
+    lobbyState.djMode = "ROTATING";
     lobbyState.fixedDjMemberId = undefined;
     routerMock.replace.mockClear();
     generateMutate.mockReset();
@@ -267,6 +269,27 @@ describe("GroupLobbyPage start options", () => {
       { groupId: 1, data: { playlistIds: [21] } },
       expect.anything(),
     );
+  });
+
+  it("shows the stored DJ mode in the lobby", async () => {
+    await renderPage();
+
+    expect(screen.getByText("DJ: Rotating")).toBeVisible();
+  });
+
+  it("shows a fixed DJ mode with the first member as DJ when none was chosen", async () => {
+    lobbyState.djMode = "FIXED";
+    await renderPage();
+
+    expect(screen.getByText("DJ: Fixed, first to join")).toBeVisible();
+  });
+
+  it("names the chosen fixed DJ in the lobby", async () => {
+    lobbyState.djMode = "FIXED";
+    lobbyState.fixedDjMemberId = 2;
+    await renderPage();
+
+    expect(screen.getByText("DJ: Fixed, Sam")).toBeVisible();
   });
 
   it("saves a fixed DJ choice from settings", async () => {

@@ -11,6 +11,7 @@ public record PlayerDTO(
         int tokenCount,
         PlayerStatus status,
         boolean isConnected,
+        boolean canDj,
         int totalArtistsGuessed,
         int totalTitlesGuessed,
         List<PlayerCardDTO> timeline) {

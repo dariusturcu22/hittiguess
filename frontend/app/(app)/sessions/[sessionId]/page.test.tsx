@@ -493,7 +493,7 @@ describe("GameSessionPage", () => {
     const userAgent = vi.spyOn(window.navigator, "userAgent", "get").mockReturnValue("Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1");
     await renderPage();
 
-    expect(screen.getByText("This device can't share audio, so you are skipped as DJ. Use a computer to DJ.")).toBeVisible();
+    expect(screen.getByText(/This browser can't share the song's audio, so you are skipped as DJ/)).toBeVisible();
     userAgent.mockReturnValue("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/140.0 Safari/537.36");
   });
 

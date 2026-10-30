@@ -1397,6 +1397,12 @@ Decision: a song's year is the earliest date the song itself was out, as a singl
 
 Why: the first catalog recheck proposed wrong years for Burn, Moves Like Jagger, Hips Don't Lie, and Beautiful Liar. Each was added to a later edition of an album, and Discogs's master and Wikidata's parent album both report the original edition's year, so two sources agreed on the wrong year. Wikidata answered nothing for many famous songs because a short title never reached the song in a label search and Wikidata moved names such as Rihanna's to `mul`. A later year from another source never contradicts an earlier release, while a lone earlier year is where bootlegs, promos, and wrong dates appear. On the benchmark the previous rule locked 61 correct and 1 wrong year with 3 left to review; the new rule locks 64 correct and none wrong, with 1 left to review.
 
+## 2026-10 | Only browsers that can share system audio are offered as DJ, and groups start rotating
+
+Decision: a browser is offered the DJ share only when it is a Chromium browser on Windows or ChromeOS, or on macOS from Chrome 141. Firefox, Safari, Chromium on Linux, older Chromium on macOS, and every phone or tablet (an iPad in desktop mode included, detected by its touch points) report that they cannot share audio. The DJ rotation passes over them whenever another player can DJ, and a dismissible warning in the lobby and the game screen says so; listeners are warned when the DJ cannot share. The old flag that let every desktop browser try is removed. New groups start in rotating DJ mode; existing groups keep their stored mode.
+
+Why: the capture asks for the entire screen with system audio, because the YouTube tab does not exist yet when the share is requested. MDN's browser compatibility data lists Chrome's full system audio as Windows and ChromeOS only, with Linux and macOS limited to tab audio. A developer test found a macOS system audio option from Chrome 141 on macOS 14.2 or newer, which no official note confirms. Firefox lists audio capture as unsupported (Mozilla bug 1541425 is open), and Safari returns no audio track from a screen share (WebKit bug 186294). A fixed default would leave the whole group without the song whenever the one fixed DJ was on such a browser.
+
 ---
 
 ## 2026-10-30 | A request rejected for a replaced CSRF token is retried once

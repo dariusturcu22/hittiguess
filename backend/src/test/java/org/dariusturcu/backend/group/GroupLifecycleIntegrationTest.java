@@ -187,6 +187,8 @@ class GroupLifecycleIntegrationTest {
         playlist.setOwner(admin);
         Playlist savedPlaylist = playlistRepository.save(playlist);
 
+        assertThat(created.djMode()).isEqualTo(DjMode.ROTATING);
+
         authenticateAs(admin);
         GroupDetailDTO afterSettingsUpdate = groupService.updateGroupSettings(
                 created.id(),

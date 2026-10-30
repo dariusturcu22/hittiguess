@@ -42,6 +42,7 @@ public class SessionMapper {
                 player.getTokenCount(),
                 player.getStatus(),
                 player.isConnected(),
+                player.isCanDj(),
                 player.getTotalArtistsGuessed(),
                 player.getTotalTitlesGuessed(),
                 player.getTimeline().stream().map(this::toCardDTO).toList());

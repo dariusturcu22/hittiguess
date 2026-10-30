@@ -1259,6 +1259,24 @@
       "h": 4020,
       "title": "Admin: recheck songs, dark",
       "page": "page-1"
+    },
+    {
+      "file": "AudioCheckDark.dc.html",
+      "x": 0,
+      "y": 36000,
+      "w": 3060,
+      "h": 3304,
+      "title": "Audio check before the game, dark",
+      "page": "page-1"
+    },
+    {
+      "file": "AudioCheckLight.dc.html",
+      "x": 3260,
+      "y": 36000,
+      "w": 3060,
+      "h": 3304,
+      "title": "Audio check before the game, light",
+      "page": "page-1"
     }
   ],
   "annotations": [
