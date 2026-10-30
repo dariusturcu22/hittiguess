@@ -17,6 +17,19 @@ export const LeaveSessionParams = zod.object({
 export const LeaveSessionResponse = zod.unknown()
 
 /**
+ * @summary Report the calling player's own audio share while the game runs, a required DJ without a working share pauses the game
+ */
+export const ReportAudioStatusParams = zod.object({
+  "sessionId": zod.int()
+})
+
+export const ReportAudioStatusBody = zod.object({
+  "status": zod.enum(['NOT_SHARED', 'TESTING', 'OK', 'FAILED', 'CANNOT_SHARE'])
+})
+
+export const ReportAudioStatusResponse = zod.unknown()
+
+/**
  * @summary Get the current state of a game session, must be a player in it
  */
 export const GetSessionParams = zod.object({

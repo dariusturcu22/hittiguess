@@ -10,5 +10,6 @@ export type GroupDetailDTOStatus = typeof GroupDetailDTOStatus[keyof typeof Grou
 
 export const GroupDetailDTOStatus = {
   OPEN: 'OPEN',
+  AUDIO_CHECK: 'AUDIO_CHECK',
   LOCKED: 'LOCKED',
 } as const;

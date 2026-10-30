@@ -49,7 +49,7 @@ export const JoinVoiceParams = zod.object({
 export const JoinVoiceResponse = zod.unknown()
 
 /**
- * @summary Start a game session, admin only, locks the group to new members
+ * @summary Open the pre-game audio check from the group's settings, admin only; the game starts from the check
  */
 export const StartGameSessionParams = zod.object({
   "groupId": zod.int()
@@ -58,7 +58,7 @@ export const StartGameSessionParams = zod.object({
 export const StartGameSessionResponse = zod.unknown()
 
 /**
- * @summary Start a game session from reviewed song ids, admin only, locks the group to new members
+ * @summary Open the audio check for a game from reviewed song ids, admin only
  */
 export const StartSessionWithSongsParams = zod.object({
   "groupId": zod.int()
@@ -71,7 +71,7 @@ export const StartSessionWithSongsBody = zod.object({
 export const StartSessionWithSongsResponse = zod.unknown()
 
 /**
- * @summary Start a game session from a playlist or pasted playlist link, admin only, locks the group to new members
+ * @summary Open the audio check for a game from a playlist or pasted playlist link, admin only
  */
 export const StartCustomSessionParams = zod.object({
   "groupId": zod.int()
@@ -157,6 +157,50 @@ export const ReportAudioCapabilityBody = zod.object({
 })
 
 export const ReportAudioCapabilityResponse = zod.unknown()
+
+/**
+ * @summary Report the calling member's own audio share during the audio check
+ */
+export const ReportAudioCheckStatusParams = zod.object({
+  "groupId": zod.int()
+})
+
+export const ReportAudioCheckStatusBody = zod.object({
+  "status": zod.enum(['NOT_SHARED', 'TESTING', 'OK', 'FAILED', 'CANNOT_SHARE'])
+})
+
+export const ReportAudioCheckStatusResponse = zod.unknown()
+
+/**
+ * @summary Start the game once every required DJ's audio share passed, admin only, locks the group to new members
+ */
+export const StartGameAfterAudioCheckParams = zod.object({
+  "groupId": zod.int()
+})
+
+export const StartGameAfterAudioCheckResponse = zod.unknown()
+
+/**
+ * @summary Switch the game to a fixed DJ chosen among members whose audio share passed, admin only
+ */
+export const SwitchToFixedDjParams = zod.object({
+  "groupId": zod.int()
+})
+
+export const SwitchToFixedDjBody = zod.object({
+  "memberId": zod.int()
+})
+
+export const SwitchToFixedDjResponse = zod.unknown()
+
+/**
+ * @summary Cancel the audio check and return the group to its lobby, admin only
+ */
+export const CancelAudioCheckParams = zod.object({
+  "groupId": zod.int()
+})
+
+export const CancelAudioCheckResponse = zod.unknown()
 
 /**
  * @summary Join a group via invite link or join code

@@ -4,6 +4,7 @@
  * OpenAPI definition
  * OpenAPI spec version: v0
  */
+import type { MemberDTOAudioCheckStatus } from './memberDTOAudioCheckStatus';
 
 export interface MemberDTO {
   id?: number;
@@ -14,4 +15,5 @@ export interface MemberDTO {
   isConnected?: boolean;
   isInVoice?: boolean;
   joinedAt?: string;
+  audioCheckStatus?: MemberDTOAudioCheckStatus;
 }
