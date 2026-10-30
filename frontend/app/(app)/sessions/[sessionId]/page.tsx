@@ -1,6 +1,6 @@
 "use client";
 
-import { use, useCallback, useEffect, useRef, useState, type KeyboardEvent, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
+import { use, useCallback, useEffect, useRef, useState, type CSSProperties, type KeyboardEvent, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowDown, ArrowRight, Bell, Check, ExternalLink, Loader2, Lock, LogOut, MessageCircle, Music2, TriangleAlert, UserRound, Volume2, VolumeX, X } from "lucide-react";
 
@@ -51,10 +51,10 @@ import {
   type PlacementPreviewThrottle,
 } from "@/lib/placement-preview";
 import { GroupChatOverlay } from "@/components/group-chat-overlay";
-import { Coin, MysteryCard, PlayerAvatar, QuestionCard, SongCard, TokenPile } from "@/components/gameplay/game-pieces";
+import { CARD_SIZE_VARIABLE, Coin, MysteryCard, PlayerAvatar, QuestionCard, SongCard, TokenPile } from "@/components/gameplay/game-pieces";
 import { GameplayTimeline, TIMELINE_CARD_SELECTOR } from "@/components/gameplay/gameplay-timeline";
-import { GameStage, useGameStage } from "@/components/gameplay/game-stage";
 import { RoundIntro } from "@/components/gameplay/round-intro";
+import { computeGameplayCardSize } from "@/lib/gameplay-layout";
 import { recordServerTime, useServerNow } from "@/lib/server-clock";
 
 const COMPLETED_SESSION_STATUS = "COMPLETED";
@@ -67,13 +67,13 @@ const ROUND_INTRO_SEEN_KEY_PREFIX = "hittiguess-round-intro-seen-";
 const TURN_NOTICE_DURATION_MILLISECONDS = 4_000;
 const CORRECT_GUESS_TOAST_DURATION_MILLISECONDS = 4_000;
 const CLOCK_TICK_MILLISECONDS = 250;
-const DROP_ZONE_VERTICAL_REACH_PIXELS = 140;
+const DROP_ZONE_VERTICAL_REACH_RATIO = 0.83;
 const EDGE_SCROLL_ZONE_PIXELS = 72;
 const EDGE_SCROLL_STEP_PIXELS = 14;
-const DRAGGED_CARD_HALF_SIZE_PIXELS = 84;
 // The dragged card floats above the pointer so the gap opening under it stays visible.
-const DRAGGED_CARD_LIFT_PIXELS = 118;
-const DRAGGED_COIN_HALF_SIZE_PIXELS = 26;
+const DRAGGED_CARD_LIFT_RATIO = 0.7;
+const INITIAL_SCREEN_WIDTH_PIXELS = 1280;
+const INITIAL_SCREEN_HEIGHT_PIXELS = 800;
 const DEFAULT_PREVIEW_HORIZONTAL_FRACTION = 0.5;
 const DEFAULT_IDLE_PREVIEW_VERTICAL_FRACTION = -0.4;
 const DEFAULT_DRAGGING_PREVIEW_VERTICAL_FRACTION = 0;
@@ -127,8 +127,8 @@ function correctGuessHeadline(toast: CorrectGuessToast): string {
 }
 
 interface PointerDrag {
-  stageX: number;
-  stageY: number;
+  pointerX: number;
+  pointerY: number;
   hoverGap: number | null;
 }
 
@@ -164,11 +164,11 @@ interface BetGapContext {
 // The gap under the pointer, or null when the pointer is too far above or below the
 // row (or, for a bet, over a gap that can't take one). Nudges the row sideways while the
 // pointer rests near either edge, so a long timeline can be reached while dragging.
-function hoverGapAt(track: HTMLDivElement | null, betGapContext: BetGapContext, clientX: number, clientY: number, isBetting: boolean, stageScale: number): number | null {
+function hoverGapAt(track: HTMLDivElement | null, betGapContext: BetGapContext, clientX: number, clientY: number, isBetting: boolean, cardSizePixels: number): number | null {
   if (!track) return null;
   const trackRectangle = track.getBoundingClientRect();
-  const verticalReachPixels = DROP_ZONE_VERTICAL_REACH_PIXELS * stageScale;
-  const edgeScrollZonePixels = EDGE_SCROLL_ZONE_PIXELS * stageScale;
+  const verticalReachPixels = DROP_ZONE_VERTICAL_REACH_RATIO * cardSizePixels;
+  const edgeScrollZonePixels = EDGE_SCROLL_ZONE_PIXELS;
   if (clientY < trackRectangle.top - verticalReachPixels || clientY > trackRectangle.bottom + verticalReachPixels) return null;
   if (clientX < trackRectangle.left + edgeScrollZonePixels) track.scrollBy({ left: -EDGE_SCROLL_STEP_PIXELS });
   if (clientX > trackRectangle.right - edgeScrollZonePixels) track.scrollBy({ left: EDGE_SCROLL_STEP_PIXELS });
@@ -205,7 +205,7 @@ function RolePill({ label, name, colorIndex, size = "small" }: { label: string; 
 
 function DashedGap({ tone = "primary", isSmall = false, children }: { tone?: "primary" | "green" | "muted"; isSmall?: boolean; children?: ReactNode }) {
   const toneClasses = tone === "green" ? "border-green" : tone === "muted" ? "border-muted-foreground/60" : "border-primary";
-  return <div data-timeline-focus="" className={`gameplay-gap-pulse flex h-[168px] items-center justify-center rounded-[22px] border-dashed ${isSmall ? "w-16 rounded-2xl border-2" : "w-[150px] border-[3px]"} ${toneClasses}`}>{children ?? <ArrowDown className={`size-5 ${tone === "green" ? "text-green" : tone === "muted" ? "text-muted-foreground" : "text-primary"}`} strokeWidth={2.5} />}</div>;
+  return <div data-timeline-focus="" className={`gameplay-gap-pulse flex h-[var(--card-size,168px)] items-center justify-center rounded-[22px] border-dashed ${isSmall ? "w-16 rounded-2xl border-2" : "w-[calc(var(--card-size,168px)*0.9)] border-[3px]"} ${toneClasses}`}>{children ?? <ArrowDown className={`size-5 ${tone === "green" ? "text-green" : tone === "muted" ? "text-muted-foreground" : "text-primary"}`} strokeWidth={2.5} />}</div>;
 }
 
 function BetCoin({ bettorName, colorIndex }: { bettorName?: string; colorIndex: number }) {
@@ -223,15 +223,10 @@ function recordSessionClockOffset(session: GameSessionDTO): GameSessionDTO {
 }
 
 export default function GameSessionPage({ params }: PageProps) {
-  return <GameStage>
-    <GameSessionScreen params={params} />
-  </GameStage>;
-}
-
-function GameSessionScreen({ params }: PageProps) {
   const { sessionId: sessionIdParam } = use(params);
   const sessionId = Number(sessionIdParam);
-  const { scale: stageScale, toStagePoint } = useGameStage();
+  const [screenElement, setScreenElement] = useState<HTMLElement | null>(null);
+  const [cardSizePixels, setCardSizePixels] = useState(() => computeGameplayCardSize(INITIAL_SCREEN_WIDTH_PIXELS, INITIAL_SCREEN_HEIGHT_PIXELS));
   const router = useRouter();
   const sessionQuery = useGetSession(sessionId, { query: { retry: false, select: recordSessionClockOffset } });
   const currentUserQuery = useGetCurrentUser();
@@ -277,6 +272,18 @@ function GameSessionScreen({ params }: PageProps) {
     hasGroupMembership,
   });
   const audioLevels = useAudioLevels(songMesh.visualizerStream);
+
+  useEffect(() => {
+    if (!screenElement) return;
+    function measureScreen() {
+      if (screenElement) setCardSizePixels(computeGameplayCardSize(screenElement.clientWidth, screenElement.clientHeight));
+    }
+    measureScreen();
+    const resizeObserver = new ResizeObserver(measureScreen);
+    resizeObserver.observe(screenElement);
+    return () => resizeObserver.disconnect();
+  }, [screenElement]);
+  const draggedCardLiftPixels = cardSizePixels * DRAGGED_CARD_LIFT_RATIO;
 
   const [trackedRoundId, setTrackedRoundId] = useState<number | undefined>(undefined);
   const [placementDrag, setPlacementDrag] = useState<PointerDrag | null>(null);
@@ -459,15 +466,14 @@ function GameSessionScreen({ params }: PageProps) {
   useEffect(() => {
     if (!isPlacementDragging) return;
     function movePlacement(event: PointerEvent) {
-      const stagePoint = toStagePoint(event.clientX, event.clientY);
-      const hoverGap = hoverGapAt(trackReference.current, betGapContextReference.current, event.clientX, event.clientY, false, stageScale);
-      setPlacementDrag({ stageX: stagePoint.x, stageY: stagePoint.y, hoverGap });
-      const fractions = placementPreviewFractions(trackReference.current, event.clientX, event.clientY, DRAGGED_CARD_LIFT_PIXELS * stageScale);
+      const hoverGap = hoverGapAt(trackReference.current, betGapContextReference.current, event.clientX, event.clientY, false, cardSizePixels);
+      setPlacementDrag({ pointerX: event.clientX, pointerY: event.clientY, hoverGap });
+      const fractions = placementPreviewFractions(trackReference.current, event.clientX, event.clientY, draggedCardLiftPixels);
       if (!fractions) return;
       previewThrottleReference.current?.push({ position: hoverGap, ...fractions, phase: PLACEMENT_PREVIEW_DRAGGING_PHASE });
     }
     function dropPlacement(event: PointerEvent) {
-      const gapIndex = hoverGapAt(trackReference.current, betGapContextReference.current, event.clientX, event.clientY, false, stageScale);
+      const gapIndex = hoverGapAt(trackReference.current, betGapContextReference.current, event.clientX, event.clientY, false, cardSizePixels);
       if (gapIndex !== null) setDroppedGap(gapIndex);
       setPlacementDrag(null);
     }
@@ -479,17 +485,16 @@ function GameSessionScreen({ params }: PageProps) {
       window.removeEventListener("pointerup", dropPlacement);
       window.removeEventListener("pointercancel", dropPlacement);
     };
-  }, [isPlacementDragging, stageScale, toStagePoint]);
+  }, [cardSizePixels, draggedCardLiftPixels, isPlacementDragging]);
 
   const isBetDragging = betDrag !== null;
   useEffect(() => {
     if (!isBetDragging) return;
     function moveBet(event: PointerEvent) {
-      const stagePoint = toStagePoint(event.clientX, event.clientY);
-      setBetDrag({ stageX: stagePoint.x, stageY: stagePoint.y, hoverGap: hoverGapAt(trackReference.current, betGapContextReference.current, event.clientX, event.clientY, true, stageScale) });
+      setBetDrag({ pointerX: event.clientX, pointerY: event.clientY, hoverGap: hoverGapAt(trackReference.current, betGapContextReference.current, event.clientX, event.clientY, true, cardSizePixels) });
     }
     function dropBet(event: PointerEvent) {
-      const gapIndex = hoverGapAt(trackReference.current, betGapContextReference.current, event.clientX, event.clientY, true, stageScale);
+      const gapIndex = hoverGapAt(trackReference.current, betGapContextReference.current, event.clientX, event.clientY, true, cardSizePixels);
       setBetDrag(null);
       if (gapIndex === null) return;
       if (roundStatus === BETTING_STATUS) {
@@ -506,7 +511,7 @@ function GameSessionScreen({ params }: PageProps) {
       window.removeEventListener("pointerup", dropBet);
       window.removeEventListener("pointercancel", dropBet);
     };
-  }, [isBetDragging, placeBet, roundStatus, stageScale, toStagePoint]);
+  }, [cardSizePixels, isBetDragging, placeBet, roundStatus]);
 
   const dismissIntro = useCallback(() => {
     markIntroSeen(sessionId);
@@ -529,7 +534,9 @@ function GameSessionScreen({ params }: PageProps) {
   const placedPosition = currentRound?.placedPosition;
   const spectatorPreview = receivedPlacementPreview && receivedPlacementPreview.roundId === currentRound?.id ? receivedPlacementPreview : null;
   const spectatorPreviewGap = spectatorPreview?.position ?? null;
-  const spectatorCardPreview = isAwaitingPlacement && !isActivePlayer && spectatorPreview !== null && spectatorPreview.phase !== PLACEMENT_PREVIEW_DROPPED_PHASE ? spectatorPreview : null;
+  // The DJ instructions sit where a resting card would hover, so the DJ only sees a card that is being dragged.
+  const isGhostHiddenForDj = isDj && spectatorPreview?.phase === PLACEMENT_PREVIEW_IDLE_PHASE;
+  const spectatorCardPreview = isAwaitingPlacement && !isActivePlayer && spectatorPreview !== null && spectatorPreview.phase !== PLACEMENT_PREVIEW_DROPPED_PHASE && !isGhostHiddenForDj ? spectatorPreview : null;
   const spectatorCardX = spectatorCardPreview?.x ?? DEFAULT_PREVIEW_HORIZONTAL_FRACTION;
   const spectatorCardY = spectatorCardPreview?.y
     ?? (spectatorCardPreview?.phase === PLACEMENT_PREVIEW_IDLE_PHASE ? DEFAULT_IDLE_PREVIEW_VERTICAL_FRACTION : DEFAULT_DRAGGING_PREVIEW_VERTICAL_FRACTION);
@@ -551,9 +558,8 @@ function GameSessionScreen({ params }: PageProps) {
   function startPlacementDrag(event: ReactPointerEvent<HTMLElement>) {
     if (!isActivePlayer || !isAwaitingPlacement) return;
     event.preventDefault();
-    const stagePoint = toStagePoint(event.clientX, event.clientY);
-    setPlacementDrag({ stageX: stagePoint.x, stageY: stagePoint.y, hoverGap: droppedGap });
-    const fractions = placementPreviewFractions(trackReference.current, event.clientX, event.clientY, DRAGGED_CARD_LIFT_PIXELS * stageScale);
+    setPlacementDrag({ pointerX: event.clientX, pointerY: event.clientY, hoverGap: droppedGap });
+    const fractions = placementPreviewFractions(trackReference.current, event.clientX, event.clientY, draggedCardLiftPixels);
     if (!fractions) return;
     previewThrottleReference.current?.sendNow({ position: droppedGap, ...fractions, phase: PLACEMENT_PREVIEW_DRAGGING_PHASE });
   }
@@ -576,8 +582,7 @@ function GameSessionScreen({ params }: PageProps) {
   function startBetDrag(event: ReactPointerEvent<HTMLElement>) {
     if (!canStakeBet) return;
     event.preventDefault();
-    const stagePoint = toStagePoint(event.clientX, event.clientY);
-    setBetDrag({ stageX: stagePoint.x, stageY: stagePoint.y, hoverGap: stagedBetGap });
+    setBetDrag({ pointerX: event.clientX, pointerY: event.clientY, hoverGap: stagedBetGap });
   }
 
   // Leaving a running game leaves the group too: a member of a locked group is sent back
@@ -706,8 +711,6 @@ function GameSessionScreen({ params }: PageProps) {
 
   // --- Element floating above the timeline ------------------------------------------
   let aboveTimeline: ReactNode = null;
-  // The design lifts the DJ's song card higher than every other element above the timeline.
-  let aboveTimelinePositionClassName = "bottom-[calc(50%+148px)]";
   if (isAwaitingPlacement && isActivePlayer && droppedGap === null && !placementDrag) {
     aboveTimeline = <div className="flex flex-col items-center gap-2.5">
       <span className="text-[11px] font-bold uppercase tracking-[2.5px] text-primary">Your card</span>
@@ -715,10 +718,9 @@ function GameSessionScreen({ params }: PageProps) {
       <span className="flex items-center gap-1.5 text-[11px] text-muted-foreground"><ArrowDown className="size-3" strokeWidth={2.5} />Drag onto the timeline</span>
     </div>;
   } else if (isAwaitingPlacement && isDj) {
-    aboveTimelinePositionClassName = "bottom-[calc(50%+178px)]";
     const linkOut = linkOutQuery.data;
     const watchUrl = linkOut?.watchUrl;
-    aboveTimeline = <div className="flex w-max max-w-[calc(100vw-48px)] flex-col items-center gap-6 sm:flex-row sm:items-center sm:gap-8">
+    aboveTimeline = <div className="flex w-max max-w-full flex-col items-center gap-4 sm:flex-row sm:items-center sm:gap-8">
       <SongCard artist={linkOut?.artist} title={linkOut?.title} year={linkOut?.releaseYear} color={linkOut?.color} className="shadow-[6px_6px_0_var(--shadow-color)]" />
       <div className="flex max-w-[360px] flex-col items-center gap-3 text-center sm:items-start sm:text-left">
         {isSharingTabAudioSupported && !songMesh.isCapturing
@@ -778,12 +780,12 @@ function GameSessionScreen({ params }: PageProps) {
   </div>;
   let belowTimeline: ReactNode = null;
   if (isAwaitingPlacement && isActivePlayer && droppedGap !== null && !placementDrag) {
-    belowTimeline = <div className="flex w-full max-w-[560px] flex-col items-center gap-4">
+    belowTimeline = <div className="flex w-full max-w-[880px] flex-col items-center gap-4">
       <button type="button" onClick={lockIn} className="inline-flex items-center gap-[9px] rounded-full bg-primary p-[13px_26px] font-display text-[13px] text-primary-foreground shadow-[4px_4px_0_var(--shadow-color)] transition-transform hover:-translate-y-0.5"><Lock className="size-4" strokeWidth={2.5} />Lock in answer</button>
       {guessFields}
     </div>;
   } else if (isAwaitingPlacement && !isDj) {
-    belowTimeline = <div className="flex w-full max-w-[560px] flex-col items-center gap-3">
+    belowTimeline = <div className="flex w-full max-w-[880px] flex-col items-center gap-3">
       {guessFields}
       <p className="text-center text-[11.5px] text-muted-foreground">{isActivePlayer ? "One title guess. Artists one at a time: a wrong artist ends artist guessing. The title plus one artist earns a token." : "Anyone can guess, anytime, no matter whose turn it is."}</p>
     </div>;
@@ -795,22 +797,11 @@ function GameSessionScreen({ params }: PageProps) {
 
   const isSittingOut = isActivePlayer && (roundStatus === COUNTDOWN_STATUS || roundStatus === BETTING_STATUS);
 
-  return <main className="relative flex h-full min-h-0 flex-col overflow-hidden px-[56px] pt-[36px] pb-[40px]">
+  return <main ref={setScreenElement} style={{ [CARD_SIZE_VARIABLE]: `${cardSizePixels}px` } as CSSProperties} className="relative flex h-full min-h-0 flex-col gap-4 [@media(max-height:480px)]:gap-2 overflow-hidden pb-[max(1.5rem,env(safe-area-inset-bottom))] pl-[max(1.5rem,env(safe-area-inset-left))] pr-[max(1.5rem,env(safe-area-inset-right))] pt-[max(1.5rem,env(safe-area-inset-top))]">
     {showsIntro ? <RoundIntro winConditionCardCount={winConditionCardCount} roundNumber={roundNumber} countdownSeconds={ROUND_INTRO_SECONDS} endsAt={introEndsAt} dj={{ name: djPlayer?.displayName, colorIndex: colorIndexOf(djPlayer) }} activePlayer={{ name: activePlayer?.displayName, colorIndex: colorIndexOf(activePlayer) }} onFinished={dismissIntro} /> : null}
-    {turnNoticePlayer && !showsIntro ? <div role="status" className="absolute left-1/2 top-6 z-30 flex w-[min(520px,calc(100%-32px))] -translate-x-1/2 items-center justify-between gap-4 rounded-full border-[3px] border-primary bg-card px-7 py-4 shadow-[6px_6px_0_var(--shadow-color)] animate-in fade-in-0 slide-in-from-top-2">
-      <span className="flex min-w-0 items-center gap-3"><Bell className="size-6 shrink-0 text-primary" /><span className="truncate text-base font-bold text-primary">{turnNoticePlayer.id === currentPlayer?.id ? "Your turn: get ready" : `${turnNoticePlayer.displayName ?? "A player"}'s turn: get ready`}</span></span>
-      <span className="shrink-0 text-xs text-muted-foreground">Round {roundNumber}</span>
-    </div> : null}
-
-    {correctGuessToast && correctGuessToast.playerId !== currentPlayer?.id ? <div role="status" className="absolute right-6 top-24 z-30 flex items-center gap-2.5 rounded-2xl border-2 border-border bg-card px-4 py-2.5 shadow-[4px_4px_0_var(--shadow-color)] animate-in fade-in-0 slide-in-from-right-4 sm:right-14">
-      <PlayerAvatar name={correctGuessToast.displayName} colorIndex={Math.max(0, players.findIndex((player) => player.id === correctGuessToast.playerId))} />
-      <span className="text-xs font-bold text-card-foreground">{correctGuessHeadline(correctGuessToast)}</span>
-      <Check className="size-4 text-green" strokeWidth={3} />
-    </div> : null}
-
-    <header className="flex shrink-0 items-start justify-between gap-4">
+    <header className="flex shrink-0 flex-wrap items-start justify-between gap-x-4 gap-y-3">
       <div className="min-w-0">
-        <h1 className="font-display text-[32px] text-foreground [text-shadow:3px_3px_0_var(--text-shadow-on-page)]">Round {roundNumber}</h1>
+        <h1 className="font-display text-2xl sm:text-[32px] [@media(max-height:480px)]:!text-xl text-foreground [text-shadow:3px_3px_0_var(--text-shadow-on-page)]">Round {roundNumber}</h1>
         <div className="mt-2 flex items-center gap-2.5 text-[12px] text-muted-foreground">
           {statusDetail ? <span>{statusDetail}</span> : null}
           {statusDetail && statusLabel ? <StatusDot /> : null}
@@ -819,17 +810,17 @@ function GameSessionScreen({ params }: PageProps) {
         </div>
         {currentPlayer && !isSharingTabAudioSupported ? <p className="mt-1.5 text-[11px] text-muted-foreground">This device can&apos;t share audio, so you are skipped as DJ. Use a computer to DJ.</p> : null}
       </div>
-      <div className="flex shrink-0 items-center gap-3">
+      <div className="flex flex-wrap items-center justify-end gap-3">
       <label className="inline-flex shrink-0 items-center gap-2 rounded-full border-2 border-border bg-card py-2 pl-3 pr-4">
         <Volume2 className="size-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
-        <span className="text-[11px] font-semibold text-card-foreground">Song volume</span>
+        <span className="text-[11px] font-semibold text-card-foreground max-sm:hidden">Song volume</span>
         <input type="range" aria-label="Song volume" min={MINIMUM_SONG_VOLUME_PERCENT} max={MAX_SONG_VOLUME_PERCENT} value={songVolume} onChange={(event) => setSongVolume(Number(event.target.value))} className="h-1 w-20 cursor-pointer accent-primary" />
       </label>
       <AlertDialog>
         <AlertDialogTrigger asChild>
           <button type="button" disabled={leaveSession.isPending || leaveGroup.isPending} className="inline-flex items-center gap-2 rounded-full border-2 border-destructive bg-transparent px-4 py-2 text-xs font-semibold text-destructive disabled:opacity-60">
             {leaveSession.isPending || leaveGroup.isPending ? <Loader2 className="size-3.5 animate-spin" /> : <LogOut className="size-3.5" />}
-            Leave game
+            <span className="max-sm:sr-only">Leave game</span>
           </button>
         </AlertDialogTrigger>
         <AlertDialogContent>
@@ -843,7 +834,7 @@ function GameSessionScreen({ params }: PageProps) {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-      <div className="inline-flex shrink-0 items-center gap-2.5 rounded-full border-2 border-border bg-card py-2 pl-2 pr-4">
+      <div className="inline-flex shrink-0 items-center gap-2.5 rounded-full border-2 border-border bg-card py-2 pl-2 pr-4 max-sm:hidden [@media(max-height:480px)]:hidden">
         <span className="size-[26px] rounded-lg" style={{ background: playlistColor ? (playlistColor.startsWith("#") ? playlistColor : `#${playlistColor}`) : "var(--accent)" }} />
         <span className="max-w-[200px] truncate text-[13px] font-semibold text-card-foreground">{playlistName}</span>
         {songCount > 0 ? <><StatusDot /><span className="text-xs text-muted-foreground">{songCount} songs</span></> : null}
@@ -851,10 +842,24 @@ function GameSessionScreen({ params }: PageProps) {
       </div>
     </header>
 
-    <section className="relative min-h-0 flex-1" aria-label="Game stage">
+    <div className="relative min-h-0 flex-1">
+      {turnNoticePlayer && !showsIntro ? <div role="status" className="absolute left-1/2 top-0 z-30 flex w-[min(520px,100%)] -translate-x-1/2 items-center justify-between gap-4 rounded-full border-[3px] border-primary bg-card px-7 py-4 shadow-[6px_6px_0_var(--shadow-color)] animate-in fade-in-0 slide-in-from-top-2">
+        <span className="flex min-w-0 items-center gap-3"><Bell className="size-6 shrink-0 text-primary" /><span className="truncate text-base font-bold text-primary">{turnNoticePlayer.id === currentPlayer?.id ? "Your turn: get ready" : `${turnNoticePlayer.displayName ?? "A player"}'s turn: get ready`}</span></span>
+        <span className="shrink-0 text-xs text-muted-foreground">Round {roundNumber}</span>
+      </div> : null}
+
+      {correctGuessToast && correctGuessToast.playerId !== currentPlayer?.id ? <div role="status" className="absolute right-0 top-0 z-30 flex max-w-full items-center gap-2.5 rounded-2xl border-2 border-border bg-card px-4 py-2.5 shadow-[4px_4px_0_var(--shadow-color)] animate-in fade-in-0 slide-in-from-right-4">
+        <PlayerAvatar name={correctGuessToast.displayName} colorIndex={Math.max(0, players.findIndex((player) => player.id === correctGuessToast.playerId))} />
+        <span className="text-xs font-bold text-card-foreground">{correctGuessHeadline(correctGuessToast)}</span>
+        <Check className="size-4 text-green" strokeWidth={3} />
+      </div> : null}
       {songMesh.isPlaybackBlocked ? <button type="button" onClick={songMesh.resumePlayback} className="absolute left-0 top-0 z-30 inline-flex items-center gap-2 rounded-full border-2 border-primary bg-card px-4 py-2 text-xs font-semibold text-primary shadow-[3px_3px_0_var(--shadow-color)] transition-transform hover:-translate-y-0.5"><Volume2 className="size-3.5" />Click to enable sound</button> : null}
-      <div className="absolute left-1/2 top-1/2 flex w-full max-w-[1100px] -translate-x-1/2 -translate-y-1/2 justify-center">
-        <div className="relative w-full">
+      <section className="absolute inset-0 grid grid-cols-1 grid-rows-[1fr_auto_1fr] overflow-y-auto overflow-x-hidden px-1" aria-label="Game stage">
+        <div className="relative z-30 flex min-w-0 flex-col items-center justify-end gap-3 pb-1">
+          {aboveTimeline}
+          {currentRound ? <p className="text-[12px] font-bold uppercase tracking-[3px] text-muted-foreground">Timeline</p> : null}
+        </div>
+        <div className="relative w-full max-w-[1500px] justify-self-center">
           {currentRound ? <GameplayTimeline cards={cards} slots={slots} tiltGapIndex={tiltGapIndex} focusKey={focusKey} isDimmed={isTimelineDimmed} trackReference={trackReference} /> : <p className="py-12 text-center text-sm text-muted-foreground">Your timeline will appear when the round starts.</p>}
           {spectatorCardPreview ? <div
             data-spectator-card-preview=""
@@ -868,18 +873,17 @@ function GameSessionScreen({ params }: PageProps) {
               : <div className="gameplay-card-float"><MysteryCard size="small" levels={audioLevels} /></div>}
           </div> : null}
         </div>
-      </div>
-      {currentRound ? <p className="absolute bottom-[calc(50%+98px)] left-1/2 -translate-x-1/2 text-[12px] font-bold uppercase tracking-[3px] text-muted-foreground">Timeline</p> : null}
-      {aboveTimeline ? <div className={`absolute ${aboveTimelinePositionClassName} left-1/2 flex -translate-x-1/2 justify-center`}>{aboveTimeline}</div> : null}
-      {caption ? <p className="absolute left-1/2 top-[calc(50%+98px)] w-max max-w-[calc(100%-16px)] -translate-x-1/2 text-center text-[12px] text-muted-foreground">{caption}</p> : null}
-      {belowTimeline ? <div className="absolute left-1/2 top-[calc(50%+148px)] flex w-full -translate-x-1/2 justify-center px-3">{belowTimeline}</div> : null}
-      <div aria-live="polite" className="absolute bottom-0 left-1/2 w-max max-w-full -translate-x-1/2"><p key={guessFeedbackSequence} className={`text-center text-xs ${isGuessResultCorrect === true ? "font-semibold text-green" : isGuessResultCorrect === false ? "incorrect-guess-feedback text-destructive" : "text-muted-foreground"}`}>{feedbackMessage}</p></div>
-    </section>
+        <div className="flex min-w-0 flex-col items-center justify-start gap-3 pt-1">
+          {caption ? <p className="max-w-full text-center text-[12px] text-muted-foreground">{caption}</p> : null}
+          {belowTimeline}
+          <div aria-live="polite" className="max-w-full"><p key={guessFeedbackSequence} className={`text-center text-xs ${isGuessResultCorrect === true ? "font-semibold text-green" : isGuessResultCorrect === false ? "incorrect-guess-feedback text-destructive" : "text-muted-foreground"}`}>{feedbackMessage}</p></div>
+        </div>
+      </section>
+    </div>
 
-    {isChatOpen ? <GroupChatOverlay groupId={session.groupId ?? 0} connectionState={groupRealtime.connectionState} sendChat={groupRealtime.sendChat} onClose={() => setIsChatOpen(false)} /> : null}
-
-    <footer className="pointer-events-none absolute inset-x-[56px] bottom-[40px] flex items-end justify-between gap-4">
-      <div className="pointer-events-auto flex items-center gap-3">
+    <footer className="flex shrink-0 flex-wrap items-end justify-between gap-x-4 gap-y-3">
+      <div className="relative flex flex-wrap items-center gap-3">
+        {isChatOpen ? <GroupChatOverlay floating groupId={session.groupId ?? 0} connectionState={groupRealtime.connectionState} sendChat={groupRealtime.sendChat} onClose={() => setIsChatOpen(false)} /> : null}
         <div className="inline-flex items-center gap-4 rounded-full border-2 border-border bg-card py-2.5 pl-2.5 pr-5">
           <RolePill label="DJ" name={djPlayer?.displayName} colorIndex={colorIndexOf(djPlayer)} />
           <span className="h-7 w-px bg-border" />
@@ -887,22 +891,24 @@ function GameSessionScreen({ params }: PageProps) {
         </div>
         <button type="button" onClick={() => setIsChatOpen((isOpen) => !isOpen)} aria-label={isChatOpen ? "Close chat" : "Open chat"} className={`relative z-20 flex size-11 items-center justify-center rounded-full border-2 bg-card text-card-foreground transition-colors ${isChatOpen ? "border-primary text-primary" : "border-border hover:border-primary"}`}><MessageCircle className="size-[18px]" /></button>
       </div>
-      <div onPointerDown={startBetDrag} className={`pointer-events-auto ${canStakeBet ? "cursor-grab touch-none select-none active:cursor-grabbing" : ""}`} title={canStakeBet ? "Drag a token onto the timeline to bet" : undefined}>
+      <div onPointerDown={startBetDrag} className={`ml-auto ${canStakeBet ? "cursor-grab touch-none select-none active:cursor-grabbing" : ""}`} title={canStakeBet ? "Drag a token onto the timeline to bet" : undefined}>
         <TokenPile tokenCount={Math.max(0, tokenCount - (betDrag ? 1 : 0))} label={isSittingOut ? "Sitting out" : "Your tokens"} isDimmed={isSittingOut} earnedTokenRoundId={earnedTokenRoundId} />
       </div>
     </footer>
 
-    {placementDrag ? <div className="pointer-events-none fixed left-0 top-0 z-50" style={{ transform: `translate(${placementDrag.stageX - DRAGGED_CARD_HALF_SIZE_PIXELS}px, ${placementDrag.stageY - DRAGGED_CARD_HALF_SIZE_PIXELS - DRAGGED_CARD_LIFT_PIXELS}px)` }}>
-      <div className="gameplay-wobble"><MysteryCard levels={audioLevels} className="shadow-[10px_10px_0_var(--shadow-color)]" /></div>
+    {placementDrag ? <div className="pointer-events-none fixed left-0 top-0 z-50" style={{ transform: `translate(${placementDrag.pointerX}px, ${placementDrag.pointerY}px)` }}>
+      <div style={{ transform: `translate(-50%, calc(-50% - ${draggedCardLiftPixels}px))` }}>
+        <div className="gameplay-wobble"><MysteryCard levels={audioLevels} className="shadow-[10px_10px_0_var(--shadow-color)]" /></div>
+      </div>
     </div> : null}
-    {betDrag ? <div className="pointer-events-none fixed left-0 top-0 z-50" style={{ transform: `translate(${betDrag.stageX - DRAGGED_COIN_HALF_SIZE_PIXELS}px, ${betDrag.stageY - DRAGGED_COIN_HALF_SIZE_PIXELS}px)` }}>
-      <Coin size="large" className="gameplay-wobble" />
+    {betDrag ? <div className="pointer-events-none fixed left-0 top-0 z-50" style={{ transform: `translate(${betDrag.pointerX}px, ${betDrag.pointerY}px)` }}>
+      <div className="-translate-x-1/2 -translate-y-1/2"><Coin size="large" className="gameplay-wobble" /></div>
     </div> : null}
   </main>;
 }
 
 function GuessPill({ icon, placeholder, label, value, onChange, onSubmit, isClosed }: { icon: ReactNode; placeholder: string; label: string; value: string; onChange: (value: string) => void; onSubmit: () => void; isClosed: boolean }) {
-  return <label className={`flex h-[52px] w-[400px] min-w-0 items-center gap-2.5 rounded-full border-2 border-border bg-card pl-5 pr-2 text-muted-foreground shadow-[3px_3px_0_var(--shadow-color)] ${isClosed ? "opacity-60" : ""}`}>
+  return <label className={`flex h-[52px] w-full min-w-0 max-w-[400px] items-center gap-2.5 rounded-full border-2 border-border bg-card pl-5 pr-2 text-muted-foreground shadow-[3px_3px_0_var(--shadow-color)] ${isClosed ? "opacity-60" : ""}`}>
     {icon}
     <input aria-label={label} value={isClosed ? "" : value} disabled={isClosed} onChange={(event) => onChange(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") onSubmit(); }} placeholder={placeholder} className="min-w-0 flex-1 bg-transparent text-[13px] text-card-foreground outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed" />
     <button type="button" onClick={onSubmit} disabled={isClosed || !value.trim()} aria-label={`Submit ${label.toLowerCase()}`} className="flex size-[34px] shrink-0 items-center justify-center rounded-full bg-accent text-accent-foreground transition-transform enabled:hover:scale-105 disabled:opacity-45">{isClosed ? <Lock className="size-[15px]" strokeWidth={2.5} /> : <ArrowRight className="size-[15px]" strokeWidth={2.5} />}</button>
