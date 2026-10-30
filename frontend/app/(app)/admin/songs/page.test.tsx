@@ -60,6 +60,10 @@ vi.mock("@/hooks/generated/admin-song-pipeline/admin-song-pipeline", () => ({
     mutateAsync: pipelineHook.dismissMutate,
     isPending: false,
   }),
+  useRecheckSongs: () => ({
+    mutateAsync: vi.fn(),
+    isPending: false,
+  }),
   useRerunSongPipeline: () => ({
     mutateAsync: vi.fn(),
     isPending: false,
