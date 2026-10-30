@@ -321,6 +321,10 @@ function GroupLobbyScreen({ params }: PageProps) {
   const groupPlaylists = groupQuery.data?.playlists ?? [];
   const featuredPlaylist = groupPlaylists[0];
   const savedTier = groupQuery.data?.difficultyTier;
+  const storedFixedDjMember = members.find((member) => member.id === groupQuery.data?.fixedDjMemberId);
+  const djModeSummary = groupQuery.data?.djMode === "ROTATING"
+    ? "DJ: Rotating"
+    : `DJ: Fixed, ${storedFixedDjMember?.displayName || "first to join"}`;
   const playlistChipLabel = savedTier ? `${savedTier.charAt(0)}${savedTier.slice(1).toLowerCase()} difficulty` : groupPlaylists.length === 0
     ? "No playlist selected"
     : groupPlaylists.length === 1
@@ -922,6 +926,7 @@ function GroupLobbyScreen({ params }: PageProps) {
             Settings
           </button>
         ) : null}
+        <span className="text-[12px] text-muted-foreground">{djModeSummary}</span>
         <div className="flex-1" />
         <AlertDialog>
           <AlertDialogTrigger asChild>
