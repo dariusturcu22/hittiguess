@@ -758,6 +758,18 @@ class GroupServiceTest {
     }
 
     @Test
+    void updateGroupSettingsSwitchesToRotatingEvenWhenTheStoredFixedDjHasLeft() {
+        Group group = groupWithAdmin();
+        group.setFixedDjMemberId(999L);
+        when(groupRepository.findByIdForUpdate(10L)).thenReturn(Optional.of(group));
+
+        groupService.updateGroupSettings(
+                10L, new UpdateGroupSettingsRequest(null, DjMode.ROTATING, null, group.getFixedDjMemberId()));
+
+        assertThat(group.getDjMode()).isEqualTo(DjMode.ROTATING);
+    }
+
+    @Test
     void startGameSessionPublishesAGameSessionStartedEvent() {
         Group group = groupWithAdmin();
         when(groupRepository.findByIdForUpdate(10L)).thenReturn(Optional.of(group));
