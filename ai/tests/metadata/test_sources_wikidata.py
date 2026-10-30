@@ -63,6 +63,8 @@ def test_get_part_of_returns_none_when_absent():
 
 def _wikidata_response(request: httpx.Request) -> httpx.Response:
     action = request.url.params.get("action")
+    if action == "query":
+        return httpx.Response(200, json={"query": {"search": []}})
     if action == "wbsearchentities":
         return httpx.Response(200, json={"search": [{"id": "Q1", "description": "1999 song by Test Artist"}]})
     if action == "wbgetentities":
@@ -166,6 +168,8 @@ def test_wikidata_matches_whats_my_name_rihanna_drake(mocker):
 
     def _mock_response(request: httpx.Request) -> httpx.Response:
         action = request.url.params.get("action")
+        if action == "query":
+            return httpx.Response(200, json={"query": {"search": []}})
         if action == "wbsearchentities":
             return httpx.Response(200, json=search_json)
         if action == "wbgetentities":
@@ -208,6 +212,8 @@ def test_wikidata_matches_yeah_usher_lil_jon_ludacris(mocker):
 
     def _mock_response(request: httpx.Request) -> httpx.Response:
         action = request.url.params.get("action")
+        if action == "query":
+            return httpx.Response(200, json={"query": {"search": []}})
         if action == "wbsearchentities":
             return httpx.Response(200, json=search_json)
         if action == "wbgetentities":
@@ -250,6 +256,8 @@ def test_wikidata_matches_bang_bang_jessie_j_ariana_nicki(mocker):
 
     def _mock_response(request: httpx.Request) -> httpx.Response:
         action = request.url.params.get("action")
+        if action == "query":
+            return httpx.Response(200, json={"query": {"search": []}})
         if action == "wbsearchentities":
             return httpx.Response(200, json=search_json)
         if action == "wbgetentities":
@@ -287,3 +295,36 @@ def test_performer_check_does_not_match_a_name_inside_a_longer_name():
     assert not wikidata._performer_matches_main_artist(["Asia"], ["Sia"])
     assert wikidata._performer_matches_main_artist(["Sia"], ["Sia"])
     assert wikidata._performer_matches_main_artist(["Daddy Yankee"], ["Daddy Yankee & Snow"])
+
+
+@respx.mock
+def test_full_text_search_finds_a_song_with_a_common_title(mocker):
+    mocker.patch("app.metadata.sources.pacing.time.sleep")
+
+    def respond(request: httpx.Request) -> httpx.Response:
+        action = request.url.params.get("action")
+        if action == "query":
+            assert request.url.params["srsearch"] == "Burn Ellie Goulding"
+            return httpx.Response(200, json={"query": {"search": [{"title": "Q14200893"}, {"title": "Q61446164"}]}})
+        ids = request.url.params.get("ids")
+        if request.url.params.get("props") == "labels|descriptions":
+            return httpx.Response(200, json={"entities": {
+                "Q14200893": {"labels": {"mul": {"value": "Burn"}}, "descriptions": {"en": {"value": "2013 single by Ellie Goulding"}}},
+                "Q61446164": {"labels": {"en": {"value": "Effects of fluoxetine"}}, "descriptions": {"en": {"value": "scientific article"}}},
+            }})
+        if ids == "Q14200893":
+            return httpx.Response(200, json={"entities": {"Q14200893": {"claims": {"P577": [
+                {"rank": "normal", "mainsnak": {"snaktype": "value", "datavalue": {"value": {"time": "+2013-07-05T00:00:00Z"}}}}]}}}})
+        return httpx.Response(404)
+
+    respx.get("https://www.wikidata.org/w/api.php").mock(side_effect=respond)
+
+    candidates = wikidata.search("Burn", ["Ellie Goulding"])
+
+    assert candidates == [{"query": "track", "entity_id": "Q14200893", "description": "2013 single by Ellie Goulding",
+                           "date": "+2013-07-05T00:00:00Z"}]
+
+
+def test_performer_labels_fall_back_to_the_multilingual_label():
+    assert wikidata._english_text({"mul": {"value": "Rihanna"}}) == "Rihanna"
+    assert wikidata._english_text({"en": {"value": "Shakira"}, "mul": {"value": "Shakira Mebarak"}}) == "Shakira"

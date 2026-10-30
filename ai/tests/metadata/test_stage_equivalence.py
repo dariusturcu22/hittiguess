@@ -117,6 +117,15 @@ def _two_agree_one_differs(mocker):
     )
 
 
+def _every_source_differs(mocker):
+    return PipelineMocks(
+        mocker,
+        musicbrainz_candidates=[_musicbrainz_candidate(LOCKED_YEAR)],
+        discogs_candidates=[_discogs_candidate(DIFFERING_YEAR)],
+        wikidata_candidates=[_wikidata_candidate(DIFFERING_YEAR + 1)],
+    )
+
+
 def _one_source_empty(mocker):
     mocks = PipelineMocks(
         mocker,
@@ -268,7 +277,7 @@ def test_agreeing_sources_lock_without_wikipedia_or_any_llm_call_on_both_paths(m
 
 
 def test_disagreeing_sources_fetch_wikipedia_then_reconcile_on_both_paths(mocker):
-    mocks = _two_agree_one_differs(mocker)
+    mocks = _every_source_differs(mocker)
 
     resolved = service.resolve_metadata(VIDEO_URL)
     resolve_calls = (mocks.wikipedia.call_count, mocks.extraction.call_count, mocks.reconciliation.call_count)

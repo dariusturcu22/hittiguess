@@ -225,8 +225,24 @@ class TestEvaluateLock:
         assert confidence == "high"
         reconciliation_mock.assert_not_called()
 
-    def test_two_of_four_agreement_still_reconciles(self, mocker):
+    def test_two_sources_on_the_earliest_year_lock_without_reconciliation(self, mocker):
         wikipedia_result = mocker.MagicMock(release_year=2012, confidence="medium")
+        mocker.patch("app.metadata.verification._run_wikipedia_extraction", return_value=wikipedia_result)
+        reconciliation_mock = mocker.patch("app.metadata.verification._run_four_source_reconciliation")
+
+        release_year, _confidence, route = evaluate_lock(
+            "Test Song", "Test Artist",
+            [_mb_candidate(2011)],
+            [_discogs_candidate(2011)],
+            [_wikidata_candidate(2009)],
+            [{"extract": "Test Song was released in 2012."}],
+        )
+
+        assert (release_year, route) == (2011, VerificationRoute.LOCKED_WITH_WIKIPEDIA)
+        reconciliation_mock.assert_not_called()
+
+    def test_four_different_years_still_reconcile(self, mocker):
+        wikipedia_result = mocker.MagicMock(release_year=2013, confidence="medium")
         mocker.patch("app.metadata.verification._run_wikipedia_extraction", return_value=wikipedia_result)
         reconciliation_result = mocker.MagicMock(release_year=2011, confidence="medium")
         reconciliation_mock = mocker.patch(
@@ -236,9 +252,9 @@ class TestEvaluateLock:
         _release_year, _confidence, route = evaluate_lock(
             "Test Song", "Test Artist",
             [_mb_candidate(2011)],
-            [_discogs_candidate(2011)],
+            [_discogs_candidate(2012)],
             [_wikidata_candidate(2009)],
-            [{"extract": "Test Song was released in 2012."}],
+            [{"extract": "Test Song was released in 2013."}],
         )
 
         assert route == VerificationRoute.LLM_RECONCILED
@@ -315,25 +331,36 @@ def _load_golden_fixtures() -> list[dict]:
     ]
 
 
-class TestOneYearClusterRefinement:
-    def test_single_source_earliest_year_does_not_pull_cluster_down(self):
-        from app.metadata.verification import _find_wikipedia_assisted_lock_year
+class TestEarliestSupportedYear:
+    @staticmethod
+    def _wikidata(track_year=None, album_year=None):
+        candidates = []
+        if track_year:
+            candidates.append({"query": "track", "date": f"+{track_year}-01-01T00:00:00Z"})
+        if album_year:
+            candidates.append({"query": "album", "date": f"+{album_year}-01-01T00:00:00Z"})
+        return candidates
 
-        assert _find_wikipedia_assisted_lock_year([2015, 2016, 2016]) == 2016
-        assert _find_wikipedia_assisted_lock_year([2018, 2019, 2019, 2019]) == 2019
-        assert _find_wikipedia_assisted_lock_year([2003, 2004, 2004, 2004]) == 2004
+    def test_a_single_source_earlier_year_does_not_count(self):
+        from app.metadata.verification import _earliest_supported_year
 
-    def test_two_sources_support_earliest_year_in_cluster(self):
-        from app.metadata.verification import _find_wikipedia_assisted_lock_year
+        assert _earliest_supported_year(2016, 2015, self._wikidata(2016), 2016) == 2016
 
-        assert _find_wikipedia_assisted_lock_year([2015, 2015, 2016]) == 2015
-        assert _find_wikipedia_assisted_lock_year([2015, 2015, 2016, 2016]) == 2015
+    def test_later_years_never_outvote_an_earlier_supported_year(self):
+        from app.metadata.verification import _earliest_supported_year
 
-    def test_exact_majority_rule_unaffected_by_outlier(self):
-        from app.metadata.verification import _find_wikipedia_assisted_lock_year
+        assert _earliest_supported_year(2009, 2010, self._wikidata(2010), 2009) == 2009
 
-        assert _find_wikipedia_assisted_lock_year([2016, 2016, 2016]) == 2016
-        assert _find_wikipedia_assisted_lock_year([2016, 2016, 2016, 2014]) == 2016
+    def test_the_album_date_votes_only_when_musicbrainz_confirms_it(self):
+        from app.metadata.verification import _earliest_supported_year
+
+        assert _earliest_supported_year(1986, 1987, self._wikidata(1987, 1986), 1987) == 1986
+        assert _earliest_supported_year(2007, 2006, self._wikidata(2007, 2006), 2007) == 2007
+
+    def test_no_year_with_two_sources_leaves_the_song_unresolved(self):
+        from app.metadata.verification import _earliest_supported_year
+
+        assert _earliest_supported_year(2011, 2012, self._wikidata(2009), 2013) is None
 
 
 @pytest.mark.parametrize(

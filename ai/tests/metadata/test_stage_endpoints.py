@@ -19,6 +19,9 @@ from app.observability.logging_config import JsonLineFormatter
 
 VIDEO_ID = "abcdefghijk"
 YOUTUBE_VIDEOS_URL = "https://www.googleapis.com/youtube/v3/videos"
+# The release-group search, the recording search, and the word search for a title stored in
+# another script.
+MUSICBRAINZ_REQUESTS_WHEN_NOTHING_MATCHES = 3
 MUSICBRAINZ_URL = "https://musicbrainz.org/ws/2/release-group/"
 MUSICBRAINZ_RECORDING_URL = "https://musicbrainz.org/ws/2/recording/"
 DISCOGS_SEARCH_URL = "https://api.discogs.com/database/search"
@@ -75,6 +78,7 @@ def _youtube_data(**overrides):
         "description": "",
         "category_id": "10",
         "duration_seconds": DURATION_SECONDS,
+        "upload_year": "2019",
     }
     data.update(overrides)
     return data
@@ -136,6 +140,7 @@ def test_the_youtube_stage_returns_video_facts_and_the_precheck_identification(c
             "channelTitle": "Test Artist",
             "durationSeconds": DURATION_SECONDS,
             "categoryId": "10",
+            "uploadYear": 2019,
         },
         "title": "Test Song",
         "artists": ["Test Artist"],
@@ -537,7 +542,7 @@ def test_a_wait_under_the_cap_is_slept_and_the_stage_proceeds(client, monkeypatc
     response = client.post("/stages/musicbrainz", json=SOURCE_BODY, headers=_headers())
 
     assert response.status_code == HTTP_OK
-    assert sleep.call_count == 2
+    assert sleep.call_count == MUSICBRAINZ_REQUESTS_WHEN_NOTHING_MATCHES
     sleep.assert_called_with(SUB_SECOND_WAIT_SECONDS)
 
 
@@ -580,6 +585,6 @@ def test_resolve_sleeps_through_a_wait_over_the_cap_instead_of_returning_429(mon
     response = service.resolve_metadata(f"https://www.youtube.com/watch?v={VIDEO_ID}")
 
     assert response.status == service.SUCCESS_STATUS
-    assert store.maximum_waits == [None, None]
-    assert sleep.call_count == 2
+    assert store.maximum_waits == [None] * MUSICBRAINZ_REQUESTS_WHEN_NOTHING_MATCHES
+    assert sleep.call_count == MUSICBRAINZ_REQUESTS_WHEN_NOTHING_MATCHES
     sleep.assert_called_with(OVER_CAP_WAIT_SECONDS)

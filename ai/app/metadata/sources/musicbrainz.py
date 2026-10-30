@@ -17,6 +17,8 @@ RECORDING_MIN_SCORE = 90
 CANDIDATES_TO_KEEP_PER_QUERY = 5
 
 ALBUM_PRIMARY_TYPES = frozenset({"Album", "EP"})
+RELEASED_PRIMARY_TYPES = frozenset({"Album", "EP", "Single"})
+OFFICIAL_STATUS = "Official"
 EXCLUDED_RELEASE_SECONDARY_TYPES = frozenset(
     {"Compilation", "Live", "Remix", "DJ-mix", "Mixtape/Street", "Demo"}
 )
@@ -310,6 +312,46 @@ def _album_candidates(title: str, main_artists: list[str]) -> list[dict]:
     return candidates[:CANDIDATES_TO_KEEP_PER_QUERY]
 
 
+def search_recordings_by_words(title: str, artist: str) -> dict:
+    """The title's words without the phrase quotes, so a recording whose stored title is in
+    another script (狂乱 Hey Kids!! for Kyouran Hey Kids!!) still comes back."""
+    words = " ".join(escape_lucene(word) for word in title.split())
+    query = f'recording:({words}) AND artist:"{escape_lucene(artist)}"'
+    return _get(f"https://musicbrainz.org/ws/2/recording/?query={quote(query)}&fmt=json&limit={RECORDING_SEARCH_LIMIT}")
+
+
+def _transliterated_candidates(title: str, main_artists: list[str]) -> list[dict]:
+    """MusicBrainz stores a song under its original title and lists the transliterated title
+    as a pseudo-release, so a romanized title from YouTube matches no recording title. A
+    recording is accepted when one of its releases carries the song's title, and it is dated
+    by its earliest official album, EP, or single."""
+    recordings = search_recordings_by_words(title, main_artists[0]).get("recordings", [])
+    candidates = []
+    for recording in recordings:
+        if not _artist_credit_matches(recording.get("artist-credit", []), main_artists):
+            continue
+        disambiguation = str(recording.get("disambiguation") or "").lower()
+        if any(term in disambiguation for term in EXCLUDED_RECORDING_DISAMBIGUATION_TERMS):
+            continue
+        releases = recording.get("releases", [])
+        if not any(_title_matches(release.get("title", ""), title) for release in releases):
+            continue
+        official_dates = [
+            release["date"]
+            for release in releases
+            if release.get("status") == OFFICIAL_STATUS
+            and release.get("date")
+            and (release.get("release-group") or {}).get("primary-type") in RELEASED_PRIMARY_TYPES
+            and not set((release.get("release-group") or {}).get("secondary-types") or []).intersection(
+                EXCLUDED_RELEASE_SECONDARY_TYPES)
+        ]
+        if official_dates:
+            candidates.append({"query": "track", "title": recording.get("title"),
+                               "artist": _artist_credit_display(recording.get("artist-credit", [])),
+                               "date": min(official_dates), "type": "Recording", "score": recording.get("score")})
+    return sorted(candidates, key=lambda candidate: candidate["date"])[:CANDIDATES_TO_KEEP_PER_QUERY]
+
+
 def search_or_raise(title: str, main_artists: list[str]) -> list[dict]:
     """Queries the track through the release-group search with the first main
     artist, then finds its parent albums through the recording search. Returns
@@ -318,7 +360,8 @@ def search_or_raise(title: str, main_artists: list[str]) -> list[dict]:
     request raises."""
     if not main_artists:
         return []
-    return _track_candidates(title, main_artists) + _album_candidates(title, main_artists)
+    candidates = _track_candidates(title, main_artists) + _album_candidates(title, main_artists)
+    return candidates or _transliterated_candidates(title, main_artists)
 
 
 def search(title: str, main_artists: list[str]) -> list[dict]:
