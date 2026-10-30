@@ -11,6 +11,7 @@ import org.dariusturcu.backend.model.song.AdminSongDetailDTO;
 import org.dariusturcu.backend.model.song.CatalogSongStatus;
 import org.dariusturcu.backend.model.song.PendingImport;
 import org.dariusturcu.backend.model.song.PendingImportOrigin;
+import org.dariusturcu.backend.model.song.RecheckCandidateDTO;
 import org.dariusturcu.backend.model.song.Song;
 import org.dariusturcu.backend.model.song.SongArtist;
 import org.dariusturcu.backend.model.song.SongReportStatus;
@@ -56,6 +57,11 @@ public class AdminSongCatalogService {
         this.pendingImportRepository = pendingImportRepository;
         this.songReportRepository = songReportRepository;
         this.pipeline = pipeline;
+    }
+
+    @Transactional(readOnly = true)
+    public List<RecheckCandidateDTO> recheckCandidates() {
+        return catalogRepository.findRecheckCandidates();
     }
 
     /**
