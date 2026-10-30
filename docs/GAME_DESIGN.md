@@ -20,7 +20,7 @@ A group doesn't last forever: it's deleted if the admin doesn't start a game ses
 
 - Each player starts with one card on their timeline, as a starting anchor, and two tokens.
 - A playlist, or a combination of playlists, is selected by the group's admin.
-- Each group has a DJ setting: fixed, meaning one person stays DJ all game, or rotating, meaning the role passes each round. Set by the admin before the game session starts, changeable anytime up to then.
+- Each group has a DJ setting, rotating by default: fixed, meaning one person stays DJ all game, or rotating, meaning the role passes each round. Set by the admin before the game session starts, changeable anytime up to then.
 - The admin sets how many cards a player needs to win: minimum 5 always, maximum 20 for a 2-3 player group, maximum 15 for a 4-8 player group.
 
 ## Roles
@@ -80,7 +80,20 @@ Text chat renders as a semi-transparent overlay in the bottom-left corner, toggl
 - For remote sessions, that browser tab is captured through WebRTC and streamed to the other players.
 - Non-DJ players never see a YouTube embed or the YouTube app, only the game UI.
 - Reveal happens automatically once the betting window closes; nobody, DJ included, triggers it by hand.
-- A DJ who has not yet shared audio is asked first: a "Share your audio first" action opens the browser's screen-share picker (Entire screen with system audio, or the YouTube tab), and only then does "Open on YouTube to play" appear. The share stays alive for the rest of the match, so later rounds do not ask again, and its audio reaches the other players only while that player is the DJ and the song is still hidden. YouTube opens in a new tab. The captured song travels on its own peer connections, separate from voice, so every player receives it without joining the voice call. Every player's card bars follow the DJ's audio, never a microphone. Phones cannot capture audio, so they cannot DJ; a desktop browser is allowed to try, including Firefox and Safari, whose support is unconfirmed.
+- A DJ who has not yet shared audio is asked first: a "Share your audio first" action opens the browser's screen-share picker (Entire screen with system audio, or the YouTube tab), and only then does "Open on YouTube to play" appear. The share stays alive for the rest of the match, so later rounds do not ask again, and its audio reaches the other players only while that player is the DJ and the song is still hidden. YouTube opens in a new tab. The captured song travels on its own peer connections, separate from voice, so every player receives it without joining the voice call. Every player's card bars follow the DJ's audio, never a microphone. Browsers that cannot share the song's audio DJ only when no other player can, and see a dismissible warning in the lobby and the game screen (listeners are warned too when the DJ cannot share). The capture asks for the entire screen with system audio, because the YouTube tab does not exist yet when the share is requested. Where that works:
+
+| Browser and platform | Shares the song | Source |
+| --- | --- | --- |
+| Chrome, Edge, Opera, Brave, Vivaldi on Windows | Yes, system audio | [MDN data](https://github.com/mdn/browser-compat-data/blob/main/api/MediaDevices.json), Chrome 74+ |
+| Chromium browsers on ChromeOS | Yes, system audio | same |
+| Chrome and Edge on macOS 141 or newer | Likely yes, system audio on macOS 14.2 or newer (one developer's test, not an official note; an older macOS shares nothing and the DJ sees the no-audio error) | [Pipe](https://blog.addpipe.com/getdisplaymedia-allows-capturing-the-screen-with-system-sounds-on-chrome-on-macos/) |
+| Chromium browsers on macOS before 141 | No, tab audio only | MDN data |
+| Chromium browsers on Linux | No, tab audio only | MDN data |
+| Firefox, any platform | No, audio capture not implemented | [Bugzilla 1541425](https://bugzilla.mozilla.org/show_bug.cgi?id=1541425) |
+| Safari on macOS | No, the screen share has no audio track | [WebKit 186294](https://bugs.webkit.org/show_bug.cgi?id=186294), MDN data |
+| Phones and tablets (iOS, iPadOS including desktop mode, Android) | No | MDN data, `getDisplayMedia` is missing or has no audio |
+
+Chromium browsers on macOS and Linux can share a tab's audio, but the app does not use it. New groups start in rotating DJ mode.
 - Players can voice chat and text chat with the rest of their group, available from group creation, not just during a game session. See [ARCHITECTURE.md](ARCHITECTURE.md) for how this works.
 
 ## Ads

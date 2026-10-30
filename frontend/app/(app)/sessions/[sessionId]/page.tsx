@@ -18,10 +18,11 @@ import { GUESS_CORRECT_EVENT, PLACEMENT_PREVIEW_EVENT, useGameSessionRealtime, t
 import { useQueryClient } from "@tanstack/react-query";
 import { useAudioDevices, MAX_SONG_VOLUME_PERCENT } from "@/hooks/use-audio-devices";
 import { useAudioLevels } from "@/hooks/use-audio-levels";
+import { AudioShareWarning } from "@/components/audio-share-warning";
 import { useGroupRealtime } from "@/hooks/use-group-realtime";
 import { useSongMesh } from "@/hooks/use-song-mesh";
 import { shouldSilenceDjForActivePlayer } from "@/hooks/use-voice-mesh";
-import { YOUTUBE_LINK_OUT_REL, YOUTUBE_LINK_OUT_TARGET, canShareTabAudio, youtubeLinkOutHref } from "@/lib/youtube-link-out";
+import { YOUTUBE_LINK_OUT_REL, YOUTUBE_LINK_OUT_TARGET, canShareSongAudio, youtubeLinkOutHref } from "@/lib/youtube-link-out";
 import { playLockInSound } from "@/lib/lock-in-sound";
 import {
   AWAITING_PLACEMENT_STATUS,
@@ -247,7 +248,7 @@ export default function GameSessionPage({ params }: PageProps) {
   const guessStateQuery = useGetGuessState(sessionId, { query: { enabled: Boolean(currentRound) && !isDj, retry: false } });
   const guessState = guessStateQuery.data?.roundId === currentRound?.id ? guessStateQuery.data : undefined;
   const linkOutQuery = useGetCurrentRoundLinkOut(sessionId, { query: { enabled: isDj && !isRoundRevealed(roundStatus), retry: false } });
-  const isSharingTabAudioSupported = typeof navigator !== "undefined" && canShareTabAudio(navigator.userAgent);
+  const isSharingTabAudioSupported = typeof navigator !== "undefined" && canShareSongAudio(navigator.userAgent, navigator.maxTouchPoints);
   const { songVolume, setSongVolume } = useAudioDevices();
   // A session that ended while this page wasn't listening is already purged, so a failed
   // load with a known group means the game is over: its results are the place to go.
@@ -808,7 +809,7 @@ export default function GameSessionPage({ params }: PageProps) {
           {statusLabel ? <strong className={`font-display text-[12px] font-normal ${statusClassName}`}>{statusLabel}</strong> : null}
           <span className={`size-2 rounded-full ${realtime.connectionState === "connected" ? "bg-green" : "bg-muted-foreground"}`} role="img" aria-label={`Session connection ${realtime.connectionState}`} />
         </div>
-        {currentPlayer && !isSharingTabAudioSupported ? <p className="mt-1.5 text-[11px] text-muted-foreground">This device can&apos;t share audio, so you are skipped as DJ. Use a computer to DJ.</p> : null}
+        {currentPlayer ? <div className="mt-1.5"><AudioShareWarning canShareAudio={isSharingTabAudioSupported} isDj={isDj} djCanShareAudio={djPlayer?.canDj} /></div> : null}
       </div>
       <div className="flex flex-wrap items-center justify-end gap-3">
       <label className="inline-flex shrink-0 items-center gap-2 rounded-full border-2 border-border bg-card py-2 pl-3 pr-4">
