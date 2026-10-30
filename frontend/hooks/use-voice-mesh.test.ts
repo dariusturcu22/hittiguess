@@ -54,8 +54,11 @@ vi.mock("@stomp/stompjs", () => ({
 
 let workletAddModuleImplementation: (url: string) => Promise<void> = async () => {};
 
+const connectedNodes: unknown[] = [];
+
 class FakeAudioContext {
   currentTime = 0;
+  destination = { speakerOutput: true };
   audioWorklet = { addModule: (url: string) => workletAddModuleImplementation(url) };
   resume() {
     return Promise.resolve();
@@ -67,10 +70,10 @@ class FakeAudioContext {
     return { stream: { getAudioTracks: () => [{ enabled: true, stop: vi.fn() }] } };
   }
   createMediaStreamSource() {
-    return { connect: vi.fn(), disconnect: vi.fn() };
+    return { connect: vi.fn((node: unknown) => connectedNodes.push(node)), disconnect: vi.fn() };
   }
   createGain() {
-    return { gain: { setValueAtTime: vi.fn() }, connect: vi.fn(), disconnect: vi.fn() };
+    return { gain: { setValueAtTime: vi.fn() }, connect: vi.fn((node: unknown) => connectedNodes.push(node)), disconnect: vi.fn() };
   }
 }
 
@@ -86,6 +89,22 @@ beforeEach(() => {
   suppressor.loadRnnoise.mockClear();
   workletAddModuleImplementation = async () => {};
   Object.defineProperty(window, "AudioContext", { value: FakeAudioContext, configurable: true });
+});
+
+describe("useVoiceMesh local monitoring", () => {
+  it("never routes the microphone to the speaker output", async () => {
+    defineMediaDevices({ getUserMedia });
+    connectedNodes.length = 0;
+
+    const { result } = renderHook(() => useVoiceMesh(4, 11, [], false, {}));
+
+    await act(async () => {
+      await result.current.startMicrophone();
+    });
+
+    expect(connectedNodes.length).toBeGreaterThan(0);
+    expect(connectedNodes).not.toContainEqual({ speakerOutput: true });
+  });
 });
 
 describe("useVoiceMesh device selection", () => {
