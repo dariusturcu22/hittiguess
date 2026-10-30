@@ -118,6 +118,7 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--misses", choices=list(RULES), action="append", default=[])
     parser.add_argument("--songs", type=Path, default=DEFAULT_SONGS_FILE)
+    parser.add_argument("--unlabelled", action="store_true", help="print the production rule's year for songs without a known year")
     arguments = parser.parse_args()
     captures = load_captures(arguments.songs)
     labelled = [capture for capture in captures if capture.get("expected_year")]
@@ -140,6 +141,13 @@ def main() -> None:
         if name in arguments.misses:
             for kind, capture, found, decided in misses:
                 print(f"    {kind:10} {capture['title']} ({', '.join(capture['main_artists'])}) expected {capture['expected_year']} got {decided} {found}")
+
+    if arguments.unlabelled:
+        for capture in captures:
+            if capture.get("expected_year"):
+                continue
+            found = evidence(capture)
+            print(f"    unlabelled {capture['title']} ({', '.join(capture['main_artists'])}) locks {production_rule(capture, found)} {found}")
 
 
 if __name__ == "__main__":
