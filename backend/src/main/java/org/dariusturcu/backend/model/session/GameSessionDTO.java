@@ -2,6 +2,7 @@ package org.dariusturcu.backend.model.session;
 
 import org.dariusturcu.backend.model.group.DjMode;
 
+import java.time.Instant;
 import java.util.List;
 
 public record GameSessionDTO(
@@ -12,5 +13,8 @@ public record GameSessionDTO(
         int winConditionCardCount,
         int currentRoundNumber,
         List<PlayerDTO> players,
-        RoundDTO currentRound) {
+        RoundDTO currentRound,
+        Instant pausedAt,
+        List<Long> audioRequiredPlayerIds,
+        List<Long> pausedForPlayerIds) {
 }

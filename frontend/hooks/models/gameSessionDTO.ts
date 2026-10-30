@@ -18,4 +18,7 @@ export interface GameSessionDTO {
   currentRoundNumber?: number;
   players?: PlayerDTO[];
   currentRound?: RoundDTO;
+  pausedAt?: string;
+  audioRequiredPlayerIds?: number[];
+  pausedForPlayerIds?: number[];
 }

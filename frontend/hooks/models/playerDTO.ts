@@ -5,6 +5,7 @@
  * OpenAPI spec version: v0
  */
 import type { PlayerCardDTO } from './playerCardDTO';
+import type { PlayerDTOAudioStatus } from './playerDTOAudioStatus';
 import type { PlayerDTOStatus } from './playerDTOStatus';
 
 export interface PlayerDTO {
@@ -17,6 +18,7 @@ export interface PlayerDTO {
   status?: PlayerDTOStatus;
   isConnected?: boolean;
   canDj?: boolean;
+  audioStatus?: PlayerDTOAudioStatus;
   totalArtistsGuessed?: number;
   totalTitlesGuessed?: number;
   timeline?: PlayerCardDTO[];

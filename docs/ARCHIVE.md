@@ -2730,3 +2730,21 @@ Production fixes from the first enabled playlist (throughput and admin metrics):
 - [x] Update `SYSTEM_REFERENCE.md`, `ARCHITECTURE.md`, and `DECISIONS.md`
 
 Later, once the console exists: an audit log of admin actions, catalog health checks (duplicates, missing embeddings, missing durations), a list of safety rejections, and a catalog CSV export.
+
+## In progress: audio check before the game (branch `feature/audio-check`)
+
+This belongs to story 52. Another session owns this branch. Do not pick these items as the next task and do not edit this branch's code. Pressing Start game in the lobby opens an audio check shown to every member instead of starting the game. Every required DJ shares their audio once, passes a sound test, and keeps the share running for the whole game. Rotating needs every player to pass, fixed needs only the DJ. The game pauses when a required share stops, and the screen offers "Switch to a fixed DJ". The design is `AudioCheckDark.dc.html` and `AudioCheckLight.dc.html` (PR 355). The branch's own copy of this task list is the source of truth until it merges.
+
+- [x] Backend: group phase `AUDIO_CHECK` between the lobby and the game, with a per-member audio status (`NOT_SHARED`, `TESTING`, `OK`, `FAILED`, `CANNOT_SHARE` derived from the browser capability), reset on entry; members can still join or leave and settings stay locked
+- [x] Backend: requirement rules (rotating needs every connected member to pass, fixed needs only the chosen DJ, a member who cannot share blocks a rotating start, nobody able to share blocks every start)
+- [x] Backend: endpoints to report a status, start the game after a server-side requirement check, switch to a fixed DJ among members who passed, and cancel back to the lobby, each broadcast to the group
+- [x] Backend: per-player audio status in the session, so a required DJ whose share stops pauses the game for everyone, timers stop while paused and restart with fresh deadlines on resume, and placement and betting are refused while paused
+- [x] Backend: a fixed DJ who leaves hands the role to a player who can share, preferring one who already passed; a rotating player who leaves drops out of the requirement
+- [x] Backend: Flyway migration for the member and player audio status and the session pause time
+- [x] Backend unit tests: the requirement rules, entering, reporting, switching, cancelling and starting the check, pausing and resuming a session, and a leaving DJ
+- [x] Frontend: audio check screen in the lobby route for the six designed states (host list, own card before sharing, own card testing, fixed DJ waiting, everyone ready, nobody can share)
+- [x] Frontend: audio test that passes once an analyser on the shared track stays above a threshold for half a second, and fails at once when the share has no audio track
+- [x] Frontend: DJ turns reuse the share from the check instead of asking each turn, and the song mesh swaps the long-lived track in only during that player's DJ turns
+- [x] Frontend: paused-game banner naming the player whose share stopped, with an inline re-share and re-test
+- [x] Frontend: API client update, Vitest coverage for the screen states, the threshold and the banner, and a visual check of every state at 1440x900 and 375x812 in both themes
+- [x] Docs: GAME_DESIGN, SYSTEM_REFERENCE, ARCHITECTURE, and a DECISIONS entry for the audio check

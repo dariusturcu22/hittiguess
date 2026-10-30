@@ -13,5 +13,6 @@ public record MemberDTO(
         boolean isAdmin,
         boolean isConnected,
         boolean isInVoice,
-        Instant joinedAt) {
+        Instant joinedAt,
+        AudioCheckStatus audioCheckStatus) {
 }

@@ -1,9 +1,10 @@
 import { recordAudioShareOutcome } from "@/lib/audio-share-outcome";
 
-// The DJ's screen capture outlives the session page component: a match keeps its
-// capture across in-app navigation, so the share prompt appears once per match. The
-// hook that owns the session page reads this module's state and calls stopSongCapture
-// when the match is over, the player is gone, or the share ends in the browser bar.
+// The DJ's screen capture outlives the page components: it starts on the audio check
+// before the game and is kept across in-app navigation for the whole match, so a DJ
+// shares once per game. The session page's hooks read this module's state and call
+// stopSongCapture when the match is over or the player is gone; the share ending in the
+// browser bar clears it too, which pauses the game until a new share passes the test.
 export const SONG_AUDIO_CONTENT_HINT = "music";
 
 const CHANNEL_COUNT_STEREO = 2;
@@ -48,9 +49,12 @@ interface SongDisplayConstraints extends DisplayMediaStreamOptions {
   systemAudio?: "exclude" | "include";
 }
 
+export type SongCaptureErrorKind = "unsupported" | "insecure" | "cancelled" | "no-audio-track";
+
 export interface SongCaptureResult {
   stream: MediaStream | null;
   errorMessage: string | null;
+  errorKind?: SongCaptureErrorKind;
 }
 
 let capturedStream: MediaStream | null = null;
@@ -116,7 +120,9 @@ export async function startSongCapture(): Promise<SongCaptureResult> {
     // Browsers hide screen capture entirely on an insecure origin, which is what a
     // plain-HTTP LAN address is, so that case gets its own explanation.
     const isInsecureContext = typeof window !== "undefined" && !window.isSecureContext;
-    return { stream: null, errorMessage: isInsecureContext ? SHARE_INSECURE_CONTEXT_MESSAGE : SHARE_UNSUPPORTED_MESSAGE };
+    return isInsecureContext
+      ? { stream: null, errorMessage: SHARE_INSECURE_CONTEXT_MESSAGE, errorKind: "insecure" }
+      : { stream: null, errorMessage: SHARE_UNSUPPORTED_MESSAGE, errorKind: "unsupported" };
   }
   const userAgent = typeof navigator === "undefined" ? "" : navigator.userAgent;
   const platform = describePlatform(userAgent, typeof navigator === "undefined" ? "" : navigator.platform);
@@ -132,7 +138,7 @@ export async function startSongCapture(): Promise<SongCaptureResult> {
     displayStream = await mediaDevices.getDisplayMedia(constraints);
   } catch {
     recordAudioShareOutcome({ browser, platform, displaySurface: null, audioTrackCount: 0 });
-    return { stream: null, errorMessage: SHARE_CANCELLED_MESSAGE };
+    return { stream: null, errorMessage: SHARE_CANCELLED_MESSAGE, errorKind: "cancelled" };
   }
   const [videoTrack] = displayStream.getVideoTracks();
   const displaySurface = videoTrack?.getSettings().displaySurface ?? null;
@@ -142,7 +148,7 @@ export async function startSongCapture(): Promise<SongCaptureResult> {
   const [audioTrack] = audioTracks;
   if (!audioTrack) {
     displayStream.getTracks().forEach((track) => track.stop());
-    return { stream: null, errorMessage: `${browser}${MISSING_AUDIO_SUFFIX}` };
+    return { stream: null, errorMessage: `${browser}${MISSING_AUDIO_SUFFIX}`, errorKind: "no-audio-track" };
   }
   audioTrack.contentHint = SONG_AUDIO_CONTENT_HINT;
   capturedTrack = audioTrack;

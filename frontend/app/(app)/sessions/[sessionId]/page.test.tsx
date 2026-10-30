@@ -24,13 +24,14 @@ const SPECTATOR_USER_ID = 13;
 const BETTING_WINDOW_REMAINING_MILLISECONDS = 9_000;
 const REVEAL_HOLD_REMAINING_MILLISECONDS = 4_000;
 
-const shareSong = vi.fn(async () => true);
+const shareAudio = vi.fn(async () => {});
+const changeSharedScreen = vi.fn(async () => {});
+const useSessionAudioShareSpy = vi.fn();
 const resumePlayback = vi.fn();
 const setSongVolume = vi.fn();
 const useAudioLevelsSpy = vi.fn<(stream: MediaStream | null) => number[]>(() => []);
 let mockSongVolume = 100;
 let mockIsCapturing = false;
-let mockShareErrorMessage: string | null = null;
 let mockIsPlaybackBlocked = false;
 let mockVisualizerStream: MediaStream | null = null;
 
@@ -117,14 +118,28 @@ vi.mock("@/hooks/use-group-realtime", () => ({
 
 vi.mock("@/hooks/use-song-mesh", () => ({
   useSongMesh: () => ({
-    shareSong,
     isCapturing: mockIsCapturing,
-    shareErrorMessage: mockShareErrorMessage,
     isPlaybackBlocked: mockIsPlaybackBlocked,
     resumePlayback,
     visualizerStream: mockVisualizerStream,
     isSignalConnected: true,
   }),
+}));
+
+vi.mock("@/hooks/use-session-audio-share", () => ({
+  useSessionAudioShare: (options: Record<string, unknown>) => {
+    useSessionAudioShareSpy(options);
+    return {
+      isCapturing: mockIsCapturing,
+      level: 0,
+      hasPassed: false,
+      isSilent: false,
+      shareErrorMessage: null,
+      shareErrorKind: null,
+      share: shareAudio,
+      changeSharedScreen,
+    };
+  },
 }));
 
 vi.mock("@/hooks/use-audio-levels", async (importOriginal) => {
@@ -224,7 +239,9 @@ describe("GameSessionPage", () => {
     previewPlacement.mockClear();
     submitGuess.mockClear();
     skipBetting.mockClear();
-    shareSong.mockClear();
+    shareAudio.mockClear();
+    changeSharedScreen.mockClear();
+    useSessionAudioShareSpy.mockClear();
     resumePlayback.mockClear();
     setSongVolume.mockClear();
     useAudioLevelsSpy.mockClear();
@@ -240,7 +257,6 @@ describe("GameSessionPage", () => {
     mockCurrentUserId = ACTIVE_USER_ID;
     mockSongVolume = 100;
     mockIsCapturing = false;
-    mockShareErrorMessage = null;
     mockIsPlaybackBlocked = false;
     mockVisualizerStream = null;
     window.sessionStorage.clear();
@@ -428,28 +444,44 @@ describe("GameSessionPage", () => {
     expect(screen.queryByText("Alex guessed the artist and the title")).toBeNull();
   });
 
-  it("asks the DJ to share audio before the YouTube link appears", async () => {
+  it("never asks the DJ to share on their turn, the share from the audio check is reused", async () => {
     mockCurrentUserId = DJ_USER_ID;
     await renderPage();
 
-    expect(screen.queryByRole("link", { name: "Open on YouTube to play" })).toBeNull();
     expect(screen.getByText("Levitating")).toBeVisible();
     expect(screen.getByText("You're the DJ")).toBeVisible();
     expect(screen.queryByPlaceholderText("Guess the artist")).toBeNull();
-    fireEvent.click(screen.getByRole("button", { name: "Share your audio first" }));
-
-    expect(shareSong).toHaveBeenCalledOnce();
+    expect(screen.queryByRole("button", { name: /Share your audio/ })).toBeNull();
+    expect(await screen.findByRole("link", { name: "Open on YouTube to play" })).toHaveAttribute("href", WATCH_URL);
   });
 
-  it("shows a failed audio share with a retry that shares again", async () => {
-    mockCurrentUserId = DJ_USER_ID;
-    mockShareErrorMessage = "No audio was shared.";
+  it("pauses the game for everyone and names the DJ whose share stopped", async () => {
+    mockSessionData = { ...MID_GAME_SESSION, pausedAt: "2026-10-30T12:00:00Z", audioRequiredPlayerIds: [7, 8, 9], pausedForPlayerIds: [8] } as MockGameSession;
+    mockCurrentUserId = SPECTATOR_USER_ID;
     await renderPage();
 
-    expect(screen.getByRole("alert")).toHaveTextContent("No audio was shared.");
-    fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+    const pause = screen.getByRole("dialog", { name: "Game paused" });
+    expect(pause).toHaveTextContent("Sam stopped sharing, waiting for them to share again");
+    expect(within(pause).queryByRole("button", { name: /Share your audio/ })).toBeNull();
+  });
 
-    expect(shareSong).toHaveBeenCalledOnce();
+  it("gives the player whose share stopped an inline re-share and re-test", async () => {
+    mockSessionData = { ...MID_GAME_SESSION, pausedAt: "2026-10-30T12:00:00Z", audioRequiredPlayerIds: [7, 8, 9], pausedForPlayerIds: [8] } as MockGameSession;
+    mockCurrentUserId = DJ_USER_ID;
+    await renderPage();
+
+    const pause = screen.getByRole("dialog", { name: "Share your audio again" });
+    fireEvent.click(within(pause).getByRole("button", { name: "Share your audio" }));
+
+    expect(shareAudio).toHaveBeenCalledOnce();
+    expect(useSessionAudioShareSpy).toHaveBeenLastCalledWith(expect.objectContaining({ isPausedForCurrentPlayer: true, isRequiredSharer: true }));
+  });
+
+  it("shows no pause while the game runs", async () => {
+    await renderPage();
+
+    expect(screen.queryByRole("dialog", { name: "Game paused" })).toBeNull();
+    expect(useSessionAudioShareSpy).toHaveBeenLastCalledWith(expect.objectContaining({ isPausedForCurrentPlayer: false }));
   });
 
   it("shows the DJ a real YouTube link that opens in a new tab once the audio is shared", async () => {

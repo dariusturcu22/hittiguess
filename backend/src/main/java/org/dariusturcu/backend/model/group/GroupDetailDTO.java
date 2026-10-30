@@ -16,5 +16,6 @@ public record GroupDetailDTO(
         List<PlaylistSummaryDTO> playlists,
         List<MemberDTO> members,
         Instant expiresAt,
-        org.dariusturcu.backend.difficulty.DifficultyTier difficultyTier) {
+        org.dariusturcu.backend.difficulty.DifficultyTier difficultyTier,
+        AudioCheckDTO audioCheck) {
 }

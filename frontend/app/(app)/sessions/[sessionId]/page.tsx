@@ -21,6 +21,8 @@ import { useAudioLevels } from "@/hooks/use-audio-levels";
 import { AudioShareWarning } from "@/components/audio-share-warning";
 import { useGroupRealtime } from "@/hooks/use-group-realtime";
 import { useSongMesh } from "@/hooks/use-song-mesh";
+import { useSessionAudioShare } from "@/hooks/use-session-audio-share";
+import { AudioPauseOverlay } from "@/components/audio-check/audio-pause-overlay";
 import { shouldSilenceDjForActivePlayer } from "@/hooks/use-voice-mesh";
 import { YOUTUBE_LINK_OUT_REL, YOUTUBE_LINK_OUT_TARGET, canShareSongAudio, youtubeLinkOutHref } from "@/lib/youtube-link-out";
 import { playLockInSound } from "@/lib/lock-in-sound";
@@ -273,6 +275,15 @@ export default function GameSessionPage({ params }: PageProps) {
     hasGroupMembership,
   });
   const audioLevels = useAudioLevels(songMesh.visualizerStream);
+  const pausedForPlayerIds = session?.pausedForPlayerIds ?? [];
+  const isPausedForCurrentPlayer = currentPlayer?.id !== undefined && pausedForPlayerIds.includes(currentPlayer.id);
+  const sessionAudioShare = useSessionAudioShare({
+    sessionId,
+    isRequiredSharer: currentPlayer?.id !== undefined && (session?.audioRequiredPlayerIds ?? []).includes(currentPlayer.id),
+    audioStatus: currentPlayer?.audioStatus,
+    isPausedForCurrentPlayer,
+    hasSessionEnded: hasEnded || isPlayerInSession === false,
+  });
 
   useEffect(() => {
     if (!screenElement) return;
@@ -724,23 +735,13 @@ export default function GameSessionPage({ params }: PageProps) {
     aboveTimeline = <div className="flex w-max max-w-full flex-col items-center gap-4 sm:flex-row sm:items-center sm:gap-8">
       <SongCard artist={linkOut?.artist} title={linkOut?.title} year={linkOut?.releaseYear} color={linkOut?.color} className="shadow-[6px_6px_0_var(--shadow-color)]" />
       <div className="flex max-w-[360px] flex-col items-center gap-3 text-center sm:items-start sm:text-left">
-        {isSharingTabAudioSupported && !songMesh.isCapturing
-          ? <>
-            <button type="button" onClick={() => { void songMesh.shareSong(); }} className="inline-flex items-center gap-2.5 rounded-full bg-primary px-6 py-3 font-display text-[13px] text-primary-foreground shadow-[3px_3px_0_var(--shadow-color)] transition-transform hover:-translate-y-0.5"><Volume2 className="size-4" />Share your audio first</button>
-            <p className="text-xs leading-relaxed text-muted-foreground">Choose Entire screen and turn on Share system audio. The group hears it only while you are the DJ.</p>
-            {songMesh.shareErrorMessage
-              ? <div role="alert" className="inline-flex items-center gap-2 rounded-full border-2 border-warning bg-warning/10 px-3.5 py-1.5 text-[11px] font-bold text-warning"><TriangleAlert className="size-3.5 shrink-0" /><span>{songMesh.shareErrorMessage}</span><button type="button" onClick={() => { void songMesh.shareSong(); }} className="rounded-full border border-warning px-2.5 py-0.5 font-semibold transition-colors hover:bg-warning/20">Try again</button></div>
-              : null}
-          </>
-          : <>
-            {watchUrl
-              ? <a href={youtubeLinkOutHref(watchUrl, navigator.userAgent)} target={YOUTUBE_LINK_OUT_TARGET} rel={YOUTUBE_LINK_OUT_REL} className="inline-flex items-center gap-[9px] rounded-full bg-primary p-[13px_24px] font-display text-[13px] text-primary-foreground shadow-[4px_4px_0_var(--shadow-color)] transition-transform hover:-translate-y-0.5">Open on YouTube to play<ExternalLink className="size-4" /></a>
-              : <span className="inline-flex items-center gap-[9px] rounded-full bg-primary p-[13px_24px] font-display text-[13px] text-primary-foreground opacity-55">Open on YouTube to play<ExternalLink className="size-4" /></span>}
-            <p className="text-xs leading-relaxed text-muted-foreground">Play it out loud. Everyone else finds out what it is when the card gets revealed.</p>
-            {songMesh.isCapturing
-              ? <div className="inline-flex items-center gap-2 rounded-full border-2 border-warning bg-warning/10 px-3.5 py-1.5 text-[11px] font-bold text-warning"><Volume2 className="size-3.5" />Sharing your audio with the group</div>
-              : <div className="inline-flex items-center gap-2 rounded-full border-2 border-warning bg-warning/10 px-3.5 py-1.5 text-[11px] font-bold text-warning"><TriangleAlert className="size-3.5" />Play it out loud for the room.</div>}
-          </>}
+        {watchUrl
+          ? <a href={youtubeLinkOutHref(watchUrl, navigator.userAgent)} target={YOUTUBE_LINK_OUT_TARGET} rel={YOUTUBE_LINK_OUT_REL} className="inline-flex items-center gap-[9px] rounded-full bg-primary p-[13px_24px] font-display text-[13px] text-primary-foreground shadow-[4px_4px_0_var(--shadow-color)] transition-transform hover:-translate-y-0.5">Open on YouTube to play<ExternalLink className="size-4" /></a>
+          : <span className="inline-flex items-center gap-[9px] rounded-full bg-primary p-[13px_24px] font-display text-[13px] text-primary-foreground opacity-55">Open on YouTube to play<ExternalLink className="size-4" /></span>}
+        <p className="text-xs leading-relaxed text-muted-foreground">Play it out loud. Everyone else finds out what it is when the card gets revealed.</p>
+        {songMesh.isCapturing
+          ? <div className="inline-flex items-center gap-2 rounded-full border-2 border-warning bg-warning/10 px-3.5 py-1.5 text-[11px] font-bold text-warning"><Volume2 className="size-3.5" />Sharing your audio with the group</div>
+          : <div className="inline-flex items-center gap-2 rounded-full border-2 border-warning bg-warning/10 px-3.5 py-1.5 text-[11px] font-bold text-warning"><TriangleAlert className="size-3.5" />Play it out loud for the room.</div>}
       </div>
     </div>;
   } else if (roundStatus === COUNTDOWN_STATUS) {
@@ -855,6 +856,11 @@ export default function GameSessionPage({ params }: PageProps) {
         <Check className="size-4 text-green" strokeWidth={3} />
       </div> : null}
       {songMesh.isPlaybackBlocked ? <button type="button" onClick={songMesh.resumePlayback} className="absolute left-0 top-0 z-30 inline-flex items-center gap-2 rounded-full border-2 border-primary bg-card px-4 py-2 text-xs font-semibold text-primary shadow-[3px_3px_0_var(--shadow-color)] transition-transform hover:-translate-y-0.5"><Volume2 className="size-3.5" />Click to enable sound</button> : null}
+      {session.pausedAt ? <AudioPauseOverlay
+        waitingForNames={players.filter((player) => player.id !== undefined && pausedForPlayerIds.includes(player.id)).map((player) => player.displayName ?? "A player")}
+        isWaitingForCurrentPlayer={isPausedForCurrentPlayer}
+        shareTest={sessionAudioShare}
+      /> : null}
       <section className="absolute inset-0 grid grid-cols-1 grid-rows-[1fr_auto_1fr] overflow-y-auto overflow-x-hidden px-1" aria-label="Game stage">
         <div className="relative z-30 flex min-w-0 flex-col items-center justify-end gap-3 pb-1">
           {aboveTimeline}

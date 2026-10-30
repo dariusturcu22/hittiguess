@@ -24,6 +24,7 @@ import type {
 } from '@tanstack/react-query';
 
 import type {
+  AudioCheckStatusRequest,
   GameSessionDTO,
   GuessStateDTO,
   RoundLinkOutDTO,
@@ -53,6 +54,71 @@ const withQueryKey = <T extends object, K>(query: T, queryKey: K): T & { queryKe
 };
 
 /**
+ * @summary Report the calling player's own audio share while the game runs, a required DJ without a working share pauses the game
+ */
+export const reportAudioStatus = (
+    sessionId: number,
+    audioCheckStatusRequest: AudioCheckStatusRequest,
+ options?: SecondParameter<typeof customInstance>,signal?: AbortSignal
+) => {
+
+
+      return customInstance<void>(
+      {url: `/api/sessions/${sessionId}/audio-status`, method: 'POST',
+      headers: {'Content-Type': 'application/json', },
+      data: audioCheckStatusRequest, signal
+    },
+      options);
+    }
+
+
+
+export const getReportAudioStatusMutationKey = () => ['reportAudioStatus'] as const;
+
+export const getReportAudioStatusMutationOptions = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof reportAudioStatus>>, TError,ReportAudioStatusMutationVariables, TContext>, request?: SecondParameter<typeof customInstance>}
+): UseMutationOptions<Awaited<ReturnType<typeof reportAudioStatus>>, TError,ReportAudioStatusMutationVariables, TContext> => {
+
+const mutationKey = getReportAudioStatusMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof reportAudioStatus>>, ReportAudioStatusMutationVariables> = (props) => {
+          const {sessionId,data} = props ?? {};
+
+          return  reportAudioStatus(sessionId,data,requestOptions)
+        }
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ReportAudioStatusMutationResult = NonNullable<Awaited<ReturnType<typeof reportAudioStatus>>>
+    export type ReportAudioStatusMutationBody = AudioCheckStatusRequest
+    export type ReportAudioStatusMutationError = unknown
+    export type ReportAudioStatusMutationVariables = {sessionId: number;data: AudioCheckStatusRequest}
+
+    /**
+ * @summary Report the calling player's own audio share while the game runs, a required DJ without a working share pauses the game
+ */
+export const useReportAudioStatus = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof reportAudioStatus>>, TError,ReportAudioStatusMutationVariables, TContext>, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof reportAudioStatus>>,
+        TError,
+        ReportAudioStatusMutationVariables,
+        TContext
+      > => {
+      return useMutation(getReportAudioStatusMutationOptions(options), queryClient);
+    }
+    /**
  * @summary Leave a running game session, the game continues without the calling player
  */
 export const leaveSession = (

@@ -15,5 +15,8 @@ public enum SessionEventType {
     ROUND_SCORED,
     NEXT_ROUND,
     PLAYER_LEFT,
+    AUDIO_STATUS_CHANGED,
+    SESSION_PAUSED,
+    SESSION_RESUMED,
     SESSION_ENDED
 }

@@ -2,10 +2,12 @@ package org.dariusturcu.backend.controller;
 
 import jakarta.validation.Valid;
 import org.dariusturcu.backend.model.group.AudioCapabilityRequest;
+import org.dariusturcu.backend.model.group.AudioCheckStatusRequest;
 import org.dariusturcu.backend.model.group.CreateGroupRequest;
 import org.dariusturcu.backend.model.group.GroupDetailDTO;
 import org.dariusturcu.backend.model.group.GroupInvitePreviewDTO;
 import org.dariusturcu.backend.model.group.JoinGroupRequest;
+import org.dariusturcu.backend.model.group.SwitchToFixedDjRequest;
 import org.dariusturcu.backend.model.group.UpdateGroupSettingsRequest;
 import org.dariusturcu.backend.model.session.GenerateDifficultySetRequest;
 import org.dariusturcu.backend.model.session.GeneratedSongPreviewDTO;
@@ -82,12 +84,42 @@ public class GroupController {
         return ResponseEntity.ok(group);
     }
 
-    @Operation(summary = "Start a game session, admin only, locks the group to new members")
+    @Operation(summary = "Open the pre-game audio check from the group's settings, admin only; the game starts from the check")
     @PostMapping("/{groupId}/start-session")
     public ResponseEntity<GroupDetailDTO> startGameSession(
             @PathVariable Long groupId) {
-        GroupDetailDTO group = groupService.startGameSession(groupId);
+        GroupDetailDTO group = gameSessionService.beginAudioCheck(groupId);
         return ResponseEntity.ok(group);
+    }
+
+    @Operation(summary = "Report the calling member's own audio share during the audio check")
+    @PostMapping("/{groupId}/audio-check/status")
+    public ResponseEntity<GroupDetailDTO> reportAudioCheckStatus(
+            @PathVariable Long groupId,
+            @Valid @RequestBody AudioCheckStatusRequest request) {
+        return ResponseEntity.ok(groupService.reportAudioCheckStatus(groupId, request.status()));
+    }
+
+    @Operation(summary = "Start the game once every required DJ's audio share passed, admin only, locks the group to new members")
+    @PostMapping("/{groupId}/audio-check/start")
+    public ResponseEntity<GroupDetailDTO> startGameAfterAudioCheck(
+            @PathVariable Long groupId) {
+        return ResponseEntity.ok(groupService.startGameAfterAudioCheck(groupId));
+    }
+
+    @Operation(summary = "Switch the game to a fixed DJ chosen among members whose audio share passed, admin only")
+    @PostMapping("/{groupId}/audio-check/fixed-dj")
+    public ResponseEntity<GroupDetailDTO> switchToFixedDj(
+            @PathVariable Long groupId,
+            @Valid @RequestBody SwitchToFixedDjRequest request) {
+        return ResponseEntity.ok(groupService.switchToFixedDj(groupId, request.memberId()));
+    }
+
+    @Operation(summary = "Cancel the audio check and return the group to its lobby, admin only")
+    @PostMapping("/{groupId}/audio-check/cancel")
+    public ResponseEntity<GroupDetailDTO> cancelAudioCheck(
+            @PathVariable Long groupId) {
+        return ResponseEntity.ok(gameSessionService.cancelAudioCheck(groupId));
     }
 
     @Operation(summary = "Generate a difficulty-tuned song set for review, admin only, starts nothing")
@@ -98,7 +130,7 @@ public class GroupController {
         return ResponseEntity.ok(gameSessionService.generateDifficultySet(groupId, request));
     }
 
-    @Operation(summary = "Start a game session from reviewed song ids, admin only, locks the group to new members")
+    @Operation(summary = "Open the audio check for a game from reviewed song ids, admin only")
     @PostMapping("/{groupId}/session/start-with-songs")
     public ResponseEntity<GroupDetailDTO> startSessionWithSongs(
             @PathVariable Long groupId,
@@ -106,7 +138,7 @@ public class GroupController {
         return ResponseEntity.ok(gameSessionService.startSessionWithSongs(groupId, request));
     }
 
-    @Operation(summary = "Start a game session from a playlist or pasted playlist link, admin only, locks the group to new members")
+    @Operation(summary = "Open the audio check for a game from a playlist or pasted playlist link, admin only")
     @PostMapping("/{groupId}/session/start-custom")
     public ResponseEntity<GroupDetailDTO> startCustomSession(
             @PathVariable Long groupId,

@@ -4,6 +4,7 @@
  * OpenAPI definition
  * OpenAPI spec version: v0
  */
+import type { AudioCheckDTO } from './audioCheckDTO';
 import type { GroupDetailDTODifficultyTier } from './groupDetailDTODifficultyTier';
 import type { GroupDetailDTODjMode } from './groupDetailDTODjMode';
 import type { GroupDetailDTOStatus } from './groupDetailDTOStatus';
@@ -22,4 +23,5 @@ export interface GroupDetailDTO {
   members?: MemberDTO[];
   expiresAt?: string;
   difficultyTier?: GroupDetailDTODifficultyTier;
+  audioCheck?: AudioCheckDTO;
 }

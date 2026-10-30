@@ -68,6 +68,10 @@ public class GameSession {
     // GameSessionService's round-rotation helpers and DECISIONS.md.
     private Long fixedDjPlayerId;
 
+    // Set while the game waits for a DJ's audio share to pass the test again. Round timers
+    // do nothing while it is set and restart with fresh deadlines when it clears.
+    private Instant pausedAt;
+
     // Remaining song ids for future rounds, in play order, popped from the front as each
     // round starts. Populated once at session start from the group's playlists, after the
     // starting anchor cards are handed out; never replenished.

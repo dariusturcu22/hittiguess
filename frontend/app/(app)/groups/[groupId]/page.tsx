@@ -37,6 +37,9 @@ import { playlistTitleColor } from "@/lib/playlist-colors";
 import { GroupChatOverlay } from "@/components/group-chat-overlay";
 import { AudioShareWarning, useBrowserCanShareAudio } from "@/components/audio-share-warning";
 import { GameStage } from "@/components/gameplay/game-stage";
+import { AudioCheckRoute } from "@/components/audio-check/audio-check-route";
+import { AUDIO_CHECK_GROUP_STATUS } from "@/lib/audio-check";
+import { stopSongCapture } from "@/lib/song-capture";
 import { PlaylistCoverMosaic } from "@/components/playlist-cover-mosaic";
 import {
   AlertDialog,
@@ -271,7 +274,19 @@ function PlaylistPreselectCapture({ onCapture }: { onCapture: (playlistId: numbe
   return null;
 }
 
+// The audio check replaces the lobby while it runs and lays itself out for any screen
+// size instead of the scaled lobby stage. A group back in its lobby holds no share, so a
+// share left over from a cancelled check is stopped.
 export default function GroupLobbyPage({ params }: PageProps) {
+  const { groupId: groupIdParam } = use(params);
+  const groupId = Number(groupIdParam);
+  const hasValidGroupId = Number.isInteger(groupId) && groupId > 0;
+  const groupQuery = useGetGroup(groupId, { query: { retry: false, enabled: hasValidGroupId } });
+  const groupStatus = groupQuery.data?.status;
+  useEffect(() => {
+    if (groupStatus === "OPEN") stopSongCapture();
+  }, [groupStatus]);
+  if (groupStatus === AUDIO_CHECK_GROUP_STATUS) return <AudioCheckRoute groupId={groupId} />;
   return <GameStage>
     <GroupLobbyScreen params={params} />
   </GameStage>;
