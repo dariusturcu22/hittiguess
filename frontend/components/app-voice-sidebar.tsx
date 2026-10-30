@@ -9,7 +9,7 @@ import { useGetCurrentUser } from "@/hooks/generated/user-management/user-manage
 import { useVoiceMesh } from "@/hooks/use-voice-mesh";
 import { useAudioDevices } from "@/hooks/use-audio-devices";
 import { Button } from "@/components/shadcn/button";
-import { canShareTabAudio } from "@/lib/youtube-link-out";
+import { canShareSongAudio } from "@/lib/youtube-link-out";
 import { VoiceSettingsPopup } from "@/components/voice-settings-popup";
 import { VoiceMemberList } from "@/components/voice-member-list";
 
@@ -42,7 +42,7 @@ export function AppVoiceSidebar() {
   useEffect(() => {
     if (groupId === undefined || !currentUserQuery.data || reportedGroupReference.current === groupId) return;
     reportedGroupReference.current = groupId;
-    reportAudioCapability({ groupId, data: { canShareAudio: canShareTabAudio(navigator.userAgent) } });
+    reportAudioCapability({ groupId, data: { canShareAudio: canShareSongAudio(navigator.userAgent, navigator.maxTouchPoints) } });
   }, [currentUserQuery.data, groupId, reportAudioCapability]);
   const voiceMembers = (activeGroup?.members ?? []).filter((member) => member.isInVoice);
   const refreshVoicePresence = useCallback(() => {
