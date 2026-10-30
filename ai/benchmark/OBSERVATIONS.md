@@ -25,8 +25,9 @@ NEEDS_REVIEW instead of VERIFIED. These numbers replay the lock only; reconcilia
 
 ## The 4 wrong years
 
-No Face No Name No Number (2000, the catalog video is the re-recording), Feel Good (2016), and Limitless (2017)
-were labelling mistakes; the sources were right and the labels are corrected.
+The four songs below get a wrong year. No Face No Name No Number (2000, the catalog video is the
+re-recording), Feel Good (2016), and Limitless (2017) were wrong only because of labelling mistakes; the
+sources were right and the labels are corrected.
 
 Two against two, the rule takes the earlier year:
 - What Is Love (Haddaway): MusicBrainz and Wikidata 1992, Discogs and Wikipedia 1993. Labelled 1993.
@@ -35,8 +36,12 @@ Two against two, the rule takes the earlier year:
   are wrong, otherwise the tie needs a tie-breaker. Tried on 2026-10-30: letting Wikipedia's side win a
   two-against-two tie fixes these two but breaks Hey Mama and Last Friday Night, where the earlier side is the
   album and Wikipedia states the later single (293 correct either way). Keeping the earlier year when an album
-  that contains the song backs it gives 294 but breaks Need You Now. With four ties in 308 songs every variant
-  trades one right answer for another, so the rule is unchanged and ties are left to the admin drawer.
+  that contains the song backs it gives 294, one more than production; which song it lost was not recorded.
+  The rule is unchanged and ties are left to the admin drawer.
+
+Two sources agree on a later year:
+- Need You Now (Lady Antebellum): MusicBrainz and Discogs 2010, Wikipedia 2009, Wikidata nothing. Labelled
+  2009, the single's year. Two matching sources lock 2010 before Wikipedia's earlier year is weighed.
 
 Remix treated as the original:
 - Macarena (Bayside Boys Remix): Discogs and Wikipedia matched the original 1993 Macarena; MusicBrainz and
