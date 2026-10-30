@@ -9,7 +9,8 @@ import { SongCard } from "./game-pieces";
 
 const TIMELINE_EDGE_FADE = "linear-gradient(90deg, transparent, #000 64px, #000 calc(100% - 64px), transparent)";
 const SCROLL_STEP_CARDS = 3;
-const CARD_STEP_PIXELS = 186;
+const FALLBACK_CARD_STEP_PIXELS = 186;
+const TIMELINE_CARD_GAP_PIXELS = 18;
 const SCROLL_EDGE_TOLERANCE_PIXELS = 2;
 
 export const TIMELINE_CARD_SELECTOR = "[data-timeline-card]";
@@ -56,10 +57,14 @@ export function GameplayTimeline({ cards, slots, tiltGapIndex = null, focusKey =
   }, [focusKey, trackReference]);
 
   function scrollByCards(direction: number) {
-    trackReference.current?.scrollBy({ left: direction * SCROLL_STEP_CARDS * CARD_STEP_PIXELS, behavior: "smooth" });
+    const track = trackReference.current;
+    if (!track) return;
+    const cardWidth = track.querySelector<HTMLElement>(TIMELINE_CARD_SELECTOR)?.offsetWidth;
+    const cardStepPixels = cardWidth ? cardWidth + TIMELINE_CARD_GAP_PIXELS : FALLBACK_CARD_STEP_PIXELS;
+    track.scrollBy({ left: direction * SCROLL_STEP_CARDS * cardStepPixels, behavior: "smooth" });
   }
 
-  return <div className="relative w-full max-w-[1100px]">
+  return <div className="relative w-full max-w-[1500px]">
     <div ref={trackReference} data-timeline-track="" onScroll={updateScrollState} className="w-full overflow-x-auto overflow-y-hidden [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" style={{ maskImage: TIMELINE_EDGE_FADE, WebkitMaskImage: TIMELINE_EDGE_FADE }}>
       <div className={`mx-auto flex w-max items-center gap-[18px] px-16 py-6 transition-[filter,opacity] duration-300 ${isDimmed ? "opacity-60 saturate-[0.55]" : ""}`}>
         {timelineEntries(cards).map((entry) => {
