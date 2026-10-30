@@ -12,7 +12,7 @@ Friend groups. The game is built around playing with people you know, not with s
 
 ## Open source, not a business
 
-This isn't a product for sale, and there's no monetization plan, not now, not later. Built for friends and family, not to compete for users or ad revenue. Reaching the ~100-200 user scale of that group is a complete win, not a disappointing ceiling.
+This isn't a product for sale, and there's no monetization plan, not now, not later. Built for friends and family, not to compete for users or ad revenue. Reaching the ~100-200 user scale of that group is a complete win, not a disappointing ceiling. The owner is also planning a public announcement, so the app is held to the standard of a public product (legal pages, security review, monitoring) while staying free, open source, and without ads or trackers.
 
 No ads, no third-party trackers, no selling user data, ever. First-party analytics (see stories 33 and 34 in `PROJECT_STATE.md`) are fine and wanted, they're for improving the product for the people actually playing it, not for anyone else's benefit.
 
@@ -41,7 +41,7 @@ A working multiplayer game where:
 
 ## Built to a professional standard, not just a working one
 
-Every external dependency uses official APIs and respects licenses. The product includes privacy and terms pages, GDPR controls, and production-focused observability through stories 37 and 38. Deployment monitoring remains open until a production deployment exists.
+Every external dependency uses official APIs and respects licenses. The product includes privacy and terms pages, GDPR controls, and production-focused observability through stories 37 and 38. The production deployment is live; the privacy and terms pages, the GDPR account controls in the interface, and monitoring alerts are release tasks (story 56 in `PROJECT_STATE.md`) that the public launch waits on.
 
 ## Groups are the lobby, game sessions are the round
 
