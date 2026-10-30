@@ -192,6 +192,34 @@ Tests:
 - [x] AI service tests for the lock rules against recorded source responses: `tests/metadata/test_year_benchmark.py` replays `ai/benchmark/songs.csv` offline
 - [ ] Playwright screenshots of the lobby and each round phase at 1366x768, 1440x900, and 1920x1080 compared side by side with the design artboards
 
+## Story 52: Audio check before the game
+
+Pressing Start game in the lobby opens an audio check shown to every member instead of starting the game. Every required DJ shares their audio once, passes a sound test, and keeps the share running for the whole game. The design is `AudioCheckDark.dc.html` and `AudioCheckLight.dc.html` (PR 355).
+
+Backend:
+
+- [ ] Group phase `AUDIO_CHECK` between the lobby and the game: Start game enters it, members can still join or leave, settings stay locked, and a per-member audio status (`NOT_SHARED`, `TESTING`, `OK`, `FAILED`, with `CANNOT_SHARE` derived from the browser capability) is reset on entry
+- [ ] Requirement rules: rotating needs every connected member to pass, fixed needs only the chosen DJ, a member whose browser cannot share blocks a rotating start, and nobody able to share blocks every start
+- [ ] Endpoints to report a member's status, start the game after a server-side check of the requirement, switch to a fixed DJ chosen among members who passed, and cancel back to the lobby; each change is broadcast to the group
+- [ ] Per-player audio status in the session: a required DJ whose share stops pauses the game for everyone, round timers stop while paused and restart with fresh deadlines on resume, and placement and betting are refused while paused
+- [ ] A fixed DJ who leaves hands the role to a player who can share, preferring one whose share already passed, and the game waits for that player's share; a rotating player who leaves drops out of the requirement
+- [ ] Flyway migration for the member and player audio status and the session pause time
+- [ ] Unit tests: the requirement rules, entering, reporting, switching, cancelling and starting the check, and pausing and resuming a running session, including a leaving DJ
+
+Frontend:
+
+- [ ] Audio check screen in the lobby route for all six designed states: host list, own card before sharing, own card testing, fixed DJ waiting, everyone ready, nobody can share
+- [ ] Audio test: an analyser on the shared track passes once the level stays above a threshold for half a second; a share with no audio track fails at once
+- [ ] DJ turns reuse the share from the check instead of asking each turn; the song mesh keeps its peer connections and swaps the long-lived track in only during that player's DJ turns
+- [ ] Paused game banner naming the player whose share stopped, with an inline re-share and re-test for that player
+- [ ] API client updated for the new endpoints and fields
+- [ ] Vitest: the screen states, the audio test threshold and duration with a mocked analyser, and the paused banner
+- [ ] Visual check of every state at 1440x900 and 375x812 in both themes against the mockup
+
+Docs:
+
+- [ ] GAME_DESIGN, SYSTEM_REFERENCE, ARCHITECTURE, and a DECISIONS entry
+
 ## Rotating DJ report
 
 A two-player production game reported as rotating kept the owner as DJ every turn. With two players a rotating session swaps the active player and the DJ every turn, so a DJ who never changes and never takes a turn means the session ran in fixed mode. Every new group starts in fixed mode with the first member as DJ, and the lobby showed the mode only inside the settings popup.
