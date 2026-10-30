@@ -2,6 +2,7 @@ package org.dariusturcu.backend.repository;
 
 import org.dariusturcu.backend.model.song.CatalogSongStatus;
 import org.dariusturcu.backend.model.song.PendingImportOrigin;
+import org.dariusturcu.backend.model.song.RecheckCandidateDTO;
 import org.flywaydb.core.Flyway;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
@@ -70,6 +71,7 @@ class AdminSongCatalogRepositoryIntegrationTest {
 
     @BeforeEach
     void seedCatalog() {
+        jdbcTemplate.execute("TRUNCATE game_session_song_queue, game_sessions, groups RESTART IDENTITY CASCADE");
         jdbcTemplate.execute("TRUNCATE pipeline_runs, song_embedding_queue, songs, song_artists, pending_imports, users RESTART IDENTITY CASCADE");
         long maraId = insertUser("mara.k");
         long lenaId = insertUser("lena88");
@@ -331,6 +333,42 @@ class AdminSongCatalogRepositoryIntegrationTest {
         assertThat(titlesOrIds(rows)).containsExactly(ZI_MI);
         assertThat(rows.getFirst().proposedReleaseYear()).isEqualTo(2014);
         assertThat(repository.countProposed(null)).isEqualTo(1);
+    }
+
+    @Test
+    void recheckCandidatesListSongsByLastPipelineFinishFallingBackToWhenTheyWereAdded() {
+        jdbcTemplate.update("UPDATE pipeline_runs SET finished_at = ? WHERE youtube_id = ?",
+                OffsetDateTime.parse("2026-11-02T10:00:00Z"), "dragostea-id");
+        jdbcTemplate.update("""
+                INSERT INTO groups (invite_code, join_code, status, dj_mode, win_condition_card_count, created_at)
+                VALUES ('invite', 'ABCD', 'IN_GAME', 'ROTATING', 10, now())
+                """);
+        Long groupId = jdbcTemplate.queryForObject("SELECT id FROM groups", Long.class);
+        jdbcTemplate.update("""
+                INSERT INTO game_sessions (group_id, status, dj_mode, win_condition_card_count, current_round_number, created_at)
+                VALUES (?, 'ACTIVE', 'ROTATING', 10, 1, now())
+                """, groupId);
+        Long sessionId = jdbcTemplate.queryForObject("SELECT id FROM game_sessions", Long.class);
+        jdbcTemplate.update("""
+                INSERT INTO game_session_song_queue (session_id, queue_position, song_id)
+                SELECT ?, 0, id FROM songs WHERE title = ?
+                """, sessionId, BARBIE_GIRL);
+
+        List<RecheckCandidateDTO> candidates = repository.findRecheckCandidates();
+
+        assertThat(candidates).extracting(RecheckCandidateDTO::title).containsExactly(DRAGOSTEA, BARBIE_GIRL, ZI_MI,
+                SA_NU_MI, TAKE_FIVE, UNKNOWN_ORIGIN);
+        RecheckCandidateDTO dragostea = candidates.getFirst();
+        assertThat(dragostea.lastCheckedAt()).isEqualTo(Instant.parse("2026-11-02T10:00:00Z"));
+        assertThat(dragostea.artists()).containsExactly("O-Zone");
+        assertThat(dragostea.releaseYear()).isEqualTo(2003);
+        assertThat(dragostea.inActiveGame()).isFalse();
+        RecheckCandidateDTO barbie = candidates.get(1);
+        assertThat(barbie.lastCheckedAt()).isEqualTo(Instant.parse("2026-10-16T10:00:00Z"));
+        assertThat(barbie.inActiveGame()).isTrue();
+        RecheckCandidateDTO unknownOrigin = candidates.getLast();
+        assertThat(unknownOrigin.releaseYear()).isNull();
+        assertThat(unknownOrigin.lastCheckedAt()).isNull();
     }
 
     @Test

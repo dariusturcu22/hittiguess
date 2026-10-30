@@ -2,6 +2,8 @@ package org.dariusturcu.backend.repository;
 
 import org.dariusturcu.backend.model.song.CatalogSongStatus;
 import org.dariusturcu.backend.model.song.PendingImportOrigin;
+import org.dariusturcu.backend.model.song.RecheckCandidateDTO;
+import org.dariusturcu.backend.model.song.VerificationStatus;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.dariusturcu.backend.pipeline.PipelineJobFailures;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -178,6 +180,35 @@ public class AdminSongCatalogRepository {
                         THEN 'PROCESSING' ELSE 'PENDING' END AS status
              FROM pipeline_runs run WHERE run.status <> 'CANCELLED')
             """;
+
+    private static final String RECHECK_CANDIDATES_QUERY = """
+            SELECT song.id, song.title, NULLIF(song.release_year, 0) AS release_year, song.verification_status,
+                (EXISTS (SELECT FROM rounds WHERE rounds.song_id = song.id)
+                    OR EXISTS (SELECT FROM player_cards WHERE player_cards.song_id = song.id)
+                    OR EXISTS (SELECT FROM game_session_song_queue queue WHERE queue.song_id = song.id)) AS in_active_game,
+                COALESCE((SELECT max(run.finished_at) FROM pipeline_runs run
+                    WHERE run.youtube_id = song.youtube_id AND run.status = 'DONE'), song.created_at) AS last_checked_at,
+                ARRAY(SELECT artist.name FROM song_artists artist
+                    WHERE artist.song_id = song.id ORDER BY artist.display_order) AS artist_names
+            FROM songs song
+            WHERE song.youtube_id IS NOT NULL AND song.youtube_id <> ''
+            ORDER BY last_checked_at DESC NULLS LAST, song.id DESC
+            """;
+
+    /** Every song with a YouTube ID, newest last check first, for choosing songs to recheck. */
+    public List<RecheckCandidateDTO> findRecheckCandidates() {
+        return core.query(RECHECK_CANDIDATES_QUERY, (resultSet, rowNumber) -> {
+            OffsetDateTime lastCheckedAt = resultSet.getObject("last_checked_at", OffsetDateTime.class);
+            return new RecheckCandidateDTO(
+                    resultSet.getLong("id"),
+                    resultSet.getString("title"),
+                    artistNames(resultSet.getArray("artist_names")),
+                    resultSet.getObject("release_year", Integer.class),
+                    VerificationStatus.valueOf(resultSet.getString("verification_status")),
+                    resultSet.getBoolean("in_active_game"),
+                    lastCheckedAt == null ? null : lastCheckedAt.toInstant());
+        });
+    }
 
     public AdminSongCatalogRepository(@Qualifier("coreJdbcTemplate") JdbcTemplate core) {
         this.core = core;

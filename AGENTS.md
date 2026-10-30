@@ -60,7 +60,7 @@ This applies everywhere: every markdown file in this repo, chat responses to the
 - PRs are reviewed on GitHub by the project owner, never merged automatically. Merge only when explicitly told to for a named PR. When merging, use a regular merge, never squash, so the individual commits survive. GitHub auto-deletes the remote branch on merge. Immediately after merging, delete the local copy of the branch.
 - Never include a `Co-Authored-By` trailer or any AI-attribution footer on commits or pull requests.
 - Commit granularly. Each commit represents one coherent change, not a batch of unrelated changes.
-- When working through a batch of stories (see `docs/ROADMAP.md`'s batch plan), open a pull request per batch as each one is finished; several may be open for review at once. Each batch still gets its own branch off `main` and its own PR. The project owner reviews and merges them asynchronously, on their own schedule, and a batch's PR being open does not block starting or opening the next. Keep each batch's branch cut from the current `main` and sync `main` into it before opening its PR, so each PR's diff stays scoped to that batch's own change.
+- When working through several tasks or stories (see the order in `docs/ROADMAP.md`), open a pull request per batch as each one is finished; several may be open for review at once. Each batch still gets its own branch off `main` and its own PR. The project owner reviews and merges them asynchronously, on their own schedule, and a batch's PR being open does not block starting or opening the next. Keep each batch's branch cut from the current `main` and sync `main` into it before opening its PR, so each PR's diff stays scoped to that batch's own change.
 
 ## Task gate
 
@@ -76,9 +76,18 @@ Any multi-step or batched piece of work, whatever kind of branch it lands on, ge
 
 Every task breakdown in `TASKS.md` must include explicit test tasks alongside the feature tasks: unit tests for new services or functions, integration tests for new endpoints, and any test infrastructure a story is the first to need. A story isn't done when the feature code works, it's done when its own tests exist and pass too. This isn't deferred to story 22 (test coverage). That story backfills tests for code that predates this rule; every story from here on carries its own.
 
-## Active task queue
+## Picking and finishing a task
 
-When `opencode-tasks/PROGRESS.md` exists, read it before any other work, and again after every restart or context compaction. It names the task brief in `opencode-tasks/` that is in progress and the step reached. Reread that brief and `opencode-tasks/README.md` before continuing, never continue from memory of earlier steps, and update `PROGRESS.md` after every finished step, committed with that step's work.
+When told to implement the next task, or given no task at all, take the first unticked `- [ ]` item in `docs/TASKS.md`, reading top to bottom. Skip every item that starts with `Owner:`, every section whose heading starts with `In progress` (another session owns that branch), and any item whose `Depends on:` line names work that is still unticked. Sub-bullets belong to their parent task. If the task text is not enough to do the work alone, fix the text in `TASKS.md` first, then do the work.
+
+To finish a task:
+
+1. Tick its box in `docs/TASKS.md` in the same pull request as the code, with the tests the task lists.
+2. Update every doc the change touches in that same pull request: `docs/GAME_DESIGN.md` for rules, `docs/ARCHITECTURE.md` and `docs/SYSTEM_REFERENCE.md` for structure and API contracts, `docs/FRONTEND_CONTENT.md` and `docs/FRONTEND_IMPLEMENTATION_GUIDE.md` for screens, `docs/DEV_SETUP.md` for commands, `docs/PROJECT_STATE.md` for story status, and `docs/ROADMAP.md` when the order or the release milestone moves. A doc that describes something the code no longer does is a bug.
+3. Append any new decision to `docs/DECISIONS.md`.
+4. Run `python scripts/archive_completed_tasks.py` (see Task archiving) before opening the pull request.
+
+Release work (the `Release 1` to `Release 6` sections of `docs/TASKS.md`) follows the same rules. Legal texts in `docs/legal` state facts about what the app does and never invent legal terms; the owner decides and approves wording.
 
 ## Documentation
 
@@ -87,6 +96,7 @@ When `opencode-tasks/PROGRESS.md` exists, read it before any other work, and aga
 - Technical blueprint: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
 - Stories and their status: [docs/PROJECT_STATE.md](docs/PROJECT_STATE.md)
 - What to actually work on: [docs/TASKS.md](docs/TASKS.md)
+- Privacy policy and terms of service drafts, published as pages by the release tasks: [docs/legal](docs/legal)
 - Decision history and reasoning: [docs/DECISIONS.md](docs/DECISIONS.md), append-only, never edit or delete past entries
 - Completed stories: [docs/ARCHIVE.md](docs/ARCHIVE.md)
 - Sequential implementation order for remaining stories: [docs/ROADMAP.md](docs/ROADMAP.md)

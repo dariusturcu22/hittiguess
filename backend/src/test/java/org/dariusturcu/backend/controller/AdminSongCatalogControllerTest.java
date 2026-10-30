@@ -5,6 +5,7 @@ import org.dariusturcu.backend.model.song.AdminSongDetailDTO;
 import org.dariusturcu.backend.model.song.CatalogAddedByKind;
 import org.dariusturcu.backend.model.song.CatalogPipeline;
 import org.dariusturcu.backend.model.song.CatalogSongStatus;
+import org.dariusturcu.backend.model.song.RecheckCandidateDTO;
 import org.dariusturcu.backend.model.song.VerificationStatus;
 import org.dariusturcu.backend.model.user.Role;
 import org.dariusturcu.backend.model.user.User;
@@ -51,6 +52,7 @@ class AdminSongCatalogControllerTest {
 
     private static final String CATALOG_PATH = "/api/admin/songs";
     private static final String DETAIL_PATH = "/api/admin/songs/{songId}";
+    private static final String RECHECK_CANDIDATES_PATH = "/api/admin/songs/recheck-candidates";
     private static final long SONG_ID = 12;
     private static final String YOUTUBE_ID = "dQw4w9WgXcQ";
 
@@ -116,6 +118,29 @@ class AdminSongCatalogControllerTest {
                 .andExpect(jsonPath("$.sourceFindings").doesNotExist())
                 .andExpect(jsonPath("$.reviewReason").doesNotExist())
                 .andExpect(jsonPath("$.openReportCount").value(2));
+    }
+
+    @Test
+    void anAdminGetsTheRecheckCandidates() throws Exception {
+        authenticateWithRole(Role.ADMIN);
+        when(catalogRepository.findRecheckCandidates()).thenReturn(List.of(new RecheckCandidateDTO(SONG_ID, "Zi-mi",
+                List.of("Loredana"), 2019, VerificationStatus.NEEDS_REVIEW, true, Instant.parse("2026-10-15T09:14:00Z"))));
+
+        mockMvc.perform(get(RECHECK_CANDIDATES_PATH))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].songId").value(SONG_ID))
+                .andExpect(jsonPath("$[0].artists[0]").value("Loredana"))
+                .andExpect(jsonPath("$[0].verificationStatus").value(VerificationStatus.NEEDS_REVIEW.name()))
+                .andExpect(jsonPath("$[0].inActiveGame").value(true));
+    }
+
+    @Test
+    void aNormalUserIsForbiddenFromTheRecheckCandidates() throws Exception {
+        authenticateWithRole(Role.USER);
+
+        mockMvc.perform(get(RECHECK_CANDIDATES_PATH)).andExpect(status().isForbidden());
+
+        verify(catalogRepository, never()).findRecheckCandidates();
     }
 
     @Test

@@ -1437,6 +1437,14 @@ Why: 65 songs were too few to show how the lock behaves on the songs the product
 
 ---
 
+## 2026-10-30 | The public launch is gated by an ordered release task list
+
+Decision: the owner plans a public announcement (marketing and a LinkedIn post), so `TASKS.md` carries six ordered Release sections (legal and compliance, site basics, security audit, reliability and operations, product polish, launch) as story 56. The launch is reached when every task up to the end of Release 6 is ticked or waived by the owner in this log. Tasks that need an owner decision, an external account, or a manual step start with `Owner:` and are skipped by agents picking the next task. Sections for work on an unmerged branch are headed `In progress` and are skipped too. The decisions that unblock the most work are the legal basics (data controller, contact mailbox on the project's own domain, minimum age), the mobile scope for launch, and whether relaying the DJ's captured YouTube playback is acceptable under YouTube's terms.
+
+Why: the closed-beta gate was removed on 2026-10-16, so access was already open, but the legal drafts predate voice, chat, game history, error reporting, and the LLM providers, the interface has no account settings, no policy pages, no 404 or sharing metadata, and the security and operations reviews have not been done. A public announcement sends strangers to the product, which raises the bar from a playtest group to a public service. Writing the work as ordered, self-contained tasks lets any coding agent take the next one without asking.
+
+---
+
 ## 2026-10-30 | Every DJ shares once on an audio check before the game
 
 Decision: Start game in the lobby opens an audio check instead of the game. The check is a group status, `AUDIO_CHECK`, between `OPEN` and `LOCKED`, so members can still join and leave and the requirement follows them live; the session and its players are created only when the host starts the game from the check. A rotating game needs every connected member to share and pass the test, a fixed game only its DJ, and nobody able to share blocks every start. The host can switch to a fixed DJ chosen among members whose share passed. The server checks the requirement on start. The test passes once the shared track's level stays above about -40 dBFS for half a second; a share without an audio track fails at once.
