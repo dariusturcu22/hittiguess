@@ -1,16 +1,18 @@
 # Terms of Service
 
-Last updated: 2026-09-12
+Last updated: 2026-10-30
+
+Status: draft, not yet published as a page. The release tasks in `docs/TASKS.md` (Release 1) finish and publish it after the project owner decides the controller, contact address, minimum age, and governing law.
 
 These terms cover use of hittiguess, a multiplayer music guessing game. Using the app means agreeing to them.
 
 ## The service
 
-hittiguess lets players hear a song, guess when it was released, and place it on a shared timeline, either in person or online. Playback always happens on the real YouTube page or app; hittiguess never plays audio through a hidden or embedded player, and never uses an unofficial or reverse-engineered API for YouTube or any other external service.
+hittiguess lets players hear a song, guess when it was released, and place it on a shared timeline, either in person or online. Playback always happens on the real YouTube page or app; hittiguess never plays audio through a hidden or embedded player, and never uses an unofficial or reverse-engineered API for YouTube or any other external service. In online games the DJ shares the sound of their own screen, including the YouTube playback, with the other players of the group through the browser. Whether that is permitted for a public service is an open owner decision in `docs/TASKS.md` (Release 1).
 
 ## Accounts
 
-An account can be created directly or through a supported OAuth provider. Account holders are responsible for keeping their own credentials secure and for activity that happens under their account. An account can be deleted at any time from account settings; see the Privacy Policy for exactly what happens to a submitted song's attribution and to shared playlists when that happens.
+An account can be created directly or through a supported OAuth provider. Account holders are responsible for keeping their own credentials secure and for activity that happens under their account. An account can be deleted at any time (the account deletion endpoint exists and the settings page for it is still to be built); see the Privacy Policy for exactly what happens to a submitted song's attribution and to shared playlists when that happens.
 
 ## Content submitted by users
 
