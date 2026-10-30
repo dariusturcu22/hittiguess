@@ -269,7 +269,7 @@ def run_reconciliation_stage(
             "Locked without Wikipedia extraction or year reconciliation."
         ),
         VerificationRoute.LOCKED_WITH_WIKIPEDIA: (
-            f"At least three source years agree on {release_year} after Wikipedia extraction. "
+            f"At least two sources support the earliest year {release_year} after Wikipedia extraction. "
             "Locked with no four-source reconciliation call."
         ),
         VerificationRoute.LLM_RECONCILED: (

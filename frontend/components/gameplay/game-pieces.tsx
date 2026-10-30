@@ -2,6 +2,7 @@ import { useEffect, useRef, type CSSProperties, type KeyboardEvent, type Pointer
 
 import { SILENCE_FLOOR_LEVEL } from "@/hooks/use-audio-levels";
 import { readableCardColor } from "@/lib/card-color";
+import { FitText } from "./fit-text";
 
 const CARD_TEXT_COLOR = "#1e1e2e";
 const DEFAULT_CARD_COLOR = "#cba6f7";
@@ -21,7 +22,11 @@ const TOKEN_PILE_MAXIMUM_COINS = 4;
 const TOKEN_PILE_COIN_OFFSET_PIXELS = 8;
 const TOKEN_PILE_COIN_ROTATIONS = [7, -9, 4, -5];
 
-export const CARD_SIZE_CLASSES = "size-[168px]";
+export const CARD_SIZE_VARIABLE = "--card-size";
+const CARD_SIZE_VALUE = "var(--card-size,168px)";
+const YEAR_FONT_SIZE_RATIO = 0.22;
+export const CARD_SIZE_CLASSES = "size-[var(--card-size,168px)]";
+const SMALL_CARD_SIZE_CLASSES = "size-[calc(var(--card-size,168px)*0.76)]";
 
 function cardColor(color: string | undefined): string {
   if (!color) return DEFAULT_CARD_COLOR;
@@ -70,10 +75,10 @@ function drawSoundBars(canvas: HTMLCanvasElement | null, levels: number[]): void
 }
 
 export function SongCard({ artist, title, year, color, className = "", style }: { artist?: string; title?: string; year?: number | string; color?: string; className?: string; style?: CSSProperties }) {
-  return <article style={{ background: cardColor(color), color: CARD_TEXT_COLOR, ...style }} className={`flex shrink-0 flex-col items-center justify-center gap-1.5 rounded-[22px] border-[5px] border-background p-3.5 text-center ${CARD_SIZE_CLASSES} ${className}`}>
-    <span className="line-clamp-2 text-xs font-bold uppercase">{artist || "Unknown artist"}</span>
-    <strong className="font-display text-[40px] leading-none">{year ?? "?"}</strong>
-    <span className="line-clamp-2 text-[11px] font-medium opacity-80">{title || "Untitled"}</span>
+  return <article style={{ background: cardColor(color), color: CARD_TEXT_COLOR, ...style }} className={`grid shrink-0 grid-rows-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-[3%] rounded-[22px] border-[5px] border-background px-[7%] py-[6%] text-center ${CARD_SIZE_CLASSES} ${className}`}>
+    <FitText text={artist || "Unknown artist"} className="items-end font-bold uppercase" />
+    <strong className="font-display leading-none" style={{ fontSize: `calc(${CARD_SIZE_VALUE}*${YEAR_FONT_SIZE_RATIO})` }}>{year ?? "?"}</strong>
+    <FitText text={title || "Untitled"} className="items-start font-medium opacity-80" />
   </article>;
 }
 
@@ -115,7 +120,7 @@ interface MysteryCardProps {
 }
 
 export function MysteryCard({ levels, size = "timeline", label, isInteractive = false, className = "", onPointerDown, onKeyDown }: MysteryCardProps) {
-  const sizeClasses = size === "small" ? "size-[128px] rounded-[20px]" : `${CARD_SIZE_CLASSES} rounded-[22px]`;
+  const sizeClasses = size === "small" ? `${SMALL_CARD_SIZE_CLASSES} rounded-[20px]` : `${CARD_SIZE_CLASSES} rounded-[22px]`;
   const content = <SoundBars levels={levels} widthClassName={size === "small" ? "w-[59px]" : "w-16"} heightClassName={size === "small" ? "h-[46px]" : "h-[60px]"} />;
   const classes = `flex shrink-0 items-center justify-center border-[5px] border-border bg-card shadow-[5px_5px_0_var(--shadow-color)] ${sizeClasses} ${className}`;
   if (!isInteractive) return <div className={classes} aria-hidden="true">{content}</div>;

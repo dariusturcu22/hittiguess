@@ -1397,9 +1397,42 @@ Decision: a song's year is the earliest date the song itself was out, as a singl
 
 Why: the first catalog recheck proposed wrong years for Burn, Moves Like Jagger, Hips Don't Lie, and Beautiful Liar. Each was added to a later edition of an album, and Discogs's master and Wikidata's parent album both report the original edition's year, so two sources agreed on the wrong year. Wikidata answered nothing for many famous songs because a short title never reached the song in a label search and Wikidata moved names such as Rihanna's to `mul`. A later year from another source never contradicts an earlier release, while a lone earlier year is where bootlegs, promos, and wrong dates appear. On the benchmark the previous rule locked 61 correct and 1 wrong year with 3 left to review; the new rule locks 64 correct and none wrong, with 1 left to review.
 
-
 ## 2026-10 | Only browsers that can share system audio are offered as DJ, and groups start rotating
 
 Decision: a browser is offered the DJ share only when it is a Chromium browser on Windows or ChromeOS, or on macOS from Chrome 141. Firefox, Safari, Chromium on Linux, older Chromium on macOS, and every phone or tablet (an iPad in desktop mode included, detected by its touch points) report that they cannot share audio. The DJ rotation passes over them whenever another player can DJ, and a dismissible warning in the lobby and the game screen says so; listeners are warned when the DJ cannot share. The old flag that let every desktop browser try is removed. New groups start in rotating DJ mode; existing groups keep their stored mode.
 
 Why: the capture asks for the entire screen with system audio, because the YouTube tab does not exist yet when the share is requested. MDN's browser compatibility data lists Chrome's full system audio as Windows and ChromeOS only, with Linux and macOS limited to tab audio. A developer test found a macOS system audio option from Chrome 141 on macOS 14.2 or newer, which no official note confirms. Firefox lists audio capture as unsupported (Mozilla bug 1541425 is open), and Safari returns no audio track from a screen share (WebKit bug 186294). A fixed default would leave the whole group without the song whenever the one fixed DJ was on such a browser.
+
+---
+
+## 2026-10-30 | A request rejected for a replaced CSRF token is retried once
+
+Decision: the frontend's response interceptor retries a request once when it fails with a 403 whose message names the CSRF token. The request interceptor reads the `XSRF-TOKEN` cookie again, so the retry carries the current token. Other 403 responses are not retried, and a retried request that fails again is returned as is.
+
+Why: parallel first requests after a login can each receive a fresh `XSRF-TOKEN` cookie, so a mutation sent in that window carries a token the server has already replaced. The audio-capability report right after login failed this way, which left a phone that cannot share audio eligible as DJ because the server keeps its default of true.
+
+---
+
+## 2026-10-30 | Two-against-two year ties get no automatic tie-breaker
+
+Decision: when two sources report one year and two report a later one, the lock takes the earlier year and the admin drawer is where a wrong result gets corrected. Two tie-breakers were measured on the 308 labelled catalog songs and neither is adopted. Letting Wikipedia's side win a tie scores 293 correct, the same as production: it fixes What Is Love and Be My Lover but breaks Hey Mama and Last Friday Night, where the earlier side is the album and Wikipedia states the later single. Keeping the earlier year when an album that contains the song backs it scores 294 against production's 293, a gain of one song that adds a special case to the rule. It is recorded as considered and not adopted for now, and can be revisited if more ties show up.
+
+Why: no tie-breaker beat the plain rule by more than one song, and each one trades a set of wrong years for another. A special case that gains one song on 308 does not justify a rule that is harder to explain.
+
+---
+
+## 2026-10-30 | Promo and regional pre-releases do not count as the release year
+
+Decision: a song's release year is the year of its commercial release as a single, an EP, or the first album edition that contains it. A promo, a sampler, or a regional first release that comes out before the commercial release does not set the year. The lock still takes the earliest year two sources report, so a promo year held by only one source is ignored.
+
+Why: a lone earlier year is where bootlegs, promos, and wrong dates show up. What Is Love and Be My Lover are labelled with their commercial release year for the same reason; the lock cannot tell a promo from a release when two sources date it, which is why they land in the two-against-two tie above.
+
+---
+
+## 2026-10-30 | The year benchmark includes the production catalog
+
+Decision: besides the 65-song `songs.csv`, `ai/benchmark/catalog.csv` holds the production catalog: 369 rows, 357 distinct songs because duplicates share a capture file, 308 of them labelled with a release year. `OBSERVATIONS.md` records the score, every miss, and the tie-breakers tried. On the labelled catalog songs the lock takes 293 correct years, 4 wrong, and leaves 11 to reconciliation and review; the previous rule took 256 correct and left 48. The 65-song set remains the offline test in `tests/metadata/test_year_benchmark.py`.
+
+Why: 65 songs were too few to show how the lock behaves on the songs the product actually holds, including niche and non-English tracks. The catalog set measures a rule change against the real distribution before it ships.
+
+---

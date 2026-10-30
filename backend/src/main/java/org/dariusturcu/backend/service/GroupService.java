@@ -242,7 +242,7 @@ public class GroupService {
         if (request.djMode() != null) {
             group.setDjMode(request.djMode());
         }
-        if (request.fixedDjMemberId() != null) {
+        if (request.fixedDjMemberId() != null && group.getDjMode() == DjMode.FIXED) {
             group.getMembers().stream()
                     .filter(member -> member.getId().equals(request.fixedDjMemberId()))
                     .findFirst()

@@ -66,7 +66,7 @@ export function GroupChatOverlay({
         className="fixed inset-0 z-10 cursor-default"
       />
       <aside
-        className={`absolute z-30 flex ${CHAT_PANEL_MAX_HEIGHT_CLASSES} w-[380px] flex-col rounded-[18px] border-[3px] border-border bg-card/95 backdrop-blur-sm shadow-[6px_6px_0_var(--shadow-color)] ${floating ? "bottom-full left-0 mb-[12px]" : "bottom-0 left-0 sm:left-5"}`}
+        className={`absolute z-30 flex ${CHAT_PANEL_MAX_HEIGHT_CLASSES} w-[380px] max-w-[calc(100vw-3rem)] flex-col rounded-[18px] border-[3px] border-border bg-card/95 backdrop-blur-sm shadow-[6px_6px_0_var(--shadow-color)] ${floating ? "bottom-full left-0 mb-[12px]" : "bottom-0 left-0 sm:left-5"}`}
       >
         <header className="flex items-center justify-between border-b-2 border-border/70 px-5 py-4">
           <div>

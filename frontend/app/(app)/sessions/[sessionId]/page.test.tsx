@@ -2,7 +2,6 @@ import { act, fireEvent, render, screen, waitFor, within } from "@testing-librar
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 import GameSessionPage from "./page";
-import { GAME_STAGE_HEIGHT, GAME_STAGE_WIDTH } from "@/components/gameplay/game-stage";
 
 let roundEventHandler: ((event: { type: string; payload?: Record<string, unknown> }) => void) | undefined;
 type MockGuessResult = { roundId?: number; artistCorrect?: boolean; titleCorrect?: boolean; tokenAwarded?: boolean; state?: Record<string, unknown> };
@@ -191,13 +190,20 @@ vi.mock("@/components/gameplay/game-pieces", async (importOriginal) => {
 
 const TIMELINE_TRACK_BOUNDS = { left: 100, top: 200, width: 1000, height: 200, right: 1100, bottom: 400, x: 100, y: 200, toJSON: () => ({}) };
 
-const UNSCALED_STAGE_BOUNDS = { left: 0, top: 0, width: GAME_STAGE_WIDTH, height: GAME_STAGE_HEIGHT, right: GAME_STAGE_WIDTH, bottom: GAME_STAGE_HEIGHT, x: 0, y: 0, toJSON: () => ({}) };
+// jsdom reports no layout, so the card size sits at its minimum and the dragged card floats 0.7 card sizes above the pointer.
+const MINIMUM_CARD_SIZE_PIXELS = 132;
+const DRAGGED_CARD_LIFT_PIXELS = MINIMUM_CARD_SIZE_PIXELS * 0.7;
+const POINTER_START = { clientX: 600, clientY: 350 };
+const POINTER_MOVED = { clientX: 700, clientY: 400 };
+const EXPECTED_START_Y = (POINTER_START.clientY - DRAGGED_CARD_LIFT_PIXELS - TIMELINE_TRACK_BOUNDS.top) / TIMELINE_TRACK_BOUNDS.height;
+const EXPECTED_MOVED_X = (POINTER_MOVED.clientX - TIMELINE_TRACK_BOUNDS.left) / TIMELINE_TRACK_BOUNDS.width;
+const EXPECTED_MOVED_Y = (POINTER_MOVED.clientY - DRAGGED_CARD_LIFT_PIXELS - TIMELINE_TRACK_BOUNDS.top) / TIMELINE_TRACK_BOUNDS.height;
+const POSITION_PRECISION_DIGITS = 4;
 const EMPTY_BOUNDS = { left: 0, top: 0, width: 0, height: 0, right: 0, bottom: 0, x: 0, y: 0, toJSON: () => ({}) };
 
 function mockTimelineTrackBounds() {
   return vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(function (this: HTMLElement) {
     if (this.matches("[data-timeline-track]")) return TIMELINE_TRACK_BOUNDS as DOMRect;
-    if (this.matches("[data-game-stage-host], [data-game-stage]")) return UNSCALED_STAGE_BOUNDS as DOMRect;
     return EMPTY_BOUNDS as DOMRect;
   });
 }
@@ -276,11 +282,11 @@ describe("GameSessionPage", () => {
     try {
       await renderPage();
 
-      fireEvent.pointerDown(screen.getByRole("button", { name: "Your card. Choose a timeline position." }), { clientX: 600, clientY: 350 });
-      expect(previewPlacement).toHaveBeenCalledWith({ position: null, x: 0.5, y: 0.16, phase: "DRAGGING" });
+      fireEvent.pointerDown(screen.getByRole("button", { name: "Your card. Choose a timeline position." }), POINTER_START);
+      expect(previewPlacement).toHaveBeenCalledWith({ position: null, x: 0.5, y: expect.closeTo(EXPECTED_START_Y, POSITION_PRECISION_DIGITS), phase: "DRAGGING" });
 
-      fireEvent.pointerMove(window, { clientX: 700, clientY: 400 });
-      await waitFor(() => expect(previewPlacement).toHaveBeenLastCalledWith(expect.objectContaining({ x: 0.6, y: 0.41, phase: "DRAGGING" })));
+      fireEvent.pointerMove(window, POINTER_MOVED);
+      await waitFor(() => expect(previewPlacement).toHaveBeenLastCalledWith(expect.objectContaining({ x: expect.closeTo(EXPECTED_MOVED_X, POSITION_PRECISION_DIGITS), y: expect.closeTo(EXPECTED_MOVED_Y, POSITION_PRECISION_DIGITS), phase: "DRAGGING" })));
     } finally {
       rectSpy.mockRestore();
     }
@@ -321,7 +327,8 @@ describe("GameSessionPage", () => {
   });
 
   it("animates a new token award once without animating a partial correct guess", async () => {
-    const view = render(<GameSessionPage params={SESSION_PARAMS} />);
+    await renderPage();
+    const view = { container: document.body };
     await screen.findByText("Your turn");
     const RESULT_ROUND_ID = 30;
     act(() => guessResultHandler?.({ roundId: RESULT_ROUND_ID, artistCorrect: true, state: { roundId: RESULT_ROUND_ID, tokenEarned: false } }));
@@ -505,6 +512,21 @@ describe("GameSessionPage", () => {
     expect(routerPush).toHaveBeenCalledWith("/playlists");
   });
 
+  it("keeps the resting card preview out of the DJ instructions", async () => {
+    mockCurrentUserId = DJ_USER_ID;
+    await renderPage();
+
+    act(() => {
+      roundEventHandler?.({ type: "PLACEMENT_PREVIEW", payload: { roundId: 30, activePlayerId: 7, position: null, x: 0.4, y: -0.5, phase: "IDLE" } });
+    });
+    expect(document.querySelector("[data-spectator-card-preview]")).toBeNull();
+
+    act(() => {
+      roundEventHandler?.({ type: "PLACEMENT_PREVIEW", payload: { roundId: 30, activePlayerId: 7, position: 1, x: 0.6, y: 0.2, phase: "DRAGGING" } });
+    });
+    expect(document.querySelector("[data-spectator-card-preview]")).toHaveAttribute("data-phase", "DRAGGING");
+  });
+
   it("shows spectators the live placement preview", async () => {
     mockCurrentUserId = SPECTATOR_USER_ID;
     useAudioLevelsSpy.mockReturnValue([0.1, 0.2, 0.3, 0.4, 0.5]);
@@ -649,14 +671,12 @@ describe("GameSessionPage viewport layout", () => {
   it("pins the game root to the viewport without page scrolling", async () => {
     await renderPage();
     const root = screen.getByRole("main");
-    const stageHost = root.closest("[data-game-stage-host]");
 
     expect(root.className).toContain("h-full");
     expect(root.className).toContain("overflow-hidden");
     expect(root.className).not.toContain("min-h-full");
     expect(root.className).not.toContain("min-h-[680px]");
-    expect(stageHost?.className).toContain("h-full");
-    expect(stageHost?.className).toContain("overflow-hidden");
+    expect(root.closest("[data-game-stage-host]")).toBeNull();
   });
 
   it("centres the loading state inside the viewport", async () => {
@@ -680,33 +700,35 @@ describe("GameSessionPage viewport layout", () => {
     expect(root.className).not.toContain("min-h-[720px]");
   });
 
-  it("lays the timeline out at its design offsets", async () => {
+  it("flows the timeline between its own rows instead of offsetting it from the middle", async () => {
     const view = render(<GameSessionPage params={SESSION_PARAMS} />);
     await screen.findByText("Your turn");
 
     const stage = screen.getByRole("region", { name: "Game stage" });
-    expect(stage.className).toContain("flex-1");
-    expect(stage.className).not.toContain("min-h-[680px]");
-
-    const timelineLabel = view.container.querySelector('[class*="bottom-[calc(50%+98px)]"]');
-    expect(timelineLabel?.className).toContain("bottom-[calc(50%+98px)]");
-    expect(timelineLabel?.className).not.toContain("short:");
-
-    const aboveTimeline = view.container.querySelector('[class*="bottom-[calc(50%+148px)]"]');
-    expect(aboveTimeline?.className).toContain("bottom-[calc(50%+148px)]");
-    expect(aboveTimeline?.className).not.toContain("short:");
-
-    const belowTimeline = view.container.querySelector('[class*="top-[calc(50%+148px)]"]');
-    expect(belowTimeline?.className).toContain("top-[calc(50%+148px)]");
-    expect(belowTimeline?.className).not.toContain("short:");
+    expect(stage.className).toContain("grid-rows-[1fr_auto_1fr]");
+    expect(stage.className).toContain("overflow-y-auto");
+    expect(view.container.querySelector('[class*="calc(50%"]')).toBeNull();
   });
 
-  it("keeps the timeline cards, the guess pills, and the token pile at their design sizes", async () => {
+  it("anchors the header and footer to the corners of the screen", async () => {
+    await renderPage();
+
+    const root = screen.getByRole("main");
+    expect(root.className).toContain("env(safe-area-inset-left)");
+    expect(root.className).toContain("env(safe-area-inset-top)");
+    expect(root.className).toContain("env(safe-area-inset-right)");
+    expect(root.className).toContain("env(safe-area-inset-bottom)");
+    expect(root.querySelector("header")?.className).toContain("justify-between");
+    expect(root.querySelector("footer")?.className).toContain("justify-between");
+  });
+
+  it("sizes the cards from the shared card size and keeps the guess pills and token pile at their design sizes", async () => {
     await renderPage();
 
     const card = screen.getByText("Torn").closest("article");
-    expect(card?.className).toContain("size-[168px]");
+    expect(card?.className).toContain("size-[var(--card-size,168px)]");
     expect(card?.className).not.toContain("short:");
+    expect(screen.getByRole("main").style.getPropertyValue("--card-size")).toBe(`${MINIMUM_CARD_SIZE_PIXELS}px`);
 
     const guessPill = screen.getByRole("textbox", { name: "Guess the artist" }).closest("label");
     expect(guessPill?.className).toContain("h-[52px]");

@@ -1,9 +1,9 @@
 # Year pipeline observations (2026-10-30)
 
-Benchmark: the 369 production catalog songs from `opencode-tasks/data/catalog-export.csv`, deduplicated to
-357 by first main artist and title, in `catalog.csv`. 308 have a labelled year (labels by Claude from
-release history; notes column says where a label is a judgment call). 61 Romanian, NCS, and other obscure
-songs are unlabelled and need the owner's year. Every source's answer is recorded in `captures/<source>/`.
+Benchmark: `catalog.csv` holds 369 rows built from a production catalog export. Duplicates share a capture
+file, so there are 357 distinct songs. 308 have a labelled year (labels by Claude from release history; notes
+column says where a label is a judgment call). 61 Romanian, NCS, and other obscure songs are unlabelled and
+need the owner's year. Every source's answer is recorded in `captures/<source>/`.
 
 Run it again, from `ai/`:
 
@@ -37,11 +37,13 @@ Two against two, the rule takes the earlier year:
   two-against-two tie fixes these two but breaks Hey Mama and Last Friday Night, where the earlier side is the
   album and Wikipedia states the later single (293 correct either way). Keeping the earlier year when an album
   that contains the song backs it gives 294, one more than production; which song it lost was not recorded.
-  The rule is unchanged and ties are left to the admin drawer.
+  The rule is unchanged: one song gained on 308 does not justify an added special case, and ties are left to
+  the admin drawer. See the 2026-10-30 entry in DECISIONS.md.
 
 Two sources agree on a later year:
 - Need You Now (Lady Antebellum): MusicBrainz and Discogs 2010, Wikipedia 2009, Wikidata nothing. Labelled
-  2009, the single's year. Two matching sources lock 2010 before Wikipedia's earlier year is weighed.
+  2009, the single's year. Wikipedia extraction runs before the two-source rule, but 2009 is reported only by
+  Wikipedia and has no second source, so the earliest supported year is MusicBrainz and Discogs' 2010.
 
 Remix treated as the original:
 - Macarena (Bayside Boys Remix): Discogs and Wikipedia matched the original 1993 Macarena; MusicBrainz and

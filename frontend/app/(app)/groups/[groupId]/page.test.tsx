@@ -312,6 +312,19 @@ describe("GroupLobbyPage start options", () => {
     expect(toastMocks.success).toHaveBeenCalledWith("Settings saved");
   });
 
+  it("saves rotating without the fixed DJ of a member who has since left", async () => {
+    lobbyState.fixedDjMemberId = 999;
+    await renderPage();
+
+    fireEvent.click(screen.getByRole("button", { name: "Settings" }));
+    fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
+
+    expect(updateSettingsMutate).toHaveBeenCalledWith(
+      { groupId: 1, data: { djMode: "ROTATING", winConditionCardCount: 5, fixedDjMemberId: undefined } },
+      expect.anything(),
+    );
+  });
+
   it("shows the min-players popup only when starting below the minimum", async () => {
     lobbyMembers = [
       { id: 1, userId: 11, displayName: "Admin", isAdmin: true, isConnected: true },
