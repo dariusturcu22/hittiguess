@@ -89,6 +89,14 @@ vi.mock("@/components/group-chat-overlay", () => ({
   GroupChatOverlay: () => <aside aria-label="Chat" />,
 }));
 
+const stopSongCapture = vi.hoisted(() => vi.fn());
+
+vi.mock("@/components/audio-check/audio-check-route", () => ({
+  AudioCheckRoute: ({ groupId }: { groupId: number }) => <section aria-label={`Audio check for group ${groupId}`} />,
+}));
+
+vi.mock("@/lib/song-capture", () => ({ stopSongCapture }));
+
 const previews = [
   { id: 31, title: "Song One", artists: ["Artist One"], releaseYear: 1999 },
   { id: 32, title: "Song Two", artists: ["Artist Two"], releaseYear: 2001 },
@@ -160,6 +168,23 @@ describe("GroupLobbyPage start options", () => {
     await renderPage();
 
     expect(routerMock.replace).not.toHaveBeenCalledWith("/sessions/44");
+  });
+
+  it("shows the audio check instead of the lobby while the group checks audio", async () => {
+    stopSongCapture.mockClear();
+    lobbyState.status = "AUDIO_CHECK";
+    await renderPage();
+
+    expect(screen.getByLabelText("Audio check for group 1")).toBeVisible();
+    expect(screen.queryByRole("button", { name: "Choose playlists" })).toBeNull();
+    expect(stopSongCapture).not.toHaveBeenCalled();
+  });
+
+  it("stops a share left over from a cancelled audio check once the group is back in its lobby", async () => {
+    stopSongCapture.mockClear();
+    await renderPage();
+
+    expect(stopSongCapture).toHaveBeenCalled();
   });
 
   it("shows the lobby loader, not the lobby, while joining a locked group's game", async () => {
