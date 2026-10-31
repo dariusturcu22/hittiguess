@@ -62,7 +62,7 @@ Azure Container Apps hosts core and AI in one EU environment. Vercel hosts the f
 - [x] Verify Vercel root frontend, production branch main, domain, API origin, and shared auth cookies
 - [ ] Owner: confirm password-reset email arrives in production from the real sender domain (Google login, signup, verification, login, and the Resend domain and sender are working)
 - [x] Add HTTP liveness/readiness probes to both apps
-- [ ] Deployment smoke test script `scripts/smoke-test-production.sh` that checks the health endpoints, the HTTPS API, a WSS STOMP connect, the protected-route `session_hint` redirect, and that core reaches AI; run it against production and record the result
+- [x] Deployment smoke test script `scripts/smoke-test-production.sh` that checks the health endpoints, the HTTPS API, a WSS STOMP connect, the protected-route `session_hint` redirect, and that core reaches AI; run it against production and record the result
 - [ ] Owner: production two-device acceptance of login, import, a full game, reconnect, voice, DJ audio, and results; do it after the audio check merges
 - [ ] Plan the move to one Hetzner server before the Azure trial credit ends: write the deployment (compose file, reverse proxy with TLS, secrets) into `docs/ARCHITECTURE.md` and `scripts`, rehearse it in isolation, and prepare DNS cutover and rollback. Owner: the Hetzner account and the cutover date. Finish it before the public launch so the launch runs on its final host
 - [ ] Owner: decide whether production deployments require GitHub environment reviewers
