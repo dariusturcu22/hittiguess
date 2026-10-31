@@ -28,10 +28,11 @@ public class PipelineRetentionService {
         Instant cutoff = Instant.now().minus(pipelineRetentionDays, ChronoUnit.DAYS);
         int purgedRuns = pipelineJobRepository.deleteTerminalRunsOlderThan(cutoff);
         int purgedJobs = pipelineJobRepository.deleteTerminalJobsOlderThan(cutoff);
-        int totalPurged = purgedRuns + purgedJobs;
+        int purgedPlaylistImports = pipelineJobRepository.deleteTerminalPlaylistImportJobsOlderThan(cutoff);
+        int totalPurged = purgedRuns + purgedJobs + purgedPlaylistImports;
         if (totalPurged > 0) {
-            log.info("Purged {} terminal pipeline runs and {} terminal pipeline jobs older than {} days",
-                    purgedRuns, purgedJobs, pipelineRetentionDays);
+            log.info("Purged {} terminal pipeline runs, {} terminal pipeline jobs, and {} terminal playlist import jobs older than {} days",
+                    purgedRuns, purgedJobs, purgedPlaylistImports, pipelineRetentionDays);
         }
         return totalPurged;
     }

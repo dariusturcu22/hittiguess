@@ -24,7 +24,7 @@ Account data identifies who's playing and lets an account be recovered or manage
 
 ## Who else sees this data
 
-hittiguess's core service and its AI microservice both operate on this data directly. The AI microservice calls DeepInfra's and OpenAI's APIs to help identify, describe, and reconcile submitted songs (title, artist, release year, and similar catalog metadata), not personal account data. Song playback uses the official YouTube API and links out to the real YouTube page or app, hittiguess never embeds a hidden player. No data is sold to anyone, and no data is shared with advertisers.
+hittiguess's core service and its AI microservice both operate on this data directly. The AI microservice calls DeepInfra's and OpenAI's APIs to help identify, describe, and reconcile submitted songs (title, artist, release year, and similar catalog metadata), not personal account data. hittiguess uses YouTube API Services to retrieve song catalog metadata, video durations, and playlist items. Song playback links out to the real YouTube page or native app; hittiguess never embeds an iframe or hidden player. By using this service, users are subject to the Google Privacy Policy (https://www.google.com/policies/privacy). No personal account data is shared with YouTube or Google. No data is sold to anyone, and no data is shared with advertisers.
 
 Hosting and services in production: the website runs on Vercel, the backend services on Microsoft Azure Container Apps, the databases on Neon (PostgreSQL), voice relay on Cloudflare, account and password-reset email through Resend, and sign-in with Google is optional. The backend is planned to move to a single Hetzner server; this section will be updated when that happens.
 

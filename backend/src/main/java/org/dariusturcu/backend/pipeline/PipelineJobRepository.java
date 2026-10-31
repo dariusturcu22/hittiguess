@@ -434,6 +434,15 @@ public class PipelineJobRepository {
                 """, timestamp(cutoff));
     }
 
+    public int deleteTerminalPlaylistImportJobsOlderThan(Instant cutoff) {
+        return core.update("""
+                DELETE FROM playlist_import_jobs
+                WHERE status IN ('COMPLETED', 'FAILED')
+                  AND ((completed_at IS NOT NULL AND completed_at < ?)
+                    OR (completed_at IS NULL AND created_at < ?))
+                """, timestamp(cutoff), timestamp(cutoff));
+    }
+
     private long insertReturningId(String sql, Object... arguments) {
         KeyHolder keyHolder = new GeneratedKeyHolder();
         core.update(connection -> {

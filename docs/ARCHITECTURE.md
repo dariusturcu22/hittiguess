@@ -104,6 +104,20 @@ Account deletion via `DELETE /api/users/me` removes all personal data across cor
 
 Personal data export via `GET /api/users/me/export` compiles every category promised in the privacy policy: account fields, creation timestamp, custom avatar image bytes, two-factor authentication status, owned and joined playlists with member permissions, submitted songs, active group membership, sent chat messages, completed game history summaries, and song research observations.
 
+### YouTube API Services compliance checklist
+
+hittiguess integrates with YouTube API Services under Google Developer Policies and YouTube Terms of Service:
+
+1. **Privacy Policy notification**: The privacy policy states that hittiguess uses YouTube API Services and links to the Google Privacy Policy (https://www.google.com/policies/privacy). Satisfied by: `docs/legal/privacy-policy.md`.
+2. **Terms of Service binding**: The terms of service state that by using hittiguess, users agree to be bound by the YouTube Terms of Service (https://www.youtube.com/t/terms). Satisfied by: `docs/legal/terms-of-service.md`.
+3. **Player and playback rules**: No embedded or hidden iframe player is used. Audio playback occurs exclusively on the official YouTube website or in the official YouTube mobile app via explicit link-out. Satisfied by: `frontend/lib/youtube-link-out.ts`, `frontend/app/(app)/sessions/[sessionId]/page.tsx`, `backend/src/main/java/org/dariusturcu/backend/controller/GameSessionController.java`.
+4. **Data storage and refresh limits**:
+   - **Song durations**: Stored durations follow a 29-day refresh cycle. If an updated duration is not retrieved within 29 days, the expired value is wiped. Satisfied by: `backend/src/main/java/org/dariusturcu/backend/service/SongDurationRefreshService.java` (`RETENTION = Duration.ofDays(29)`), `backend/src/main/java/org/dariusturcu/backend/repository/SongRepository.java`.
+   - **Video thumbnails**: Thumbnails are never stored or cached in the database. Client components construct URLs directly against YouTube's public image CDN (`https://i.ytimg.com/vi/{id}/hqdefault.jpg`). Satisfied by: `frontend/components/playlist-cover-mosaic.tsx`.
+   - **Video titles and channel names**: Raw video titles and channel names captured during playlist imports are held temporarily in `playlist_import_job_items` and purged after 30 days. Permanent catalog song entities store clean metadata synthesized from multiple independent music sources, not raw YouTube API snippet records. Satisfied by: `backend/src/main/java/org/dariusturcu/backend/pipeline/PipelineRetentionService.java`, `backend/src/main/java/org/dariusturcu/backend/pipeline/PipelineJobRepository.java`.
+5. **Branding and attribution**: Displays of YouTube content provide direct link-outs with clear text attribution ("Open on YouTube to play", "Open YouTube"). Satisfied by: `frontend/app/(app)/sessions/[sessionId]/page.tsx`, `frontend/components/audio-check/audio-check-parts.tsx`.
+6. **Quota headroom and daily monitoring**: The application queries only single-unit endpoints (`videos.list` for metadata and durations, `playlistItems.list` for playlist expansion). High-cost search operations are not used. The standard 10,000 unit daily quota accommodates 10,000 video imports or up to 500,000 batched duration checks daily. Quota usage is tracked in Pacific time in `api_usage_daily`. Satisfied by: `ai/app/usage/recorder.py`, `ai/app/metadata/sources/youtube.py`, `backend/src/main/java/org/dariusturcu/backend/controller/AdminUsageController.java`.
+
 ### Group (core service)
 
 A group is the persistent wrapper a game session lives inside. Anyone can create one, whoever does becomes its admin. Membership is invite-link based, capped at 8 members, and a user can belong to at most one group at a time.

@@ -8,7 +8,7 @@ These terms cover use of hittiguess, a multiplayer music guessing game. Using th
 
 ## The service
 
-hittiguess lets players hear a song, guess when it was released, and place it on a shared timeline, either in person or online. Playback always happens on the real YouTube page or app; hittiguess never plays audio through a hidden or embedded player, and never uses an unofficial or reverse-engineered API for YouTube or any other external service. In online games the DJ shares the sound of their own screen, including the YouTube playback, with the other players of the group through the browser. Whether that is permitted for a public service is an open owner decision in `docs/TASKS.md` (Release 1).
+hittiguess lets players hear a song, guess when it was released, and place it on a shared timeline, either in person or online. hittiguess uses YouTube API Services to retrieve catalog song metadata and playlist items. By using hittiguess, users agree to be bound by the YouTube Terms of Service (https://www.youtube.com/t/terms). Playback always happens on the real YouTube page or app; hittiguess never plays audio through a hidden or embedded player, and never uses an unofficial or reverse-engineered API for YouTube or any other external service. In online games the DJ shares the sound of their own screen, including the YouTube playback, with the other players of the group through the browser. Whether that is permitted for a public service is an open owner decision in `docs/TASKS.md` (Release 1).
 
 ## Accounts
 
