@@ -261,6 +261,7 @@ export default function GameSessionPage({ params }: PageProps) {
   // remount would end the DJ's capture, which is meant to survive in-app navigation.
   const isPlayerInSession = sessionQuery.isLoading || currentUserQuery.isLoading ? undefined : currentPlayer !== undefined;
   const hasGroupMembership = activeMembershipQuery.isLoading ? undefined : activeMembershipQuery.data !== undefined;
+  const isPaused = Boolean(session?.pausedAt);
   const songMesh = useSongMesh({
     sessionId,
     groupId: session?.groupId,
@@ -270,6 +271,7 @@ export default function GameSessionPage({ params }: PageProps) {
     isSongRevealed: isRoundRevealed(roundStatus),
     songVolume,
     isSongSilenced: shouldSilenceDjForActivePlayer(currentRound, currentPlayer?.id),
+    isSongPaused: isPaused,
     hasSessionEnded: hasEnded,
     isPlayerInSession,
     hasGroupMembership,

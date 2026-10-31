@@ -60,6 +60,9 @@ export interface SongMeshOptions {
   // The active player's song is cut off from lock-in until the round is scored. This mutes
   // only the incoming song audio, never the DJ's voice.
   isSongSilenced?: boolean;
+  // A paused game mutes playback for listeners and detaches the DJ's track so no audio
+  // leaks during an interruption.
+  isSongPaused?: boolean;
   // Stop conditions, observed rather than queried. A true hasSessionEnded, or an explicit
   // false on either membership flag, stops the capture and detaches the song sender.
   // Undefined means the value is not known yet, so it never stops on its own.
@@ -196,6 +199,7 @@ export function useSongMesh(options: SongMeshOptions): SongMesh {
     isSongRevealed,
     songVolume = DEFAULT_SONG_VOLUME_PERCENT,
     isSongSilenced = false,
+    isSongPaused = false,
     hasSessionEnded,
     isPlayerInSession,
     hasGroupMembership,
@@ -208,7 +212,7 @@ export function useSongMesh(options: SongMeshOptions): SongMesh {
 
   const capturedStream = useSyncExternalStore(subscribeSongCapture, getSongCaptureStream, () => null);
   const [capturedTrack] = capturedStream?.getAudioTracks() ?? [];
-  const shouldSendSong = isDjForCurrentRound && !isSongRevealed;
+  const shouldSendSong = isDjForCurrentRound && !isSongRevealed && !isSongPaused;
 
   const clientReference = useRef<Client | null>(null);
   const peersReference = useRef(new Map<number, RTCPeerConnection>());
@@ -232,11 +236,11 @@ export function useSongMesh(options: SongMeshOptions): SongMesh {
   }, [songVolume]);
 
   useEffect(() => {
-    isSongSilencedReference.current = isSongSilenced;
+    isSongSilencedReference.current = isSongSilenced || isSongPaused;
     remoteAudioReference.current.forEach((audio) => {
-      audio.muted = isSongSilenced;
+      audio.muted = isSongSilenced || isSongPaused;
     });
-  }, [isSongSilenced]);
+  }, [isSongPaused, isSongSilenced]);
 
   const hasValidSessionId = Number.isInteger(sessionId) && sessionId > 0;
   const isSessionOpen = !hasSessionEnded && isPlayerInSession !== false && hasGroupMembership !== false;
