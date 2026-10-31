@@ -189,6 +189,39 @@ Beta runs the frontend on Vercel and both backend containers in one Azure Contai
 - Cost guardrails: Consumption plan only, no Azure Database for PostgreSQL, virtual network, private endpoint, Container Registry, dedicated workload profile, or Azure log ingestion. A $20 monthly Azure budget sends email alerts, and the Log Analytics workspace is capped at 0.25 GB per day with 30-day retention. An automatic shutdown Action Group is not set up yet.
 - Migration path: Azure hosts the backend while the free trial credit lasts, then the two backend containers and a reverse proxy move to one fixed-price Hetzner server. Vercel and both Neon projects stay unchanged. Scale-to-zero was measured at a first-request wait of about 35 seconds (about 19 s for Azure to start the container, 13 s for Spring, 3 s for probes), so both apps keep one always-on replica instead.
 
+### Hetzner single-server target deployment
+
+The target host is a single Hetzner Cloud virtual server (CPX31: 4 vCPU, 8 GiB RAM, 160 GiB NVMe, €13.60 monthly in Germany, below the $20 monthly ceiling). All backend components run under Docker Compose (`scripts/hetzner/docker-compose.yml`), managed by systemd and Docker CE.
+
+1. Service topology:
+   - `caddy`: reverse proxy (Caddy 2.9) listening on public ports 80 and 443 (TCP and UDP for HTTP/3). Manages automatic TLS certificates via Let's Encrypt / ZeroSSL for `api.hittiguess.com`. Proxies API and WebSocket requests (`/ws`) to Core. Blocks external access to `/actuator/prometheus` with HTTP 403. Exposes local `/caddy-health` for health monitoring.
+   - `core`: Spring Boot backend container. Binds only to `internal_network` on port 8080 (no published host ports). Limits capped at 2.0 vCPU and 2048 MiB RAM. Reaches AI service at `http://ai:8000`. Connects to external Neon transactional and analytics databases over TLS.
+   - `ai`: FastAPI microservice container. Binds only to `internal_network` on port 8000 (no published host ports). Limits capped at 1.0 vCPU and 1024 MiB RAM. Reaches external Neon transactional database over TLS.
+   - `alloy`: Grafana Alloy metrics agent. Binds to `internal_network`, scrapes `core:8080/actuator/prometheus` and `ai:8000/metrics` (with `X-Internal-Api-Key`), and remote-writes metrics to Grafana Cloud Prometheus.
+   - Network isolation: an internal bridge network (`internal_network`) connects all four containers. Only Caddy binds to host network interfaces.
+
+2. Configuration and secrets:
+   - Host secrets template lives at `scripts/hetzner/.env.hetzner.example` and is copied to `.env.hetzner` on the host with production secrets.
+   - Contains database connection strings for both Neon instances, JWT secret, internal API key, OAuth2 credentials, Resend key, third-party API keys, TURN credentials, and Grafana Cloud metrics credentials.
+
+3. Isolated rehearsal procedure:
+   - Run `python scripts/hetzner/rehearse_isolation.py` to validate Docker Compose structure, Caddyfile routing rules, Alloy target configuration, and environment variable definitions.
+   - Run `ai/.venv/Scripts/pytest scripts/test_hetzner_deployment.py` to verify parser logic and constraint validations.
+   - Run isolated local stack rehearsal: build images and bring up the compose stack with dummy environment values, verifying container health states and confirming that `/actuator/prometheus` is inaccessible externally through Caddy.
+
+4. DNS cutover runbook:
+   - Step 1 (T-24 hours): reduce DNS TTL for `api.hittiguess.com` from default (e.g. 300 or 3600 seconds) to 60 seconds at Cloudflare / DNS provider.
+   - Step 2: provision Hetzner server with Ubuntu 24.04 LTS, Docker CE, and Docker Compose plugin. Configure UFW firewall to allow only inbound SSH (port 22), HTTP (port 80), and HTTPS (port 443).
+   - Step 3: transfer repository and deploy stack using `scripts/hetzner/deploy.sh` with production `.env.hetzner`.
+   - Step 4: verify local health on the server via `curl -H "Host: api.hittiguess.com" http://localhost/actuator/health/readiness`.
+   - Step 5: update DNS A (IPv4) and AAAA (IPv6) records for `api.hittiguess.com` to point to the Hetzner server public IP addresses. Caddy immediately provisions Let's Encrypt TLS certificates upon receiving the first external HTTPS handshake.
+   - Step 6: execute `scripts/smoke-test-production.sh` against the production domain to verify health probes, HTTPS API, WebSocket STOMP handshake, session hint proxy redirect, and AI reachability.
+   - Step 7 (T+24 hours): restore DNS TTL to normal values. Maintain Azure Container Apps as an idle hot standby for 48 hours before deprovisioning Azure resources.
+
+5. Rollback runbook:
+   - If cutover validation or post-deployment monitoring detects failures, revert the DNS A / AAAA / CNAME records for `api.hittiguess.com` immediately back to the Azure Container Apps ingress endpoint.
+   - Because TTL was set to 60 seconds, global DNS propagation restores Azure routing within one to two minutes. Both Azure Container Apps remain active and running during the cutover window to allow instant reversion.
+
 ## Data flow: adding a song
 
 ```
