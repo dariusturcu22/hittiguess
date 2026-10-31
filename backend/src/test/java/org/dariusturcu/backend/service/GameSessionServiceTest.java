@@ -131,7 +131,6 @@ class GameSessionServiceTest {
     @Mock
     private StoredSessionResultsRepository storedSessionResultsRepository;
     private SessionResultsStore resultsStore;
-    private final PendingSessionSongPool pendingPool = new PendingSessionSongPool();
 
     private static final Long GROUP_ID = 10L;
     private static final Long ADMIN_ID = 1L;
@@ -162,7 +161,7 @@ class GameSessionServiceTest {
         gameSessionService = new GameSessionService(
                 gameSessionRepository, playerRepository, roundRepository, guessRepository, betRepository,
                 groupRepository, songRepository, playlistRepository, groupService, playlistAccessService,
-                playlistExpansionService, difficultySelector, pendingPool, sessionMapper, resultsStore,
+                playlistExpansionService, difficultySelector, sessionMapper, resultsStore,
                 gameSessionScheduler, eventPublisher, new GameSongList(new Random(SHUFFLE_SEED)),
                 placementPreviewGate);
         // Self-injection (see GameSessionService's @Lazy self field): the production
@@ -960,7 +959,7 @@ class GameSessionServiceTest {
     void aRoundStartPopulatesThePreviewGateSoABurstOfFramesNeverQueriesTheDatabase() {
         Group group = groupWithTwoConnectedMembers();
         when(groupRepository.findById(GROUP_ID)).thenReturn(Optional.of(group));
-        pendingPool.stage(GROUP_ID, catalogPool(STARTABLE_POOL_SIZE));
+        group.getStagedSongIds().addAll(catalogPool(STARTABLE_POOL_SIZE));
         lenient().when(gameSessionRepository.save(any(GameSession.class))).thenAnswer(invocation -> {
             GameSession saved = invocation.getArgument(0);
             if (saved.getId() == null) {
@@ -1666,7 +1665,6 @@ class GameSessionServiceTest {
     @AfterEach
     void clearAuthenticationAndStagedPools() {
         SecurityContextHolder.clearContext();
-        pendingPool.discard(GROUP_ID);
     }
 
     private User user(long id, String username) {
@@ -1797,7 +1795,7 @@ class GameSessionServiceTest {
         gameSessionService.startSessionWithSongs(GROUP_ID, new StartSessionWithSongsRequest(songIds));
 
         verify(groupService).beginAudioCheck(GROUP_ID);
-        assertThat(pendingPool.take(GROUP_ID)).contains(songIds);
+        assertThat(group.getStagedSongIds()).containsExactlyElementsOf(songIds);
     }
 
     @Test
@@ -1808,7 +1806,7 @@ class GameSessionServiceTest {
         assertThatThrownBy(() -> gameSessionService.startSessionWithSongs(
                         GROUP_ID, new StartSessionWithSongsRequest(List.of(99L))))
                 .isInstanceOf(ResourceNotFoundException.class);
-        assertThat(pendingPool.take(GROUP_ID)).isEmpty();
+        assertThat(group.getStagedSongIds()).isEmpty();
     }
 
     @Test
@@ -1820,7 +1818,7 @@ class GameSessionServiceTest {
         assertThatThrownBy(() -> gameSessionService.startSessionWithSongs(
                         GROUP_ID, new StartSessionWithSongsRequest(oneSongShort)))
                 .isInstanceOf(ConflictException.class);
-        assertThat(pendingPool.take(GROUP_ID)).isEmpty();
+        assertThat(group.getStagedSongIds()).isEmpty();
     }
 
     @Test
@@ -1844,7 +1842,7 @@ class GameSessionServiceTest {
         assertThatThrownBy(() -> gameSessionService.startSessionWithSongs(
                         GROUP_ID, new StartSessionWithSongsRequest(songIds)))
                 .isInstanceOf(ConflictException.class);
-        assertThat(pendingPool.take(GROUP_ID)).isEmpty();
+        assertThat(group.getStagedSongIds()).isEmpty();
     }
 
     @Test
@@ -1858,7 +1856,7 @@ class GameSessionServiceTest {
                 .orElseThrow();
         group.setFixedDjMemberId(otherMemberId);
         when(groupRepository.findById(GROUP_ID)).thenReturn(Optional.of(group));
-        pendingPool.stage(GROUP_ID, catalogPool(STARTABLE_POOL_SIZE));
+        group.getStagedSongIds().addAll(catalogPool(STARTABLE_POOL_SIZE));
 
         GameSession session = gameSessionService.startSession(GROUP_ID);
 
@@ -1875,7 +1873,7 @@ class GameSessionServiceTest {
         Group group = groupWithTwoConnectedMembers();
         group.setDjMode(DjMode.FIXED);
         when(groupRepository.findById(GROUP_ID)).thenReturn(Optional.of(group));
-        pendingPool.stage(GROUP_ID, catalogPool(STARTABLE_POOL_SIZE));
+        group.getStagedSongIds().addAll(catalogPool(STARTABLE_POOL_SIZE));
 
         GameSession session = gameSessionService.startSession(GROUP_ID);
 
@@ -1907,7 +1905,7 @@ class GameSessionServiceTest {
     void startSessionUsesAStagedPoolInsteadOfGroupPlaylists() {
         Group group = groupWithTwoConnectedMembers();
         when(groupRepository.findById(GROUP_ID)).thenReturn(Optional.of(group));
-        pendingPool.stage(GROUP_ID, catalogPool(STARTABLE_POOL_SIZE));
+        group.getStagedSongIds().addAll(catalogPool(STARTABLE_POOL_SIZE));
 
         GameSession session = gameSessionService.startSession(GROUP_ID);
 
@@ -1933,7 +1931,7 @@ class GameSessionServiceTest {
 
         verify(playlistAccessService).requireRead(eq(playlist), any(User.class));
         verify(groupService).beginAudioCheck(GROUP_ID);
-        assertThat(pendingPool.take(GROUP_ID)).contains(songIds);
+        assertThat(group.getStagedSongIds()).containsExactlyElementsOf(songIds);
     }
 
     @Test
@@ -1975,7 +1973,7 @@ class GameSessionServiceTest {
         gameSessionService.startCustomSession(GROUP_ID, new StartCustomSessionRequest(null, PASTED_PLAYLIST_LINK));
 
         verify(groupService).beginAudioCheck(GROUP_ID);
-        assertThat(pendingPool.take(GROUP_ID)).contains(songIds);
+        assertThat(group.getStagedSongIds()).containsExactlyElementsOf(songIds);
     }
 
     @Test
@@ -1988,7 +1986,7 @@ class GameSessionServiceTest {
         assertThatThrownBy(() -> gameSessionService.startCustomSession(
                         GROUP_ID, new StartCustomSessionRequest(null, PASTED_PLAYLIST_LINK)))
                 .isInstanceOf(ConflictException.class);
-        assertThat(pendingPool.take(GROUP_ID)).isEmpty();
+        assertThat(group.getStagedSongIds()).isEmpty();
     }
 
     @Test
@@ -1997,7 +1995,7 @@ class GameSessionServiceTest {
         when(groupRepository.findById(GROUP_ID)).thenReturn(Optional.of(group));
         List<Long> songIds = catalogPool(STARTABLE_POOL_SIZE);
         songIds.add(duplicateOfFirstCatalogSong().getId());
-        pendingPool.stage(GROUP_ID, songIds);
+        group.getStagedSongIds().addAll(songIds);
 
         GameSession session = gameSessionService.startSession(GROUP_ID);
 
@@ -2026,10 +2024,10 @@ class GameSessionServiceTest {
         when(groupRepository.findById(GROUP_ID)).thenReturn(Optional.of(group));
         List<Long> songIds = catalogPool(STARTABLE_POOL_SIZE);
 
-        pendingPool.stage(GROUP_ID, songIds);
+        group.getStagedSongIds().addAll(songIds);
         List<Long> firstOrder = playedOrder(gameSessionService.startSession(GROUP_ID));
 
-        pendingPool.stage(GROUP_ID, songIds);
+        group.getStagedSongIds().addAll(songIds);
         List<Long> secondOrder = playedOrder(gameSessionService.startSession(GROUP_ID));
 
         assertThat(firstOrder).isNotEqualTo(secondOrder);
@@ -2039,7 +2037,7 @@ class GameSessionServiceTest {
     void startingASessionWritesNoPlaylist() {
         Group group = groupWithTwoConnectedMembers();
         when(groupRepository.findById(GROUP_ID)).thenReturn(Optional.of(group));
-        pendingPool.stage(GROUP_ID, catalogPool(STARTABLE_POOL_SIZE));
+        group.getStagedSongIds().addAll(catalogPool(STARTABLE_POOL_SIZE));
 
         gameSessionService.startSession(GROUP_ID);
 

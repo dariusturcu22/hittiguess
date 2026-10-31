@@ -33,7 +33,7 @@ Frontend implementation and tests belong to story 28. Feature work requires a Re
   - Tests: backend test that a disconnected required DJ pauses the session after the grace period and a reconnect within it does not.
 - [x] Notice a stopped share while the player is on another page. The share's track `ended` event is only reported from the session page, so a DJ who stops sharing elsewhere in the app is noticed only on return. Report the status from wherever the long-lived capture lives (the app shell), so the pause starts at once.
   - Tests: Vitest that the track ending outside the session page reports the not-shared status.
-- [ ] Keep a staged song list across a backend restart during the audio check. Start with songs and start custom stage their songs in memory, so a restart during the check loses them and the start falls back to the group's playlists. Persist the staged list with the group's audio check (migration) and clear it on start or cancel.
+- [x] Keep a staged song list across a backend restart during the audio check. Start with songs and start custom stage their songs in memory, so a restart during the check loses them and the start falls back to the group's playlists. Persist the staged list with the group's audio check (migration) and clear it on start or cancel.
   - Tests: integration test that a staged list survives reloading the group from the database.
 - [ ] Regenerate the API client with orval against a running backend and replace the hand-written audio check and recheck candidate types; the generated output must match without behaviour changes.
 - [ ] Light mockup `AdminSongRecheckLight.dc.html` for the admin recheck page, registered in the canvas.
