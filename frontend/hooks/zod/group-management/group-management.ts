@@ -146,19 +146,6 @@ export const DisconnectParams = zod.object({
 export const DisconnectResponse = zod.unknown()
 
 /**
- * @summary Report whether the calling member's browser can capture audio, which decides if they can be the DJ
- */
-export const ReportAudioCapabilityParams = zod.object({
-  "groupId": zod.int()
-})
-
-export const ReportAudioCapabilityBody = zod.object({
-  "canShareAudio": zod.boolean()
-})
-
-export const ReportAudioCapabilityResponse = zod.unknown()
-
-/**
  * @summary Report the calling member's own audio share during the audio check
  */
 export const ReportAudioCheckStatusParams = zod.object({
@@ -201,6 +188,19 @@ export const CancelAudioCheckParams = zod.object({
 })
 
 export const CancelAudioCheckResponse = zod.unknown()
+
+/**
+ * @summary Report whether the calling member's browser can capture audio, which decides if they can be the DJ
+ */
+export const ReportAudioCapabilityParams = zod.object({
+  "groupId": zod.int()
+})
+
+export const ReportAudioCapabilityBody = zod.object({
+  "canShareAudio": zod.boolean()
+})
+
+export const ReportAudioCapabilityResponse = zod.unknown()
 
 /**
  * @summary Join a group via invite link or join code

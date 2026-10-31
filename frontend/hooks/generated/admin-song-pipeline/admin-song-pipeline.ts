@@ -362,73 +362,6 @@ export const useRecheckSongs = <TError = unknown,
       return useMutation(getRecheckSongsMutationOptions(options), queryClient);
     }
     /**
- * @summary Accept the proposed release years of several songs, skipping songs without a proposal or in active games
- */
-export const acceptProposals = (
-    proposalBatchRequest: ProposalBatchRequest,
- options?: SecondParameter<typeof customInstance>,signal?: AbortSignal
-) => {
-
-
-      return customInstance<ProposalBatchResultDTO>(
-      {url: `/api/admin/songs/proposals/accept`, method: 'POST',
-      headers: {'Content-Type': 'application/json', },
-      data: proposalBatchRequest, signal
-    },
-      options);
-    }
-
-
-
-
-export const getAcceptProposalsMutationKey = () => ['acceptProposals'] as const;
-
-export const getAcceptProposalsMutationOptions = <TError = unknown,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof acceptProposals>>, TError,AcceptProposalsMutationVariables, TContext>, request?: SecondParameter<typeof customInstance>}
-): UseMutationOptions<Awaited<ReturnType<typeof acceptProposals>>, TError,AcceptProposalsMutationVariables, TContext> => {
-
-const mutationKey = getAcceptProposalsMutationKey();
-const {mutation: mutationOptions, request: requestOptions} = options ?
-      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
-      options
-      : {...options, mutation: {...options.mutation, mutationKey}}
-      : {mutation: { mutationKey, }, request: undefined};
-
-
-
-
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof acceptProposals>>, AcceptProposalsMutationVariables> = (props) => {
-          const {data} = props ?? {};
-
-          return  acceptProposals(data,requestOptions)
-        }
-
-
-
-
-
-
-  return  { mutationFn, ...mutationOptions }}
-
-    export type AcceptProposalsMutationResult = NonNullable<Awaited<ReturnType<typeof acceptProposals>>>
-    export type AcceptProposalsMutationBody = ProposalBatchRequest
-    export type AcceptProposalsMutationError = unknown
-    export type AcceptProposalsMutationVariables = {data: ProposalBatchRequest}
-
-    /**
- * @summary Accept the proposed release years of several songs, skipping songs without a proposal or in active games
- */
-export const useAcceptProposals = <TError = unknown,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof acceptProposals>>, TError,AcceptProposalsMutationVariables, TContext>, request?: SecondParameter<typeof customInstance>}
- , queryClient?: QueryClient): UseMutationResult<
-        Awaited<ReturnType<typeof acceptProposals>>,
-        TError,
-        AcceptProposalsMutationVariables,
-        TContext
-      > => {
-      return useMutation(getAcceptProposalsMutationOptions(options), queryClient);
-    }
-    /**
  * @summary Dismiss the proposed release years of several songs without changing their years
  */
 export const dismissProposals = (
@@ -494,6 +427,73 @@ export const useDismissProposals = <TError = unknown,
         TContext
       > => {
       return useMutation(getDismissProposalsMutationOptions(options), queryClient);
+    }
+    /**
+ * @summary Accept the proposed release years of several songs, skipping songs without a proposal or in active games
+ */
+export const acceptProposals = (
+    proposalBatchRequest: ProposalBatchRequest,
+ options?: SecondParameter<typeof customInstance>,signal?: AbortSignal
+) => {
+
+
+      return customInstance<ProposalBatchResultDTO>(
+      {url: `/api/admin/songs/proposals/accept`, method: 'POST',
+      headers: {'Content-Type': 'application/json', },
+      data: proposalBatchRequest, signal
+    },
+      options);
+    }
+
+
+
+
+export const getAcceptProposalsMutationKey = () => ['acceptProposals'] as const;
+
+export const getAcceptProposalsMutationOptions = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof acceptProposals>>, TError,AcceptProposalsMutationVariables, TContext>, request?: SecondParameter<typeof customInstance>}
+): UseMutationOptions<Awaited<ReturnType<typeof acceptProposals>>, TError,AcceptProposalsMutationVariables, TContext> => {
+
+const mutationKey = getAcceptProposalsMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof acceptProposals>>, AcceptProposalsMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  acceptProposals(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type AcceptProposalsMutationResult = NonNullable<Awaited<ReturnType<typeof acceptProposals>>>
+    export type AcceptProposalsMutationBody = ProposalBatchRequest
+    export type AcceptProposalsMutationError = unknown
+    export type AcceptProposalsMutationVariables = {data: ProposalBatchRequest}
+
+    /**
+ * @summary Accept the proposed release years of several songs, skipping songs without a proposal or in active games
+ */
+export const useAcceptProposals = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof acceptProposals>>, TError,AcceptProposalsMutationVariables, TContext>, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof acceptProposals>>,
+        TError,
+        AcceptProposalsMutationVariables,
+        TContext
+      > => {
+      return useMutation(getAcceptProposalsMutationOptions(options), queryClient);
     }
     /**
  * @summary Dismiss the proposed release year for a catalog song
