@@ -8,6 +8,24 @@ export const metadata: Metadata = {
     index: false,
     follow: false,
   },
+  openGraph: {
+    title: "Join Game Session | hittiguess",
+    description: "You have been invited to play hittiguess with friends.",
+    images: [
+      {
+        url: "/opengraph-image",
+        width: 1200,
+        height: 630,
+        alt: "hittiguess game session invitation",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Join Game Session | hittiguess",
+    description: "You have been invited to play hittiguess with friends.",
+    images: ["/twitter-image"],
+  },
 };
 
 export default function JoinLayout({

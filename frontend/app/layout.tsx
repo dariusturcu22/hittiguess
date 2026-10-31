@@ -17,6 +17,30 @@ export const metadata: Metadata = {
   alternates: {
     canonical: "./",
   },
+  openGraph: {
+    type: "website",
+    locale: "en_US",
+    url: appBaseUrl,
+    siteName: "hittiguess",
+    title: "hittiguess | Multiplayer Music Guessing Game",
+    description:
+      "A multiplayer music guessing game inspired by Hitster. Hear a song, guess when it was released, and build a chronological timeline with friends.",
+    images: [
+      {
+        url: "/opengraph-image",
+        width: 1200,
+        height: 630,
+        alt: "hittiguess | Multiplayer Music Guessing Game",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "hittiguess | Multiplayer Music Guessing Game",
+    description:
+      "A multiplayer music guessing game inspired by Hitster. Hear a song, guess when it was released, and build a chronological timeline with friends.",
+    images: ["/twitter-image"],
+  },
 };
 
 export const viewport: Viewport = {
