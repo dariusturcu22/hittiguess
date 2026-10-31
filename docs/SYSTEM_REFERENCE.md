@@ -51,8 +51,8 @@ Every rate-limited request the core service rejects, whichever limiter caught it
 | GET | `/api/users/me` | `UserController` |
 | GET | `/api/users/{userId}` | `UserController` |
 | PATCH | `/api/users/me` | `UserController` |
-| DELETE | `/api/users/me` | `UserController`, story 37 fixed the FK violation and playlist-orphaning bugs formerly logged in `TASKS.md`'s Bug fixes section |
-| GET | `/api/users/me/export` | `UserController`, `PersonalDataExportService`, GDPR personal-data export: account fields, every playlist membership, every submitted song, retained core game history, and the account's research observations, story 37, distinct from `ExportController`'s playlist-content PDFs |
+| DELETE | `/api/users/me` | `UserController`, deletes all personal data across playlists, active group membership, sent chat messages, game history (publishing `AccountHistoryDeleted` to the history database), two-factor credentials and backup codes, saved playlists, and custom avatar bytes; clears song `added_by` references to null |
+| GET | `/api/users/me/export` | `UserController`, `PersonalDataExportService`, GDPR personal-data export: account fields, creation timestamp, avatar bytes, two-factor status, every playlist membership, submitted songs, active group membership, sent chat messages, retained core game history, and research observations |
 | POST | `/api/users/me/playlists` | `UserController` |
 | GET | `/api/users/me/playlists` | `UserController` |
 | POST | `/api/users/me/playlists/{playlistInviteCode}` | `UserController`, optional body carries a per-playlist display name and avatar, rejects a banned user, story 46 |

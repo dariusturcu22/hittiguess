@@ -98,6 +98,12 @@ Data retention is enforced by periodic Spring `@Scheduled` background sweepers:
 - `AnalyticsRetentionSweeper`: Runs daily, purging analytics events and song play observations older than `analytics.retention.days` (default 365 days).
 - `GroupExpirySweeper`: Runs every 60 seconds, purging groups that reached their `expires_at` deadline. Foreign key cascades automatically remove all group chat messages and memberships. Runs every 20 seconds to drop stale voice presence.
 
+### Account deletion and personal data export
+
+Account deletion via `DELETE /api/users/me` removes all personal data across core and history databases. Foreign key cascades (`V56__cascade_user_deletions.sql`) remove two-factor backup codes, sent chat messages, saved playlist bookmarks, group memberships, and game player links, while nullifying `added_by` on submitted songs and `reporter_id` on song reports. If the user belongs to an active group, their departure is processed; if they are the sole remaining member of an open group, the group is removed. The service publishes `AccountHistoryDeleted` to synchronously remove participant history rows in the history database.
+
+Personal data export via `GET /api/users/me/export` compiles every category promised in the privacy policy: account fields, creation timestamp, custom avatar image bytes, two-factor authentication status, owned and joined playlists with member permissions, submitted songs, active group membership, sent chat messages, completed game history summaries, and song research observations.
+
 ### Group (core service)
 
 A group is the persistent wrapper a game session lives inside. Anyone can create one, whoever does becomes its admin. Membership is invite-link based, capped at 8 members, and a user can belong to at most one group at a time.

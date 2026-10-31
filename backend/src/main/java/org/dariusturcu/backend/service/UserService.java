@@ -20,9 +20,23 @@ import org.dariusturcu.backend.model.song.Song;
 import org.dariusturcu.backend.repository.PlaylistBanRepository;
 import org.dariusturcu.backend.repository.PlaylistMembershipRepository;
 import org.dariusturcu.backend.repository.PlaylistRepository;
+import org.dariusturcu.backend.model.group.Group;
+import org.dariusturcu.backend.model.group.Member;
+import org.dariusturcu.backend.repository.ChatMessageRepository;
+import org.dariusturcu.backend.repository.EmailVerificationTokenRepository;
+import org.dariusturcu.backend.repository.GroupRepository;
+import org.dariusturcu.backend.repository.MemberRepository;
+import org.dariusturcu.backend.repository.PasswordResetTokenRepository;
+import org.dariusturcu.backend.repository.PlaylistBanRepository;
+import org.dariusturcu.backend.repository.PlaylistMembershipRepository;
+import org.dariusturcu.backend.repository.PlaylistRepository;
+import org.dariusturcu.backend.repository.RefreshTokenRepository;
 import org.dariusturcu.backend.repository.SavedPlaylistRepository;
 import org.dariusturcu.backend.repository.SongRepository;
+import org.dariusturcu.backend.repository.TwoFactorBackupCodeRepository;
 import org.dariusturcu.backend.repository.UserRepository;
+import org.springframework.beans.factory.annotation.Autowired;
+import java.util.Optional;
 
 import org.dariusturcu.backend.security.util.SecurityUtils;
 import org.springframework.security.access.AccessDeniedException;
@@ -36,7 +50,6 @@ import java.util.List;
 import java.security.SecureRandom;
 
 @Service
-@RequiredArgsConstructor
 @Transactional
 public class UserService {
     private static final int PLAYLIST_INVITE_CODE_LENGTH = 8;
@@ -51,8 +64,66 @@ public class UserService {
     private final PlaylistBanRepository playlistBanRepository;
     private final SongRepository songRepository;
     private final SavedPlaylistRepository savedPlaylistRepository;
+    private final MemberRepository memberRepository;
+    private final GroupRepository groupRepository;
+    private final ChatMessageRepository chatMessageRepository;
+    private final TwoFactorBackupCodeRepository twoFactorBackupCodeRepository;
+    private final RefreshTokenRepository refreshTokenRepository;
+    private final PasswordResetTokenRepository passwordResetTokenRepository;
+    private final EmailVerificationTokenRepository emailVerificationTokenRepository;
     private final org.springframework.context.ApplicationEventPublisher eventPublisher;
     private final SecureRandom secureRandom = new SecureRandom();
+
+    @Autowired
+    public UserService(
+            UserRepository userRepository,
+            PlaylistRepository playlistRepository,
+            UserMapper userMapper,
+            PlaylistMapper playlistMapper,
+            PlaylistMembershipRepository playlistMembershipRepository,
+            PlaylistBanRepository playlistBanRepository,
+            SongRepository songRepository,
+            SavedPlaylistRepository savedPlaylistRepository,
+            MemberRepository memberRepository,
+            GroupRepository groupRepository,
+            ChatMessageRepository chatMessageRepository,
+            TwoFactorBackupCodeRepository twoFactorBackupCodeRepository,
+            RefreshTokenRepository refreshTokenRepository,
+            PasswordResetTokenRepository passwordResetTokenRepository,
+            EmailVerificationTokenRepository emailVerificationTokenRepository,
+            org.springframework.context.ApplicationEventPublisher eventPublisher) {
+        this.userRepository = userRepository;
+        this.playlistRepository = playlistRepository;
+        this.userMapper = userMapper;
+        this.playlistMapper = playlistMapper;
+        this.playlistMembershipRepository = playlistMembershipRepository;
+        this.playlistBanRepository = playlistBanRepository;
+        this.songRepository = songRepository;
+        this.savedPlaylistRepository = savedPlaylistRepository;
+        this.memberRepository = memberRepository;
+        this.groupRepository = groupRepository;
+        this.chatMessageRepository = chatMessageRepository;
+        this.twoFactorBackupCodeRepository = twoFactorBackupCodeRepository;
+        this.refreshTokenRepository = refreshTokenRepository;
+        this.passwordResetTokenRepository = passwordResetTokenRepository;
+        this.emailVerificationTokenRepository = emailVerificationTokenRepository;
+        this.eventPublisher = eventPublisher;
+    }
+
+    public UserService(
+            UserRepository userRepository,
+            PlaylistRepository playlistRepository,
+            UserMapper userMapper,
+            PlaylistMapper playlistMapper,
+            PlaylistMembershipRepository playlistMembershipRepository,
+            PlaylistBanRepository playlistBanRepository,
+            SongRepository songRepository,
+            SavedPlaylistRepository savedPlaylistRepository,
+            org.springframework.context.ApplicationEventPublisher eventPublisher) {
+        this(userRepository, playlistRepository, userMapper, playlistMapper,
+                playlistMembershipRepository, playlistBanRepository, songRepository,
+                savedPlaylistRepository, null, null, null, null, null, null, null, eventPublisher);
+    }
 
     private List<PlaylistSummaryDTO> getPlaylistSummaries(Long userId) {
         return playlistMembershipRepository.findByUserId(userId).stream()
@@ -117,6 +188,55 @@ public class UserService {
         List<PlaylistMembership> memberships = playlistMembershipRepository.findByUserId(user.getId());
         for (PlaylistMembership membership : memberships) {
             departFromPlaylist(membership.getPlaylist(), user, membership);
+        }
+
+        if (chatMessageRepository != null) {
+            chatMessageRepository.deleteBySenderId(user.getId());
+        }
+
+        if (savedPlaylistRepository != null) {
+            savedPlaylistRepository.deleteByUserId(user.getId());
+        }
+
+        if (twoFactorBackupCodeRepository != null) {
+            twoFactorBackupCodeRepository.deleteByUser(user);
+        }
+
+        if (refreshTokenRepository != null) {
+            refreshTokenRepository.deleteRefreshTokenByUser(user);
+        }
+
+        if (passwordResetTokenRepository != null) {
+            passwordResetTokenRepository.deletePasswordResetTokenByUser(user);
+        }
+
+        if (emailVerificationTokenRepository != null) {
+            emailVerificationTokenRepository.deleteEmailVerificationTokenByUser(user);
+        }
+
+        if (memberRepository != null) {
+            memberRepository.findByUser(user).ifPresent(member -> {
+                Group group = member.getGroup();
+                group.removeMember(member);
+                if (member.isAdmin()) {
+                    Optional<Member> nextAdmin = group.getMembers().stream()
+                            .min(Comparator.comparing(Member::getJoinedAt));
+                    if (nextAdmin.isPresent()) {
+                        nextAdmin.get().setAdmin(true);
+                        if (groupRepository != null) {
+                            groupRepository.save(group);
+                        }
+                    } else {
+                        if (groupRepository != null) {
+                            groupRepository.delete(group);
+                        }
+                    }
+                } else {
+                    if (groupRepository != null) {
+                        groupRepository.save(group);
+                    }
+                }
+            });
         }
 
         eventPublisher.publishEvent(new org.dariusturcu.backend.history.AccountHistoryDeleted(user.getId()));
