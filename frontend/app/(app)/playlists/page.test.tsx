@@ -166,4 +166,15 @@ describe("PlaylistsPage library tabs", () => {
     expect(screen.getByLabelText("Invite code or link")).toBeVisible();
     expect(screen.getByText("Owned mix")).toBeVisible();
   });
+
+  it("shows search empty state when no playlists match search query", () => {
+    renderPage();
+
+    fireEvent.change(screen.getByPlaceholderText("Search your playlists..."), {
+      target: { value: "nonexistent query" },
+    });
+
+    expect(screen.getByText(/No playlists matching/)).toBeVisible();
+    expect(screen.getByText(/nonexistent query/)).toBeVisible();
+  });
 });
