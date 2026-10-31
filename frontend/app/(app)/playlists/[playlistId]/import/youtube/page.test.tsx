@@ -229,7 +229,7 @@ describe("ImportYoutubePage background import", () => {
   });
 
   it("reads the final results by job id when the import finishes between polls", async () => {
-    activeImportState = { isError: true, error: notFoundError() };
+    activeImportState = { isError: false, data: undefined };
     finishedImportState.current = {
       "job-1": {
         status: "DONE",
@@ -286,7 +286,7 @@ describe("ImportYoutubePage background import", () => {
       "hittiguess-active-playlist-import",
       JSON.stringify({ importJobId: "job-1", playlistId: 7 }),
     );
-    activeImportState = { isError: true, error: notFoundError(), data: undefined };
+    activeImportState = { isError: false, data: undefined };
     await renderPage();
 
     expect(await screen.findByText("0 of 0 added")).toBeVisible();

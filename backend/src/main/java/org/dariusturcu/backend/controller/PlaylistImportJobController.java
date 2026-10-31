@@ -39,7 +39,7 @@ public class PlaylistImportJobController {
     public ResponseEntity<PlaylistImportJobDTO> activeImport(@PathVariable Long playlistId) {
         return playlistImportJobService.findActiveImport(playlistId)
                 .map(ResponseEntity::ok)
-                .orElseGet(() -> ResponseEntity.notFound().build());
+                .orElseGet(() -> ResponseEntity.noContent().build());
     }
 
     @Operation(summary = "Read one import job of the playlist, running or finished, with per-video results")

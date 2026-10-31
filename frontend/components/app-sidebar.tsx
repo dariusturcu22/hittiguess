@@ -194,14 +194,15 @@ export function AppSidebar() {
 
   const finishedImportPlaylistId = activeImport?.playlistId;
   React.useEffect(() => {
-    if (activeImport && activeImportQuery.isError) {
+    const isImportGone = activeImportQuery.isError || (!activeImportQuery.isLoading && !activeImportQuery.data);
+    if (activeImport && isImportGone) {
       clearActiveImportJob();
       setActiveImport(null);
       if (finishedImportPlaylistId) {
         void queryClient.invalidateQueries({ queryKey: getGetPlaylistQueryKey(finishedImportPlaylistId) });
       }
     }
-  }, [activeImport, activeImportQuery.isError, finishedImportPlaylistId, queryClient]);
+  }, [activeImport, activeImportQuery.data, activeImportQuery.isError, activeImportQuery.isLoading, finishedImportPlaylistId, queryClient]);
 
   const importItems = activeImportQuery.data?.items ?? [];
   const importCounts = countImportItems(importItems);
@@ -317,7 +318,7 @@ export function AppSidebar() {
         </div>
       </div>
 
-      {activeImport && !activeImportQuery.isError ? (
+      {activeImport && activeImportQuery.data && !activeImportQuery.isError ? (
         <div className="group relative mt-3 mb-3 shrink-0 short:mt-2 short:mb-2">
           <button type="button" onClick={() => router.push(`/playlists/${activeImport.playlistId}/import/youtube`)} className="flex size-[30px] cursor-pointer items-center justify-center rounded-full bg-primary text-primary-foreground" title="Import in progress" aria-describedby="import-progress-popup">
             <span className="size-3 rounded-full border-2 border-current border-t-transparent animate-spin" />

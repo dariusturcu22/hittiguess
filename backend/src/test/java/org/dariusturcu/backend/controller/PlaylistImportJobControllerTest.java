@@ -59,11 +59,12 @@ class PlaylistImportJobControllerTest {
     }
 
     @Test
-    void activeImportReturnsNotFoundWithoutARunningJob() {
+    void activeImportReturnsNoContentWithoutARunningJob() {
         when(playlistImportJobService.findActiveImport(7L)).thenReturn(Optional.empty());
 
         ResponseEntity<PlaylistImportJobDTO> response = controller().activeImport(7L);
 
-        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
+        assertThat(response.getBody()).isNull();
     }
 }

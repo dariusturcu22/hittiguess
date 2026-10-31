@@ -1510,3 +1510,11 @@ Why: all admin console screens require dark and light mockups in the design canv
 Decision: STOMP reconnect handlers invalidate and refetch all domain queries that may have mutated while offline. In `useGameSessionRealtime`, reconnect refetches the session, the player's guess state, the current round link-out, and results if the game completed. In `useGroupRealtime`, reconnect refetches the group, active membership, and group chat history. In `GroupChatOverlay`, transitioning to the connected state triggers an immediate history refetch. When a player was removed while offline, refetching the group or active membership marks the player as not in the group, rendering the unavailable screen. When a session completed while offline, refetching the session triggers the transition to results.
 
 Why: previously, `useGameSessionRealtime` only invalidated the session query and `useGroupRealtime` only invalidated the group query on connect. If a player lost connection across a round or phase change, guess state, link-outs, chat messages, active group membership, and session results could remain stale until an explicit event arrived or the page was manually refreshed.
+
+---
+
+## 2026-10-31 | Return 204 No Content for absent active import job
+
+Decision: `GET /api/playlists/{playlistId}/import-jobs/active` returns 204 No Content instead of 404 Not Found when no import job is currently active for the playlist. Callers check for absence of active import data without treating it as an HTTP error, and the OpenAPI client is regenerated to reflect the updated contract.
+
+Why: 404 responses are logged as network errors in browser developer tools and console telemetry, despite the absence of an active import being a normal, frequent poll state. Returning 204 No Content communicates that the endpoint resolved successfully with no active job, avoiding false error logs while maintaining straightforward absence checks in the frontend.
