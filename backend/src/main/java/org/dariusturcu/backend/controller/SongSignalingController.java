@@ -1,8 +1,10 @@
 package org.dariusturcu.backend.controller;
 
+import org.dariusturcu.backend.exception.RateLimitExceededException;
 import org.dariusturcu.backend.model.user.User;
 import org.dariusturcu.backend.model.voice.VoiceSignalMessage;
 import org.dariusturcu.backend.model.voice.VoiceSignalRequest;
+import org.dariusturcu.backend.ratelimit.RateLimiterRegistry;
 import org.dariusturcu.backend.repository.PlayerRepository;
 import org.dariusturcu.backend.repository.UserRepository;
 import org.dariusturcu.backend.security.UserPrincipal;
@@ -22,6 +24,7 @@ import tools.jackson.databind.ObjectMapper;
 import jakarta.validation.Valid;
 
 import java.security.Principal;
+import java.time.Duration;
 
 // The session-scoped parallel to VoiceSignalingController: relays one WebRTC signaling
 // step for the DJ's shared song audio from one session player to its target player only,
@@ -39,10 +42,16 @@ import java.security.Principal;
 @Validated
 public class SongSignalingController {
 
+    static final int MAXIMUM_SIGNALS_PER_WINDOW = 30;
+    static final Duration SIGNAL_RATE_LIMIT_WINDOW = Duration.ofSeconds(10);
+
     private final PlayerRepository playerRepository;
     private final UserRepository userRepository;
     private final SimpMessagingTemplate messagingTemplate;
     private final ObjectMapper objectMapper;
+
+    private final RateLimiterRegistry signalRateLimiter =
+            new RateLimiterRegistry(MAXIMUM_SIGNALS_PER_WINDOW, SIGNAL_RATE_LIMIT_WINDOW);
 
     @MessageMapping("/sessions/{sessionId}/song/signal")
     public void relaySignal(@DestinationVariable Long sessionId,
@@ -54,6 +63,9 @@ public class SongSignalingController {
         }
         if (!playerRepository.existsBySessionIdAndUserId(sessionId, request.targetMemberUserId())) {
             throw new AccessDeniedException("The signal's target is not a player in this session");
+        }
+        if (!signalRateLimiter.tryConsume(sessionId + ":" + senderUserId)) {
+            throw new RateLimitExceededException("Signaling rate limit exceeded. Please wait a moment.");
         }
         String targetUsername = userRepository.findById(request.targetMemberUserId())
                 .map(User::getUsername)
@@ -71,5 +83,9 @@ public class SongSignalingController {
             return userPrincipal.getUser().getId();
         }
         throw new AccessDeniedException("No authenticated user on this STOMP session");
+    }
+
+    void resetRateLimiterForTesting() {
+        signalRateLimiter.resetForTesting();
     }
 }

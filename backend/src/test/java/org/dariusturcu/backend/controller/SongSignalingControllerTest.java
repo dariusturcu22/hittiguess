@@ -1,5 +1,6 @@
 package org.dariusturcu.backend.controller;
 
+import org.dariusturcu.backend.exception.RateLimitExceededException;
 import org.dariusturcu.backend.model.user.Role;
 import org.dariusturcu.backend.model.user.User;
 import org.dariusturcu.backend.model.voice.VoiceSignalRequest;
@@ -129,6 +130,36 @@ class SongSignalingControllerTest {
                 .isInstanceOf(AccessDeniedException.class);
 
         verify(messagingTemplate, never()).convertAndSendToUser(anyString(), anyString(), any(Object.class));
+    }
+
+    @Test
+    void exceedingSignalingRateLimitThrowsRateLimitExceededExceptionAndRecovers() {
+        when(playerRepository.existsBySessionIdAndUserId(SESSION_ID, SENDER_USER_ID)).thenReturn(true);
+        when(playerRepository.existsBySessionIdAndUserId(SESSION_ID, TARGET_USER_ID)).thenReturn(true);
+        User target = userWithId(TARGET_USER_ID);
+        when(userRepository.findById(TARGET_USER_ID)).thenReturn(Optional.of(target));
+        Principal sender = principalFor(SENDER_USER_ID);
+        SongSignalingController controller = controller();
+
+        for (int signalIndex = 0; signalIndex < SongSignalingController.MAXIMUM_SIGNALS_PER_WINDOW; signalIndex++) {
+            controller.relaySignal(
+                    SESSION_ID,
+                    new VoiceSignalRequest(VoiceSignalType.CANDIDATE, TARGET_USER_ID, "candidate-" + signalIndex),
+                    sender);
+        }
+
+        assertThatThrownBy(() -> controller.relaySignal(
+                SESSION_ID,
+                new VoiceSignalRequest(VoiceSignalType.CANDIDATE, TARGET_USER_ID, "overflow"),
+                sender))
+                .isInstanceOf(RateLimitExceededException.class)
+                .hasMessageContaining("Signaling rate limit exceeded");
+
+        controller.resetRateLimiterForTesting();
+        controller.relaySignal(
+                SESSION_ID,
+                new VoiceSignalRequest(VoiceSignalType.CANDIDATE, TARGET_USER_ID, "recovered"),
+                sender);
     }
 
     private static final class UnknownPrincipal implements Principal {
