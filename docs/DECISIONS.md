@@ -1550,3 +1550,11 @@ Why: users require direct access to self-service profile updates, GDPR personal 
 Decision: the `/settings` route presents two-factor authentication controls alongside profile settings. When disabled, setup generates a TOTP provisioning QR code and secret, requiring confirmation code entry before returning one-time backup codes with copy and download options. When active, disabling requires proof via the account's current password or an authentication code. The login page (`/login`) handles `twoFactorRequired` responses by displaying a dedicated second verification step that accepts either a 6-digit TOTP code or a backup code.
 
 Why: users require a clear, guided setup flow with visual QR scanning and manual secret entry to configure authenticator apps, immediate preservation of one-time recovery codes, and proof of possession or credential ownership to disable protection. Supporting both TOTP codes and backup codes seamlessly on the login page preserves account access even when an authenticator device is lost or unavailable.
+
+---
+
+## 2026-10-31 | Joined-tab copy and library filter feedback
+
+Decision: the Joined tab in `frontend/app/(app)/playlists/page.tsx` renders the "Join playlist" end tile as designed in `YourPlaylistsJoinedDark.dc.html` and `YourPlaylistsJoinedLight.dc.html`, and provides distinct empty-state messages for empty search queries and empty library filters.
+
+Why: the playlist library requires distinct feedback when a filter has no items versus when a search query yields no matches. Maintaining the clean "Join playlist" card keeps the Joined tab consistent with the Owned and Saved end tiles without visual clutter.
