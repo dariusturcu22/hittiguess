@@ -6,12 +6,14 @@ import { keepPreviousData } from "@tanstack/react-query";
 
 import { useSearchCatalog } from "@/hooks/generated/admin-song-catalog/admin-song-catalog";
 import type { AdminCatalogSongDTO } from "@/hooks/models/adminCatalogSongDTO";
+import { Checkbox } from "@/components/shadcn/checkbox";
 import { Skeleton } from "@/components/shadcn/skeleton";
 
 import {
   pageClass,
   scrollingTableCardClass,
 } from "../backfill-queue/pipeline-ui";
+import { ProposalBulkActions } from "./proposal-bulk-actions";
 import { SongDetailDrawer } from "./song-detail-drawer";
 import {
   addedByLabel,
@@ -32,6 +34,8 @@ import {
 } from "./song-catalog-presentation";
 
 const SKELETON_ROW_COUNT = 8;
+
+const SELECTABLE_ROW_CLASSES = "flex w-full min-w-0 flex-1 items-center gap-[14px] pr-5 py-2.5 text-left @max-4xl:gap-2.5 @max-4xl:pr-4";
 
 const ROW_CLASSES = "flex w-full items-center gap-[14px] px-5 py-2.5 border-b-2 border-background last:border-b-0 text-left @max-4xl:gap-2.5 @max-4xl:px-4";
 
@@ -115,16 +119,43 @@ function CatalogRow({
   song,
   selected,
   onSelect,
+  checked,
+  onCheckedChange,
 }: {
   song: AdminCatalogSongDTO;
   selected: boolean;
   onSelect: (songId: number) => void;
+  checked?: boolean;
+  onCheckedChange?: (songId: number, checked: boolean) => void;
 }) {
   const songId = song.songId;
   if (songId == null) {
     return (
       <div className={ROW_CLASSES} data-testid="catalog-row">
         <CatalogRowCells song={song} />
+      </div>
+    );
+  }
+  if (onCheckedChange) {
+    const rowLabel = song.title ?? song.youtubeId;
+    return (
+      <div
+        data-testid="catalog-row"
+        className={`flex items-center gap-[14px] border-b-2 border-background pl-5 last:border-b-0 @max-4xl:gap-2.5 @max-4xl:pl-4 ${selected ? "bg-accent/10" : "hover:bg-accent/5"}`}
+      >
+        <Checkbox
+          checked={checked === true}
+          onCheckedChange={(nextChecked) => onCheckedChange(songId, nextChecked === true)}
+          aria-label={`Select ${rowLabel}`}
+        />
+        <button
+          type="button"
+          onClick={() => onSelect(songId)}
+          aria-pressed={selected}
+          className={SELECTABLE_ROW_CLASSES}
+        >
+          <CatalogRowCells song={song} />
+        </button>
       </div>
     );
   }
@@ -148,6 +179,7 @@ export default function SongCatalogPage() {
   const [proposedFilter, setProposedFilter] = React.useState<boolean | undefined>(undefined);
   const [page, setPage] = React.useState(FIRST_PAGE);
   const [selectedSongId, setSelectedSongId] = React.useState<number | null>(null);
+  const [checkedSongIds, setCheckedSongIds] = React.useState<ReadonlySet<number>>(new Set());
 
   React.useEffect(() => {
     const debounceTimer = window.setTimeout(() => {
@@ -155,6 +187,7 @@ export default function SongCatalogPage() {
       if (nextSearch !== appliedSearch) {
         setAppliedSearch(nextSearch);
         setPage(FIRST_PAGE);
+        setCheckedSongIds(new Set());
       }
     }, SEARCH_DEBOUNCE_MILLISECONDS);
     return () => window.clearTimeout(debounceTimer);
@@ -177,11 +210,40 @@ export default function SongCatalogPage() {
   const totalElements = catalogPage?.totalElements ?? 0;
   const totalPages = catalogPage?.totalPages ?? 0;
   const shownPage = catalogPage?.page ?? page;
+  const bulkSelectionEnabled = proposedFilter === true;
+  const selectableSongIds = items.flatMap((song) =>
+    song.songId != null && song.proposedReleaseYear != null ? [song.songId] : [],
+  );
+  const checkedOnPage = selectableSongIds.filter((songId) => checkedSongIds.has(songId));
+  const allOnPageChecked =
+    selectableSongIds.length > 0 && checkedOnPage.length === selectableSongIds.length;
+
+  function changePage(update: (currentPage: number) => number) {
+    setPage(update);
+    setCheckedSongIds(new Set());
+  }
+
+  function toggleSongChecked(songId: number, checked: boolean) {
+    setCheckedSongIds((current) => {
+      const next = new Set(current);
+      if (checked) {
+        next.add(songId);
+      } else {
+        next.delete(songId);
+      }
+      return next;
+    });
+  }
+
+  function toggleAllOnPage(checked: boolean) {
+    setCheckedSongIds(checked ? new Set(selectableSongIds) : new Set());
+  }
 
   function selectFilter(filter: (typeof STATUS_FILTERS)[number]) {
     setStatusFilter(filter.status);
     setProposedFilter(filter.proposedYear);
     setPage(FIRST_PAGE);
+    setCheckedSongIds(new Set());
   }
 
   return (
@@ -248,8 +310,23 @@ export default function SongCatalogPage() {
         })}
       </div>
 
+      {bulkSelectionEnabled ? (
+        <ProposalBulkActions
+          selectedSongIds={checkedOnPage}
+          onDone={() => setCheckedSongIds(new Set())}
+        />
+      ) : null}
+
       <div className={`${scrollingTableCardClass} rounded-[16px] border-[3px] border-border-strong bg-card shadow-lg box-border`}>
         <div className="flex shrink-0 items-center gap-[14px] border-b-2 border-background px-5 py-2.5 text-[10px] font-semibold uppercase tracking-[0.5px] text-icon-muted @max-4xl:gap-2.5 @max-4xl:px-4">
+          {bulkSelectionEnabled ? (
+            <Checkbox
+              checked={allOnPageChecked}
+              disabled={selectableSongIds.length === 0}
+              onCheckedChange={(nextChecked) => toggleAllOnPage(nextChecked === true)}
+              aria-label="Select all songs on this page"
+            />
+          ) : null}
           {CATALOG_COLUMNS.map((column) => (
             <span key={column.key} className={catalogColumnClassName(column.key)}>
               {column.label}
@@ -284,6 +361,8 @@ export default function SongCatalogPage() {
                 song={song}
                 selected={song.songId != null && song.songId === selectedSongId}
                 onSelect={setSelectedSongId}
+                checked={song.songId != null && checkedSongIds.has(song.songId)}
+                onCheckedChange={bulkSelectionEnabled ? toggleSongChecked : undefined}
               />
             ))
           )}
@@ -294,7 +373,7 @@ export default function SongCatalogPage() {
           <span className="flex gap-2.5">
             <button
               type="button"
-              onClick={() => setPage((currentPage) => Math.max(FIRST_PAGE, currentPage - 1))}
+              onClick={() => changePage((currentPage) => Math.max(FIRST_PAGE, currentPage - 1))}
               disabled={page <= FIRST_PAGE}
               className="rounded-full bg-secondary px-3 py-1.5 font-display text-[9px] text-secondary-foreground disabled:cursor-not-allowed disabled:opacity-50"
             >
@@ -302,7 +381,7 @@ export default function SongCatalogPage() {
             </button>
             <button
               type="button"
-              onClick={() => setPage((currentPage) => currentPage + 1)}
+              onClick={() => changePage((currentPage) => currentPage + 1)}
               disabled={page + 1 >= totalPages}
               className="rounded-full bg-secondary px-3 py-1.5 font-display text-[9px] text-secondary-foreground disabled:cursor-not-allowed disabled:opacity-50"
             >

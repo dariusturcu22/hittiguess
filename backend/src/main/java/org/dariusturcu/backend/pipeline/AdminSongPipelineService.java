@@ -5,6 +5,8 @@ import org.dariusturcu.backend.exception.ResourceNotFoundException;
 import org.dariusturcu.backend.exception.ResourceType;
 import org.dariusturcu.backend.model.admin.PipelineControlResultDTO;
 import org.dariusturcu.backend.model.admin.PipelineRunDTO;
+import org.dariusturcu.backend.model.admin.ProposalBatchRequest;
+import org.dariusturcu.backend.model.admin.ProposalBatchResultDTO;
 import org.dariusturcu.backend.model.admin.SourceFindingDTO;
 import org.dariusturcu.backend.model.admin.RecheckSongsRequest;
 import org.dariusturcu.backend.model.admin.UpdateCatalogSongRequest;
@@ -30,6 +32,7 @@ import java.util.stream.Stream;
 public class AdminSongPipelineService {
     public record Findings(List<SourceFindingDTO> sources, String reviewReason) { }
     static final int MINIMUM_YEAR = 1000;
+    static final int MAXIMUM_PROPOSAL_BATCH_SIZE = 500;
     private static final String SONG_LOCK_PREFIX = "song-youtube-id:";
     private final JdbcTemplate core;
     private final PipelineJobRepository jobs;
@@ -197,6 +200,52 @@ public class AdminSongPipelineService {
         song(songId);
         core.update("UPDATE songs SET proposed_release_year = NULL, proposed_at = NULL WHERE id = ?", songId);
         return new PipelineControlResultDTO(1);
+    }
+
+    @Transactional
+    public ProposalBatchResultDTO acceptProposals(ProposalBatchRequest request) {
+        return applyToProposals(request, true);
+    }
+
+    @Transactional
+    public ProposalBatchResultDTO dismissProposals(ProposalBatchRequest request) {
+        return applyToProposals(request, false);
+    }
+
+    private ProposalBatchResultDTO applyToProposals(ProposalBatchRequest request, boolean accept) {
+        if (request == null || request.songIds() == null || request.songIds().isEmpty()) {
+            throw new IllegalArgumentException("songIds must not be empty");
+        }
+        if (request.songIds().size() > MAXIMUM_PROPOSAL_BATCH_SIZE) {
+            throw new IllegalArgumentException("At most " + MAXIMUM_PROPOSAL_BATCH_SIZE + " songs per request");
+        }
+        List<Long> songIds = request.songIds().stream().filter(Objects::nonNull).distinct().sorted().toList();
+        List<Long> skipped = new ArrayList<>();
+        int affected = 0;
+        for (long songId : songIds) {
+            if (applyToProposal(songId, accept)) {
+                affected++;
+            } else {
+                skipped.add(songId);
+            }
+        }
+        return new ProposalBatchResultDTO(affected, skipped);
+    }
+
+    private boolean applyToProposal(long songId, boolean accept) {
+        List<String> youtubeIds = core.queryForList("SELECT youtube_id FROM songs WHERE id = ?", String.class, songId);
+        if (youtubeIds.isEmpty()) { return false; }
+        if (youtubeIds.getFirst() != null) { lockSong(youtubeIds.getFirst()); }
+        List<Map<String, Object>> locked = core.queryForList(
+                "SELECT proposed_release_year FROM songs WHERE id = ? FOR UPDATE", songId);
+        if (locked.isEmpty() || locked.getFirst().get("proposed_release_year") == null) { return false; }
+        if (!accept) {
+            core.update("UPDATE songs SET proposed_release_year = NULL, proposed_at = NULL WHERE id = ?", songId);
+            return true;
+        }
+        if (isSongInActiveGame(songId)) { return false; }
+        core.update("UPDATE songs SET release_year = proposed_release_year, proposed_release_year = NULL, proposed_at = NULL WHERE id = ?", songId);
+        return true;
     }
 
     // Each run is queued in its own transaction, so a recheck of the whole catalog never
