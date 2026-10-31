@@ -1574,3 +1574,11 @@ Why: maintaining visual consistency across themes and screens prevents styling r
 Decision: the landing page responsive layout at 390x844 conforms to `LandingMobileDark.dc.html` and `LandingMobileLight.dc.html` across both themes, verifying hero typography and card deck tilts, the mobile SVG winding path for round steps, section highlight offsets and backdrop containers, full-width call-to-action buttons, and mobile footer link labels.
 
 Why: the marketing landing page is the only view with a dedicated mobile design artboard in the design specification. Confirming exact 390x844 breakpoint behavior in both light and dark palettes ensures mobile visitors experience the intended visual presentation before entering the app.
+
+---
+
+## 2026-10-31 | Mockup reconciliation and published canvas validation
+
+Decision: all 145 source artboard documents and `canvas.json` in `docs/design/source` are embedded with exact equality into `docs/design/hittiguess-design.html`, incorporating account settings (`AccountSettingsDark.dc.html`, `AccountSettingsLight.dc.html`), audio check (`AudioCheckDark.dc.html`, `AudioCheckLight.dc.html`), admin song recheck (`AdminSongRecheckDark.dc.html`, `AdminSongRecheckLight.dc.html`), and all library, lobby, and session artboards without drift.
+
+Why: maintaining complete parity between standalone source artboards and the published single-file design canvas guarantees that design reviews, mockup references, and visual test fixtures inspect identical markup and layout structure.
