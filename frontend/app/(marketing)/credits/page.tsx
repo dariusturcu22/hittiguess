@@ -4,9 +4,12 @@ import { ThemeToggle } from "@/components/theme-toggle";
 import { PublicFooter } from "@/components/public-footer";
 
 export const metadata = {
-  title: "Credits & Licences | hittiguess",
+  title: "Credits & Licences",
   description:
     "Attribution and licences for metadata providers, fonts, and open-source software used in hittiguess.",
+  alternates: {
+    canonical: "/credits",
+  },
 };
 
 const DATA_SOURCES = [

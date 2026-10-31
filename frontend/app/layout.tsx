@@ -1,6 +1,30 @@
+import type { Metadata, Viewport } from "next";
 import localFont from "next/font/local";
 import "./globals.css";
 import Providers from "@/components/providers";
+
+const PRODUCTION_URL = "https://hittiguess.com";
+const appBaseUrl = process.env.NEXT_PUBLIC_APP_URL || PRODUCTION_URL;
+
+export const metadata: Metadata = {
+  metadataBase: new URL(appBaseUrl),
+  title: {
+    template: "%s | hittiguess",
+    default: "hittiguess | Multiplayer Music Guessing Game",
+  },
+  description:
+    "A multiplayer music guessing game inspired by Hitster. Hear a song, guess when it was released, and build a chronological timeline with friends.",
+  alternates: {
+    canonical: "./",
+  },
+};
+
+export const viewport: Viewport = {
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#eff1f5" },
+    { media: "(prefers-color-scheme: dark)", color: "#1e1e2e" },
+  ],
+};
 
 // Served from the repo rather than fetched from Google Fonts at build time, so a
 // change in Google's responses can't break the build. Latin subsets only, as before.

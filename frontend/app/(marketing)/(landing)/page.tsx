@@ -1,4 +1,14 @@
+import type { Metadata } from "next";
 import Link from "next/link";
+
+export const metadata: Metadata = {
+  title: "hittiguess | Multiplayer Music Guessing Game",
+  description:
+    "A multiplayer music guessing game inspired by Hitster. Hear a song, guess when it was released, and build a chronological timeline with friends.",
+  alternates: {
+    canonical: "/",
+  },
+};
 import { Button } from "@/components/shadcn/button";
 import { PublicFooter } from "@/components/public-footer";
 import { LandingHeader } from "./landing-header";
