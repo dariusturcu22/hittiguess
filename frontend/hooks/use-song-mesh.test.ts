@@ -494,6 +494,22 @@ describe("useSongMesh stop conditions", () => {
     return { ...rendered, peer: latestPeer() };
   }
 
+  it("attaches the captured track to peer transceivers immediately upon becoming the DJ for the round", async () => {
+    const listenerOptions = baseOptions({ isDjForCurrentRound: false });
+    const rendered = renderHook((options: SongMeshOptions) => useSongMesh(options), { initialProps: listenerOptions });
+    await connectSignals();
+    await act(async () => {
+      await startSongCapture();
+    });
+    const peer = latestPeer();
+    expect(attachedTrack(peer)).toBeNull();
+
+    act(() => {
+      rendered.rerender({ ...listenerOptions, isDjForCurrentRound: true });
+    });
+    expect(attachedTrack(peer)).toBe(display.audioTrack);
+  });
+
   it("detaches the DJ track while paused and reattaches it when resumed", async () => {
     const { peer, rerender } = await renderWithCapture();
     expect(attachedTrack(peer)).toBe(display.audioTrack);

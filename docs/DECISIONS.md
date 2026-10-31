@@ -1518,3 +1518,11 @@ Why: previously, `useGameSessionRealtime` only invalidated the session query and
 Decision: `GET /api/playlists/{playlistId}/import-jobs/active` returns 204 No Content instead of 404 Not Found when no import job is currently active for the playlist. Callers check for absence of active import data without treating it as an HTTP error, and the OpenAPI client is regenerated to reflect the updated contract.
 
 Why: 404 responses are logged as network errors in browser developer tools and console telemetry, despite the absence of an active import being a normal, frequent poll state. Returning 204 No Content communicates that the endpoint resolved successfully with no active job, avoiding false error logs while maintaining straightforward absence checks in the frontend.
+
+---
+
+## 2026-10-31 | Song track attachment timing at DJ turn start
+
+Decision: the DJ's captured song track attaches to peer transceivers immediately upon becoming the DJ for the round. Pre-attaching prior to turn start is omitted.
+
+Why: WebRTC transceivers in the song mesh are maintained across all session players with `sendrecv` direction and negotiated Opus parameters throughout the session. Calling `replaceTrack` switches the audio source immediately without SDP renegotiation or ICE restart. The player becomes the DJ at the beginning of the round during the three-second round intro, multiple seconds before the DJ opens YouTube and starts playback. The sender is therefore fully warm before audio flows, with no audible start-up delay. Pre-attaching prior to round start would also risk audio leaking from the upcoming DJ's tab while the previous round's reveal and scoring screen is still visible.
