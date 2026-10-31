@@ -123,7 +123,6 @@ public class GameSessionService {
     private final PlaylistAccessService playlistAccessService;
     private final PlaylistExpansionService playlistExpansionService;
     private final DifficultyTunedSongSelector difficultySelector;
-    private final PendingSessionSongPool pendingPool;
     private final SessionMapper sessionMapper;
     private final SessionResultsStore resultsStore;
     private final GameSessionScheduler gameSessionScheduler;
@@ -157,11 +156,11 @@ public class GameSessionService {
         // Every start path funnels its candidate songs through one dedupe-and-shuffle step, so
         // the song list a session plays from is built the same way whether the songs came from
         // a staged review, the group's playlists, or the difficulty selector.
-        List<Song> selectedPool = pendingPool.peek(groupId)
-                .map(this::resolvePoolSongs)
-                .orElseGet(() -> group.getDifficultyTier() == null ? defaultSongPool(group)
+        List<Song> selectedPool = !group.getStagedSongIds().isEmpty()
+                ? resolvePoolSongs(group.getStagedSongIds())
+                : group.getDifficultyTier() == null ? defaultSongPool(group)
                         : difficultySelector.selectPreparedInternational(group.getDifficultyTier(),
-                        connectedMembers.size() * group.getWinConditionCardCount() * DIFFICULTY_POOL_HEADROOM));
+                        connectedMembers.size() * group.getWinConditionCardCount() * DIFFICULTY_POOL_HEADROOM);
         List<Song> songPool = gameSongList.build(selectedPool);
         requireEnoughSongs(songPool.size(), connectedMembers.size(), group.getWinConditionCardCount());
 
@@ -200,7 +199,10 @@ public class GameSessionService {
         session.setSongQueue(songQueue);
 
         GameSession savedSession = gameSessionRepository.save(session);
-        pendingPool.discard(groupId);
+        if (!group.getStagedSongIds().isEmpty()) {
+            group.getStagedSongIds().clear();
+            groupRepository.save(group);
+        }
 
         List<Player> ordered = savedSession.getPlayers().stream()
                 .sorted(Comparator.comparingInt(Player::getTurnOrder))
@@ -233,7 +235,10 @@ public class GameSessionService {
         if (connectedMembers.size() < MINIMUM_PLAYERS) {
             throw new ConflictException("Not enough connected members to start a session");
         }
-        pendingPool.discard(groupId);
+        if (!group.getStagedSongIds().isEmpty()) {
+            group.getStagedSongIds().clear();
+            groupRepository.save(group);
+        }
         List<Song> candidatePool = group.getDifficultyTier() == null ? defaultSongPool(group)
                 : difficultySelector.selectPreparedInternational(group.getDifficultyTier(),
                 connectedMembers.size() * group.getWinConditionCardCount() * DIFFICULTY_POOL_HEADROOM);
@@ -244,9 +249,7 @@ public class GameSessionService {
     // Back to the lobby from the audio check. A song list staged for this game is dropped
     // with it, so a later start builds its own.
     public GroupDetailDTO cancelAudioCheck(Long groupId) {
-        GroupDetailDTO result = groupService.cancelAudioCheck(groupId);
-        pendingPool.discard(groupId);
-        return result;
+        return groupService.cancelAudioCheck(groupId);
     }
 
     // Compatibility preview endpoint. The lobby persists its tier and selects songs at Start.
@@ -314,11 +317,14 @@ public class GameSessionService {
         List<Song> resolvedPool = gameSongList.distinct(resolvePoolSongs(songIds));
         requireEnoughSongs(resolvedPool.size(), connectedMembers.size(), group.getWinConditionCardCount());
 
-        pendingPool.stage(group.getId(), resolvedPool.stream().map(Song::getId).toList());
+        group.getStagedSongIds().clear();
+        group.getStagedSongIds().addAll(resolvedPool.stream().map(Song::getId).toList());
+        groupRepository.save(group);
         try {
             return groupService.beginAudioCheck(group.getId());
         } catch (RuntimeException startFailure) {
-            pendingPool.discard(group.getId());
+            group.getStagedSongIds().clear();
+            groupRepository.save(group);
             throw startFailure;
         }
     }

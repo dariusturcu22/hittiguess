@@ -325,6 +325,7 @@ public class GroupService {
         }
         group.setStatus(GroupStatus.OPEN);
         resetAudioCheckStatuses(group);
+        group.getStagedSongIds().clear();
         return saveAndBroadcast(group, GroupEventType.AUDIO_CHECK_CANCELLED);
     }
 

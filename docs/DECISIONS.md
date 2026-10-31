@@ -1478,3 +1478,11 @@ Why: when a DJ closes their tab or browser, no client-side share-stopped report 
 Decision: the active session widget in the app shell subscribes to the module-level capture stream. When a player who is a required sharer in an active running session has their share stop (via the browser share bar, window close, or navigation) while on any page other than the session page, the shell immediately reports NOT_SHARED to POST /api/sessions/{sessionId}/audio-status. This pauses the session at once without waiting for the DJ to return to the session page.
 
 Why: the DJ's capture stream is held in song-capture.ts across in-app navigation, but previous audio status reporting was bound only to useSessionAudioShare on the session page. If a DJ navigated away and stopped sharing, the session continued playing on other players' screens until the DJ returned. Moving stopped-share detection into the long-lived app shell ensures sessions pause immediately upon share termination anywhere in the app.
+
+---
+
+## 2026-10-31 | Persisting staged songs across backend restarts during audio check
+
+Decision: staged song IDs for reviewed difficulty sets and custom playlist starts are persisted in the `group_staged_songs` table, keyed by `(group_id, stage_position)`, mapped as an `@ElementCollection` on `Group`. The in-memory `PendingSessionSongPool` is removed. When the session starts or when the host cancels the audio check, the staged song IDs are cleared.
+
+Why: `PendingSessionSongPool` kept staged song lists in memory during the audio check phase. A backend service restart during the audio check wiped out the staged pool, causing the subsequent game start to fall back to the group's default playlist pool instead of the reviewed or custom song selection. Persisting the staged list directly with the group ensures that backend restarts do not discard the host's selected songs.
