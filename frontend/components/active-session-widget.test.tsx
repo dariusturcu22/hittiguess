@@ -15,6 +15,19 @@ const PHASE_LENGTH_MILLISECONDS = 10_000;
 const ELAPSED_MILLISECONDS = 3_000;
 const REMAINING_SECONDS_AFTER_ELAPSING = 7;
 const playSound = vi.fn();
+const reportAudioStatusSpy = vi.fn();
+let capturedStream: MediaStream | null = null;
+const captureListeners = new Set<() => void>();
+
+vi.mock("@/lib/song-capture", () => ({
+  getSongCaptureStream: () => capturedStream,
+  subscribeSongCapture: (listener: () => void) => {
+    captureListeners.add(listener);
+    return () => {
+      captureListeners.delete(listener);
+    };
+  },
+}));
 let pathname = "/playlists";
 let session: GameSessionDTO;
 
@@ -25,6 +38,7 @@ vi.mock("@/hooks/use-game-session-realtime", () => ({ useGameSessionRealtime: vi
 vi.mock("@/hooks/use-turn-sound", () => ({ useTurnSound: () => playSound }));
 vi.mock("@/hooks/generated/game-session/game-session", () => ({
   useGetActiveSessionForGroup: () => ({ data: { id: SESSION_ID } }),
+  useReportAudioStatus: () => ({ mutate: reportAudioStatusSpy }),
   useGetSession: (_sessionId: number, options?: { query?: { select?: (session: GameSessionDTO) => GameSessionDTO } }) => ({
     data: options?.query?.select ? options.query.select(session) : session,
   }),
@@ -35,6 +49,9 @@ beforeEach(() => {
   vi.setSystemTime(NOW);
   resetServerClock();
   playSound.mockClear();
+  reportAudioStatusSpy.mockClear();
+  capturedStream = null;
+  captureListeners.clear();
   pathname = "/playlists";
   session = { currentRound: { id: ROUND_ID, roundNumber: 2, activePlayerId: OWN_PLAYER_ID, status: "AWAITING_PLACEMENT" }, players: [{ id: OWN_PLAYER_ID, userId: CURRENT_USER_ID, displayName: "Sam", tokenCount: 3 }] };
 });
@@ -109,5 +126,61 @@ describe("ActiveSessionWidget", () => {
     expect(phaseDeadline({ ...round, status: "REVEALED" })).toBe("next");
     expect(phaseDeadline({ ...round, status: "SCORED" })).toBe("next");
     expect(phaseDeadline(undefined)).toBeUndefined();
+  });
+
+  it("reports not shared when audio share stops while the player is away from the session", () => {
+    capturedStream = {} as MediaStream;
+    session = {
+      status: "IN_PROGRESS",
+      audioRequiredPlayerIds: [OWN_PLAYER_ID],
+      players: [{ id: OWN_PLAYER_ID, userId: CURRENT_USER_ID, audioStatus: "OK" }],
+    };
+    render(<ActiveSessionWidget />);
+    expect(reportAudioStatusSpy).not.toHaveBeenCalled();
+
+    act(() => {
+      capturedStream = null;
+      captureListeners.forEach((listener) => listener());
+    });
+
+    expect(reportAudioStatusSpy).toHaveBeenCalledWith({
+      sessionId: SESSION_ID,
+      data: { status: "NOT_SHARED" },
+    });
+  });
+
+  it("does not report stopped share from the shell when on the session page", () => {
+    pathname = `/sessions/${SESSION_ID}`;
+    capturedStream = null;
+    session = {
+      status: "IN_PROGRESS",
+      audioRequiredPlayerIds: [OWN_PLAYER_ID],
+      players: [{ id: OWN_PLAYER_ID, userId: CURRENT_USER_ID, audioStatus: "OK" }],
+    };
+    render(<ActiveSessionWidget />);
+    expect(reportAudioStatusSpy).not.toHaveBeenCalled();
+  });
+
+  it("does not report stopped share when the user is not a required sharer", () => {
+    const otherPlayerId = OWN_PLAYER_ID + 1;
+    capturedStream = null;
+    session = {
+      status: "IN_PROGRESS",
+      audioRequiredPlayerIds: [otherPlayerId],
+      players: [{ id: OWN_PLAYER_ID, userId: CURRENT_USER_ID, audioStatus: "OK" }],
+    };
+    render(<ActiveSessionWidget />);
+    expect(reportAudioStatusSpy).not.toHaveBeenCalled();
+  });
+
+  it("does not report stopped share when the session has ended", () => {
+    capturedStream = null;
+    session = {
+      status: "COMPLETED",
+      audioRequiredPlayerIds: [OWN_PLAYER_ID],
+      players: [{ id: OWN_PLAYER_ID, userId: CURRENT_USER_ID, audioStatus: "OK" }],
+    };
+    render(<ActiveSessionWidget />);
+    expect(reportAudioStatusSpy).not.toHaveBeenCalled();
   });
 });
