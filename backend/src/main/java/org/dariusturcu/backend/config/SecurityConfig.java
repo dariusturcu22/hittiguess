@@ -80,6 +80,24 @@ public class SecurityConfig {
             "/login/oauth2/**"
     );
 
+    public static final List<String> CORS_ALLOWED_METHODS = List.of(
+            "GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"
+    );
+
+    public static final List<String> CORS_ALLOWED_HEADERS = List.of(
+            "Content-Type",
+            "Accept",
+            "X-XSRF-TOKEN",
+            "X-Request-Id",
+            "Authorization"
+    );
+
+    public static final List<String> CORS_EXPOSED_HEADERS = List.of(
+            "X-Request-Id"
+    );
+
+    private static final long CORS_MAX_AGE_SECONDS = 3600L;
+
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
     private final RateLimitingFilter rateLimitingFilter;
     private final UserDetailsService userDetailsService;
@@ -120,6 +138,9 @@ public class SecurityConfig {
         this.authorizationRequestRepository = authorizationRequestRepository;
         this.returnToAuthorizationRequestResolver = returnToAuthorizationRequestResolver;
         this.objectMapper = objectMapper;
+        if (allowedFrontendOrigins != null && allowedFrontendOrigins.contains("*")) {
+            throw new IllegalStateException("CORS allowed origins cannot contain wildcard '*' when allowCredentials is true");
+        }
         this.allowedFrontendOrigins = allowedFrontendOrigins;
         this.managementServerPort = managementServerPort;
     }
@@ -191,11 +212,13 @@ public class SecurityConfig {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
         configuration.setAllowedOrigins(allowedFrontendOrigins);
-        configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
-        configuration.setAllowedHeaders(List.of("*"));
+        configuration.setAllowedMethods(CORS_ALLOWED_METHODS);
+        configuration.setAllowedHeaders(CORS_ALLOWED_HEADERS);
+        configuration.setExposedHeaders(CORS_EXPOSED_HEADERS);
         configuration.setAllowCredentials(true);
+        configuration.setMaxAge(CORS_MAX_AGE_SECONDS);
 
-        var source = new UrlBasedCorsConfigurationSource();
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);
         return source;
     }
