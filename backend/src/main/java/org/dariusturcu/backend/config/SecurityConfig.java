@@ -67,6 +67,19 @@ public class SecurityConfig {
             "/error"
     );
 
+    public static final List<String> CSRF_EXEMPT_ENDPOINTS = List.of(
+            "/auth/register",
+            "/auth/login",
+            "/auth/2fa/verify",
+            "/auth/verify-email",
+            "/auth/resend-verification",
+            "/auth/password-reset/**",
+            "/auth/refresh",
+            "/error",
+            "/oauth2/**",
+            "/login/oauth2/**"
+    );
+
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
     private final RateLimitingFilter rateLimitingFilter;
     private final UserDetailsService userDetailsService;
@@ -78,6 +91,9 @@ public class SecurityConfig {
     private final ObjectMapper objectMapper;
     private final List<String> allowedFrontendOrigins;
     private final int managementServerPort;
+
+    @Value("${app.env:dev}")
+    private String appEnv = "dev";
 
     @Value("${app.cookie-domain:}")
     private String cookieDomain = "";
@@ -112,9 +128,16 @@ public class SecurityConfig {
     // sibling subdomain it must carry the shared parent domain, or the browser hides it.
     CookieCsrfTokenRepository csrfTokenRepository() {
         CookieCsrfTokenRepository csrfTokenRepository = CookieCsrfTokenRepository.withHttpOnlyFalse();
-        if (!cookieDomain.isBlank()) {
-            csrfTokenRepository.setCookieCustomizer(cookie -> cookie.domain(cookieDomain));
-        }
+        boolean isProduction = "prod".equals(appEnv);
+        csrfTokenRepository.setCookieCustomizer(cookie -> {
+            if (!cookieDomain.isBlank()) {
+                cookie.domain(cookieDomain);
+            }
+            if (isProduction) {
+                cookie.secure(true);
+                cookie.sameSite("None");
+            }
+        });
         return csrfTokenRepository;
     }
 
@@ -131,18 +154,7 @@ public class SecurityConfig {
                         // The ones acting on the signed-in account (2FA setup, confirm,
                         // disable, and logout) need the token like every other mutation,
                         // since production cookies are SameSite=None.
-                        .ignoringRequestMatchers(
-                                "/auth/register",
-                                "/auth/login",
-                                "/auth/2fa/verify",
-                                "/auth/verify-email",
-                                "/auth/resend-verification",
-                                "/auth/password-reset/**",
-                                "/auth/refresh",
-                                "/error",
-                                "/oauth2/**",
-                                "/login/oauth2/**"
-                        )
+                        .ignoringRequestMatchers(CSRF_EXEMPT_ENDPOINTS.toArray(String[]::new))
                 )
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .authorizeHttpRequests(auth -> auth

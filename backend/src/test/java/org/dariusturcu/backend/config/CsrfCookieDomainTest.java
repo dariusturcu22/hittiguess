@@ -7,6 +7,7 @@ import org.dariusturcu.backend.security.oauth2.HttpCookieOAuth2AuthorizationRequ
 import org.dariusturcu.backend.security.oauth2.OAuth2AuthenticationFailureHandler;
 import org.dariusturcu.backend.security.oauth2.OAuth2AuthenticationSuccessHandler;
 import org.dariusturcu.backend.security.oauth2.ReturnToOAuth2AuthorizationRequestResolver;
+import jakarta.servlet.http.Cookie;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
@@ -58,10 +59,10 @@ class CsrfCookieDomainTest {
 
     @Test
     void csrfCookieStaysHostOnlyWithoutACookieDomain() {
-        String setCookieHeader = savedCsrfCookieHeader(securityConfig());
+        Cookie cookie = savedCsrfCookie(securityConfig());
 
-        assertThat(setCookieHeader).startsWith(CSRF_COOKIE_NAME + "=");
-        assertThat(setCookieHeader).doesNotContain("Domain=");
+        assertThat(cookie.getName()).isEqualTo(CSRF_COOKIE_NAME);
+        assertThat(cookie.getDomain()).isNull();
     }
 
     @Test
@@ -69,19 +70,45 @@ class CsrfCookieDomainTest {
         SecurityConfig securityConfig = securityConfig();
         ReflectionTestUtils.setField(securityConfig, "cookieDomain", SHARED_PARENT_DOMAIN);
 
-        String setCookieHeader = savedCsrfCookieHeader(securityConfig);
+        Cookie cookie = savedCsrfCookie(securityConfig);
 
-        assertThat(setCookieHeader).contains("Domain=" + SHARED_PARENT_DOMAIN);
-        assertThat(setCookieHeader).doesNotContain("HttpOnly");
+        assertThat(cookie.getDomain()).isEqualTo(SHARED_PARENT_DOMAIN);
+        assertThat(cookie.isHttpOnly()).isFalse();
     }
 
-    private String savedCsrfCookieHeader(SecurityConfig securityConfig) {
+    @Test
+    void csrfCookieInProductionCarriesSecureAndSameSiteNoneWithoutHttpOnly() {
+        SecurityConfig securityConfig = securityConfig();
+        ReflectionTestUtils.setField(securityConfig, "appEnv", "prod");
+        ReflectionTestUtils.setField(securityConfig, "cookieDomain", SHARED_PARENT_DOMAIN);
+
+        Cookie cookie = savedCsrfCookie(securityConfig);
+
+        assertThat(cookie.getSecure()).isTrue();
+        assertThat(cookie.getAttribute("SameSite")).isEqualTo("None");
+        assertThat(cookie.getDomain()).isEqualTo(SHARED_PARENT_DOMAIN);
+        assertThat(cookie.isHttpOnly()).isFalse();
+    }
+
+    @Test
+    void csrfCookieInDevelopmentOmitsSecureAndSameSiteNone() {
+        SecurityConfig securityConfig = securityConfig();
+        ReflectionTestUtils.setField(securityConfig, "appEnv", "dev");
+
+        Cookie cookie = savedCsrfCookie(securityConfig);
+
+        assertThat(cookie.getSecure()).isFalse();
+        assertThat(cookie.getAttribute("SameSite")).isNull();
+        assertThat(cookie.isHttpOnly()).isFalse();
+    }
+
+    private Cookie savedCsrfCookie(SecurityConfig securityConfig) {
         CookieCsrfTokenRepository repository = securityConfig.csrfTokenRepository();
         MockHttpServletRequest request = new MockHttpServletRequest();
         MockHttpServletResponse response = new MockHttpServletResponse();
         CsrfToken token = repository.generateToken(request);
         repository.saveToken(token, request, response);
-        return response.getHeader("Set-Cookie");
+        return response.getCookie(CSRF_COOKIE_NAME);
     }
 
     private SecurityConfig securityConfig() {

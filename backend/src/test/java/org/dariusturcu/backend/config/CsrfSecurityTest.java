@@ -36,8 +36,14 @@ import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
@@ -57,18 +63,47 @@ class CsrfSecurityTest {
 
     @RestController
     static class ProbeController {
-        @GetMapping("/api/enums/probe")
+        @GetMapping({"/api/enums/probe", "/api/playlists/1", "/health"})
         String publicGet() {
             return "ok";
         }
 
-        @PostMapping("/api/probe")
+        @PostMapping({
+                "/api/probe",
+                "/api/playlists",
+                "/api/groups",
+                "/api/admin/users/1/role"
+        })
         String apiPost() {
             return "ok";
         }
 
-        @PostMapping("/auth/login")
-        String preLoginAuthPost() {
+        @PutMapping("/api/playlists/1")
+        String apiPut() {
+            return "ok";
+        }
+
+        @PatchMapping("/api/users/me")
+        String apiPatch() {
+            return "ok";
+        }
+
+        @DeleteMapping("/api/playlists/1")
+        String apiDelete() {
+            return "ok";
+        }
+
+        @PostMapping({
+                "/auth/register",
+                "/auth/login",
+                "/auth/2fa/verify",
+                "/auth/verify-email",
+                "/auth/resend-verification",
+                "/auth/password-reset/request",
+                "/auth/password-reset/confirm",
+                "/auth/refresh"
+        })
+        String exemptAuthPost() {
             return "ok";
         }
 
@@ -197,17 +232,76 @@ class CsrfSecurityTest {
                 .andExpect(result -> assertThat(result.getResponse().getContentAsString()).doesNotContain("CSRF"));
     }
 
+    @ParameterizedTest
+    @ValueSource(strings = {
+            "/api/playlists",
+            "/api/groups",
+            "/api/admin/users/1/role"
+    })
+    void stateChangingApiPostWithoutTokenIsRejectedAsCsrf(String path) throws Exception {
+        mockMvc.perform(post(path))
+                .andExpect(status().isForbidden())
+                .andExpect(result -> assertThat(result.getResponse().getContentAsString()).contains("CSRF"));
+    }
+
     @Test
-    void preLoginAuthPathSkipsCsrfEntirely() throws Exception {
-        mockMvc.perform(post("/auth/login"))
-                .andExpect(status().isOk());
+    void stateChangingApiPutWithoutTokenIsRejectedAsCsrf() throws Exception {
+        mockMvc.perform(put("/api/playlists/1"))
+                .andExpect(status().isForbidden())
+                .andExpect(result -> assertThat(result.getResponse().getContentAsString()).contains("CSRF"));
+    }
+
+    @Test
+    void stateChangingApiPatchWithoutTokenIsRejectedAsCsrf() throws Exception {
+        mockMvc.perform(patch("/api/users/me"))
+                .andExpect(status().isForbidden())
+                .andExpect(result -> assertThat(result.getResponse().getContentAsString()).contains("CSRF"));
+    }
+
+    @Test
+    void stateChangingApiDeleteWithoutTokenIsRejectedAsCsrf() throws Exception {
+        mockMvc.perform(delete("/api/playlists/1"))
+                .andExpect(status().isForbidden())
+                .andExpect(result -> assertThat(result.getResponse().getContentAsString()).contains("CSRF"));
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"/auth/logout", "/auth/2fa/setup", "/auth/2fa/confirm", "/auth/2fa/disable"})
+    @ValueSource(strings = {
+            "/auth/logout",
+            "/auth/2fa/setup",
+            "/auth/2fa/confirm",
+            "/auth/2fa/disable"
+    })
     void sessionBoundAuthPathWithoutTokenIsRejectedAsCsrf(String path) throws Exception {
         mockMvc.perform(post(path))
                 .andExpect(status().isForbidden())
                 .andExpect(result -> assertThat(result.getResponse().getContentAsString()).contains("CSRF"));
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {
+            "/auth/register",
+            "/auth/login",
+            "/auth/2fa/verify",
+            "/auth/verify-email",
+            "/auth/resend-verification",
+            "/auth/password-reset/request",
+            "/auth/password-reset/confirm",
+            "/auth/refresh"
+    })
+    void exemptAuthRoutesSkipCsrfWithoutToken(String path) throws Exception {
+        mockMvc.perform(post(path))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void stateChangingRequestWithCsrfTokenPairPassesCsrfValidation() throws Exception {
+        String csrfToken = freshCsrfToken();
+
+        mockMvc.perform(post("/api/playlists")
+                        .cookie(new Cookie(CSRF_COOKIE_NAME, csrfToken))
+                        .header(CSRF_HEADER_NAME, csrfToken))
+                .andExpect(status().isUnauthorized())
+                .andExpect(result -> assertThat(result.getResponse().getContentAsString()).doesNotContain("CSRF"));
     }
 }
