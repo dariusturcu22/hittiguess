@@ -65,6 +65,7 @@ The admin rail group (Dashboard, Backfill queue, Song catalog, Reports) appears 
 | `/admin/backfill-queue` | `AdminBackfillQueueDark.dc.html`, `AdminBackfillQueueLight.dc.html` (overview tab), `AdminBackfillQueueSongsDark.dc.html`, `AdminBackfillQueueSongsLight.dc.html` (songs tab) |
 | `/admin/backfill-queue/[stage]` | `AdminQueueStageDark.dc.html`, `AdminQueueStageLight.dc.html` (one stage's own queue, drawn for MusicBrainz) |
 | `/admin/songs` | `AdminSongCatalogDark.dc.html`, `AdminSongCatalogLight.dc.html`, `AdminSongDetailDark.dc.html`, `AdminSongDetailLight.dc.html` (detail drawer) |
+| `/admin/songs/recheck` | `AdminSongRecheckDark.dc.html`, `AdminSongRecheckLight.dc.html` |
 | `/admin/reports` | `AdminReportQueueDark.dc.html`, `AdminReportQueueLight.dc.html` |
 
 The backfill queue is available at `/admin/backfill-queue`; the obsolete `/admin/catalog-backlog` route is removed. Stage slugs are `youtube-metadata`, `musicbrainz`, `discogs`, `wikidata`, `wikipedia`, `llm-reconciliation`, and `embedding`.
