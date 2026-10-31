@@ -111,7 +111,7 @@ Story 56 covers the six Release sections, which hold everything the public launc
 
 - [x] Shared public footer for the landing, legal, credits, about and contact pages with links to Privacy, Terms, Copyright, Credits, About, Contact, and GitHub; replace the plain-text spans in `frontend/app/(marketing)/(landing)/page.tsx`. Tests: the links render and point to public routes.
 - [ ] Contact page `/contact` with the project mailbox, a link to GitHub issues, and how to report abuse or a wrong song year. Depends on: the Owner decision task in Release 1.
-- [ ] About page `/about`: what hittiguess is, how a round works in four sentences, that it is free, open source and has no ads or trackers, and who builds it. Tests: renders, linked from the footer.
+- [x] About page `/about`: what hittiguess is, how a round works in four sentences, that it is free, open source and has no ads or trackers, and who builds it. Tests: renders, linked from the footer.
 - [ ] 404 and error pages: `not-found.tsx`, `error.tsx` and `global-error.tsx` in `frontend/app`, styled with the design tokens in both themes, offering a way home or to login, with `global-error.tsx` reporting to Sentry. Tests: an unknown route shows the 404 page, a thrown render error shows the error page.
 - [ ] SEO metadata: `metadata` in the root layout (title template, description, `metadataBase` from the production URL, canonical URL, theme color) and per-page titles and descriptions for the landing and public pages; authenticated app routes and invite links are `noindex`. Currently no page exports metadata.
 - [ ] `sitemap.ts` and `robots.ts` in `frontend/app`: list the public pages, disallow the app routes, invite links and `/admin`, and point to the sitemap. Test the generated output.
