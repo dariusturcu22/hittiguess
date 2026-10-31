@@ -1582,3 +1582,11 @@ Why: the marketing landing page is the only view with a dedicated mobile design 
 Decision: all 145 source artboard documents and `canvas.json` in `docs/design/source` are embedded with exact equality into `docs/design/hittiguess-design.html`, incorporating account settings (`AccountSettingsDark.dc.html`, `AccountSettingsLight.dc.html`), audio check (`AudioCheckDark.dc.html`, `AudioCheckLight.dc.html`), admin song recheck (`AdminSongRecheckDark.dc.html`, `AdminSongRecheckLight.dc.html`), and all library, lobby, and session artboards without drift.
 
 Why: maintaining complete parity between standalone source artboards and the published single-file design canvas guarantees that design reviews, mockup references, and visual test fixtures inspect identical markup and layout structure.
+
+---
+
+## 2026-10-31 | Load test harness, container resource sizing, and active-game admission limit
+
+Decision: a repeatable load testing tool is established in `scripts/loadtest` (`run_loadtest.py`) to simulate N concurrent games of 4 to 8 players across the full game lifecycle: registration, group invite joins, STOMP over WebSocket connections, WebRTC voice and song mesh signaling, pre-game audio check, active player card placements, and betting. Core enforces an active-game admission limit via `game.session.max-active-games` (default 50, environment variable `MAX_ACTIVE_GAMES`). When active sessions reach capacity, new session starts (both at audio check initiation and game start) return HTTP 503 Service Unavailable with the body message "Server is at maximum game capacity. Please try again shortly.". Container resource allocations in `scripts/azure/create-container-apps.ps1` are confirmed at 1.0 vCPU and 2.0 GiB RAM for core, and 0.5 vCPU and 1.0 GiB RAM for AI.
+
+Why: core manages process-local game session state, timer tasks, and STOMP message brokering. Establishing an explicit admission ceiling of 50 concurrent active games keeps peak memory utilization safely below 1.5 GiB, preventing garbage-collection pauses from disrupting real-time round timers and WebRTC signaling. An immediate HTTP 503 response informs users clearly of temporary server capacity constraints rather than degrading existing matches.
