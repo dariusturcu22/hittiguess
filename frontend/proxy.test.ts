@@ -15,7 +15,7 @@ const PUBLIC_ROUTES_WITHOUT_A_SESSION = [
   "/groups/join/abc123",
 ];
 
-const PROTECTED_ROUTES = ["/playlists", "/sessions/abc"];
+const PROTECTED_ROUTES = ["/playlists", "/sessions/abc", "/settings"];
 
 function requestFor(pathname: string, cookieHeader?: string): NextRequest {
   return new NextRequest(new Request(`http://localhost:3000${pathname}`, {

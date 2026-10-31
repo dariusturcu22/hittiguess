@@ -1534,3 +1534,11 @@ Why: WebRTC transceivers in the song mesh are maintained across all session play
 Decision: `drawSoundBars` and `SoundBars` scale canvas backing dimensions by `window.devicePixelRatio` with a matching 2D context transform, maintain a static resting pattern when audio levels are silent or absent, and enforce the static resting pattern when `(prefers-reduced-motion: reduce)` matches. `SoundBars` listens to resize events, ResizeObserver changes, and `prefers-reduced-motion` media query updates to trigger redraws.
 
 Why: scaling canvas backing stores by `devicePixelRatio` avoids blurriness and clipping across zoom levels (100%, 125%, 150%, 200%). Providing the static resting state when levels are at or below the silence floor ensures the card visualizer remains steady without audio. Respecting `prefers-reduced-motion` eliminates bouncing bar animations for players who prefer reduced motion, keeping the resting pattern displayed regardless of incoming audio streams.
+
+---
+
+## 2026-10-31 | Account settings route and design artboards
+
+Decision: the `/settings` route provides account management with profile and email editing (`PATCH /api/users/me`), personal data JSON export (`GET /api/users/me/export`), and account deletion behind typed username confirmation (`DELETE /api/users/me`). The design board includes dark and light artboards (`AccountSettingsDark.dc.html`, `AccountSettingsLight.dc.html`) registered in `canvas.json` and embedded into `hittiguess-design.html`.
+
+Why: users require direct access to self-service profile updates, GDPR personal data exports, and irreversible account deletion without manual intervention. Typed confirmation matching the user's username prevents accidental account deletion while preserving an accessible native dialog experience.

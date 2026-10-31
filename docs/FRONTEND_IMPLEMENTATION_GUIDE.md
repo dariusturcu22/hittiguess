@@ -102,6 +102,14 @@ These are component-variant exploration boards (flat gray canvas, not a themed a
 | `TokenPileOptions.dc.html` | Betting token pile visual variants |
 | `PlayfulCatppuccinDark.dc.html`, `PlayfulCatppuccinLight.dc.html` | Early palette/style exploration, superseded by the tokens in `globals.css` |
 
+## Account settings
+
+| Route | Mockup files |
+| --- | --- |
+| `/settings` | `AccountSettingsDark.dc.html`, `AccountSettingsLight.dc.html` |
+
+The `/settings` route provides user profile management, GDPR personal data export, and account deletion. The layout matches the desktop application shell, centered within a max-width container with vertical spacing between cards. Form controls use the Catppuccin surface and border palette, with distinct focus states and error summaries. Destructive deletion requires explicit typed confirmation matching the current username.
+
 ## Game history
 
 `/history` uses GameHistoryDark.dc.html and GameHistoryLight.dc.html. `/history/[summaryId]` uses GameHistoryDetailDark.dc.html and GameHistoryDetailLight.dc.html. The history list has core-backed totals, a paginated table, and explicit loading, error, and empty states. Detail shows participant-only results, shared ranks, departed/deleted players, and interruptions. The generated-song review state is superseded: Confirm stores a tier and Start selects the hidden pool.
