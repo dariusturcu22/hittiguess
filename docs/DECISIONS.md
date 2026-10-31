@@ -1462,3 +1462,11 @@ Why: per-turn sharing asked every DJ for the screen picker mid-game and found mi
 Decision: `POST /api/admin/songs/proposals/accept` and `POST /api/admin/songs/proposals/dismiss` take up to 500 song IDs and apply them in one transaction. Accept sets each song's release year to its proposed year and clears the proposal. A song that does not exist, has no proposal, or (for accept only) is in an active game is skipped and returned in `skippedSongIds`. Dismiss clears proposals and leaves years alone. The verification status is not changed.
 
 Why: after a whole-catalog recheck hundreds of proposals need review, and one request per song is too slow. Skipping instead of failing lets a partly valid selection go through, and the skipped IDs tell the admin what was left. A year change for a song in an active game would alter a running game, so accept refuses those, the same rule the recheck and delete already apply.
+
+---
+
+## 2026-10-31 | Pausing a session when a required DJ disconnects
+
+Decision: when a required DJ's socket disconnects, the server schedules a 10-second reload grace period (DJ_DISCONNECT_GRACE). If the player reconnects before the grace period ends, their disconnect timestamp is cleared and the timer does nothing. If the grace period expires while the player remains disconnected, their audio status is marked NOT_SHARED and the session pauses. While paused, the DJ detaches the song sender track and remote audio is muted for listeners. Resuming happens through the existing re-share and audio test flow.
+
+Why: when a DJ closes their tab or browser, no client-side share-stopped report can be sent, which left the session running without audio. A short grace period allows legitimate page reloads without interrupting the game, while preventing sessions from stalling indefinitely when a DJ departs.

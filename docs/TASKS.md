@@ -28,7 +28,7 @@ Frontend implementation and tests belong to story 28. Feature work requires a Re
 
 ## Story 57: Gameplay fixes and acceptance
 
-- [ ] Pause the game when a required DJ's tab closes and never comes back. Today the pause starts only when the player's browser reports that the share ended, so a closed tab leaves the game running without that DJ's audio. Use the session's presence or socket disconnect (with a short grace period for reloads) to mark the DJ's audio status as not shared and pause, and resume through the existing re-share and test flow.
+- [x] Pause the game when a required DJ's tab closes and never comes back. Today the pause starts only when the player's browser reports that the share ended, so a closed tab leaves the game running without that DJ's audio. Use the session's presence or socket disconnect (with a short grace period for reloads) to mark the DJ's audio status as not shared and pause, and resume through the existing re-share and test flow.
   - Where: `GameSessionService` pause logic, the STOMP disconnect handling, `frontend/hooks/use-song-mesh.ts`.
   - Tests: backend test that a disconnected required DJ pauses the session after the grace period and a reconnect within it does not.
 - [ ] Notice a stopped share while the player is on another page. The share's track `ended` event is only reported from the session page, so a DJ who stops sharing elsewhere in the app is noticed only on return. Report the status from wherever the long-lived capture lives (the app shell), so the pause starts at once.
