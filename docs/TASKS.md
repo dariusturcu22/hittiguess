@@ -56,9 +56,9 @@ The backend for account management and two-factor sign-in exists: `PATCH /api/us
 
 - [x] Account settings route `/settings` (linked from the user menu in `frontend/components/nav-user.tsx`) with three parts: edit username and email (`PATCH /api/users/me`), download a personal data export (`GET /api/users/me/export`, saved as a JSON file), and delete the account behind a typed confirmation (`DELETE /api/users/me`, then clear the session and go to the landing page). Needs an approved mockup first: add dark and light account artboards to the design board and update `FRONTEND_CONTENT.md` and `FRONTEND_IMPLEMENTATION_GUIDE.md`.
   - Done when: each action works against the real backend, errors are shown in the page, the route is protected by the proxy, and unit tests cover permission, failure and confirmation paths.
-- [ ] Two-factor screens on the settings route: setup with provisioning QR and secret, confirmation code entry, one-time backup codes shown once, disable with proof, and a second step on login that accepts a TOTP code or a backup code (`frontend/app/(marketing)/(auth)/(credentials)/login/page.tsx`)
+- [x] Two-factor screens on the settings route: setup with provisioning QR and secret, confirmation code entry, one-time backup codes shown once, disable with proof, and a second step on login that accepts a TOTP code or a backup code (`frontend/app/(marketing)/(auth)/(credentials)/login/page.tsx`)
   - Depends on: the account settings route above.
-- [ ] Unit and backend-backed browser tests for two-factor: success, invalid code, disable proof, and one-use backup codes
+- [x] Unit and backend-backed browser tests for two-factor: success, invalid code, disable proof, and one-use backup codes
 - [ ] Compare all app routes and states at 1440x900 in both themes against the design board: identity and truncation, popups, playlist actions, tier selection, imports, gameplay and countdowns, results, admin, and history; fix every difference
 - [ ] Compare only the landing page on mobile at 390x844 in both themes
 - [ ] Review the exact Joined-tab copy
