@@ -9,7 +9,6 @@
 | 7 | Cost alerts and shutdown, load test and admission limit, smoke test, production acceptance, Hetzner migration after the Azure trial | Ready |
 | 8 | Neon validation, idle wake, backups, catalog import decision | Ready |
 | 24 | Optional per-source gather timeout | Deferred until the latency budget needs it |
-| 28 | Account settings, two-factor UI, desktop and state acceptance | Ready |
 | 30 | Personalized difficulty training and monitoring | Deferred until enough real play data exists |
 | 34 | Internal usage/abuse events, query surface, notice behavior | Needs Definition |
 | 38 | Production metrics, dashboards, uptime, and delivery verification | Ready |
