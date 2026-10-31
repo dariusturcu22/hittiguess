@@ -66,7 +66,7 @@ vi.mock("@/hooks/generated/group-management/group-management", () => ({
 let currentPathname = "/playlists";
 let activeMembership: { id: number } | undefined;
 
-let activeImportResponse: { data?: unknown; isError: boolean } = { isError: true };
+let activeImportResponse: { data?: unknown; isError: boolean } = { isError: false, data: undefined };
 
 vi.mock("@/hooks/generated/playlist-import-jobs/playlist-import-jobs", () => ({
   useActiveImport: () => activeImportResponse,
@@ -106,7 +106,7 @@ describe("AppSidebar import progress", () => {
   beforeEach(() => {
     window.localStorage.clear();
     routerPush.mockReset();
-    activeImportResponse = { isError: true };
+    activeImportResponse = { isError: false, data: undefined };
     currentPathname = "/playlists";
     activeMembership = undefined;
   });
@@ -165,7 +165,7 @@ describe("AppSidebar import progress", () => {
 
     expect(screen.getByTitle("Import in progress")).toBeVisible();
 
-    activeImportResponse = { isError: true };
+    activeImportResponse = { isError: false, data: undefined };
     view.rerender(
       <QueryClientProvider client={new QueryClient()}>
         <AppSidebar />
@@ -257,7 +257,7 @@ describe("AppSidebar admin group", () => {
     currentPathname = "/playlists";
     currentUserRole = undefined;
     activeMembership = undefined;
-    activeImportResponse = { isError: true };
+    activeImportResponse = { isError: false, data: undefined };
   });
 
   it("hides the admin group for a regular account", () => {
@@ -359,7 +359,7 @@ describe("AppSidebar on short screens", () => {
     currentPathname = "/admin";
     currentUserRole = "ADMIN";
     activeMembership = { id: 4 };
-    activeImportResponse = { isError: true };
+    activeImportResponse = { isError: false, data: undefined };
   });
 
   it("scrolls only the middle section and keeps the play button and theme toggle outside it", () => {
