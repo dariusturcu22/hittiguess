@@ -58,7 +58,7 @@ Azure Container Apps hosts core and AI in one EU environment. Vercel hosts the f
 - [ ] Owner: add Azure cost anomaly alerts and a $12 shutdown Action Group that stops both Container Apps; the Log Analytics daily cap (0.25 GB, 30-day retention) and the $20 budget with email alerts are in place. An agent can write the script in `scripts/azure` once the Owner confirms what the action group does
 - [ ] Owner: cost-control test, running the alerts and shutdown against an isolated resource group
 - [x] Load test core and AI: a repeatable script in `scripts/loadtest` that opens N concurrent games of 4 to 8 players (login, group, session, STOMP, placements and bets, voice and song signaling) and reports CPU, memory, WebSocket count and game-action latency; set the container resource limits from the result, and add an active-game admission limit in core with a tested busy response (HTTP 503 with a clear message when a session is started over the limit)
-- [ ] Compare the C1-only JIT setting against the default under the same load test and keep the one that meets the latency target; both Azure apps run one always-on replica. Depends on: the load test above
+- [x] Compare the C1-only JIT setting against the default under the same load test and keep the one that meets the latency target; both Azure apps run one always-on replica. Depends on: the load test above
 - [x] Verify Vercel root frontend, production branch main, domain, API origin, and shared auth cookies
 - [ ] Owner: confirm password-reset email arrives in production from the real sender domain (Google login, signup, verification, login, and the Resend domain and sender are working)
 - [x] Add HTTP liveness/readiness probes to both apps
