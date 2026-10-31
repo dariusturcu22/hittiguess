@@ -28,9 +28,46 @@ hittiguess's core service and its AI microservice both operate on this data dire
 
 Hosting and services in production: the website runs on Vercel, the backend services on Microsoft Azure Container Apps, the databases on Neon (PostgreSQL), voice relay on Cloudflare, account and password-reset email through Resend, and sign-in with Google is optional. The backend is planned to move to a single Hetzner server; this section will be updated when that happens.
 
-## Cookies
+## Cookies and browser storage
 
-hittiguess sets cookies to keep a session logged in (an access token, a refresh token, a session hint cookie, and a CSRF token that protects requests). These are functional, not tracking, cookies. The site also stores display preferences such as the theme and audio device choices in the browser. No advertising or analytics cookies are set today. A separate cookie-consent notice will be added once first-party usage analytics ships, since that's the point at which a non-essential cookie would first exist to consent to.
+hittiguess stores small pieces of state in the browser through HTTP cookies, local storage, and session storage. Every cookie and storage key used is strictly necessary to deliver the service, authenticate user sessions, protect against security vulnerabilities, or persist user interface preferences explicitly chosen by the visitor. Because hittiguess uses only strictly necessary cookies and functional storage, no tracking or advertising cookies are set, and no cookie consent banner is required under the ePrivacy Directive (Directive 2002/58/EC Article 5(3)) or the General Data Protection Regulation (GDPR). No advertising or analytics cookies are set today.
+
+### HTTP cookies
+
+- `access_token`: an encrypted, HTTP-only cookie containing the user JWT authentication token. Scoped to the API, it authenticates requests without exposing credentials to client-side scripts. Valid for 15 minutes.
+- `refresh_token`: an encrypted, HTTP-only cookie scoped to `/api/auth/refresh`. It allows the browser to securely obtain a new access token without re-entering credentials. Valid for 7 days, or 30 days when "Remember me" is selected.
+- `session_hint`: a functional indicator cookie (`1`) set at root path (`/`). It enables the Next.js routing proxy to confirm an active session and route directly to authenticated screens without exposing authentication secrets to client scripts.
+- `XSRF-TOKEN`: an anti-Cross-Site Request Forgery (CSRF) token issued by the core backend. The frontend reads this token to attach an `X-XSRF-TOKEN` validation header to mutating HTTP requests, protecting user accounts from unauthorized cross-site actions.
+- `sidebar_state`: a layout preference cookie recording whether the navigation sidebar is collapsed or expanded (`true` or `false`).
+- `oauth2_auth_request`: a short-lived, HTTP-only cookie retained for at most 180 seconds during Google OAuth sign-in to prevent state forgery during the authorization handshake.
+
+### Local storage
+
+Keys in local storage persist across browser restarts to remember personal hardware and visual preferences:
+
+- `theme`: the interface display theme (`light`, `dark`, or `system`), managed by the theme provider.
+- `hittiguess-microphone-device-id`: the unique device identifier of the microphone chosen for voice communication.
+- `hittiguess-speaker-device-id`: the unique device identifier of the audio output device selected for gameplay and voice audio.
+- `hittiguess-microphone-volume`: the microphone volume percentage level.
+- `hittiguess-speaker-volume`: the speaker volume percentage level.
+- `hittiguess-song-volume`: the song playback audio volume percentage level.
+- `hittiguess-noise-gate-sensitivity`: the sensitivity threshold for the voice chat noise gate.
+- `hittiguess-rnnoise-enabled`: whether neural network background noise suppression is active.
+- `hittiguess-active-playlist-import`: the identifier of an in-progress YouTube playlist import, ensuring background progress continues smoothly across page reloads.
+
+### Session storage
+
+Keys in session storage exist only for the duration of the active browser tab:
+
+- `hittiguess-round-intro-seen-`: prefixed per session id (`hittiguess-round-intro-seen-[sessionId]`), tracks whether the intro animation for the current game round has already been displayed, preventing duplicate playback during a single game session.
+- `hittiguess.audioShareWarningDismissed`: prefixed per warning kind, records when an informational notice about browser audio-sharing capabilities has been dismissed for the active session.
+- `bulk-import-progress-events`: caches real-time WebSocket progress notifications for playlist import operations in the current tab.
+- `bulk-import-connection-state`: records the WebSocket connection status of active bulk import operations.
+
+### Error monitoring and analytics
+
+- **Sentry SDK**: hittiguess uses Sentry for client-side error monitoring and unhandled exception logging. The client SDK does not set any cookies, does not persist identifiers in browser storage, and does not enable session replays or user tracking. Error payloads are transmitted directly to the Sentry ingestion endpoint over HTTPS.
+- **No tracking or third-party cookies**: hittiguess sets zero advertising, profiling, or third-party tracking cookies. If privacy-friendly usage analytics is introduced in the future, it will use a cookieless tool, maintaining a zero-banner, privacy-respecting configuration.
 
 ## A user's rights over their own data
 
