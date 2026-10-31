@@ -2761,3 +2761,8 @@ The backend for account management and two-factor sign-in exists: `PATCH /api/us
 - [x] Compare all app routes and states at 1440x900 in both themes against the design board: identity and truncation, popups, playlist actions, tier selection, imports, gameplay and countdowns, results, admin, and history; fix every difference
 - [x] Compare only the landing page on mobile at 390x844 in both themes
 - [x] Review the exact Joined-tab copy
+
+## Story 47: Mockup reconciliation
+
+- [x] Update the remaining source artboards and the published canvas to match the requirements approved during story 28's visual pass (account settings, audio check, recheck page), and validate that source and canvas are equal
+  - Depends on: the Story 28 visual comparison.

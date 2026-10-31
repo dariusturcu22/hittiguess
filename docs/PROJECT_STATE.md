@@ -13,7 +13,6 @@
 | 34 | Internal usage/abuse events, query surface, notice behavior | Needs Definition |
 | 38 | Production metrics, dashboards, uptime, and delivery verification | Ready |
 | 41 | Source-match confidence and uncertain-case review | Deferred until submission data supports tuning |
-| 47 | Remaining mockup reconciliation during the visual pass | Ready |
 | 52 | Pre-game audio check, pause on a stopped share (in progress on `feature/audio-check`); the rest of the story is built | Ready |
 | 55 | Catalog accuracy: whole-catalog recheck page (in progress on `feature/recheck-whole-catalog`), bulk acceptance of proposed years, duplicate merge and uniqueness | Ready |
 | 56 | Public release readiness: legal pages and compliance, site basics, security audit, operations, product polish, launch | Ready; owner decisions listed in Release 1 and 5 |
