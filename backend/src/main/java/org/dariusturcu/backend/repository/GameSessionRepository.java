@@ -13,5 +13,7 @@ public interface GameSessionRepository extends JpaRepository<GameSession, Long> 
 
     List<GameSession> findByStatus(SessionStatus status);
 
+    long countByStatus(SessionStatus status);
+
     List<GameSession> findByStatusAndZeroConnectedSinceBefore(SessionStatus status, Instant instant);
 }
