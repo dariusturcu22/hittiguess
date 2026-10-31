@@ -120,7 +120,7 @@ class CsrfSecurityTest {
                     authorizationRequestRepository,
                     returnToAuthorizationRequestResolver,
                     objectMapper,
-                    List.of("http://localhost:3000"));
+                    List.of("http://localhost:3000"), 8081);
         }
 
         @Bean

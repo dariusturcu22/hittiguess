@@ -88,6 +88,6 @@ class SecurityConfigTest {
                 authorizationRequestRepository,
                 returnToAuthorizationRequestResolver,
                 objectMapper,
-                allowedOrigins);
+                allowedOrigins, 8081);
     }
 }

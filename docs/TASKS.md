@@ -77,11 +77,6 @@ Both Neon projects are provisioned. Core owns schema migrations; AI connects onl
 - [ ] Owner: configure Neon storage and compute notifications. Then document the backup export (point-in-time restore window, a scheduled logical dump) in `docs/DEV_SETUP.md` and rehearse restoring both databases into an isolated project; this is the restore test the Release 3 sign-off refers to
 - [ ] Owner: decide whether the songs in the development database enter production; if yes, an agent performs only an approved catalog-only import
 
-## Story 38: Production observability
-
-- [ ] Production Sentry and OpenTelemetry settings are set on both apps; remaining: metrics through a Grafana Alloy container (core's `/actuator/prometheus` needs a login, so expose it on an internal-only management port first), import the dashboard, and add core uptime monitoring
-- [ ] Verify real metrics, logs, traces, and error delivery; add a credential-gated delivery integration test without secret output
-
 ## Release 1: Legal and compliance
 
 Story 56 covers the six Release sections, which hold everything the public launch needs before the first announcement. The app is already open to anyone (the closed-beta gate was removed, see `DECISIONS.md`), so these items are launch blockers for marketing, not for access. Drafts live in `docs/legal`; they describe the app as of 2026-09-12 and are out of date (they name Supabase as the database and omit voice, chat, game history, analytics tables, error reporting, email and the LLM providers). None of this is legal advice; the Owner items need a person to decide or sign off.

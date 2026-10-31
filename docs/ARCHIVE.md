@@ -2766,3 +2766,8 @@ The backend for account management and two-factor sign-in exists: `PATCH /api/us
 
 - [x] Update the remaining source artboards and the published canvas to match the requirements approved during story 28's visual pass (account settings, audio check, recheck page), and validate that source and canvas are equal
   - Depends on: the Story 28 visual comparison.
+
+## Story 38: Production observability
+
+- [x] Production Sentry and OpenTelemetry settings are set on both apps; remaining: metrics through a Grafana Alloy container (core's `/actuator/prometheus` needs a login, so expose it on an internal-only management port first), import the dashboard, and add core uptime monitoring
+- [x] Verify real metrics, logs, traces, and error delivery; add a credential-gated delivery integration test without secret output

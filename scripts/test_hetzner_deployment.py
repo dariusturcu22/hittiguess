@@ -112,7 +112,7 @@ api.hittiguess.com {
     def test_validate_alloy_configuration_valid(self) -> None:
         sample_alloy = """
 prometheus.scrape "backend" {
-    targets = [{"__address__" = "core:8080"}]
+    targets = [{"__address__" = "core:8081"}]
     metrics_path = "/actuator/prometheus"
 }
 prometheus.scrape "ai_service" {
