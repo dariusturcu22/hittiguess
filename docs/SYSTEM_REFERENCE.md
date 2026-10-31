@@ -527,3 +527,46 @@ Runs contain `id`, `youtubeId`, `title`, `lane`, `status`, `provisionalYear`, `q
 `QueueOverviewDTO.stagesEnabled` remains true for API compatibility; it is no longer a runtime switch.
 
 `GET /api/admin/dashboard` retains its existing fields and adds `pipeline`, the same queue overview as `/queues`. It carries the paused-stage reasons for the banner and the YouTube reserve figures. `GET /api/admin/songs/{songId}` adds `sourceFindings` (`stage`, `status`, nullable `result`, nullable `failureReason`) and `reviewReason` from the latest run. Both are omitted for songs without a run. An exact lock has a deterministic agreement reason; reconciliation retains the AI's structured result reasoning. Catalog edits trigger V41 indexing when verification changes.
+
+## Production databases and schema status
+
+The production deployment runs two independent Neon PostgreSQL instances in region `eu-central-1`. The core service owns database migrations and Flyway history for both instances; the AI service connects strictly to the transactional database.
+
+### Database topologies and connection requirements
+
+1. Transactional core database (`hittiguess-core` and `hittiguess-ai`):
+   - Endpoint: `ep-silent-frost-b2i3fnwt.c-6.eu-central-1.aws.neon.tech`
+   - Database: `neondb`
+   - TLS requirement: enforced via `sslmode=require` on all JDBC and async Python database URLs.
+   - Applied Flyway migrations: 53 migrations (V1 to V53), with all migrations recording successful execution and zero failed rows. Migration V54 exists in active branch work and deploys when that branch merges.
+   - Extensions: `pgvector` (version 0.8.6) is active in public schema.
+   - Songs table indexes: `songs_pkey`, `songs_embedding_hnsw_idx` (HNSW cosine index on `embedding`), `songs_created_at_idx`, `songs_duration_refresh_due`, `songs_embedding_stored_at`, `songs_normalized_key_idx`, `songs_title_trgm_idx`, `songs_youtube_id_idx`.
+   - Core table count: 47 tables across identity, playlists, game sessions, catalog pipeline, and difficulty models.
+
+2. Analytics database (`hittiguess-analytics`):
+   - Endpoint: `ep-autumn-tooth-b1r5ao27.c-5.eu-central-1.aws.neon.tech`
+   - Database: `neondb`
+   - TLS requirement: enforced via `sslmode=require`.
+   - Applied Flyway migrations: 2 migrations (V1 and V2), matching `backend/src/main/resources/db/analytics-migration/`.
+   - Analytics tables: 6 tables (`analytics_events`, `flyway_schema_history`, `research_deleted_players`, `research_processed_events`, `song_difficulty_aggregates`, `song_play_observations`).
+   - Drift: zero schema drift detected between repo migration scripts and deployed tables.
+
+### Service boundaries and credential isolation
+
+1. Core service (`hittiguess-core`):
+   - Holds secrets `db-url`, `db-username`, `db-password` for transactional storage.
+   - Holds secrets `analytics-db-url`, `analytics-db-username`, `analytics-db-password` for analytics event storage.
+
+2. AI service (`hittiguess-ai`):
+   - Holds secret `database-url` pointing to the transactional database for reading and updating metadata rows and vector embeddings.
+   - Holds zero access credentials, environment variables, or secrets for the analytics database.
+
+3. Frontend and browser:
+   - Zero database credentials or connection parameters are accessible to or bundled within the frontend client.
+   - Client interaction occurs strictly through HTTPS API endpoints and WSS STOMP channels, using HTTP-only cookies for authentication.
+
+### Neon idle suspend and connection pool behavior
+
+Neon compute endpoints suspend after five minutes of inactivity. When compute is cold, connection establishment and query execution resume within 0.25 to 0.30 seconds. Spring Boot's HikariCP default connection acquisition timeout of 30.0 seconds accommodates cold starts with ample margin. Dead sockets closed during compute suspend are detected by pool connection validation (`isValid`), discarded, and transparently replaced without surfacing errors to application requests. Pool timeout adjustments are unnecessary.
+
+Verification script `scripts/inspect_databases.py` audits live Flyway history, pgvector extension, table indexes, service boundaries, and cold wake latency. Unit coverage is maintained in `scripts/test_inspect_databases.py`.
