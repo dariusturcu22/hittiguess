@@ -1,6 +1,6 @@
 # Privacy Policy
 
-Last updated: 2026-10-30
+Last updated: 2026-10-31
 
 Status: draft, not yet published as a page. The release tasks in `docs/TASKS.md` (Release 1) finish and publish it after the project owner decides the controller, contact address, and minimum age.
 
@@ -40,7 +40,15 @@ hittiguess sets cookies to keep a session logged in (an access token, a refresh 
 
 ## Data retention
 
-Internal analytics events are deleted after 365 days. A group, its members, and its chat messages are deleted when the group expires or its last member leaves. Other data is kept until a user deletes their account or requests removal directly; the release tasks add retention periods for the remaining categories.
+Data is retained according to the following category lifetimes:
+
+- **Active accounts and playlists.** Kept until the user deletes their account through the deletion endpoint or requests removal directly.
+- **Unverified accounts.** Accounts created locally that never complete email verification are automatically deleted after 7 days by a daily retention sweeper.
+- **Authentication and reset tokens.** Refresh tokens (7 days by default, 30 days for remember-me sessions), password reset tokens (1 hour, or immediately upon use), and email verification tokens (24 hours) are automatically purged upon expiration by an hourly token retention sweeper.
+- **Groups and chat messages.** Groups expire after at most 24 hours of inactivity or when deleted by an administrator. Chat messages belong to the group and are automatically purged when the group expires or is deleted. Voice presence is dropped after 20 seconds of disconnection.
+- **Catalog ingestion and pipeline runs.** Background pipeline runs and stage jobs are retained for 30 days after completion or failure for operational inspection, then purged by a daily retention sweeper.
+- **Internal analytics events.** Stored in the analytics database and purged after 365 days by a daily retention sweeper.
+- **Server logs and telemetry.** Operational metrics, error reports, and server traces sent to Sentry and Grafana Cloud are retained for 30 days.
 
 ## Children
 
