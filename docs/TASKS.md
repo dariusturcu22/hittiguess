@@ -35,7 +35,7 @@ Frontend implementation and tests belong to story 28. Feature work requires a Re
   - Tests: Vitest that the track ending outside the session page reports the not-shared status.
 - [x] Keep a staged song list across a backend restart during the audio check. Start with songs and start custom stage their songs in memory, so a restart during the check loses them and the start falls back to the group's playlists. Persist the staged list with the group's audio check (migration) and clear it on start or cancel.
   - Tests: integration test that a staged list survives reloading the group from the database.
-- [ ] Regenerate the API client with orval against a running backend and replace the hand-written audio check and recheck candidate types; the generated output must match without behaviour changes.
+- [x] Regenerate the API client with orval against a running backend and replace the hand-written audio check and recheck candidate types; the generated output must match without behaviour changes.
 - [ ] Light mockup `AdminSongRecheckLight.dc.html` for the admin recheck page, registered in the canvas.
 - [ ] Recover missed events after a reconnect. On connect, `use-game-session-realtime.ts` invalidates only the session query and `use-group-realtime.ts` invalidates the group, so a player who was offline across a phase change can keep a stale guess state, DJ link-out, active membership, chat history, or results.
   - Where: `frontend/hooks/use-game-session-realtime.ts`, `frontend/hooks/use-group-realtime.ts`, `frontend/components/group-chat-overlay.tsx`, the session page.

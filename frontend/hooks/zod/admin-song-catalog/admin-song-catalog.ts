@@ -21,11 +21,6 @@ export const SearchCatalogQueryParams = zod.object({
 export const SearchCatalogResponse = zod.unknown()
 
 /**
- * @summary Every song with a YouTube ID for choosing songs to recheck, admin only: title, artists, year, verification status, whether an active game uses it, and when it last finished the pipeline (or was added), newest first
- */
-export const RecheckCandidatesResponse = zod.unknown()
-
-/**
  * @summary Read-only song detail, admin only: catalog fields, stored verification status, confidence, and Wikidata sitelinks, open report count, and the backlog history for its YouTube ID
  */
 export const SongDetailParams = zod.object({
@@ -33,4 +28,9 @@ export const SongDetailParams = zod.object({
 })
 
 export const SongDetailResponse = zod.unknown()
+
+/**
+ * @summary Every song with a YouTube ID for choosing songs to recheck, admin only: title, artists, year, verification status, whether an active game uses it, and when it last finished the pipeline (or was added), newest first
+ */
+export const RecheckCandidatesResponse = zod.unknown()
 

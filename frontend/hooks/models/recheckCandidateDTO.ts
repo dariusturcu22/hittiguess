@@ -6,9 +6,6 @@
  */
 import type { RecheckCandidateDTOVerificationStatus } from './recheckCandidateDTOVerificationStatus';
 
-/**
- * One song offered for a recheck. lastCheckedAt is when the song's latest pipeline run finished, or when the song was added when no run has finished; it is null only when neither is known. inActiveGame marks songs the recheck skips.
- */
 export interface RecheckCandidateDTO {
   songId: number;
   title?: string;
