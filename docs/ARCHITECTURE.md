@@ -111,7 +111,7 @@ Group
 
 ### Game session (core service)
 
-A game session is the round-by-round gameplay itself, created only when the group's admin starts one. Temporary gameplay rows are purged when the session ends. Compact participant-only history is committed first; the latest normal result per group also remains available for export.
+A game session is the round-by-round gameplay itself, created only when the group's admin starts one. Temporary gameplay rows are purged when the session ends. Compact participant-only history is committed first; the latest normal result per group also remains available for export. An active-game admission limit (game.session.max-active-games, default 50) caps the number of sessions running concurrently in the single-replica container; starting a session beyond this ceiling returns HTTP 503 Service Unavailable with a clear capacity notification.
 
 ```
 GameSession

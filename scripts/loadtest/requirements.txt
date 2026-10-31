@@ -1,0 +1,5 @@
+# Optional dependencies for scripts/loadtest
+# run_loadtest.py is self-contained using standard library asyncio and urllib.
+psutil>=5.9.0
+websockets>=12.0
+requests>=2.31.0
