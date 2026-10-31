@@ -99,6 +99,8 @@ vi.mock("@/hooks/generated/game-session/game-session", () => ({
   useGetGuessState: () => ({ data: mockGuessState }),
   useLeaveSession: () => ({ mutate: leaveSessionMutate, isPending: false }),
   getGetGuessStateQueryKey: (sessionId: number) => [`/api/sessions/${sessionId}/guess-state`],
+  getGetResultsQueryKey: (groupId: number) => [`/api/sessions/groups/${groupId}/results`],
+  getGetCurrentRoundLinkOutQueryKey: (sessionId: number) => [`/api/sessions/${sessionId}/link-out`],
 }));
 
 vi.mock("@/hooks/generated/group-management/group-management", () => ({

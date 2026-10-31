@@ -50,6 +50,31 @@ function wrapper({ children }: { children: ReactNode }) {
 }
 
 describe("useGameSessionRealtime", () => {
+  it("refetches session, guess state, and round link-out on connect", () => {
+    const queryClient = new QueryClient();
+    const invalidateQueries = vi.spyOn(queryClient, "invalidateQueries");
+
+    renderHook(() => useGameSessionRealtime(1), {
+      wrapper: ({ children }: { children: ReactNode }) => createElement(QueryClientProvider, { client: queryClient }, children),
+    });
+
+    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ["session", 1] });
+    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ["guess-state", 1] });
+    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ["round-link-out", 1] });
+  });
+
+  it("refetches results on connect when the game is completed", () => {
+    const queryClient = new QueryClient();
+    queryClient.setQueryData(["session", 1], { id: 1, groupId: 4, status: "COMPLETED" });
+    const invalidateQueries = vi.spyOn(queryClient, "invalidateQueries");
+
+    renderHook(() => useGameSessionRealtime(1, undefined, undefined, undefined, 4), {
+      wrapper: ({ children }: { children: ReactNode }) => createElement(QueryClientProvider, { client: queryClient }, children),
+    });
+
+    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ["/api/sessions/groups/4/results"] });
+  });
+
   it("uses the latest event callback without replacing the subscription", () => {
     const initialCallback = vi.fn();
     const latestCallback = vi.fn();
@@ -97,6 +122,7 @@ describe("useGameSessionRealtime", () => {
       wrapper: ({ children }: { children: ReactNode }) => createElement(QueryClientProvider, { client: queryClient }, children),
     });
 
+    invalidateQueries.mockClear();
     roundMessageHandler?.({ body: JSON.stringify({ type: "BETTING_OPENED", sessionId: 1 }) });
 
     expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ["session", 1] });
@@ -110,6 +136,7 @@ describe("useGameSessionRealtime", () => {
       wrapper: ({ children }: { children: ReactNode }) => createElement(QueryClientProvider, { client: queryClient }, children),
     });
 
+    invalidateQueries.mockClear();
     roundMessageHandler?.({ body: JSON.stringify({ type: "REVEAL_TRIGGERED", sessionId: 1, payload: { id: 5, status: "REVEALED" } }) });
 
     expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ["session", 1] });

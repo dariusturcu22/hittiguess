@@ -1502,3 +1502,11 @@ Why: manual client edits introduced during recent audio check and whole-catalog 
 Decision: `AdminSongRecheckLight.dc.html` provides the light-theme Catppuccin Latte mockup for `/admin/songs/recheck`, covering the month list, sticky action bar, confirmation dialog, and result toast. The artboard is placed alongside `AdminSongRecheckDark.dc.html` in `canvas.json` and embedded in `hittiguess-design.html`.
 
 Why: all admin console screens require dark and light mockups in the design canvas to define layout, spacing, and styling in both themes.
+
+---
+
+## 2026-10-31 | Full query refetch on STOMP reconnect
+
+Decision: STOMP reconnect handlers invalidate and refetch all domain queries that may have mutated while offline. In `useGameSessionRealtime`, reconnect refetches the session, the player's guess state, the current round link-out, and results if the game completed. In `useGroupRealtime`, reconnect refetches the group, active membership, and group chat history. In `GroupChatOverlay`, transitioning to the connected state triggers an immediate history refetch. When a player was removed while offline, refetching the group or active membership marks the player as not in the group, rendering the unavailable screen. When a session completed while offline, refetching the session triggers the transition to results.
+
+Why: previously, `useGameSessionRealtime` only invalidated the session query and `useGroupRealtime` only invalidated the group query on connect. If a player lost connection across a round or phase change, guess state, link-outs, chat messages, active group membership, and session results could remain stale until an explicit event arrived or the page was manually refreshed.

@@ -31,6 +31,14 @@ export function GroupChatOverlay({
   const messageListReference = useRef<HTMLDivElement>(null);
   const isPinnedToLatestReference = useRef(true);
   const orderedHistory = [...(historyQuery.data ?? [])].reverse();
+  const previousConnectionStateReference = useRef(connectionState);
+
+  useEffect(() => {
+    if (connectionState === "connected" && previousConnectionStateReference.current !== "connected") {
+      void historyQuery.refetch();
+    }
+    previousConnectionStateReference.current = connectionState;
+  }, [connectionState, historyQuery]);
 
   useEffect(() => {
     const closeOnEscape = (event: KeyboardEvent) => {
