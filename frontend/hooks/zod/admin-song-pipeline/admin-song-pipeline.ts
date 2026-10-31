@@ -60,6 +60,24 @@ export const RecheckSongsBody = zod.object({
 export const RecheckSongsResponse = zod.unknown()
 
 /**
+ * @summary Dismiss the proposed release years of several songs without changing their years
+ */
+export const DismissProposalsBody = zod.object({
+  "songIds": zod.array(zod.int()).optional()
+})
+
+export const DismissProposalsResponse = zod.unknown()
+
+/**
+ * @summary Accept the proposed release years of several songs, skipping songs without a proposal or in active games
+ */
+export const AcceptProposalsBody = zod.object({
+  "songIds": zod.array(zod.int()).optional()
+})
+
+export const AcceptProposalsResponse = zod.unknown()
+
+/**
  * @summary Dismiss the proposed release year for a catalog song
  */
 export const DismissProposalParams = zod.object({
