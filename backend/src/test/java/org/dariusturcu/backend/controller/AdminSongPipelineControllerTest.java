@@ -2,6 +2,8 @@ package org.dariusturcu.backend.controller;
 
 import org.dariusturcu.backend.exception.GlobalExceptionHandler;
 import org.dariusturcu.backend.model.admin.PipelineControlResultDTO;
+import org.dariusturcu.backend.model.admin.ProposalBatchRequest;
+import org.dariusturcu.backend.model.admin.ProposalBatchResultDTO;
 import org.dariusturcu.backend.model.admin.RecheckSongsRequest;
 import org.dariusturcu.backend.model.user.Role;
 import org.dariusturcu.backend.model.user.User;
@@ -31,6 +33,9 @@ class AdminSongPipelineControllerTest {
     private static final String RECHECK_PATH = "/api/admin/songs/recheck";
     private static final String DISMISS_PROPOSAL_PATH = "/api/admin/songs/{id}/proposal";
     private static final long SONG_ID = 42;
+    private static final String ACCEPT_PROPOSALS_PATH = "/api/admin/songs/proposals/accept";
+    private static final String DISMISS_PROPOSALS_PATH = "/api/admin/songs/proposals/dismiss";
+    private static final String PROPOSAL_BATCH_BODY = "{\"songIds\": [1, 2]}";
 
     private final AdminSongPipelineService songs = mock(AdminSongPipelineService.class);
     private final MockMvc mockMvc = MockMvcBuilders
@@ -101,5 +106,60 @@ class AdminSongPipelineControllerTest {
                 .andExpect(jsonPath("$.affected").value(1));
 
         verify(songs).dismissProposal(SONG_ID);
+    }
+
+    @Test
+    void acceptProposalsRejectsNonAdmin() throws Exception {
+        authenticate(Role.USER);
+        mockMvc.perform(post(ACCEPT_PROPOSALS_PATH)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(PROPOSAL_BATCH_BODY))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void acceptProposalsRejectsUnauthenticatedCalls() throws Exception {
+        mockMvc.perform(post(ACCEPT_PROPOSALS_PATH)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(PROPOSAL_BATCH_BODY))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void acceptProposalsReportsSkippedSongsForAdmin() throws Exception {
+        authenticate(Role.ADMIN);
+        when(songs.acceptProposals(any())).thenReturn(new ProposalBatchResultDTO(1, List.of(2L)));
+
+        mockMvc.perform(post(ACCEPT_PROPOSALS_PATH)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(PROPOSAL_BATCH_BODY))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.affected").value(1))
+                .andExpect(jsonPath("$.skippedSongIds[0]").value(2));
+
+        verify(songs).acceptProposals(new ProposalBatchRequest(List.of(1L, 2L)));
+    }
+
+    @Test
+    void dismissProposalsRejectsNonAdmin() throws Exception {
+        authenticate(Role.USER);
+        mockMvc.perform(post(DISMISS_PROPOSALS_PATH)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(PROPOSAL_BATCH_BODY))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void dismissProposalsClearsProposalsForAdmin() throws Exception {
+        authenticate(Role.ADMIN);
+        when(songs.dismissProposals(any())).thenReturn(new ProposalBatchResultDTO(2, List.of()));
+
+        mockMvc.perform(post(DISMISS_PROPOSALS_PATH)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(PROPOSAL_BATCH_BODY))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.affected").value(2));
+
+        verify(songs).dismissProposals(new ProposalBatchRequest(List.of(1L, 2L)));
     }
 }
