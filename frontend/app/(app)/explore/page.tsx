@@ -44,7 +44,7 @@ function PlaylistCard({ playlist, saved }: { playlist: PublicPlaylistSummaryDTO;
   const isSaved = saved || saveMutation.isSuccess;
 
   return (
-    <div className="bg-card border-[3px] border-border-strong rounded-xl shadow-lg overflow-hidden flex flex-col">
+    <div className="bg-card border-[3px] border-border-strong rounded-2xl shadow-lg overflow-hidden flex flex-col">
       <Link
         href={`/playlists/${playlist.id}`}
         aria-label={`Open ${playlist.name}`}

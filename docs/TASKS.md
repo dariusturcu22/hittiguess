@@ -59,7 +59,7 @@ The backend for account management and two-factor sign-in exists: `PATCH /api/us
 - [x] Two-factor screens on the settings route: setup with provisioning QR and secret, confirmation code entry, one-time backup codes shown once, disable with proof, and a second step on login that accepts a TOTP code or a backup code (`frontend/app/(marketing)/(auth)/(credentials)/login/page.tsx`)
   - Depends on: the account settings route above.
 - [x] Unit and backend-backed browser tests for two-factor: success, invalid code, disable proof, and one-use backup codes
-- [ ] Compare all app routes and states at 1440x900 in both themes against the design board: identity and truncation, popups, playlist actions, tier selection, imports, gameplay and countdowns, results, admin, and history; fix every difference
+- [x] Compare all app routes and states at 1440x900 in both themes against the design board: identity and truncation, popups, playlist actions, tier selection, imports, gameplay and countdowns, results, admin, and history; fix every difference
 - [ ] Compare only the landing page on mobile at 390x844 in both themes
 - [x] Review the exact Joined-tab copy
 
