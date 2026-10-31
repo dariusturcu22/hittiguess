@@ -1542,3 +1542,11 @@ Why: scaling canvas backing stores by `devicePixelRatio` avoids blurriness and c
 Decision: the `/settings` route provides account management with profile and email editing (`PATCH /api/users/me`), personal data JSON export (`GET /api/users/me/export`), and account deletion behind typed username confirmation (`DELETE /api/users/me`). The design board includes dark and light artboards (`AccountSettingsDark.dc.html`, `AccountSettingsLight.dc.html`) registered in `canvas.json` and embedded into `hittiguess-design.html`.
 
 Why: users require direct access to self-service profile updates, GDPR personal data exports, and irreversible account deletion without manual intervention. Typed confirmation matching the user's username prevents accidental account deletion while preserving an accessible native dialog experience.
+
+---
+
+## 2026-10-31 | Two-factor screens and second login step
+
+Decision: the `/settings` route presents two-factor authentication controls alongside profile settings. When disabled, setup generates a TOTP provisioning QR code and secret, requiring confirmation code entry before returning one-time backup codes with copy and download options. When active, disabling requires proof via the account's current password or an authentication code. The login page (`/login`) handles `twoFactorRequired` responses by displaying a dedicated second verification step that accepts either a 6-digit TOTP code or a backup code.
+
+Why: users require a clear, guided setup flow with visual QR scanning and manual secret entry to configure authenticator apps, immediate preservation of one-time recovery codes, and proof of possession or credential ownership to disable protection. Supporting both TOTP codes and backup codes seamlessly on the login page preserves account access even when an authenticator device is lost or unavailable.

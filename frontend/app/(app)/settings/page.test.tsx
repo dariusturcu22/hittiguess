@@ -13,14 +13,23 @@ const toastMocks = vi.hoisted(() => ({
 
 const updateUserMutate = vi.fn();
 const deleteUserMutate = vi.fn();
+const setupTwoFactorMutate = vi.fn();
+const confirmTwoFactorMutate = vi.fn();
+const disableTwoFactorMutate = vi.fn();
 const exportPersonalDataMock = vi.fn();
 const queryClientClear = vi.fn();
 const queryClientInvalidateQueries = vi.fn();
 
-const MOCK_USER = {
+let mockCurrentUser: {
+  id: number;
+  username: string;
+  email: string;
+  twoFactorEnabled?: boolean;
+} = {
   id: 42,
   username: "melody_master",
   email: "melody@example.com",
+  twoFactorEnabled: false,
 };
 
 vi.mock("next/navigation", () => ({
@@ -29,6 +38,12 @@ vi.mock("next/navigation", () => ({
 
 vi.mock("sonner", () => ({
   toast: toastMocks,
+}));
+
+vi.mock("qrcode", () => ({
+  default: {
+    toDataURL: vi.fn(async () => "data:image/png;base64,mock-qr-code"),
+  },
 }));
 
 vi.mock("@tanstack/react-query", async (importOriginal) => {
@@ -44,7 +59,7 @@ vi.mock("@tanstack/react-query", async (importOriginal) => {
 
 vi.mock("@/hooks/generated/user-management/user-management", () => ({
   useGetCurrentUser: () => ({
-    data: MOCK_USER,
+    data: mockCurrentUser,
     isLoading: false,
   }),
   useUpdateUser: () => ({
@@ -57,6 +72,21 @@ vi.mock("@/hooks/generated/user-management/user-management", () => ({
   }),
   exportPersonalData: () => exportPersonalDataMock(),
   getGetCurrentUserQueryKey: () => ["/api/users/me"],
+}));
+
+vi.mock("@/hooks/generated/authentication-management/authentication-management", () => ({
+  useSetupTwoFactor: () => ({
+    mutate: setupTwoFactorMutate,
+    isPending: false,
+  }),
+  useConfirmTwoFactor: () => ({
+    mutate: confirmTwoFactorMutate,
+    isPending: false,
+  }),
+  useDisableTwoFactor: () => ({
+    mutate: disableTwoFactorMutate,
+    isPending: false,
+  }),
 }));
 
 function renderWithClient(component: ReactNode) {
@@ -73,9 +103,20 @@ function renderWithClient(component: ReactNode) {
 describe("AccountSettingsPage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockCurrentUser = {
+      id: 42,
+      username: "melody_master",
+      email: "melody@example.com",
+      twoFactorEnabled: false,
+    };
     document.cookie = "session_hint=active; path=/";
     globalThis.URL.createObjectURL = vi.fn(() => "blob:export-url");
     globalThis.URL.revokeObjectURL = vi.fn();
+    Object.assign(navigator, {
+      clipboard: {
+        writeText: vi.fn(async () => undefined),
+      },
+    });
   });
 
   it("initializes form inputs with current user credentials", () => {
@@ -84,8 +125,8 @@ describe("AccountSettingsPage", () => {
     const usernameInput = screen.getByLabelText("Username");
     const emailInput = screen.getByLabelText("Email address");
 
-    expect(usernameInput).toHaveValue(MOCK_USER.username);
-    expect(emailInput).toHaveValue(MOCK_USER.email);
+    expect(usernameInput).toHaveValue(mockCurrentUser.username);
+    expect(emailInput).toHaveValue(mockCurrentUser.email);
   });
 
   it("validates username length before submitting profile update", async () => {
@@ -164,6 +205,171 @@ describe("AccountSettingsPage", () => {
     expect(toastMocks.error).toHaveBeenCalledWith("Username or email already in use");
   });
 
+  it("starts two-factor setup and displays QR code and secret", async () => {
+    setupTwoFactorMutate.mockImplementation((variables, callbacks) => {
+      callbacks?.onSuccess?.({
+        secret: "JBSWY3DPEHPK3PXP",
+        provisioningUri: "otpauth://totp/hittiguess:melody_master?secret=JBSWY3DPEHPK3PXP&issuer=hittiguess",
+      });
+    });
+
+    renderWithClient(<AccountSettingsPage />);
+
+    const setupButton = screen.getByRole("button", { name: "Set up two-factor authentication" });
+    await act(async () => {
+      fireEvent.click(setupButton);
+    });
+
+    expect(setupTwoFactorMutate).toHaveBeenCalled();
+    expect(screen.getByRole("heading", { name: "Set up authenticator" })).toBeVisible();
+    expect(screen.getByAltText("Two-factor authentication QR code")).toBeVisible();
+    expect(screen.getByText("JBSWY3DPEHPK3PXP")).toBeVisible();
+    expect(screen.getByLabelText("Enter 6-digit verification code")).toBeVisible();
+  });
+
+  it("confirms two-factor setup and displays one-time backup codes", async () => {
+    setupTwoFactorMutate.mockImplementation((variables, callbacks) => {
+      callbacks?.onSuccess?.({
+        secret: "JBSWY3DPEHPK3PXP",
+        provisioningUri: "otpauth://totp/hittiguess:melody_master?secret=JBSWY3DPEHPK3PXP&issuer=hittiguess",
+      });
+    });
+
+    confirmTwoFactorMutate.mockImplementation((variables, callbacks) => {
+      callbacks?.onSuccess?.({
+        backupCodes: ["CODE111111", "CODE222222", "CODE333333"],
+      });
+    });
+
+    renderWithClient(<AccountSettingsPage />);
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Set up two-factor authentication" }));
+    });
+
+    const codeInput = screen.getByLabelText("Enter 6-digit verification code");
+    fireEvent.change(codeInput, { target: { value: "123456" } });
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Confirm and enable" }));
+    });
+
+    expect(confirmTwoFactorMutate).toHaveBeenCalledWith(
+      { data: { code: "123456" } },
+      expect.anything(),
+    );
+
+    expect(screen.getByText("Two-factor authentication is now active")).toBeVisible();
+    expect(screen.getByText("CODE111111")).toBeVisible();
+    expect(screen.getByText("CODE222222")).toBeVisible();
+    expect(screen.getByText("CODE333333")).toBeVisible();
+
+    // Test copying backup codes
+    fireEvent.click(screen.getByRole("button", { name: "Copy codes" }));
+    expect(navigator.clipboard.writeText).toHaveBeenCalledWith("CODE111111\nCODE222222\nCODE333333");
+    expect(toastMocks.success).toHaveBeenCalledWith("Backup codes copied to clipboard.");
+
+    // Test downloading backup codes
+    fireEvent.click(screen.getByRole("button", { name: "Download (.txt)" }));
+    expect(URL.createObjectURL).toHaveBeenCalled();
+    expect(toastMocks.success).toHaveBeenCalledWith("Backup codes downloaded.");
+
+    // Dismiss backup codes view
+    fireEvent.click(screen.getByRole("button", { name: "Done" }));
+    expect(screen.queryByText("CODE111111")).not.toBeInTheDocument();
+  });
+
+  it("displays error when two-factor setup confirmation fails", async () => {
+    setupTwoFactorMutate.mockImplementation((variables, callbacks) => {
+      callbacks?.onSuccess?.({
+        secret: "JBSWY3DPEHPK3PXP",
+        provisioningUri: "otpauth://totp/hittiguess:melody_master?secret=JBSWY3DPEHPK3PXP&issuer=hittiguess",
+      });
+    });
+
+    confirmTwoFactorMutate.mockImplementation((variables, callbacks) => {
+      callbacks?.onError?.({
+        response: { data: { message: "Invalid verification code" } },
+      });
+    });
+
+    renderWithClient(<AccountSettingsPage />);
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Set up two-factor authentication" }));
+    });
+
+    fireEvent.change(screen.getByLabelText("Enter 6-digit verification code"), { target: { value: "000000" } });
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Confirm and enable" }));
+    });
+
+    expect(screen.getByRole("alert")).toHaveTextContent("Invalid verification code");
+    expect(toastMocks.error).toHaveBeenCalledWith("Invalid verification code");
+  });
+
+  it("opens disable dialog and disables two-factor authentication with proof", async () => {
+    mockCurrentUser.twoFactorEnabled = true;
+
+    disableTwoFactorMutate.mockImplementation((variables, callbacks) => {
+      callbacks?.onSuccess?.();
+    });
+
+    renderWithClient(<AccountSettingsPage />);
+
+    expect(screen.getByText("Active")).toBeVisible();
+    const disableButton = screen.getByRole("button", { name: "Disable two-factor authentication" });
+    fireEvent.click(disableButton);
+
+    expect(screen.getByRole("heading", { name: "Disable two-factor authentication" })).toBeVisible();
+
+    const passwordInput = screen.getByLabelText(/Current password/i);
+    fireEvent.change(passwordInput, { target: { value: "MySecretPassword1!" } });
+
+    const confirmDisableButton = screen.getByRole("button", { name: "Confirm disable" });
+    fireEvent.click(confirmDisableButton);
+
+    expect(disableTwoFactorMutate).toHaveBeenCalledWith(
+      {
+        data: {
+          currentPassword: "MySecretPassword1!",
+          code: undefined,
+        },
+      },
+      expect.anything(),
+    );
+
+    expect(toastMocks.success).toHaveBeenCalledWith("Two-factor authentication disabled.");
+    expect(queryClientInvalidateQueries).toHaveBeenCalledWith({ queryKey: ["/api/users/me"] });
+  });
+
+  it("displays error inside dialog when disabling two-factor authentication fails", async () => {
+    mockCurrentUser.twoFactorEnabled = true;
+
+    disableTwoFactorMutate.mockImplementation((variables, callbacks) => {
+      callbacks?.onError?.({
+        response: {
+          data: {
+            message: "Current password or a valid authentication code is required",
+          },
+        },
+      });
+    });
+
+    renderWithClient(<AccountSettingsPage />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Disable two-factor authentication" }));
+
+    const codeInput = screen.getByLabelText(/Authentication code or backup code/i);
+    fireEvent.change(codeInput, { target: { value: "999999" } });
+
+    fireEvent.click(screen.getByRole("button", { name: "Confirm disable" }));
+
+    expect(screen.getByRole("alert")).toHaveTextContent("Current password or a valid authentication code is required");
+    expect(toastMocks.error).toHaveBeenCalledWith("Current password or a valid authentication code is required");
+  });
+
   it("downloads personal data export on clicking export button", async () => {
     const sampleExport = {
       user: { id: 42, username: "melody_master" },
@@ -212,7 +418,7 @@ describe("AccountSettingsPage", () => {
     fireEvent.change(confirmationInput, { target: { value: "wrong_username" } });
     expect(confirmActionButton).toBeDisabled();
 
-    fireEvent.change(confirmationInput, { target: { value: MOCK_USER.username } });
+    fireEvent.change(confirmationInput, { target: { value: mockCurrentUser.username } });
     expect(confirmActionButton).not.toBeDisabled();
   });
 
@@ -227,7 +433,7 @@ describe("AccountSettingsPage", () => {
     fireEvent.click(initialDeleteButton);
 
     const confirmationInput = screen.getByLabelText("Confirm username to delete account");
-    fireEvent.change(confirmationInput, { target: { value: MOCK_USER.username } });
+    fireEvent.change(confirmationInput, { target: { value: mockCurrentUser.username } });
 
     const confirmActionButton = screen.getByRole("button", { name: "Permanently delete account" });
     fireEvent.click(confirmActionButton);
@@ -255,7 +461,7 @@ describe("AccountSettingsPage", () => {
     fireEvent.click(initialDeleteButton);
 
     const confirmationInput = screen.getByLabelText("Confirm username to delete account");
-    fireEvent.change(confirmationInput, { target: { value: MOCK_USER.username } });
+    fireEvent.change(confirmationInput, { target: { value: mockCurrentUser.username } });
 
     const confirmActionButton = screen.getByRole("button", { name: "Permanently delete account" });
     fireEvent.click(confirmActionButton);

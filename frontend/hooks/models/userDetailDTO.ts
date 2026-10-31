@@ -14,5 +14,6 @@ export interface UserDetailDTO {
   imageUrl?: string;
   provider?: string;
   role?: UserDetailDTORole;
+  twoFactorEnabled?: boolean;
   playlists?: PlaylistSummaryDTO[];
 }

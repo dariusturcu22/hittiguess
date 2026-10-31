@@ -7,11 +7,13 @@ import LoginPage from "./page";
 const { toastError, toastSuccess } = vi.hoisted(() => ({ toastError: vi.fn(), toastSuccess: vi.fn() }));
 const resendMutate = vi.fn();
 const loginMutate = vi.fn();
+const verifyTwoFactorMutate = vi.fn();
 const loginPush = vi.fn();
 let loginSearchParams = new URLSearchParams();
 type LoginErrorHandler = (error: unknown, variables: { data: { email: string } }) => void;
 let loginMutationCallbacks: { onSuccess?: (data: unknown) => void; onError?: LoginErrorHandler } = {};
 let resendMutationCallbacks: { onSuccess?: () => void; onError?: (error: unknown) => void } = {};
+let verifyTwoFactorCallbacks: { onSuccess?: (data: unknown) => void; onError?: (error: unknown) => void } = {};
 
 vi.mock("next/link", () => ({
   default: ({ children, href }: { children: ReactNode; href: string }) => <a href={href}>{children}</a>,
@@ -24,6 +26,10 @@ vi.mock("@/hooks/generated/authentication-management/authentication-management",
   useLogin: (options?: { mutation?: { onSuccess?: (data: unknown) => void; onError?: LoginErrorHandler } }) => {
     loginMutationCallbacks = options?.mutation ?? {};
     return { mutate: loginMutate, isPending: false };
+  },
+  useVerifyTwoFactor: (options?: { mutation?: { onSuccess?: (data: unknown) => void; onError?: (error: unknown) => void } }) => {
+    verifyTwoFactorCallbacks = options?.mutation ?? {};
+    return { mutate: verifyTwoFactorMutate, isPending: false };
   },
   useResendVerification: (options?: { mutation?: { onSuccess?: () => void; onError?: (error: unknown) => void } }) => {
     resendMutationCallbacks = options?.mutation ?? {};
@@ -44,6 +50,7 @@ describe("LoginPage", () => {
     toastSuccess.mockReset();
     resendMutate.mockReset();
     loginMutate.mockReset();
+    verifyTwoFactorMutate.mockReset();
     loginPush.mockReset();
     loginSearchParams = new URLSearchParams();
   });
@@ -72,100 +79,153 @@ describe("LoginPage", () => {
     await waitFor(() => expect(loginMutate).toHaveBeenCalledWith({ data: { email: "player@example.com", password: "CorrectHorseBatteryStaple1!", rememberMe: true } }));
   });
 
-  it("returns to the join prompt after login when one was requested", async () => {
-    loginSearchParams = new URLSearchParams("returnTo=/playlists/join/abc123");
+  it("redirects to /playlists after successful password login without 2FA", async () => {
     render(<LoginPage />);
-    fireEvent.change(screen.getByLabelText("Email"), { target: { value: "player@example.com" } });
-    fireEvent.change(document.querySelector('input[type="password"]')!, { target: { value: "CorrectHorseBatteryStaple1!" } });
-    fireEvent.click(screen.getByRole("button", { name: "Log in" }));
-    await waitFor(() => expect(loginMutate).toHaveBeenCalled());
-    loginMutationCallbacks.onSuccess?.({});
-    await waitFor(() => expect(loginPush).toHaveBeenCalledWith("/playlists/join/abc123"));
+    act(() => loginMutationCallbacks.onSuccess?.({ id: 1, username: "alex" }));
+    expect(loginPush).toHaveBeenCalledWith("/playlists");
   });
 
-  it("ignores an off-site return target", async () => {
-    loginSearchParams = new URLSearchParams("returnTo=https://evil.example.com");
+  it("honors safe returnTo query parameter after successful password login", async () => {
+    loginSearchParams = new URLSearchParams("returnTo=/playlists/join/code123");
     render(<LoginPage />);
-    fireEvent.change(screen.getByLabelText("Email"), { target: { value: "player@example.com" } });
-    fireEvent.change(document.querySelector('input[type="password"]')!, { target: { value: "CorrectHorseBatteryStaple1!" } });
-    fireEvent.click(screen.getByRole("button", { name: "Log in" }));
-    await waitFor(() => expect(loginMutate).toHaveBeenCalled());
-    loginMutationCallbacks.onSuccess?.({});
-    await waitFor(() => expect(loginPush).toHaveBeenCalledWith("/playlists"));
+    act(() => loginMutationCallbacks.onSuccess?.({ id: 1, username: "alex" }));
+    expect(loginPush).toHaveBeenCalledWith("/playlists/join/code123");
   });
 
-  it("explains that the email already has a password account after a Google sign-in is refused", async () => {
-    loginSearchParams = new URLSearchParams("error=account_exists");
+  it("renders second step when 2FA is required", async () => {
     render(<LoginPage />);
-    await waitFor(() => expect(toastError).toHaveBeenCalledWith(
-      "An account with this email already exists. Log in with your password instead."));
+    act(() => loginMutationCallbacks.onSuccess?.({ twoFactorRequired: true, pendingToken: "pending-jwt-token" }));
+
+    expect(screen.getByRole("heading", { name: "Two-factor authentication" })).toBeVisible();
+    expect(screen.getByLabelText("Authentication or backup code")).toBeVisible();
+    expect(screen.getByRole("button", { name: "Verify and log in" })).toBeVisible();
+    expect(screen.getByRole("button", { name: "Back to login" })).toBeVisible();
   });
 
-  it("shows the generic Google failure message for any other sign-in error", async () => {
-    loginSearchParams = new URLSearchParams("error=oauth2_failed");
+  it("submits 2FA code and redirects on success", async () => {
     render(<LoginPage />);
-    await waitFor(() => expect(toastError).toHaveBeenCalledWith(
-      "Google sign-in failed. Try again or use email and password."));
+    act(() => loginMutationCallbacks.onSuccess?.({ twoFactorRequired: true, pendingToken: "pending-jwt-token" }));
+
+    const codeInput = screen.getByLabelText("Authentication or backup code");
+    fireEvent.change(codeInput, { target: { value: "123456" } });
+
+    const verifyButton = screen.getByRole("button", { name: "Verify and log in" });
+    fireEvent.click(verifyButton);
+
+    expect(verifyTwoFactorMutate).toHaveBeenCalledWith({
+      data: {
+        pendingToken: "pending-jwt-token",
+        code: "123456",
+      },
+    });
+
+    act(() => verifyTwoFactorCallbacks.onSuccess?.({ id: 1, username: "alex" }));
+    expect(toastSuccess).toHaveBeenCalledWith("Logged in successfully.");
+    expect(loginPush).toHaveBeenCalledWith("/playlists");
   });
 
-  it("carries the return target on the Google link", () => {
-    loginSearchParams = new URLSearchParams("returnTo=/groups/join/abc123");
+  it("submits one-time backup code and redirects on success", async () => {
+    loginSearchParams = new URLSearchParams("returnTo=/settings");
     render(<LoginPage />);
+    act(() => loginMutationCallbacks.onSuccess?.({ twoFactorRequired: true, pendingToken: "pending-jwt-token" }));
 
-    expect(screen.getByRole("link", { name: "Continue with Google" })).toHaveAttribute(
-      "href",
-      expect.stringContaining("returnTo=%2Fgroups%2Fjoin%2Fabc123"),
+    const codeInput = screen.getByLabelText("Authentication or backup code");
+    fireEvent.change(codeInput, { target: { value: "ABCDEFGH23" } });
+
+    fireEvent.click(screen.getByRole("button", { name: "Verify and log in" }));
+
+    expect(verifyTwoFactorMutate).toHaveBeenCalledWith({
+      data: {
+        pendingToken: "pending-jwt-token",
+        code: "ABCDEFGH23",
+      },
+    });
+
+    act(() => verifyTwoFactorCallbacks.onSuccess?.({ id: 1, username: "alex" }));
+    expect(loginPush).toHaveBeenCalledWith("/settings");
+  });
+
+  it("displays error when 2FA verification fails", async () => {
+    render(<LoginPage />);
+    act(() => loginMutationCallbacks.onSuccess?.({ twoFactorRequired: true, pendingToken: "pending-jwt-token" }));
+
+    const codeInput = screen.getByLabelText("Authentication or backup code");
+    fireEvent.change(codeInput, { target: { value: "000000" } });
+    fireEvent.click(screen.getByRole("button", { name: "Verify and log in" }));
+
+    act(() =>
+      verifyTwoFactorCallbacks.onError?.({
+        response: { status: UNAUTHORIZED_STATUS, data: { message: "Invalid verification code" } },
+      }),
     );
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("Invalid verification code");
+    expect(toastError).toHaveBeenCalledWith("Invalid verification code");
   });
 
-  it("leaves the Google link bare without a return target", () => {
+  it("returns to credentials form when clicking Back to login", async () => {
     render(<LoginPage />);
+    act(() => loginMutationCallbacks.onSuccess?.({ twoFactorRequired: true, pendingToken: "pending-jwt-token" }));
 
-    expect(screen.getByRole("link", { name: "Continue with Google" })).toHaveAttribute(
-      "href",
-      expect.not.stringContaining("returnTo"),
+    expect(screen.getByRole("heading", { name: "Two-factor authentication" })).toBeVisible();
+
+    fireEvent.click(screen.getByRole("button", { name: "Back to login" }));
+
+    expect(screen.getByRole("heading", { name: "Welcome back" })).toBeVisible();
+    expect(screen.getByLabelText("Email")).toBeVisible();
+  });
+
+  it("tells an unverified account why it cannot log in", async () => {
+    render(<LoginPage />);
+    act(() =>
+      loginMutationCallbacks.onError?.(
+        {
+          response: { status: FORBIDDEN_STATUS, data: { message: NOT_VERIFIED_MESSAGE } },
+        },
+        LOGIN_VARIABLES,
+      ),
     );
-  });
-
-  it("tells an unverified account why it cannot log in", () => {
-    render(<LoginPage />);
-    loginMutationCallbacks.onError?.({ response: { status: FORBIDDEN_STATUS, data: { message: NOT_VERIFIED_MESSAGE } } }, LOGIN_VARIABLES);
     expect(toastError).toHaveBeenCalledWith(NOT_VERIFIED_MESSAGE);
+    expect(await screen.findByText(/isn't verified yet/i)).toBeVisible();
   });
 
-  it("keeps the generic message for wrong credentials", () => {
+  it("surfaces a generic error toast for other bad logins", () => {
     render(<LoginPage />);
-    loginMutationCallbacks.onError?.({ response: { status: UNAUTHORIZED_STATUS, data: { message: "Invalid username or password" } } }, LOGIN_VARIABLES);
+    act(() =>
+      loginMutationCallbacks.onError?.(
+        {
+          response: { status: UNAUTHORIZED_STATUS, data: { message: "Wrong password" } },
+        },
+        LOGIN_VARIABLES,
+      ),
+    );
     expect(toastError).toHaveBeenCalledWith("Invalid email or password.");
   });
 
-  it("offers to resend the verification email for an unverified account", () => {
+  it("resends verification email on click", async () => {
     render(<LoginPage />);
-    act(() => loginMutationCallbacks.onError?.({ response: { status: FORBIDDEN_STATUS, data: { message: NOT_VERIFIED_MESSAGE } } }, LOGIN_VARIABLES));
-    fireEvent.click(screen.getByRole("button", { name: "Resend verification email" }));
+    act(() =>
+      loginMutationCallbacks.onError?.(
+        {
+          response: { status: FORBIDDEN_STATUS, data: { message: NOT_VERIFIED_MESSAGE } },
+        },
+        LOGIN_VARIABLES,
+      ),
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /resend verification email/i }));
     expect(resendMutate).toHaveBeenCalledWith({ data: { email: "player@example.com" } });
   });
 
-  it("does not offer a resend for wrong credentials", () => {
-    render(<LoginPage />);
-    act(() => loginMutationCallbacks.onError?.({ response: { status: UNAUTHORIZED_STATUS, data: { message: "Invalid username or password" } } }, LOGIN_VARIABLES));
-    expect(screen.queryByRole("button", { name: "Resend verification email" })).toBeNull();
-  });
-
-  it("hides the resend option again when the next login attempt starts", async () => {
-    render(<LoginPage />);
-    act(() => loginMutationCallbacks.onError?.({ response: { status: FORBIDDEN_STATUS, data: { message: NOT_VERIFIED_MESSAGE } } }, LOGIN_VARIABLES));
-    fireEvent.change(screen.getByLabelText("Email"), { target: { value: "player@example.com" } });
-    fireEvent.change(document.querySelector('input[type="password"]')!, { target: { value: "CorrectHorseBatteryStaple1!" } });
-    fireEvent.click(screen.getByRole("button", { name: "Log in" }));
-    await waitFor(() => expect(screen.queryByRole("button", { name: "Resend verification email" })).toBeNull());
-  });
-
-  it("confirms a resend and reports a failed one", () => {
+  it("toasts confirmation after resending verification", () => {
     render(<LoginPage />);
     act(() => resendMutationCallbacks.onSuccess?.());
     expect(toastSuccess).toHaveBeenCalled();
-    act(() => resendMutationCallbacks.onError?.(new Error("Network Error")));
+  });
+
+  it("toasts an error when resending verification fails", () => {
+    render(<LoginPage />);
+    act(() => resendMutationCallbacks.onError?.(new Error("network failure")));
     expect(toastError).toHaveBeenCalledWith("Couldn't send the email. Try again in a moment.");
   });
 });

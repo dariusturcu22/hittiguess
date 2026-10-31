@@ -27,6 +27,7 @@ public class UserMapper {
                 user.getImageUrl(),
                 user.getAuthProvider().name(),
                 user.getRole(),
+                user.isTwoFactorEnabled(),
                 playlists
         );
     }
