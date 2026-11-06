@@ -7,7 +7,7 @@ import { ArrowDown, ArrowRight, Bell, Check, ExternalLink, Loader2, Lock, LogOut
 import Link from "next/link";
 import { toast } from "sonner";
 
-import { getGetCurrentRoundLinkOutQueryKey, getGetGuessStateQueryKey, getGetResultsQueryKey, useGetCurrentRoundLinkOut, useGetGuessState, useGetSession, useLeaveSession } from "@/hooks/generated/game-session/game-session";
+import { getGetGuessStateQueryKey, getGetResultsQueryKey, useGetCurrentRoundLinkOut, useGetGuessState, useGetSession, useLeaveSession } from "@/hooks/generated/game-session/game-session";
 import { getGetActiveMembershipQueryKey, useGetActiveMembership, useGetGroup, useLeaveGroup } from "@/hooks/generated/group-management/group-management";
 import { useGetCurrentUser } from "@/hooks/generated/user-management/user-management";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/shadcn/alert-dialog";
@@ -239,6 +239,9 @@ export default function GameSessionPage({ params }: PageProps) {
   const leaveGroup = useLeaveGroup();
   const session = sessionQuery.data;
   const knownGroupIdReference = useRef<number | undefined>(undefined);
+  // Mirrors the ref for rendering: refs can't be read during render.
+  const [knownGroupId, setKnownGroupId] = useState<number | undefined>(undefined);
+  if (session?.groupId && session.groupId !== knownGroupId) setKnownGroupId(session.groupId);
   const groupRealtime = useGroupRealtime(session?.groupId ?? 0);
   const groupQuery = useGetGroup(session?.groupId ?? 0, { query: { enabled: Boolean(session?.groupId), retry: false } });
   const currentRound = session?.currentRound;
@@ -255,7 +258,7 @@ export default function GameSessionPage({ params }: PageProps) {
   const { songVolume, setSongVolume } = useAudioDevices();
   // A session that ended while this page wasn't listening is already purged, so a failed
   // load with a known group means the game is over: its results are the place to go.
-  const fallbackGroupId = session?.groupId ?? activeMembershipQuery.data?.id ?? knownGroupIdReference.current;
+  const fallbackGroupId = session?.groupId ?? activeMembershipQuery.data?.id ?? knownGroupId;
   const hasEnded = session?.status === COMPLETED_SESSION_STATUS || (sessionQuery.isError && fallbackGroupId !== undefined);
   const playerUserIds = players.flatMap((player) => (player.userId === undefined ? [] : [player.userId]));
   // Each membership signal stays undefined until its query settles: a false during a
