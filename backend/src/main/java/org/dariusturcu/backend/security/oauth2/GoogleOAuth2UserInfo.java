@@ -3,6 +3,8 @@ package org.dariusturcu.backend.security.oauth2;
 import java.util.Map;
 
 public class GoogleOAuth2UserInfo extends OAuth2UserInfo {
+    private static final String EMAIL_VERIFIED_CLAIM = "email_verified";
+
     public GoogleOAuth2UserInfo(Map<String, Object> attributes) {
         super(attributes);
     }
@@ -20,6 +22,11 @@ public class GoogleOAuth2UserInfo extends OAuth2UserInfo {
     @Override
     public String getEmail() {
         return attributes.get("email").toString();
+    }
+
+    @Override
+    public boolean isEmailVerified() {
+        return Boolean.parseBoolean(String.valueOf(attributes.get(EMAIL_VERIFIED_CLAIM)));
     }
 
     @Override

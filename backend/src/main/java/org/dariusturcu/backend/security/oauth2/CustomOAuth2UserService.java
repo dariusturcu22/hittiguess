@@ -4,6 +4,8 @@ import org.dariusturcu.backend.model.user.AuthProvider;
 import org.dariusturcu.backend.model.user.Role;
 import org.dariusturcu.backend.model.user.User;
 import org.dariusturcu.backend.repository.UserRepository;
+import org.dariusturcu.backend.util.EmailAddresses;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.oauth2.client.userinfo.DefaultOAuth2UserService;
 import org.springframework.security.oauth2.client.userinfo.OAuth2UserRequest;
 import org.springframework.security.oauth2.core.OAuth2AuthenticationException;
@@ -16,6 +18,9 @@ import java.util.Optional;
 @Service
 public class CustomOAuth2UserService extends DefaultOAuth2UserService {
     public static final String ACCOUNT_EXISTS_ERROR_CODE = "account_exists";
+    public static final String EMAIL_NOT_VERIFIED_ERROR_CODE = "email_not_verified";
+    private static final String ACCOUNT_EXISTS_MESSAGE =
+            "An account with this email already exists, log in with your password instead";
 
     private final UserRepository userRepository;
 
@@ -39,6 +44,14 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
     private User processOAuth2User(String registrationId, OAuth2UserInfo oAuth2UserInfo) {
         AuthProvider provider = AuthProvider.valueOf(registrationId.toUpperCase());
 
+        if (!oAuth2UserInfo.isEmailVerified()) {
+            throw new OAuth2AuthenticationException(
+                    new OAuth2Error(EMAIL_NOT_VERIFIED_ERROR_CODE),
+                    "The email address of this Google account is not verified"
+            );
+        }
+        String email = EmailAddresses.normalize(oAuth2UserInfo.getEmail());
+
         Optional<User> userOptional = userRepository.findUserByAuthProviderAndAuthProviderId(
                 provider,
                 oAuth2UserInfo.getId()
@@ -46,8 +59,12 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
 
         if (userOptional.isPresent()) {
             User user = userOptional.get();
-            user.setEmail(oAuth2UserInfo.getEmail());
-            if (!user.getUsername().equals(oAuth2UserInfo.getName())) {
+            boolean emailTakenByAnotherAccount = !email.equalsIgnoreCase(user.getEmail())
+                    && userRepository.existsUserByEmail(email);
+            if (!emailTakenByAnotherAccount) {
+                user.setEmail(email);
+            }
+            if (!user.getUsername().equalsIgnoreCase(oAuth2UserInfo.getName())) {
                 user.setUsername(resolveUniqueUsername(oAuth2UserInfo.getName()));
             }
             user.setImageUrl(oAuth2UserInfo.getImageUrl());
@@ -57,25 +74,33 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
             return userRepository.save(user);
         }
 
-        if (userRepository.existsUserByEmail(oAuth2UserInfo.getEmail())) {
-            throw new OAuth2AuthenticationException(
-                    new OAuth2Error(ACCOUNT_EXISTS_ERROR_CODE),
-                    "An account with this email already exists, log in with your password instead"
-            );
+        if (userRepository.existsUserByEmail(email)) {
+            throw accountExists();
         }
 
         User user = new User();
         user.setAuthProvider(provider);
         user.setAuthProviderId(oAuth2UserInfo.getId());
         user.setUsername(resolveUniqueUsername(oAuth2UserInfo.getName()));
-        user.setEmail(oAuth2UserInfo.getEmail());
+        user.setEmail(email);
         user.setImageUrl(oAuth2UserInfo.getImageUrl());
         user.setRole(Role.USER);
         // Google has already verified this email; a local signup is the only one that
         // starts unverified.
         user.setEmailVerified(true);
 
-        return userRepository.save(user);
+        try {
+            return userRepository.save(user);
+        } catch (DataIntegrityViolationException duplicateAccountException) {
+            if (userRepository.existsUserByEmail(email)) {
+                throw accountExists();
+            }
+            throw duplicateAccountException;
+        }
+    }
+
+    private OAuth2AuthenticationException accountExists() {
+        return new OAuth2AuthenticationException(new OAuth2Error(ACCOUNT_EXISTS_ERROR_CODE), ACCOUNT_EXISTS_MESSAGE);
     }
 
     private String resolveUniqueUsername(String desired) {
