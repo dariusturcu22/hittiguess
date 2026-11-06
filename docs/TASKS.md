@@ -50,11 +50,6 @@ Frontend implementation and tests belong to story 28. Feature work requires a Re
 - [ ] Owner: two real Chrome windows with system audio, one DJ and one listener who never joined voice, over the course of a whole game, and report the result; an attempt from Firefox and Safari confirms they are shown the cannot-share warning
 - [ ] Owner: Cloudflare TURN check. Both credentials are set on core; connect two devices on different networks with forced relay and confirm voice and the song stream still arrive. Add backend integration coverage if the HTTP-boundary tests leave gaps.
 
-## Story 47: Mockup reconciliation
-
-- [ ] Update the remaining source artboards and the published canvas to match the requirements approved during story 28's visual pass (account settings, audio check, recheck page), and validate that source and canvas are equal
-  - Depends on: the Story 28 visual comparison.
-
 ## Story 7: Production hosting
 
 Azure Container Apps hosts core and AI in one EU environment. Vercel hosts the frontend. Core stays single-replica because game and STOMP state are process-local. The whole-deployment ceiling is $20/month.
