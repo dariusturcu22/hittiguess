@@ -1,6 +1,7 @@
 package org.dariusturcu.backend.pipeline;
 
 import org.dariusturcu.backend.exception.ConflictException;
+import org.dariusturcu.backend.model.admin.ProposalBatchRequest;
 import org.dariusturcu.backend.model.admin.RecheckSongsRequest;
 import org.dariusturcu.backend.model.admin.UpdateCatalogSongRequest;
 import org.dariusturcu.backend.model.song.AdminCatalogSeedingRequest;
@@ -48,6 +49,7 @@ class AdminPipelineIntegrationTest {
     private static final String OWNER = "control-tests";
     private static final int YEAR = 1999;
     private static final int UPDATED_YEAR = 2001;
+    private static final int PROPOSED_YEAR = 2014;
     private static final int EXTRA_PAGE_ITEMS = 3;
     private static final long AVAILABLE_UNITS = 10_000;
     private static final int SOURCE_DELAY_MS = 1500;
@@ -536,6 +538,49 @@ class AdminPipelineIntegrationTest {
         assertThat(core.queryForObject("SELECT release_year FROM songs WHERE id = ?", Integer.class, song)).isEqualTo(2014);
         assertThat(core.queryForObject("SELECT proposed_release_year FROM songs WHERE id = ?", Integer.class, song)).isNull();
         assertThat(core.queryForObject("SELECT proposed_at FROM songs WHERE id = ?", java.time.Instant.class, song)).isNull();
+    }
+
+    @Test
+    void acceptProposalsChangesYearsClearsProposalsAndReportsSkippedSongs() {
+        long proposed = song(VIDEO);
+        long withoutProposal = song(OTHER_VIDEO);
+        long inActiveGame = song("adminvideo3");
+        core.update("UPDATE songs SET proposed_release_year = ?, proposed_at = now() WHERE id IN (?, ?)",
+                PROPOSED_YEAR, proposed, inActiveGame);
+        long group = core.queryForObject("""
+                INSERT INTO groups (invite_code, join_code, status, dj_mode, win_condition_card_count, created_at, expires_at)
+                VALUES ('invite3', 'IJKL', 'OPEN', 'FIXED', 5, now(), now() + interval '30 minutes') RETURNING id
+                """, Long.class);
+        long session = core.queryForObject("""
+                INSERT INTO game_sessions (group_id, status, dj_mode, win_condition_card_count, current_round_number, created_at)
+                VALUES (?, 'ACTIVE', 'FIXED', 5, 1, now()) RETURNING id
+                """, Long.class, group);
+        core.update("INSERT INTO game_session_song_queue (session_id, queue_position, song_id) VALUES (?, 0, ?)", session, inActiveGame);
+
+        var result = transaction(() -> songs.acceptProposals(new ProposalBatchRequest(List.of(proposed, withoutProposal, inActiveGame))));
+
+        assertThat(result.affected()).isEqualTo(1);
+        assertThat(result.skippedSongIds()).containsExactlyInAnyOrder(withoutProposal, inActiveGame);
+        assertThat(core.queryForObject("SELECT release_year FROM songs WHERE id = ?", Integer.class, proposed)).isEqualTo(PROPOSED_YEAR);
+        assertThat(core.queryForObject("SELECT proposed_release_year FROM songs WHERE id = ?", Integer.class, proposed)).isNull();
+        assertThat(core.queryForObject("SELECT proposed_at FROM songs WHERE id = ?", java.time.Instant.class, proposed)).isNull();
+        assertThat(core.queryForObject("SELECT release_year FROM songs WHERE id = ?", Integer.class, inActiveGame)).isEqualTo(YEAR);
+        assertThat(core.queryForObject("SELECT proposed_release_year FROM songs WHERE id = ?", Integer.class, inActiveGame)).isEqualTo(PROPOSED_YEAR);
+    }
+
+    @Test
+    void dismissProposalsClearsProposalsKeepsYearsAndSkipsSongsWithoutOne() {
+        long proposed = song(VIDEO);
+        long withoutProposal = song(OTHER_VIDEO);
+        core.update("UPDATE songs SET proposed_release_year = ?, proposed_at = now() WHERE id = ?", PROPOSED_YEAR, proposed);
+
+        var result = transaction(() -> songs.dismissProposals(new ProposalBatchRequest(List.of(proposed, withoutProposal))));
+
+        assertThat(result.affected()).isEqualTo(1);
+        assertThat(result.skippedSongIds()).containsExactly(withoutProposal);
+        assertThat(core.queryForObject("SELECT release_year FROM songs WHERE id = ?", Integer.class, proposed)).isEqualTo(YEAR);
+        assertThat(core.queryForObject("SELECT proposed_release_year FROM songs WHERE id = ?", Integer.class, proposed)).isNull();
+        assertThat(core.queryForObject("SELECT proposed_at FROM songs WHERE id = ?", java.time.Instant.class, proposed)).isNull();
     }
 
     @Test

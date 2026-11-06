@@ -124,6 +124,8 @@ export * from './queueStageDTOStage';
 export * from './queueStageDTOState';
 export * from './recheckCandidateDTO';
 export * from './recheckCandidateDTOVerificationStatus';
+export * from './proposalBatchRequest';
+export * from './proposalBatchResultDTO';
 export * from './recheckSongsRequest';
 export * from './recommendedSongsDTO';
 export * from './recommendSongsParams';

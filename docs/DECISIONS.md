@@ -1456,3 +1456,9 @@ A running game pauses while a player it needs has no working share: every remain
 Why: per-turn sharing asked every DJ for the screen picker mid-game and found missing audio only when a song was already playing. A rotating game needs everyone to share for fairness, since each player DJs equally often, and checking all shares before the first turn finds the browsers that cannot share while the group can still switch to a fixed DJ.
 
 ---
+
+### 2026-10-31: Bulk accept and dismiss of proposed release years
+
+Decision: `POST /api/admin/songs/proposals/accept` and `POST /api/admin/songs/proposals/dismiss` take up to 500 song IDs and apply them in one transaction. Accept sets each song's release year to its proposed year and clears the proposal. A song that does not exist, has no proposal, or (for accept only) is in an active game is skipped and returned in `skippedSongIds`. Dismiss clears proposals and leaves years alone. The verification status is not changed.
+
+Why: after a whole-catalog recheck hundreds of proposals need review, and one request per song is too slow. Skipping instead of failing lets a partly valid selection go through, and the skipped IDs tell the admin what was left. A year change for a song in an active game would alter a running game, so accept refuses those, the same rule the recheck and delete already apply.

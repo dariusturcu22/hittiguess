@@ -47,7 +47,33 @@ const pipelineHook = vi.hoisted(() => ({
   updateMutate: vi.fn(),
   dismissMutate: vi.fn(),
   mergeMutateAsync: vi.fn(),
+  acceptProposalsMutate: vi.fn(),
+  dismissProposalsMutate: vi.fn(),
 }));
+
+const toastHook = vi.hoisted(() => ({
+  success: vi.fn(),
+  error: vi.fn(),
+}));
+
+vi.mock("sonner", () => ({ toast: toastHook }));
+
+interface BatchMutationOptions {
+  mutation?: {
+    onSuccess?: (result: unknown, variables: unknown) => unknown;
+  };
+}
+
+function batchMutation(mutate: (variables: unknown) => Promise<unknown>) {
+  return (options?: BatchMutationOptions) => ({
+    mutateAsync: async (variables: unknown) => {
+      const result = await mutate(variables);
+      await options?.mutation?.onSuccess?.(result, variables);
+      return result;
+    },
+    isPending: false,
+  });
+}
 
 vi.mock("@/hooks/generated/admin-song-pipeline/admin-song-pipeline", () => ({
   useUpdateCatalogSong: () => ({
@@ -60,6 +86,8 @@ vi.mock("@/hooks/generated/admin-song-pipeline/admin-song-pipeline", () => ({
     mutateAsync: pipelineHook.dismissMutate,
     isPending: false,
   }),
+  useAcceptProposals: batchMutation(pipelineHook.acceptProposalsMutate),
+  useDismissProposals: batchMutation(pipelineHook.dismissProposalsMutate),
   useRerunSongPipeline: () => ({
     mutateAsync: vi.fn(),
     isPending: false,
@@ -173,6 +201,10 @@ describe("SongCatalogPage", () => {
     };
     detailHook.songIds = [];
     detailHook.result = { data: undefined, isLoading: true, isError: false };
+    pipelineHook.acceptProposalsMutate.mockReset();
+    pipelineHook.dismissProposalsMutate.mockReset();
+    toastHook.success.mockReset();
+    toastHook.error.mockReset();
   });
 
   afterEach(() => {
@@ -550,6 +582,134 @@ describe("SongCatalogPage", () => {
     expect(pipelineHook.mergeMutateAsync).toHaveBeenCalledWith({
       keepId: 42,
       dropId: SONG_ID,
+    });
+  });
+  describe("bulk proposal actions", () => {
+    const FIRST_PROPOSED_ID = 21;
+    const SECOND_PROPOSED_ID = 22;
+
+    function proposedSong(songId: number, title: string) {
+      return {
+        ...VERIFIED_SONG,
+        id: `song:${songId}`,
+        songId,
+        title,
+        releaseYear: 2015,
+        proposedReleaseYear: 2014,
+        status: "VERIFIED",
+      };
+    }
+
+    function showProposedFilter() {
+      catalogHook.result = {
+        data: catalogPage([
+          proposedSong(FIRST_PROPOSED_ID, "First proposed"),
+          proposedSong(SECOND_PROPOSED_ID, "Second proposed"),
+          QUEUED_ITEM,
+        ]),
+        isLoading: false,
+        isError: false,
+      };
+      render(<SongCatalogPage />);
+      fireEvent.click(screen.getByRole("button", { name: "Proposed year 3" }));
+    }
+
+    it("shows no checkboxes outside the proposed year filter", () => {
+      render(<SongCatalogPage />);
+
+      expect(screen.queryByRole("checkbox")).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole("button", { name: "Accept selected" }),
+      ).not.toBeInTheDocument();
+    });
+
+    it("selects rows one by one and all on the page", () => {
+      showProposedFilter();
+
+      expect(screen.getByText("0 selected")).toBeInTheDocument();
+      expect(
+        screen.getByRole("button", { name: "Accept selected" }),
+      ).toBeDisabled();
+
+      fireEvent.click(screen.getByRole("checkbox", { name: "Select First proposed" }));
+      expect(screen.getByText("1 selected")).toBeInTheDocument();
+
+      fireEvent.click(screen.getByRole("checkbox", { name: "Select all songs on this page" }));
+      expect(screen.getByText("2 selected")).toBeInTheDocument();
+
+      fireEvent.click(screen.getByRole("checkbox", { name: "Select all songs on this page" }));
+      expect(screen.getByText("0 selected")).toBeInTheDocument();
+    });
+
+    it("clears the selection when the page changes", () => {
+      showProposedFilter();
+      fireEvent.click(screen.getByRole("checkbox", { name: "Select First proposed" }));
+
+      fireEvent.click(screen.getByRole("button", { name: "Next" }));
+
+      expect(screen.getByText("0 selected")).toBeInTheDocument();
+    });
+
+    it("confirms with the selected count, accepts, and reports accepted and skipped counts", async () => {
+      pipelineHook.acceptProposalsMutate.mockResolvedValue({
+        affected: 1,
+        skippedSongIds: [SECOND_PROPOSED_ID],
+      });
+      showProposedFilter();
+      fireEvent.click(screen.getByRole("checkbox", { name: "Select all songs on this page" }));
+
+      fireEvent.click(screen.getByRole("button", { name: "Accept selected" }));
+      const dialog = within(screen.getByRole("alertdialog"));
+      expect(dialog.getByText("Accept 2 songs?")).toBeInTheDocument();
+      expect(pipelineHook.acceptProposalsMutate).not.toHaveBeenCalled();
+
+      await act(async () => {
+        fireEvent.click(dialog.getByRole("button", { name: "Confirm" }));
+      });
+
+      expect(pipelineHook.acceptProposalsMutate).toHaveBeenCalledWith({
+        data: { songIds: [FIRST_PROPOSED_ID, SECOND_PROPOSED_ID] },
+      });
+      expect(toastHook.success).toHaveBeenCalledWith("Accepted 1, skipped 1", {
+        description: `Skipped song IDs: ${SECOND_PROPOSED_ID}`,
+      });
+      expect(screen.getByText("0 selected")).toBeInTheDocument();
+    });
+
+    it("dismisses the selected proposals after confirmation", async () => {
+      pipelineHook.dismissProposalsMutate.mockResolvedValue({
+        affected: 1,
+        skippedSongIds: [],
+      });
+      showProposedFilter();
+      fireEvent.click(screen.getByRole("checkbox", { name: "Select First proposed" }));
+
+      fireEvent.click(screen.getByRole("button", { name: "Dismiss selected" }));
+      const dialog = within(screen.getByRole("alertdialog"));
+      expect(dialog.getByText("Dismiss 1 song?")).toBeInTheDocument();
+
+      await act(async () => {
+        fireEvent.click(dialog.getByRole("button", { name: "Confirm" }));
+      });
+
+      expect(pipelineHook.dismissProposalsMutate).toHaveBeenCalledWith({
+        data: { songIds: [FIRST_PROPOSED_ID] },
+      });
+      expect(toastHook.success).toHaveBeenCalledWith("Dismissed 1, skipped 0", {
+        description: undefined,
+      });
+    });
+
+    it("sends nothing when the confirmation is cancelled", () => {
+      showProposedFilter();
+      fireEvent.click(screen.getByRole("checkbox", { name: "Select First proposed" }));
+
+      fireEvent.click(screen.getByRole("button", { name: "Accept selected" }));
+      fireEvent.click(
+        within(screen.getByRole("alertdialog")).getByRole("button", { name: "Cancel" }),
+      );
+
+      expect(pipelineHook.acceptProposalsMutate).not.toHaveBeenCalled();
     });
   });
 });

@@ -4,6 +4,8 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.dariusturcu.backend.model.admin.PipelineControlResultDTO;
 import org.dariusturcu.backend.model.admin.PipelineRunDTO;
+import org.dariusturcu.backend.model.admin.ProposalBatchRequest;
+import org.dariusturcu.backend.model.admin.ProposalBatchResultDTO;
 import org.dariusturcu.backend.model.admin.RecheckSongsRequest;
 import org.dariusturcu.backend.model.admin.UpdateCatalogSongRequest;
 import org.dariusturcu.backend.pipeline.AdminSongPipelineService;
@@ -36,6 +38,20 @@ public class AdminSongPipelineController {
     @Operation(summary = "Set the release year or verification status of a catalog song")
     public PipelineControlResultDTO updateCatalogSong(@PathVariable long id, @RequestBody UpdateCatalogSongRequest request) {
         access.requireAdmin(); return songs.update(id, request);
+    }
+
+    @PostMapping("/proposals/accept")
+    @Operation(summary = "Accept the proposed release years of several songs, skipping songs without a proposal or in active games")
+    public ProposalBatchResultDTO acceptProposals(@RequestBody ProposalBatchRequest request) {
+        access.requireAdmin();
+        return songs.acceptProposals(request);
+    }
+
+    @PostMapping("/proposals/dismiss")
+    @Operation(summary = "Dismiss the proposed release years of several songs without changing their years")
+    public ProposalBatchResultDTO dismissProposals(@RequestBody ProposalBatchRequest request) {
+        access.requireAdmin();
+        return songs.dismissProposals(request);
     }
 
     @DeleteMapping("/{id}/proposal")
