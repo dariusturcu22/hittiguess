@@ -142,98 +142,6 @@ export function useSearchCatalog<TData = Awaited<ReturnType<typeof searchCatalog
 
 
 /**
- * @summary Every song with a YouTube ID for choosing songs to recheck, admin only: title, artists, year, verification status, whether an active game uses it, and when it last finished the pipeline (or was added), newest first
- */
-export const recheckCandidates = (
-
- options?: SecondParameter<typeof customInstance>,signal?: AbortSignal
-) => {
-
-
-      return customInstance<RecheckCandidateDTO[]>(
-      {url: `/api/admin/songs/recheck-candidates`, method: 'GET', signal
-    },
-      options);
-    }
-
-
-
-
-export const getRecheckCandidatesQueryKey = () => {
-    return [
-    `/api/admin/songs/recheck-candidates`
-    ] as const;
-    }
-
-
-export const getRecheckCandidatesQueryOptions = <TData = Awaited<ReturnType<typeof recheckCandidates>>, TError = unknown>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof recheckCandidates>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
-) => {
-
-const {query: queryOptions, request: requestOptions} = options ?? {};
-
-  const queryKey =  queryOptions?.queryKey ?? getRecheckCandidatesQueryKey();
-
-
-
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof recheckCandidates>>> = ({ signal }) => recheckCandidates(requestOptions, signal);
-
-
-
-
-
-   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof recheckCandidates>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
-}
-
-export type RecheckCandidatesQueryResult = NonNullable<Awaited<ReturnType<typeof recheckCandidates>>>
-export type RecheckCandidatesQueryError = unknown
-
-
-export function useRecheckCandidates<TData = Awaited<ReturnType<typeof recheckCandidates>>, TError = unknown>(
-  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof recheckCandidates>>, TError, TData>> & Pick<
-        DefinedInitialDataOptions<
-          Awaited<ReturnType<typeof recheckCandidates>>,
-          TError,
-          Awaited<ReturnType<typeof recheckCandidates>>
-        > , 'initialData'
-      >, request?: SecondParameter<typeof customInstance>}
- , queryClient?: QueryClient
-  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useRecheckCandidates<TData = Awaited<ReturnType<typeof recheckCandidates>>, TError = unknown>(
-  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof recheckCandidates>>, TError, TData>> & Pick<
-        UndefinedInitialDataOptions<
-          Awaited<ReturnType<typeof recheckCandidates>>,
-          TError,
-          Awaited<ReturnType<typeof recheckCandidates>>
-        > , 'initialData'
-      >, request?: SecondParameter<typeof customInstance>}
- , queryClient?: QueryClient
-  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useRecheckCandidates<TData = Awaited<ReturnType<typeof recheckCandidates>>, TError = unknown>(
-  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof recheckCandidates>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
- , queryClient?: QueryClient
-  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-/**
- * @summary Every song with a YouTube ID for choosing songs to recheck, admin only: title, artists, year, verification status, whether an active game uses it, and when it last finished the pipeline (or was added), newest first
- */
-
-export function useRecheckCandidates<TData = Awaited<ReturnType<typeof recheckCandidates>>, TError = unknown>(
-  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof recheckCandidates>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
- , queryClient?: QueryClient
- ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
-
-  const queryOptions = getRecheckCandidatesQueryOptions(options)
-
-  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
-
-  return withQueryKey(query, queryOptions.queryKey);
-}
-
-
-
-
-
-
-/**
  * @summary Read-only song detail, admin only: catalog fields, stored verification status, confidence, and Wikidata sitelinks, open report count, and the backlog history for its YouTube ID
  */
 export const songDetail = (
@@ -314,6 +222,98 @@ export function useSongDetail<TData = Awaited<ReturnType<typeof songDetail>>, TE
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
   const queryOptions = getSongDetailQueryOptions(songId,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+/**
+ * @summary Every song with a YouTube ID for choosing songs to recheck, admin only: title, artists, year, verification status, whether an active game uses it, and when it last finished the pipeline (or was added), newest first
+ */
+export const recheckCandidates = (
+
+ options?: SecondParameter<typeof customInstance>,signal?: AbortSignal
+) => {
+
+
+      return customInstance<RecheckCandidateDTO[]>(
+      {url: `/api/admin/songs/recheck-candidates`, method: 'GET', signal
+    },
+      options);
+    }
+
+
+
+
+export const getRecheckCandidatesQueryKey = () => {
+    return [
+    `/api/admin/songs/recheck-candidates`
+    ] as const;
+    }
+
+
+export const getRecheckCandidatesQueryOptions = <TData = Awaited<ReturnType<typeof recheckCandidates>>, TError = unknown>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof recheckCandidates>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getRecheckCandidatesQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof recheckCandidates>>> = ({ signal }) => recheckCandidates(requestOptions, signal);
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof recheckCandidates>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type RecheckCandidatesQueryResult = NonNullable<Awaited<ReturnType<typeof recheckCandidates>>>
+export type RecheckCandidatesQueryError = unknown
+
+
+export function useRecheckCandidates<TData = Awaited<ReturnType<typeof recheckCandidates>>, TError = unknown>(
+  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof recheckCandidates>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof recheckCandidates>>,
+          TError,
+          Awaited<ReturnType<typeof recheckCandidates>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useRecheckCandidates<TData = Awaited<ReturnType<typeof recheckCandidates>>, TError = unknown>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof recheckCandidates>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof recheckCandidates>>,
+          TError,
+          Awaited<ReturnType<typeof recheckCandidates>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useRecheckCandidates<TData = Awaited<ReturnType<typeof recheckCandidates>>, TError = unknown>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof recheckCandidates>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary Every song with a YouTube ID for choosing songs to recheck, admin only: title, artists, year, verification status, whether an active game uses it, and when it last finished the pipeline (or was added), newest first
+ */
+
+export function useRecheckCandidates<TData = Awaited<ReturnType<typeof recheckCandidates>>, TError = unknown>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof recheckCandidates>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getRecheckCandidatesQueryOptions(options)
 
   const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 

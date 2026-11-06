@@ -1486,3 +1486,11 @@ Why: the DJ's capture stream is held in song-capture.ts across in-app navigation
 Decision: staged song IDs for reviewed difficulty sets and custom playlist starts are persisted in the `group_staged_songs` table, keyed by `(group_id, stage_position)`, mapped as an `@ElementCollection` on `Group`. The in-memory `PendingSessionSongPool` is removed. When the session starts or when the host cancels the audio check, the staged song IDs are cleared.
 
 Why: `PendingSessionSongPool` kept staged song lists in memory during the audio check phase. A backend service restart during the audio check wiped out the staged pool, causing the subsequent game start to fall back to the group's default playlist pool instead of the reviewed or custom song selection. Persisting the staged list directly with the group ensures that backend restarts do not discard the host's selected songs.
+
+---
+
+## 2026-10-31 | API client regeneration for audio check and recheck candidate types
+
+Decision: the generated frontend API client, models, and Zod schemas are regenerated using Orval against the running backend's OpenAPI endpoint (`/v3/api-docs`). Hand-written definitions for audio check endpoints, share statuses, and recheck candidates are replaced by the generated definitions.
+
+Why: manual client edits introduced during recent audio check and whole-catalog recheck tasks lacked automated schema synchronization. Regenerating against the live backend ensures types and endpoint hooks precisely match the server's OpenAPI specification without behavioral drift.

@@ -855,6 +855,272 @@ export const useDisconnect = <TError = unknown,
       return useMutation(getDisconnectMutationOptions(options), queryClient);
     }
     /**
+ * @summary Report the calling member's own audio share during the audio check
+ */
+export const reportAudioCheckStatus = (
+    groupId: number,
+    audioCheckStatusRequest: AudioCheckStatusRequest,
+ options?: SecondParameter<typeof customInstance>,signal?: AbortSignal
+) => {
+
+
+      return customInstance<GroupDetailDTO>(
+      {url: `/api/groups/${groupId}/audio-check/status`, method: 'POST',
+      headers: {'Content-Type': 'application/json', },
+      data: audioCheckStatusRequest, signal
+    },
+      options);
+    }
+
+
+
+
+export const getReportAudioCheckStatusMutationKey = () => ['reportAudioCheckStatus'] as const;
+
+export const getReportAudioCheckStatusMutationOptions = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof reportAudioCheckStatus>>, TError,ReportAudioCheckStatusMutationVariables, TContext>, request?: SecondParameter<typeof customInstance>}
+): UseMutationOptions<Awaited<ReturnType<typeof reportAudioCheckStatus>>, TError,ReportAudioCheckStatusMutationVariables, TContext> => {
+
+const mutationKey = getReportAudioCheckStatusMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof reportAudioCheckStatus>>, ReportAudioCheckStatusMutationVariables> = (props) => {
+          const {groupId,data} = props ?? {};
+
+          return  reportAudioCheckStatus(groupId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ReportAudioCheckStatusMutationResult = NonNullable<Awaited<ReturnType<typeof reportAudioCheckStatus>>>
+    export type ReportAudioCheckStatusMutationBody = AudioCheckStatusRequest
+    export type ReportAudioCheckStatusMutationError = unknown
+    export type ReportAudioCheckStatusMutationVariables = {groupId: number;data: AudioCheckStatusRequest}
+
+    /**
+ * @summary Report the calling member's own audio share during the audio check
+ */
+export const useReportAudioCheckStatus = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof reportAudioCheckStatus>>, TError,ReportAudioCheckStatusMutationVariables, TContext>, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof reportAudioCheckStatus>>,
+        TError,
+        ReportAudioCheckStatusMutationVariables,
+        TContext
+      > => {
+      return useMutation(getReportAudioCheckStatusMutationOptions(options), queryClient);
+    }
+    /**
+ * @summary Start the game once every required DJ's audio share passed, admin only, locks the group to new members
+ */
+export const startGameAfterAudioCheck = (
+    groupId: number,
+ options?: SecondParameter<typeof customInstance>,signal?: AbortSignal
+) => {
+
+
+      return customInstance<GroupDetailDTO>(
+      {url: `/api/groups/${groupId}/audio-check/start`, method: 'POST', signal
+    },
+      options);
+    }
+
+
+
+
+export const getStartGameAfterAudioCheckMutationKey = () => ['startGameAfterAudioCheck'] as const;
+
+export const getStartGameAfterAudioCheckMutationOptions = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof startGameAfterAudioCheck>>, TError,StartGameAfterAudioCheckMutationVariables, TContext>, request?: SecondParameter<typeof customInstance>}
+): UseMutationOptions<Awaited<ReturnType<typeof startGameAfterAudioCheck>>, TError,StartGameAfterAudioCheckMutationVariables, TContext> => {
+
+const mutationKey = getStartGameAfterAudioCheckMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof startGameAfterAudioCheck>>, StartGameAfterAudioCheckMutationVariables> = (props) => {
+          const {groupId} = props ?? {};
+
+          return  startGameAfterAudioCheck(groupId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type StartGameAfterAudioCheckMutationResult = NonNullable<Awaited<ReturnType<typeof startGameAfterAudioCheck>>>
+
+    export type StartGameAfterAudioCheckMutationError = unknown
+    export type StartGameAfterAudioCheckMutationVariables = {groupId: number}
+
+    /**
+ * @summary Start the game once every required DJ's audio share passed, admin only, locks the group to new members
+ */
+export const useStartGameAfterAudioCheck = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof startGameAfterAudioCheck>>, TError,StartGameAfterAudioCheckMutationVariables, TContext>, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof startGameAfterAudioCheck>>,
+        TError,
+        StartGameAfterAudioCheckMutationVariables,
+        TContext
+      > => {
+      return useMutation(getStartGameAfterAudioCheckMutationOptions(options), queryClient);
+    }
+    /**
+ * @summary Switch the game to a fixed DJ chosen among members whose audio share passed, admin only
+ */
+export const switchToFixedDj = (
+    groupId: number,
+    switchToFixedDjRequest: SwitchToFixedDjRequest,
+ options?: SecondParameter<typeof customInstance>,signal?: AbortSignal
+) => {
+
+
+      return customInstance<GroupDetailDTO>(
+      {url: `/api/groups/${groupId}/audio-check/fixed-dj`, method: 'POST',
+      headers: {'Content-Type': 'application/json', },
+      data: switchToFixedDjRequest, signal
+    },
+      options);
+    }
+
+
+
+
+export const getSwitchToFixedDjMutationKey = () => ['switchToFixedDj'] as const;
+
+export const getSwitchToFixedDjMutationOptions = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof switchToFixedDj>>, TError,SwitchToFixedDjMutationVariables, TContext>, request?: SecondParameter<typeof customInstance>}
+): UseMutationOptions<Awaited<ReturnType<typeof switchToFixedDj>>, TError,SwitchToFixedDjMutationVariables, TContext> => {
+
+const mutationKey = getSwitchToFixedDjMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof switchToFixedDj>>, SwitchToFixedDjMutationVariables> = (props) => {
+          const {groupId,data} = props ?? {};
+
+          return  switchToFixedDj(groupId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SwitchToFixedDjMutationResult = NonNullable<Awaited<ReturnType<typeof switchToFixedDj>>>
+    export type SwitchToFixedDjMutationBody = SwitchToFixedDjRequest
+    export type SwitchToFixedDjMutationError = unknown
+    export type SwitchToFixedDjMutationVariables = {groupId: number;data: SwitchToFixedDjRequest}
+
+    /**
+ * @summary Switch the game to a fixed DJ chosen among members whose audio share passed, admin only
+ */
+export const useSwitchToFixedDj = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof switchToFixedDj>>, TError,SwitchToFixedDjMutationVariables, TContext>, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof switchToFixedDj>>,
+        TError,
+        SwitchToFixedDjMutationVariables,
+        TContext
+      > => {
+      return useMutation(getSwitchToFixedDjMutationOptions(options), queryClient);
+    }
+    /**
+ * @summary Cancel the audio check and return the group to its lobby, admin only
+ */
+export const cancelAudioCheck = (
+    groupId: number,
+ options?: SecondParameter<typeof customInstance>,signal?: AbortSignal
+) => {
+
+
+      return customInstance<GroupDetailDTO>(
+      {url: `/api/groups/${groupId}/audio-check/cancel`, method: 'POST', signal
+    },
+      options);
+    }
+
+
+
+
+export const getCancelAudioCheckMutationKey = () => ['cancelAudioCheck'] as const;
+
+export const getCancelAudioCheckMutationOptions = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof cancelAudioCheck>>, TError,CancelAudioCheckMutationVariables, TContext>, request?: SecondParameter<typeof customInstance>}
+): UseMutationOptions<Awaited<ReturnType<typeof cancelAudioCheck>>, TError,CancelAudioCheckMutationVariables, TContext> => {
+
+const mutationKey = getCancelAudioCheckMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof cancelAudioCheck>>, CancelAudioCheckMutationVariables> = (props) => {
+          const {groupId} = props ?? {};
+
+          return  cancelAudioCheck(groupId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CancelAudioCheckMutationResult = NonNullable<Awaited<ReturnType<typeof cancelAudioCheck>>>
+
+    export type CancelAudioCheckMutationError = unknown
+    export type CancelAudioCheckMutationVariables = {groupId: number}
+
+    /**
+ * @summary Cancel the audio check and return the group to its lobby, admin only
+ */
+export const useCancelAudioCheck = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof cancelAudioCheck>>, TError,CancelAudioCheckMutationVariables, TContext>, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof cancelAudioCheck>>,
+        TError,
+        CancelAudioCheckMutationVariables,
+        TContext
+      > => {
+      return useMutation(getCancelAudioCheckMutationOptions(options), queryClient);
+    }
+    /**
  * @summary Report whether the calling member's browser can capture audio, which decides if they can be the DJ
  */
 export const reportAudioCapability = (
@@ -921,260 +1187,6 @@ export const useReportAudioCapability = <TError = unknown,
         TContext
       > => {
       return useMutation(getReportAudioCapabilityMutationOptions(options), queryClient);
-    }
-    /**
- * @summary Report the calling member's own audio share during the audio check
- */
-export const reportAudioCheckStatus = (
-    groupId: number,
-    audioCheckStatusRequest: AudioCheckStatusRequest,
- options?: SecondParameter<typeof customInstance>,signal?: AbortSignal
-) => {
-
-
-      return customInstance<GroupDetailDTO>(
-      {url: `/api/groups/${groupId}/audio-check/status`, method: 'POST',
-      headers: {'Content-Type': 'application/json', },
-      data: audioCheckStatusRequest, signal
-    },
-      options);
-    }
-
-
-
-export const getReportAudioCheckStatusMutationKey = () => ['reportAudioCheckStatus'] as const;
-
-export const getReportAudioCheckStatusMutationOptions = <TError = unknown,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof reportAudioCheckStatus>>, TError,ReportAudioCheckStatusMutationVariables, TContext>, request?: SecondParameter<typeof customInstance>}
-): UseMutationOptions<Awaited<ReturnType<typeof reportAudioCheckStatus>>, TError,ReportAudioCheckStatusMutationVariables, TContext> => {
-
-const mutationKey = getReportAudioCheckStatusMutationKey();
-const {mutation: mutationOptions, request: requestOptions} = options ?
-      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
-      options
-      : {...options, mutation: {...options.mutation, mutationKey}}
-      : {mutation: { mutationKey, }, request: undefined};
-
-
-
-
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof reportAudioCheckStatus>>, ReportAudioCheckStatusMutationVariables> = (props) => {
-          const {groupId,data} = props ?? {};
-
-          return  reportAudioCheckStatus(groupId,data,requestOptions)
-        }
-
-
-
-
-  return  { mutationFn, ...mutationOptions }}
-
-    export type ReportAudioCheckStatusMutationResult = NonNullable<Awaited<ReturnType<typeof reportAudioCheckStatus>>>
-    export type ReportAudioCheckStatusMutationBody = AudioCheckStatusRequest
-    export type ReportAudioCheckStatusMutationError = unknown
-    export type ReportAudioCheckStatusMutationVariables = {groupId: number;data: AudioCheckStatusRequest}
-
-    /**
- * @summary Report the calling member's own audio share during the audio check
- */
-export const useReportAudioCheckStatus = <TError = unknown,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof reportAudioCheckStatus>>, TError,ReportAudioCheckStatusMutationVariables, TContext>, request?: SecondParameter<typeof customInstance>}
- , queryClient?: QueryClient): UseMutationResult<
-        Awaited<ReturnType<typeof reportAudioCheckStatus>>,
-        TError,
-        ReportAudioCheckStatusMutationVariables,
-        TContext
-      > => {
-      return useMutation(getReportAudioCheckStatusMutationOptions(options), queryClient);
-    }
-    /**
- * @summary Start the game once every required DJ's audio share passed, admin only, locks the group to new members
- */
-export const startGameAfterAudioCheck = (
-    groupId: number,
- options?: SecondParameter<typeof customInstance>,signal?: AbortSignal
-) => {
-
-
-      return customInstance<GroupDetailDTO>(
-      {url: `/api/groups/${groupId}/audio-check/start`, method: 'POST', signal
-    },
-      options);
-    }
-
-
-
-export const getStartGameAfterAudioCheckMutationKey = () => ['startGameAfterAudioCheck'] as const;
-
-export const getStartGameAfterAudioCheckMutationOptions = <TError = unknown,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof startGameAfterAudioCheck>>, TError,StartGameAfterAudioCheckMutationVariables, TContext>, request?: SecondParameter<typeof customInstance>}
-): UseMutationOptions<Awaited<ReturnType<typeof startGameAfterAudioCheck>>, TError,StartGameAfterAudioCheckMutationVariables, TContext> => {
-
-const mutationKey = getStartGameAfterAudioCheckMutationKey();
-const {mutation: mutationOptions, request: requestOptions} = options ?
-      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
-      options
-      : {...options, mutation: {...options.mutation, mutationKey}}
-      : {mutation: { mutationKey, }, request: undefined};
-
-
-
-
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof startGameAfterAudioCheck>>, StartGameAfterAudioCheckMutationVariables> = (props) => {
-          const {groupId} = props ?? {};
-
-          return  startGameAfterAudioCheck(groupId,requestOptions)
-        }
-
-
-
-
-  return  { mutationFn, ...mutationOptions }}
-
-    export type StartGameAfterAudioCheckMutationResult = NonNullable<Awaited<ReturnType<typeof startGameAfterAudioCheck>>>
-    export type StartGameAfterAudioCheckMutationBody = void
-    export type StartGameAfterAudioCheckMutationError = unknown
-    export type StartGameAfterAudioCheckMutationVariables = {groupId: number}
-
-    /**
- * @summary Start the game once every required DJ's audio share passed, admin only, locks the group to new members
- */
-export const useStartGameAfterAudioCheck = <TError = unknown,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof startGameAfterAudioCheck>>, TError,StartGameAfterAudioCheckMutationVariables, TContext>, request?: SecondParameter<typeof customInstance>}
- , queryClient?: QueryClient): UseMutationResult<
-        Awaited<ReturnType<typeof startGameAfterAudioCheck>>,
-        TError,
-        StartGameAfterAudioCheckMutationVariables,
-        TContext
-      > => {
-      return useMutation(getStartGameAfterAudioCheckMutationOptions(options), queryClient);
-    }
-    /**
- * @summary Switch the game to a fixed DJ chosen among members whose audio share passed, admin only
- */
-export const switchToFixedDj = (
-    groupId: number,
-    switchToFixedDjRequest: SwitchToFixedDjRequest,
- options?: SecondParameter<typeof customInstance>,signal?: AbortSignal
-) => {
-
-
-      return customInstance<GroupDetailDTO>(
-      {url: `/api/groups/${groupId}/audio-check/fixed-dj`, method: 'POST',
-      headers: {'Content-Type': 'application/json', },
-      data: switchToFixedDjRequest, signal
-    },
-      options);
-    }
-
-
-
-export const getSwitchToFixedDjMutationKey = () => ['switchToFixedDj'] as const;
-
-export const getSwitchToFixedDjMutationOptions = <TError = unknown,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof switchToFixedDj>>, TError,SwitchToFixedDjMutationVariables, TContext>, request?: SecondParameter<typeof customInstance>}
-): UseMutationOptions<Awaited<ReturnType<typeof switchToFixedDj>>, TError,SwitchToFixedDjMutationVariables, TContext> => {
-
-const mutationKey = getSwitchToFixedDjMutationKey();
-const {mutation: mutationOptions, request: requestOptions} = options ?
-      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
-      options
-      : {...options, mutation: {...options.mutation, mutationKey}}
-      : {mutation: { mutationKey, }, request: undefined};
-
-
-
-
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof switchToFixedDj>>, SwitchToFixedDjMutationVariables> = (props) => {
-          const {groupId,data} = props ?? {};
-
-          return  switchToFixedDj(groupId,data,requestOptions)
-        }
-
-
-
-
-  return  { mutationFn, ...mutationOptions }}
-
-    export type SwitchToFixedDjMutationResult = NonNullable<Awaited<ReturnType<typeof switchToFixedDj>>>
-    export type SwitchToFixedDjMutationBody = SwitchToFixedDjRequest
-    export type SwitchToFixedDjMutationError = unknown
-    export type SwitchToFixedDjMutationVariables = {groupId: number;data: SwitchToFixedDjRequest}
-
-    /**
- * @summary Switch the game to a fixed DJ chosen among members whose audio share passed, admin only
- */
-export const useSwitchToFixedDj = <TError = unknown,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof switchToFixedDj>>, TError,SwitchToFixedDjMutationVariables, TContext>, request?: SecondParameter<typeof customInstance>}
- , queryClient?: QueryClient): UseMutationResult<
-        Awaited<ReturnType<typeof switchToFixedDj>>,
-        TError,
-        SwitchToFixedDjMutationVariables,
-        TContext
-      > => {
-      return useMutation(getSwitchToFixedDjMutationOptions(options), queryClient);
-    }
-    /**
- * @summary Cancel the audio check and return the group to its lobby, admin only
- */
-export const cancelAudioCheck = (
-    groupId: number,
- options?: SecondParameter<typeof customInstance>,signal?: AbortSignal
-) => {
-
-
-      return customInstance<GroupDetailDTO>(
-      {url: `/api/groups/${groupId}/audio-check/cancel`, method: 'POST', signal
-    },
-      options);
-    }
-
-
-
-export const getCancelAudioCheckMutationKey = () => ['cancelAudioCheck'] as const;
-
-export const getCancelAudioCheckMutationOptions = <TError = unknown,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof cancelAudioCheck>>, TError,CancelAudioCheckMutationVariables, TContext>, request?: SecondParameter<typeof customInstance>}
-): UseMutationOptions<Awaited<ReturnType<typeof cancelAudioCheck>>, TError,CancelAudioCheckMutationVariables, TContext> => {
-
-const mutationKey = getCancelAudioCheckMutationKey();
-const {mutation: mutationOptions, request: requestOptions} = options ?
-      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
-      options
-      : {...options, mutation: {...options.mutation, mutationKey}}
-      : {mutation: { mutationKey, }, request: undefined};
-
-
-
-
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof cancelAudioCheck>>, CancelAudioCheckMutationVariables> = (props) => {
-          const {groupId} = props ?? {};
-
-          return  cancelAudioCheck(groupId,requestOptions)
-        }
-
-
-
-
-  return  { mutationFn, ...mutationOptions }}
-
-    export type CancelAudioCheckMutationResult = NonNullable<Awaited<ReturnType<typeof cancelAudioCheck>>>
-    export type CancelAudioCheckMutationBody = void
-    export type CancelAudioCheckMutationError = unknown
-    export type CancelAudioCheckMutationVariables = {groupId: number}
-
-    /**
- * @summary Cancel the audio check and return the group to its lobby, admin only
- */
-export const useCancelAudioCheck = <TError = unknown,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof cancelAudioCheck>>, TError,CancelAudioCheckMutationVariables, TContext>, request?: SecondParameter<typeof customInstance>}
- , queryClient?: QueryClient): UseMutationResult<
-        Awaited<ReturnType<typeof cancelAudioCheck>>,
-        TError,
-        CancelAudioCheckMutationVariables,
-        TContext
-      > => {
-      return useMutation(getCancelAudioCheckMutationOptions(options), queryClient);
     }
     /**
  * @summary Join a group via invite link or join code
