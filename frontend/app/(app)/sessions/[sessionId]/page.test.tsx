@@ -66,6 +66,9 @@ type MockGameSession = Omit<typeof MID_GAME_SESSION, "currentRound"> & { current
 
 let mockSessionData: MockGameSession | null = MID_GAME_SESSION;
 let mockSessionIsLoading = false;
+let mockSessionError: unknown;
+const NOT_FOUND_ERROR = { isAxiosError: true, response: { status: 404 } };
+const TRANSIENT_ERROR = { isAxiosError: true, response: { status: 429 } };
 let mockMembership: { id: number } | undefined = { id: 2 };
 let mockMembershipIsLoading = false;
 let mockCurrentUserId = ACTIVE_USER_ID;
@@ -94,7 +97,8 @@ vi.mock("@/hooks/generated/game-session/game-session", () => ({
   useGetSession: () => ({
     data: mockSessionData,
     isLoading: mockSessionIsLoading,
-    isError: !mockSessionData,
+    isError: !mockSessionData || mockSessionError !== undefined,
+    error: mockSessionData ? mockSessionError : (mockSessionError ?? NOT_FOUND_ERROR),
   }),
   useGetGuessState: () => ({ data: mockGuessState }),
   useLeaveSession: () => ({ mutate: leaveSessionMutate, isPending: false }),
@@ -254,6 +258,7 @@ describe("GameSessionPage", () => {
     routerReplace.mockClear();
     mockSessionData = MID_GAME_SESSION;
     mockSessionIsLoading = false;
+    mockSessionError = undefined;
     mockMembership = { id: 2 };
     mockMembershipIsLoading = false;
     mockCurrentUserId = ACTIVE_USER_ID;
@@ -405,6 +410,49 @@ describe("GameSessionPage", () => {
     });
 
     expect(routerReplace).toHaveBeenCalledWith("/groups/2");
+  });
+
+  it("keeps the game on screen when a background refetch fails with a transient error", async () => {
+    mockSessionError = TRANSIENT_ERROR;
+    await renderPage();
+
+    expect(screen.getByRole("heading", { name: "Round 3" })).toBeVisible();
+    expect(screen.queryByText("This game has ended.")).toBeNull();
+    expect(routerReplace).not.toHaveBeenCalled();
+  });
+
+  it("sends the player to the results when the session answers not found with stale data", async () => {
+    mockSessionError = NOT_FOUND_ERROR;
+    await renderPage();
+
+    expect(routerReplace).toHaveBeenCalledWith("/sessions/1/results?group=2");
+  });
+
+  it("sends the player to the results when the session is completed", async () => {
+    mockSessionData = { ...MID_GAME_SESSION, status: "COMPLETED" } as MockGameSession;
+    await renderPage();
+
+    expect(routerReplace).toHaveBeenCalledWith("/sessions/1/results?group=2");
+  });
+
+  it("clears half-typed guesses when the round changes", async () => {
+    let view: ReturnType<typeof render> | undefined;
+    await act(async () => {
+      view = render(<GameSessionPage params={SESSION_PARAMS} />);
+    });
+    const artistInput = screen.getByLabelText("Guess the artist");
+    const titleInput = screen.getByLabelText("Guess the title");
+    fireEvent.change(artistInput, { target: { value: "Dua" } });
+    fireEvent.change(titleInput, { target: { value: "Lev" } });
+    expect(artistInput).toHaveValue("Dua");
+
+    mockSessionData = withRound({ id: 31, roundNumber: 4 });
+    await act(async () => {
+      view?.rerender(<GameSessionPage params={SESSION_PARAMS} />);
+    });
+
+    expect(screen.getByLabelText("Guess the artist")).toHaveValue("");
+    expect(screen.getByLabelText("Guess the title")).toHaveValue("");
   });
 
   it("shows a loader, not the ended screen, while a purged session redirects to its group's results", async () => {

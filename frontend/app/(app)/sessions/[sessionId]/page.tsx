@@ -2,6 +2,7 @@
 
 import { use, useCallback, useEffect, useRef, useState, type CSSProperties, type KeyboardEvent, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
+import { isAxiosError } from "axios";
 import { ArrowDown, ArrowRight, Bell, Check, ExternalLink, Loader2, Lock, LogOut, MessageCircle, Music2, TriangleAlert, UserRound, Volume2, VolumeX, X } from "lucide-react";
 
 import Link from "next/link";
@@ -61,6 +62,7 @@ import { computeGameplayCardSize } from "@/lib/gameplay-layout";
 import { recordServerTime, useServerNow } from "@/lib/server-clock";
 
 const COMPLETED_SESSION_STATUS = "COMPLETED";
+const SESSION_GONE_HTTP_STATUS = 404;
 const FIRST_ROUND_NUMBER = 1;
 const FIRST_TURN_NUMBER = 1;
 const ROUND_INTRO_SECONDS = 3;
@@ -256,10 +258,12 @@ export default function GameSessionPage({ params }: PageProps) {
   const linkOutQuery = useGetCurrentRoundLinkOut(sessionId, { query: { enabled: isDj && !isRoundRevealed(roundStatus), retry: false } });
   const isSharingTabAudioSupported = typeof navigator !== "undefined" && canShareSongAudio(navigator.userAgent, navigator.maxTouchPoints);
   const { songVolume, setSongVolume } = useAudioDevices();
-  // A session that ended while this page wasn't listening is already purged, so a failed
-  // load with a known group means the game is over: its results are the place to go.
+  // A session that ended while this page wasn't listening is already purged and answers 404,
+  // so a not-found load with a known group means the game is over: its results are the place
+  // to go. Any other failure (expired token, rate limit, server error, network) is transient.
+  const isSessionGone = sessionQuery.isError && isAxiosError(sessionQuery.error) && sessionQuery.error.response?.status === SESSION_GONE_HTTP_STATUS;
   const fallbackGroupId = session?.groupId ?? activeMembershipQuery.data?.id ?? knownGroupId;
-  const hasEnded = session?.status === COMPLETED_SESSION_STATUS || (sessionQuery.isError && fallbackGroupId !== undefined);
+  const hasEnded = session?.status === COMPLETED_SESSION_STATUS || (isSessionGone && fallbackGroupId !== undefined);
   const playerUserIds = players.flatMap((player) => (player.userId === undefined ? [] : [player.userId]));
   // Each membership signal stays undefined until its query settles: a false during a
   // remount would end the DJ's capture, which is meant to survive in-app navigation.
@@ -339,6 +343,8 @@ export default function GameSessionPage({ params }: PageProps) {
     setReceivedPlacementPreview(null);
     setFeedbackMessage("");
     setIsGuessResultCorrect(null);
+    setArtistGuess("");
+    setTitleGuess("");
   }
 
   const handleRoundEvent = useCallback((event: SessionRoundEvent) => {
@@ -541,7 +547,7 @@ export default function GameSessionPage({ params }: PageProps) {
   if (!Number.isInteger(sessionId) || sessionId <= 0) return <main className="p-10 text-destructive">This game session link is invalid.</main>;
   if (sessionQuery.isLoading || (sessionQuery.isError && activeMembershipQuery.isLoading)) return <main className="flex h-full min-h-0 items-center justify-center overflow-hidden"><Loader2 className="size-8 animate-spin text-primary" aria-label="Loading game session" /></main>;
   if (hasEnded && fallbackGroupId !== undefined) return <main className="flex h-full min-h-0 items-center justify-center overflow-hidden"><Loader2 className="size-8 animate-spin text-primary" aria-label="Loading game session" /></main>;
-  if (sessionQuery.isError || !session) return <main className="flex h-full min-h-0 flex-col items-center justify-center gap-4 overflow-hidden p-10 text-center">
+  if (isSessionGone || !session) return <main className="flex h-full min-h-0 flex-col items-center justify-center gap-4 overflow-hidden p-10 text-center">
     <p className="text-sm text-muted-foreground">This game has ended.</p>
     <Link href={activeMembershipQuery.data?.id ? `/groups/${activeMembershipQuery.data.id}` : "/playlists"} className="rounded-full bg-primary px-5 py-2.5 font-display text-xs text-primary-foreground">{activeMembershipQuery.data?.id ? "Back to lobby" : "Back to playlists"}</Link>
   </main>;
