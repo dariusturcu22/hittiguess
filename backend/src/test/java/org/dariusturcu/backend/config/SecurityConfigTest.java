@@ -19,6 +19,7 @@ import tools.jackson.databind.ObjectMapper;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @ExtendWith(MockitoExtension.class)
 class SecurityConfigTest {
@@ -75,6 +76,32 @@ class SecurityConfigTest {
         assertThat(configuration).isNotNull();
         assertThat(configuration.getAllowedOrigins())
                 .containsExactly(LOCAL_FRONTEND_ORIGIN, SECOND_FRONTEND_ORIGIN);
+    }
+
+
+    @Test
+    void corsConfigurationSetsExplicitMethodsHeadersAndCredentialsWithoutWildcard() {
+        SecurityConfig securityConfig = securityConfigWithOrigins(List.of(LOCAL_FRONTEND_ORIGIN));
+
+        CorsConfiguration configuration = securityConfig.corsConfigurationSource()
+                .getCorsConfiguration(new MockHttpServletRequest("OPTIONS", "/api/playlists"));
+
+        assertThat(configuration).isNotNull();
+        assertThat(configuration.getAllowedOrigins()).containsExactly(LOCAL_FRONTEND_ORIGIN);
+        assertThat(configuration.getAllowedOrigins()).doesNotContain("*");
+        assertThat(configuration.getAllowedMethods()).containsExactlyElementsOf(SecurityConfig.CORS_ALLOWED_METHODS);
+        assertThat(configuration.getAllowedHeaders()).containsExactlyElementsOf(SecurityConfig.CORS_ALLOWED_HEADERS);
+        assertThat(configuration.getAllowedHeaders()).doesNotContain("*");
+        assertThat(configuration.getExposedHeaders()).containsExactlyElementsOf(SecurityConfig.CORS_EXPOSED_HEADERS);
+        assertThat(configuration.getAllowCredentials()).isTrue();
+        assertThat(configuration.getMaxAge()).isEqualTo(3600L);
+    }
+
+    @Test
+    void wildcardOriginWithCredentialsThrowsException() {
+        assertThatThrownBy(() -> securityConfigWithOrigins(List.of("*")))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("wildcard");
     }
 
     private SecurityConfig securityConfigWithOrigins(List<String> allowedOrigins) {
