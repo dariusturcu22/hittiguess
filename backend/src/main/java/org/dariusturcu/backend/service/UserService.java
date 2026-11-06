@@ -19,6 +19,7 @@ import org.dariusturcu.backend.model.user.UserDetailDTO;
 import org.dariusturcu.backend.model.song.Song;
 import org.dariusturcu.backend.repository.PlaylistBanRepository;
 import org.dariusturcu.backend.repository.PlaylistMembershipRepository;
+import org.dariusturcu.backend.repository.PlayerRepository;
 import org.dariusturcu.backend.repository.PlaylistRepository;
 import org.dariusturcu.backend.model.group.Group;
 import org.dariusturcu.backend.model.group.Member;
@@ -62,6 +63,8 @@ public class UserService {
     private final PlaylistMapper playlistMapper;
     private final PlaylistMembershipRepository playlistMembershipRepository;
     private final PlaylistBanRepository playlistBanRepository;
+    private final PlaylistRemovalService playlistRemovalService;
+    private final PlayerRepository playerRepository;
     private final SongRepository songRepository;
     private final SavedPlaylistRepository savedPlaylistRepository;
     private final MemberRepository memberRepository;
@@ -82,6 +85,8 @@ public class UserService {
             PlaylistMapper playlistMapper,
             PlaylistMembershipRepository playlistMembershipRepository,
             PlaylistBanRepository playlistBanRepository,
+            PlaylistRemovalService playlistRemovalService,
+            PlayerRepository playerRepository,
             SongRepository songRepository,
             SavedPlaylistRepository savedPlaylistRepository,
             MemberRepository memberRepository,
@@ -98,6 +103,8 @@ public class UserService {
         this.playlistMapper = playlistMapper;
         this.playlistMembershipRepository = playlistMembershipRepository;
         this.playlistBanRepository = playlistBanRepository;
+        this.playlistRemovalService = playlistRemovalService;
+        this.playerRepository = playerRepository;
         this.songRepository = songRepository;
         this.savedPlaylistRepository = savedPlaylistRepository;
         this.memberRepository = memberRepository;
@@ -117,11 +124,12 @@ public class UserService {
             PlaylistMapper playlistMapper,
             PlaylistMembershipRepository playlistMembershipRepository,
             PlaylistBanRepository playlistBanRepository,
+            PlaylistRemovalService playlistRemovalService,
             SongRepository songRepository,
             SavedPlaylistRepository savedPlaylistRepository,
             org.springframework.context.ApplicationEventPublisher eventPublisher) {
         this(userRepository, playlistRepository, userMapper, playlistMapper,
-                playlistMembershipRepository, playlistBanRepository, songRepository,
+                playlistMembershipRepository, playlistBanRepository, playlistRemovalService, null, songRepository,
                 savedPlaylistRepository, null, null, null, null, null, null, null, eventPublisher);
     }
 
@@ -180,6 +188,12 @@ public class UserService {
 
     public void deleteUser() {
         User user = SecurityUtils.getCurrentUser();
+
+        // A player's row is referenced by the session's rounds, bets and guesses, which are
+        // only purged when the session ends.
+        if (playerRepository != null && playerRepository.existsByUserId(user.getId())) {
+            throw new ConflictException("Leave your active game before deleting your account");
+        }
 
         List<Song> submittedSongs = songRepository.findByAddedById(user.getId());
         submittedSongs.forEach(song -> song.setAddedBy(null));
@@ -354,7 +368,7 @@ public class UserService {
                 .toList();
 
         if (remainingMembers.isEmpty()) {
-            playlistRepository.delete(playlist);
+            playlistRemovalService.deleteWithDependents(playlist);
             return;
         }
 

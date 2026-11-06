@@ -109,6 +109,14 @@ class UserAccountDeletionIntegrationTest {
         }
 
         @Bean
+        PlaylistRemovalService playlistRemovalService(
+                PlaylistRepository playlistRepository,
+                SavedPlaylistRepository savedPlaylistRepository,
+                PlaylistBanRepository playlistBanRepository) {
+            return new PlaylistRemovalService(playlistRepository, savedPlaylistRepository, playlistBanRepository);
+        }
+
+        @Bean
         PlaylistService playlistService(
                 PlaylistRepository playlistRepository,
                 SongRepository songRepository,
@@ -118,11 +126,12 @@ class UserAccountDeletionIntegrationTest {
                 PlaylistMembershipRepository playlistMembershipRepository,
                 PlaylistBanRepository playlistBanRepository,
                 SavedPlaylistRepository savedPlaylistRepository,
+                PlaylistRemovalService playlistRemovalService,
                 CatalogSeedingService catalogSeedingService,
                 SongCatalogService songCatalogService) {
             return new PlaylistService(playlistRepository, songRepository, playlistMapper, songMapper,
                     playlistAccessService, playlistMembershipRepository, playlistBanRepository, savedPlaylistRepository,
-                    catalogSeedingService, null, songCatalogService);
+                    playlistRemovalService, catalogSeedingService, null, songCatalogService);
         }
 
         @Bean
@@ -133,6 +142,8 @@ class UserAccountDeletionIntegrationTest {
                 PlaylistMapper playlistMapper,
                 PlaylistMembershipRepository playlistMembershipRepository,
                 PlaylistBanRepository playlistBanRepository,
+                PlaylistRemovalService playlistRemovalService,
+                org.dariusturcu.backend.repository.PlayerRepository playerRepository,
                 SongRepository songRepository,
                 SavedPlaylistRepository savedPlaylistRepository,
                 MemberRepository memberRepository,
@@ -144,7 +155,8 @@ class UserAccountDeletionIntegrationTest {
                 EmailVerificationTokenRepository emailVerificationTokenRepository,
                 org.springframework.context.ApplicationEventPublisher eventPublisher) {
             return new UserService(userRepository, playlistRepository, userMapper, playlistMapper,
-                    playlistMembershipRepository, playlistBanRepository, songRepository, savedPlaylistRepository,
+                    playlistMembershipRepository, playlistBanRepository, playlistRemovalService, playerRepository,
+                    songRepository, savedPlaylistRepository,
                     memberRepository, groupRepository, chatMessageRepository, twoFactorBackupCodeRepository,
                     refreshTokenRepository, passwordResetTokenRepository, emailVerificationTokenRepository,
                     eventPublisher);
@@ -257,6 +269,60 @@ class UserAccountDeletionIntegrationTest {
                 .isTrue();
         assertThat(playlistMembershipRepository.existsByPlaylistIdAndUserId(sharedPlaylist.id(), owner.getId()))
                 .isFalse();
+    }
+
+    @Test
+    void aPreviouslyBannedUserCanDeleteTheirAccount() {
+        User playlistOwner = persistUser("ban-owner-" + UUID.randomUUID());
+        User bannedUser = persistUser("banned-user-" + UUID.randomUUID());
+        actAs(playlistOwner);
+        PlaylistDetailDTO ownedPlaylist = userService.createPlaylist();
+        core.update("INSERT INTO playlist_bans(playlist_id, user_id) VALUES (?, ?)",
+                ownedPlaylist.id(), bannedUser.getId());
+
+        actAs(bannedUser);
+        userService.deleteUser();
+
+        assertThat(userRepository.findById(bannedUser.getId())).isEmpty();
+        assertThat(core.queryForObject("SELECT count(*) FROM playlist_bans WHERE user_id = ?", Long.class,
+                bannedUser.getId())).isZero();
+    }
+
+    @Test
+    void deletingTheLastMemberOfAPlaylistSavedByOthersAndLinkedToAGroupRemovesThoseReferences() {
+        User deletingUser = persistUser("last-member-" + UUID.randomUUID());
+        User savingUser = persistUser("saving-user-" + UUID.randomUUID());
+        User bannedUser = persistUser("banned-from-sole-" + UUID.randomUUID());
+        actAs(deletingUser);
+        PlaylistDetailDTO solePlaylist = userService.createPlaylist();
+        Playlist playlist = playlistRepository.findById(solePlaylist.id()).orElseThrow();
+        playlist.setPublic(true);
+        playlistRepository.save(playlist);
+        actAs(savingUser);
+        playlistService.savePlaylist(solePlaylist.id());
+        Group linkedGroup = new Group();
+        linkedGroup.setInviteCode(UUID.randomUUID().toString().substring(0, 8));
+        linkedGroup.setJoinCode("4321");
+        linkedGroup.setStatus(GroupStatus.OPEN);
+        linkedGroup.setDjMode(org.dariusturcu.backend.model.group.DjMode.ROTATING);
+        linkedGroup.setWinConditionCardCount(10);
+        linkedGroup.setCreatedAt(Instant.now());
+        Group savedLinkedGroup = groupRepository.save(linkedGroup);
+        core.update("INSERT INTO group_playlists(group_id, playlist_id) VALUES (?, ?)",
+                savedLinkedGroup.getId(), solePlaylist.id());
+        core.update("INSERT INTO playlist_bans(playlist_id, user_id) VALUES (?, ?)",
+                solePlaylist.id(), bannedUser.getId());
+
+        actAs(deletingUser);
+        userService.deleteUser();
+
+        assertThat(userRepository.findById(deletingUser.getId())).isEmpty();
+        assertThat(playlistRepository.findById(solePlaylist.id())).isEmpty();
+        assertThat(savedPlaylistRepository.findByUserId(savingUser.getId())).isEmpty();
+        assertThat(core.queryForObject("SELECT count(*) FROM group_playlists WHERE playlist_id = ?", Long.class,
+                solePlaylist.id())).isZero();
+        assertThat(core.queryForObject("SELECT count(*) FROM playlist_bans WHERE playlist_id = ?", Long.class,
+                solePlaylist.id())).isZero();
     }
 
     @Test
