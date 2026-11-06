@@ -2771,3 +2771,14 @@ The backend for account management and two-factor sign-in exists: `PATCH /api/us
 
 - [x] Production Sentry and OpenTelemetry settings are set on both apps; remaining: metrics through a Grafana Alloy container (core's `/actuator/prometheus` needs a login, so expose it on an internal-only management port first), import the dashboard, and add core uptime monitoring
 - [x] Verify real metrics, logs, traces, and error delivery; add a credential-gated delivery integration test without secret output
+
+## Rate limiter and probe follow-ups
+
+- [x] Separate per-endpoint auth rate limit buckets sized for shared networks, keeping brute-force protection (`RateLimitingFilter`).
+- [x] Match the decoded, normalized path in `RateLimitingFilter` and `JwtAuthenticationFilter`, with encoded-path tests.
+- [x] Point the report and metadata limits at the real routes and methods, and use those routes in the tests.
+- [x] Key IPv6 clients on the /64 prefix, expire idle buckets in `RateLimiterRegistry`, and remove the production `resetForTesting` hooks.
+- [x] Fail startup when `management.server.port` equals `server.port`, and replace `ManagementPortSecurityTest` with a MockMvc test on both ports.
+- [x] Liveness a constant 200, readiness database-only with a five-second cache, no AI call on public paths (`PublicHealthController`).
+- [x] Make `RequestPacerTest` independent of scheduler jitter.
+- [x] Document the client-address trust assumption behind `server.forward-headers-strategy=native` and how to verify it after deploy (`docs/DEV_SETUP.md`).

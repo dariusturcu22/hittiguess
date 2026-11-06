@@ -44,6 +44,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 import org.springframework.messaging.Message;
+import org.springframework.messaging.MessagingException;
 import org.springframework.messaging.MessageChannel;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.messaging.simp.broker.SimpleBrokerMessageHandler;
@@ -248,6 +249,23 @@ class GroupChatIntegrationTest {
         assertThat(sent.content()).isEqualTo("hello group");
         assertThat(sent.senderDisplayName()).isEqualTo("chat-send-admin");
         assertThat(chatMessageRepository.countByGroupId(created.id())).isEqualTo(1);
+    }
+
+    @Test
+    void aClientSendStraightToAGroupsChatTopicIsRefusedByTheInboundChannel() {
+        User admin = persistUser("chat-forge-admin");
+        authenticateAs(admin);
+        GroupDetailDTO created = groupService.createGroup(new CreateGroupRequest(null, null));
+        User outsider = persistUser("chat-forge-outsider");
+
+        StompHeaderAccessor accessor = StompHeaderAccessor.create(StompCommand.SEND);
+        accessor.setSessionId("chat-forge-session");
+        accessor.setDestination(GroupDestinations.chatTopic(created.id()));
+        accessor.setUser(new UsernamePasswordAuthenticationToken(new UserPrincipal(outsider), null, null));
+        accessor.setLeaveMutable(true);
+        Message<byte[]> forged = MessageBuilder.createMessage(new byte[0], accessor.getMessageHeaders());
+
+        assertThatThrownBy(() -> clientInboundChannel.send(forged)).isInstanceOf(MessagingException.class);
     }
 
     @Test

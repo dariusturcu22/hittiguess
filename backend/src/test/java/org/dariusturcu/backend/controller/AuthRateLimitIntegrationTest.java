@@ -1,5 +1,6 @@
 package org.dariusturcu.backend.controller;
 
+import org.dariusturcu.backend.ratelimit.RateLimitTestSupport;
 import org.dariusturcu.backend.ratelimit.RateLimitingFilter;
 import org.dariusturcu.backend.repository.EmailVerificationTokenRepository;
 import org.dariusturcu.backend.repository.PasswordResetTokenRepository;
@@ -63,7 +64,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * Proves /auth/register and /auth/login are rate-limited by IP independently of
+ * Proves the auth endpoints are rate-limited, each with its own bucket, by IP independently of
  * whether each request succeeds, and that the limit holds under real concurrent
  * traffic rather than only sequential single-threaded calls. Uses a minimal
  * security context rather than the whole BackendApplication, for the same reason
@@ -75,7 +76,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @AutoConfigureMockMvc
 class AuthRateLimitIntegrationTest {
 
-    private static final int AUTH_MAX_REQUESTS_PER_WINDOW = 5;
+    private static final int REGISTER_MAX_REQUESTS_PER_WINDOW = 5;
+    private static final int LOGIN_MAX_REQUESTS_PER_WINDOW = 10;
+    private static final int EMAIL_SENDING_MAX_REQUESTS_PER_WINDOW = 3;
+    private static final int TOKEN_SUBMISSION_MAX_REQUESTS_PER_WINDOW = 10;
     private static final int CONCURRENT_LOGIN_ATTEMPTS = 20;
     private static final int CONCURRENCY_TEST_TIMEOUT_SECONDS = 10;
 
@@ -194,7 +198,7 @@ class AuthRateLimitIntegrationTest {
     // see RateLimitingFilter.clientIpAddress).
     @AfterEach
     void resetRateLimiter() {
-        rateLimitingFilter.resetForTesting();
+        RateLimitTestSupport.reset(rateLimitingFilter);
     }
 
     private String registerRequestBody(String username) {
@@ -219,7 +223,7 @@ class AuthRateLimitIntegrationTest {
     void registrationRequestsUnderTheLimitAreNotRateLimited() throws Exception {
         String usernamePrefix = shortUniqueUsername("reg");
 
-        for (int requestNumber = 0; requestNumber < AUTH_MAX_REQUESTS_PER_WINDOW; requestNumber++) {
+        for (int requestNumber = 0; requestNumber < REGISTER_MAX_REQUESTS_PER_WINDOW; requestNumber++) {
             mockMvc.perform(post("/auth/register")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(registerRequestBody(usernamePrefix + requestNumber)))
@@ -231,7 +235,7 @@ class AuthRateLimitIntegrationTest {
     void theRegistrationRequestOverTheLimitIsRejectedWithTheAppsStandardErrorShape() throws Exception {
         String usernamePrefix = shortUniqueUsername("regover");
 
-        for (int requestNumber = 0; requestNumber < AUTH_MAX_REQUESTS_PER_WINDOW; requestNumber++) {
+        for (int requestNumber = 0; requestNumber < REGISTER_MAX_REQUESTS_PER_WINDOW; requestNumber++) {
             mockMvc.perform(post("/auth/register")
                     .contentType(MediaType.APPLICATION_JSON)
                     .content(registerRequestBody(usernamePrefix + "-" + requestNumber)));
@@ -250,7 +254,7 @@ class AuthRateLimitIntegrationTest {
     void loginRequestsOverTheLimitAreRejectedRegardlessOfCredentialCorrectness() throws Exception {
         String email = "rate-limit-login-" + System.nanoTime() + "@example.com";
 
-        for (int requestNumber = 0; requestNumber < AUTH_MAX_REQUESTS_PER_WINDOW; requestNumber++) {
+        for (int requestNumber = 0; requestNumber < LOGIN_MAX_REQUESTS_PER_WINDOW; requestNumber++) {
             mockMvc.perform(post("/auth/login")
                     .contentType(MediaType.APPLICATION_JSON)
                     .content(loginRequestBody(email)));
@@ -283,8 +287,8 @@ class AuthRateLimitIntegrationTest {
                 .count();
         long notRateLimitedCount = futures.size() - rateLimitedCount;
 
-        assertThat(notRateLimitedCount).isEqualTo(AUTH_MAX_REQUESTS_PER_WINDOW);
-        assertThat(rateLimitedCount).isEqualTo(CONCURRENT_LOGIN_ATTEMPTS - AUTH_MAX_REQUESTS_PER_WINDOW);
+        assertThat(notRateLimitedCount).isEqualTo(LOGIN_MAX_REQUESTS_PER_WINDOW);
+        assertThat(rateLimitedCount).isEqualTo(CONCURRENT_LOGIN_ATTEMPTS - LOGIN_MAX_REQUESTS_PER_WINDOW);
     }
 
     private String resendVerificationRequestBody(String email) {
@@ -309,7 +313,7 @@ class AuthRateLimitIntegrationTest {
     void resendVerificationRequestsOverTheLimitAreRejected() throws Exception {
         String email = "rate-limit-resend-" + System.nanoTime() + "@example.com";
 
-        for (int requestNumber = 0; requestNumber < AUTH_MAX_REQUESTS_PER_WINDOW; requestNumber++) {
+        for (int requestNumber = 0; requestNumber < EMAIL_SENDING_MAX_REQUESTS_PER_WINDOW; requestNumber++) {
             mockMvc.perform(post("/auth/resend-verification")
                     .contentType(MediaType.APPLICATION_JSON)
                     .content(resendVerificationRequestBody(email)));
@@ -325,7 +329,7 @@ class AuthRateLimitIntegrationTest {
     void passwordResetRequestsOverTheLimitAreRejected() throws Exception {
         String email = "rate-limit-reset-" + System.nanoTime() + "@example.com";
 
-        for (int requestNumber = 0; requestNumber < AUTH_MAX_REQUESTS_PER_WINDOW; requestNumber++) {
+        for (int requestNumber = 0; requestNumber < EMAIL_SENDING_MAX_REQUESTS_PER_WINDOW; requestNumber++) {
             mockMvc.perform(post("/auth/password-reset/request")
                     .contentType(MediaType.APPLICATION_JSON)
                     .content(passwordResetRequestBody(email)));
@@ -339,7 +343,7 @@ class AuthRateLimitIntegrationTest {
 
     @Test
     void twoFactorVerifyRequestsOverTheLimitAreRejected() throws Exception {
-        for (int requestNumber = 0; requestNumber < AUTH_MAX_REQUESTS_PER_WINDOW; requestNumber++) {
+        for (int requestNumber = 0; requestNumber < TOKEN_SUBMISSION_MAX_REQUESTS_PER_WINDOW; requestNumber++) {
             mockMvc.perform(post("/auth/2fa/verify")
                     .contentType(MediaType.APPLICATION_JSON)
                     .content(twoFactorVerifyRequestBody("not-a-real-token", "000000")));

@@ -1,5 +1,6 @@
 package org.dariusturcu.backend.controller;
 
+import org.dariusturcu.backend.ratelimit.RateLimitTestSupport;
 import org.dariusturcu.backend.exception.RateLimitExceededException;
 import org.dariusturcu.backend.model.user.Role;
 import org.dariusturcu.backend.model.user.User;
@@ -155,7 +156,7 @@ class SongSignalingControllerTest {
                 .isInstanceOf(RateLimitExceededException.class)
                 .hasMessageContaining("Signaling rate limit exceeded");
 
-        controller.resetRateLimiterForTesting();
+        RateLimitTestSupport.reset(controller);
         controller.relaySignal(
                 SESSION_ID,
                 new VoiceSignalRequest(VoiceSignalType.CANDIDATE, TARGET_USER_ID, "recovered"),

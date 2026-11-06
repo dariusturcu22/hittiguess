@@ -23,11 +23,18 @@ import java.util.Optional;
 // because Spring resolves it to the subscriber's own session. Anything else, including a
 // direct subscription to a resolved per-user "/queue" destination, is refused. Throwing
 // here keeps the subscription from being registered and sends the client an ERROR frame.
+//
+// Client frames that carry a message (SEND, or a MESSAGE frame a client forges) may only
+// target the application prefix, where the membership-checked controllers live. The simple
+// broker relays any such frame addressed to a broker prefix straight to its subscribers,
+// so a client SEND to "/topic", "/queue" or "/user" is refused. Server-side broadcasts use
+// the broker channel and never pass through this interceptor.
 @Component
 @RequiredArgsConstructor
 public class StompSubscriptionAuthorizationInterceptor implements ChannelInterceptor {
 
     private static final String USER_DESTINATION_PREFIX = "/user/";
+    private static final String APPLICATION_DESTINATION_PREFIX = "/app/";
 
     private final MemberRepository memberRepository;
     private final PlayerRepository playerRepository;
@@ -35,11 +42,25 @@ public class StompSubscriptionAuthorizationInterceptor implements ChannelInterce
     @Override
     public Message<?> preSend(@NonNull Message<?> message, @NonNull MessageChannel channel) {
         StompHeaderAccessor accessor = MessageHeaderAccessor.getAccessor(message, StompHeaderAccessor.class);
-        if (accessor != null && StompCommand.SUBSCRIBE.equals(accessor.getCommand())
-                && !isAllowed(accessor.getDestination(), accessor.getUser())) {
+        if (accessor == null) {
+            return message;
+        }
+        StompCommand command = accessor.getCommand();
+        if (StompCommand.SUBSCRIBE.equals(command) && !isAllowed(accessor.getDestination(), accessor.getUser())) {
             throw new MessagingException("Not allowed to subscribe to " + accessor.getDestination());
         }
+        if (isMessageFrame(command) && !isApplicationDestination(accessor.getDestination())) {
+            throw new MessagingException("Not allowed to send to " + accessor.getDestination());
+        }
         return message;
+    }
+
+    private boolean isMessageFrame(StompCommand command) {
+        return StompCommand.SEND.equals(command) || StompCommand.MESSAGE.equals(command);
+    }
+
+    private boolean isApplicationDestination(String destination) {
+        return destination != null && destination.startsWith(APPLICATION_DESTINATION_PREFIX);
     }
 
     private boolean isAllowed(String destination, Principal principal) {

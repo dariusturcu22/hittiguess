@@ -1,5 +1,6 @@
 package org.dariusturcu.backend.security;
 
+import org.dariusturcu.backend.ratelimit.RateLimitTestSupport;
 import org.dariusturcu.backend.config.SecurityConfig;
 import org.dariusturcu.backend.model.user.Role;
 import org.dariusturcu.backend.model.user.User;
@@ -165,7 +166,7 @@ class EndpointAuthorizationMatrixTest {
 
                 if (!isPublic) {
                     for (RequestMethod method : methods) {
-                        rateLimitingFilter.resetForTesting();
+                        RateLimitTestSupport.reset(rateLimitingFilter);
                         final int currentCount = checkedRouteCount;
                         MockHttpServletRequestBuilder requestBuilder = toRequestBuilder(method, samplePath)
                                 .with(csrf())
