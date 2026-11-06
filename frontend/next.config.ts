@@ -38,7 +38,15 @@ const contentSecurityPolicy = [
   "media-src 'self' blob:",
   "worker-src 'self' blob:",
   "frame-ancestors 'none'",
+  "object-src 'none'",
+  "base-uri 'self'",
+  "form-action 'self'",
 ].join("; ");
+
+const HSTS_MAX_AGE_SECONDS = 63_072_000;
+// Voice chat needs the microphone. Tab audio capture uses display-capture, which stays at its default.
+const permissionsPolicy = "microphone=(self), camera=(), geolocation=()";
+const isProduction = process.env.NODE_ENV === "production";
 
 const nextConfig: NextConfig = {
   allowedDevOrigins: extraDevOrigin === undefined ? [] : [extraDevOrigin],
@@ -48,6 +56,10 @@ const nextConfig: NextConfig = {
       headers: [
         { key: "Content-Security-Policy", value: contentSecurityPolicy },
         { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+        { key: "X-Content-Type-Options", value: "nosniff" },
+        { key: "Permissions-Policy", value: permissionsPolicy },
+        { key: "Cross-Origin-Opener-Policy", value: "same-origin-allow-popups" },
+        ...(isProduction ? [{ key: "Strict-Transport-Security", value: `max-age=${HSTS_MAX_AGE_SECONDS}` }] : []),
       ],
     }];
   },
