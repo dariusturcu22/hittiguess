@@ -10,6 +10,7 @@ import org.dariusturcu.backend.model.group.CreateGroupRequest;
 import org.dariusturcu.backend.model.group.DjMode;
 import org.dariusturcu.backend.model.group.Group;
 import org.dariusturcu.backend.model.group.GroupDetailDTO;
+import org.dariusturcu.backend.model.group.AudioCheckStatus;
 import org.dariusturcu.backend.model.group.GroupStatus;
 import org.dariusturcu.backend.model.group.JoinGroupRequest;
 import org.dariusturcu.backend.model.group.UpdateGroupSettingsRequest;
@@ -480,6 +481,21 @@ class GameSessionLifecycleIntegrationTest {
         assertThat(afterReconnect.getStatus()).isEqualTo(PlayerStatus.LEFT);
     }
 
+    @Test
+    void aDisconnectedRequiredDjPausesTheSession() {
+        GameSession session = startRotatingSession("disconnect-dj", 3);
+        Round round = firstRound(session);
+        Player dj = round.getDjPlayer();
+
+        // The immediate-fire scheduler runs the DJ disconnect grace timer the instant
+        // the DJ disconnects, rather than after a real 10-second wait.
+        gameSessionService.disconnectPlayer(session.getId(), dj.getUser().getId());
+
+        Player afterDisconnect = playerRepository.findById(dj.getId()).orElseThrow();
+        assertThat(afterDisconnect.getAudioStatus()).isEqualTo(AudioCheckStatus.NOT_SHARED);
+        GameSession afterSession = gameSessionRepository.findById(session.getId()).orElseThrow();
+        assertThat(afterSession.getPausedAt()).isNotNull();
+    }
     @Test
     void theFirstDjIsAPlayerWhoseBrowserCanCaptureAudio() {
         GameSession session = startRotatingSession("capable-dj", 3, Set.of(1));

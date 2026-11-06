@@ -448,6 +448,24 @@ describe("useSongMesh remote playback", () => {
     expect(silencedMuted).toBe(true);
     expect(remoteTrack.stop).not.toHaveBeenCalled();
   });
+
+  it("mutes incoming song audio while the game is paused", async () => {
+    const mutedSpy = vi.spyOn(window.HTMLMediaElement.prototype, "muted", "set");
+
+    const { rerender } = renderHook((options: SongMeshOptions) => useSongMesh(options), { initialProps: baseOptions() });
+    await connectSignals();
+
+    const remoteTrack = createFakeTrack("audio");
+    const remoteStream = new FakeMediaStream([remoteTrack]);
+    act(() => {
+      latestPeer().ontrack?.({ streams: [remoteStream], track: remoteTrack } as unknown as RTCTrackEvent);
+    });
+
+    rerender(baseOptions({ isSongPaused: true }));
+
+    const [pausedMuted] = mutedSpy.mock.lastCall ?? [];
+    expect(pausedMuted).toBe(true);
+  });
 });
 
 describe("useSongMesh stop conditions", () => {
@@ -475,6 +493,17 @@ describe("useSongMesh stop conditions", () => {
     });
     return { ...rendered, peer: latestPeer() };
   }
+
+  it("detaches the DJ track while paused and reattaches it when resumed", async () => {
+    const { peer, rerender } = await renderWithCapture();
+    expect(attachedTrack(peer)).toBe(display.audioTrack);
+
+    rerender({ ...callerOptions, isSongPaused: true });
+    expect(attachedTrack(peer)).toBeNull();
+
+    rerender({ ...callerOptions, isSongPaused: false });
+    expect(attachedTrack(peer)).toBe(display.audioTrack);
+  });
 
   it("stops the capture and detaches the sender when the session ends", async () => {
     const { peer, rerender } = await renderWithCapture();

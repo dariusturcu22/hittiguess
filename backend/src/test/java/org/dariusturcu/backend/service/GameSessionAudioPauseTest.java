@@ -59,6 +59,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -346,6 +347,67 @@ class GameSessionAudioPauseTest {
         assertThat(publishedSessionEvents()).contains(SessionEventType.SESSION_PAUSED);
     }
 
+    @Test
+    void aDisconnectedRequiredDjPausesTheSessionAfterTheGracePeriod() {
+        GameSession session = session(DjMode.ROTATING);
+        Player active = player(session, 1L, 0, AudioCheckStatus.OK);
+        Player dj = player(session, 2L, 1, AudioCheckStatus.OK);
+        round(session, active, dj);
+
+        when(playerRepository.findById(dj.getId())).thenReturn(Optional.of(dj));
+
+        ArgumentCaptor<Runnable> scheduledEffect = ArgumentCaptor.forClass(Runnable.class);
+        gameSessionService.disconnectPlayer(SESSION_ID, dj.getUser().getId());
+
+        assertThat(dj.isConnected()).isFalse();
+        assertThat(dj.getDisconnectedAt()).isNotNull();
+        assertThat(session.getPausedAt()).isNull();
+
+        verify(gameSessionScheduler).scheduleAfter(eq(GameSessionService.DJ_DISCONNECT_GRACE), scheduledEffect.capture());
+        scheduledEffect.getValue().run();
+
+        assertThat(dj.getAudioStatus()).isEqualTo(AudioCheckStatus.NOT_SHARED);
+        assertThat(session.getPausedAt()).isNotNull();
+        assertThat(publishedSessionEvents()).contains(SessionEventType.SESSION_PAUSED);
+    }
+
+    @Test
+    void aRequiredDjWhoReconnectsWithinTheGracePeriodDoesNotPauseTheSession() {
+        GameSession session = session(DjMode.ROTATING);
+        Player active = player(session, 1L, 0, AudioCheckStatus.OK);
+        Player dj = player(session, 2L, 1, AudioCheckStatus.OK);
+        round(session, active, dj);
+
+        when(playerRepository.findById(dj.getId())).thenReturn(Optional.of(dj));
+
+        ArgumentCaptor<Runnable> scheduledEffect = ArgumentCaptor.forClass(Runnable.class);
+        gameSessionService.disconnectPlayer(SESSION_ID, dj.getUser().getId());
+
+        verify(gameSessionScheduler).scheduleAfter(eq(GameSessionService.DJ_DISCONNECT_GRACE), scheduledEffect.capture());
+
+        gameSessionService.reconnectPlayer(SESSION_ID, dj.getUser().getId());
+        assertThat(dj.isConnected()).isTrue();
+        assertThat(dj.getDisconnectedAt()).isNull();
+
+        scheduledEffect.getValue().run();
+
+        assertThat(dj.getAudioStatus()).isEqualTo(AudioCheckStatus.OK);
+        assertThat(session.getPausedAt()).isNull();
+        assertThat(publishedSessionEvents()).doesNotContain(SessionEventType.SESSION_PAUSED);
+    }
+
+    @Test
+    void aDisconnectedNonDjInAFixedGameDoesNotScheduleADjGraceTimer() {
+        GameSession session = session(DjMode.FIXED);
+        Player active = player(session, 1L, 0, null);
+        Player fixedDj = player(session, 2L, 1, AudioCheckStatus.OK);
+        session.setFixedDjPlayerId(fixedDj.getId());
+        round(session, active, fixedDj);
+
+        gameSessionService.disconnectPlayer(SESSION_ID, active.getUser().getId());
+
+        verify(gameSessionScheduler, never()).scheduleAfter(eq(GameSessionService.DJ_DISCONNECT_GRACE), any());
+    }
     @Test
     void aSessionStartCarriesOverPassedShares() {
         Group group = new Group();

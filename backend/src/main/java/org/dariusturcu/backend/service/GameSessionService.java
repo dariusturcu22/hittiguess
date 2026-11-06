@@ -104,6 +104,7 @@ public class GameSessionService {
     private static final int MINIMUM_CORRECT_ARTISTS_FOR_TOKEN = 1;
     private static final int MAXIMUM_PLACEMENT_PREVIEWS_PER_SECOND = 30;
     private static final Duration PLACEMENT_PREVIEW_WINDOW = Duration.ofSeconds(1);
+    public static final Duration DJ_DISCONNECT_GRACE = Duration.ofSeconds(10);
     private static final String PAUSED_MESSAGE = "The game is paused until the DJ's audio share works again";
     private static final double PREVIEW_HORIZONTAL_MINIMUM = 0.0;
     private static final double PREVIEW_HORIZONTAL_MAXIMUM = 1.0;
@@ -1124,7 +1125,8 @@ public class GameSessionService {
         Player player = findPlayerByUserId(session, userId);
 
         player.setConnected(false);
-        player.setDisconnectedAt(Instant.now());
+        Instant disconnectedAt = Instant.now();
+        player.setDisconnectedAt(disconnectedAt);
         playerRepository.save(player);
 
         Round currentRound = getCurrentRound(session);
@@ -1132,6 +1134,11 @@ public class GameSessionService {
                 && currentRound.getActivePlayer().getId().equals(player.getId())) {
             gameSessionScheduler.scheduleAfter(Duration.ofSeconds(ACTIVE_PLAYER_TURN_TIMEOUT_SECONDS),
                     () -> self.turnTimeoutEffect(player.getId()));
+        }
+
+        if (session.getStatus() == SessionStatus.IN_PROGRESS && isRequiredSharer(session, player)) {
+            gameSessionScheduler.scheduleAfter(DJ_DISCONNECT_GRACE,
+                    () -> self.djDisconnectTimeoutEffect(player.getId(), disconnectedAt));
         }
 
         boolean everyPlayerDisconnected = session.getPlayers().stream().noneMatch(Player::isConnected);
@@ -1401,6 +1408,51 @@ public class GameSessionService {
         self.scoreRoundEffect(currentRound.getId());
     }
 
+    // Effect method for the DJ disconnect grace period timer: callable directly in tests.
+    // When a required DJ disconnects and stays disconnected past the grace period, their
+    // audio status becomes NOT_SHARED and the session pauses. A player who reconnected
+    // within the grace period has their disconnectedAt cleared, so this effect does nothing.
+    public void djDisconnectTimeoutEffect(Long playerId, Instant disconnectedAt) {
+        Player player = playerRepository.findById(playerId).orElse(null);
+        if (player == null || player.getDisconnectedAt() == null
+                || !player.getDisconnectedAt().equals(disconnectedAt)
+                || player.getStatus() == PlayerStatus.LEFT) {
+            return;
+        }
+
+        GameSession session = player.getSession();
+        if (session == null || session.getStatus() != SessionStatus.IN_PROGRESS) {
+            return;
+        }
+
+        if (!isRequiredSharer(session, player)) {
+            return;
+        }
+
+        if (player.getAudioStatus() == AudioCheckStatus.NOT_SHARED) {
+            return;
+        }
+
+        player.setAudioStatus(AudioCheckStatus.NOT_SHARED);
+        playerRepository.save(player);
+        if (!reevaluateAudioPause(session)) {
+            publishSessionEvent(SessionEventType.AUDIO_STATUS_CHANGED, session);
+        }
+    }
+
+    public void djDisconnectTimeoutEffect(Long playerId) {
+        Player player = playerRepository.findById(playerId).orElse(null);
+        if (player == null || player.getDisconnectedAt() == null) {
+            return;
+        }
+        djDisconnectTimeoutEffect(playerId, player.getDisconnectedAt());
+    }
+
+    private boolean isRequiredSharer(GameSession session, Player player) {
+        return SessionAudioRules.requiredSharers(session).stream()
+                .anyMatch(sharer -> sharer.getId().equals(player.getId()));
+    }
+
     // --- Recovery after a restart ------------------------------------------------
 
     // Round timers and socket presence live only in memory, so after a restart every
@@ -1433,6 +1485,15 @@ public class GameSessionService {
         }
         gameSessionScheduler.scheduleAt(session.getZeroConnectedSince().plus(Duration.ofMinutes(AUTO_ABANDON_MINUTES)),
                 () -> self.checkAutoAbandonEffect(sessionId));
+
+        if (!isPaused(session)) {
+            for (Player player : session.getPlayers()) {
+                if (isRequiredSharer(session, player) && player.getAudioStatus() != AudioCheckStatus.NOT_SHARED) {
+                    gameSessionScheduler.scheduleAt(recoveredAt.plus(DJ_DISCONNECT_GRACE),
+                            () -> self.djDisconnectTimeoutEffect(player.getId(), recoveredAt));
+                }
+            }
+        }
 
         Round round = getCurrentRound(session);
         if (round != null && !isPaused(session)) {
