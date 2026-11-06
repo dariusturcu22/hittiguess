@@ -50,9 +50,13 @@ class PipelineRetentionIntegrationTest {
 
     @BeforeEach
     void clearTables() {
+        jdbcTemplate.update("DELETE FROM playlist_import_job_items");
+        jdbcTemplate.update("DELETE FROM playlist_import_jobs");
         jdbcTemplate.update("DELETE FROM pipeline_jobs");
         jdbcTemplate.update("DELETE FROM pipeline_runs");
         jdbcTemplate.update("DELETE FROM import_batches");
+        jdbcTemplate.update("DELETE FROM playlists");
+        jdbcTemplate.update("DELETE FROM users");
     }
 
     @Test
@@ -112,6 +116,78 @@ class PipelineRetentionIntegrationTest {
         Integer remainingRunsCount = jdbcTemplate.queryForObject(
                 "SELECT count(*) FROM pipeline_runs", Integer.class);
         assertThat(remainingRunsCount).isZero();
+    }
+
+    @Test
+    void purgesTerminalPlaylistImportJobsAndTheirRawMetadataItemsOlderThanRetentionCutoff() {
+        long userId = jdbcTemplate.queryForObject("""
+                INSERT INTO users (username, password, email, role, email_verified, created_at)
+                VALUES ('testowner', 'hash', 'testowner@example.com', 'USER', true, now())
+                RETURNING id
+                """, Long.class);
+
+        long playlistId = jdbcTemplate.queryForObject("""
+                INSERT INTO playlists (name, color, invite_code, owner_id)
+                VALUES ('Test Playlist', '123456', 'invite-retention-test', ?)
+                RETURNING id
+                """, Long.class, userId);
+
+        Instant staleCompletedAt = Instant.now().minus(STALE_RUN_AGE_DAYS, ChronoUnit.DAYS);
+        Instant recentCompletedAt = Instant.now().minus(RECENT_RUN_AGE_DAYS, ChronoUnit.DAYS);
+
+        insertPlaylistImportJob("stale-completed-job", playlistId, "COMPLETED", staleCompletedAt, staleCompletedAt);
+        insertPlaylistImportJobItem("stale-completed-job", "video1", "Raw Video 1", "Raw Channel 1");
+
+        insertPlaylistImportJob("stale-failed-job", playlistId, "FAILED", staleCompletedAt, null);
+        insertPlaylistImportJobItem("stale-failed-job", "video2", "Raw Video 2", "Raw Channel 2");
+
+        insertPlaylistImportJob("stale-running-job", playlistId, "RUNNING", staleCompletedAt, null);
+        insertPlaylistImportJobItem("stale-running-job", "video3", "Raw Video 3", "Raw Channel 3");
+
+        insertPlaylistImportJob("recent-completed-job", playlistId, "COMPLETED", recentCompletedAt, recentCompletedAt);
+        insertPlaylistImportJobItem("recent-completed-job", "video4", "Raw Video 4", "Raw Channel 4");
+
+        retentionService.purgeTerminalPipelineRunsAndJobs();
+
+        Integer remainingJobs = jdbcTemplate.queryForObject(
+                "SELECT count(*) FROM playlist_import_jobs", Integer.class);
+        assertThat(remainingJobs).isEqualTo(2);
+
+        Integer remainingItems = jdbcTemplate.queryForObject(
+                "SELECT count(*) FROM playlist_import_job_items", Integer.class);
+        assertThat(remainingItems).isEqualTo(2);
+
+        Integer staleCompletedCount = jdbcTemplate.queryForObject(
+                "SELECT count(*) FROM playlist_import_jobs WHERE id = 'stale-completed-job'", Integer.class);
+        assertThat(staleCompletedCount).isZero();
+
+        Integer staleFailedCount = jdbcTemplate.queryForObject(
+                "SELECT count(*) FROM playlist_import_jobs WHERE id = 'stale-failed-job'", Integer.class);
+        assertThat(staleFailedCount).isZero();
+
+        Integer staleRunningCount = jdbcTemplate.queryForObject(
+                "SELECT count(*) FROM playlist_import_jobs WHERE id = 'stale-running-job'", Integer.class);
+        assertThat(staleRunningCount).isEqualTo(1);
+
+        Integer recentCompletedCount = jdbcTemplate.queryForObject(
+                "SELECT count(*) FROM playlist_import_jobs WHERE id = 'recent-completed-job'", Integer.class);
+        assertThat(recentCompletedCount).isEqualTo(1);
+    }
+
+    private void insertPlaylistImportJob(String jobId, long playlistId, String status, Instant createdAt, Instant completedAt) {
+        Timestamp createdTimestamp = Timestamp.from(createdAt);
+        Timestamp completedTimestamp = completedAt == null ? null : Timestamp.from(completedAt);
+        jdbcTemplate.update("""
+                INSERT INTO playlist_import_jobs (id, playlist_id, submitted_by_username, status, created_at, completed_at)
+                VALUES (?, ?, 'testuser', ?, ?, ?)
+                """, jobId, playlistId, status, createdTimestamp, completedTimestamp);
+    }
+
+    private void insertPlaylistImportJobItem(String jobId, String youtubeId, String rawTitle, String rawChannelTitle) {
+        jdbcTemplate.update("""
+                INSERT INTO playlist_import_job_items (job_id, youtube_id, status, raw_title, raw_channel_title)
+                VALUES (?, ?, 'RESOLVED', ?, ?)
+                """, jobId, youtubeId, rawTitle, rawChannelTitle);
     }
 
     private long insertRun(String youtubeId, String status, Instant finishedAt) {
