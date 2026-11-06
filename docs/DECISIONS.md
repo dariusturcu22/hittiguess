@@ -1470,3 +1470,11 @@ Why: after a whole-catalog recheck hundreds of proposals need review, and one re
 Decision: when a required DJ's socket disconnects, the server schedules a 10-second reload grace period (DJ_DISCONNECT_GRACE). If the player reconnects before the grace period ends, their disconnect timestamp is cleared and the timer does nothing. If the grace period expires while the player remains disconnected, their audio status is marked NOT_SHARED and the session pauses. While paused, the DJ detaches the song sender track and remote audio is muted for listeners. Resuming happens through the existing re-share and audio test flow.
 
 Why: when a DJ closes their tab or browser, no client-side share-stopped report can be sent, which left the session running without audio. A short grace period allows legitimate page reloads without interrupting the game, while preventing sessions from stalling indefinitely when a DJ departs.
+
+---
+
+## 2026-10-31 | Reporting stopped audio share from the app shell
+
+Decision: the active session widget in the app shell subscribes to the module-level capture stream. When a player who is a required sharer in an active running session has their share stop (via the browser share bar, window close, or navigation) while on any page other than the session page, the shell immediately reports NOT_SHARED to POST /api/sessions/{sessionId}/audio-status. This pauses the session at once without waiting for the DJ to return to the session page.
+
+Why: the DJ's capture stream is held in song-capture.ts across in-app navigation, but previous audio status reporting was bound only to useSessionAudioShare on the session page. If a DJ navigated away and stopped sharing, the session continued playing on other players' screens until the DJ returned. Moving stopped-share detection into the long-lived app shell ensures sessions pause immediately upon share termination anywhere in the app.

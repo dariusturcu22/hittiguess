@@ -3,16 +3,19 @@
 import Link from "next/link";
 import { ArrowRight, Clock3, Coins, Radio } from "lucide-react";
 import { usePathname } from "next/navigation";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useSyncExternalStore } from "react";
 
 import { useGetActiveMembership } from "@/hooks/generated/group-management/group-management";
-import { useGetActiveSessionForGroup, useGetSession } from "@/hooks/generated/game-session/game-session";
+import { useGetActiveSessionForGroup, useGetSession, useReportAudioStatus } from "@/hooks/generated/game-session/game-session";
 import { useGetCurrentUser } from "@/hooks/generated/user-management/user-management";
 import { useGameSessionRealtime } from "@/hooks/use-game-session-realtime";
 import { useTurnSound } from "@/hooks/use-turn-sound";
+import { NOT_SHARED_STATUS, OK_STATUS } from "@/lib/audio-check";
 import { AWAITING_PLACEMENT_STATUS, BETTING_STATUS, COUNTDOWN_STATUS, REVEALED_STATUS, SCORED_STATUS, secondsUntil } from "@/lib/gameplay-round";
+import { getSongCaptureStream, subscribeSongCapture } from "@/lib/song-capture";
 import type { RoundDTO } from "@/hooks/models/roundDTO";
 import type { GameSessionDTO } from "@/hooks/models/gameSessionDTO";
+import { GameSessionDTOStatus } from "@/hooks/models/gameSessionDTOStatus";
 import { recordServerTime, useServerNow } from "@/lib/server-clock";
 
 const LOCKED_GROUP_STATUS = "LOCKED";
@@ -65,6 +68,16 @@ export function ActiveSessionWidget() {
   const notifiedTurnsReference = useRef(new Set<string>());
   const playTurnSound = useTurnSound();
   const deadline = phaseDeadline(currentRound);
+  const captureStream = useSyncExternalStore(subscribeSongCapture, getSongCaptureStream, () => null);
+  const { mutate: reportAudioStatus } = useReportAudioStatus();
+  const sessionStatus = sessionDetailsQuery.data?.status;
+  const isRequiredSharer = ownPlayer?.id !== undefined && (sessionDetailsQuery.data?.audioRequiredPlayerIds ?? []).includes(ownPlayer.id);
+  const hasEnded = sessionStatus === GameSessionDTOStatus.COMPLETED || sessionStatus === GameSessionDTOStatus.ABANDONED;
+
+  useEffect(() => {
+    if (!isAway || !sessionId || hasEnded || !isRequiredSharer || ownPlayer?.audioStatus !== OK_STATUS || captureStream !== null) return;
+    reportAudioStatus({ sessionId, data: { status: NOT_SHARED_STATUS } });
+  }, [captureStream, hasEnded, isAway, isRequiredSharer, ownPlayer?.audioStatus, reportAudioStatus, sessionId]);
 
   useEffect(() => {
     if (!isAway || !isOwnTurn || !turnKey || notifiedTurnsReference.current.has(turnKey)) return;
