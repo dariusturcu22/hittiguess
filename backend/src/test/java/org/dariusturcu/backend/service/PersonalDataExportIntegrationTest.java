@@ -53,6 +53,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 @SpringBootTest(classes = PersonalDataExportIntegrationTest.JpaTestConfig.class)
 class PersonalDataExportIntegrationTest {
 
+    private static final int IMPORT_QUOTA_RESOLUTION_COUNT = 7;
     private static final int DEFAULT_RELEASE_YEAR = 2000;
     private static final String YOUTUBE_VIDEO_ID = "dQw4w9WgXcQ";
     private static final String HEX_COLOR = "abcdef";
@@ -100,6 +101,14 @@ class PersonalDataExportIntegrationTest {
         }
 
         @Bean
+        PlaylistRemovalService playlistRemovalService(
+                PlaylistRepository playlistRepository,
+                SavedPlaylistRepository savedPlaylistRepository,
+                PlaylistBanRepository playlistBanRepository) {
+            return new PlaylistRemovalService(playlistRepository, savedPlaylistRepository, playlistBanRepository);
+        }
+
+        @Bean
         PlaylistService playlistService(
                 PlaylistRepository playlistRepository,
                 SongRepository songRepository,
@@ -109,11 +118,12 @@ class PersonalDataExportIntegrationTest {
                 PlaylistMembershipRepository playlistMembershipRepository,
                 PlaylistBanRepository playlistBanRepository,
                 SavedPlaylistRepository savedPlaylistRepository,
+                PlaylistRemovalService playlistRemovalService,
                 CatalogSeedingService catalogSeedingService,
                 SongCatalogService songCatalogService) {
             return new PlaylistService(playlistRepository, songRepository, playlistMapper, songMapper,
                     playlistAccessService, playlistMembershipRepository, playlistBanRepository, savedPlaylistRepository,
-                    catalogSeedingService, null, songCatalogService);
+                    playlistRemovalService, catalogSeedingService, null, songCatalogService);
         }
 
         @Bean
@@ -124,6 +134,7 @@ class PersonalDataExportIntegrationTest {
                 PlaylistMapper playlistMapper,
                 PlaylistMembershipRepository playlistMembershipRepository,
                 PlaylistBanRepository playlistBanRepository,
+                PlaylistRemovalService playlistRemovalService,
                 SongRepository songRepository,
                 SavedPlaylistRepository savedPlaylistRepository) {
             return new UserService(
@@ -133,6 +144,7 @@ class PersonalDataExportIntegrationTest {
                     playlistMapper,
                     playlistMembershipRepository,
                     playlistBanRepository,
+                    playlistRemovalService,
                     songRepository,
                     savedPlaylistRepository,
                     org.mockito.Mockito.mock(org.springframework.context.ApplicationEventPublisher.class));
@@ -145,7 +157,12 @@ class PersonalDataExportIntegrationTest {
                 SongRepository songRepository,
                 SongMapper songMapper,
                 MemberRepository memberRepository,
-                ChatMessageRepository chatMessageRepository) {
+                ChatMessageRepository chatMessageRepository,
+                org.dariusturcu.backend.repository.SongReportRepository songReportRepository,
+                org.dariusturcu.backend.repository.SongConfirmationRepository songConfirmationRepository,
+                SavedPlaylistRepository savedPlaylistRepository,
+                org.dariusturcu.backend.repository.ImportQuotaUsageRepository importQuotaUsageRepository,
+                org.dariusturcu.backend.repository.PlaylistImportJobRepository playlistImportJobRepository) {
             return new PersonalDataExportService(
                     userRepository,
                     playlistMembershipRepository,
@@ -153,6 +170,11 @@ class PersonalDataExportIntegrationTest {
                     songMapper,
                     memberRepository,
                     chatMessageRepository,
+                    songReportRepository,
+                    songConfirmationRepository,
+                    savedPlaylistRepository,
+                    importQuotaUsageRepository,
+                    playlistImportJobRepository,
                     org.mockito.Mockito.mock(org.dariusturcu.backend.history.GameHistoryService.class),
                     org.mockito.Mockito.mock(org.dariusturcu.backend.research.SongResearchService.class));
         }
@@ -182,6 +204,8 @@ class PersonalDataExportIntegrationTest {
     private ChatMessageRepository chatMessageRepository;
     @Autowired
     private PersonalDataExportService personalDataExportService;
+    @Autowired
+    private org.springframework.jdbc.core.JdbcTemplate core;
 
     @AfterEach
     void tearDown() {
@@ -251,6 +275,19 @@ class PersonalDataExportIntegrationTest {
         chatMessage.setCreatedAt(Instant.now());
         chatMessageRepository.save(chatMessage);
 
+        Long reportedSongId = submittedSong.id();
+        core.update("INSERT INTO song_reports (reporter_id, song_id, message, status, created_at) VALUES (?, ?, 'Wrong year', 'OPEN', now())",
+                exportingUser.getId(), reportedSongId);
+        core.update("INSERT INTO song_confirmations (user_id, song_id, created_at) VALUES (?, ?, now())",
+                exportingUser.getId(), reportedSongId);
+        core.update("INSERT INTO saved_playlists (user_id, playlist_id, saved_at) VALUES (?, ?, now())",
+                exportingUser.getId(), ownedPlaylist.id());
+        core.update("INSERT INTO import_quota_usage (user_id, usage_date, resolution_count) VALUES (?, current_date, ?)",
+                exportingUser.getId(), IMPORT_QUOTA_RESOLUTION_COUNT);
+        String importJobId = UUID.randomUUID().toString();
+        core.update("INSERT INTO playlist_import_jobs (id, playlist_id, submitted_by_username, status, created_at) VALUES (?, ?, ?, 'DONE', now())",
+                importJobId, ownedPlaylist.id(), exportingUser.getUsername());
+
         PersonalDataExportDTO export = personalDataExportService.exportCurrentUser();
 
         assertThat(export.id()).isEqualTo(exportingUser.getId());
@@ -277,6 +314,17 @@ class PersonalDataExportIntegrationTest {
         ChatMessageExportDTO exportedMessage = export.chatMessages().getFirst();
         assertThat(exportedMessage.groupId()).isEqualTo(savedGroup.getId());
         assertThat(exportedMessage.content()).isEqualTo("Exported chat content");
+
+        assertThat(export.songReports()).hasSize(1);
+        assertThat(export.songReports().getFirst().songId()).isEqualTo(reportedSongId);
+        assertThat(export.songReports().getFirst().message()).isEqualTo("Wrong year");
+        assertThat(export.songConfirmations()).extracting(confirmation -> confirmation.songId())
+                .containsExactly(reportedSongId);
+        assertThat(export.savedPlaylists()).extracting(saved -> saved.playlistId())
+                .containsExactly(ownedPlaylist.id());
+        assertThat(export.importQuotaUsage()).extracting(usage -> usage.resolutionCount())
+                .containsExactly(IMPORT_QUOTA_RESOLUTION_COUNT);
+        assertThat(export.playlistImportJobs()).extracting(job -> job.id()).containsExactly(importJobId);
 
         assertThat(export.gameHistory()).isNotNull();
         assertThat(export.researchObservations()).isNotNull();

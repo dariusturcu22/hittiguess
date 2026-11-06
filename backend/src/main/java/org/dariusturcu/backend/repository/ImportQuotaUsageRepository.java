@@ -7,9 +7,12 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDate;
+import java.util.List;
 import java.util.Optional;
 
 public interface ImportQuotaUsageRepository extends JpaRepository<ImportQuotaUsage, ImportQuotaUsage.Key> {
+
+    List<ImportQuotaUsage> findByUserIdOrderByUsageDateAsc(Long userId);
 
     // Adds to the day's count in one statement, and only while the total stays within the
     // limit, so concurrent imports can't together pass it. Returns 1 when the count was

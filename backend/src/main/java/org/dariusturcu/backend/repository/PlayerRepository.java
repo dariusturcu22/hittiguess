@@ -14,6 +14,8 @@ public interface PlayerRepository extends JpaRepository<Player, Long> {
 
     boolean existsBySessionIdAndUserId(Long sessionId, Long userId);
 
+    boolean existsByUserId(Long userId);
+
     // Deducts exactly one token, guarded so a token count can never go negative even
     // under a race; used the moment a bet is accepted (see BetRepository.insertBet),
     // never refunded regardless of how the round resolves.

@@ -431,13 +431,14 @@ public class PipelineJobRepository {
                 WHERE status IN ('DONE', 'FAILED', 'SKIPPED', 'CANCELLED')
                   AND finished_at IS NOT NULL
                   AND finished_at < ?
+                  AND run_id IN (SELECT id FROM pipeline_runs WHERE status IN ('DONE', 'FAILED', 'CANCELLED'))
                 """, timestamp(cutoff));
     }
 
     public int deleteTerminalPlaylistImportJobsOlderThan(Instant cutoff) {
         return core.update("""
                 DELETE FROM playlist_import_jobs
-                WHERE status IN ('COMPLETED', 'FAILED')
+                WHERE status IN ('DONE', 'FAILED')
                   AND ((completed_at IS NOT NULL AND completed_at < ?)
                     OR (completed_at IS NULL AND created_at < ?))
                 """, timestamp(cutoff), timestamp(cutoff));

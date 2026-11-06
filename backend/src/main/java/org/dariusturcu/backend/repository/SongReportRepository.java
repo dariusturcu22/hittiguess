@@ -8,6 +8,8 @@ import java.util.List;
 
 public interface SongReportRepository extends JpaRepository<SongReport, Long> {
 
+    List<SongReport> findByReporterId(Long reporterId);
+
     boolean existsByReporterIdAndSongId(Long reporterId, Long songId);
 
     long countBySongIdAndStatus(Long songId, SongReportStatus status);

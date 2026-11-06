@@ -95,6 +95,14 @@ class PlaylistMembershipLifecycleIntegrationTest {
         }
 
         @Bean
+        PlaylistRemovalService playlistRemovalService(
+                PlaylistRepository playlistRepository,
+                SavedPlaylistRepository savedPlaylistRepository,
+                PlaylistBanRepository playlistBanRepository) {
+            return new PlaylistRemovalService(playlistRepository, savedPlaylistRepository, playlistBanRepository);
+        }
+
+        @Bean
         PlaylistService playlistService(
                 PlaylistRepository playlistRepository,
                 SongRepository songRepository,
@@ -104,11 +112,12 @@ class PlaylistMembershipLifecycleIntegrationTest {
                 PlaylistMembershipRepository playlistMembershipRepository,
                 PlaylistBanRepository playlistBanRepository,
                 SavedPlaylistRepository savedPlaylistRepository,
+                PlaylistRemovalService playlistRemovalService,
                 CatalogSeedingService catalogSeedingService,
                 SongCatalogService songCatalogService) {
             return new PlaylistService(playlistRepository, songRepository, playlistMapper, songMapper,
                     playlistAccessService, playlistMembershipRepository, playlistBanRepository, savedPlaylistRepository,
-                    catalogSeedingService, null, songCatalogService);
+                    playlistRemovalService, catalogSeedingService, null, songCatalogService);
         }
 
         @Bean
@@ -119,10 +128,11 @@ class PlaylistMembershipLifecycleIntegrationTest {
                 PlaylistMapper playlistMapper,
                 PlaylistMembershipRepository playlistMembershipRepository,
                 PlaylistBanRepository playlistBanRepository,
+                PlaylistRemovalService playlistRemovalService,
                 SongRepository songRepository,
                 SavedPlaylistRepository savedPlaylistRepository) {
             return new UserService(userRepository, playlistRepository, userMapper, playlistMapper,
-                    playlistMembershipRepository, playlistBanRepository, songRepository, savedPlaylistRepository, org.mockito.Mockito.mock(org.springframework.context.ApplicationEventPublisher.class));
+                    playlistMembershipRepository, playlistBanRepository, playlistRemovalService, songRepository, savedPlaylistRepository, org.mockito.Mockito.mock(org.springframework.context.ApplicationEventPublisher.class));
         }
     }
 

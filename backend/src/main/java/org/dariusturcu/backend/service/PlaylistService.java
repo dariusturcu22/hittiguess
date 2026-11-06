@@ -56,6 +56,7 @@ public class PlaylistService {
     private final PlaylistMembershipRepository playlistMembershipRepository;
     private final PlaylistBanRepository playlistBanRepository;
     private final SavedPlaylistRepository savedPlaylistRepository;
+    private final PlaylistRemovalService playlistRemovalService;
     private final CatalogSeedingService catalogSeedingService;
     private final SongMetadataService songMetadataService;
     private final SongCatalogService songCatalogService;
@@ -70,6 +71,7 @@ public class PlaylistService {
             PlaylistMembershipRepository playlistMembershipRepository,
             PlaylistBanRepository playlistBanRepository,
             SavedPlaylistRepository savedPlaylistRepository,
+            PlaylistRemovalService playlistRemovalService,
             CatalogSeedingService catalogSeedingService,
             SongMetadataService songMetadataService,
             SongCatalogService songCatalogService) {
@@ -81,6 +83,7 @@ public class PlaylistService {
         this.playlistMembershipRepository = playlistMembershipRepository;
         this.playlistBanRepository = playlistBanRepository;
         this.savedPlaylistRepository = savedPlaylistRepository;
+        this.playlistRemovalService = playlistRemovalService;
         this.catalogSeedingService = catalogSeedingService;
         this.songMetadataService = songMetadataService;
         this.songCatalogService = songCatalogService;
@@ -176,11 +179,7 @@ public class PlaylistService {
     public void deletePlaylist(Long playlistId) {
         Playlist playlist = findPlaylist(playlistId);
         playlistAccessService.requireOwner(playlist, SecurityUtils.getCurrentUser());
-        playlistRepository.deleteGroupPlaylistLinks(playlistId);
-        savedPlaylistRepository.deleteByPlaylistId(playlistId);
-        playlistBanRepository.deleteByPlaylistId(playlistId);
-        playlist.getSongs().clear();
-        playlistRepository.delete(playlist);
+        playlistRemovalService.deleteWithDependents(playlist);
     }
 
     @Transactional(readOnly = true)

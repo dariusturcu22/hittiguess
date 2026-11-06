@@ -21,6 +21,11 @@ public record PersonalDataExportDTO(
         List<SongDTO> submittedSongs,
         GroupMembershipExportDTO activeGroup,
         List<ChatMessageExportDTO> chatMessages,
+        List<SongReportExportDTO> songReports,
+        List<SongConfirmationExportDTO> songConfirmations,
+        List<SavedPlaylistExportDTO> savedPlaylists,
+        List<ImportQuotaUsageExportDTO> importQuotaUsage,
+        List<PlaylistImportJobExportDTO> playlistImportJobs,
         List<org.dariusturcu.backend.history.GameSummary> gameHistory,
         List<org.dariusturcu.backend.research.SongPlayObservation> researchObservations
 ) {
