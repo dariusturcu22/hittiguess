@@ -15,6 +15,7 @@ import org.dariusturcu.backend.model.mapper.SongMapper;
 import org.dariusturcu.backend.model.playlist.Playlist;
 import org.dariusturcu.backend.model.session.Bet;
 import org.dariusturcu.backend.model.session.GameSession;
+import org.dariusturcu.backend.model.session.PlaceCardRequest;
 import org.dariusturcu.backend.model.session.Player;
 import org.dariusturcu.backend.model.session.Round;
 import org.dariusturcu.backend.model.session.RoundStatus;
@@ -71,12 +72,16 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.client.RestClient;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
 import java.sql.SQLException;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.CountDownLatch;
@@ -113,6 +118,8 @@ class GameSessionBettingConcurrencyIntegrationTest {
     private static final int CONCURRENT_GROUP_JOIN_ATTEMPTS = 2;
     private static final int CONCURRENT_LEAVE_ATTEMPTS = 2;
     private static final int CONCURRENCY_TEST_TIMEOUT_SECONDS = 10;
+    private static final int CONCURRENT_LOCK_IN_ATTEMPTS = 2;
+    private static final int BETTING_WINDOW_SECONDS = 30;
     // The active player starts with a single anchor card, so positions 0 and 1 are both
     // in range. The active player's own placement is locked at position 1, leaving
     // position 0 as the one gap both bettors race for.
@@ -254,6 +261,8 @@ class GameSessionBettingConcurrencyIntegrationTest {
     private RoundRepository roundRepository;
     @Autowired
     private BetRepository betRepository;
+    @Autowired
+    private PlatformTransactionManager transactionManager;
 
     @AfterEach
     void tearDown() {
@@ -273,12 +282,12 @@ class GameSessionBettingConcurrencyIntegrationTest {
                 new UsernamePasswordAuthenticationToken(new UserPrincipal(user), null, null));
     }
 
-    @Test
-    void exactlyOneOfSeveralSimultaneousBetsOnTheSameGapIsAcceptedAndTheOthersLoseNothing() throws InterruptedException {
-        User admin = persistUser("betting-race-admin-" + System.nanoTime());
-        User dj = persistUser("betting-race-dj-" + System.nanoTime());
-        User bettorOne = persistUser("betting-race-bettor-one-" + System.nanoTime());
-        User bettorTwo = persistUser("betting-race-bettor-two-" + System.nanoTime());
+    // Four players in turn order: the active player, the DJ, and two possible bettors.
+    private GameSession startFourPlayerSession(String label) {
+        User admin = persistUser(label + "-admin-" + System.nanoTime());
+        User dj = persistUser(label + "-dj-" + System.nanoTime());
+        User bettorOne = persistUser(label + "-bettor-one-" + System.nanoTime());
+        User bettorTwo = persistUser(label + "-bettor-two-" + System.nanoTime());
 
         authenticateAs(admin);
         GroupDetailDTO createdGroup = groupService.createGroup(new CreateGroupRequest(null, null));
@@ -288,24 +297,24 @@ class GameSessionBettingConcurrencyIntegrationTest {
         }
 
         Playlist playlist = new Playlist();
-        playlist.setName("Betting Race Playlist");
+        playlist.setName(label + " Playlist");
         playlist.setColor("889900");
-        playlist.setInviteCode("betting-race-playlist-" + System.nanoTime());
+        playlist.setInviteCode(label + "-playlist-" + System.nanoTime());
         playlist.setOwner(admin);
         Playlist savedPlaylist = playlistRepository.save(playlist);
         // Four players times the default five-card win condition.
         int startableSongCount = 20;
         for (int songIndex = 0; songIndex < startableSongCount; songIndex++) {
             Song song = new Song();
-            song.setTitle("Betting Race Song " + songIndex);
+            song.setTitle(label + " Song " + songIndex);
             song.setReleaseYear(1970 + songIndex);
-            song.setYoutubeId("betting-race-yt-" + songIndex);
+            song.setYoutubeId(label + "-yt-" + songIndex);
             savedPlaylist.addSong(song);
             song.setAddedBy(admin);
             Song savedSong = songRepository.save(song);
             SongArtist artist = new SongArtist();
             artist.setSong(savedSong);
-            artist.setName("Betting Race Artist " + songIndex);
+            artist.setName(label + " Artist " + songIndex);
             artist.setRole(ArtistRole.MAIN);
             artist.setDisplayOrder(0);
             savedSong.getArtists().add(artist);
@@ -320,8 +329,119 @@ class GameSessionBettingConcurrencyIntegrationTest {
         groupService.updateGroupSettings(createdGroup.id(), new UpdateGroupSettingsRequest(
                 Set.of(savedPlaylist.getId()), DjMode.ROTATING, 5, null));
         groupService.startGameSession(createdGroup.id());
+        SecurityContextHolder.clearContext();
 
-        GameSession session = gameSessionRepository.findByGroupId(createdGroup.id()).orElseThrow();
+        return gameSessionRepository.findByGroupId(createdGroup.id()).orElseThrow();
+    }
+
+    private int activePlayerTimelineSize(Long activePlayerId) {
+        return new TransactionTemplate(transactionManager).execute(status ->
+                playerRepository.findById(activePlayerId).orElseThrow().getTimeline().size());
+    }
+
+    // Puts the round straight into BETTING with a correct placement, the state the last
+    // skip and the betting-window timer both start from.
+    private Instant openBettingWithACorrectPlacement(Round round) {
+        int roundSongReleaseYear = round.getSong().getReleaseYear();
+        int correctPosition = new TransactionTemplate(transactionManager).execute(status ->
+                (int) playerRepository.findById(round.getActivePlayer().getId()).orElseThrow().getTimeline().stream()
+                        .filter(card -> card.getReleaseYear() < roundSongReleaseYear)
+                        .count());
+        Instant bettingWindowEndsAt = Instant.now().truncatedTo(ChronoUnit.MICROS).plusSeconds(BETTING_WINDOW_SECONDS);
+        round.setPlacedPosition(correctPosition);
+        round.setPlacementCorrect(true);
+        round.setLockedInAt(Instant.now().truncatedTo(ChronoUnit.MICROS));
+        round.setStatus(RoundStatus.BETTING);
+        round.setBettingWindowEndsAt(bettingWindowEndsAt);
+        roundRepository.save(round);
+        return bettingWindowEndsAt;
+    }
+
+    @Test
+    void theLastSkipAndTheBettingWindowTimerFiringTogetherScoreTheRoundOnce() throws Exception {
+        GameSession session = startFourPlayerSession("reveal-race");
+        Long sessionId = session.getId();
+        Round round = roundRepository.findTopBySessionOrderByRoundNumberDesc(session).orElseThrow();
+        Long activePlayerId = round.getActivePlayer().getId();
+        int timelineSizeBefore = activePlayerTimelineSize(activePlayerId);
+
+        List<Player> playersByTurnOrder = playerRepository.findBySessionOrderByTurnOrderAsc(session);
+        Player lastUndecidedBettor = playersByTurnOrder.get(2);
+        lastUndecidedBettor.setTokenCount(1);
+        playerRepository.save(lastUndecidedBettor);
+        Player bettorWithoutToken = playersByTurnOrder.get(3);
+        bettorWithoutToken.setTokenCount(0);
+        playerRepository.save(bettorWithoutToken);
+        Instant bettingWindowEndsAt = openBettingWithACorrectPlacement(round);
+        Long lastUndecidedUserId = lastUndecidedBettor.getUser().getId();
+
+        ExecutorService executorService = Executors.newFixedThreadPool(2);
+        CountDownLatch startLatch = new CountDownLatch(1);
+        try {
+            Future<?> lastSkip = executorService.submit(() -> {
+                startLatch.await();
+                gameSessionService.skipBetting(sessionId, lastUndecidedUserId);
+                return null;
+            });
+            Future<?> bettingWindowTimer = executorService.submit(() -> {
+                startLatch.await();
+                gameSessionService.revealEffect(round.getId(), bettingWindowEndsAt);
+                return null;
+            });
+            startLatch.countDown();
+
+            for (Future<?> transition : List.of(lastSkip, bettingWindowTimer)) {
+                assertThatCode(() -> transition.get(CONCURRENCY_TEST_TIMEOUT_SECONDS, TimeUnit.SECONDS))
+                        .doesNotThrowAnyException();
+            }
+        } finally {
+            executorService.shutdownNow();
+        }
+
+        assertThat(roundRepository.findById(round.getId()).orElseThrow().getStatus()).isEqualTo(RoundStatus.SCORED);
+        assertThat(activePlayerTimelineSize(activePlayerId)).isEqualTo(timelineSizeBefore + 1);
+    }
+
+    @Test
+    void aDoubleClickedLockInIsAcceptedOnce() throws Exception {
+        GameSession session = startFourPlayerSession("lock-in-race");
+        Long sessionId = session.getId();
+        Round round = roundRepository.findTopBySessionOrderByRoundNumberDesc(session).orElseThrow();
+        Long activeUserId = round.getActivePlayer().getUser().getId();
+
+        ExecutorService executorService = Executors.newFixedThreadPool(CONCURRENT_LOCK_IN_ATTEMPTS);
+        CountDownLatch startLatch = new CountDownLatch(1);
+        AtomicInteger acceptedCount = new AtomicInteger(0);
+        AtomicInteger rejectedCount = new AtomicInteger(0);
+        try {
+            List<Future<?>> lockIns = new java.util.ArrayList<>();
+            for (int attempt = 0; attempt < CONCURRENT_LOCK_IN_ATTEMPTS; attempt++) {
+                lockIns.add(executorService.submit(() -> {
+                    startLatch.await();
+                    try {
+                        gameSessionService.lockInPlacement(sessionId, activeUserId, new PlaceCardRequest(0));
+                        acceptedCount.incrementAndGet();
+                    } catch (ConflictException alreadyLockedIn) {
+                        rejectedCount.incrementAndGet();
+                    }
+                    return null;
+                }));
+            }
+            startLatch.countDown();
+            for (Future<?> lockIn : lockIns) {
+                lockIn.get(CONCURRENCY_TEST_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+            }
+        } finally {
+            executorService.shutdownNow();
+        }
+
+        assertThat(acceptedCount.get()).isEqualTo(1);
+        assertThat(rejectedCount.get()).isEqualTo(CONCURRENT_LOCK_IN_ATTEMPTS - 1);
+    }
+
+    @Test
+    void exactlyOneOfSeveralSimultaneousBetsOnTheSameGapIsAcceptedAndTheOthersLoseNothing() throws InterruptedException {
+        GameSession session = startFourPlayerSession("betting-race");
         Long sessionId = session.getId();
         Round round = roundRepository.findTopBySessionOrderByRoundNumberDesc(session).orElseThrow();
 
@@ -338,7 +458,7 @@ class GameSessionBettingConcurrencyIntegrationTest {
         // the gap the active player already claimed.
         round.setPlacedPosition(ACTIVE_PLAYER_PLACED_POSITION);
         round.setStatus(RoundStatus.BETTING);
-        round.setBettingWindowEndsAt(java.time.Instant.now().plusSeconds(30));
+        round.setBettingWindowEndsAt(Instant.now().plusSeconds(BETTING_WINDOW_SECONDS));
         roundRepository.save(round);
 
         Long bettorOneUserId = bettorOnePlayer.getUser().getId();

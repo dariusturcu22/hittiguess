@@ -8,11 +8,15 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.util.List;
+import java.util.Optional;
 
 public interface PlayerRepository extends JpaRepository<Player, Long> {
     List<Player> findBySessionOrderByTurnOrderAsc(GameSession session);
 
     boolean existsBySessionIdAndUserId(Long sessionId, Long userId);
+
+    @Query("select player.session.id from Player player where player.id = :playerId")
+    Optional<Long> findSessionIdById(@Param("playerId") Long playerId);
 
     boolean existsByUserId(Long userId);
 

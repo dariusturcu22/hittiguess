@@ -422,6 +422,33 @@ class GameSessionServiceTest {
         assertThat(wrongBettor.getTimeline()).hasSize(1);
     }
 
+    @Test
+    void whenEqualYearsMakeSeveralGapsCorrectTheEarliestAcceptedBetWins() {
+        GameSession session = session(DjMode.ROTATING, 10);
+        Player active = player(session, 1L, 0, PlayerStatus.ACTIVE);
+        Player dj = player(session, 2L, 1, PlayerStatus.ACTIVE);
+        Player laterBettor = player(session, 3L, 2, PlayerStatus.ACTIVE);
+        Player earlierBettor = player(session, 4L, 3, PlayerStatus.ACTIVE);
+        anchorCard(active, song(100, "Active Anchor One", 1990));
+        anchorCard(active, song(101, "Active Anchor Two", 2000));
+        anchorCard(active, song(102, "Active Anchor Three", 2010));
+        anchorCard(laterBettor, song(103, "Later Bettor Anchor", 1980));
+        anchorCard(earlierBettor, song(104, "Earlier Bettor Anchor", 1980));
+        Round round = round(session, 10L, 1, active, dj, song(200, "Round Song", 2000));
+        round.setPlacementCorrect(false);
+        round.setPlacedPosition(0);
+        // Gaps 1 and 2 both fit a 2000 song next to the 2000 anchor. The repository hands the
+        // later bet back first, so only the placement time decides.
+        Instant earlierPlacedAt = Instant.now().minusSeconds(5);
+        bet(round, laterBettor, 1).setPlacedAt(earlierPlacedAt.plusSeconds(2));
+        bet(round, earlierBettor, 2).setPlacedAt(earlierPlacedAt);
+
+        gameSessionService.scoreRoundEffect(round.getId());
+
+        assertThat(earlierBettor.getTimeline()).hasSize(2);
+        assertThat(laterBettor.getTimeline()).hasSize(1);
+    }
+
     // --- Betting -----------------------------------------------------------
 
     @Test
@@ -790,6 +817,185 @@ class GameSessionServiceTest {
         gameSessionService.turnTimeoutEffect(active.getId());
 
         assertThat(active.getStatus()).isEqualTo(PlayerStatus.ACTIVE);
+    }
+
+    @Test
+    void theFirstDisconnectsTurnTimeoutIsANoOpAfterAReconnectAndASecondDisconnect() {
+        GameSession session = session(DjMode.ROTATING, 10);
+        Player active = player(session, 1L, 0, PlayerStatus.ACTIVE);
+        Player dj = player(session, 2L, 1, PlayerStatus.ACTIVE);
+        player(session, 3L, 2, PlayerStatus.ACTIVE);
+        anchorCard(active, song(100, "Anchor A", 1990));
+        Instant firstDisconnectedAt = Instant.now().minusSeconds(90);
+        Instant secondDisconnectedAt = Instant.now().minusSeconds(30);
+        active.setConnected(false);
+        active.setDisconnectedAt(secondDisconnectedAt);
+        Round round = round(session, 10L, 1, active, dj, song(200, "Round Song", 2000));
+        lenient().when(playerRepository.findById(active.getId())).thenReturn(Optional.of(active));
+
+        gameSessionService.turnTimeoutEffect(active.getId(), firstDisconnectedAt);
+
+        assertThat(active.getStatus()).isEqualTo(PlayerStatus.ACTIVE);
+        assertThat(round.getStatus()).isEqualTo(RoundStatus.AWAITING_PLACEMENT);
+
+        gameSessionService.turnTimeoutEffect(active.getId(), secondDisconnectedAt);
+
+        assertThat(active.getStatus()).isEqualTo(PlayerStatus.LEFT);
+    }
+
+    // --- Socket presence re-checked under the session lock ---------------------------
+
+    @Test
+    void aDisconnectIsSkippedWhileThePlayerStillHasAnOpenSocket() {
+        GameSession session = session(DjMode.ROTATING, 10);
+        Player active = player(session, 1L, 0, PlayerStatus.ACTIVE);
+        Player dj = player(session, 2L, 1, PlayerStatus.ACTIVE);
+        round(session, 10L, 1, active, dj, song(200, "Round Song", 2000));
+
+        gameSessionService.disconnectPlayer(session.getId(), active.getUser().getId(), () -> true);
+
+        assertThat(active.isConnected()).isTrue();
+        assertThat(active.getDisconnectedAt()).isNull();
+        verify(gameSessionScheduler, never()).scheduleAfter(any(), any());
+    }
+
+    @Test
+    void aReconnectIsSkippedOnceEverySocketOfThePlayerClosedAgain() {
+        GameSession session = session(DjMode.ROTATING, 10);
+        Player active = player(session, 1L, 0, PlayerStatus.ACTIVE);
+        Player dj = player(session, 2L, 1, PlayerStatus.ACTIVE);
+        round(session, 10L, 1, active, dj, song(200, "Round Song", 2000));
+        Instant disconnectedAt = Instant.now().minusSeconds(5);
+        active.setConnected(false);
+        active.setDisconnectedAt(disconnectedAt);
+
+        gameSessionService.reconnectPlayer(session.getId(), active.getUser().getId(), () -> false);
+
+        assertThat(active.isConnected()).isFalse();
+        assertThat(active.getDisconnectedAt()).isEqualTo(disconnectedAt);
+    }
+
+    // --- Each round transition runs once --------------------------------------------
+
+    @Test
+    void aSecondLockInIsRejectedWithoutASecondBroadcastOrCountdown() {
+        GameSession session = session(DjMode.ROTATING, 10);
+        Player active = player(session, 1L, 0, PlayerStatus.ACTIVE);
+        Player dj = player(session, 2L, 1, PlayerStatus.ACTIVE);
+        anchorCard(active, song(100, "Anchor A", 1990));
+        round(session, 10L, 1, active, dj, song(200, "Round Song", 2000));
+
+        gameSessionService.lockInPlacement(session.getId(), active.getUser().getId(), new PlaceCardRequest(1));
+
+        assertThatThrownBy(() -> gameSessionService.lockInPlacement(
+                session.getId(), active.getUser().getId(), new PlaceCardRequest(1)))
+                .isInstanceOf(ConflictException.class);
+        verify(gameSessionScheduler).scheduleAfter(eq(RoundTiming.LOCK_IN_COUNTDOWN), any());
+        org.mockito.ArgumentCaptor<Object> events = org.mockito.ArgumentCaptor.forClass(Object.class);
+        verify(eventPublisher, org.mockito.Mockito.atLeastOnce()).publishEvent(events.capture());
+        assertThat(events.getAllValues())
+                .filteredOn(SessionBroadcastEvent.class::isInstance)
+                .map(event -> ((SessionBroadcastEvent) event).type())
+                .containsOnlyOnce(SessionEventType.GUESS_LOCKED);
+    }
+
+    @Test
+    void aBetArrivingAfterScoringIsRejectedWithoutSpendingAToken() {
+        GameSession session = session(DjMode.ROTATING, 10);
+        Player active = player(session, 1L, 0, PlayerStatus.ACTIVE);
+        Player dj = player(session, 2L, 1, PlayerStatus.ACTIVE);
+        Player bettor = player(session, 3L, 2, PlayerStatus.ACTIVE);
+        anchorCard(active, song(100, "Anchor A", 1990));
+        bettor.setTokenCount(1);
+        Round round = round(session, 10L, 1, active, dj, song(200, "Round Song", 2000));
+        round.setPlacedPosition(1);
+        round.setPlacementCorrect(true);
+        round.setStatus(RoundStatus.SCORED);
+
+        assertThatThrownBy(() -> gameSessionService.placeBet(session.getId(), bettor.getUser().getId(), 0))
+                .isInstanceOf(ConflictException.class);
+        verify(betRepository, never()).insertBet(anyLong(), anyLong(), anyInt(), any());
+        verify(playerRepository, never()).deductToken(anyLong());
+    }
+
+    @Test
+    void aSecondRevealOfAnAlreadyScoredRoundChangesNothing() {
+        GameSession session = session(DjMode.ROTATING, 10);
+        Player active = player(session, 1L, 0, PlayerStatus.ACTIVE);
+        Player dj = player(session, 2L, 1, PlayerStatus.ACTIVE);
+        anchorCard(active, song(100, "Anchor A", 1990));
+        Round round = round(session, 10L, 1, active, dj, song(200, "Round Song", 2000));
+        round.setPlacedPosition(1);
+        round.setPlacementCorrect(true);
+        round.setStatus(RoundStatus.REVEALED);
+
+        gameSessionService.revealEffect(round.getId());
+        gameSessionService.revealEffect(round.getId());
+
+        assertThat(active.getTimeline()).hasSize(2);
+        verify(gameSessionScheduler).scheduleAfter(eq(RoundTiming.REVEAL_HOLD), any());
+    }
+
+    // --- Superseded round timers -----------------------------------------------------
+
+    @Test
+    void aCountdownTimerFromBeforeARestartDoesNothing() {
+        GameSession session = session(DjMode.ROTATING, 10);
+        Player active = player(session, 1L, 0, PlayerStatus.ACTIVE);
+        Player dj = player(session, 2L, 1, PlayerStatus.ACTIVE);
+        Round round = round(session, 10L, 1, active, dj, song(200, "Round Song", 2000));
+        Instant restartedLockedInAt = Instant.now();
+        round.setStatus(RoundStatus.COUNTDOWN);
+        round.setPlacementCorrect(false);
+        round.setLockedInAt(restartedLockedInAt);
+
+        gameSessionService.startBettingWindowEffect(round.getId(), restartedLockedInAt.minusSeconds(2));
+
+        assertThat(round.getStatus()).isEqualTo(RoundStatus.COUNTDOWN);
+
+        gameSessionService.startBettingWindowEffect(round.getId(), restartedLockedInAt);
+
+        assertThat(round.getStatus()).isEqualTo(RoundStatus.SCORED);
+    }
+
+    @Test
+    void aBettingWindowTimerFromBeforeARestartDoesNothing() {
+        GameSession session = session(DjMode.ROTATING, 10);
+        Player active = player(session, 1L, 0, PlayerStatus.ACTIVE);
+        Player dj = player(session, 2L, 1, PlayerStatus.ACTIVE);
+        Round round = round(session, 10L, 1, active, dj, song(200, "Round Song", 2000));
+        Instant restartedWindowEndsAt = Instant.now().plus(RoundTiming.BETTING_WINDOW);
+        round.setStatus(RoundStatus.BETTING);
+        round.setPlacementCorrect(false);
+        round.setBettingWindowEndsAt(restartedWindowEndsAt);
+
+        gameSessionService.revealEffect(round.getId(), restartedWindowEndsAt.minusSeconds(5));
+
+        assertThat(round.getStatus()).isEqualTo(RoundStatus.BETTING);
+        assertThat(round.getRevealedAt()).isNull();
+
+        gameSessionService.revealEffect(round.getId(), restartedWindowEndsAt);
+
+        assertThat(round.getStatus()).isEqualTo(RoundStatus.SCORED);
+    }
+
+    @Test
+    void aRevealHoldTimerFromBeforeARestartDoesNothing() {
+        GameSession session = session(DjMode.ROTATING, 10);
+        Player playerA = player(session, 1L, 0, PlayerStatus.ACTIVE);
+        Player playerB = player(session, 2L, 1, PlayerStatus.ACTIVE);
+        Round round = round(session, 10L, 1, playerA, playerB, song(200, "Round Song", 2000));
+        Instant restartedScoredAt = Instant.now();
+        round.setStatus(RoundStatus.SCORED);
+        round.setScoredAt(restartedScoredAt);
+
+        gameSessionService.advanceRoundEffect(round.getId(), restartedScoredAt.minusSeconds(3));
+
+        verify(roundRepository, never()).save(any(Round.class));
+
+        gameSessionService.advanceRoundEffect(round.getId(), restartedScoredAt);
+
+        assertThat(savedRoundNumbers()).contains(2);
     }
 
     // --- Automatic reveal / betting window skip ---------------------------------------------------

@@ -72,13 +72,16 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.function.BooleanSupplier;
 import java.util.function.ToIntFunction;
 import java.util.stream.Collectors;
 
@@ -240,7 +243,7 @@ public class GameSessionService {
         session.setWinConditionCardCount(group.getWinConditionCardCount());
         session.setCurrentRoundNumber(0);
         session.setCurrentGameRoundNumber(FIRST_GAME_ROUND_NUMBER);
-        session.setCreatedAt(Instant.now());
+        session.setCreatedAt(now());
 
         int turnOrder = 0;
         for (Member member : connectedMembers) {
@@ -493,7 +496,7 @@ public class GameSessionService {
     }
 
     public SessionResultsDTO completeSession(Long sessionId) {
-        GameSession session = getSession(sessionId);
+        GameSession session = lockAndGetSession(sessionId);
         session.setStatus(SessionStatus.COMPLETED);
         gameSessionRepository.save(session);
 
@@ -515,7 +518,7 @@ public class GameSessionService {
     }
 
     public void abandonSession(Long sessionId) {
-        GameSession session = getSession(sessionId);
+        GameSession session = lockAndGetSession(sessionId);
         eventPublisher.publishEvent(new org.dariusturcu.backend.history.GameCompleted(session, buildResults(session),
                 org.dariusturcu.backend.history.GameHistoryService.INTERRUPTED));
         session.setStatus(SessionStatus.ABANDONED);
@@ -530,6 +533,7 @@ public class GameSessionService {
     // Effect method for the auto-abandon timer: callable directly in a test with no real
     // waiting involved. A no-op if anyone has reconnected since the timer was scheduled.
     public void checkAutoAbandonEffect(Long sessionId) {
+        lockSession(sessionId);
         GameSession session = gameSessionRepository.findById(sessionId).orElse(null);
         if (session == null || session.getStatus() != SessionStatus.IN_PROGRESS || session.getZeroConnectedSince() == null) {
             return;
@@ -623,7 +627,7 @@ public class GameSessionService {
     }
 
     public void lockInPlacement(Long sessionId, Long userId, PlaceCardRequest request) {
-        GameSession session = getSession(sessionId);
+        GameSession session = lockAndGetSession(sessionId);
         Player player = findPlayerByUserId(session, userId);
         Round round = requireCurrentRound(session);
 
@@ -638,17 +642,29 @@ public class GameSessionService {
         boolean isCorrect = isPlacementCorrect(player, request.position(), round.getSong().getReleaseYear());
         round.setPlacedPosition(request.position());
         round.setPlacementCorrect(isCorrect);
-        round.setLockedInAt(Instant.now());
+        Instant lockedInAt = now();
+        round.setLockedInAt(lockedInAt);
         round.setStatus(RoundStatus.COUNTDOWN);
         Round savedRound = roundRepository.save(round);
 
         publishRoundEvent(SessionEventType.GUESS_LOCKED, session, savedRound);
         gameSessionScheduler.scheduleAfter(RoundTiming.LOCK_IN_COUNTDOWN,
-                () -> self.startBettingWindowEffect(savedRound.getId()));
+                () -> self.startBettingWindowEffect(savedRound.getId(), lockedInAt));
     }
 
-    // Effect method for the post-countdown timer.
+    // Effect method for the post-countdown timer. A no-op once a resume restarted the
+    // countdown, which moves lockedInAt past the one this timer was scheduled for.
+    public void startBettingWindowEffect(Long roundId, Instant scheduledLockedInAt) {
+        lockSessionOfRound(roundId);
+        Round round = roundRepository.findById(roundId).orElse(null);
+        if (round == null || !Objects.equals(round.getLockedInAt(), scheduledLockedInAt)) {
+            return;
+        }
+        startBettingWindowEffect(roundId);
+    }
+
     public void startBettingWindowEffect(Long roundId) {
+        lockSessionOfRound(roundId);
         Round round = roundRepository.findById(roundId).orElse(null);
         if (round == null || round.getStatus() != RoundStatus.COUNTDOWN || isPaused(round.getSession())) {
             return;
@@ -662,15 +678,17 @@ public class GameSessionService {
             return;
         }
 
-        round.setBettingWindowEndsAt(Instant.now().plus(RoundTiming.BETTING_WINDOW));
+        Instant bettingWindowEndsAt = now().plus(RoundTiming.BETTING_WINDOW);
+        round.setBettingWindowEndsAt(bettingWindowEndsAt);
         round.setStatus(RoundStatus.BETTING);
         Round savedRound = roundRepository.save(round);
         publishRoundEvent(SessionEventType.BETTING_OPENED, savedRound.getSession(), savedRound);
-        gameSessionScheduler.scheduleAfter(RoundTiming.BETTING_WINDOW, () -> self.revealEffect(roundId));
+        gameSessionScheduler.scheduleAfter(RoundTiming.BETTING_WINDOW,
+                () -> self.revealEffect(roundId, bettingWindowEndsAt));
     }
 
     public boolean placeBet(Long sessionId, Long userId, int position) {
-        GameSession session = getSession(sessionId);
+        GameSession session = lockAndGetSession(sessionId);
         Player player = findPlayerByUserId(session, userId);
         Round round = requireCurrentRound(session);
 
@@ -695,7 +713,7 @@ public class GameSessionService {
         isPlacementCorrect(round.getActivePlayer(), position, round.getSong().getReleaseYear());
 
         try {
-            betRepository.insertBet(round.getId(), player.getId(), position, Instant.now());
+            betRepository.insertBet(round.getId(), player.getId(), position, now());
         } catch (DataIntegrityViolationException exception) {
             return false;
         }
@@ -712,7 +730,7 @@ public class GameSessionService {
     // every eligible bettor holding a token has bet or skipped, so one player can't end
     // it for everyone else.
     public void skipBetting(Long sessionId, Long userId) {
-        GameSession session = getSession(sessionId);
+        GameSession session = lockAndGetSession(sessionId);
         Player player = findPlayerByUserId(session, userId);
         Round round = requireCurrentRound(session);
         if (round.getStatus() != RoundStatus.BETTING) {
@@ -774,15 +792,27 @@ public class GameSessionService {
                 song.getColor());
     }
 
-    // Effect method for the betting-window-close timer, and called directly whenever the
-    // window is skipped (no eligible bettor, or an explicit skip-betting action).
+    // Effect method for the betting-window-close timer. A no-op once a resume restarted the
+    // window, which moves bettingWindowEndsAt past the one this timer was scheduled for.
+    public void revealEffect(Long roundId, Instant scheduledBettingWindowEndsAt) {
+        lockSessionOfRound(roundId);
+        Round round = roundRepository.findById(roundId).orElse(null);
+        if (round == null || !Objects.equals(round.getBettingWindowEndsAt(), scheduledBettingWindowEndsAt)) {
+            return;
+        }
+        revealEffect(roundId);
+    }
+
+    // Called directly whenever the window closes early (no eligible bettor, or every
+    // eligible bettor bet or skipped), and when a revealed round's timer restarts.
     public void revealEffect(Long roundId) {
+        lockSessionOfRound(roundId);
         Round round = roundRepository.findById(roundId).orElse(null);
         if (round == null || round.getStatus() == RoundStatus.SCORED || isPaused(round.getSession())) {
             return;
         }
         if (round.getRevealedAt() == null) {
-            round.setRevealedAt(Instant.now());
+            round.setRevealedAt(now());
             round.setStatus(RoundStatus.REVEALED);
             round = roundRepository.save(round);
         }
@@ -797,6 +827,7 @@ public class GameSessionService {
     // placementCorrect to false with no bets before calling this, which discards the
     // card exactly as a live wrong-guess-no-bets round would.
     public void scoreRoundEffect(Long roundId) {
+        lockSessionOfRound(roundId);
         Round round = getRound(roundId);
         if (round.getStatus() == RoundStatus.SCORED) {
             return;
@@ -817,11 +848,12 @@ public class GameSessionService {
             activePlayer.insertCardAt(PlayerCard.of(round.getSong()), round.getPlacedPosition());
             cardWinner = activePlayer;
         } else {
-            // Positions are unique per round, so at most one accepted bet can sit on the
-            // gap that's objectively correct for the active player's own timeline.
+            // Equal release years can make several gaps correct, so the earliest accepted bet
+            // on a correct gap wins.
             Bet winningBet = betRepository.findByRoundId(round.getId()).stream()
                     .filter(bet -> isPlacementCorrect(activePlayer, bet.getPosition(), round.getSong().getReleaseYear()))
-                    .findFirst()
+                    .min(Comparator.comparing(Bet::getPlacedAt)
+                            .thenComparing(Bet::getId, Comparator.nullsLast(Comparator.naturalOrder())))
                     .orElse(null);
             if (winningBet != null) {
                 winningBet.setWon(true);
@@ -832,8 +864,9 @@ public class GameSessionService {
             }
         }
 
+        Instant scoredAt = now();
         round.setStatus(RoundStatus.SCORED);
-        round.setScoredAt(Instant.now());
+        round.setScoredAt(scoredAt);
         Round savedRound = roundRepository.save(round);
         playerRepository.save(activePlayer);
         if (cardWinner != null && cardWinner != activePlayer) {
@@ -846,7 +879,7 @@ public class GameSessionService {
         if (endSessionWhenTooFewPlayersRemain(session)) {
             return;
         }
-        gameSessionScheduler.scheduleAfter(RoundTiming.REVEAL_HOLD, () -> self.advanceRoundEffect(roundId));
+        gameSessionScheduler.scheduleAfter(RoundTiming.REVEAL_HOLD, () -> self.advanceRoundEffect(roundId, scoredAt));
     }
 
     // Fewer than two players left to take the active-player and DJ roles, so the round
@@ -870,8 +903,19 @@ public class GameSessionService {
 
     // Effect method for the reveal-hold timer. A no-op unless the scored round is still the
     // session's latest one and the session is still in progress, so a session that ended
-    // or already moved on during the hold is left alone.
+    // or already moved on during the hold is left alone. A no-op too once a resume restarted
+    // the hold, which moves scoredAt past the one this timer was scheduled for.
+    public void advanceRoundEffect(Long roundId, Instant scheduledScoredAt) {
+        lockSessionOfRound(roundId);
+        Round round = roundRepository.findById(roundId).orElse(null);
+        if (round == null || !Objects.equals(round.getScoredAt(), scheduledScoredAt)) {
+            return;
+        }
+        advanceRoundEffect(roundId);
+    }
+
     public void advanceRoundEffect(Long roundId) {
+        lockSessionOfRound(roundId);
         Round round = roundRepository.findById(roundId).orElse(null);
         if (round == null || round.getStatus() != RoundStatus.SCORED) {
             return;
@@ -929,7 +973,7 @@ public class GameSessionService {
     // the round. The active player earns one token per round for the title plus at least
     // one artist. See GAME_DESIGN.md.
     public void submitTitleArtistGuess(Long sessionId, Long userId, TitleArtistGuessRequest request) {
-        GameSession session = getSession(sessionId);
+        GameSession session = lockAndGetSession(sessionId);
         Player player = findPlayerByUserId(session, userId);
         Round round = requireCurrentRound(session);
 
@@ -972,7 +1016,7 @@ public class GameSessionService {
         guess.setGuessedTitle(hasTitleGuess ? request.guessedTitle() : null);
         guess.setArtistCorrect(isArtistCorrect);
         guess.setTitleCorrect(isTitleCorrect);
-        guess.setCreatedAt(Instant.now());
+        guess.setCreatedAt(now());
 
         if (isArtistCorrect) {
             player.setTotalArtistsGuessed(player.getTotalArtistsGuessed() + 1);
@@ -1081,7 +1125,7 @@ public class GameSessionService {
         round.setDjPlayer(djPlayer);
         round.setSong(song);
         round.setStatus(RoundStatus.AWAITING_PLACEMENT);
-        round.setPlacementEndsAt(Instant.now().plus(RoundTiming.PLACEMENT_WINDOW));
+        round.setPlacementEndsAt(now().plus(RoundTiming.PLACEMENT_WINDOW));
         Round savedRound = roundRepository.save(round);
 
         session.setCurrentRoundNumber(savedRound.getRoundNumber());
@@ -1196,11 +1240,21 @@ public class GameSessionService {
     // --- Connection lifecycle: disconnect, reconnect, explicit leave, timeout ------
 
     public void disconnectPlayer(Long sessionId, Long userId) {
-        GameSession session = getSession(sessionId);
+        disconnectPlayer(sessionId, userId, () -> false);
+    }
+
+    // The socket check runs inside the session lock: a socket that subscribed again before
+    // this took the lock keeps the player connected, and one that subscribes later reconnects
+    // them once this commits.
+    public void disconnectPlayer(Long sessionId, Long userId, BooleanSupplier hasOpenSocket) {
+        GameSession session = lockAndGetSession(sessionId);
+        if (hasOpenSocket.getAsBoolean()) {
+            return;
+        }
         Player player = findPlayerByUserId(session, userId);
 
         player.setConnected(false);
-        Instant disconnectedAt = Instant.now();
+        Instant disconnectedAt = now();
         player.setDisconnectedAt(disconnectedAt);
         playerRepository.save(player);
 
@@ -1208,7 +1262,7 @@ public class GameSessionService {
         if (currentRound != null && currentRound.getStatus() == RoundStatus.AWAITING_PLACEMENT
                 && currentRound.getActivePlayer().getId().equals(player.getId())) {
             gameSessionScheduler.scheduleAfter(Duration.ofSeconds(ACTIVE_PLAYER_TURN_TIMEOUT_SECONDS),
-                    () -> self.turnTimeoutEffect(player.getId()));
+                    () -> self.turnTimeoutEffect(player.getId(), disconnectedAt));
         }
 
         if (session.getStatus() == SessionStatus.IN_PROGRESS && isRequiredSharer(session, player)) {
@@ -1218,7 +1272,7 @@ public class GameSessionService {
 
         boolean everyPlayerDisconnected = session.getPlayers().stream().noneMatch(Player::isConnected);
         if (everyPlayerDisconnected && session.getZeroConnectedSince() == null) {
-            session.setZeroConnectedSince(Instant.now());
+            session.setZeroConnectedSince(now());
             gameSessionRepository.save(session);
             gameSessionScheduler.scheduleAfter(Duration.ofMinutes(AUTO_ABANDON_MINUTES),
                     () -> self.checkAutoAbandonEffect(session.getId()));
@@ -1229,7 +1283,15 @@ public class GameSessionService {
     // Once the 90-second turn timeout (or an explicit leave) has marked a player Left,
     // that is permanent for the rest of the session, matching GAME_DESIGN.md.
     public void reconnectPlayer(Long sessionId, Long userId) {
-        GameSession session = getSession(sessionId);
+        reconnectPlayer(sessionId, userId, () -> true);
+    }
+
+    // A no-op when every socket of the player closed again before this took the session lock.
+    public void reconnectPlayer(Long sessionId, Long userId, BooleanSupplier hasOpenSocket) {
+        GameSession session = lockAndGetSession(sessionId);
+        if (!hasOpenSocket.getAsBoolean()) {
+            return;
+        }
         Player player = findPlayerByUserId(session, userId);
         if (player.isConnected() && player.getDisconnectedAt() == null && session.getZeroConnectedSince() == null) {
             return;
@@ -1246,7 +1308,7 @@ public class GameSessionService {
     }
 
     public void leavePlayer(Long sessionId, Long userId) {
-        GameSession session = getSession(sessionId);
+        GameSession session = lockAndGetSession(sessionId);
         Player player = findPlayerByUserId(session, userId);
         if (player.getStatus() == PlayerStatus.LEFT) {
             return;
@@ -1341,7 +1403,7 @@ public class GameSessionService {
         if (status == AudioCheckStatus.CANNOT_SHARE) {
             throw new IllegalArgumentException("The browser capability report decides whether a player can share audio");
         }
-        GameSession session = getSession(sessionId);
+        GameSession session = lockAndGetSession(sessionId);
         if (session.getStatus() != SessionStatus.IN_PROGRESS) {
             throw new ConflictException("This session is not running");
         }
@@ -1367,7 +1429,7 @@ public class GameSessionService {
         }
         boolean shouldPause = !SessionAudioRules.blockingSharers(session).isEmpty();
         if (shouldPause && session.getPausedAt() == null) {
-            session.setPausedAt(Instant.now());
+            session.setPausedAt(now());
             gameSessionRepository.save(session);
             publishSessionEvent(SessionEventType.SESSION_PAUSED, session);
             return true;
@@ -1377,7 +1439,7 @@ public class GameSessionService {
             gameSessionRepository.save(session);
             Round round = getCurrentRound(session);
             if (round != null) {
-                restartRoundTimer(round, Instant.now());
+                restartRoundTimer(round, now());
             }
             publishSessionEvent(SessionEventType.SESSION_RESUMED, session);
             return true;
@@ -1395,24 +1457,27 @@ public class GameSessionService {
                 roundRepository.save(round);
                 gameSessionScheduler.scheduleAt(round.getPlacementEndsAt(), () -> self.placementTimeoutEffect(roundId));
                 Long activePlayerId = round.getActivePlayer().getId();
+                Instant activePlayerDisconnectedAt = round.getActivePlayer().getDisconnectedAt();
                 gameSessionScheduler.scheduleAfter(Duration.ofSeconds(ACTIVE_PLAYER_TURN_TIMEOUT_SECONDS),
-                        () -> self.turnTimeoutEffect(activePlayerId));
+                        () -> self.turnTimeoutEffect(activePlayerId, activePlayerDisconnectedAt));
             }
             case COUNTDOWN -> {
                 round.setLockedInAt(resumedAt);
                 roundRepository.save(round);
-                gameSessionScheduler.scheduleAfter(RoundTiming.LOCK_IN_COUNTDOWN, () -> self.startBettingWindowEffect(roundId));
+                gameSessionScheduler.scheduleAfter(RoundTiming.LOCK_IN_COUNTDOWN,
+                        () -> self.startBettingWindowEffect(roundId, resumedAt));
             }
             case BETTING -> {
-                round.setBettingWindowEndsAt(resumedAt.plus(RoundTiming.BETTING_WINDOW));
+                Instant bettingWindowEndsAt = resumedAt.plus(RoundTiming.BETTING_WINDOW);
+                round.setBettingWindowEndsAt(bettingWindowEndsAt);
                 roundRepository.save(round);
-                gameSessionScheduler.scheduleAt(round.getBettingWindowEndsAt(), () -> self.revealEffect(roundId));
+                gameSessionScheduler.scheduleAt(bettingWindowEndsAt, () -> self.revealEffect(roundId, bettingWindowEndsAt));
             }
             case REVEALED -> gameSessionScheduler.scheduleAt(resumedAt, () -> self.revealEffect(roundId));
             case SCORED -> {
                 round.setScoredAt(resumedAt);
                 roundRepository.save(round);
-                gameSessionScheduler.scheduleAfter(RoundTiming.REVEAL_HOLD, () -> self.advanceRoundEffect(roundId));
+                gameSessionScheduler.scheduleAfter(RoundTiming.REVEAL_HOLD, () -> self.advanceRoundEffect(roundId, resumedAt));
             }
         }
     }
@@ -1441,12 +1506,13 @@ public class GameSessionService {
     // wrong placement with no bets would be, and the game moves on. A no-op once the round
     // has locked in or been scored, or while the round's stored deadline hasn't passed.
     public void placementTimeoutEffect(Long roundId) {
+        lockSessionOfRound(roundId);
         Round round = roundRepository.findById(roundId).orElse(null);
         if (round == null || round.getStatus() != RoundStatus.AWAITING_PLACEMENT
                 || round.getSession().getStatus() != SessionStatus.IN_PROGRESS || isPaused(round.getSession())) {
             return;
         }
-        if (round.getPlacementEndsAt() != null && Instant.now().isBefore(round.getPlacementEndsAt())) {
+        if (round.getPlacementEndsAt() != null && now().isBefore(round.getPlacementEndsAt())) {
             return;
         }
         round.setPlacementCorrect(false);
@@ -1456,11 +1522,14 @@ public class GameSessionService {
     }
 
     // Effect method for the active-player turn-timeout timer. A no-op if the player
-    // reconnected (disconnectedAt cleared), already left, or the round has already moved
-    // on by the time this fires.
-    public void turnTimeoutEffect(Long playerId) {
+    // reconnected since the disconnect that scheduled it (disconnectedAt cleared, or moved by a
+    // later disconnect), already left, or the round has already moved on by the time this fires.
+    public void turnTimeoutEffect(Long playerId, Instant disconnectedAt) {
+        lockSessionOfPlayer(playerId);
         Player player = playerRepository.findById(playerId).orElse(null);
-        if (player == null || player.getDisconnectedAt() == null || player.getStatus() == PlayerStatus.LEFT) {
+        if (player == null || player.getDisconnectedAt() == null
+                || !player.getDisconnectedAt().equals(disconnectedAt)
+                || player.getStatus() == PlayerStatus.LEFT) {
             return;
         }
 
@@ -1483,11 +1552,20 @@ public class GameSessionService {
         self.scoreRoundEffect(currentRound.getId());
     }
 
+    public void turnTimeoutEffect(Long playerId) {
+        Player player = playerRepository.findById(playerId).orElse(null);
+        if (player == null || player.getDisconnectedAt() == null) {
+            return;
+        }
+        turnTimeoutEffect(playerId, player.getDisconnectedAt());
+    }
+
     // Effect method for the DJ disconnect grace period timer: callable directly in tests.
     // When a required DJ disconnects and stays disconnected past the grace period, their
     // audio status becomes NOT_SHARED and the session pauses. A player who reconnected
     // within the grace period has their disconnectedAt cleared, so this effect does nothing.
     public void djDisconnectTimeoutEffect(Long playerId, Instant disconnectedAt) {
+        lockSessionOfPlayer(playerId);
         Player player = playerRepository.findById(playerId).orElse(null);
         if (player == null || player.getDisconnectedAt() == null
                 || !player.getDisconnectedAt().equals(disconnectedAt)
@@ -1545,8 +1623,8 @@ public class GameSessionService {
     }
 
     public void recoverSession(Long sessionId) {
-        GameSession session = getSession(sessionId);
-        Instant recoveredAt = Instant.now();
+        GameSession session = lockAndGetSession(sessionId);
+        Instant recoveredAt = now();
         for (Player player : session.getPlayers()) {
             if (player.isConnected()) {
                 player.setConnected(false);
@@ -1585,19 +1663,55 @@ public class GameSessionService {
                         : recoveredAt.plus(RoundTiming.PLACEMENT_WINDOW);
                 gameSessionScheduler.scheduleAt(placementEndsAt, () -> self.placementTimeoutEffect(roundId));
                 Long activePlayerId = round.getActivePlayer().getId();
+                Instant activePlayerDisconnectedAt = round.getActivePlayer().getDisconnectedAt();
                 gameSessionScheduler.scheduleAfter(Duration.ofSeconds(ACTIVE_PLAYER_TURN_TIMEOUT_SECONDS),
-                        () -> self.turnTimeoutEffect(activePlayerId));
+                        () -> self.turnTimeoutEffect(activePlayerId, activePlayerDisconnectedAt));
             }
-            case COUNTDOWN -> gameSessionScheduler.scheduleAt(round.getLockedInAt().plus(RoundTiming.LOCK_IN_COUNTDOWN),
-                    () -> self.startBettingWindowEffect(roundId));
-            case BETTING -> gameSessionScheduler.scheduleAt(round.getBettingWindowEndsAt(), () -> self.revealEffect(roundId));
+            case COUNTDOWN -> {
+                Instant lockedInAt = round.getLockedInAt();
+                gameSessionScheduler.scheduleAt(lockedInAt.plus(RoundTiming.LOCK_IN_COUNTDOWN),
+                        () -> self.startBettingWindowEffect(roundId, lockedInAt));
+            }
+            case BETTING -> {
+                Instant bettingWindowEndsAt = round.getBettingWindowEndsAt();
+                gameSessionScheduler.scheduleAt(bettingWindowEndsAt, () -> self.revealEffect(roundId, bettingWindowEndsAt));
+            }
             case REVEALED -> gameSessionScheduler.scheduleAt(recoveredAt, () -> self.revealEffect(roundId));
-            case SCORED -> gameSessionScheduler.scheduleAt(round.getScoredAt().plus(RoundTiming.REVEAL_HOLD),
-                    () -> self.advanceRoundEffect(roundId));
+            case SCORED -> {
+                Instant scoredAt = round.getScoredAt();
+                gameSessionScheduler.scheduleAt(scoredAt.plus(RoundTiming.REVEAL_HOLD),
+                        () -> self.advanceRoundEffect(roundId, scoredAt));
+            }
         }
     }
 
-    // --- Lookup helpers -------------------------------------------------------
+    // --- Locking and lookup helpers ----------------------------------------------
+
+    // Every state change of a game session takes this row lock before it reads any of the
+    // session's state, so transitions started at once by players' sockets and by timers run
+    // one after another and each one's status check sees what the previous one committed.
+    private void lockSession(Long sessionId) {
+        gameSessionRepository.lockById(sessionId);
+    }
+
+    private GameSession lockAndGetSession(Long sessionId) {
+        lockSession(sessionId);
+        return getSession(sessionId);
+    }
+
+    private void lockSessionOfRound(Long roundId) {
+        roundRepository.findSessionIdById(roundId).ifPresent(this::lockSession);
+    }
+
+    private void lockSessionOfPlayer(Long playerId) {
+        playerRepository.findSessionIdById(playerId).ifPresent(this::lockSession);
+    }
+
+    // Postgres keeps timestamps to the microsecond, so a timer comparing the instant it was
+    // scheduled for with the stored one needs that precision on both sides.
+    private static Instant now() {
+        return Instant.now().truncatedTo(ChronoUnit.MICROS);
+    }
 
     @Transactional(readOnly = true)
     public GameSession getSession(Long sessionId) {
