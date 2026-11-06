@@ -364,7 +364,15 @@ class HistoryResearchIntegrationTest {
         PlaylistMembershipRepository memberships = mock(PlaylistMembershipRepository.class);
         when(users.findById(firstUser.getId())).thenReturn(Optional.of(firstUser));
         org.dariusturcu.backend.service.PersonalDataExportService exportService = new org.dariusturcu.backend.service.PersonalDataExportService(
-                users, memberships, songs, mock(org.dariusturcu.backend.model.mapper.SongMapper.class), history, research);
+                users, memberships, songs, mock(org.dariusturcu.backend.model.mapper.SongMapper.class),
+                mock(org.dariusturcu.backend.repository.MemberRepository.class),
+                mock(org.dariusturcu.backend.repository.ChatMessageRepository.class),
+                mock(org.dariusturcu.backend.repository.SongReportRepository.class),
+                mock(org.dariusturcu.backend.repository.SongConfirmationRepository.class),
+                mock(org.dariusturcu.backend.repository.SavedPlaylistRepository.class),
+                mock(org.dariusturcu.backend.repository.ImportQuotaUsageRepository.class),
+                mock(org.dariusturcu.backend.repository.PlaylistImportJobRepository.class),
+                history, research);
         try {
             org.springframework.security.core.context.SecurityContextHolder.getContext().setAuthentication(
                     new org.springframework.security.authentication.UsernamePasswordAuthenticationToken(

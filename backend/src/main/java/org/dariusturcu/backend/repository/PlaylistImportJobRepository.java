@@ -11,5 +11,7 @@ public interface PlaylistImportJobRepository extends JpaRepository<PlaylistImpor
 
     List<PlaylistImportJob> findByPlaylistIdAndStatusOrderByCreatedAtDesc(Long playlistId, PlaylistImportJobStatus status);
 
+    List<PlaylistImportJob> findBySubmittedByUsernameOrderByCreatedAtAsc(String submittedByUsername);
+
     Optional<PlaylistImportJob> findFirstByPlaylistIdOrderByCreatedAtDesc(Long playlistId);
 }

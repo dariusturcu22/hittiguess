@@ -7,6 +7,8 @@ import java.util.List;
 
 public interface SongConfirmationRepository extends JpaRepository<SongConfirmation, Long> {
 
+    List<SongConfirmation> findByUserId(Long userId);
+
     boolean existsByUserIdAndSongId(Long userId, Long songId);
 
     long countBySongId(Long songId);
