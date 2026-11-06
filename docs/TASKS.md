@@ -71,9 +71,9 @@ Azure Container Apps hosts core and AI in one EU environment. Vercel hosts the f
 
 Both Neon projects are provisioned. Core owns schema migrations; AI connects only to the transactional database.
 
-- [ ] Inspect both production Flyway histories (core ends at V52 in the repo), core pgvector and indexes, and the analytics tables, and record any drift
-- [ ] Verify intended TLS URLs and service boundaries, including deployed AI access to core and no browser credentials or AI access to analytics
-- [ ] Measure the first request after Neon's idle suspend and change pool settings only if the wake time breaks a request
+- [x] Inspect both production Flyway histories (core ends at V52 in the repo), core pgvector and indexes, and the analytics tables, and record any drift
+- [x] Verify intended TLS URLs and service boundaries, including deployed AI access to core and no browser credentials or AI access to analytics
+- [x] Measure the first request after Neon's idle suspend and change pool settings only if the wake time breaks a request
 - [ ] Owner: configure Neon storage and compute notifications. Then document the backup export (point-in-time restore window, a scheduled logical dump) in `docs/DEV_SETUP.md` and rehearse restoring both databases into an isolated project; this is the restore test the Release 3 sign-off refers to
 - [ ] Owner: decide whether the songs in the development database enter production; if yes, an agent performs only an approved catalog-only import
 
