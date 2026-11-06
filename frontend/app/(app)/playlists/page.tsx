@@ -178,10 +178,18 @@ function NewPlaylistCard({
 }
 
 function JoinPlaylistCard({ onClick }: { onClick: () => void }) {
-  return <button type="button" onClick={onClick} className="flex aspect-square cursor-pointer flex-col items-center justify-center gap-3 self-start rounded-2xl border-[3px] border-dashed border-border">
-    <div className="flex h-11 w-11 items-center justify-center rounded-full border-2 border-border"><LogIn className="size-5 text-muted-foreground" /></div>
-    <div className="font-display text-sm text-muted-foreground">Join playlist</div>
-  </button>;
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="flex aspect-square cursor-pointer flex-col items-center justify-center gap-3 self-start rounded-2xl border-[3px] border-dashed border-border"
+    >
+      <div className="flex h-11 w-11 items-center justify-center rounded-full border-2 border-border">
+        <LogIn className="size-5 text-muted-foreground" />
+      </div>
+      <div className="font-display text-sm text-muted-foreground">Join playlist</div>
+    </button>
+  );
 }
 
 export default function PlaylistsPage() {
@@ -307,19 +315,36 @@ export default function PlaylistsPage() {
           </p>
         )}
         {!isLoading && !isError && (
-          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4 animate-in fade-in-0 slide-in-from-top-1 duration-200">
-            {visiblePlaylists.map((playlist) => (
-              <PlaylistCard key={playlist.id} playlist={playlist} />
-            ))}
-            {libraryTab === "saved" ? <ExploreLinkCard /> : libraryTab === "joined" ? (
-              <JoinPlaylistCard onClick={() => setIsJoinOpen(true)} />
-            ) : (
-              <NewPlaylistCard
-                onClick={handleCreatePlaylist}
-                isCreating={isCreating}
-              />
-            )}
-          </div>
+          <>
+            {searchQuery.trim() && visiblePlaylists.length === 0 ? (
+              <div className="py-8 text-center text-sm text-muted-foreground">
+                No playlists matching &ldquo;{searchQuery}&rdquo;.
+              </div>
+            ) : !searchQuery.trim() && visiblePlaylists.length === 0 ? (
+              <div className="py-4 text-sm text-muted-foreground">
+                {allPlaylists.length === 0
+                  ? "Your library is empty. Create or join a playlist to get started."
+                  : libraryTab === "joined"
+                    ? "You haven't joined any playlists yet."
+                    : libraryTab === "owned"
+                      ? "You haven't created any playlists yet."
+                      : "You haven't saved any playlists yet."}
+              </div>
+            ) : null}
+            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4 animate-in fade-in-0 slide-in-from-top-1 duration-200">
+              {visiblePlaylists.map((playlist) => (
+                <PlaylistCard key={playlist.id} playlist={playlist} />
+              ))}
+              {libraryTab === "saved" ? <ExploreLinkCard /> : libraryTab === "joined" ? (
+                <JoinPlaylistCard onClick={() => setIsJoinOpen(true)} />
+              ) : (
+                <NewPlaylistCard
+                  onClick={handleCreatePlaylist}
+                  isCreating={isCreating}
+                />
+              )}
+            </div>
+          </>
         )}
       </div>
     </div>
