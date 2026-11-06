@@ -2771,3 +2771,20 @@ The backend for account management and two-factor sign-in exists: `PATCH /api/us
 
 - [x] Production Sentry and OpenTelemetry settings are set on both apps; remaining: metrics through a Grafana Alloy container (core's `/actuator/prometheus` needs a login, so expose it on an internal-only management port first), import the dashboard, and add core uptime monitoring
 - [x] Verify real metrics, logs, traces, and error delivery; add a credential-gated delivery integration test without secret output
+
+## Game state concurrency and timer fixes
+
+Round transitions run as check-then-act on `round.status` in separate transactions, from STOMP inbound threads and a four-thread `TaskScheduler`, so two triggers can both pass the same check. Branch `fix/game-state-concurrency-and-timers`.
+
+- [x] Serialize every state-changing `GameSessionService` entry point per game session with a pessimistic lock on the `game_sessions` row, taken before any session, player or round state is read, so the last bet or skip and the betting-window timer cannot both reveal and score a round, a bet cannot land after scoring read the bets, and a double lock-in cannot publish twice or schedule two countdowns.
+  - Where: `GameSessionService`, `GameSessionRepository`, `RoundRepository`, `PlayerRepository`.
+  - Tests: an integration test against real Postgres that races the closing skip against the betting-window timer and asserts the round is scored once with one inserted card, an integration test that a double-clicked lock-in is accepted once, and unit tests that a second lock-in and a bet after scoring are rejected.
+- [x] Make a superseded round timer a no-op. The countdown, betting-window and reveal-hold effects carry the deadline they were scheduled for and return unless it still matches the round's stored `lockedInAt`, `bettingWindowEndsAt` or `scoredAt`, so a timer from before a pause cannot fire the phase early after the resume restarts it. Stored timestamps are truncated to microseconds, the precision Postgres keeps, so a value read back compares equal.
+  - Tests: unit tests that a countdown, betting-window or reveal-hold timer scheduled before a resume does nothing while the restarted one still runs.
+- [x] Tie the active player's turn timeout to the disconnect that started it, comparing the stored `disconnectedAt`, the same way `djDisconnectTimeoutEffect` does, so a player who reconnected and dropped again is not marked Left by the first timer.
+  - Tests: unit test that the first disconnect's timer is a no-op after a reconnect and second disconnect.
+- [x] Re-check socket presence inside the session lock on disconnect and reconnect, so a page reload whose old socket closes while the new one subscribes cannot leave a connected player marked disconnected.
+  - Where: `SessionSessionEventListener`, `GameSessionService.disconnectPlayer` and `reconnectPlayer`.
+  - Tests: unit tests that a disconnect is skipped while another socket is registered and a reconnect is skipped once none is.
+- [x] Pick the winning bet deterministically when equal release years make several gaps correct: the earliest accepted bet on a correct gap wins. Document it in `GAME_DESIGN.md`.
+  - Tests: unit test with two bets on two correct gaps that the earlier bet wins whatever order the repository returns them in.

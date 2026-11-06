@@ -43,7 +43,7 @@ A round is one full pass through the players: every player in the active-player 
 6. Once the betting window closes, the song reveals automatically: artist, title, and year. Nobody triggers it manually, DJ included.
 7. Scoring:
    - If the active player's placement is correct, they keep the card. This holds even when the new song shares a release year with an existing card on the timeline; either order counts as correct. Every accepted bet is lost regardless.
-   - If the active player's placement was wrong, the gap that's objectively correct for the revealed release year is checked against every accepted bet on the active player's timeline. Since bets can never share a gap, at most one bettor can be sitting on the correct one.
+   - If the active player's placement was wrong, the gap that's objectively correct for the revealed release year is checked against every accepted bet on the active player's timeline. Bets never share a gap, but equal release years can make more than one gap correct; the earliest accepted bet on a correct gap then wins.
    - If a bettor is sitting on the correct gap, they win the card, not the active player. It's inserted into that winning bettor's OWN timeline, computed automatically at wherever it objectively belongs there, not at the gap they bet on. Every other bettor loses their spent token.
    - If the active player's placement was wrong and no bet sits on the correct gap, whether because no one bet there or no one bet at all, the card is discarded. A winning bettor only ever receives the card, never a bonus token.
 8. Next turn: once scoring resolves, the active player role passes to the next player automatically, no manual step from anyone. The DJ role stays fixed or rotates, per the group setting.
