@@ -148,8 +148,9 @@ public class PlaylistService {
             Long playlistId) {
 
         Playlist playlist = findPlaylist(playlistId);
-        playlistAccessService.requireRead(playlist, SecurityUtils.getCurrentUser());
-        return playlistMapper.toDetailDTO(playlist);
+        User viewer = SecurityUtils.getCurrentUser();
+        playlistAccessService.requireRead(playlist, viewer);
+        return playlistMapper.toDetailDTOForViewer(playlist, viewer.getId());
     }
 
     @Transactional(readOnly = true)

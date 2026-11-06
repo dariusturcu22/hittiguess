@@ -2,7 +2,6 @@ package org.dariusturcu.backend.service;
 
 import org.dariusturcu.backend.exception.ConflictException;
 import org.dariusturcu.backend.exception.EmailNotVerifiedException;
-import org.dariusturcu.backend.exception.RateLimitExceededException;
 import org.dariusturcu.backend.exception.ResourceNotFoundException;
 import org.dariusturcu.backend.model.EmailVerificationToken;
 import org.dariusturcu.backend.model.PasswordResetToken;
@@ -111,6 +110,71 @@ class AuthServiceTest {
         assertThat(result.id()).isEqualTo(1L);
         verify(emailService).sendVerificationEmail(eq("player@example.com"), anyString());
         verify(jwtUtil, never()).generateToken(any(User.class));
+    }
+
+    @Test
+    void registerStoresAndChecksTheEmailInLowerCase() {
+        RegisterRequest request = new RegisterRequest("player", "  Player@Example.COM ", "password123");
+        when(userRepository.existsUserByUsername("player")).thenReturn(false);
+        when(userRepository.existsUserByEmail("player@example.com")).thenReturn(false);
+        when(userRepository.save(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        RegisterResult result = authService.register(request);
+
+        assertThat(result.email()).isEqualTo("player@example.com");
+    }
+
+    @Test
+    void loginLooksTheAccountUpByTheLowerCasedEmail() {
+        User user = buildUser(true, false);
+        when(userRepository.findUserByEmail("player@example.com")).thenReturn(Optional.of(user));
+        when(jwtUtil.generateToken(user)).thenReturn("access-token");
+        when(jwtUtil.generateRefreshToken()).thenReturn("refresh-token");
+        when(jwtUtil.getRefreshExpirationSeconds()).thenReturn(604800L);
+
+        authService.login(new LoginRequest("Player@Example.com", "password123", false));
+
+        verify(authenticationManager).authenticate(
+                new org.springframework.security.authentication.UsernamePasswordAuthenticationToken(
+                        "player@example.com", "password123"));
+    }
+
+    @Test
+    void verifyEmailForAPendingChangeSwapsTheAddressAndEndsEverySession() {
+        User user = buildUser(true, false);
+        EmailVerificationToken token = new EmailVerificationToken();
+        token.setUser(user);
+        token.setToken(TokenHasher.hash("raw-token"));
+        token.setPendingEmail("new@example.com");
+        token.setExpiresAt(Instant.now().plusSeconds(60));
+        when(emailVerificationTokenRepository.findByToken(TokenHasher.hash("raw-token")))
+                .thenReturn(Optional.of(token));
+        when(userRepository.existsUserByEmail("new@example.com")).thenReturn(false);
+
+        authService.verifyEmail("raw-token");
+
+        assertThat(user.getEmail()).isEqualTo("new@example.com");
+        assertThat(user.isEmailVerified()).isTrue();
+        verify(refreshTokenRepository).deleteRefreshTokenByUser(user);
+        verify(emailVerificationTokenRepository).delete(token);
+    }
+
+    @Test
+    void verifyEmailForAPendingChangeToAnAddressTakenInTheMeantimeIsRejected() {
+        User user = buildUser(true, false);
+        EmailVerificationToken token = new EmailVerificationToken();
+        token.setUser(user);
+        token.setToken(TokenHasher.hash("raw-token"));
+        token.setPendingEmail("taken@example.com");
+        token.setExpiresAt(Instant.now().plusSeconds(60));
+        when(emailVerificationTokenRepository.findByToken(TokenHasher.hash("raw-token")))
+                .thenReturn(Optional.of(token));
+        when(userRepository.existsUserByEmail("taken@example.com")).thenReturn(true);
+
+        assertThatThrownBy(() -> authService.verifyEmail("raw-token")).isInstanceOf(ConflictException.class);
+
+        assertThat(user.getEmail()).isEqualTo("player@example.com");
+        verify(emailVerificationTokenRepository).delete(token);
     }
 
     @Test
@@ -259,10 +323,11 @@ class AuthServiceTest {
     void loginForALockedAccountIsRefusedBeforeThePasswordIsChecked() {
         User user = buildUser(true, false);
         when(userRepository.findUserByEmail("player@example.com")).thenReturn(Optional.of(user));
-        doThrow(new RateLimitExceededException("locked")).when(loginAttemptService).requireNotLocked(user);
+        doThrow(new BadCredentialsException("Invalid username or password")).when(loginAttemptService).requireNotLocked(user);
 
         assertThatThrownBy(() -> authService.login(new LoginRequest("player@example.com", "password123", false)))
-                .isInstanceOf(RateLimitExceededException.class);
+                .isInstanceOf(BadCredentialsException.class)
+                .hasMessage("Invalid username or password");
 
         verify(authenticationManager, never()).authenticate(any());
     }
@@ -324,10 +389,11 @@ class AuthServiceTest {
         when(jwtUtil.isTwoFactorPendingToken("pending-token")).thenReturn(true);
         when(jwtUtil.extractUserId("pending-token")).thenReturn(1L);
         when(userRepository.findById(1L)).thenReturn(Optional.of(user));
-        doThrow(new RateLimitExceededException("locked")).when(loginAttemptService).requireNotLocked(user);
+        doThrow(new BadCredentialsException("Invalid username or password")).when(loginAttemptService).requireNotLocked(user);
 
         assertThatThrownBy(() -> authService.verifyTwoFactor("pending-token", "123456"))
-                .isInstanceOf(RateLimitExceededException.class);
+                .isInstanceOf(BadCredentialsException.class)
+                .hasMessage("Invalid username or password");
 
         verify(twoFactorService, never()).verifyLoginCode(any(), anyString());
     }

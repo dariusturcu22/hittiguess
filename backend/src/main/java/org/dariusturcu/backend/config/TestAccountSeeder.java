@@ -6,6 +6,7 @@ import org.dariusturcu.backend.model.user.User;
 import org.dariusturcu.backend.repository.UserRepository;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Profile;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
@@ -20,8 +21,10 @@ import java.util.Optional;
  * registering fresh ones per run. Idempotent per account: running this against a
  * database that already has a given account is a no-op for that one.
  *
- * Disabled outright in Production through the profile condition below, which
- * matches the profile EnvironmentGuard treats as Production. The accounts'
+ * Opt-in through dev.seed-test-accounts=true (DEV_SEED_TEST_ACCOUNTS in backend/.env),
+ * so an environment that merely lacks configuration never gets accounts with published
+ * credentials. Also disabled outright in Production through the profile condition below,
+ * which matches the profile EnvironmentGuard treats as Production. The accounts'
  * credentials are documented in docs/DEV_SETUP.md.
  *
  * Seeded with emailVerified already true: these accounts never go through
@@ -34,7 +37,10 @@ import java.util.Optional;
  */
 @Component
 @Profile("!" + EnvironmentGuard.PRODUCTION_PROFILE)
+@ConditionalOnProperty(name = TestAccountSeeder.SEED_PROPERTY, havingValue = "true")
 public class TestAccountSeeder implements ApplicationRunner {
+
+    public static final String SEED_PROPERTY = "dev.seed-test-accounts";
 
     public record TestAccount(String username, String email, String password, Role role) {
     }

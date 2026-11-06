@@ -9,6 +9,9 @@ public record UpdateUserRequest(
         String username,
 
         @Email(message = "Email must be valid")
-        String email
+        String email,
+
+        @Size(max = 128, message = "Password must be at most 128 characters long")
+        String currentPassword
 ) {
 }

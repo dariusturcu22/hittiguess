@@ -12,7 +12,7 @@ export interface PlaylistDetailDTO {
   name: string;
   color: string;
   description?: string;
-  inviteCode: string;
+  inviteCode?: string;
   songCount: number;
   songs?: SongDTO[];
   ownerId: number;

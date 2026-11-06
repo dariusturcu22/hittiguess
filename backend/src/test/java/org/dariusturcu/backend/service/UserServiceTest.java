@@ -148,7 +148,7 @@ class UserServiceTest {
         assertThat(membership.getAvatarUrl()).isEqualTo("https://example.com/account-avatar.png");
         assertThat(membership.isCanRead()).isTrue();
         assertThat(membership.isCanWrite()).isTrue();
-        assertThat(membership.isCanDelete()).isTrue();
+        assertThat(membership.isCanDelete()).isFalse();
     }
 
     @Test

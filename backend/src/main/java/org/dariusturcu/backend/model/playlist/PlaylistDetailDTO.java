@@ -15,7 +15,6 @@ public record PlaylistDetailDTO(
         @NotNull
         String color,
         String description,
-        @NotNull
         String inviteCode,
         @NotNull
         int songCount,

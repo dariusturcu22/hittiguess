@@ -2,7 +2,7 @@
 
 ## Test accounts
 
-The core service seeds three reusable accounts on every startup outside Production, so a multiplayer round (one DJ, one active player, one other player) can be tested with three genuinely separate logged-in sessions instead of one account reused across tabs. Account 1 is an `ADMIN`, so it also opens the admin pages (backfill queue, song catalog, report queue); accounts 2 and 3 have the `TEST` role.
+The core service seeds three reusable accounts on every startup when `DEV_SEED_TEST_ACCOUNTS=true` is set (it is in `backend/.env.example`; add it to an existing `backend/.env`) and the environment is not Production, so a multiplayer round (one DJ, one active player, one other player) can be tested with three genuinely separate logged-in sessions instead of one account reused across tabs. Account 1 is an `ADMIN`, so it also opens the admin pages (backfill queue, song catalog, report queue); accounts 2 and 3 have the `TEST` role.
 
 Credentials:
 
@@ -12,7 +12,7 @@ Credentials:
 
 The seed mechanism is idempotent per account. Running the application again with an account already present never creates a duplicate or errors; it only corrects the account's role if it differs, which is how an account 1 seeded before it became the admin gets promoted.
 
-This account never exists in Production. The seeder itself is disabled by a Spring profile condition when `APP_ENV` is `prod`, and a separate startup check fails the application if a `TEST`-role row is ever found while running against Production, regardless of how it got there.
+The seeder is off unless `dev.seed-test-accounts` is true, so an environment with missing configuration never gets accounts with published credentials. It is also disabled by a Spring profile condition when `APP_ENV` is `prod`. In Production a startup check fails the application if a `TEST`-role row or an `ADMIN` account with a `.local` address exists. The container image sets `APP_ENV_REQUIRED=true`, so a container started without `APP_ENV` fails at startup instead of running as dev; local `mvnw` runs default to `dev`.
 
 `CONTRIBUTING.md` links to this setup guide for the local-stack commands and test-account details.
 

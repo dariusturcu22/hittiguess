@@ -37,6 +37,7 @@ import {
 } from "@/hooks/generated/user-management/user-management";
 import type { TwoFactorSetupResponse } from "@/hooks/models/twoFactorSetupResponse";
 
+const LOCAL_AUTH_PROVIDER = "LOCAL";
 const USERNAME_MINIMUM_LENGTH = 3;
 const USERNAME_MAXIMUM_LENGTH = 20;
 const ISO_DATE_SUBSTRING_LENGTH = 10;
@@ -74,6 +75,7 @@ export default function AccountSettingsPage() {
 
   const [usernameInput, setUsernameInput] = React.useState("");
   const [emailInput, setEmailInput] = React.useState("");
+  const [emailChangePasswordInput, setEmailChangePasswordInput] = React.useState("");
   const [hasInitializedForm, setHasInitializedForm] = React.useState(false);
 
   const [profileErrorMessage, setProfileErrorMessage] = React.useState<string | null>(null);
@@ -115,6 +117,9 @@ export default function AccountSettingsPage() {
   const disable2faMutation = useDisableTwoFactor();
 
   const currentUsername = currentUser?.username ?? "";
+  const isEmailManagedByProvider = currentUser?.provider !== undefined && currentUser.provider !== LOCAL_AUTH_PROVIDER;
+  const isEmailChanged =
+    emailInput.trim().toLowerCase() !== (currentUser?.email ?? "").toLowerCase();
   const isDeleteConfirmationMatching =
     Boolean(currentUsername) && deleteConfirmationInput.trim() === currentUsername.trim();
 
@@ -140,17 +145,32 @@ export default function AccountSettingsPage() {
       return;
     }
 
+    if (isEmailChanged && !emailChangePasswordInput) {
+      const passwordError = "Enter your current password to change your email.";
+      setProfileErrorMessage(passwordError);
+      toast.error(passwordError);
+      return;
+    }
+
     updateProfileMutation.mutate(
       {
         data: {
           username: trimmedUsername,
           email: trimmedEmail,
+          currentPassword: isEmailChanged ? emailChangePasswordInput : undefined,
         },
       },
       {
         onSuccess: () => {
-          setProfileSuccessMessage("Profile updated successfully.");
-          toast.success("Profile updated successfully.");
+          const successMessage = isEmailChanged
+            ? `Profile updated. Open the link sent to ${trimmedEmail} to finish changing your email.`
+            : "Profile updated successfully.";
+          setProfileSuccessMessage(successMessage);
+          toast.success(successMessage);
+          if (isEmailChanged) {
+            setEmailInput(currentUser?.email ?? "");
+            setEmailChangePasswordInput("");
+          }
           void queryClient.invalidateQueries({ queryKey: getGetCurrentUserQueryKey() });
         },
         onError: (error) => {
@@ -384,13 +404,33 @@ export default function AccountSettingsPage() {
                 id="email-input"
                 name="email"
                 type="email"
-                disabled={isUserLoading || updateProfileMutation.isPending}
+                disabled={isUserLoading || updateProfileMutation.isPending || isEmailManagedByProvider}
                 value={emailInput}
                 onChange={(event) => setEmailInput(event.target.value)}
                 className="w-full rounded-xl border-2 border-border bg-background px-4 py-3 text-sm text-foreground outline-none transition-colors focus:border-primary"
                 required
               />
             </div>
+            {isEmailChanged && !isEmailManagedByProvider && (
+              <div className="sm:col-span-2">
+                <label htmlFor="email-change-password-input" className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                  Current password
+                </label>
+                <input
+                  id="email-change-password-input"
+                  name="currentPassword"
+                  type="password"
+                  autoComplete="current-password"
+                  disabled={updateProfileMutation.isPending}
+                  value={emailChangePasswordInput}
+                  onChange={(event) => setEmailChangePasswordInput(event.target.value)}
+                  className="w-full rounded-xl border-2 border-border bg-background px-4 py-3 text-sm text-foreground outline-none transition-colors focus:border-primary"
+                />
+                <p className="mt-1.5 text-xs text-muted-foreground">
+                  A confirmation link is sent to the new address. Your email changes once you open it, and you sign in again afterwards.
+                </p>
+              </div>
+            )}
           </div>
 
           <button

@@ -10,6 +10,7 @@ import org.dariusturcu.backend.model.user.PersonalDataExportDTO;
 import org.dariusturcu.backend.model.user.UpdateUserRequest;
 import org.dariusturcu.backend.model.user.UserDetailDTO;
 import org.dariusturcu.backend.model.user.UserSummaryDTO;
+import org.dariusturcu.backend.service.EmailChangeService;
 import org.dariusturcu.backend.service.PersonalDataExportService;
 import org.dariusturcu.backend.service.UserService;
 
@@ -30,6 +31,7 @@ import java.util.List;
 public class UserController {
     private final UserService userService;
     private final PersonalDataExportService personalDataExportService;
+    private final EmailChangeService emailChangeService;
 
     @Operation(summary = "Get current user information")
     @GetMapping("/me")
@@ -53,10 +55,13 @@ public class UserController {
         return ResponseEntity.ok(user);
     }
 
-    @Operation(summary = "Update current user information")
+    @Operation(summary = "Update current user information; a new email only takes effect once its verification link is opened")
     @PatchMapping("/me")
     public ResponseEntity<UserDetailDTO> updateUser(
             @Valid @RequestBody UpdateUserRequest request) {
+        if (request.email() != null) {
+            emailChangeService.requestEmailChange(request.email(), request.currentPassword());
+        }
         UserDetailDTO updatedUser = userService.updateUser(request);
         return ResponseEntity.ok().body(updatedUser);
     }
