@@ -11,8 +11,21 @@ public class EmailConfig {
     // real call, so this key is never actually sent to Resend when RESEND_API_KEY is unset.
     private static final String DISABLED_PLACEHOLDER_API_KEY = "re_disabled_placeholder";
 
+    public record EmailMetadata(
+            String productName,
+            String contactAddress
+    ) {}
+
     @Bean
     public Resend resend(@Value("${resend.api-key:}") String apiKey) {
         return new Resend(apiKey.isBlank() ? DISABLED_PLACEHOLDER_API_KEY : apiKey);
+    }
+
+    @Bean
+    public EmailMetadata emailMetadata(
+            @Value("${email.product-name:hittiguess}") String productName,
+            @Value("${email.contact-address:contact@hittiguess.com}") String contactAddress
+    ) {
+        return new EmailMetadata(productName, contactAddress);
     }
 }
