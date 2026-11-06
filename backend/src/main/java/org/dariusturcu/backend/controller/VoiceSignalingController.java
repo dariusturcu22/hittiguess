@@ -1,8 +1,10 @@
 package org.dariusturcu.backend.controller;
 
+import org.dariusturcu.backend.exception.RateLimitExceededException;
 import org.dariusturcu.backend.model.user.User;
 import org.dariusturcu.backend.model.voice.VoiceSignalMessage;
 import org.dariusturcu.backend.model.voice.VoiceSignalRequest;
+import org.dariusturcu.backend.ratelimit.RateLimiterRegistry;
 import org.dariusturcu.backend.repository.UserRepository;
 import org.dariusturcu.backend.security.UserPrincipal;
 import org.dariusturcu.backend.service.GroupService;
@@ -22,6 +24,7 @@ import tools.jackson.databind.ObjectMapper;
 import jakarta.validation.Valid;
 
 import java.security.Principal;
+import java.time.Duration;
 
 // Relays one WebRTC signaling step (an SDP offer, an SDP answer, or an ICE candidate)
 // from one group member to its target member only, on that member's own per-user voice
@@ -40,10 +43,16 @@ import java.security.Principal;
 @Validated
 public class VoiceSignalingController {
 
+    static final int MAXIMUM_SIGNALS_PER_WINDOW = 30;
+    static final Duration SIGNAL_RATE_LIMIT_WINDOW = Duration.ofSeconds(10);
+
     private final GroupService groupService;
     private final UserRepository userRepository;
     private final SimpMessagingTemplate messagingTemplate;
     private final ObjectMapper objectMapper;
+
+    private final RateLimiterRegistry signalRateLimiter =
+            new RateLimiterRegistry(MAXIMUM_SIGNALS_PER_WINDOW, SIGNAL_RATE_LIMIT_WINDOW);
 
     @MessageMapping("/groups/{groupId}/voice/signal")
     public void relaySignal(@DestinationVariable Long groupId,
@@ -55,6 +64,9 @@ public class VoiceSignalingController {
         }
         if (!groupService.isGroupMember(groupId, request.targetMemberUserId())) {
             throw new AccessDeniedException("The signal's target is not a member of this group");
+        }
+        if (!signalRateLimiter.tryConsume(groupId + ":" + senderUserId)) {
+            throw new RateLimitExceededException("Signaling rate limit exceeded. Please wait a moment.");
         }
         String targetUsername = userRepository.findById(request.targetMemberUserId())
                 .map(User::getUsername)
@@ -72,5 +84,9 @@ public class VoiceSignalingController {
             return userPrincipal.getUser().getId();
         }
         throw new AccessDeniedException("No authenticated user on this STOMP session");
+    }
+
+    void resetRateLimiterForTesting() {
+        signalRateLimiter.resetForTesting();
     }
 }
