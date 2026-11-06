@@ -1526,3 +1526,11 @@ Why: 404 responses are logged as network errors in browser developer tools and c
 Decision: the DJ's captured song track attaches to peer transceivers immediately upon becoming the DJ for the round. Pre-attaching prior to turn start is omitted.
 
 Why: WebRTC transceivers in the song mesh are maintained across all session players with `sendrecv` direction and negotiated Opus parameters throughout the session. Calling `replaceTrack` switches the audio source immediately without SDP renegotiation or ICE restart. The player becomes the DJ at the beginning of the round during the three-second round intro, multiple seconds before the DJ opens YouTube and starts playback. The sender is therefore fully warm before audio flows, with no audible start-up delay. Pre-attaching prior to round start would also risk audio leaking from the upcoming DJ's tab while the previous round's reveal and scoring screen is still visible.
+
+---
+
+## 2026-10-31 | Sound-bar canvas zoom scaling and reduced motion
+
+Decision: `drawSoundBars` and `SoundBars` scale canvas backing dimensions by `window.devicePixelRatio` with a matching 2D context transform, maintain a static resting pattern when audio levels are silent or absent, and enforce the static resting pattern when `(prefers-reduced-motion: reduce)` matches. `SoundBars` listens to resize events, ResizeObserver changes, and `prefers-reduced-motion` media query updates to trigger redraws.
+
+Why: scaling canvas backing stores by `devicePixelRatio` avoids blurriness and clipping across zoom levels (100%, 125%, 150%, 200%). Providing the static resting state when levels are at or below the silence floor ensures the card visualizer remains steady without audio. Respecting `prefers-reduced-motion` eliminates bouncing bar animations for players who prefer reduced motion, keeping the resting pattern displayed regardless of incoming audio streams.

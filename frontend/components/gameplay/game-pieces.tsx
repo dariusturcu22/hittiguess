@@ -15,6 +15,7 @@ const VISUALIZER_BAR_GAP_PIXELS = 6;
 const VISUALIZER_BAR_RADIUS_RATIO = 0.5;
 const VISUALIZER_COLOR_VARIABLE = "--green";
 const VISUALIZER_FALLBACK_COLOR = "#499f36";
+const REDUCED_MOTION_MEDIA_QUERY = "(prefers-reduced-motion: reduce)";
 const CSS_PERCENT_SCALE = 100;
 const DEVICE_PIXEL_RATIO_FALLBACK = 1;
 const AVATAR_COLOR_CLASSES = ["bg-green", "bg-blue", "bg-warning", "bg-pink", "bg-accent", "bg-teal", "bg-primary", "bg-destructive"];
@@ -43,7 +44,14 @@ function readVisualizerColor(canvas: HTMLCanvasElement): string {
 // Redraws the bars inside the canvas backing store, sized to the canvas CSS box
 // times the device pixel ratio, so no part of the drawing can land outside the
 // canvas at any zoom level.
-function drawSoundBars(canvas: HTMLCanvasElement | null, levels: number[]): void {
+function prefersReducedMotion(): boolean {
+  return typeof window !== "undefined" && Boolean(window.matchMedia?.(REDUCED_MOTION_MEDIA_QUERY)?.matches);
+}
+
+// Redraws the bars inside the canvas backing store, sized to the canvas CSS box
+// times the device pixel ratio, so no part of the drawing can land outside the
+// canvas at any zoom level.
+export function drawSoundBars(canvas: HTMLCanvasElement | null, levels: number[]): void {
   if (!canvas) return;
   const context = canvas.getContext("2d");
   if (!context) return;
@@ -59,11 +67,14 @@ function drawSoundBars(canvas: HTMLCanvasElement | null, levels: number[]): void
   context.setTransform(devicePixelRatio, 0, 0, devicePixelRatio, 0, 0);
   context.clearRect(0, 0, bounds.width, bounds.height);
   context.fillStyle = readVisualizerColor(canvas);
+  const effectiveLevels = prefersReducedMotion() || !levels.some((level) => level > SILENCE_FLOOR_LEVEL)
+    ? VISUALIZER_RESTING_LEVELS
+    : levels;
   const barPitch = VISUALIZER_BAR_WIDTH_PIXELS + VISUALIZER_BAR_GAP_PIXELS;
-  const barsWidth = levels.length * barPitch - VISUALIZER_BAR_GAP_PIXELS;
+  const barsWidth = effectiveLevels.length * barPitch - VISUALIZER_BAR_GAP_PIXELS;
   const firstBarLeft = (bounds.width - barsWidth) / 2;
   const cornerRadius = Math.min(VISUALIZER_BAR_WIDTH_PIXELS, bounds.height) * VISUALIZER_BAR_RADIUS_RATIO;
-  levels.forEach((level, bandIndex) => {
+  effectiveLevels.forEach((level, bandIndex) => {
     const boundedLevel = Math.min(VISUALIZER_MAXIMUM_LEVEL, Math.max(SILENCE_FLOOR_LEVEL, level));
     const barHeight = bounds.height * ((VISUALIZER_QUIET_PERCENT + boundedLevel * VISUALIZER_RANGE_PERCENT) / CSS_PERCENT_SCALE);
     const barLeft = firstBarLeft + bandIndex * barPitch;
@@ -85,7 +96,8 @@ export function SongCard({ artist, title, year, color, className = "", style }: 
 export function SoundBars({ levels, widthClassName = "w-16", heightClassName = "h-[60px]" }: { levels?: number[]; widthClassName?: string; heightClassName?: string }) {
   const canvasReference = useRef<HTMLCanvasElement>(null);
   const levelsReference = useRef<number[]>(VISUALIZER_RESTING_LEVELS);
-  const barLevels = levels?.some((level) => level > SILENCE_FLOOR_LEVEL) ? levels : VISUALIZER_RESTING_LEVELS;
+  const isReducedMotion = prefersReducedMotion();
+  const barLevels = !isReducedMotion && levels?.some((level) => level > SILENCE_FLOOR_LEVEL) ? levels : VISUALIZER_RESTING_LEVELS;
 
   useEffect(() => {
     levelsReference.current = barLevels;
@@ -100,9 +112,14 @@ export function SoundBars({ levels, widthClassName = "w-16", heightClassName = "
     const observer = new ResizeObserver(redraw);
     observer.observe(canvas);
     window.addEventListener("resize", redraw);
+
+    const reducedMotionQuery = typeof window !== "undefined" && window.matchMedia ? window.matchMedia(REDUCED_MOTION_MEDIA_QUERY) : null;
+    reducedMotionQuery?.addEventListener("change", redraw);
+
     return () => {
       observer.disconnect();
       window.removeEventListener("resize", redraw);
+      reducedMotionQuery?.removeEventListener("change", redraw);
     };
   }, []);
 

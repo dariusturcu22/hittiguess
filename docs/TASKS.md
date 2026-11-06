@@ -46,7 +46,7 @@ Frontend implementation and tests belong to story 28. Feature work requires a Re
   - Where: `frontend/e2e`.
   - Depends on: the audio check branch, since it changes the lobby and the first round.
 - [x] Check in a real browser that attaching the song track at the start of the DJ's turn has no audible start-up delay, and pre-attach shortly before the song starts if there is one (`frontend/hooks/use-song-mesh.ts`)
-- [ ] Check the sound-bar canvas at several zoom levels in a real browser: `devicePixelRatio` handling, a static resting state without audio, and `prefers-reduced-motion` respected (`drawSoundBars` in `frontend/components/gameplay/game-pieces.tsx`)
+- [x] Check the sound-bar canvas at several zoom levels in a real browser: `devicePixelRatio` handling, a static resting state without audio, and `prefers-reduced-motion` respected (`drawSoundBars` in `frontend/components/gameplay/game-pieces.tsx`)
 - [ ] Owner: two real Chrome windows with system audio, one DJ and one listener who never joined voice, over the course of a whole game, and report the result; an attempt from Firefox and Safari confirms they are shown the cannot-share warning
 - [ ] Owner: Cloudflare TURN check. Both credentials are set on core; connect two devices on different networks with forced relay and confirm voice and the song stream still arrive. Add backend integration coverage if the HTTP-boundary tests leave gaps.
 
