@@ -50,19 +50,6 @@ Frontend implementation and tests belong to story 28. Feature work requires a Re
 - [ ] Owner: two real Chrome windows with system audio, one DJ and one listener who never joined voice, over the course of a whole game, and report the result; an attempt from Firefox and Safari confirms they are shown the cannot-share warning
 - [ ] Owner: Cloudflare TURN check. Both credentials are set on core; connect two devices on different networks with forced relay and confirm voice and the song stream still arrive. Add backend integration coverage if the HTTP-boundary tests leave gaps.
 
-## Story 28: Frontend completion
-
-The backend for account management and two-factor sign-in exists: `PATCH /api/users/me`, `GET /api/users/me/export`, `DELETE /api/users/me`, and `/auth/2fa/setup`, `/auth/2fa/confirm`, `/auth/2fa/disable`, `/auth/2fa/verify`. The frontend has no screens for any of them; only the generated hooks exist.
-
-- [x] Account settings route `/settings` (linked from the user menu in `frontend/components/nav-user.tsx`) with three parts: edit username and email (`PATCH /api/users/me`), download a personal data export (`GET /api/users/me/export`, saved as a JSON file), and delete the account behind a typed confirmation (`DELETE /api/users/me`, then clear the session and go to the landing page). Needs an approved mockup first: add dark and light account artboards to the design board and update `FRONTEND_CONTENT.md` and `FRONTEND_IMPLEMENTATION_GUIDE.md`.
-  - Done when: each action works against the real backend, errors are shown in the page, the route is protected by the proxy, and unit tests cover permission, failure and confirmation paths.
-- [x] Two-factor screens on the settings route: setup with provisioning QR and secret, confirmation code entry, one-time backup codes shown once, disable with proof, and a second step on login that accepts a TOTP code or a backup code (`frontend/app/(marketing)/(auth)/(credentials)/login/page.tsx`)
-  - Depends on: the account settings route above.
-- [x] Unit and backend-backed browser tests for two-factor: success, invalid code, disable proof, and one-use backup codes
-- [x] Compare all app routes and states at 1440x900 in both themes against the design board: identity and truncation, popups, playlist actions, tier selection, imports, gameplay and countdowns, results, admin, and history; fix every difference
-- [ ] Compare only the landing page on mobile at 390x844 in both themes
-- [x] Review the exact Joined-tab copy
-
 ## Story 47: Mockup reconciliation
 
 - [ ] Update the remaining source artboards and the published canvas to match the requirements approved during story 28's visual pass (account settings, audio check, recheck page), and validate that source and canvas are equal

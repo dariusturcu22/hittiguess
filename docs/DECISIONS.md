@@ -1566,3 +1566,11 @@ Why: the playlist library requires distinct feedback when a filter has no items 
 Decision: all primary application routes and states at 1440x900 in both dark (Catppuccin Mocha) and light (Catppuccin Latte) themes conform to the design board specifications, including user identity and truncation rules, popup placement and dismiss behavior, playlist action menus, difficulty tier and custom playlist selection, playlist import flows, gameplay phase countdowns and lock-ins, results podium and export actions, admin consoles and review drawers, and game history views. The Explore playlist card container radius aligns to `rounded-2xl` (16px) matching the library card standard.
 
 Why: maintaining visual consistency across themes and screens prevents styling regressions and ensures that interactive dialogs, status badges, and layout anchors match the approved design board across desktop viewports.
+
+---
+
+## 2026-10-31 | Mobile landing page 390x844 responsive comparison
+
+Decision: the landing page responsive layout at 390x844 conforms to `LandingMobileDark.dc.html` and `LandingMobileLight.dc.html` across both themes, verifying hero typography and card deck tilts, the mobile SVG winding path for round steps, section highlight offsets and backdrop containers, full-width call-to-action buttons, and mobile footer link labels.
+
+Why: the marketing landing page is the only view with a dedicated mobile design artboard in the design specification. Confirming exact 390x844 breakpoint behavior in both light and dark palettes ensures mobile visitors experience the intended visual presentation before entering the app.

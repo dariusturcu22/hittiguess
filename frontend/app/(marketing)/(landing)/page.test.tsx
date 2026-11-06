@@ -26,4 +26,22 @@ describe("LandingPage", () => {
     registerLinks.forEach((link) => expect(link.getAttribute("href")).toBe("/register"));
     screen.getAllByRole("link", { name: /sign in/i }).forEach((link) => expect(link.getAttribute("href")).toBe("/login"));
   });
+
+  it("renders both desktop and mobile structure variants for responsive viewports", () => {
+    const { container } = render(<LandingPage />);
+
+    expect(container.querySelector(".desktop-path")).toBeTruthy();
+    expect(container.querySelector(".mobile-path")).toBeTruthy();
+
+    const mobileOnlyElements = container.querySelectorAll(".mobile-only");
+    expect(mobileOnlyElements.length).toBeGreaterThan(0);
+
+    const desktopOnlyElements = container.querySelectorAll(".desktop-only");
+    expect(desktopOnlyElements.length).toBeGreaterThan(0);
+
+    expect(screen.getByText("How a round works")).toBeVisible();
+    expect(screen.getByText(/YOUR MUSIC/)).toBeVisible();
+    expect(screen.getByText(/BET IT/)).toBeVisible();
+    expect(screen.getByText(/PLAY TOGETHER/)).toBeVisible();
+  });
 });
