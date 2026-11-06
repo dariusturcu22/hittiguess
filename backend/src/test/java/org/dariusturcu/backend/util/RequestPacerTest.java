@@ -14,11 +14,12 @@ class RequestPacerTest {
 
     private static final Duration INTERVAL = Duration.ofMillis(40);
     private static final int CONCURRENT_CALLER_COUNT = 6;
-    // Absorbs scheduler jitter between a sleep ending and the timestamp being taken.
+    // Absorbs a sleep that returns marginally early.
     private static final double TIMING_TOLERANCE_FRACTION = 0.8;
 
     @Test
     void concurrentCallersAreSpacedByTheIntervalInsteadOfBursting() throws InterruptedException {
+        long pacerCreatedNanos = System.nanoTime();
         RequestPacer pacer = new RequestPacer(INTERVAL);
         List<Long> releaseTimes = Collections.synchronizedList(new ArrayList<>());
         CountDownLatch startTogether = new CountDownLatch(1);
@@ -44,9 +45,13 @@ class RequestPacerTest {
 
         List<Long> ordered = releaseTimes.stream().sorted().toList();
         assertThat(ordered).hasSize(CONCURRENT_CALLER_COUNT);
-        for (int index = 1; index < ordered.size(); index++) {
-            long gapNanos = ordered.get(index) - ordered.get(index - 1);
-            assertThat(gapNanos).isGreaterThanOrEqualTo((long) (INTERVAL.toNanos() * TIMING_TOLERANCE_FRACTION));
+        // The pacer hands out slots at creation time + k * interval, and a caller is never released
+        // before its slot, so the k-th release (in time order) cannot precede the k-th slot. Measuring
+        // from creation keeps scheduler delay after a release from affecting the result.
+        for (int index = 0; index < ordered.size(); index++) {
+            long elapsedNanos = ordered.get(index) - pacerCreatedNanos;
+            long minimumElapsedNanos = (long) (INTERVAL.toNanos() * index * TIMING_TOLERANCE_FRACTION);
+            assertThat(elapsedNanos).isGreaterThanOrEqualTo(minimumElapsedNanos);
         }
     }
 }
