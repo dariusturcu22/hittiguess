@@ -154,7 +154,8 @@ export default function ImportYoutubePage({ params }: PageProps) {
       enabled: isImportStarted,
     },
   });
-  const isJobGone = activeImportQuery.isError && isJobGoneError(activeImportQuery.error);
+  const isJobGone = (!activeImportQuery.isLoading && !activeImportQuery.isError && !activeImportQuery.data)
+    || (activeImportQuery.isError && isJobGoneError(activeImportQuery.error));
   // Once the job finishes it stops being the active import, often between two polls
   // now that songs resolve in parallel, so its final results are read by id.
   const finishedImportQuery = useImportJob(playlistId, importJobId ?? "", {

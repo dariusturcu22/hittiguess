@@ -75,7 +75,7 @@ vi.mock("@/hooks/generated/group-management/group-management", () => ({
   useLeaveGroup: () => ({ mutate: leaveGroupMutate, isPending: leaveGroupPending }),
 }));
 
-let activeImportResponse: { data?: unknown; isError: boolean } = { isError: true };
+let activeImportResponse: { data?: unknown; isError: boolean } = { isError: false, data: undefined };
 
 vi.mock("@/hooks/generated/playlist-import-jobs/playlist-import-jobs", () => ({
   useActiveImport: () => activeImportResponse,
@@ -114,7 +114,7 @@ describe("PlaylistContent detail states", () => {
       { userId: 11, displayName: "Alex", username: "alex", owner: true },
       { userId: 12, displayName: "Sam", username: "sam", owner: false },
     ];
-    activeImportResponse = { isError: true };
+    activeImportResponse = { isError: false, data: undefined };
     Object.defineProperty(window.navigator, "clipboard", {
       value: { writeText: vi.fn(() => Promise.resolve()) },
       configurable: true,
