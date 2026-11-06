@@ -106,6 +106,20 @@ class PipelineRetentionIntegrationTest {
     }
 
     @Test
+    void keepsFinishedStageJobsOfARunThatIsStillActive() {
+        Instant staleFinishTime = Instant.now().minus(STALE_RUN_AGE_DAYS, ChronoUnit.DAYS);
+        long activeRunId = insertRun("videoActiveWithOldStage", "ACTIVE", null);
+        insertJob(activeRunId, "YOUTUBE_METADATA", "DONE", staleFinishTime);
+        insertJob(activeRunId, "MUSICBRAINZ", "WAITING", null);
+
+        retentionService.purgeTerminalPipelineRunsAndJobs();
+
+        Integer remainingJobsOfActiveRun = jdbcTemplate.queryForObject(
+                "SELECT count(*) FROM pipeline_jobs WHERE run_id = ?", Integer.class, activeRunId);
+        assertThat(remainingJobsOfActiveRun).isEqualTo(2);
+    }
+
+    @Test
     void sweeperExecutesSuccessfullyWithoutError() {
         Instant staleFinishTime = Instant.now().minus(STALE_RUN_AGE_DAYS, ChronoUnit.DAYS);
         long runId = insertRun("videoOldSweeper", "DONE", staleFinishTime);
@@ -135,8 +149,8 @@ class PipelineRetentionIntegrationTest {
         Instant staleCompletedAt = Instant.now().minus(STALE_RUN_AGE_DAYS, ChronoUnit.DAYS);
         Instant recentCompletedAt = Instant.now().minus(RECENT_RUN_AGE_DAYS, ChronoUnit.DAYS);
 
-        insertPlaylistImportJob("stale-completed-job", playlistId, "COMPLETED", staleCompletedAt, staleCompletedAt);
-        insertPlaylistImportJobItem("stale-completed-job", "video1", "Raw Video 1", "Raw Channel 1");
+        insertPlaylistImportJob("stale-done-job", playlistId, "DONE", staleCompletedAt, staleCompletedAt);
+        insertPlaylistImportJobItem("stale-done-job", "video1", "Raw Video 1", "Raw Channel 1");
 
         insertPlaylistImportJob("stale-failed-job", playlistId, "FAILED", staleCompletedAt, null);
         insertPlaylistImportJobItem("stale-failed-job", "video2", "Raw Video 2", "Raw Channel 2");
@@ -144,8 +158,8 @@ class PipelineRetentionIntegrationTest {
         insertPlaylistImportJob("stale-running-job", playlistId, "RUNNING", staleCompletedAt, null);
         insertPlaylistImportJobItem("stale-running-job", "video3", "Raw Video 3", "Raw Channel 3");
 
-        insertPlaylistImportJob("recent-completed-job", playlistId, "COMPLETED", recentCompletedAt, recentCompletedAt);
-        insertPlaylistImportJobItem("recent-completed-job", "video4", "Raw Video 4", "Raw Channel 4");
+        insertPlaylistImportJob("recent-done-job", playlistId, "DONE", recentCompletedAt, recentCompletedAt);
+        insertPlaylistImportJobItem("recent-done-job", "video4", "Raw Video 4", "Raw Channel 4");
 
         retentionService.purgeTerminalPipelineRunsAndJobs();
 
@@ -158,7 +172,7 @@ class PipelineRetentionIntegrationTest {
         assertThat(remainingItems).isEqualTo(2);
 
         Integer staleCompletedCount = jdbcTemplate.queryForObject(
-                "SELECT count(*) FROM playlist_import_jobs WHERE id = 'stale-completed-job'", Integer.class);
+                "SELECT count(*) FROM playlist_import_jobs WHERE id = 'stale-done-job'", Integer.class);
         assertThat(staleCompletedCount).isZero();
 
         Integer staleFailedCount = jdbcTemplate.queryForObject(
@@ -170,7 +184,7 @@ class PipelineRetentionIntegrationTest {
         assertThat(staleRunningCount).isEqualTo(1);
 
         Integer recentCompletedCount = jdbcTemplate.queryForObject(
-                "SELECT count(*) FROM playlist_import_jobs WHERE id = 'recent-completed-job'", Integer.class);
+                "SELECT count(*) FROM playlist_import_jobs WHERE id = 'recent-done-job'", Integer.class);
         assertThat(recentCompletedCount).isEqualTo(1);
     }
 

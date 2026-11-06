@@ -12,6 +12,8 @@ import java.time.temporal.ChronoUnit;
 @Slf4j
 public class PipelineRetentionService {
 
+    private static final int MINIMUM_RETENTION_DAYS = 1;
+
     private final PipelineJobRepository pipelineJobRepository;
     private final int pipelineRetentionDays;
 
@@ -19,6 +21,11 @@ public class PipelineRetentionService {
             PipelineJobRepository pipelineJobRepository,
             @Value("${retention.pipeline-jobs-days:30}") int pipelineRetentionDays
     ) {
+        if (pipelineRetentionDays < MINIMUM_RETENTION_DAYS) {
+            throw new IllegalStateException("retention.pipeline-jobs-days (RETENTION_PIPELINE_JOBS_DAYS) must be at least "
+                    + MINIMUM_RETENTION_DAYS + " but was " + pipelineRetentionDays
+                    + ", a smaller value would purge every finished pipeline job immediately");
+        }
         this.pipelineJobRepository = pipelineJobRepository;
         this.pipelineRetentionDays = pipelineRetentionDays;
     }
