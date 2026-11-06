@@ -1,0 +1,883 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bungee&family=Baloo+2:wght@700;800&family=Space+Grotesk:wght@400;500;600;700&display=swap">
+  <style>
+    body { margin: 0; }
+    .navicon { width: 46px; height: 46px; border-radius: 14px; display: flex; align-items: center; justify-content: center; cursor: pointer; color: #9ca0b0; }
+    .navicon.admin { width: 42px; height: 42px; color: #d20f39; opacity: 0.72; }
+    .navicon.admin-active { opacity: 1; background: rgba(210,15,57,0.13); box-shadow: 0 0 0 2px #d20f39; }
+    .divider { width: 32px; height: 2px; background: #ccd0da; border-radius: 2px; margin: 14px auto; flex-shrink: 0; }
+    .divider.admin { background: rgba(210,15,57,0.35); margin: 12px auto 8px; }
+    .card { background: #ffffff; border: 3px solid #4c4f69; border-radius: 16px; box-shadow: 6px 6px 0 rgba(76,79,105,0.25); box-sizing: border-box; }
+    .card-title { font-family: 'Bungee', sans-serif; font-size: 14px; color: #4c4f69; }
+    .stat-label { font-weight: 600; font-size: 11px; letter-spacing: 0.5px; text-transform: uppercase; color: #5c5f77; margin-bottom: 8px; }
+    .stat-value { font-family: 'Bungee', sans-serif; font-size: 34px; }
+    .muted { color: #9ca0b0; }
+    .sub { color: #5c5f77; }
+    .pill { font-family: 'Bungee', sans-serif; font-size: 9px; padding: 4px 10px; border-radius: 100px; white-space: nowrap; display: inline-block; }
+    .pill.verified { background: rgba(73,159,54,0.15); color: #499f36; }
+    .pill.review { background: rgba(212,144,50,0.16); color: #d49032; }
+    .pill.queue { background: rgba(76,79,105,0.12); color: #5c5f77; }
+    .pill.processing { background: rgba(55,114,230,0.15); color: #3772e6; }
+    .pill.error { background: rgba(210,15,57,0.13); color: #d20f39; }
+    .pill.paused { background: rgba(212,144,50,0.16); color: #d49032; }
+    .pill.cooling { background: rgba(237,111,39,0.15); color: #ed6f27; }
+    .pill.running { background: rgba(73,159,54,0.15); color: #499f36; }
+    .btn { font-family: 'Bungee', sans-serif; font-size: 11px; padding: 10px 18px; border-radius: 100px; display: inline-flex; align-items: center; gap: 8px; cursor: pointer; border: none; box-sizing: border-box; white-space: nowrap; }
+    .btn.primary { color: #ffffff; background: #ed6f27; box-shadow: 4px 4px 0 rgba(76,79,105,0.25); }
+    .btn.ghost { color: #4c4f69; background: #ccd0da; }
+    .btn.danger { color: #d20f39; background: rgba(210,15,57,0.12); }
+    .btn.small { font-size: 9px; padding: 6px 12px; }
+    .tab { font-family: 'Bungee', sans-serif; font-size: 12px; padding: 9px 18px; border-radius: 100px; color: #5c5f77; cursor: pointer; }
+    .tab.active { background: #8839ef; color: #ffffff; box-shadow: 3px 3px 0 rgba(76,79,105,0.25); }
+    .chip { font-size: 12px; font-weight: 600; padding: 7px 14px; border-radius: 100px; background: #ffffff; color: #5c5f77; cursor: pointer; border: 2px solid #ccd0da; white-space: nowrap; }
+    .chip.active { background: rgba(136,57,239,0.12); color: #8839ef; border-color: #8839ef; }
+    .bar { height: 8px; border-radius: 100px; background: #eff1f5; overflow: hidden; }
+    .bar > div { height: 100%; border-radius: 100px; }
+    .field { background: #eff1f5; border: 2px solid #ccd0da; border-radius: 13px; padding: 12px 16px; font-size: 14px; color: #4c4f69; box-sizing: border-box; display: flex; align-items: center; gap: 10px; }
+    .field-label { font-size: 11px; font-weight: 600; color: #5c5f77; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; display: block; }
+    .row { display: flex; align-items: center; gap: 14px; padding: 11px 20px; border-bottom: 2px solid #eff1f5; }
+    .row:last-child { border-bottom: none; }
+    .th { font-weight: 600; font-size: 10px; letter-spacing: 0.5px; text-transform: uppercase; color: #9ca0b0; }
+    .stage { width: 30px; height: 22px; border-radius: 7px; font-family: 'Bungee', sans-serif; font-size: 8px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .stage.done { background: rgba(73,159,54,0.16); color: #499f36; }
+    .stage.running { background: rgba(55,114,230,0.18); color: #3772e6; box-shadow: 0 0 0 2px #3772e6; }
+    .stage.waiting { background: #ccd0da; color: #5c5f77; }
+    .stage.skipped { background: transparent; color: #9ca0b0; border: 2px dashed #ccd0da; }
+    .stage.failed { background: rgba(210,15,57,0.16); color: #d20f39; box-shadow: 0 0 0 2px #d20f39; }
+    .stage.retry { background: rgba(237,111,39,0.16); color: #ed6f27; box-shadow: 0 0 0 2px #ed6f27; }
+    .custom-scroll::-webkit-scrollbar { width: 8px; }
+    .custom-scroll::-webkit-scrollbar-thumb { background: #ccd0da; border-radius: 100px; }
+    .cb { width: 20px; height: 20px; border-radius: 6px; border: 2px solid #9ca0b0; background: #ffffff; box-sizing: border-box; display: flex; align-items: center; justify-content: center; flex-shrink: 0; cursor: pointer; }
+    .cb.on, .cb.mixed { background: #8839ef; border-color: #8839ef; }
+    .cb.disabled { opacity: 0.35; cursor: not-allowed; }
+    .month { display: flex; align-items: center; gap: 14px; padding: 12px 20px; background: #e6e9ef; border-bottom: 2px solid #eff1f5; }
+    .month .name { font-family: 'Bungee', sans-serif; font-size: 13px; color: #4c4f69; }
+    .month .count { font-size: 12px; color: #5c5f77; }
+    .song { display: flex; align-items: center; gap: 14px; padding: 9px 20px 9px 54px; border-bottom: 2px solid #eff1f5; }
+    .song.picked { background: rgba(136,57,239,0.08); }
+    .song.locked .t, .song.locked .a, .song.locked .y { opacity: 0.45; }
+    .t { width: 290px; font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #4c4f69; }
+    .a { width: 220px; font-size: 13px; color: #5c5f77; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .y { width: 70px; font-size: 13px; color: #4c4f69; }
+    .tag-game { font-family: 'Bungee', sans-serif; font-size: 9px; padding: 4px 10px; border-radius: 100px; background: rgba(237,111,39,0.15); color: #ed6f27; white-space: nowrap; }
+    .frame { width: 1440px; height: 900px; background: #eff1f5; font-family: 'Space Grotesk', sans-serif; box-sizing: border-box; color: #4c4f69; display: flex; overflow: hidden; position: relative; }
+    .frame-label { height: 60px; display: flex; align-items: center; font-family: 'Bungee', sans-serif; font-size: 16px; color: #5c5f77; }
+    @keyframes toastIn { 0% { opacity: 0; transform: translate(16px, -6px); } 100% { opacity: 1; transform: translate(0, 0); } }
+    .toast { animation: toastIn 0.5s ease-out; }
+  </style>
+</helmet>
+<div style="width: 1440px; background: #dce0e8; font-family: 'Space Grotesk', sans-serif;">
+
+<div class="frame-label">A. Months with the newest expanded and partly selected</div>
+<div class="frame">
+  
+  <div style="width: 76px; flex-shrink: 0; background: #e6e9ef; display: flex; flex-direction: column; align-items: center; padding: 20px 0; box-sizing: border-box; border-right: 3px solid #ccd0da;">
+    <div style="display: flex; align-items: center; gap: 2px; height: 22px;">
+      <div style="background: #499f36; width: 5px; height: 10px; border-radius: 100px;"></div>
+      <div style="background: #499f36; width: 5px; height: 20px; border-radius: 100px;"></div>
+      <div style="background: #499f36; width: 5px; height: 14px; border-radius: 100px;"></div>
+      <div style="background: #499f36; width: 5px; height: 22px; border-radius: 100px;"></div>
+    </div>
+    <div class="divider"></div>
+    <div class="navicon" title="Play / start a session">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="#4c4f69"><path d="M8 5v14l11-7z"></path></svg>
+    </div>
+    <div class="divider"></div>
+    <div style="display: flex; flex-direction: column; gap: 14px;">
+      <div class="navicon" title="Your playlists">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="6" x2="13" y2="6"></line><line x1="4" y1="12" x2="13" y2="12"></line><line x1="4" y1="18" x2="9" y2="18"></line><circle cx="18" cy="16" r="2.3"></circle><path d="M20.3 16V6.5l-2.8 1"></path></svg>
+      </div>
+      <div class="navicon" title="Explore public playlists">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"></circle><polygon points="15.5 8.5 13 13 8.5 15.5 11 11" fill="currentColor" stroke-linejoin="round"></polygon></svg>
+      </div>
+    </div>
+    <div class="divider"></div>
+    <div class="navicon" title="Group lobby">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+    </div>
+    <div class="divider admin"></div>
+    <div style="font-family: 'Bungee', sans-serif; font-size: 8px; color: #d20f39; letter-spacing: 1px; margin-bottom: 8px;">ADMIN</div>
+    <div style="display: flex; flex-direction: column; gap: 8px;">
+      <div class="navicon admin" title="Admin: dashboard"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9" rx="1.5"></rect><rect x="14" y="3" width="7" height="5" rx="1.5"></rect><rect x="14" y="12" width="7" height="9" rx="1.5"></rect><rect x="3" y="16" width="7" height="5" rx="1.5"></rect></svg></div>
+      <div class="navicon admin" title="Admin: backfill queue"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l9 4.5-9 4.5-9-4.5z"></path><path d="M3 12l9 4.5 9-4.5"></path><path d="M3 16.5L12 21l9-4.5"></path></svg></div>
+      <div class="navicon admin admin-active" title="Admin: song catalog"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="8" ry="3"></ellipse><path d="M4 5v6c0 1.66 3.58 3 8 3s8-1.34 8-3V5"></path><path d="M4 11v6c0 1.66 3.58 3 8 3s8-1.34 8-3v-6"></path></svg></div>
+      <div class="navicon admin" title="Admin: reports"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 22V4"></path><path d="M4 4h13l-2 4 2 4H4"></path></svg></div>
+    </div>
+    <div style="flex: 1;"></div>
+    <div class="navicon" title="Theme">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
+    </div>
+    <div style="height: 16px;"></div>
+    <div style="width: 44px; height: 44px; border-radius: 50%; background: #ed6f27; border: 2px solid #ccd0da; display: flex; align-items: center; justify-content: center; font-family: 'Bungee', sans-serif; font-size: 16px; color: #ffffff; cursor: pointer;">D</div>
+  </div>
+  <div style="flex: 1; min-width: 0; box-sizing: border-box; background-image: radial-gradient(circle, rgba(76,79,105,0.2) 1.5px, transparent 1.5px); background-size: 22px 22px; padding: 40px 56px 36px; display: flex; flex-direction: column; position: relative;">
+    <div style="display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 18px; flex-shrink: 0;">
+      <div>
+        <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 4px;">
+          <div style="font-family: 'Bungee', sans-serif; font-size: 30px; color: #8839ef; text-shadow: 3px 3px 0 rgba(76,79,105,0.25);">Recheck songs</div>
+          <div style="display: inline-flex; background: rgba(210,15,57,0.12); color: #d20f39; font-family: 'Bungee', sans-serif; font-size: 10px; padding: 5px 11px; border-radius: 100px;">ADMIN</div>
+        </div>
+        <div style="font-size: 13px; color: #5c5f77;">Choose which songs go back through the metadata pipeline.</div>
+      </div>
+      <div style="display: flex; gap: 12px; align-items: center;"><span class="btn ghost">Back to song catalog</span></div>
+    </div>
+
+    <div style="display: flex; gap: 16px; margin-bottom: 14px; flex-shrink: 0; align-items: center;">
+      <div style="display: flex; align-items: center; gap: 10px; background: #ffffff; border: 2px solid #ccd0da; border-radius: 100px; padding: 8px 16px 8px 12px;">
+        <div class="cb mixed"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="4" stroke-linecap="round"><line x1="5" y1="12" x2="19" y2="12"></line></svg></div>
+        <span style="font-size: 13px; font-weight: 600;">Select all</span>
+        <span style="font-size: 12px; color: #5c5f77;">12 of 5,141 selected</span>
+      </div>
+      <span style="font-size: 11px; color: #9ca0b0;">Grouped by month last checked. Songs never checked are grouped by the month they were added. 23 songs in active games cannot be selected.</span>
+    </div>
+
+    <div class="card" style="flex: 1; min-height: 0; overflow: hidden; display: flex; flex-direction: column;">
+      <div class="row th" style="padding: 10px 20px; border-bottom: 2px solid #eff1f5;">
+        <div style="width: 34px;"></div><div style="width: 290px; margin-left: 20px;">Title</div><div style="width: 220px;">Artist</div><div style="width: 70px;">Year</div><div style="width: 130px;">Status</div><div style="flex: 1; text-align: right;">Last checked</div>
+      </div>
+      <div style="flex: 1; min-height: 0; overflow: hidden;">
+          <div class="month">
+            <div class="cb mixed"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="4" stroke-linecap="round"><line x1="5" y1="12" x2="19" y2="12"></line></svg></div>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#5c5f77" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+            <div class="name">October 2026</div>
+            <div class="count">12 of 40 selected<span style="color: #ed6f27;">, 1 in an active game</span></div>
+          </div>
+          <div class="song picked">
+            <div class="cb on"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 12 10 18 20 6"></polyline></svg></div>
+            <div class="t">Dragostea Din Tei</div>
+            <div class="a">O-Zone</div>
+            <div class="y">2003</div>
+            <div style="width: 130px;"><span class="pill verified" style="">VERIFIED</span></div>
+            <div style="flex: 1; min-width: 0; font-size: 12px; color: #5c5f77; text-align: right;">Oct 28</div>
+          </div>
+          <div class="song picked">
+            <div class="cb on"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 12 10 18 20 6"></polyline></svg></div>
+            <div class="t">What Is Love</div>
+            <div class="a">Haddaway</div>
+            <div class="y">1993</div>
+            <div style="width: 130px;"><span class="pill verified" style="">VERIFIED</span></div>
+            <div style="flex: 1; min-width: 0; font-size: 12px; color: #5c5f77; text-align: right;">Oct 28</div>
+          </div>
+          <div class="song picked">
+            <div class="cb on"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 12 10 18 20 6"></polyline></svg></div>
+            <div class="t">Zi-mi</div>
+            <div class="a">Loredana</div>
+            <div class="y">2019</div>
+            <div style="width: 130px;"><span class="pill review" style="">NEEDS REVIEW</span></div>
+            <div style="flex: 1; min-width: 0; font-size: 12px; color: #5c5f77; text-align: right;">Oct 27</div>
+          </div>
+          <div class="song  locked">
+            <div class="cb  disabled"></div>
+            <div class="t">Barbie Girl</div>
+            <div class="a">Aqua</div>
+            <div class="y">1997</div>
+            <div style="width: 130px;"><span class="pill verified" style="opacity: 0.45;">VERIFIED</span></div>
+            <div style="flex: 1; min-width: 0; text-align: right;"><span class="tag-game">IN AN ACTIVE GAME</span></div>
+          </div>
+          <div class="song">
+            <div class="cb "></div>
+            <div class="t">Sa nu-mi iei niciodata</div>
+            <div class="a">Holograf</div>
+            <div class="y">1996</div>
+            <div style="width: 130px;"><span class="pill review" style="">NEEDS REVIEW</span></div>
+            <div style="flex: 1; min-width: 0; font-size: 12px; color: #5c5f77; text-align: right;">Oct 25</div>
+          </div>
+          <div class="song">
+            <div class="cb "></div>
+            <div class="t">Motorul</div>
+            <div class="a">Bere Gheorghe</div>
+            <div class="y">2008</div>
+            <div style="width: 130px;"><span class="pill verified" style="">VERIFIED</span></div>
+            <div style="flex: 1; min-width: 0; font-size: 12px; color: #5c5f77; text-align: right;">Oct 24</div>
+          </div>
+          <div class="song">
+            <div class="cb "></div>
+            <div class="t">Take Five</div>
+            <div class="a">The Dave Brubeck Quartet</div>
+            <div class="y">1959</div>
+            <div style="width: 130px;"><span class="pill verified" style="">VERIFIED</span></div>
+            <div style="flex: 1; min-width: 0; font-size: 12px; color: #5c5f77; text-align: right;">Oct 22</div>
+          </div>
+          <div class="song">
+            <div class="cb "></div>
+            <div class="t">Time (The Revenant Mix)</div>
+            <div class="a">Hans Zimmer</div>
+            <div class="y">2010</div>
+            <div style="width: 130px;"><span class="pill verified" style="">VERIFIED</span></div>
+            <div style="flex: 1; min-width: 0; font-size: 12px; color: #5c5f77; text-align: right;">Oct 22</div>
+          </div>
+          <div class="month">
+            <div class="cb "></div>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#5c5f77" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 6 15 12 9 18"></polyline></svg>
+            <div class="name">September 2026</div>
+            <div class="count">0 of 209 selected<span style="color: #ed6f27;">, 3 in an active game</span></div>
+          </div>
+          <div class="month">
+            <div class="cb "></div>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#5c5f77" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 6 15 12 9 18"></polyline></svg>
+            <div class="name">August 2026</div>
+            <div class="count">0 of 383 selected<span style="color: #ed6f27;">, 5 in an active game</span></div>
+          </div>
+          <div class="month">
+            <div class="cb "></div>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#5c5f77" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 6 15 12 9 18"></polyline></svg>
+            <div class="name">July 2026</div>
+            <div class="count">0 of 598 selected<span style="color: #ed6f27;">, 6 in an active game</span></div>
+          </div>
+          <div class="month">
+            <div class="cb "></div>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#5c5f77" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 6 15 12 9 18"></polyline></svg>
+            <div class="name">June 2026</div>
+            <div class="count">0 of 727 selected<span style="color: #ed6f27;">, 4 in an active game</span></div>
+          </div>
+          <div class="month">
+            <div class="cb "></div>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#5c5f77" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 6 15 12 9 18"></polyline></svg>
+            <div class="name">May 2026</div>
+            <div class="count">0 of 900 selected<span style="color: #ed6f27;">, 2 in an active game</span></div>
+          </div>
+          <div class="month">
+            <div class="cb "></div>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#5c5f77" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 6 15 12 9 18"></polyline></svg>
+            <div class="name">April 2026</div>
+            <div class="count">0 of 1,043 selected<span style="color: #ed6f27;">, 1 in an active game</span></div>
+          </div>
+          <div class="month">
+            <div class="cb "></div>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#5c5f77" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 6 15 12 9 18"></polyline></svg>
+            <div class="name">March 2026</div>
+            <div class="count">0 of 1,241 selected<span style="color: #ed6f27;">, 1 in an active game</span></div>
+          </div>
+      </div>
+    </div>
+    
+    <div style="position: absolute; left: 56px; right: 56px; bottom: 22px; display: flex; align-items: center; justify-content: space-between; background: #ffffff; border: 3px solid #4c4f69; border-radius: 16px; box-shadow: 6px 6px 0 rgba(76,79,105,0.25); padding: 14px 20px; box-sizing: border-box;">
+      <div>
+        <div style="font-family: 'Bungee', sans-serif; font-size: 14px; color: #4c4f69;">12 songs selected</div>
+        <div style="font-size: 12px; color: #5c5f77; margin-top: 3px;">Songs in an active game are never selected and would be skipped.</div>
+      </div>
+      <div style="display: flex; gap: 12px; align-items: center;">
+        <span class="btn ghost">Clear selection</span>
+        <span class="btn primary">Recheck 12 songs</span>
+      </div>
+    </div>
+    
+  </div>
+</div>
+<div style="height: 60px;"></div>
+
+<div class="frame-label">B. Select all with the sticky action bar</div>
+<div class="frame">
+  
+  <div style="width: 76px; flex-shrink: 0; background: #e6e9ef; display: flex; flex-direction: column; align-items: center; padding: 20px 0; box-sizing: border-box; border-right: 3px solid #ccd0da;">
+    <div style="display: flex; align-items: center; gap: 2px; height: 22px;">
+      <div style="background: #499f36; width: 5px; height: 10px; border-radius: 100px;"></div>
+      <div style="background: #499f36; width: 5px; height: 20px; border-radius: 100px;"></div>
+      <div style="background: #499f36; width: 5px; height: 14px; border-radius: 100px;"></div>
+      <div style="background: #499f36; width: 5px; height: 22px; border-radius: 100px;"></div>
+    </div>
+    <div class="divider"></div>
+    <div class="navicon" title="Play / start a session">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="#4c4f69"><path d="M8 5v14l11-7z"></path></svg>
+    </div>
+    <div class="divider"></div>
+    <div style="display: flex; flex-direction: column; gap: 14px;">
+      <div class="navicon" title="Your playlists">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="6" x2="13" y2="6"></line><line x1="4" y1="12" x2="13" y2="12"></line><line x1="4" y1="18" x2="9" y2="18"></line><circle cx="18" cy="16" r="2.3"></circle><path d="M20.3 16V6.5l-2.8 1"></path></svg>
+      </div>
+      <div class="navicon" title="Explore public playlists">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"></circle><polygon points="15.5 8.5 13 13 8.5 15.5 11 11" fill="currentColor" stroke-linejoin="round"></polygon></svg>
+      </div>
+    </div>
+    <div class="divider"></div>
+    <div class="navicon" title="Group lobby">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+    </div>
+    <div class="divider admin"></div>
+    <div style="font-family: 'Bungee', sans-serif; font-size: 8px; color: #d20f39; letter-spacing: 1px; margin-bottom: 8px;">ADMIN</div>
+    <div style="display: flex; flex-direction: column; gap: 8px;">
+      <div class="navicon admin" title="Admin: dashboard"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9" rx="1.5"></rect><rect x="14" y="3" width="7" height="5" rx="1.5"></rect><rect x="14" y="12" width="7" height="9" rx="1.5"></rect><rect x="3" y="16" width="7" height="5" rx="1.5"></rect></svg></div>
+      <div class="navicon admin" title="Admin: backfill queue"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l9 4.5-9 4.5-9-4.5z"></path><path d="M3 12l9 4.5 9-4.5"></path><path d="M3 16.5L12 21l9-4.5"></path></svg></div>
+      <div class="navicon admin admin-active" title="Admin: song catalog"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="8" ry="3"></ellipse><path d="M4 5v6c0 1.66 3.58 3 8 3s8-1.34 8-3V5"></path><path d="M4 11v6c0 1.66 3.58 3 8 3s8-1.34 8-3v-6"></path></svg></div>
+      <div class="navicon admin" title="Admin: reports"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 22V4"></path><path d="M4 4h13l-2 4 2 4H4"></path></svg></div>
+    </div>
+    <div style="flex: 1;"></div>
+    <div class="navicon" title="Theme">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
+    </div>
+    <div style="height: 16px;"></div>
+    <div style="width: 44px; height: 44px; border-radius: 50%; background: #ed6f27; border: 2px solid #ccd0da; display: flex; align-items: center; justify-content: center; font-family: 'Bungee', sans-serif; font-size: 16px; color: #ffffff; cursor: pointer;">D</div>
+  </div>
+  <div style="flex: 1; min-width: 0; box-sizing: border-box; background-image: radial-gradient(circle, rgba(76,79,105,0.2) 1.5px, transparent 1.5px); background-size: 22px 22px; padding: 40px 56px 36px; display: flex; flex-direction: column; position: relative;">
+    <div style="display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 18px; flex-shrink: 0;">
+      <div>
+        <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 4px;">
+          <div style="font-family: 'Bungee', sans-serif; font-size: 30px; color: #8839ef; text-shadow: 3px 3px 0 rgba(76,79,105,0.25);">Recheck songs</div>
+          <div style="display: inline-flex; background: rgba(210,15,57,0.12); color: #d20f39; font-family: 'Bungee', sans-serif; font-size: 10px; padding: 5px 11px; border-radius: 100px;">ADMIN</div>
+        </div>
+        <div style="font-size: 13px; color: #5c5f77;">Choose which songs go back through the metadata pipeline.</div>
+      </div>
+      <div style="display: flex; gap: 12px; align-items: center;"><span class="btn ghost">Back to song catalog</span></div>
+    </div>
+
+    <div style="display: flex; gap: 16px; margin-bottom: 14px; flex-shrink: 0; align-items: center;">
+      <div style="display: flex; align-items: center; gap: 10px; background: #ffffff; border: 2px solid #ccd0da; border-radius: 100px; padding: 8px 16px 8px 12px;">
+        <div class="cb on"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 12 10 18 20 6"></polyline></svg></div>
+        <span style="font-size: 13px; font-weight: 600;">Select all</span>
+        <span style="font-size: 12px; color: #5c5f77;">5,141 of 5,141 selected</span>
+      </div>
+      <span style="font-size: 11px; color: #9ca0b0;">Grouped by month last checked. Songs never checked are grouped by the month they were added. 23 songs in active games cannot be selected.</span>
+    </div>
+
+    <div class="card" style="flex: 1; min-height: 0; overflow: hidden; display: flex; flex-direction: column;">
+      <div class="row th" style="padding: 10px 20px; border-bottom: 2px solid #eff1f5;">
+        <div style="width: 34px;"></div><div style="width: 290px; margin-left: 20px;">Title</div><div style="width: 220px;">Artist</div><div style="width: 70px;">Year</div><div style="width: 130px;">Status</div><div style="flex: 1; text-align: right;">Last checked</div>
+      </div>
+      <div style="flex: 1; min-height: 0; overflow: hidden;">
+          <div class="month">
+            <div class="cb on"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 12 10 18 20 6"></polyline></svg></div>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#5c5f77" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+            <div class="name">October 2026</div>
+            <div class="count">40 of 40 selected<span style="color: #ed6f27;">, 1 in an active game</span></div>
+          </div>
+          <div class="song picked">
+            <div class="cb on"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 12 10 18 20 6"></polyline></svg></div>
+            <div class="t">Dragostea Din Tei</div>
+            <div class="a">O-Zone</div>
+            <div class="y">2003</div>
+            <div style="width: 130px;"><span class="pill verified" style="">VERIFIED</span></div>
+            <div style="flex: 1; min-width: 0; font-size: 12px; color: #5c5f77; text-align: right;">Oct 28</div>
+          </div>
+          <div class="song picked">
+            <div class="cb on"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 12 10 18 20 6"></polyline></svg></div>
+            <div class="t">What Is Love</div>
+            <div class="a">Haddaway</div>
+            <div class="y">1993</div>
+            <div style="width: 130px;"><span class="pill verified" style="">VERIFIED</span></div>
+            <div style="flex: 1; min-width: 0; font-size: 12px; color: #5c5f77; text-align: right;">Oct 28</div>
+          </div>
+          <div class="song picked">
+            <div class="cb on"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 12 10 18 20 6"></polyline></svg></div>
+            <div class="t">Zi-mi</div>
+            <div class="a">Loredana</div>
+            <div class="y">2019</div>
+            <div style="width: 130px;"><span class="pill review" style="">NEEDS REVIEW</span></div>
+            <div style="flex: 1; min-width: 0; font-size: 12px; color: #5c5f77; text-align: right;">Oct 27</div>
+          </div>
+          <div class="song  locked">
+            <div class="cb  disabled"></div>
+            <div class="t">Barbie Girl</div>
+            <div class="a">Aqua</div>
+            <div class="y">1997</div>
+            <div style="width: 130px;"><span class="pill verified" style="opacity: 0.45;">VERIFIED</span></div>
+            <div style="flex: 1; min-width: 0; text-align: right;"><span class="tag-game">IN AN ACTIVE GAME</span></div>
+          </div>
+          <div class="song picked">
+            <div class="cb on"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 12 10 18 20 6"></polyline></svg></div>
+            <div class="t">Sa nu-mi iei niciodata</div>
+            <div class="a">Holograf</div>
+            <div class="y">1996</div>
+            <div style="width: 130px;"><span class="pill review" style="">NEEDS REVIEW</span></div>
+            <div style="flex: 1; min-width: 0; font-size: 12px; color: #5c5f77; text-align: right;">Oct 25</div>
+          </div>
+          <div class="song picked">
+            <div class="cb on"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 12 10 18 20 6"></polyline></svg></div>
+            <div class="t">Motorul</div>
+            <div class="a">Bere Gheorghe</div>
+            <div class="y">2008</div>
+            <div style="width: 130px;"><span class="pill verified" style="">VERIFIED</span></div>
+            <div style="flex: 1; min-width: 0; font-size: 12px; color: #5c5f77; text-align: right;">Oct 24</div>
+          </div>
+          <div class="song picked">
+            <div class="cb on"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 12 10 18 20 6"></polyline></svg></div>
+            <div class="t">Take Five</div>
+            <div class="a">The Dave Brubeck Quartet</div>
+            <div class="y">1959</div>
+            <div style="width: 130px;"><span class="pill verified" style="">VERIFIED</span></div>
+            <div style="flex: 1; min-width: 0; font-size: 12px; color: #5c5f77; text-align: right;">Oct 22</div>
+          </div>
+          <div class="song picked">
+            <div class="cb on"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 12 10 18 20 6"></polyline></svg></div>
+            <div class="t">Time (The Revenant Mix)</div>
+            <div class="a">Hans Zimmer</div>
+            <div class="y">2010</div>
+            <div style="width: 130px;"><span class="pill verified" style="">VERIFIED</span></div>
+            <div style="flex: 1; min-width: 0; font-size: 12px; color: #5c5f77; text-align: right;">Oct 22</div>
+          </div>
+          <div class="month">
+            <div class="cb on"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 12 10 18 20 6"></polyline></svg></div>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#5c5f77" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 6 15 12 9 18"></polyline></svg>
+            <div class="name">September 2026</div>
+            <div class="count">209 of 209 selected<span style="color: #ed6f27;">, 3 in an active game</span></div>
+          </div>
+          <div class="month">
+            <div class="cb on"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 12 10 18 20 6"></polyline></svg></div>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#5c5f77" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 6 15 12 9 18"></polyline></svg>
+            <div class="name">August 2026</div>
+            <div class="count">383 of 383 selected<span style="color: #ed6f27;">, 5 in an active game</span></div>
+          </div>
+          <div class="month">
+            <div class="cb on"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 12 10 18 20 6"></polyline></svg></div>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#5c5f77" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 6 15 12 9 18"></polyline></svg>
+            <div class="name">July 2026</div>
+            <div class="count">598 of 598 selected<span style="color: #ed6f27;">, 6 in an active game</span></div>
+          </div>
+          <div class="month">
+            <div class="cb on"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 12 10 18 20 6"></polyline></svg></div>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#5c5f77" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 6 15 12 9 18"></polyline></svg>
+            <div class="name">June 2026</div>
+            <div class="count">727 of 727 selected<span style="color: #ed6f27;">, 4 in an active game</span></div>
+          </div>
+          <div class="month">
+            <div class="cb on"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 12 10 18 20 6"></polyline></svg></div>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#5c5f77" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 6 15 12 9 18"></polyline></svg>
+            <div class="name">May 2026</div>
+            <div class="count">900 of 900 selected<span style="color: #ed6f27;">, 2 in an active game</span></div>
+          </div>
+          <div class="month">
+            <div class="cb on"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 12 10 18 20 6"></polyline></svg></div>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#5c5f77" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 6 15 12 9 18"></polyline></svg>
+            <div class="name">April 2026</div>
+            <div class="count">1,043 of 1,043 selected<span style="color: #ed6f27;">, 1 in an active game</span></div>
+          </div>
+          <div class="month">
+            <div class="cb on"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 12 10 18 20 6"></polyline></svg></div>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#5c5f77" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 6 15 12 9 18"></polyline></svg>
+            <div class="name">March 2026</div>
+            <div class="count">1,241 of 1,241 selected<span style="color: #ed6f27;">, 1 in an active game</span></div>
+          </div>
+      </div>
+    </div>
+    
+    <div style="position: absolute; left: 56px; right: 56px; bottom: 22px; display: flex; align-items: center; justify-content: space-between; background: #ffffff; border: 3px solid #4c4f69; border-radius: 16px; box-shadow: 6px 6px 0 rgba(76,79,105,0.25); padding: 14px 20px; box-sizing: border-box;">
+      <div>
+        <div style="font-family: 'Bungee', sans-serif; font-size: 14px; color: #4c4f69;">5,141 songs selected</div>
+        <div style="font-size: 12px; color: #5c5f77; margin-top: 3px;">Songs in an active game are never selected and would be skipped.</div>
+      </div>
+      <div style="display: flex; gap: 12px; align-items: center;">
+        <span class="btn ghost">Clear selection</span>
+        <span class="btn primary">Recheck 5,141 songs</span>
+      </div>
+    </div>
+    
+  </div>
+</div>
+<div style="height: 60px;"></div>
+
+<div class="frame-label">C. Confirmation dialog</div>
+<div class="frame">
+  
+  <div style="width: 76px; flex-shrink: 0; background: #e6e9ef; display: flex; flex-direction: column; align-items: center; padding: 20px 0; box-sizing: border-box; border-right: 3px solid #ccd0da;">
+    <div style="display: flex; align-items: center; gap: 2px; height: 22px;">
+      <div style="background: #499f36; width: 5px; height: 10px; border-radius: 100px;"></div>
+      <div style="background: #499f36; width: 5px; height: 20px; border-radius: 100px;"></div>
+      <div style="background: #499f36; width: 5px; height: 14px; border-radius: 100px;"></div>
+      <div style="background: #499f36; width: 5px; height: 22px; border-radius: 100px;"></div>
+    </div>
+    <div class="divider"></div>
+    <div class="navicon" title="Play / start a session">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="#4c4f69"><path d="M8 5v14l11-7z"></path></svg>
+    </div>
+    <div class="divider"></div>
+    <div style="display: flex; flex-direction: column; gap: 14px;">
+      <div class="navicon" title="Your playlists">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="6" x2="13" y2="6"></line><line x1="4" y1="12" x2="13" y2="12"></line><line x1="4" y1="18" x2="9" y2="18"></line><circle cx="18" cy="16" r="2.3"></circle><path d="M20.3 16V6.5l-2.8 1"></path></svg>
+      </div>
+      <div class="navicon" title="Explore public playlists">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"></circle><polygon points="15.5 8.5 13 13 8.5 15.5 11 11" fill="currentColor" stroke-linejoin="round"></polygon></svg>
+      </div>
+    </div>
+    <div class="divider"></div>
+    <div class="navicon" title="Group lobby">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+    </div>
+    <div class="divider admin"></div>
+    <div style="font-family: 'Bungee', sans-serif; font-size: 8px; color: #d20f39; letter-spacing: 1px; margin-bottom: 8px;">ADMIN</div>
+    <div style="display: flex; flex-direction: column; gap: 8px;">
+      <div class="navicon admin" title="Admin: dashboard"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9" rx="1.5"></rect><rect x="14" y="3" width="7" height="5" rx="1.5"></rect><rect x="14" y="12" width="7" height="9" rx="1.5"></rect><rect x="3" y="16" width="7" height="5" rx="1.5"></rect></svg></div>
+      <div class="navicon admin" title="Admin: backfill queue"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l9 4.5-9 4.5-9-4.5z"></path><path d="M3 12l9 4.5 9-4.5"></path><path d="M3 16.5L12 21l9-4.5"></path></svg></div>
+      <div class="navicon admin admin-active" title="Admin: song catalog"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="8" ry="3"></ellipse><path d="M4 5v6c0 1.66 3.58 3 8 3s8-1.34 8-3V5"></path><path d="M4 11v6c0 1.66 3.58 3 8 3s8-1.34 8-3v-6"></path></svg></div>
+      <div class="navicon admin" title="Admin: reports"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 22V4"></path><path d="M4 4h13l-2 4 2 4H4"></path></svg></div>
+    </div>
+    <div style="flex: 1;"></div>
+    <div class="navicon" title="Theme">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
+    </div>
+    <div style="height: 16px;"></div>
+    <div style="width: 44px; height: 44px; border-radius: 50%; background: #ed6f27; border: 2px solid #ccd0da; display: flex; align-items: center; justify-content: center; font-family: 'Bungee', sans-serif; font-size: 16px; color: #ffffff; cursor: pointer;">D</div>
+  </div>
+  <div style="flex: 1; min-width: 0; box-sizing: border-box; background-image: radial-gradient(circle, rgba(76,79,105,0.2) 1.5px, transparent 1.5px); background-size: 22px 22px; padding: 40px 56px 36px; display: flex; flex-direction: column; position: relative;">
+    <div style="display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 18px; flex-shrink: 0;">
+      <div>
+        <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 4px;">
+          <div style="font-family: 'Bungee', sans-serif; font-size: 30px; color: #8839ef; text-shadow: 3px 3px 0 rgba(76,79,105,0.25);">Recheck songs</div>
+          <div style="display: inline-flex; background: rgba(210,15,57,0.12); color: #d20f39; font-family: 'Bungee', sans-serif; font-size: 10px; padding: 5px 11px; border-radius: 100px;">ADMIN</div>
+        </div>
+        <div style="font-size: 13px; color: #5c5f77;">Choose which songs go back through the metadata pipeline.</div>
+      </div>
+      <div style="display: flex; gap: 12px; align-items: center;"><span class="btn ghost">Back to song catalog</span></div>
+    </div>
+
+    <div style="display: flex; gap: 16px; margin-bottom: 14px; flex-shrink: 0; align-items: center;">
+      <div style="display: flex; align-items: center; gap: 10px; background: #ffffff; border: 2px solid #ccd0da; border-radius: 100px; padding: 8px 16px 8px 12px;">
+        <div class="cb mixed"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="4" stroke-linecap="round"><line x1="5" y1="12" x2="19" y2="12"></line></svg></div>
+        <span style="font-size: 13px; font-weight: 600;">Select all</span>
+        <span style="font-size: 12px; color: #5c5f77;">12 of 5,141 selected</span>
+      </div>
+      <span style="font-size: 11px; color: #9ca0b0;">Grouped by month last checked. Songs never checked are grouped by the month they were added. 23 songs in active games cannot be selected.</span>
+    </div>
+
+    <div class="card" style="flex: 1; min-height: 0; overflow: hidden; display: flex; flex-direction: column;">
+      <div class="row th" style="padding: 10px 20px; border-bottom: 2px solid #eff1f5;">
+        <div style="width: 34px;"></div><div style="width: 290px; margin-left: 20px;">Title</div><div style="width: 220px;">Artist</div><div style="width: 70px;">Year</div><div style="width: 130px;">Status</div><div style="flex: 1; text-align: right;">Last checked</div>
+      </div>
+      <div style="flex: 1; min-height: 0; overflow: hidden;">
+          <div class="month">
+            <div class="cb mixed"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="4" stroke-linecap="round"><line x1="5" y1="12" x2="19" y2="12"></line></svg></div>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#5c5f77" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+            <div class="name">October 2026</div>
+            <div class="count">12 of 40 selected<span style="color: #ed6f27;">, 1 in an active game</span></div>
+          </div>
+          <div class="song picked">
+            <div class="cb on"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 12 10 18 20 6"></polyline></svg></div>
+            <div class="t">Dragostea Din Tei</div>
+            <div class="a">O-Zone</div>
+            <div class="y">2003</div>
+            <div style="width: 130px;"><span class="pill verified" style="">VERIFIED</span></div>
+            <div style="flex: 1; min-width: 0; font-size: 12px; color: #5c5f77; text-align: right;">Oct 28</div>
+          </div>
+          <div class="song picked">
+            <div class="cb on"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 12 10 18 20 6"></polyline></svg></div>
+            <div class="t">What Is Love</div>
+            <div class="a">Haddaway</div>
+            <div class="y">1993</div>
+            <div style="width: 130px;"><span class="pill verified" style="">VERIFIED</span></div>
+            <div style="flex: 1; min-width: 0; font-size: 12px; color: #5c5f77; text-align: right;">Oct 28</div>
+          </div>
+          <div class="song picked">
+            <div class="cb on"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 12 10 18 20 6"></polyline></svg></div>
+            <div class="t">Zi-mi</div>
+            <div class="a">Loredana</div>
+            <div class="y">2019</div>
+            <div style="width: 130px;"><span class="pill review" style="">NEEDS REVIEW</span></div>
+            <div style="flex: 1; min-width: 0; font-size: 12px; color: #5c5f77; text-align: right;">Oct 27</div>
+          </div>
+          <div class="song  locked">
+            <div class="cb  disabled"></div>
+            <div class="t">Barbie Girl</div>
+            <div class="a">Aqua</div>
+            <div class="y">1997</div>
+            <div style="width: 130px;"><span class="pill verified" style="opacity: 0.45;">VERIFIED</span></div>
+            <div style="flex: 1; min-width: 0; text-align: right;"><span class="tag-game">IN AN ACTIVE GAME</span></div>
+          </div>
+          <div class="song">
+            <div class="cb "></div>
+            <div class="t">Sa nu-mi iei niciodata</div>
+            <div class="a">Holograf</div>
+            <div class="y">1996</div>
+            <div style="width: 130px;"><span class="pill review" style="">NEEDS REVIEW</span></div>
+            <div style="flex: 1; min-width: 0; font-size: 12px; color: #5c5f77; text-align: right;">Oct 25</div>
+          </div>
+          <div class="song">
+            <div class="cb "></div>
+            <div class="t">Motorul</div>
+            <div class="a">Bere Gheorghe</div>
+            <div class="y">2008</div>
+            <div style="width: 130px;"><span class="pill verified" style="">VERIFIED</span></div>
+            <div style="flex: 1; min-width: 0; font-size: 12px; color: #5c5f77; text-align: right;">Oct 24</div>
+          </div>
+          <div class="song">
+            <div class="cb "></div>
+            <div class="t">Take Five</div>
+            <div class="a">The Dave Brubeck Quartet</div>
+            <div class="y">1959</div>
+            <div style="width: 130px;"><span class="pill verified" style="">VERIFIED</span></div>
+            <div style="flex: 1; min-width: 0; font-size: 12px; color: #5c5f77; text-align: right;">Oct 22</div>
+          </div>
+          <div class="song">
+            <div class="cb "></div>
+            <div class="t">Time (The Revenant Mix)</div>
+            <div class="a">Hans Zimmer</div>
+            <div class="y">2010</div>
+            <div style="width: 130px;"><span class="pill verified" style="">VERIFIED</span></div>
+            <div style="flex: 1; min-width: 0; font-size: 12px; color: #5c5f77; text-align: right;">Oct 22</div>
+          </div>
+          <div class="month">
+            <div class="cb "></div>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#5c5f77" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 6 15 12 9 18"></polyline></svg>
+            <div class="name">September 2026</div>
+            <div class="count">0 of 209 selected<span style="color: #ed6f27;">, 3 in an active game</span></div>
+          </div>
+          <div class="month">
+            <div class="cb "></div>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#5c5f77" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 6 15 12 9 18"></polyline></svg>
+            <div class="name">August 2026</div>
+            <div class="count">0 of 383 selected<span style="color: #ed6f27;">, 5 in an active game</span></div>
+          </div>
+          <div class="month">
+            <div class="cb "></div>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#5c5f77" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 6 15 12 9 18"></polyline></svg>
+            <div class="name">July 2026</div>
+            <div class="count">0 of 598 selected<span style="color: #ed6f27;">, 6 in an active game</span></div>
+          </div>
+          <div class="month">
+            <div class="cb "></div>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#5c5f77" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 6 15 12 9 18"></polyline></svg>
+            <div class="name">June 2026</div>
+            <div class="count">0 of 727 selected<span style="color: #ed6f27;">, 4 in an active game</span></div>
+          </div>
+          <div class="month">
+            <div class="cb "></div>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#5c5f77" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 6 15 12 9 18"></polyline></svg>
+            <div class="name">May 2026</div>
+            <div class="count">0 of 900 selected<span style="color: #ed6f27;">, 2 in an active game</span></div>
+          </div>
+          <div class="month">
+            <div class="cb "></div>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#5c5f77" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 6 15 12 9 18"></polyline></svg>
+            <div class="name">April 2026</div>
+            <div class="count">0 of 1,043 selected<span style="color: #ed6f27;">, 1 in an active game</span></div>
+          </div>
+          <div class="month">
+            <div class="cb "></div>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#5c5f77" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 6 15 12 9 18"></polyline></svg>
+            <div class="name">March 2026</div>
+            <div class="count">0 of 1,241 selected<span style="color: #ed6f27;">, 1 in an active game</span></div>
+          </div>
+      </div>
+    </div>
+    
+    <div style="position: absolute; left: 56px; right: 56px; bottom: 22px; display: flex; align-items: center; justify-content: space-between; background: #ffffff; border: 3px solid #4c4f69; border-radius: 16px; box-shadow: 6px 6px 0 rgba(76,79,105,0.25); padding: 14px 20px; box-sizing: border-box;">
+      <div>
+        <div style="font-family: 'Bungee', sans-serif; font-size: 14px; color: #4c4f69;">12 songs selected</div>
+        <div style="font-size: 12px; color: #5c5f77; margin-top: 3px;">Songs in an active game are never selected and would be skipped.</div>
+      </div>
+      <div style="display: flex; gap: 12px; align-items: center;">
+        <span class="btn ghost">Clear selection</span>
+        <span class="btn primary">Recheck 12 songs</span>
+      </div>
+    </div>
+    
+  </div>
+  <div style="position: absolute; inset: 0; background: rgba(76,79,105,0.4); display: flex; align-items: center; justify-content: center;">
+    <div class="card" style="width: 520px; padding: 28px 30px; background: #ffffff;">
+      <div style="font-family: 'Bungee', sans-serif; font-size: 18px; color: #4c4f69; margin-bottom: 12px;">Recheck 12 songs?</div>
+      <div style="font-size: 14px; line-height: 1.55; color: #5c5f77; margin-bottom: 14px;">These songs are queued for a new run through the metadata pipeline, using the external sources and AI. The runs go in at low priority behind user imports, so a large selection takes a while to drain. Songs used by an active game are skipped, and songs that already have a run in progress are not queued twice.</div>
+      <div style="background: #eff1f5; border-radius: 13px; padding: 12px 16px; font-size: 13px; line-height: 1.5; color: #4c4f69; margin-bottom: 22px;">Verified songs keep their year. When the new result differs, it is stored as a proposed year to review under Proposed year in the song catalog.</div>
+      <div style="display: flex; justify-content: flex-end; gap: 12px;">
+        <span class="btn ghost">Cancel</span>
+        <span class="btn primary">Confirm</span>
+      </div>
+    </div>
+  </div>
+</div>
+<div style="height: 60px;"></div>
+
+<div class="frame-label">D. Result toast after queueing, selection cleared</div>
+<div class="frame">
+  
+  <div style="width: 76px; flex-shrink: 0; background: #e6e9ef; display: flex; flex-direction: column; align-items: center; padding: 20px 0; box-sizing: border-box; border-right: 3px solid #ccd0da;">
+    <div style="display: flex; align-items: center; gap: 2px; height: 22px;">
+      <div style="background: #499f36; width: 5px; height: 10px; border-radius: 100px;"></div>
+      <div style="background: #499f36; width: 5px; height: 20px; border-radius: 100px;"></div>
+      <div style="background: #499f36; width: 5px; height: 14px; border-radius: 100px;"></div>
+      <div style="background: #499f36; width: 5px; height: 22px; border-radius: 100px;"></div>
+    </div>
+    <div class="divider"></div>
+    <div class="navicon" title="Play / start a session">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="#4c4f69"><path d="M8 5v14l11-7z"></path></svg>
+    </div>
+    <div class="divider"></div>
+    <div style="display: flex; flex-direction: column; gap: 14px;">
+      <div class="navicon" title="Your playlists">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="6" x2="13" y2="6"></line><line x1="4" y1="12" x2="13" y2="12"></line><line x1="4" y1="18" x2="9" y2="18"></line><circle cx="18" cy="16" r="2.3"></circle><path d="M20.3 16V6.5l-2.8 1"></path></svg>
+      </div>
+      <div class="navicon" title="Explore public playlists">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"></circle><polygon points="15.5 8.5 13 13 8.5 15.5 11 11" fill="currentColor" stroke-linejoin="round"></polygon></svg>
+      </div>
+    </div>
+    <div class="divider"></div>
+    <div class="navicon" title="Group lobby">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+    </div>
+    <div class="divider admin"></div>
+    <div style="font-family: 'Bungee', sans-serif; font-size: 8px; color: #d20f39; letter-spacing: 1px; margin-bottom: 8px;">ADMIN</div>
+    <div style="display: flex; flex-direction: column; gap: 8px;">
+      <div class="navicon admin" title="Admin: dashboard"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9" rx="1.5"></rect><rect x="14" y="3" width="7" height="5" rx="1.5"></rect><rect x="14" y="12" width="7" height="9" rx="1.5"></rect><rect x="3" y="16" width="7" height="5" rx="1.5"></rect></svg></div>
+      <div class="navicon admin" title="Admin: backfill queue"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l9 4.5-9 4.5-9-4.5z"></path><path d="M3 12l9 4.5 9-4.5"></path><path d="M3 16.5L12 21l9-4.5"></path></svg></div>
+      <div class="navicon admin admin-active" title="Admin: song catalog"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="8" ry="3"></ellipse><path d="M4 5v6c0 1.66 3.58 3 8 3s8-1.34 8-3V5"></path><path d="M4 11v6c0 1.66 3.58 3 8 3s8-1.34 8-3v-6"></path></svg></div>
+      <div class="navicon admin" title="Admin: reports"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 22V4"></path><path d="M4 4h13l-2 4 2 4H4"></path></svg></div>
+    </div>
+    <div style="flex: 1;"></div>
+    <div class="navicon" title="Theme">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
+    </div>
+    <div style="height: 16px;"></div>
+    <div style="width: 44px; height: 44px; border-radius: 50%; background: #ed6f27; border: 2px solid #ccd0da; display: flex; align-items: center; justify-content: center; font-family: 'Bungee', sans-serif; font-size: 16px; color: #ffffff; cursor: pointer;">D</div>
+  </div>
+  <div style="flex: 1; min-width: 0; box-sizing: border-box; background-image: radial-gradient(circle, rgba(76,79,105,0.2) 1.5px, transparent 1.5px); background-size: 22px 22px; padding: 40px 56px 36px; display: flex; flex-direction: column; position: relative;">
+    <div style="display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 18px; flex-shrink: 0;">
+      <div>
+        <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 4px;">
+          <div style="font-family: 'Bungee', sans-serif; font-size: 30px; color: #8839ef; text-shadow: 3px 3px 0 rgba(76,79,105,0.25);">Recheck songs</div>
+          <div style="display: inline-flex; background: rgba(210,15,57,0.12); color: #d20f39; font-family: 'Bungee', sans-serif; font-size: 10px; padding: 5px 11px; border-radius: 100px;">ADMIN</div>
+        </div>
+        <div style="font-size: 13px; color: #5c5f77;">Choose which songs go back through the metadata pipeline.</div>
+      </div>
+      <div style="display: flex; gap: 12px; align-items: center;"><span class="btn ghost">Back to song catalog</span></div>
+    </div>
+
+    <div style="display: flex; gap: 16px; margin-bottom: 14px; flex-shrink: 0; align-items: center;">
+      <div style="display: flex; align-items: center; gap: 10px; background: #ffffff; border: 2px solid #ccd0da; border-radius: 100px; padding: 8px 16px 8px 12px;">
+        <div class="cb "></div>
+        <span style="font-size: 13px; font-weight: 600;">Select all</span>
+        <span style="font-size: 12px; color: #5c5f77;">0 of 5,141 selected</span>
+      </div>
+      <span style="font-size: 11px; color: #9ca0b0;">Grouped by month last checked. Songs never checked are grouped by the month they were added. 23 songs in active games cannot be selected.</span>
+    </div>
+
+    <div class="card" style="flex: 1; min-height: 0; overflow: hidden; display: flex; flex-direction: column;">
+      <div class="row th" style="padding: 10px 20px; border-bottom: 2px solid #eff1f5;">
+        <div style="width: 34px;"></div><div style="width: 290px; margin-left: 20px;">Title</div><div style="width: 220px;">Artist</div><div style="width: 70px;">Year</div><div style="width: 130px;">Status</div><div style="flex: 1; text-align: right;">Last checked</div>
+      </div>
+      <div style="flex: 1; min-height: 0; overflow: hidden;">
+          <div class="month">
+            <div class="cb "></div>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#5c5f77" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+            <div class="name">October 2026</div>
+            <div class="count">0 of 40 selected<span style="color: #ed6f27;">, 1 in an active game</span></div>
+          </div>
+          <div class="song">
+            <div class="cb "></div>
+            <div class="t">Dragostea Din Tei</div>
+            <div class="a">O-Zone</div>
+            <div class="y">2003</div>
+            <div style="width: 130px;"><span class="pill verified" style="">VERIFIED</span></div>
+            <div style="flex: 1; min-width: 0; font-size: 12px; color: #5c5f77; text-align: right;">Oct 28</div>
+          </div>
+          <div class="song">
+            <div class="cb "></div>
+            <div class="t">What Is Love</div>
+            <div class="a">Haddaway</div>
+            <div class="y">1993</div>
+            <div style="width: 130px;"><span class="pill verified" style="">VERIFIED</span></div>
+            <div style="flex: 1; min-width: 0; font-size: 12px; color: #5c5f77; text-align: right;">Oct 28</div>
+          </div>
+          <div class="song">
+            <div class="cb "></div>
+            <div class="t">Zi-mi</div>
+            <div class="a">Loredana</div>
+            <div class="y">2019</div>
+            <div style="width: 130px;"><span class="pill review" style="">NEEDS REVIEW</span></div>
+            <div style="flex: 1; min-width: 0; font-size: 12px; color: #5c5f77; text-align: right;">Oct 27</div>
+          </div>
+          <div class="song  locked">
+            <div class="cb  disabled"></div>
+            <div class="t">Barbie Girl</div>
+            <div class="a">Aqua</div>
+            <div class="y">1997</div>
+            <div style="width: 130px;"><span class="pill verified" style="opacity: 0.45;">VERIFIED</span></div>
+            <div style="flex: 1; min-width: 0; text-align: right;"><span class="tag-game">IN AN ACTIVE GAME</span></div>
+          </div>
+          <div class="song">
+            <div class="cb "></div>
+            <div class="t">Sa nu-mi iei niciodata</div>
+            <div class="a">Holograf</div>
+            <div class="y">1996</div>
+            <div style="width: 130px;"><span class="pill review" style="">NEEDS REVIEW</span></div>
+            <div style="flex: 1; min-width: 0; font-size: 12px; color: #5c5f77; text-align: right;">Oct 25</div>
+          </div>
+          <div class="song">
+            <div class="cb "></div>
+            <div class="t">Motorul</div>
+            <div class="a">Bere Gheorghe</div>
+            <div class="y">2008</div>
+            <div style="width: 130px;"><span class="pill verified" style="">VERIFIED</span></div>
+            <div style="flex: 1; min-width: 0; font-size: 12px; color: #5c5f77; text-align: right;">Oct 24</div>
+          </div>
+          <div class="song">
+            <div class="cb "></div>
+            <div class="t">Take Five</div>
+            <div class="a">The Dave Brubeck Quartet</div>
+            <div class="y">1959</div>
+            <div style="width: 130px;"><span class="pill verified" style="">VERIFIED</span></div>
+            <div style="flex: 1; min-width: 0; font-size: 12px; color: #5c5f77; text-align: right;">Oct 22</div>
+          </div>
+          <div class="song">
+            <div class="cb "></div>
+            <div class="t">Time (The Revenant Mix)</div>
+            <div class="a">Hans Zimmer</div>
+            <div class="y">2010</div>
+            <div style="width: 130px;"><span class="pill verified" style="">VERIFIED</span></div>
+            <div style="flex: 1; min-width: 0; font-size: 12px; color: #5c5f77; text-align: right;">Oct 22</div>
+          </div>
+          <div class="month">
+            <div class="cb "></div>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#5c5f77" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 6 15 12 9 18"></polyline></svg>
+            <div class="name">September 2026</div>
+            <div class="count">0 of 209 selected<span style="color: #ed6f27;">, 3 in an active game</span></div>
+          </div>
+          <div class="month">
+            <div class="cb "></div>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#5c5f77" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 6 15 12 9 18"></polyline></svg>
+            <div class="name">August 2026</div>
+            <div class="count">0 of 383 selected<span style="color: #ed6f27;">, 5 in an active game</span></div>
+          </div>
+          <div class="month">
+            <div class="cb "></div>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#5c5f77" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 6 15 12 9 18"></polyline></svg>
+            <div class="name">July 2026</div>
+            <div class="count">0 of 598 selected<span style="color: #ed6f27;">, 6 in an active game</span></div>
+          </div>
+          <div class="month">
+            <div class="cb "></div>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#5c5f77" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 6 15 12 9 18"></polyline></svg>
+            <div class="name">June 2026</div>
+            <div class="count">0 of 727 selected<span style="color: #ed6f27;">, 4 in an active game</span></div>
+          </div>
+          <div class="month">
+            <div class="cb "></div>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#5c5f77" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 6 15 12 9 18"></polyline></svg>
+            <div class="name">May 2026</div>
+            <div class="count">0 of 900 selected<span style="color: #ed6f27;">, 2 in an active game</span></div>
+          </div>
+          <div class="month">
+            <div class="cb "></div>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#5c5f77" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 6 15 12 9 18"></polyline></svg>
+            <div class="name">April 2026</div>
+            <div class="count">0 of 1,043 selected<span style="color: #ed6f27;">, 1 in an active game</span></div>
+          </div>
+          <div class="month">
+            <div class="cb "></div>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#5c5f77" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 6 15 12 9 18"></polyline></svg>
+            <div class="name">March 2026</div>
+            <div class="count">0 of 1,241 selected<span style="color: #ed6f27;">, 1 in an active game</span></div>
+          </div>
+      </div>
+    </div>
+    
+    
+    <div class="toast" style="position: absolute; top: 40px; right: 56px; display: flex; align-items: center; gap: 12px; background: #ffffff; border: 2px solid #45475a; border-radius: 16px; padding: 12px 18px; box-shadow: 4px 4px 0 rgba(0,0,0,0.35); box-sizing: border-box;">
+      <div style="width: 26px; height: 26px; border-radius: 50%; background: rgba(73,159,54,0.16); display: flex; align-items: center; justify-content: center;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#499f36" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 12 10 18 20 6"></polyline></svg></div>
+      <div>
+        <div style="font-size: 14px; font-weight: 600; color: #4c4f69;">Queued 12 songs for a recheck.</div>
+        <div style="font-size: 12px; color: #5c5f77; margin-top: 2px;">Progress shows on the backfill queue.</div>
+      </div>
+    </div>
+  </div>
+</div>
+</div>
+</x-dc>
+<script data-dc-script data-props='{}'>
+class Component extends DCLogic {}
+</script>
+</body>
+</html>

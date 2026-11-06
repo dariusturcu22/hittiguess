@@ -1494,3 +1494,11 @@ Why: `PendingSessionSongPool` kept staged song lists in memory during the audio 
 Decision: the generated frontend API client, models, and Zod schemas are regenerated using Orval against the running backend's OpenAPI endpoint (`/v3/api-docs`). Hand-written definitions for audio check endpoints, share statuses, and recheck candidates are replaced by the generated definitions.
 
 Why: manual client edits introduced during recent audio check and whole-catalog recheck tasks lacked automated schema synchronization. Regenerating against the live backend ensures types and endpoint hooks precisely match the server's OpenAPI specification without behavioral drift.
+
+---
+
+## 2026-10-31 | Light mockup for admin song recheck
+
+Decision: `AdminSongRecheckLight.dc.html` provides the light-theme Catppuccin Latte mockup for `/admin/songs/recheck`, covering the month list, sticky action bar, confirmation dialog, and result toast. The artboard is placed alongside `AdminSongRecheckDark.dc.html` in `canvas.json` and embedded in `hittiguess-design.html`.
+
+Why: all admin console screens require dark and light mockups in the design canvas to define layout, spacing, and styling in both themes.
