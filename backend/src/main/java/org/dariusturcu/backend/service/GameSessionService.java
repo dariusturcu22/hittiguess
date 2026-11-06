@@ -58,7 +58,6 @@ import org.dariusturcu.backend.websocket.GuessResultEvent;
 import org.dariusturcu.backend.websocket.SessionBroadcastEvent;
 import org.dariusturcu.backend.websocket.SessionEventType;
 
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationEventPublisher;
@@ -89,7 +88,6 @@ import java.util.stream.Collectors;
 // round-rotation (fixed vs rotating DJ), timer-scheduling, and betting-concurrency design
 // choices this class implements.
 @Service
-@RequiredArgsConstructor
 @Slf4j
 @Transactional
 public class GameSessionService {
@@ -129,6 +127,75 @@ public class GameSessionService {
     private final ApplicationEventPublisher eventPublisher;
     private final GameSongList gameSongList;
     private final PlacementPreviewGate placementPreviewGate;
+    private final GameSessionAdmissionGuard admissionGuard;
+
+    @Autowired
+    public GameSessionService(
+            GameSessionRepository gameSessionRepository,
+            PlayerRepository playerRepository,
+            RoundRepository roundRepository,
+            GuessRepository guessRepository,
+            BetRepository betRepository,
+            GroupRepository groupRepository,
+            SongRepository songRepository,
+            PlaylistRepository playlistRepository,
+            GroupService groupService,
+            PlaylistAccessService playlistAccessService,
+            PlaylistExpansionService playlistExpansionService,
+            DifficultyTunedSongSelector difficultySelector,
+            SessionMapper sessionMapper,
+            SessionResultsStore resultsStore,
+            GameSessionScheduler gameSessionScheduler,
+            ApplicationEventPublisher eventPublisher,
+            GameSongList gameSongList,
+            PlacementPreviewGate placementPreviewGate,
+            GameSessionAdmissionGuard admissionGuard) {
+        this.gameSessionRepository = gameSessionRepository;
+        this.playerRepository = playerRepository;
+        this.roundRepository = roundRepository;
+        this.guessRepository = guessRepository;
+        this.betRepository = betRepository;
+        this.groupRepository = groupRepository;
+        this.songRepository = songRepository;
+        this.playlistRepository = playlistRepository;
+        this.groupService = groupService;
+        this.playlistAccessService = playlistAccessService;
+        this.playlistExpansionService = playlistExpansionService;
+        this.difficultySelector = difficultySelector;
+        this.sessionMapper = sessionMapper;
+        this.resultsStore = resultsStore;
+        this.gameSessionScheduler = gameSessionScheduler;
+        this.eventPublisher = eventPublisher;
+        this.gameSongList = gameSongList;
+        this.placementPreviewGate = placementPreviewGate;
+        this.admissionGuard = admissionGuard;
+    }
+
+    public GameSessionService(
+            GameSessionRepository gameSessionRepository,
+            PlayerRepository playerRepository,
+            RoundRepository roundRepository,
+            GuessRepository guessRepository,
+            BetRepository betRepository,
+            GroupRepository groupRepository,
+            SongRepository songRepository,
+            PlaylistRepository playlistRepository,
+            GroupService groupService,
+            PlaylistAccessService playlistAccessService,
+            PlaylistExpansionService playlistExpansionService,
+            DifficultyTunedSongSelector difficultySelector,
+            SessionMapper sessionMapper,
+            SessionResultsStore resultsStore,
+            GameSessionScheduler gameSessionScheduler,
+            ApplicationEventPublisher eventPublisher,
+            GameSongList gameSongList,
+            PlacementPreviewGate placementPreviewGate) {
+        this(gameSessionRepository, playerRepository, roundRepository, guessRepository, betRepository,
+                groupRepository, songRepository, playlistRepository, groupService, playlistAccessService,
+                playlistExpansionService, difficultySelector, sessionMapper, resultsStore,
+                gameSessionScheduler, eventPublisher, gameSongList, placementPreviewGate,
+                new GameSessionAdmissionGuard(gameSessionRepository, 50));
+    }
     private final RateLimiterRegistry placementPreviewRateLimiter =
             new RateLimiterRegistry(MAXIMUM_PLACEMENT_PREVIEWS_PER_SECOND, PLACEMENT_PREVIEW_WINDOW);
 
@@ -146,6 +213,7 @@ public class GameSessionService {
     // broadcast, in the same transaction GroupService.startGameSession already opened:
     // wiring into that existing state transition rather than duplicating it.
     public GameSession startSession(Long groupId) {
+        admissionGuard.requireAdmissionCapacity();
         Group group = findGroup(groupId);
 
         List<Member> connectedMembers = connectedMembers(group);
@@ -228,6 +296,7 @@ public class GameSessionService {
     // is asked to share audio, then opens the audio check; the game starts from there. The
     // song list itself is built when the game starts, for the players connected then.
     public GroupDetailDTO beginAudioCheck(Long groupId) {
+        admissionGuard.requireAdmissionCapacity();
         Group group = groupRepository.findByIdForUpdate(groupId)
                 .orElseThrow(() -> new ResourceNotFoundException(ResourceType.GROUP, groupId));
         requireGroupAdmin(group);

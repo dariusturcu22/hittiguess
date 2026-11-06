@@ -27,7 +27,7 @@ import org.dariusturcu.backend.websocket.GroupBroadcastEvent;
 import org.dariusturcu.backend.websocket.GroupEventType;
 import org.dariusturcu.backend.websocket.GroupMemberRemovedEvent;
 
-import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
@@ -44,7 +44,6 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Service
-@RequiredArgsConstructor
 @Transactional
 public class GroupService {
 
@@ -71,6 +70,38 @@ public class GroupService {
     private final GroupMapper groupMapper;
     private final ApplicationEventPublisher eventPublisher;
     private final PlaylistAccessService playlistAccessService;
+    private final GameSessionAdmissionGuard admissionGuard;
+
+    @Autowired
+    public GroupService(GroupRepository groupRepository,
+                        MemberRepository memberRepository,
+                        GameSessionRepository gameSessionRepository,
+                        PlaylistRepository playlistRepository,
+                        GroupMapper groupMapper,
+                        ApplicationEventPublisher eventPublisher,
+                        PlaylistAccessService playlistAccessService,
+                        GameSessionAdmissionGuard admissionGuard) {
+        this.groupRepository = groupRepository;
+        this.memberRepository = memberRepository;
+        this.gameSessionRepository = gameSessionRepository;
+        this.playlistRepository = playlistRepository;
+        this.groupMapper = groupMapper;
+        this.eventPublisher = eventPublisher;
+        this.playlistAccessService = playlistAccessService;
+        this.admissionGuard = admissionGuard;
+    }
+
+    public GroupService(GroupRepository groupRepository,
+                        MemberRepository memberRepository,
+                        GameSessionRepository gameSessionRepository,
+                        PlaylistRepository playlistRepository,
+                        GroupMapper groupMapper,
+                        ApplicationEventPublisher eventPublisher,
+                        PlaylistAccessService playlistAccessService) {
+        this(groupRepository, memberRepository, gameSessionRepository, playlistRepository,
+                groupMapper, eventPublisher, playlistAccessService,
+                new GameSessionAdmissionGuard(gameSessionRepository, 50));
+    }
 
     private final SecureRandom secureRandom = new SecureRandom();
     // Join codes are short enough to guess, so each user gets a few tries per window.
@@ -265,6 +296,7 @@ public class GroupService {
     // member's share status starts over, and the pre-session timer restarts so a check
     // nobody finishes still lets the group expire.
     public GroupDetailDTO beginAudioCheck(Long groupId) {
+        admissionGuard.requireAdmissionCapacity();
         Group group = groupRepository.findByIdForUpdate(groupId)
                 .orElseThrow(() -> new ResourceNotFoundException(ResourceType.GROUP, groupId));
         if (group.getStatus() != GroupStatus.OPEN) {
@@ -349,6 +381,7 @@ public class GroupService {
     // the GAME_SESSION_STARTED broadcast in the same transaction. The only HTTP path into it
     // is startGameAfterAudioCheck, which checks the audio requirement first.
     public GroupDetailDTO startGameSession(Long groupId) {
+        admissionGuard.requireAdmissionCapacity();
         Group group = groupRepository.findByIdForUpdate(groupId)
                 .orElseThrow(() -> new ResourceNotFoundException(ResourceType.GROUP, groupId));
         if (group.getStatus() == GroupStatus.LOCKED) {
