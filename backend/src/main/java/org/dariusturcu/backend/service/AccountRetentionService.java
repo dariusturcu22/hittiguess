@@ -18,6 +18,8 @@ import java.util.List;
 @Slf4j
 public class AccountRetentionService {
 
+    private static final int MINIMUM_RETENTION_DAYS = 1;
+
     private final UserRepository userRepository;
     private final EmailVerificationTokenRepository emailVerificationTokenRepository;
     private final PasswordResetTokenRepository passwordResetTokenRepository;
@@ -31,6 +33,11 @@ public class AccountRetentionService {
             RefreshTokenRepository refreshTokenRepository,
             @Value("${retention.unverified-accounts-days:7}") int unverifiedAccountRetentionDays
     ) {
+        if (unverifiedAccountRetentionDays < MINIMUM_RETENTION_DAYS) {
+            throw new IllegalStateException("retention.unverified-accounts-days (RETENTION_UNVERIFIED_ACCOUNTS_DAYS) must be at least "
+                    + MINIMUM_RETENTION_DAYS + " but was " + unverifiedAccountRetentionDays
+                    + ", a smaller value would delete every unverified account immediately");
+        }
         this.userRepository = userRepository;
         this.emailVerificationTokenRepository = emailVerificationTokenRepository;
         this.passwordResetTokenRepository = passwordResetTokenRepository;
