@@ -2799,3 +2799,321 @@ Round transitions run as check-then-act on `round.status` in separate transactio
 - [x] Liveness a constant 200, readiness database-only with a five-second cache, no AI call on public paths (`PublicHealthController`).
 - [x] Make `RequestPacerTest` independent of scheduler jitter.
 - [x] Document the client-address trust assumption behind `server.forward-headers-strategy=native` and how to verify it after deploy (`docs/DEV_SETUP.md`).
+
+## Archived decisions, 2026-11-06
+
+Decisions that were superseded, reversed, dropped, or are purely historical build records. The text is unchanged. Decisions still in force stay in [DECISIONS.md](DECISIONS.md).
+
+### 2026-06 | DJ model for YouTube compliance
+
+Decision: use a DJ role as the architecture for YouTube compliance in online multiplayer. The DJ's device runs playback; other players receive only audio and see only the game UI.
+
+Why: YouTube's IFrame API terms require an embedded player to be visible, unmodified, and not overlaid. In a multiplayer game where everyone has a player, this can't be enforced without breaking gameplay. A DJ model sidesteps this: only one device has any relationship to the player, and that player doesn't guess that round anyway.
+
+Note, 2026-07: the mechanism described here was superseded, see the 2026-07 entry below. The DJ-per-round principle and zero embed on non-DJ devices still stand.
+
+### 2026-06 | Separate submittedYear vs verifiedYear
+
+Decision: store `submittedYear` and `verifiedYear` as separate fields, not a single `releaseYear`.
+
+Why: without this distinction, there's no way to tell whether a year was changed after review, which the verification workflow depends on.
+
+Note, 2026-09: reopened as an undecided question rather than settled fact, see the 2026-09 "Reopen release-year field shape" entry below. The audit-trail reasoning here still stands as one option under consideration, it's no longer the final answer.
+
+### 2026-06 | Flutter deprioritized
+
+Decision: the Flutter app is deprioritized in favor of the web-based game.
+
+Why: playback now happens through a browser tab or the real YouTube app, which works on mobile browsers too, removing the original reason for a dedicated native playback app.
+
+### 2026-07 | Move backend hosting from Fly.io to Azure Container Apps
+
+Decision: migrate both backend services to Azure Container Apps. Database moves to Azure Database for PostgreSQL Flexible Server, pgvector enabled. Frontend stays on Vercel.
+
+Why: Fly.io kept compute running regardless of actual traffic, which doesn't fit a usage pattern that's bursty and mostly idle. Azure Container Apps' Consumption plan scales to zero and charges nothing while idle. AWS Fargate and App Runner both maintain a non-zero baseline cost even at low traffic, reproducing the same problem this migration is meant to fix.
+
+Open item: current Postgres host needs confirming before data migration. See PROJECT_STATE.md.
+
+Note, 2026-09: reversed, see the 2026-09 "Deployment platform reopened" entry below. Azure was chosen without comparing alternatives or setting a cost ceiling first; both the hosting platform and the database platform are undecided again.
+
+### 2026-08 | Sessions are ephemeral, not persistent groups
+
+Decision: a game session is created with an invite link and exists only while it's being played, the same way a Gartic Phone round works. Everyone who joins is a full player. There's no spectating and no joining a session already in progress. Voice and text chat are scoped to the session's lifetime. When the session ends, nothing persists except a downloadable results export.
+
+Why: an earlier idea involved persistent groups, similar to Discord servers, that would stick around between games. Given the actual usage pattern, friends starting a game together and playing it through, that persistence adds storage and complexity without a clear benefit. The simpler model also removes an entire category of open questions about group membership, moderation, and long-term data retention.
+
+Note, 2026-08: superseded by the "Group and game session are separate entities" entry below. Persistent groups came back once chat/voice persistence and replay without a new invite link turned out to matter more than the complexity this entry was trying to avoid.
+
+### 2026-08 | Branching: main, dev, legacy
+
+Decision: three persistent branches. `legacy` is frozen at the current implementation and stays live in production while the new architecture is built. `dev` is the active integration branch, worked on exclusively through pull requests from `feature/*`, `fix/*`, `chore/*`, and `docs/*` branches. `main` is not touched until the new architecture is ready to replace what `legacy` is currently serving.
+
+Why: this keeps the current, working deployment available to actual players throughout the rework, rather than breaking it mid-refactor.
+
+### 2026-08 | Pause MusicBrainz, Wikipedia, and Genius pending an API usage review
+
+Decision: only the YouTube Data API source makes live calls in the metadata pipeline right now. MusicBrainz, Wikipedia, and Genius all return no result until a deliberate review confirms each one's API usage is official, legal, and ethical.
+
+Why: porting the pipeline to the AI microservice (story 6) carried these three integrations over unchanged from the pre-split code, without that review having happened yet. Reviewing all three together, deliberately, is preferred over reviewing them one at a time.
+
+Open item: what each of the three needs, and what the resulting integration looks like for each, is planned as the next thing to work through after story 6.
+
+### 2026-08 | Database split: not for capacity, only for workload shape
+
+Decision: splitting the database across multiple free-tier instances purely to gain storage capacity is rejected. A real split, separating transactional data (users, songs, ratings, OLTP-shaped) from usage-analytics event data (games played, session length, append-heavy and time-series-shaped), stays on the table for a different reason, see story 33 in `PROJECT_STATE.md`.
+
+Why: capacity was the only reason raised for a multi-instance split. Song metadata plus user, playlist, and ratings data is small enough to stay well under a single free-tier instance's limits even at the 100-200 user target scale, checked directly rather than assumed.
+
+### 2026-09 | Deployment platform reopened
+
+Decision: the earlier choice of Azure Container Apps and Azure Database for PostgreSQL is reversed. Deployment platform, both compute and database, is undecided again, deliberately deferred until the app is close to feature-complete locally rather than decided now. Leaving Fly.io for backend hosting stays decided; where it moves to doesn't. Whether to migrate off Supabase at all, and to what, is also undecided; Azure Database for PostgreSQL and Neon have both come up as candidates, neither chosen.
+
+Why: the original Azure decision was made without comparing real alternatives or the whole-deployment cost ceiling now in place (see above). Revisiting once, closer to feature-complete, avoids re-deciding hosting multiple times as the app's actual resource needs become clearer.
+
+### 2026-09 | Reopen release-year field shape, defer artist modeling entirely
+
+Decision: whether release year is `submittedYear` plus `verifiedYear` (preserves the original submission after a correction) or one mutable field plus `verificationStatus` (simpler) is reopened as undecided. Separately, how a song with multiple or featured artists is stored and guessed, today's schema assumes a single `artist` string, is new, undecided scope: whether storage is an array, whether every featured artist must be guessed correctly, and what the guess-box UI looks like for more than one artist are all open.
+
+Why: the year-field question was settled without weighing the two options against each other explicitly. The artist question was never considered at all in the original schema design, surfaced only once a real "feat." credit was worked through concretely.
+
+### 2026-09 | Drop stories 29 and 31, no viable audio-feature source
+
+Decision: story 29 (content-based recommender using audio features like tempo, energy, valence) and story 31 (similar-songs feature) are both dropped, not left open.
+
+Why: researched directly rather than assumed. AcousticBrainz, the obvious free source, shut down its live API and submission pipeline in February 2022; only a frozen 2022 dataset remains, with coverage skewed toward mainstream music already analyzed before the shutdown, the opposite of the niche and underground coverage this project prioritizes. Self-hosting Essentia (the toolkit AcousticBrainz itself used) works on any song but needs the actual audio file, and the only way to get that for a YouTube-sourced song is unofficial downloading, which violates the project's non-negotiable official-APIs-only rule and the DJ-link-out architecture built specifically to avoid touching YouTube's media stream. Paid catalog APIs are real ongoing cost for a nice-to-have feature and still don't solve the niche-track coverage gap. Story 31's only version worth building, audio-based similarity, depends on the same missing data; its fallback (text-embedding similarity over artist/title) was explicitly rejected as not a real substitute, it mostly catches same-artist or similarly-worded matches, not "sounds like."
+
+### 2026-09 | Per-user game history, reopened and reversed
+
+Decision: a per-user game history page is added (story 34), reading compact per-game summaries (group, players, win/loss, cards won, final score) from the separate analytics store (story 33). The transactional `GameSession`/`Round`/`Guess` rows still purge exactly as story 10 specifies; the history page reads only from the analytics store, never from session state that no longer exists.
+
+Why: an earlier planning session explicitly decided against a persistent per-user game-history tab, staying purge-only to match the ephemeral session framing, but that decision was only ever said in conversation, never written into this log or any doc. Revisited once story 33's separate analytics store made it effectively free: the store already needs to exist for usage stats, and a compact game summary costs nothing extra to retain there, without touching the core session model's ephemerality at all.
+
+### 2026-09 | Story 30 redefined: difficulty-tuned session generation, absorbs story 21
+
+Decision: story 30 changes from a generic "collaborative filtering recommendations" placeholder into a concrete feature: generating a game session's card set on the spot, scored to a chosen difficulty (easy/medium/hard) for the group's actual players, instead of only playing from an admin-picked playlist. Absorbs story 21's card-assembly mechanics rather than keeping two stories doing adjacent things; difficulty becomes one more selection criterion alongside theme. Built in two tiers: a per-song aggregate correct-guess-rate score that works immediately and covers first-time players, and a personalized collaborative-filtering layer on top that only ships once it demonstrably beats that aggregate baseline. Group-level scoring for easy mode uses the group's lowest individual predicted score, not an average, so the least experienced player is protected rather than averaged away; hard mode uses a plain average, since it's opt-in.
+
+Why: the original framing, "recommend songs a user might like," doesn't fit how the game actually works, players don't browse and pick songs individually. Reframed around what collaborative filtering can genuinely predict here: whether a given player would get a given song right, which directly powers something the game already wants, curated playlists tuned to a group's skill, rather than an abstract recommendation feature with no clear place to surface it. The personalized-vs-baseline comparison also gives the retraining pipeline a real signal to act on (the model degrading relative to the simple baseline) instead of a fixed schedule with no actual quality check behind it.
+
+### 2026-09 | Story 21 folded into story 30, not just cross-referenced
+
+Decision: story 21's tasks (theme-based catalog search, genre/popularity fields, metadata-pipeline gap-filling, the review UI) move into story 30's task list directly. Story 21's row in `PROJECT_STATE.md` points to story 30 instead of carrying its own tasks.
+
+Why: both stories generate a game session's card set, one from a theme, one from a difficulty tier; keeping them as two separate stories with two separate generation endpoints would mean building the same underlying mechanism twice instead of once with two combinable selection criteria.
+
+### 2026-09 | Rate-limit contention: on-the-spot traffic always preempts the admin backlog
+
+Decision: the admin catalog-seeding backlog drain and on-the-spot user requests (including playlist imports) share the same external rate-limit budgets, MusicBrainz, Discogs, Wikidata, and Wikipedia all come from the same outbound IP. On-the-spot traffic is always high priority; the backlog drain pauses while any on-the-spot traffic is active and resumes once it's clear, rather than the two paths contending for the same budget in real time. Every song the fast tier answers provisionally gets re-added to the admin backlog afterward, to be resolved properly through the patient pipeline at low priority like everything else already in that queue.
+
+Why: this was surfaced, not resolved, when story 40 was first drafted; "on-the-spot always wins on priority" was already decided for queue ordering, but nothing defined what that meant for the two paths' shared external rate-limit budgets specifically. A pause-and-resume design avoids building real-time token-bucket arbitration between two internal consumers of the same external ceiling, and fits the two-tier pipeline's own shape: the backlog drain has no latency pressure of its own, so yielding to on-the-spot traffic costs it nothing but time.
+
+### 2026-09 | Story 32 dropped: redundant with the verification pipeline
+
+Decision: story 32 (a scheduled, periodic LLM-as-judge pass over the whole catalog flagging likely duplicate or mislabeled songs) is dropped, not deferred.
+
+Why: every song already gets verified on submission through story 18's pipeline, and a fast-tier answer gets re-verified through the patient tier afterward. A separate scheduled audit pass over the whole catalog duplicates that coverage. A manual, admin-triggered version, run on demand rather than on a schedule, isn't ruled out, but isn't a defined feature.
+
+### 2026-09 | YouTube Developer Policies read directly for story 35; a related metadataRaw constraint surfaced
+
+Decision: story 35 (the public ground-truth data API) is confirmed clear to ship as designed. Separately, any raw YouTube API Data (a video's title, description, channel name, view counts) that ends up persisted in `metadataRaw` needs its own delete-or-refresh cycle within 30 calendar days; it can't be kept indefinitely as-is.
+
+Why: read YouTube's actual Developer Policies directly rather than a summary. Section III.E.4.h prohibits substituting or deriving new metrics from YouTube's own numeric/engagement data, its own example is entirely about view and like counts, it says nothing about publishing an independently-sourced fact (artist, title, release year, all CC0 from MusicBrainz/Discogs/Wikidata) merely because a video's title or channel name was used as a lookup key to find it. Section III.E.4.c/d separately requires non-authorized API Data to be deleted or refreshed within 30 calendar days of storage, a real constraint on `metadataRaw`'s shape that wasn't on record before this read, unrelated to story 35's own data, which was never sourced from YouTube API Data in the first place.
+
+### 2026-09 | Story 39 ships group settings persistence without the real-time broadcast; voice and chat stay presence-only or entirely deferred
+
+Decision: story 39 builds `Group` and `Member` fully, including the admin-only settings update endpoint, but three pieces of its original task list don't ship complete, each already scoped to a story ROADMAP.md sequences right after this one.
+
+Settings changes (playlist(s), DJ mode, win-condition card count) persist correctly through `GroupService.updateGroupSettings`, a single method left clean for story 11 to call from its WebSocket handler or publish an event from. Nothing pushes the update to other members yet, since story 11 (real-time sync over WebSocket) doesn't exist in this codebase and is the very next batch after this one; ROADMAP.md's Phase 1 note already calls out building story 11 alongside stories 10 and 39 for exactly this reason.
+
+Voice gets a plain `isInVoice` presence flag on `Member` and join/leave-voice endpoints that flip it, nothing more. The actual WebRTC mesh and signaling belong to story 12, which is blocked on stories 11 and 39 both shipping and owns that mechanism on its own terms.
+
+Chat isn't built at all: no `ChatMessage` entity, no send/receive/persistence endpoint. Story 13 owns group-scoped text chat outright and is also blocked on stories 11 and 39. `Group` keeps a normal `Long` primary key, which is all story 13 needs to attach messages to it later.
+
+Why: building real-time broadcast, WebRTC signaling, or message persistence into story 39 would duplicate work story 11, 12, and 13 already own, ahead of the WebSocket layer all three actually depend on. Shipping the group/member model and its REST surface now, with clean extension points for the deferred pieces, unblocks those later stories without guessing at a transport layer that doesn't exist yet.
+
+### 2026-09 | Story 46 migration: owner selection for pre-existing playlists
+
+Decision: the story 46 migration assigns each pre-existing playlist's owner as the lowest user id among its `user_playlists` members, its earliest-created account. A playlist that held songs but never had a `user_playlists` row of its own falls back further: the contributor of its oldest song becomes both owner and sole member, since a song's `added_by` is always a real account and nothing else ties such a playlist to a user at all. A playlist matching neither case, no members and no songs, is dropped by the migration; the application never leaves a playlist in that state outside of migration, since the last member leaving already deletes it.
+
+Why: no creation timestamp exists on `Playlist` to read an actual creator from, so a deterministic stand-in was needed. Lowest user id approximates "earliest account, most likely the creator" without adding a real audit trail this story doesn't otherwise need. The song-contributor fallback exists because real data can apparently include a playlist with songs but no matching `user_playlists` row (this surfaced in the migration test suite's existing fixtures), and every playlist needs a determinable owner coming out of this migration, not just the common case.
+
+Note, 2026-09: reversed, see the 2026-09 "Story 46 migration reversed" entry below. Pre-existing playlists and songs are cleared outright instead of having an owner guessed for them.
+
+### 2026-09 | Story 46: the playlist owner can't leave while other members remain
+
+Decision: leaving a playlist you own is only allowed once you're its last remaining member, in which case leaving deletes the playlist exactly as it already did before this story. While other members are still on the playlist, the owner's leave attempt is rejected; kicking or banning every other member first, or waiting for them to leave, clears the way.
+
+Why: the owner is the sole source of every owner-only action, including managing membership itself. An owner leaving mid-playlist would strand the remaining members with no one able to change grants, kick, ban, or otherwise administer it, and this story doesn't introduce an ownership-transfer mechanism to hand that authority off cleanly first.
+
+Note, 2026-09: reversed, see the 2026-09 "Owner leave and ownership transfer" entry below. The owner can leave at any time; leadership passes automatically instead of being blocked.
+
+### 2026-09 | Song deletion once a song isn't playlist-exclusive: unlink first, delete only when orphaned everywhere
+
+Decision: story 15 replaces `Song`'s singular `@ManyToOne playlist` with a `song_playlists` join table, so a song can belong to more than one playlist. Removing a song from a playlist now only unlinks that one join row. The song row itself is only deleted outright once that removal leaves it with zero remaining playlists.
+
+Why: there's no catalog view today that can reach a song with no playlist at all, so leaving one behind as a fully orphaned, unreachable row is worse than deleting it. But a straight delete on every removal, the old behavior when a song could only ever have one playlist, would silently break the song for every other playlist it's still linked to once story 45's cross-playlist copy exists. Checking for zero remaining playlists before deleting gets both: no dangling rows, and no destructive surprise for a shared song.
+
+Note, 2026-09: reversed, see the 2026-09 "Song deletion reversed" entry below. A song is a standalone catalog entity, independent of any playlist it belongs to; it is never deleted as a side effect of removing it from a playlist, including its last one.
+
+### 2026-09 | Story 46 migration reversed: pre-existing playlists and songs are cleared, not assigned a guessed owner
+
+Decision: the story 46 migration no longer tries to determine an owner for any pre-existing playlist. Every existing playlist and song is deleted outright (along with their join and tag rows), `user_playlists` is still dropped the same as before. `users` is untouched.
+
+Why: nothing in the pre-story-46 schema names a real creator, so any owner the migration picks is a guess, not a fact. Guessing an owner from `user_playlists` row order stands on data that was never meant to carry that meaning. Clearing the catalog instead of migrating it forward on a guess keeps the owner column's data honest from the first row it's ever set on.
+
+### 2026-09 | CLAUDE.md's content moves to AGENTS.md, the cross-tool convention
+
+Decision: the project's conventions (stack, commands, non-negotiable rules, writing style, code conventions, git workflow, task gate) move from `CLAUDE.md` into a new root `AGENTS.md`. `CLAUDE.md` becomes a short pointer to it. `.kiro/steering/agents-md.md` (always-included) and `.cursor/rules/agents-md.mdc` (`alwaysApply: true`) each inline `AGENTS.md`'s content via their own tool's live file-reference syntax, rather than copying it, so there's one file to keep current.
+
+Why: this project is worked on with more than one agentic coding tool, and `CLAUDE.md` is a Claude-Code-specific filename nothing else reads. AGENTS.md is the convention Codex, Cursor, Kiro, and Claude Code itself all read natively; keeping every convention in the one file both Codex and Kiro's baseline support already cover, plus a live-referenced pointer for Kiro and Cursor's own scoped-rule systems, avoids maintaining the same rules in three or four places that drift out of sync with each other.
+
+### 2026-09 | Three readiness tiers replace an undifferentiated batch plan: Local, Beta, Finished
+
+Decision: `ROADMAP.md` now names three milestones above its phase breakdown. Local is Phase 0, Phase 1, and Phase 2, plus story 47 (naming consistency) and story 22 (test coverage), both moved to run last within Phase 2, in that order; it's playable by the project owner alone or with one other person over a locally opened port, no real deployment target needed. Beta adds story 7 and story 8, hosting and database migration, actually decided and executed, and covers deploying for real and demo matches with friends and colleagues. Finished is Phase 3 alone, the lowest priority, since neither of its stories blocks Local or Beta. Story 22 no longer runs partway through Phase 1; its existing partial implementation (batch 18, PR #85) is dropped rather than carried forward, since redoing it once Local's actual feature surface is finished is less work than maintaining partial coverage through every story that lands between now and then. Story 28's design phase is confirmed done, all 53 screens (auth, playlist management, song review, import, gameplay, plus the landing page, both themes) already exist in `docs/design/hittiguess-design.html`; only its implementation phase remains, staying in Phase 2 where it already was.
+
+Why: the project owner's own test cycle only needs three tiers, not phase numbers, to reason about: can they play it, can other people play it, is it done. Test coverage written mid-build gets rewritten every time the surface it covers changes, story 27's rate limiter and story 37's `DELETE /me` fix both landed real behavior changes after batch 18's tests were written against the pre-fix code. Writing it once, last, against a settled Local feature set costs less than maintaining it continuously through stories that haven't shipped yet. The design canvas predates this decision only in the sense that nobody had gone back to check it against `TASKS.md`'s stale unchecked boxes; the actual mockup work was already complete.
+
+### 2026-09 | Documentation consistency pass after story 38 (observability) merged
+
+Decision: after PR #81 (story 38) merged, a full pass across `PROJECT_STATE.md`, `TASKS.md`, `ROADMAP.md`, and `ARCHITECTURE.md` found and fixed several pieces of drift unrelated to story 38 itself, caught while checking it. First, a real story-ID collision: `ARCHIVE.md` already had an archived "Story 47" (replacing `SongTag` with a genre field and adding real paper-size export), while `PROJECT_STATE.md`/`TASKS.md`/`ROADMAP.md` separately used ID 47 for a newer "naming consistency" story introduced by the roadmap-restructuring PR. The naming-consistency story is renumbered to 49 (the next free ID) rather than disturbing the already-shipped, already-archived genre story. Second, `ROADMAP.md`'s batch-plan checklist had batches 12, 13, 15, 16, 17, and 19 (stories 33, 27, 37, 36, 44, and 42/43) still unchecked despite each one's PR having merged into `dev` long before story 38's; batch 14 (story 38) is checked too, since the checklist tracks a batch's PR merging, not the underlying story reaching `Implemented`, and PR #81 has merged even though story 38 itself deliberately stays `Ready`. Third, story 39 (Group)'s `PROJECT_STATE.md` row still read bare "Ready" despite its backend being fully built on `feature/group`, the same deferred-frontend-tasks shape stories 10 and 11 already carry as "Implemented" with a caveat; promoted to match. Fourth, `ARCHITECTURE.md`'s "What's built"/"Not yet built" summary was badly stale, still describing Discogs, pgvector dedup, the playlist/song relational fix, rate limiting, and song search by link/keyword as unbuilt when all had already shipped; rewritten against the current `PROJECT_STATE.md`/`ARCHIVE.md` state.
+
+Why: `TASKS.md` is what work actually happens from and `PROJECT_STATE.md` is the backlog's source of truth, so a stale or colliding story ID risks a future session picking up the wrong story's context under a shared number, and a stale `ARCHITECTURE.md` summary risks re-litigating or re-building something that's already done. None of this was caused by story 38's own changes; it surfaced only because reviewing story 38's doc updates prompted a full cross-file check rather than a narrow one.
+
+### 2026-09 | Two earlier open items resolved: verified-promotion criteria and build-into-microservice
+
+Decision: two open items left hanging in earlier entries are now resolved, recorded here rather than by editing those entries.
+
+The 2026-08 "Community verification through reports, not thumbs up or down" entry closed with "what promotes a reported or newly submitted song to fully verified is not yet decided." That is decided and built: story 18's lock rule promotes a song to `VERIFIED` only on exact agreement among MusicBrainz, Discogs, and Wikidata, with no LLM call; anything short of that lands at `NEEDS_REVIEW` through Wikipedia extraction and four-source reconciliation, and a total no-answer at `MANUAL_ENTRY`. The rule and its tiers were fixed in the 2026-09 "Metadata pipeline final shape" and "Verification schema" entries and shipped to `dev` in batch 20 (`feature/verification-promotion`).
+
+The 2026-09 "Metadata pipeline final shape: two-tier lock-or-LLM" entry closed with an open item asking "whether any of this gets built into the real AI microservice versus staying validated-but-unbuilt in the spike." That is decided and built: the 2026-09 "Story 20 greenlit" entry committed to building the validated pipeline into the real microservice, and it shipped to `dev` across batches 20 (verification pipeline, story 18), 21 (catalog seeding and bulk import, story 40), 22 (content safety, story 41), and 23 (parallelized fetches, story 24). The pipeline now runs in `ai/app/metadata/`, not only in `ai/spikes/`.
+
+Why: both items were phrased as still-open in entries this log never revisited, so a reader reaching them has no signal that the question closed. Recording the resolution as its own append-only entry, pointing back to the entries it settles, keeps the log honest without editing past text.
+
+### 2026-09 | ROADMAP.md's batch plan retargeted to story 28's screen clusters
+
+Decision: `ROADMAP.md`'s "Batch plan" section, originally one story per PR sequencing Phase 1 and Phase 2, is replaced rather than removed outright or left as a stale checklist. Nearly every story it sequenced has since shipped, several out of the order it originally picked, through branches it never named, so the old list no longer describes how to reach for the next unit of work. The only piece of genuinely sequential work left toward Local is story 28's implementation phase, so the new batch plan sequences that instead, split into the same screen clusters `docs/design/hittiguess-design.html` and `FRONTEND_CONTENT.md` already group its 53 mockups into (existing pages, planned playlist screens, song review and search, admin views, gameplay screens, and a final cross-cutting batch for the component/token boundary and accessibility pass).
+
+Why: a batch plan earns its place by giving a session a starting point without re-deriving one; a plan describing finished work no longer does that, and deleting the section entirely would lose a genuinely useful pattern, one ordered PR-sized list, for the one sequential stretch of work that remains. Story 28 is that stretch: its own tasks in `TASKS.md` are just two broad implementation bullets with no PR-sized breakdown, so retargeting the batch plan section is where that breakdown belongs, grouped by the same screen categories the design and content docs already use rather than inventing a new taxonomy.
+
+### 2026-10 | Beta uses Azure Container Apps with Supabase, then moves to Hetzner if sustained cost requires it
+
+Decision: Beta deploys the Next.js frontend on Vercel, the Spring core and FastAPI AI service as separate Azure Container Apps in one Consumption environment, and data in two new Supabase projects. The transactional Postgres+pgvector project is shared by both backend services. The separate analytics Postgres project is used only by the Spring core. The core app has external HTTPS and WebSocket ingress, while the AI app has internal-only ingress. The core app remains at one replica until the realtime broker and process-local session state are externalized. Azure resource limits, game-admission limits, budget alerts, and a shutdown workflow protect the whole-deployment ceiling of roughly $20 per month. If sustained Azure use exceeds that ceiling, the same two container images and reverse proxy move to one fixed-price Hetzner server. Vercel and both Supabase projects stay in place.
+
+Why: Azure Container Apps supplies the public cloud deployment, container operations, managed HTTPS, internal service networking, revision workflow, and observability integration wanted for Beta. The game has a small expected user base, direct peer-to-peer media, and a realtime core that cannot yet scale horizontally. A fixed-price Hetzner server is therefore the cost-control path once steady WebSocket activity removes the benefit of scale-to-zero pricing. Keeping Vercel and Supabase unchanged makes that future migration a deployment change rather than a data or frontend migration.
+
+### 2026-10-17 | Players whose browser cannot capture audio are skipped as DJ
+
+Decision: a player whose browser cannot share audio, in practice Firefox and Safari, is skipped when the DJ rotation picks the next DJ. They still join the group, use voice chat, and guess every round, and they see a short notice explaining why they are not a DJ. The client reports its capability when the player joins.
+
+Why: a DJ without audio capture plays the song only through their own speakers, so nobody else can hear it in a remote game. Skipping them keeps every round playable without blocking those browsers from the rest of the game.
+
+### 2026-10-18 | Firefox and Safari may try to share audio for now
+
+Decision: desktop Firefox and Safari players get the share prompt again, and every attempt is logged, until real tests show whether they can capture audio. The earlier skip rule stays in the code behind one flag.
+
+Why: the earlier skip was based on documentation, not on a test in those browsers.
+
+### 2026-10-19 | The Fly.io deployment is gone
+
+Decision: the Fly.io backend app is deleted and its configuration file, `backend/fly.toml`, is removed from the repository. Azure Container Apps is the only backend host.
+
+Why: production moved to Azure and the Fly app only kept an always-on machine billing. The 2026-07 decision to move off Fly.io stays in this file as history.
+
+### 2026-10-31 | API client regeneration for audio check and recheck candidate types
+
+Decision: the generated frontend API client, models, and Zod schemas are regenerated using Orval against the running backend's OpenAPI endpoint (`/v3/api-docs`). Hand-written definitions for audio check endpoints, share statuses, and recheck candidates are replaced by the generated definitions.
+
+Why: manual client edits introduced during recent audio check and whole-catalog recheck tasks lacked automated schema synchronization. Regenerating against the live backend ensures types and endpoint hooks precisely match the server's OpenAPI specification without behavioral drift.
+
+### 2026-10-31 | Light mockup for admin song recheck
+
+Decision: `AdminSongRecheckLight.dc.html` provides the light-theme Catppuccin Latte mockup for `/admin/songs/recheck`, covering the month list, sticky action bar, confirmation dialog, and result toast. The artboard is placed alongside `AdminSongRecheckDark.dc.html` in `canvas.json` and embedded in `hittiguess-design.html`.
+
+Why: all admin console screens require dark and light mockups in the design canvas to define layout, spacing, and styling in both themes.
+
+### 2026-10-31 | Joined-tab copy and library filter feedback
+
+Decision: the Joined tab in `frontend/app/(app)/playlists/page.tsx` renders the "Join playlist" end tile as designed in `YourPlaylistsJoinedDark.dc.html` and `YourPlaylistsJoinedLight.dc.html`, and provides distinct empty-state messages for empty search queries and empty library filters.
+
+Why: the playlist library requires distinct feedback when a filter has no items versus when a search query yields no matches. Maintaining the clean "Join playlist" card keeps the Joined tab consistent with the Owned and Saved end tiles without visual clutter.
+
+### 2026-10-31 | Desktop 1440x900 theme and mockup audit reconciliation
+
+Decision: all primary application routes and states at 1440x900 in both dark (Catppuccin Mocha) and light (Catppuccin Latte) themes conform to the design board specifications, including user identity and truncation rules, popup placement and dismiss behavior, playlist action menus, difficulty tier and custom playlist selection, playlist import flows, gameplay phase countdowns and lock-ins, results podium and export actions, admin consoles and review drawers, and game history views. The Explore playlist card container radius aligns to `rounded-2xl` (16px) matching the library card standard.
+
+Why: maintaining visual consistency across themes and screens prevents styling regressions and ensures that interactive dialogs, status badges, and layout anchors match the approved design board across desktop viewports.
+
+### 2026-10-31 | Mobile landing page 390x844 responsive comparison
+
+Decision: the landing page responsive layout at 390x844 conforms to `LandingMobileDark.dc.html` and `LandingMobileLight.dc.html` across both themes, verifying hero typography and card deck tilts, the mobile SVG winding path for round steps, section highlight offsets and backdrop containers, full-width call-to-action buttons, and mobile footer link labels.
+
+Why: the marketing landing page is the only view with a dedicated mobile design artboard in the design specification. Confirming exact 390x844 breakpoint behavior in both light and dark palettes ensures mobile visitors experience the intended visual presentation before entering the app.
+
+### 2026-10-31 | Mockup reconciliation and published canvas validation
+
+Decision: all 145 source artboard documents and `canvas.json` in `docs/design/source` are embedded with exact equality into `docs/design/hittiguess-design.html`, incorporating account settings (`AccountSettingsDark.dc.html`, `AccountSettingsLight.dc.html`), audio check (`AudioCheckDark.dc.html`, `AudioCheckLight.dc.html`), admin song recheck (`AdminSongRecheckDark.dc.html`, `AdminSongRecheckLight.dc.html`), and all library, lobby, and session artboards without drift.
+
+Why: maintaining complete parity between standalone source artboards and the published single-file design canvas guarantees that design reviews, mockup references, and visual test fixtures inspect identical markup and layout structure.
+
+### 2026-10-31 | Production database inspection, service boundaries, and idle wake verification
+
+Decision: production database histories, schema integrity, TLS settings, and service boundaries are audited and verified against both Neon projects. The core transactional database has applied 53 migrations (V1 to V53) with zero failed records. The pgvector extension (version 0.8.6) and HNSW cosine index `songs_embedding_hnsw_idx` on `songs` are verified active. The analytics database has applied 2 migrations (V1 and V2) matching repository definitions with zero drift. Both databases enforce TLS connections with `sslmode=require`. Service boundaries isolate the analytics database exclusively to the core service; the AI container app holds database credentials solely for the transactional database and has no network access or secrets for analytics. The frontend client holds no database credentials. First-request connection and query latency after Neon idle compute suspend was measured at 0.256 seconds; HikariCP's default 30-second connection acquisition timeout accommodates cold wake-ups without request timeouts or configuration changes. Inspection script `scripts/inspect_databases.py` and unit test `scripts/test_inspect_databases.py` provide ongoing auditability.
+
+Why: validating schema migration records, extension states, and network boundaries confirms that production data stores operate in accordance with documented architectural contracts. Verifying that Neon's serverless compute wake time remains well under HikariCP's connection timeout ensures cold starts do not drop user requests.
+
+### 2026-10-31 | Shared public footer and public route registration
+
+Decision: a reusable public footer component `PublicFooter` (`frontend/components/public-footer.tsx` and `public-footer.css`) is created to unify public navigation across the landing page, legal documents, credits, about, and contact pages. It replaces the plain-text spans formerly in `LandingPage` with working routes for Privacy Policy (`/privacy`), Terms of Service (`/terms`), Copyright (`/copyright`), Credits and Licences (`/credits`), About (`/about`), Contact (`/contact`), and GitHub (`https://github.com/dariusturcu22/hittiguess`). External links enforce `target="_blank"` and `rel="noopener noreferrer"`. The routing proxy in `frontend/proxy.ts` is updated to include `/privacy`, `/terms`, `/copyright`, `/credits`, `/about`, `/contact`, and `/legal` in `PUBLIC_ROUTES`, allowing unauthenticated visitors to navigate to public and legal informational pages without being redirected to `/login`. Comprehensive unit tests in `public-footer.test.tsx`, `proxy.test.ts`, and `page.test.tsx` verify link targets, route accessibility without an active session, and responsive rendering.
+
+Why: legal disclosures, about information, and community resources must be publicly reachable from all marketing and informational surfaces without requiring an account. Extracting a shared footer component ensures visual consistency and eliminates duplicate navigation markup across future public routes.
+
+### 2026-10-31 | Public about page implementation
+
+Decision: a public informational page is added at `/about` (`frontend/app/(marketing)/about/page.tsx`) and linked from the shared public footer. The page explains the core premise of hittiguess as a Hitster-inspired multiplayer music trivia game designed for friend groups. It details how a round works in four concise sentences covering YouTube playback without title revelation, timeline card placement, token wagering by other players, and year revelation with scoring. It confirms that the project is completely free, open source under the MIT licence, operated with zero advertisements, and built with zero third-party tracking scripts or profiling cookies. Authorship is attributed to Darius Turcu and open-source contributors on GitHub. Automated unit tests in `about/page.test.tsx` verify the presence of all required explanations, the four-sentence round rules, author attribution, and shared public footer integration.
+
+Why: visitors and players need a concise, transparent overview of the game mechanics, community philosophy, non-commercial status, and privacy standards before signing up or joining a session.
+
+### 2026-10-31 | Unified 404 and application error pages with Sentry reporting
+
+Decision: dedicated 404 and error boundaries are implemented across the Next.js frontend via `frontend/app/not-found.tsx`, `frontend/app/error.tsx`, and `frontend/app/global-error.tsx`. All three templates are styled using existing design tokens (`bg-background`, `bg-card`, `border-border`, `text-primary`, `text-destructive`) and support light and dark themes through the design token CSS variables. Each template provides clear user-facing messaging, action buttons to return home (`/`) or navigate to sign-in (`/login`), and retry actions (`reset()`) for recoverable render faults. The root `global-error.tsx` defines its own HTML structure and reports critical exceptions directly to Sentry using `Sentry.captureException(error)`. Comprehensive unit and error boundary tests in `not-found.test.tsx`, `error.test.tsx`, `global-error.test.tsx`, and `error-boundaries.test.tsx` verify that unknown routes render the 404 view, thrown component render errors render the interactive error boundary, and unhandled errors report to Sentry.
+
+Why: broken URLs and runtime render exceptions must degrade gracefully to branded, theme-consistent interfaces rather than default browser error pages or raw stack traces. Automatic exception reporting to Sentry ensures immediate developer visibility into production client errors.
+
+### 2026-11-01 | Open Graph and Twitter card preview images
+
+Decision: social share previews and rich embed cards are implemented for root routes and invite join links. Dynamic 1200x630 pixel images are generated using Next.js `ImageResponse` via `frontend/app/opengraph-image.tsx`, `frontend/app/twitter-image.tsx`, `frontend/app/(join)/opengraph-image.tsx`, and `frontend/app/(join)/twitter-image.tsx`. The primary site share image displays the hittiguess waveform logo, branding, and core tagline ('Hear the song. Guess the year. Build your timeline with friends.'). Invite links (`/playlists/join/[inviteCode]` and `/groups/join/[inviteCode]`) receive a generic preview inviting players to participate without leaking private room identifiers or playlist contents. In addition, brand vector and raster assets from `logo-export/` are imported to `frontend/public/brand/` for permanent repository availability. Root and join layouts export matching `openGraph` and `twitter` metadata. Unit tests in `share-images.test.ts` verify the dimensions, content types, and metadata properties.
+
+Why: social messaging platforms and link expanders require 1200x630 Open Graph and Twitter Card images to display rich previews. Providing generic previews on invitation routes preserves game session privacy while delivering clear context to invite recipients.
+
+### 2026-11-01 | Web app manifest and progressive web application icons
+
+Decision: a web application manifest is implemented at `frontend/app/manifest.ts`, defining application identity ('hittiguess'), display mode ('standalone'), light theme color (`#eff1f5`), dark background color (`#181825`), and standard 192x192 and 512x512 icons, including maskable icon configurations for mobile launchers. Source icon assets from `logo-export/` are processed and placed in `frontend/public/` (`icon-192.png`, `icon-512.png`, `icon-maskable-192.png`, `icon-maskable-512.png`) and mirrored in `frontend/public/brand/`. The existing SVG favicon (`icon.svg`) uses media queries (`prefers-color-scheme`) to dynamically display high-contrast green (`#499f36`) on light browser chrome and pastel green (`#a6e3a1`) on dark browser chrome. Automated tests in `manifest-and-icons.test.ts` verify manifest configuration, icon binary file existence and dimensions, and SVG media query support.
+
+Why: progressive web application installation and browser home screen shortcuts require compliant web app manifests and multi-resolution maskable icon assets to avoid clipping across diverse operating systems and display densities.
+
+## Story 52: Live playtest fixes
+
+A Chrome and Firefox playtest on the production site found that DJ audio never reached the other players, a player cannot leave a running session, and several voice and layout problems. Voice chat, playlists, and song adding worked.
+
+DJ audio (the most important batch):
+
+- [x] Confirm in a two-Chrome production run that the DJ's shared audio reaches the other players (the third playtest found audio working end to end)
+- [x] Share once per match: a DJ who has not yet shared is asked for the screen share with system audio first, and only then does the Open on YouTube button appear; the share stays alive for the rest of the match, so later rounds do not ask again
+- [x] Share the DJ's audio only during that player's own DJ turn: outside it the captured audio is not mixed into the voice stream and nobody receives it, and the audio stops when the DJ locks in; only the current DJ's audio is sent to the other players, never to the DJ; unit tests for the gating
+- [x] Detect browsers that cannot capture audio (Firefox, Safari), report the capability to the server when a player joins, and skip those players in DJ rotation; they still play and guess, and see a short notice explaining why; a rotation with no capable player shows the group a clear message; unit and backend integration tests
+- [x] Open the YouTube link in a new tab of the same browser window, not a popup window
+- [x] The card's sound wave moves for every player from the DJ's audio and ignores voice chat; the DJ's own wave follows the shared audio
+
+Leaving and ending:
+
+- [x] A player can leave a running session while the game continues without them: Leave game also leaves the group, because a member of a locked group is sent back into its game
+- [x] The voice indicator shows a player in voice only after they joined; find and fix the state that marks a player as in voice without joining; unit test
+- [x] A player whose tab closed or whose connection dropped is removed from voice after 2 minutes; backend scheduler and integration test
+
+Voice controls:
+
+- [x] Volume sliders for the microphone and the speaker next to the device pickers; the microphone level meter and the speaker test tone already existed
+
+Visual:
+
+- [x] Card colors that are too dark on the dark theme get a readable variant; check every song color
+- [x] Investigated the `wss://api.hittiguess.com/ws` closed-before-established message: it appears when a page unmounts its socket while connecting and needs no change
