@@ -18,6 +18,9 @@ public interface RoundRepository extends JpaRepository<Round, Long> {
 
     List<Round> findBySessionOrderByRoundNumberAsc(GameSession session);
 
+    @Query("select round.session.id from Round round where round.id = :roundId")
+    Optional<Long> findSessionIdById(@Param("roundId") Long roundId);
+
     // Per-song aggregate placement outcome across every scored round: the count of scored
     // rounds and, of those, the count whose placement was correct. Only rounds that reached
     // a resolved placement are counted (placedPosition and placementCorrect are null until

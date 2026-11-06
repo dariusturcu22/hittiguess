@@ -255,6 +255,33 @@ class GameSessionAudioPauseTest {
     }
 
     @Test
+    void theBettingWindowTimerFromBeforeAPauseDoesNotRevealEarlyAfterTheResume() {
+        GameSession session = session(DjMode.ROTATING);
+        Player active = player(session, 1L, 0, AudioCheckStatus.OK);
+        Player dj = player(session, 2L, 1, AudioCheckStatus.TESTING);
+        Round round = round(session, active, dj);
+        Instant originalWindowEndsAt = Instant.now().minusSeconds(1);
+        round.setStatus(RoundStatus.BETTING);
+        round.setPlacedPosition(0);
+        round.setPlacementCorrect(false);
+        round.setBettingWindowEndsAt(originalWindowEndsAt);
+        session.setPausedAt(Instant.now().minusSeconds(5));
+
+        gameSessionService.reportPlayerAudioStatus(SESSION_ID, dj.getUser().getId(), AudioCheckStatus.OK);
+        ArgumentCaptor<Runnable> restartedTimer = ArgumentCaptor.forClass(Runnable.class);
+        verify(gameSessionScheduler).scheduleAt(eq(round.getBettingWindowEndsAt()), restartedTimer.capture());
+
+        gameSessionService.revealEffect(ROUND_ID, originalWindowEndsAt);
+
+        assertThat(round.getStatus()).isEqualTo(RoundStatus.BETTING);
+        assertThat(round.getRevealedAt()).isNull();
+
+        restartedTimer.getValue().run();
+
+        assertThat(round.getStatus()).isEqualTo(RoundStatus.SCORED);
+    }
+
+    @Test
     void aTestingShareKeepsTheGamePausedAndIsBroadcast() {
         GameSession session = session(DjMode.ROTATING);
         Player active = player(session, 1L, 0, AudioCheckStatus.OK);
