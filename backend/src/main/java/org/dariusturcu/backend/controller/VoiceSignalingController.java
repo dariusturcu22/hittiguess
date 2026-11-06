@@ -85,8 +85,4 @@ public class VoiceSignalingController {
         }
         throw new AccessDeniedException("No authenticated user on this STOMP session");
     }
-
-    void resetRateLimiterForTesting() {
-        signalRateLimiter.resetForTesting();
-    }
 }

@@ -147,10 +147,4 @@ public class ChatService {
                 message.getContent(),
                 message.getCreatedAt());
     }
-
-    // Test-only: the rate limiter's buckets otherwise live for the service's lifetime, so a
-    // shared Spring context across test methods would carry rate-limit state between them.
-    void resetRateLimiterForTesting() {
-        rateLimiterRegistry.resetForTesting();
-    }
 }
