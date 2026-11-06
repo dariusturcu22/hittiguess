@@ -8,6 +8,7 @@ import org.dariusturcu.backend.service.GameSessionService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.messaging.Message;
@@ -20,7 +21,11 @@ import org.springframework.web.socket.CloseStatus;
 import org.springframework.web.socket.messaging.SessionDisconnectEvent;
 import org.springframework.web.socket.messaging.SessionSubscribeEvent;
 
+import java.util.function.BooleanSupplier;
+
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -78,7 +83,7 @@ class SessionSessionEventListenerTest {
         listener.handleSubscribe(subscribeToRoundTopic());
 
         assertThat(presenceRegistry.hasOpenSocket(SESSION_ID, USER_ID)).isTrue();
-        verify(gameSessionService).reconnectPlayer(SESSION_ID, USER_ID);
+        verify(gameSessionService).reconnectPlayer(eq(SESSION_ID), eq(USER_ID), any(BooleanSupplier.class));
     }
 
     @Test
@@ -88,7 +93,7 @@ class SessionSessionEventListenerTest {
         listener.handleSubscribe(subscribeToRoundTopic());
 
         assertThat(presenceRegistry.hasOpenSocket(SESSION_ID, USER_ID)).isFalse();
-        verify(gameSessionService, never()).reconnectPlayer(SESSION_ID, USER_ID);
+        verify(gameSessionService, never()).reconnectPlayer(eq(SESSION_ID), eq(USER_ID), any(BooleanSupplier.class));
     }
 
     @Test
@@ -99,7 +104,7 @@ class SessionSessionEventListenerTest {
 
         listener.handleDisconnect(socketCloses(STOMP_SESSION_ID));
 
-        verify(gameSessionService, never()).disconnectPlayer(SESSION_ID, USER_ID);
+        verify(gameSessionService, never()).disconnectPlayer(eq(SESSION_ID), eq(USER_ID), any(BooleanSupplier.class));
         assertThat(presenceRegistry.hasOpenSocket(SESSION_ID, USER_ID)).isTrue();
     }
 
@@ -112,13 +117,40 @@ class SessionSessionEventListenerTest {
         listener.handleDisconnect(socketCloses(STOMP_SESSION_ID));
         listener.handleDisconnect(socketCloses(SECOND_STOMP_SESSION_ID));
 
-        verify(gameSessionService).disconnectPlayer(SESSION_ID, USER_ID);
+        verify(gameSessionService).disconnectPlayer(eq(SESSION_ID), eq(USER_ID), any(BooleanSupplier.class));
+    }
+
+    @Test
+    void theDisconnectChecksPresenceAgainSoASocketThatSubscribedMeanwhileKeepsThePlayerConnected() {
+        when(playerRepository.existsBySessionIdAndUserId(SESSION_ID, USER_ID)).thenReturn(true);
+        listener.handleSubscribe(subscribeToRoundTopic(STOMP_SESSION_ID));
+        listener.handleDisconnect(socketCloses(STOMP_SESSION_ID));
+        ArgumentCaptor<BooleanSupplier> presenceCheck = ArgumentCaptor.forClass(BooleanSupplier.class);
+        verify(gameSessionService).disconnectPlayer(eq(SESSION_ID), eq(USER_ID), presenceCheck.capture());
+        assertThat(presenceCheck.getValue().getAsBoolean()).isFalse();
+
+        listener.handleSubscribe(subscribeToRoundTopic(SECOND_STOMP_SESSION_ID));
+
+        assertThat(presenceCheck.getValue().getAsBoolean()).isTrue();
+    }
+
+    @Test
+    void theReconnectChecksPresenceAgainSoASocketThatClosedMeanwhileLeavesThePlayerDisconnected() {
+        when(playerRepository.existsBySessionIdAndUserId(SESSION_ID, USER_ID)).thenReturn(true);
+        listener.handleSubscribe(subscribeToRoundTopic(STOMP_SESSION_ID));
+        ArgumentCaptor<BooleanSupplier> presenceCheck = ArgumentCaptor.forClass(BooleanSupplier.class);
+        verify(gameSessionService).reconnectPlayer(eq(SESSION_ID), eq(USER_ID), presenceCheck.capture());
+        assertThat(presenceCheck.getValue().getAsBoolean()).isTrue();
+
+        listener.handleDisconnect(socketCloses(STOMP_SESSION_ID));
+
+        assertThat(presenceCheck.getValue().getAsBoolean()).isFalse();
     }
 
     @Test
     void closingASocketThatNeverSubscribedAsAPlayerDisconnectsNobody() {
         listener.handleDisconnect(socketCloses(STOMP_SESSION_ID));
 
-        verify(gameSessionService, never()).disconnectPlayer(SESSION_ID, USER_ID);
+        verify(gameSessionService, never()).disconnectPlayer(eq(SESSION_ID), eq(USER_ID), any(BooleanSupplier.class));
     }
 }

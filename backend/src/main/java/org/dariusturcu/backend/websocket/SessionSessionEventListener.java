@@ -19,7 +19,9 @@ import java.util.Optional;
 // subscribing to the round topic registers it and marks the player connected again, and
 // once that player's last registered socket for the session closes, their isConnected
 // flag flips false (and, if they were mid-turn, their 90-second turn-timeout clock
-// starts). The session/Player-layer counterpart to GroupSessionEventListener.
+// starts). The session/Player-layer counterpart to GroupSessionEventListener. A page reload
+// closes one socket while another subscribes on a different thread, so the service checks
+// the registry again under the session lock before it marks the player either way.
 @Component
 @RequiredArgsConstructor
 @Slf4j
@@ -50,7 +52,7 @@ public class SessionSessionEventListener {
 
     private void reconnectQuietly(Long sessionId, Long userId) {
         try {
-            gameSessionService.reconnectPlayer(sessionId, userId);
+            gameSessionService.reconnectPlayer(sessionId, userId, () -> presenceRegistry.hasOpenSocket(sessionId, userId));
         } catch (RuntimeException exception) {
             // The session may have ended between the subscription and this callback.
             log.debug("Reconnect skipped for session {} user {}: {}", sessionId, userId, exception.getMessage());
@@ -59,7 +61,7 @@ public class SessionSessionEventListener {
 
     private void disconnectQuietly(Long sessionId, Long userId) {
         try {
-            gameSessionService.disconnectPlayer(sessionId, userId);
+            gameSessionService.disconnectPlayer(sessionId, userId, () -> presenceRegistry.hasOpenSocket(sessionId, userId));
         } catch (RuntimeException exception) {
             // The player, or the session itself, may already be gone (session ended or
             // abandoned) by the time the socket disconnect arrives.
