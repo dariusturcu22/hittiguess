@@ -55,3 +55,8 @@ Thumbs.db
 
 # Design artboards extracted by opencode-tasks/tools/extract_artboard.py
 .design-artboards/
+
+# --- Python ---
+__pycache__/
+*.pyc
+.pytest_cache/

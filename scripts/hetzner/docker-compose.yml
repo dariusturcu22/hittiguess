@@ -1,0 +1,148 @@
+services:
+  caddy:
+    image: caddy:2.9-alpine
+    container_name: hittiguess-caddy
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    environment:
+      API_DOMAIN: ${API_DOMAIN:-api.hittiguess.com}
+      LETSENCRYPT_EMAIL: ${LETSENCRYPT_EMAIL:-admin@hittiguess.com}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    networks:
+      - internal_network
+    depends_on:
+      core:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          cpus: "0.50"
+          memory: 256M
+
+  core:
+    image: hittiguess-core:latest
+    build:
+      context: ../../backend
+      dockerfile: Dockerfile
+    container_name: hittiguess-core
+    restart: always
+    environment:
+      APP_ENV: ${APP_ENV:-prod}
+      FRONTEND_URL: ${FRONTEND_URL:-https://www.hittiguess.com}
+      FRONTEND_ALLOWED_ORIGINS: ${FRONTEND_ALLOWED_ORIGINS:-https://www.hittiguess.com,https://hittiguess.com}
+      COOKIE_DOMAIN: ${COOKIE_DOMAIN:-hittiguess.com}
+      EMAIL_FROM_ADDRESS: ${EMAIL_FROM_ADDRESS:-noreply@hittiguess.com}
+      AI_SERVICE_URL: http://ai:8000
+      DB_URL: ${DB_URL}
+      DB_USERNAME: ${DB_USERNAME}
+      DB_PASSWORD: ${DB_PASSWORD}
+      ANALYTICS_DB_URL: ${ANALYTICS_DB_URL}
+      ANALYTICS_DB_USERNAME: ${ANALYTICS_DB_USERNAME}
+      ANALYTICS_DB_PASSWORD: ${ANALYTICS_DB_PASSWORD}
+      JWT_SECRET: ${JWT_SECRET}
+      INTERNAL_SERVICE_API_KEY: ${INTERNAL_SERVICE_API_KEY}
+      OAUTH2_CLIENT_ID: ${OAUTH2_CLIENT_ID}
+      OAUTH2_CLIENT_SECRET: ${OAUTH2_CLIENT_SECRET}
+      RESEND_API_KEY: ${RESEND_API_KEY}
+      SENTRY_DSN: ${SENTRY_DSN:-}
+      OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-}
+      OTEL_EXPORTER_OTLP_HEADERS: ${OTEL_EXPORTER_OTLP_HEADERS:-}
+      OTEL_SDK_DISABLED: ${OTEL_SDK_DISABLED:-false}
+      VOICE_TURN_CLOUDFLARE_KEY_ID: ${VOICE_TURN_CLOUDFLARE_KEY_ID:-}
+      VOICE_TURN_CLOUDFLARE_API_TOKEN: ${VOICE_TURN_CLOUDFLARE_API_TOKEN:-}
+      MAX_ACTIVE_GAMES: ${MAX_ACTIVE_GAMES:-50}
+    networks:
+      - internal_network
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O - http://localhost:8080/actuator/health/readiness || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          cpus: "2.00"
+          memory: 2048M
+        reservations:
+          cpus: "1.00"
+          memory: 1024M
+
+  ai:
+    image: hittiguess-ai:latest
+    build:
+      context: ../../ai
+      dockerfile: Dockerfile
+    container_name: hittiguess-ai
+    restart: always
+    environment:
+      DATABASE_URL: ${AI_DATABASE_URL:-${DB_URL}}
+      INTERNAL_SERVICE_API_KEY: ${INTERNAL_SERVICE_API_KEY}
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      DEEPINFRA_API_KEY: ${DEEPINFRA_API_KEY}
+      YOUTUBE_API_KEY: ${YOUTUBE_API_KEY}
+      DISCOGS_CONSUMER_KEY: ${DISCOGS_CONSUMER_KEY:-}
+      DISCOGS_CONSUMER_SECRET: ${DISCOGS_CONSUMER_SECRET:-}
+      WIKIDATA_BOT_USERNAME: ${WIKIDATA_BOT_USERNAME:-}
+      WIKIDATA_BOT_PASSWORD: ${WIKIDATA_BOT_PASSWORD:-}
+      WIKIPEDIA_BOT_USERNAME: ${WIKIPEDIA_BOT_USERNAME:-}
+      WIKIPEDIA_BOT_PASSWORD: ${WIKIPEDIA_BOT_PASSWORD:-}
+      SENTRY_DSN: ${SENTRY_DSN:-}
+      OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-}
+      OTEL_EXPORTER_OTLP_HEADERS: ${OTEL_EXPORTER_OTLP_HEADERS:-}
+    networks:
+      - internal_network
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/health')\" || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    deploy:
+      resources:
+        limits:
+          cpus: "1.00"
+          memory: 1024M
+        reservations:
+          cpus: "0.50"
+          memory: 512M
+
+  alloy:
+    image: grafana/alloy:v1.19.2
+    container_name: hittiguess-alloy
+    restart: unless-stopped
+    volumes:
+      - ./config.alloy:/etc/alloy/config.alloy:ro
+      - alloy_data:/var/lib/alloy/data
+    environment:
+      INTERNAL_SERVICE_API_KEY: ${INTERNAL_SERVICE_API_KEY}
+      GRAFANA_CLOUD_PROMETHEUS_URL: ${GRAFANA_CLOUD_PROMETHEUS_URL:-}
+      GRAFANA_CLOUD_PROMETHEUS_USERNAME: ${GRAFANA_CLOUD_PROMETHEUS_USERNAME:-}
+      GRAFANA_CLOUD_PROMETHEUS_API_KEY: ${GRAFANA_CLOUD_PROMETHEUS_API_KEY:-}
+    command:
+      - run
+      - --server.http.listen-addr=0.0.0.0:12345
+      - --storage.path=/var/lib/alloy/data
+      - /etc/alloy/config.alloy
+    networks:
+      - internal_network
+    deploy:
+      resources:
+        limits:
+          cpus: "0.25"
+          memory: 256M
+
+networks:
+  internal_network:
+    driver: bridge
+
+volumes:
+  caddy_data:
+  caddy_config:
+  alloy_data:

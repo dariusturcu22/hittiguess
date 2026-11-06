@@ -1,0 +1,34 @@
+// Scrapes Core and AI Prometheus metrics on the internal Docker Compose network
+// and remote-writes the metrics to Grafana Cloud Prometheus.
+
+prometheus.scrape "backend" {
+	targets = [{
+		"__address__" = "core:8080",
+		"job"         = "hittiguess-backend",
+	}]
+	metrics_path = "/actuator/prometheus"
+	forward_to   = [prometheus.remote_write.grafana_cloud.receiver]
+}
+
+prometheus.scrape "ai_service" {
+	targets = [{
+		"__address__" = "ai:8000",
+		"job"         = "hittiguess-ai",
+	}]
+	metrics_path = "/metrics"
+	http_headers = {
+		"X-Internal-Api-Key" = [sys.env("INTERNAL_SERVICE_API_KEY")],
+	}
+	forward_to = [prometheus.remote_write.grafana_cloud.receiver]
+}
+
+prometheus.remote_write "grafana_cloud" {
+	endpoint {
+		url = sys.env("GRAFANA_CLOUD_PROMETHEUS_URL")
+
+		basic_auth {
+			username = sys.env("GRAFANA_CLOUD_PROMETHEUS_USERNAME")
+			password = sys.env("GRAFANA_CLOUD_PROMETHEUS_API_KEY")
+		}
+	}
+}

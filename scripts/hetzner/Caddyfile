@@ -1,0 +1,29 @@
+{
+    email {$LETSENCRYPT_EMAIL:admin@hittiguess.com}
+    admin off
+}
+
+{$API_DOMAIN:api.hittiguess.com} {
+    # Internal health check for reverse proxy
+    handle /caddy-health {
+        respond "OK" 200
+    }
+
+    # Block external access to Prometheus scraping endpoint
+    @forbidden_internal {
+        path /actuator/prometheus
+    }
+    handle @forbidden_internal {
+        respond "Forbidden" 403
+    }
+
+    # Proxy all application API and WebSocket traffic to Core
+    handle {
+        reverse_proxy core:8080 {
+            header_up Host {host}
+            header_up X-Real-IP {remote_host}
+            header_up X-Forwarded-For {remote_host}
+            header_up X-Forwarded-Proto {scheme}
+        }
+    }
+}
