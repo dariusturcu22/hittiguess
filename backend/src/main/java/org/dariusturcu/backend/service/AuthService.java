@@ -24,6 +24,7 @@ import org.dariusturcu.backend.repository.RefreshTokenRepository;
 import org.dariusturcu.backend.repository.UserRepository;
 import org.dariusturcu.backend.security.util.JwtUtil;
 import org.dariusturcu.backend.security.util.TokenHasher;
+import org.dariusturcu.backend.util.EmailAddresses;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -64,8 +65,9 @@ public class AuthService {
     private String frontendUrl;
 
     public RegisterResult register(RegisterRequest request) {
+        String email = EmailAddresses.normalize(request.email());
         boolean usernameOrEmailTaken = userRepository.existsUserByUsername(request.username())
-                || userRepository.existsUserByEmail(request.email());
+                || userRepository.existsUserByEmail(email);
 
         if (usernameOrEmailTaken) {
             throw new ConflictException("Username or email already in use");
@@ -73,7 +75,7 @@ public class AuthService {
 
         User user = new User();
         user.setUsername(request.username());
-        user.setEmail(request.email());
+        user.setEmail(email);
         user.setPassword(passwordEncoder.encode(request.password()));
         user.setAuthProvider(AuthProvider.LOCAL);
         user.setRole(Role.USER);
@@ -86,14 +88,15 @@ public class AuthService {
     }
 
     public LoginOutcome login(LoginRequest request) {
+        String email = EmailAddresses.normalize(request.email());
         // A locked account is refused before the password is checked, so a correct guess
         // during the lockout doesn't succeed or reveal itself.
-        userRepository.findUserByEmail(request.email()).ifPresent(loginAttemptService::requireNotLocked);
+        userRepository.findUserByEmail(email).ifPresent(loginAttemptService::requireNotLocked);
 
         try {
             authenticationManager.authenticate(
                     new UsernamePasswordAuthenticationToken(
-                            request.email(),
+                            email,
                             request.password()
                     )
             );
@@ -101,14 +104,14 @@ public class AuthService {
             // BCrypt throws this for an account with no password set, a Google-only account
             // trying to log in with a password. Same response as any other wrong credentials,
             // so this doesn't become a second way to tell accounts apart.
-            recordFailedLogin(request.email());
+            recordFailedLogin(email);
             throw new BadCredentialsException("Invalid username or password");
         } catch (BadCredentialsException wrongCredentialsException) {
-            recordFailedLogin(request.email());
+            recordFailedLogin(email);
             throw wrongCredentialsException;
         }
 
-        User user = userRepository.findUserByEmail(request.email())
+        User user = userRepository.findUserByEmail(email)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
         if (!user.isEmailVerified()) {
@@ -165,13 +168,24 @@ public class AuthService {
         }
 
         User user = token.getUser();
+        String pendingEmail = token.getPendingEmail();
+        if (pendingEmail != null) {
+            if (userRepository.existsUserByEmail(pendingEmail)) {
+                emailVerificationTokenRepository.delete(token);
+                throw new ConflictException("That email address is already in use");
+            }
+            user.setEmail(pendingEmail);
+            // Access tokens carry the old address, so every session is ended and the user
+            // signs in again with the new one.
+            refreshTokenRepository.deleteRefreshTokenByUser(user);
+        }
         user.setEmailVerified(true);
         userRepository.save(user);
         emailVerificationTokenRepository.delete(token);
     }
 
     public void resendVerificationEmail(String email) {
-        userRepository.findUserByEmail(email)
+        userRepository.findUserByEmail(EmailAddresses.normalize(email))
                 .filter(user -> !user.isEmailVerified())
                 .ifPresent(this::sendVerificationEmail);
         // Same response whether the email doesn't exist or is already verified, so a caller
@@ -179,7 +193,7 @@ public class AuthService {
     }
 
     public void requestPasswordReset(String email) {
-        userRepository.findUserByEmail(email).ifPresent(this::sendPasswordResetEmail);
+        userRepository.findUserByEmail(EmailAddresses.normalize(email)).ifPresent(this::sendPasswordResetEmail);
         // Always succeeds from the caller's perspective, see requestPasswordReset's caller
         // in AuthController: a nonexistent email must not be distinguishable from a real one.
     }

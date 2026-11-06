@@ -1,6 +1,5 @@
 package org.dariusturcu.backend.service;
 
-import org.dariusturcu.backend.exception.RateLimitExceededException;
 import org.dariusturcu.backend.model.user.User;
 import org.dariusturcu.backend.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -8,6 +7,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.security.authentication.BadCredentialsException;
 
 import java.time.Instant;
 import java.util.Optional;
@@ -47,7 +47,8 @@ class LoginAttemptServiceTest {
         user.setLoginLockedUntil(Instant.now().plusSeconds(LOCK_REMAINING_SECONDS));
 
         assertThatThrownBy(() -> loginAttemptService.requireNotLocked(user))
-                .isInstanceOf(RateLimitExceededException.class);
+                .isInstanceOf(BadCredentialsException.class)
+                .hasMessage("Invalid username or password");
     }
 
     @Test
@@ -82,7 +83,8 @@ class LoginAttemptServiceTest {
         assertThat(user.getLoginLockedUntil())
                 .isAfterOrEqualTo(beforeLock.plus(LoginAttemptService.LOCKOUT_DURATION));
         assertThatThrownBy(() -> loginAttemptService.requireNotLocked(user))
-                .isInstanceOf(RateLimitExceededException.class);
+                .isInstanceOf(BadCredentialsException.class)
+                .hasMessage("Invalid username or password");
     }
 
     @Test
