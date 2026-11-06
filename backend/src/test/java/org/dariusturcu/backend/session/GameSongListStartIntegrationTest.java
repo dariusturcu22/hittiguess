@@ -43,7 +43,6 @@ import org.dariusturcu.backend.service.GameSessionService;
 import org.dariusturcu.backend.service.PlacementPreviewGate;
 import org.dariusturcu.backend.service.GameSessionStartListener;
 import org.dariusturcu.backend.service.GroupService;
-import org.dariusturcu.backend.service.PendingSessionSongPool;
 import org.dariusturcu.backend.service.PlaylistAccessService;
 import org.dariusturcu.backend.service.PlaylistExpansionService;
 import org.dariusturcu.backend.service.SessionResultsStore;
@@ -146,11 +145,6 @@ class GameSongListStartIntegrationTest {
         }
 
         @Bean
-        PendingSessionSongPool pendingSessionSongPool() {
-            return new PendingSessionSongPool();
-        }
-
-        @Bean
         TaskScheduler taskScheduler() {
             return Mockito.mock(TaskScheduler.class);
         }
@@ -190,13 +184,12 @@ class GameSongListStartIntegrationTest {
                 BetRepository betRepository, GroupRepository groupRepository, SongRepository songRepository,
                 PlaylistRepository playlistRepository, GroupService groupService,
                 PlaylistAccessService playlistAccessService, PlaylistExpansionService playlistExpansionService,
-                DifficultyTunedSongSelector difficultySelector, PendingSessionSongPool pendingPool,
-                SessionMapper sessionMapper, SessionResultsStore resultsStore,
+                DifficultyTunedSongSelector difficultySelector,                 SessionMapper sessionMapper, SessionResultsStore resultsStore,
                 GameSessionScheduler gameSessionScheduler, ApplicationEventPublisher eventPublisher,
                 PlacementPreviewGate placementPreviewGate) {
             return new GameSessionService(gameSessionRepository, playerRepository, roundRepository, guessRepository,
                     betRepository, groupRepository, songRepository, playlistRepository, groupService,
-                    playlistAccessService, playlistExpansionService, difficultySelector, pendingPool, sessionMapper,
+                    playlistAccessService, playlistExpansionService, difficultySelector, sessionMapper,
                     resultsStore, gameSessionScheduler, eventPublisher, new org.dariusturcu.backend.service.GameSongList(),
                     placementPreviewGate);
         }

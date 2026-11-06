@@ -8,7 +8,9 @@ import org.dariusturcu.backend.difficulty.GroupDifficultyStrategy;
 import org.dariusturcu.backend.difficulty.SongDifficultyScorer;
 import org.dariusturcu.backend.model.group.CreateGroupRequest;
 import org.dariusturcu.backend.model.group.DjMode;
+import org.dariusturcu.backend.model.group.Group;
 import org.dariusturcu.backend.model.group.GroupDetailDTO;
+import org.dariusturcu.backend.model.group.GroupStatus;
 import org.dariusturcu.backend.model.group.JoinGroupRequest;
 import org.dariusturcu.backend.model.group.UpdateGroupSettingsRequest;
 import org.dariusturcu.backend.model.mapper.GroupMapper;
@@ -47,7 +49,6 @@ import org.dariusturcu.backend.service.PlacementPreviewGate;
 import org.dariusturcu.backend.service.GameSongList;
 import org.dariusturcu.backend.service.GameSessionStartListener;
 import org.dariusturcu.backend.service.GroupService;
-import org.dariusturcu.backend.service.PendingSessionSongPool;
 import org.dariusturcu.backend.service.PlaylistAccessService;
 import org.dariusturcu.backend.service.PlaylistExpansionService;
 import org.dariusturcu.backend.service.SessionResultsStore;
@@ -168,11 +169,6 @@ class DifficultySessionStartIntegrationTest {
         }
 
         @Bean
-        PendingSessionSongPool pendingSessionSongPool() {
-            return new PendingSessionSongPool();
-        }
-
-        @Bean
         TaskScheduler taskScheduler() {
             return Mockito.mock(TaskScheduler.class);
         }
@@ -212,12 +208,12 @@ class DifficultySessionStartIntegrationTest {
                 GroupRepository groupRepository, SongRepository songRepository, PlaylistRepository playlistRepository,
                 GroupService groupService, PlaylistAccessService playlistAccessService,
                 PlaylistExpansionService playlistExpansionService, DifficultyTunedSongSelector difficultySelector,
-                PendingSessionSongPool pendingPool, SessionMapper sessionMapper, SessionResultsStore resultsStore,
+                SessionMapper sessionMapper, SessionResultsStore resultsStore,
                 GameSessionScheduler gameSessionScheduler, ApplicationEventPublisher eventPublisher,
                 PlacementPreviewGate placementPreviewGate) {
             return new GameSessionService(gameSessionRepository, playerRepository, roundRepository, guessRepository,
                     betRepository, groupRepository, songRepository, playlistRepository, groupService,
-                    playlistAccessService, playlistExpansionService, difficultySelector, pendingPool, sessionMapper,
+                    playlistAccessService, playlistExpansionService, difficultySelector, sessionMapper,
                     resultsStore, gameSessionScheduler, eventPublisher, new GameSongList(), placementPreviewGate);
         }
 
@@ -258,6 +254,8 @@ class DifficultySessionStartIntegrationTest {
     @Autowired
     private UserRepository userRepository;
     @Autowired
+    private GroupRepository groupRepository;
+    @Autowired
     private PlaylistRepository playlistRepository;
     @Autowired
     private SongRepository songRepository;
@@ -266,7 +264,7 @@ class DifficultySessionStartIntegrationTest {
     @Autowired
     private RoundRepository roundRepository;
     @Autowired
-    private PendingSessionSongPool pendingPool;
+    private jakarta.persistence.EntityManager entityManager;
 
     @AfterEach
     void tearDown() {
@@ -395,7 +393,7 @@ class DifficultySessionStartIntegrationTest {
         GameSession session = gameSessionRepository.findByGroupId(createdGroup.id()).orElseThrow();
         assertThat(session.getPlayers()).hasSize(2);
         assertThat(playedSongIds(session)).containsExactlyInAnyOrderElementsOf(reviewedIds);
-        assertThat(pendingPool.take(createdGroup.id())).isEmpty();
+        assertThat(groupRepository.findById(createdGroup.id()).orElseThrow().getStagedSongIds()).isEmpty();
     }
 
     @Test
@@ -491,5 +489,57 @@ class DifficultySessionStartIntegrationTest {
             assertThat(successfulStarts).isEqualTo(1);
             assertThat(gameSessionRepository.findByGroupId(group.id())).isPresent();
         }
+    }
+    @Test
+    void stagedSongsSurviveReloadingGroupFromDatabaseDuringAudioCheck() {
+        User admin = persistUser("staged-admin-" + System.nanoTime());
+        User other = persistUser("staged-player-" + System.nanoTime());
+        Playlist playlist = playlistWithSongs("staged", admin, STARTABLE_TWO_PLAYER_POOL_SIZE, VerificationStatus.VERIFIED, 30);
+        GroupDetailDTO createdGroup = twoPlayerGroup(admin, other, playlist, TWO_PLAYER_WIN_CONDITION_CARD_COUNT);
+        List<Long> playlistSongIds = playlist.getSongs().stream().map(Song::getId).toList();
+
+        authenticateAs(admin);
+        gameSessionService.startSessionWithSongs(createdGroup.id(), new StartSessionWithSongsRequest(playlistSongIds));
+
+        entityManager.flush();
+        entityManager.clear();
+        Group reloaded = groupRepository.findById(createdGroup.id()).orElseThrow();
+        assertThat(reloaded.getStatus()).isEqualTo(GroupStatus.AUDIO_CHECK);
+        assertThat(reloaded.getStagedSongIds()).containsExactlyElementsOf(playlistSongIds);
+
+        groupService.startGameSession(createdGroup.id());
+
+        GameSession session = gameSessionRepository.findByGroupId(createdGroup.id()).orElseThrow();
+        assertThat(playedSongIds(session)).containsExactlyInAnyOrderElementsOf(playlistSongIds);
+
+        entityManager.flush();
+        entityManager.clear();
+        Group postStartGroup = groupRepository.findById(createdGroup.id()).orElseThrow();
+        assertThat(postStartGroup.getStagedSongIds()).isEmpty();
+    }
+
+    @Test
+    void cancellingAudioCheckClearsStagedSongsInDatabase() {
+        User admin = persistUser("cancel-admin-" + System.nanoTime());
+        User other = persistUser("cancel-player-" + System.nanoTime());
+        Playlist playlist = playlistWithSongs("cancel", admin, STARTABLE_TWO_PLAYER_POOL_SIZE, VerificationStatus.VERIFIED, 30);
+        GroupDetailDTO createdGroup = twoPlayerGroup(admin, other, playlist, TWO_PLAYER_WIN_CONDITION_CARD_COUNT);
+        List<Long> playlistSongIds = playlist.getSongs().stream().map(Song::getId).toList();
+
+        authenticateAs(admin);
+        gameSessionService.startSessionWithSongs(createdGroup.id(), new StartSessionWithSongsRequest(playlistSongIds));
+
+        entityManager.flush();
+        entityManager.clear();
+        Group reloaded = groupRepository.findById(createdGroup.id()).orElseThrow();
+        assertThat(reloaded.getStagedSongIds()).containsExactlyElementsOf(playlistSongIds);
+
+        gameSessionService.cancelAudioCheck(createdGroup.id());
+
+        entityManager.flush();
+        entityManager.clear();
+        Group cancelled = groupRepository.findById(createdGroup.id()).orElseThrow();
+        assertThat(cancelled.getStatus()).isEqualTo(GroupStatus.OPEN);
+        assertThat(cancelled.getStagedSongIds()).isEmpty();
     }
 }

@@ -75,6 +75,14 @@ public class Group {
     @Column(name = "user_id")
     private Set<Long> removedUserIds = new HashSet<>();
 
+    // Staged song ids for an upcoming session, preserved during the pre-game audio check
+    // and cleared on game start or cancel.
+    @ElementCollection
+    @CollectionTable(name = "group_staged_songs", joinColumns = @JoinColumn(name = "group_id"))
+    @OrderColumn(name = "stage_position")
+    @Column(name = "song_id")
+    private List<Long> stagedSongIds = new ArrayList<>();
+
     @OneToMany(mappedBy = "group", cascade = CascadeType.ALL, orphanRemoval = true)
     @BatchSize(size = 20)
     private List<Member> members = new ArrayList<>();

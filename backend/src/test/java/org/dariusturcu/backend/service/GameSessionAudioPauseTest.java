@@ -106,7 +106,6 @@ class GameSessionAudioPauseTest {
     @Mock
     private StoredSessionResultsRepository storedSessionResultsRepository;
 
-    private final PendingSessionSongPool pendingPool = new PendingSessionSongPool();
     private SessionMapper sessionMapper;
     private GameSessionService gameSessionService;
 
@@ -116,7 +115,7 @@ class GameSessionAudioPauseTest {
         gameSessionService = new GameSessionService(
                 gameSessionRepository, playerRepository, roundRepository, guessRepository, betRepository,
                 groupRepository, songRepository, playlistRepository, groupService, playlistAccessService,
-                playlistExpansionService, difficultySelector, pendingPool, sessionMapper,
+                playlistExpansionService, difficultySelector, sessionMapper,
                 new SessionResultsStore(storedSessionResultsRepository, JsonMapper.builder().build()),
                 gameSessionScheduler, eventPublisher, new GameSongList(new Random(1L)), new PlacementPreviewGate());
         ReflectionTestUtils.setField(gameSessionService, "self", gameSessionService);
@@ -130,7 +129,6 @@ class GameSessionAudioPauseTest {
     @AfterEach
     void tearDown() {
         SecurityContextHolder.clearContext();
-        pendingPool.discard(GROUP_ID);
     }
 
     private GameSession session(DjMode djMode) {
@@ -422,7 +420,7 @@ class GameSessionAudioPauseTest {
             song(songId, 2000);
             songIds.add(songId);
         }
-        pendingPool.stage(GROUP_ID, songIds);
+        group.getStagedSongIds().addAll(songIds);
         when(gameSessionRepository.save(any(GameSession.class))).thenAnswer(invocation -> {
             GameSession saved = invocation.getArgument(0);
             saved.setId(SESSION_ID);
@@ -439,7 +437,7 @@ class GameSessionAudioPauseTest {
 
         assertThat(started.getPlayers()).extracting(Player::getAudioStatus).containsExactly(AudioCheckStatus.OK, null);
         assertThat(started.getPlayers().getFirst().getUser()).isEqualTo(passed.getUser());
-        assertThat(pendingPool.peek(GROUP_ID)).isEmpty();
+        assertThat(group.getStagedSongIds()).isEmpty();
     }
 
     @Test
@@ -469,12 +467,9 @@ class GameSessionAudioPauseTest {
 
     @Test
     void cancellingTheCheckDropsAStagedSongList() {
-        pendingPool.stage(GROUP_ID, List.of(FIRST_SONG_ID));
-
         gameSessionService.cancelAudioCheck(GROUP_ID);
 
         verify(groupService).cancelAudioCheck(GROUP_ID);
-        assertThat(pendingPool.peek(GROUP_ID)).isEmpty();
     }
 
     private Member member(Group group, long userId, AudioCheckStatus status) {
