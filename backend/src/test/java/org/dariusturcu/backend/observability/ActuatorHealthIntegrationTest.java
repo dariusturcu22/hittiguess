@@ -72,6 +72,8 @@ class ActuatorHealthIntegrationTest {
         registry.add("spring.datasource.username", postgres::getUsername);
         registry.add("spring.datasource.password", postgres::getPassword);
         registry.add("spring.flyway.enabled", () -> false);
+        // application.properties moves actuator to its own port; this MockMvc test reads it from the main context
+        registry.add("management.server.port", () -> "");
         registry.add("management.endpoints.web.exposure.include", () -> "health");
         registry.add("management.endpoint.health.show-details", () -> "always");
     }

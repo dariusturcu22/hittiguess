@@ -11,7 +11,6 @@
 | 24 | Optional per-source gather timeout | Deferred until the latency budget needs it |
 | 30 | Personalized difficulty training and monitoring | Deferred until enough real play data exists |
 | 34 | Internal usage/abuse events, query surface, notice behavior | Needs Definition |
-| 38 | Production metrics, dashboards, uptime, and delivery verification | Ready |
 | 41 | Source-match confidence and uncertain-case review | Deferred until submission data supports tuning |
 | 52 | Pre-game audio check, pause on a stopped share (in progress on `feature/audio-check`); the rest of the story is built | Ready |
 | 55 | Catalog accuracy: whole-catalog recheck page (in progress on `feature/recheck-whole-catalog`), bulk acceptance of proposed years, duplicate merge and uniqueness | Ready |

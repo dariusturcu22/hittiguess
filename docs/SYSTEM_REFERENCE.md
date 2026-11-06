@@ -112,8 +112,8 @@ Every rate-limited request the core service rejects, whichever limiter caught it
 | GET | `/api/admin/song-reports/queue` | `AdminSongReportController`, admin only via `AdminAccessGuard`, the review queue ranked by the five-tier priority order, story 17 |
 | POST | `/api/admin/song-reports/{songId}/resolve` | `AdminSongReportController`, admin only, body is `ResolveReportRequest` (`correctedYear` nullable, `verificationStatus` required, one of `VERIFIED`/`NEEDS_REVIEW`/`MANUAL_ENTRY`); marks the song's open reports upheld and applies the chosen year and status unconditionally, overriding even a `VERIFIED` song's lock, story 17 |
 | POST | `/api/admin/song-reports/{songId}/dismiss` | `AdminSongReportController`, admin only, dismisses a song's open reports and changes nothing about the song, story 17 |
-| GET | `/actuator/health` | Actuator, unauthenticated at the top-level status; component detail gated by `management.endpoint.health.show-details=when-authorized`, story 38 |
-| GET | `/actuator/prometheus` | Actuator, Prometheus scrape format via `micrometer-registry-prometheus`, story 38 |
+| GET | `/actuator/health` | `PublicHealthController` on application port 8080 and Actuator on internal management port 8081, unauthenticated; story 38 |
+| GET | `/actuator/prometheus` | Actuator on internal management port 8081 only (HTTP 404 on application port 8080), unauthenticated for internal scrapers (Alloy); story 38 |
 
 ### AI microservice (FastAPI)
 

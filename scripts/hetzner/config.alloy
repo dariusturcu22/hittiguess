@@ -3,7 +3,7 @@
 
 prometheus.scrape "backend" {
 	targets = [{
-		"__address__" = "core:8080",
+		"__address__" = "core:8081",
 		"job"         = "hittiguess-backend",
 	}]
 	metrics_path = "/actuator/prometheus"

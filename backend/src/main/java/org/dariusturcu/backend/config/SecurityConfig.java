@@ -53,6 +53,7 @@ public class SecurityConfig {
     private final ReturnToOAuth2AuthorizationRequestResolver returnToAuthorizationRequestResolver;
     private final ObjectMapper objectMapper;
     private final List<String> allowedFrontendOrigins;
+    private final int managementServerPort;
 
     @Value("${app.cookie-domain:}")
     private String cookieDomain = "";
@@ -67,7 +68,8 @@ public class SecurityConfig {
             HttpCookieOAuth2AuthorizationRequestRepository authorizationRequestRepository,
             ReturnToOAuth2AuthorizationRequestResolver returnToAuthorizationRequestResolver,
             ObjectMapper objectMapper,
-            @Value("${frontend.allowed-origins}") List<String> allowedFrontendOrigins
+            @Value("${frontend.allowed-origins}") List<String> allowedFrontendOrigins,
+            @Value("${management.server.port:8081}") int managementServerPort
     ) {
         this.jwtAuthenticationFilter = jwtAuthenticationFilter;
         this.rateLimitingFilter = rateLimitingFilter;
@@ -79,6 +81,7 @@ public class SecurityConfig {
         this.returnToAuthorizationRequestResolver = returnToAuthorizationRequestResolver;
         this.objectMapper = objectMapper;
         this.allowedFrontendOrigins = allowedFrontendOrigins;
+        this.managementServerPort = managementServerPort;
     }
 
     // The frontend reads this cookie from document.cookie to echo it as a header, so on a
@@ -124,6 +127,7 @@ public class SecurityConfig {
                                 "/auth/2fa/confirm",
                                 "/auth/2fa/disable"
                         ).authenticated()
+                        .requestMatchers(request -> request.getLocalPort() == managementServerPort).permitAll()
                         .requestMatchers(
                                 "/auth/**",
                                 "/oauth2/**",

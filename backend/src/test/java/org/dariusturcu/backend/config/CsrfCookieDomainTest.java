@@ -95,6 +95,6 @@ class CsrfCookieDomainTest {
                 requestRepository,
                 requestResolver,
                 objectMapper,
-                List.of("https://www.hittiguess.com"));
+                List.of("https://www.hittiguess.com"), 8081);
     }
 }

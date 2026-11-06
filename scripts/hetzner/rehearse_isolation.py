@@ -124,7 +124,7 @@ def validate_caddyfile(caddyfile_content: str) -> Dict[str, bool]:
 
 
 def validate_alloy_configuration(alloy_content: str) -> Dict[str, bool]:
-    scrapes_core_target = '"core:8080"' in alloy_content
+    scrapes_core_target = '"core:8081"' in alloy_content
     scrapes_core_prometheus_path = '"/actuator/prometheus"' in alloy_content
     scrapes_ai_target = '"ai:8000"' in alloy_content
     scrapes_ai_metrics_path = '"/metrics"' in alloy_content
