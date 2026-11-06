@@ -92,4 +92,12 @@ describe("NavUser avatar upload", () => {
     openMenu();
     expect(await screen.findAllByText("Unavailable")).toHaveLength(3);
   });
+
+  it("renders a link to the account settings route", () => {
+    render(<NavUser />);
+    openMenu();
+    const settingsLink = screen.getByRole("link", { name: "Settings" });
+    expect(settingsLink).toBeVisible();
+    expect(settingsLink).toHaveAttribute("href", "/settings");
+  });
 });

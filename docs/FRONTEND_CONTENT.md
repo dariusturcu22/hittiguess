@@ -127,6 +127,15 @@ Data: every reviewable card ranked by the five-tier priority order in `SYSTEM_RE
 
 The list shows the account's completed games, wins, win rate, and paginated summaries. Each row shows the group snapshot, completion time, mode, duration, and the participant's result. Interrupted games are labeled and do not count as wins. Details show final card, artist, and title ranks, attempts and correct counts, bets placed and won, departure status, and tied winners. Deleted accounts appear as Deleted player. Only original participants have access, including after group expiry. Loading, empty, unavailable, and retry states are explicit. The account menu uses the same core statistics rather than placeholders.
 
+## Account settings
+
+### Account settings (`/settings`)
+
+Authenticated and user-scoped. The route presents three primary cards:
+- **Profile and credentials**: displays the current username and email address, allowing in-place editing with `PATCH /api/users/me`. Input validation matches backend constraints (username between 3 and 20 characters, valid email format). Shows inline validation errors, server error feedback, and a success notification on update.
+- **Personal data export**: allows the user to download a structured JSON file containing their account profile, owned playlists, contributed songs, and game history via `GET /api/users/me/export`. The download is initiated directly as a JSON file attachment named `hittiguess-data-export-YYYY-MM-DD.json`.
+- **Delete account**: placed in a danger zone card. Initiates account deletion (`DELETE /api/users/me`) only after explicit typed confirmation of the user's username. On successful deletion, active query caches and auth session cookies are cleared, and the user is redirected to the public landing page.
+
 ## Content this file deliberately excludes
 
 Colors, typography, spacing, component styling, and layout are story 28's scope, not this one's. Where a screen's exact copy (button labels, error message text, empty-state wording) isn't already fixed by a decision in `DECISIONS.md` or `GAME_DESIGN.md`, it's left to be written during story 28's design and implementation passes rather than guessed at here.

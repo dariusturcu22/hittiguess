@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { IconLogout, IconSettings } from "@tabler/icons-react";
+import Link from "next/link";
 
 import {
   DropdownMenu,
@@ -120,13 +121,14 @@ export function NavUser() {
             </span>
           </div>
           <div className="flex shrink-0 gap-1.5">
-            <button
-              type="button"
-              title="Settings haven't shipped yet"
-              className="flex size-[30px] items-center justify-center rounded-[9px] text-muted-foreground"
+            <Link
+              href="/settings"
+              title="Settings"
+              aria-label="Settings"
+              className="flex size-[30px] cursor-pointer items-center justify-center rounded-[9px] text-muted-foreground transition-colors hover:text-card-foreground"
             >
               <IconSettings className="size-4" />
-            </button>
+            </Link>
             <button
               type="button"
               onClick={handleLogout}

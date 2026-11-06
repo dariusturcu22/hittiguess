@@ -1286,6 +1286,24 @@
       "h": 3304,
       "title": "Audio check before the game, light",
       "page": "page-1"
+    },
+    {
+      "file": "AccountSettingsDark.dc.html",
+      "x": 0,
+      "y": 40000,
+      "w": 1440,
+      "h": 900,
+      "title": "Account settings, dark",
+      "page": "page-1"
+    },
+    {
+      "file": "AccountSettingsLight.dc.html",
+      "x": 1640,
+      "y": 40000,
+      "w": 1440,
+      "h": 900,
+      "title": "Account settings, light",
+      "page": "page-1"
     }
   ],
   "annotations": [
