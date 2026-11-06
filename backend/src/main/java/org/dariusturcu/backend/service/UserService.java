@@ -156,22 +156,12 @@ public class UserService {
 
         if (request.username() != null
                 && userRepository.existsUserByUsername(request.username())
-                && !user.getUsername().equals(request.username())) {
-            throw new ConflictException("Username or email already in use");
-        }
-
-        if (request.email() != null
-                && userRepository.existsUserByEmail(request.email())
-                && !user.getEmail().equals(request.email())) {
+                && !user.getUsername().equalsIgnoreCase(request.username())) {
             throw new ConflictException("Username or email already in use");
         }
 
         if (request.username() != null) {
             user.setUsername(request.username());
-        }
-
-        if (request.email() != null) {
-            user.setEmail(request.email());
         }
 
         User updatedUser = userRepository.save(user);
@@ -322,7 +312,7 @@ public class UserService {
         membership.setUser(user);
         membership.setCanRead(true);
         membership.setCanWrite(true);
-        membership.setCanDelete(true);
+        membership.setCanDelete(false);
         membership.setDisplayName(hasCustomDisplayName ? request.displayName() : user.getUsername());
         membership.setAvatarUrl(hasCustomAvatarUrl ? request.avatarUrl() : user.getImageUrl());
         membership.setJoinedAt(Instant.now());

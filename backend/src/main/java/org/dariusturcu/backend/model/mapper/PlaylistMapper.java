@@ -63,6 +63,34 @@ public class PlaylistMapper {
         );
     }
 
+    public PlaylistDetailDTO toDetailDTOForViewer(Playlist playlist, Long viewerId) {
+        Long ownerId = playlist.getOwner().getId();
+        boolean viewerIsMember = ownerId.equals(viewerId)
+                || playlist.getMemberships().stream()
+                        .anyMatch(membership -> membership.getUser().getId().equals(viewerId));
+        if (viewerIsMember) {
+            return toDetailDTO(playlist);
+        }
+        return new PlaylistDetailDTO(
+                playlist.getId(),
+                playlist.getName(),
+                playlist.getColor(),
+                playlist.getDescription(),
+                null,
+                playlist.getSongCount(),
+                playlist.getSongs().stream()
+                        .map(songMapper::toDTO)
+                        .toList(),
+                ownerId,
+                playlist.getMemberships().stream()
+                        .filter(membership -> membership.getUser().getId().equals(ownerId))
+                        .map(membership -> toMemberDTO(membership, true))
+                        .collect(Collectors.toSet()),
+                playlist.isPublic(),
+                playlist.getCreatedAt()
+        );
+    }
+
     public PublicPlaylistSummaryDTO toPublicSummaryDTO(Playlist playlist) {
         return new PublicPlaylistSummaryDTO(
                 playlist.getId(),
