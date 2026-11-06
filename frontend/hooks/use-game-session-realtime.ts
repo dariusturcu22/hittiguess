@@ -83,15 +83,18 @@ export function useGameSessionRealtime(
   onRoundEvent?: (event: SessionRoundEvent) => void,
   onGuessResult?: (result: GuessResult) => void,
   onSessionEnded?: (ended: SessionEnded) => void,
+  groupId?: number,
 ) {
   const queryClient = useQueryClient();
   const onRoundEventReference = useRef(onRoundEvent);
   const onGuessResultReference = useRef(onGuessResult);
   const onSessionEndedReference = useRef(onSessionEnded);
+  const groupIdReference = useRef(groupId);
   useEffect(() => {
     onRoundEventReference.current = onRoundEvent;
     onGuessResultReference.current = onGuessResult;
     onSessionEndedReference.current = onSessionEnded;
+    groupIdReference.current = groupId;
   });
   const clientReference = useRef<Client | null>(null);
   const [connectionState, setConnectionState] = useState<ConnectionState>("connecting");
@@ -108,6 +111,13 @@ export function useGameSessionRealtime(
       onConnect: () => {
         setConnectionState("connected");
         void queryClient.invalidateQueries({ queryKey: getGetSessionQueryKey(sessionId) });
+        void queryClient.invalidateQueries({ queryKey: getGetGuessStateQueryKey(sessionId) });
+        void queryClient.invalidateQueries({ queryKey: getGetCurrentRoundLinkOutQueryKey(sessionId) });
+        const cachedSession = queryClient.getQueryData<GameSessionDTO>(getGetSessionQueryKey(sessionId));
+        const effectiveGroupId = groupIdReference.current ?? cachedSession?.groupId;
+        if (effectiveGroupId !== undefined && cachedSession?.status === "COMPLETED") {
+          void queryClient.invalidateQueries({ queryKey: getGetResultsQueryKey(effectiveGroupId) });
+        }
         client.subscribe(`${SESSION_ROUND_TOPIC}/${sessionId}/round`, (message) => {
           let roundEvent: SessionRoundEvent | undefined;
           try {
@@ -147,23 +157,23 @@ export function useGameSessionRealtime(
           }
         });
         client.subscribe(`${SESSION_ROUND_TOPIC}/${sessionId}/ended`, (message) => {
-          let groupId: number | undefined;
+          let endedGroupId: number | undefined;
           try {
-            groupId = (JSON.parse(message.body) as SessionEndedEvent).payload?.groupId ?? undefined;
+            endedGroupId = (JSON.parse(message.body) as SessionEndedEvent).payload?.groupId ?? undefined;
           } catch (parseError) {
             console.warn(SESSION_ENDED_PARSE_FAILURE_MESSAGE, parseError);
           }
           queryClient.removeQueries({ queryKey: getGetSessionQueryKey(sessionId) });
-          if (groupId !== undefined) {
-            queryClient.removeQueries({ queryKey: getGetActiveSessionForGroupQueryKey(groupId) });
-            void queryClient.invalidateQueries({ queryKey: getGetResultsQueryKey(groupId) });
-            void queryClient.invalidateQueries({ queryKey: getGetGroupQueryKey(groupId) });
+          if (endedGroupId !== undefined) {
+            queryClient.removeQueries({ queryKey: getGetActiveSessionForGroupQueryKey(endedGroupId) });
+            void queryClient.invalidateQueries({ queryKey: getGetResultsQueryKey(endedGroupId) });
+            void queryClient.invalidateQueries({ queryKey: getGetGroupQueryKey(endedGroupId) });
           } else {
             queryClient.removeQueries({ predicate: (query) => ACTIVE_SESSION_QUERY_PATTERN.test(String(query.queryKey.at(0) ?? "")) });
           }
           void queryClient.invalidateQueries({ queryKey: getGetActiveMembershipQueryKey() });
           void queryClient.invalidateQueries({ queryKey: HISTORY_QUERY_KEY });
-          onSessionEndedReference.current?.({ groupId });
+          onSessionEndedReference.current?.({ groupId: endedGroupId });
         });
       },
       onWebSocketClose: () => setConnectionState("disconnected"),

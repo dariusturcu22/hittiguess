@@ -38,6 +38,8 @@ export function useGroupRealtime(groupId: number) {
         setConnectionState("connected");
         // Anything missed while disconnected, including this user's own removal, shows up on refetch.
         void queryClient.invalidateQueries({ queryKey: getGetGroupQueryKey(groupId) });
+        void queryClient.invalidateQueries({ queryKey: getGetActiveMembershipQueryKey() });
+        void queryClient.invalidateQueries({ queryKey: getGetHistoryQueryKey(groupId) });
         GROUP_TOPICS.forEach((topic) => {
           client.subscribe(`${GROUP_TOPIC_PREFIX}/${groupId}/${topic}`, () => {
             void queryClient.invalidateQueries({ queryKey: getGetGroupQueryKey(groupId) });

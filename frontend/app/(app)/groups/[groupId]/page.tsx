@@ -604,7 +604,8 @@ function GroupLobbyScreen({ params }: PageProps) {
     );
   }
 
-  if (groupQuery.isError || !groupQuery.data) {
+  const isRemovedFromGroup = !isCurrentUserLoading && !currentMember;
+  if (groupQuery.isError || !groupQuery.data || isRemovedFromGroup) {
     return (
       <main className="flex h-full min-h-0 items-center justify-center overflow-hidden p-8">
         <section className="max-w-md rounded-[20px] border-2 border-destructive bg-card p-6 text-center shadow-md">
