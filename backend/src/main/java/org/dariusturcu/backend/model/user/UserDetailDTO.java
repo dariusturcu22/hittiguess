@@ -11,6 +11,7 @@ public record UserDetailDTO(
         String imageUrl,
         String provider,
         Role role,
+        boolean twoFactorEnabled,
         List<PlaylistSummaryDTO> playlists
 ) {
 }

@@ -20,7 +20,11 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 
-import { useLogin, useResendVerification } from "@/hooks/generated/authentication-management/authentication-management";
+import {
+  useLogin,
+  useResendVerification,
+  useVerifyTwoFactor,
+} from "@/hooks/generated/authentication-management/authentication-management";
 import { LoginBody } from "@/hooks/zod/authentication-management/authentication-management";
 import { isEmailNotVerifiedError, loginErrorMessage, resendVerificationErrorMessage } from "@/lib/login-error";
 import { safeReturnToPath } from "@/lib/return-to";
@@ -59,19 +63,54 @@ function ReturnToCapture({ onCapture }: { onCapture: (returnTo: string | null) =
   return null;
 }
 
+function extractTwoFactorErrorMessage(error: unknown): string {
+  if (typeof error === "object" && error !== null && "response" in error) {
+    const errorResponse = (error as { response?: { data?: { message?: string } } }).response;
+    if (errorResponse?.data?.message) {
+      return errorResponse.data.message;
+    }
+  }
+  return "Invalid verification code. Try again.";
+}
+
 export default function LoginPage() {
   const router = useRouter();
   const [returnTo, setReturnTo] = useState<string | null>(null);
   const [unverifiedEmail, setUnverifiedEmail] = useState<string | null>(null);
 
+  const [twoFactorPendingToken, setTwoFactorPendingToken] = useState<string | null>(null);
+  const [twoFactorCode, setTwoFactorCode] = useState("");
+  const [twoFactorErrorMessage, setTwoFactorErrorMessage] = useState<string | null>(null);
+
   const { mutate, isPending } = useLogin({
     mutation: {
-      onSuccess: () => {
+      onSuccess: (response) => {
+        const responseData = response as { twoFactorRequired?: boolean; pendingToken?: string };
+        if (responseData?.twoFactorRequired && responseData.pendingToken) {
+          setTwoFactorPendingToken(responseData.pendingToken);
+          setTwoFactorCode("");
+          setTwoFactorErrorMessage(null);
+          return;
+        }
         router.push(returnTo ?? "/playlists");
       },
       onError: (error, variables) => {
         setUnverifiedEmail(isEmailNotVerifiedError(error) ? variables.data.email : null);
         toast.error(loginErrorMessage(error));
+      },
+    },
+  });
+
+  const { mutate: verifyTwoFactor, isPending: isVerifyingTwoFactor } = useVerifyTwoFactor({
+    mutation: {
+      onSuccess: () => {
+        toast.success("Logged in successfully.");
+        router.push(returnTo ?? "/playlists");
+      },
+      onError: (error) => {
+        const message = extractTwoFactorErrorMessage(error);
+        setTwoFactorErrorMessage(message);
+        toast.error(message);
       },
     },
   });
@@ -105,6 +144,88 @@ export default function LoginPage() {
         rememberMe: values.rememberMe,
       },
     });
+  }
+
+  function handleVerifyTwoFactorSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const trimmedCode = twoFactorCode.trim();
+    if (!trimmedCode) {
+      const emptyError = "Please enter your authentication code or backup code.";
+      setTwoFactorErrorMessage(emptyError);
+      return;
+    }
+    if (!twoFactorPendingToken) {
+      return;
+    }
+
+    setTwoFactorErrorMessage(null);
+    verifyTwoFactor({
+      data: {
+        pendingToken: twoFactorPendingToken,
+        code: trimmedCode,
+      },
+    });
+  }
+
+  if (twoFactorPendingToken) {
+    return (
+      <>
+        <div className="w-full mb-[26px] text-center">
+          <h1
+            className="font-display text-2xl text-marketing-accent"
+            style={{ textShadow: "3px 3px 0 var(--text-shadow-on-card)" }}
+          >
+            Two-factor authentication
+          </h1>
+          <p className="text-muted-foreground text-sm mt-2">
+            Enter the 6-digit code from your authenticator app or an unused backup code.
+          </p>
+        </div>
+
+        <form onSubmit={handleVerifyTwoFactorSubmit} className="w-full space-y-[18px]">
+          {twoFactorErrorMessage && (
+            <div role="alert" className="rounded-xl border border-destructive/40 bg-destructive/10 p-3 text-xs font-medium text-destructive">
+              {twoFactorErrorMessage}
+            </div>
+          )}
+
+          <div>
+            <label htmlFor="two-factor-code-input" className="text-[13px] font-semibold text-muted-foreground block mb-1.5">
+              Authentication or backup code
+            </label>
+            <Input
+              id="two-factor-code-input"
+              name="twoFactorCode"
+              type="text"
+              autoComplete="one-time-code"
+              placeholder="123456 or backup code"
+              autoFocus
+              value={twoFactorCode}
+              onChange={(event) => setTwoFactorCode(event.target.value)}
+              className={AUTH_INPUT_CLASSES}
+              disabled={isVerifyingTwoFactor}
+            />
+          </div>
+
+          <Button type="submit" className="auth-submit w-full" disabled={isVerifyingTwoFactor || !twoFactorCode.trim()}>
+            {isVerifyingTwoFactor ? "Verifying..." : "Verify and log in"}
+          </Button>
+
+          <Button
+            type="button"
+            variant="ghost"
+            className="w-full text-xs text-muted-foreground"
+            onClick={() => {
+              setTwoFactorPendingToken(null);
+              setTwoFactorCode("");
+              setTwoFactorErrorMessage(null);
+            }}
+          >
+            Back to login
+          </Button>
+        </form>
+      </>
+    );
   }
 
   return (
@@ -151,47 +272,47 @@ export default function LoginPage() {
               )}
             />
 
-              <FormField
-                control={form.control}
-                name="password"
-                render={({ field }) => (
-                  <FormItem className="gap-[7px]">
-                    <FormLabel className="text-[13px] font-semibold text-muted-foreground">
-                      Password
-                    </FormLabel>
-                    <FormControl>
-                      <PasswordInput
-                        autoComplete="current-password"
-                        placeholder="••••••••••"
-                        className={AUTH_INPUT_CLASSES}
-                        {...field}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-            <div className="flex items-center justify-between gap-2 !mt-4 !mb-7">
             <FormField
               control={form.control}
-              name="rememberMe"
+              name="password"
               render={({ field }) => (
-                <FormItem className="flex items-center gap-[9px]">
+                <FormItem className="gap-[7px]">
+                  <FormLabel className="text-[13px] font-semibold text-muted-foreground">
+                    Password
+                  </FormLabel>
                   <FormControl>
-                    <Checkbox
-                      id="remember-me"
-                      checked={field.value}
-                      onCheckedChange={field.onChange}
-                      className="size-[18px] rounded-[5px] border-2 border-border bg-background accent-primary"
+                    <PasswordInput
+                      autoComplete="current-password"
+                      placeholder="••••••••••"
+                      className={AUTH_INPUT_CLASSES}
+                      {...field}
                     />
                   </FormControl>
-                  <FormLabel htmlFor="remember-me" className="!mt-0 text-[13px] font-normal text-muted-foreground cursor-pointer">
-                    Remember me
-                  </FormLabel>
+                  <FormMessage />
                 </FormItem>
               )}
             />
+
+            <div className="flex items-center justify-between gap-2 !mt-4 !mb-7">
+              <FormField
+                control={form.control}
+                name="rememberMe"
+                render={({ field }) => (
+                  <FormItem className="flex items-center gap-[9px]">
+                    <FormControl>
+                      <Checkbox
+                        id="remember-me"
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                        className="size-[18px] rounded-[5px] border-2 border-border bg-background accent-primary"
+                      />
+                    </FormControl>
+                    <FormLabel htmlFor="remember-me" className="!mt-0 text-[13px] font-normal text-muted-foreground cursor-pointer">
+                      Remember me
+                    </FormLabel>
+                  </FormItem>
+                )}
+              />
               <Link href="/forgot-password" className="text-[13px] text-primary underline underline-offset-[3px]">
                 Forgot password?
               </Link>
@@ -225,7 +346,7 @@ export default function LoginPage() {
         <div className="flex-1 h-0.5 bg-border" />
       </div>
 
-        <Button asChild variant="outline" className="auth-google w-full mt-5">
+      <Button asChild variant="outline" className="auth-google w-full mt-5">
         <a href={`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080"}/oauth2/authorization/google${returnTo ? `?returnTo=${encodeURIComponent(returnTo)}` : ""}`}>
           <svg
             xmlns="http://www.w3.org/2000/svg"
@@ -252,7 +373,7 @@ export default function LoginPage() {
           </svg>
           <span>Continue with Google</span>
         </a>
-        </Button>
+      </Button>
     </>
   );
 }

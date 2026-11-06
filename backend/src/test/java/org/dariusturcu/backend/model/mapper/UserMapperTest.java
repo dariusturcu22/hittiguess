@@ -30,6 +30,15 @@ class UserMapperTest {
         assertThat(detail.role()).isEqualTo(Role.USER);
     }
 
+    @Test
+    void detailCarriesTwoFactorEnabledState() {
+        User user = accountWithRole(Role.USER);
+        user.setTwoFactorEnabled(true);
+        UserDetailDTO detail = userMapper.toDetailDTO(user, List.of());
+
+        assertThat(detail.twoFactorEnabled()).isTrue();
+    }
+
     private User accountWithRole(Role role) {
         User user = new User();
         user.setId(USER_ID);

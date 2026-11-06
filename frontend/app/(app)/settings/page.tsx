@@ -3,7 +3,14 @@
 import * as React from "react";
 import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
-import { IconDownload, IconTrash } from "@tabler/icons-react";
+import {
+  IconCopy,
+  IconDownload,
+  IconShieldCheck,
+  IconShieldLock,
+  IconTrash,
+} from "@tabler/icons-react";
+import QRCode from "qrcode";
 import { toast } from "sonner";
 
 import {
@@ -17,17 +24,25 @@ import {
   AlertDialogTitle,
 } from "@/components/shadcn/alert-dialog";
 import {
+  useConfirmTwoFactor,
+  useDisableTwoFactor,
+  useSetupTwoFactor,
+} from "@/hooks/generated/authentication-management/authentication-management";
+import {
   exportPersonalData,
   getGetCurrentUserQueryKey,
   useDeleteUser,
   useGetCurrentUser,
   useUpdateUser,
 } from "@/hooks/generated/user-management/user-management";
+import type { TwoFactorSetupResponse } from "@/hooks/models/twoFactorSetupResponse";
 
 const USERNAME_MINIMUM_LENGTH = 3;
 const USERNAME_MAXIMUM_LENGTH = 20;
 const ISO_DATE_SUBSTRING_LENGTH = 10;
 const JSON_INDENTATION_SPACES = 2;
+const QR_CODE_WIDTH = 192;
+const QR_CODE_MARGIN = 1;
 const BASIC_EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 function extractErrorMessage(error: unknown, fallbackMessage: string): string {
@@ -71,6 +86,20 @@ export default function AccountSettingsPage() {
   const [deleteConfirmationInput, setDeleteConfirmationInput] = React.useState("");
   const [deleteErrorMessage, setDeleteErrorMessage] = React.useState<string | null>(null);
 
+  // Two-Factor Authentication state
+  const isTwoFactorEnabled = Boolean(currentUser?.twoFactorEnabled);
+  const [isSettingUp2fa, setIsSettingUp2fa] = React.useState(false);
+  const [setupData, setSetupData] = React.useState<TwoFactorSetupResponse | null>(null);
+  const [qrCodeDataUrl, setQrCodeDataUrl] = React.useState<string | null>(null);
+  const [totpConfirmCode, setTotpConfirmCode] = React.useState("");
+  const [setupErrorMessage, setSetupErrorMessage] = React.useState<string | null>(null);
+  const [backupCodes, setBackupCodes] = React.useState<string[] | null>(null);
+
+  const [isDisableDialogOpen, setIsDisableDialogOpen] = React.useState(false);
+  const [disablePasswordInput, setDisablePasswordInput] = React.useState("");
+  const [disableCodeInput, setDisableCodeInput] = React.useState("");
+  const [disableErrorMessage, setDisableErrorMessage] = React.useState<string | null>(null);
+
   React.useEffect(() => {
     if (currentUser && !hasInitializedForm) {
       setUsernameInput(currentUser.username ?? "");
@@ -81,6 +110,9 @@ export default function AccountSettingsPage() {
 
   const updateProfileMutation = useUpdateUser();
   const deleteUserMutation = useDeleteUser();
+  const setup2faMutation = useSetupTwoFactor();
+  const confirm2faMutation = useConfirmTwoFactor();
+  const disable2faMutation = useDisableTwoFactor();
 
   const currentUsername = currentUser?.username ?? "";
   const isDeleteConfirmationMatching =
@@ -176,6 +208,126 @@ export default function AccountSettingsPage() {
     });
   }
 
+  function handleStart2faSetup() {
+    setSetupErrorMessage(null);
+    setup2faMutation.mutate(undefined, {
+      onSuccess: async (response) => {
+        setSetupData(response);
+        if (response.provisioningUri) {
+          try {
+            const dataUrl = await QRCode.toDataURL(response.provisioningUri, {
+              margin: QR_CODE_MARGIN,
+              width: QR_CODE_WIDTH,
+            });
+            setQrCodeDataUrl(dataUrl);
+          } catch {
+            setQrCodeDataUrl(null);
+          }
+        } else {
+          setQrCodeDataUrl(null);
+        }
+        setIsSettingUp2fa(true);
+      },
+      onError: (error) => {
+        const message = extractErrorMessage(error, "Failed to begin two-factor setup.");
+        toast.error(message);
+      },
+    });
+  }
+
+  function handleConfirm2faSetup(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setSetupErrorMessage(null);
+
+    const trimmedCode = totpConfirmCode.trim();
+    if (!trimmedCode) {
+      setSetupErrorMessage("Enter the verification code from your authenticator app.");
+      return;
+    }
+
+    confirm2faMutation.mutate(
+      {
+        data: {
+          code: trimmedCode,
+        },
+      },
+      {
+        onSuccess: (response) => {
+          setIsSettingUp2fa(false);
+          setSetupData(null);
+          setQrCodeDataUrl(null);
+          setTotpConfirmCode("");
+          setBackupCodes(response.backupCodes ?? []);
+          void queryClient.invalidateQueries({ queryKey: getGetCurrentUserQueryKey() });
+          toast.success("Two-factor authentication enabled.");
+        },
+        onError: (error) => {
+          const message = extractErrorMessage(error, "Invalid verification code. Please try again.");
+          setSetupErrorMessage(message);
+          toast.error(message);
+        },
+      },
+    );
+  }
+
+  function handleCopyBackupCodes() {
+    if (!backupCodes || backupCodes.length === 0) return;
+    void navigator.clipboard.writeText(backupCodes.join("\n"));
+    toast.success("Backup codes copied to clipboard.");
+  }
+
+  function handleDownloadBackupCodes() {
+    if (!backupCodes || backupCodes.length === 0) return;
+    const content = `Hittiguess Two-Factor Backup Codes\nGenerated: ${new Date().toISOString()}\n\nEach code can be used once if you lose access to your authenticator app:\n\n${backupCodes.join("\n")}\n`;
+    const blob = new Blob([content], { type: "text/plain" });
+    const objectUrl = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = objectUrl;
+    anchor.download = "hittiguess-backup-codes.txt";
+    document.body.appendChild(anchor);
+    anchor.click();
+    document.body.removeChild(anchor);
+    URL.revokeObjectURL(objectUrl);
+    toast.success("Backup codes downloaded.");
+  }
+
+  function handleConfirmDisable2fa(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setDisableErrorMessage(null);
+
+    const trimmedPassword = disablePasswordInput.trim();
+    const trimmedCode = disableCodeInput.trim();
+
+    if (!trimmedPassword && !trimmedCode) {
+      const message = "Enter your current password or an authentication code to confirm.";
+      setDisableErrorMessage(message);
+      return;
+    }
+
+    disable2faMutation.mutate(
+      {
+        data: {
+          currentPassword: trimmedPassword || undefined,
+          code: trimmedCode || undefined,
+        },
+      },
+      {
+        onSuccess: () => {
+          setIsDisableDialogOpen(false);
+          setDisablePasswordInput("");
+          setDisableCodeInput("");
+          void queryClient.invalidateQueries({ queryKey: getGetCurrentUserQueryKey() });
+          toast.success("Two-factor authentication disabled.");
+        },
+        onError: (error) => {
+          const message = extractErrorMessage(error, "Failed to disable two-factor authentication.");
+          setDisableErrorMessage(message);
+          toast.error(message);
+        },
+      },
+    );
+  }
+
   return (
     <div className="mx-auto flex max-w-[820px] flex-col gap-8 px-6 py-12 sm:px-14">
       <div>
@@ -251,7 +403,276 @@ export default function AccountSettingsPage() {
         </form>
       </section>
 
-      {/* Section 2: Personal Data Export */}
+      {/* Section 2: Two-Factor Authentication */}
+      <section
+        className="rounded-[18px] border-[3px] border-border-strong bg-card p-7 shadow-md"
+        aria-label="Two-factor authentication"
+      >
+        <div className="flex items-center justify-between gap-4">
+          <div>
+            <h2 className="font-display text-base text-foreground">Two-factor authentication</h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Add an extra layer of security using an authenticator app (such as Google Authenticator, 1Password, or Authy).
+            </p>
+          </div>
+          <span
+            className={`rounded-full px-3 py-1 font-display text-[10px] uppercase tracking-wider ${
+              isTwoFactorEnabled
+                ? "border border-primary/40 bg-primary/20 text-primary"
+                : "border border-border bg-muted text-muted-foreground"
+            }`}
+          >
+            {isTwoFactorEnabled ? "Active" : "Disabled"}
+          </span>
+        </div>
+
+        {/* When backup codes were just generated after setup confirmation */}
+        {backupCodes && (
+          <div className="mt-6 space-y-4 rounded-xl border-2 border-primary/40 bg-primary/10 p-5">
+            <div className="flex items-center gap-2 font-display text-sm text-primary">
+              <IconShieldCheck className="size-5 shrink-0" />
+              <span>Two-factor authentication is now active</span>
+            </div>
+            <p className="text-xs leading-relaxed text-muted-foreground">
+              Save these one-time backup codes in a safe place. If you lose access to your authenticator app, each code can be used once to log in. They will not be shown again.
+            </p>
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
+              {backupCodes.map((code) => (
+                <div
+                  key={code}
+                  className="rounded-lg border border-border bg-background px-2.5 py-2 text-center font-mono text-xs font-bold text-foreground"
+                >
+                  {code}
+                </div>
+              ))}
+            </div>
+            <div className="flex flex-wrap gap-2 pt-2">
+              <button
+                type="button"
+                onClick={handleCopyBackupCodes}
+                className="inline-flex cursor-pointer items-center gap-1.5 rounded-full border-2 border-border-strong bg-secondary px-4 py-2 font-display text-xs text-secondary-foreground hover:bg-secondary/80"
+              >
+                <IconCopy className="size-3.5" />
+                Copy codes
+              </button>
+              <button
+                type="button"
+                onClick={handleDownloadBackupCodes}
+                className="inline-flex cursor-pointer items-center gap-1.5 rounded-full border-2 border-border-strong bg-secondary px-4 py-2 font-display text-xs text-secondary-foreground hover:bg-secondary/80"
+              >
+                <IconDownload className="size-3.5" />
+                Download (.txt)
+              </button>
+              <button
+                type="button"
+                onClick={() => setBackupCodes(null)}
+                className="ml-auto inline-flex cursor-pointer items-center gap-1.5 rounded-full bg-primary px-5 py-2 font-display text-xs text-primary-foreground hover:opacity-90"
+              >
+                Done
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* When user is actively setting up 2FA */}
+        {!backupCodes && isSettingUp2fa && setupData && (
+          <div className="mt-6 space-y-5 rounded-xl border-2 border-border-strong bg-background/50 p-5">
+            <h3 className="font-display text-sm text-foreground">Set up authenticator</h3>
+
+            {setupErrorMessage && (
+              <div role="alert" className="rounded-xl border border-destructive/40 bg-destructive/10 p-3 text-xs font-medium text-destructive">
+                {setupErrorMessage}
+              </div>
+            )}
+
+            <div className="flex flex-col gap-6 sm:flex-row sm:items-center">
+              {qrCodeDataUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={qrCodeDataUrl}
+                  alt="Two-factor authentication QR code"
+                  className="size-44 shrink-0 rounded-xl border-2 border-border bg-white p-2"
+                />
+              ) : (
+                <div className="flex size-44 items-center justify-center rounded-xl border-2 border-border bg-background text-xs text-muted-foreground">
+                  Loading QR...
+                </div>
+              )}
+              <div className="space-y-3">
+                <p className="text-xs leading-relaxed text-muted-foreground">
+                  Scan this QR code with your authenticator app (such as Google Authenticator, Authy, or 1Password).
+                </p>
+                <div>
+                  <span className="mb-1 block text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                    Or enter this secret key manually:
+                  </span>
+                  <div className="flex items-center gap-2">
+                    <code className="rounded-lg border border-border bg-background px-3 py-1.5 font-mono text-xs font-bold text-primary select-all">
+                      {setupData.secret}
+                    </code>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        void navigator.clipboard.writeText(setupData.secret ?? "");
+                        toast.success("Secret copied to clipboard.");
+                      }}
+                      title="Copy secret"
+                      className="flex size-7 items-center justify-center rounded-md text-muted-foreground hover:text-foreground"
+                    >
+                      <IconCopy className="size-4" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <form onSubmit={handleConfirm2faSetup} className="space-y-4 pt-2">
+              <div>
+                <label htmlFor="totp-confirm-code-input" className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                  Enter 6-digit verification code
+                </label>
+                <input
+                  id="totp-confirm-code-input"
+                  name="code"
+                  type="text"
+                  autoComplete="one-time-code"
+                  placeholder="123456"
+                  maxLength={6}
+                  value={totpConfirmCode}
+                  onChange={(event) => setTotpConfirmCode(event.target.value)}
+                  className="w-full max-w-[240px] rounded-xl border-2 border-border bg-background px-4 py-2.5 font-mono text-base tracking-widest text-foreground outline-none focus:border-primary"
+                  required
+                />
+              </div>
+
+              <div className="flex items-center gap-3">
+                <button
+                  type="submit"
+                  disabled={confirm2faMutation.isPending || !totpConfirmCode.trim()}
+                  className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-full bg-primary px-6 py-2.5 font-display text-xs text-primary-foreground shadow-sm hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {confirm2faMutation.isPending ? "Verifying..." : "Confirm and enable"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsSettingUp2fa(false);
+                    setSetupData(null);
+                    setQrCodeDataUrl(null);
+                    setTotpConfirmCode("");
+                    setSetupErrorMessage(null);
+                  }}
+                  className="inline-flex cursor-pointer items-center justify-center rounded-full border-2 border-border-strong px-5 py-2.5 font-display text-xs text-muted-foreground hover:text-foreground"
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
+          </div>
+        )}
+
+        {/* When not setting up and not showing new backup codes */}
+        {!backupCodes && !isSettingUp2fa && (
+          <div className="mt-5">
+            {isTwoFactorEnabled ? (
+              <button
+                type="button"
+                onClick={() => {
+                  setDisableErrorMessage(null);
+                  setDisablePasswordInput("");
+                  setDisableCodeInput("");
+                  setIsDisableDialogOpen(true);
+                }}
+                className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-full border-2 border-border-strong bg-secondary px-5 py-2.5 font-display text-xs text-secondary-foreground hover:bg-secondary/80"
+              >
+                <IconShieldLock className="size-4" />
+                Disable two-factor authentication
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={handleStart2faSetup}
+                disabled={setup2faMutation.isPending}
+                className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-full bg-primary px-6 py-2.5 font-display text-xs text-primary-foreground shadow-sm hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <IconShieldLock className="size-4" />
+                {setup2faMutation.isPending ? "Starting setup..." : "Set up two-factor authentication"}
+              </button>
+            )}
+          </div>
+        )}
+
+        {/* Disable Two-Factor Dialog */}
+        <AlertDialog open={isDisableDialogOpen} onOpenChange={setIsDisableDialogOpen}>
+          <AlertDialogContent className="max-w-[480px] rounded-[18px] border-[3px] border-border-strong bg-card p-6 shadow-xl">
+            <AlertDialogHeader>
+              <AlertDialogTitle className="font-display text-lg text-foreground">
+                Disable two-factor authentication
+              </AlertDialogTitle>
+              <AlertDialogDescription className="text-sm text-muted-foreground">
+                To turn off two-factor authentication, provide your current password or an authentication code from your authenticator app.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+
+            <form onSubmit={handleConfirmDisable2fa} className="my-4 space-y-4">
+              {disableErrorMessage && (
+                <div role="alert" className="rounded-xl border border-destructive/40 bg-destructive/10 p-2.5 text-xs font-medium text-destructive">
+                  {disableErrorMessage}
+                </div>
+              )}
+
+              <div>
+                <label htmlFor="disable-password-input" className="mb-1 block text-xs font-semibold text-muted-foreground">
+                  Current password (optional if code is entered)
+                </label>
+                <input
+                  id="disable-password-input"
+                  name="currentPassword"
+                  type="password"
+                  value={disablePasswordInput}
+                  onChange={(event) => setDisablePasswordInput(event.target.value)}
+                  placeholder="••••••••••"
+                  className="w-full rounded-xl border-2 border-border bg-background px-4 py-2.5 text-sm text-foreground outline-none focus:border-primary"
+                />
+              </div>
+
+              <div>
+                <label htmlFor="disable-code-input" className="mb-1 block text-xs font-semibold text-muted-foreground">
+                  Authentication code or backup code (optional if password is entered)
+                </label>
+                <input
+                  id="disable-code-input"
+                  name="code"
+                  type="text"
+                  value={disableCodeInput}
+                  onChange={(event) => setDisableCodeInput(event.target.value)}
+                  placeholder="123456 or backup code"
+                  className="w-full rounded-xl border-2 border-border bg-background px-4 py-2.5 text-sm text-foreground outline-none focus:border-primary"
+                />
+              </div>
+
+              <AlertDialogFooter className="flex flex-row justify-end gap-2 pt-2">
+                <AlertDialogCancel
+                  disabled={disable2faMutation.isPending}
+                  onClick={() => setIsDisableDialogOpen(false)}
+                  className="rounded-full border-2 border-border-strong px-4 py-2 font-display text-xs"
+                >
+                  Cancel
+                </AlertDialogCancel>
+                <button
+                  type="submit"
+                  disabled={disable2faMutation.isPending || (!disablePasswordInput.trim() && !disableCodeInput.trim())}
+                  className="inline-flex cursor-pointer items-center justify-center rounded-full bg-destructive px-5 py-2 font-display text-xs text-destructive-foreground hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {disable2faMutation.isPending ? "Disabling..." : "Confirm disable"}
+                </button>
+              </AlertDialogFooter>
+            </form>
+          </AlertDialogContent>
+        </AlertDialog>
+      </section>
+
+      {/* Section 3: Personal Data Export */}
       <section
         className="rounded-[18px] border-[3px] border-border-strong bg-card p-7 shadow-md"
         aria-label="Personal data export"
@@ -278,7 +699,7 @@ export default function AccountSettingsPage() {
         </button>
       </section>
 
-      {/* Section 3: Danger Zone */}
+      {/* Section 4: Danger Zone */}
       <section
         className="rounded-[18px] border-[3px] border-destructive bg-card p-7 shadow-md"
         aria-label="Delete account"

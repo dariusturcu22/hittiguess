@@ -10,7 +10,7 @@ Public, unauthenticated. Content: product name and one-line explanation, a call 
 
 ### Login, Register, Forgot password (`(auth)`)
 
-Public, unauthenticated. Login: username/email and password fields, an OAuth2 login option, a link to register and to forgot-password. Register: username, email, password fields. Forgot password requests a reset email and the reset-password route accepts the token and new password. Verify-email handles registration tokens. Both flows show pending, success, and failure states. Two-factor setup and the second login step remain frontend work in TASKS.md.
+Public, unauthenticated. Login: username/email and password fields, an OAuth2 login option, a link to register and to forgot-password. Register: username, email, password fields. Forgot password requests a reset email and the reset-password route accepts the token and new password. Verify-email handles registration tokens. Both flows show pending, success, and failure states. A two-factor-enabled account transitions to a second step accepting a 6-digit TOTP code or an unused backup code.
 
 ### OAuth2 redirect (`/oauth2/redirect`)
 
@@ -134,6 +134,7 @@ The list shows the account's completed games, wins, win rate, and paginated summ
 Authenticated and user-scoped. The route presents three primary cards:
 - **Profile and credentials**: displays the current username and email address, allowing in-place editing with `PATCH /api/users/me`. Input validation matches backend constraints (username between 3 and 20 characters, valid email format). Shows inline validation errors, server error feedback, and a success notification on update.
 - **Personal data export**: allows the user to download a structured JSON file containing their account profile, owned playlists, contributed songs, and game history via `GET /api/users/me/export`. The download is initiated directly as a JSON file attachment named `hittiguess-data-export-YYYY-MM-DD.json`.
+- **Two-factor authentication**: displays active or disabled status. When disabled, users can start setup to view a provisioning QR code and manual secret, enter a 6-digit confirmation code, and receive one-time backup codes with copy and download options. When active, disabling requires proof via the current account password or an authentication code.
 - **Delete account**: placed in a danger zone card. Initiates account deletion (`DELETE /api/users/me`) only after explicit typed confirmation of the user's username. On successful deletion, active query caches and auth session cookies are cleared, and the user is redirected to the public landing page.
 
 ## Content this file deliberately excludes
