@@ -42,6 +42,8 @@ export default function GlobalError({ error, reset }: GlobalErrorProps) {
             >
               Try Again
             </button>
+            {/* global-error replaces the root layout, so the app router is unavailable: a plain anchor does a full navigation. */}
+            {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
             <a
               href="/"
               className="w-full sm:w-auto inline-flex items-center justify-center px-6 py-2.5 rounded-xl text-sm font-semibold border border-border bg-background text-foreground hover:bg-muted transition-colors"
