@@ -10,11 +10,7 @@ Credentials:
 - `test-agent-2@hittiguess.local` / `HittiguessTestAgent2!2026`
 - `test-agent-3@hittiguess.local` / `HittiguessTestAgent3!2026`
 
-The seed mechanism is idempotent per account. Running the application again with an account already present never creates a duplicate or errors; it only corrects the account's role if it differs, which is how an account 1 seeded before it became the admin gets promoted.
-
-The seeder is off unless `dev.seed-test-accounts` is true, so an environment with missing configuration never gets accounts with published credentials. It is also disabled by a Spring profile condition when `APP_ENV` is `prod`. In Production a startup check fails the application if a `TEST`-role row or an `ADMIN` account with a `.local` address exists. The container image sets `APP_ENV_REQUIRED=true`, so a container started without `APP_ENV` fails at startup instead of running as dev; local `mvnw` runs default to `dev`.
-
-`CONTRIBUTING.md` links to this setup guide for the local-stack commands and test-account details.
+Seeding is idempotent per account and only corrects a role that differs. The seeder is off unless `dev.seed-test-accounts` is true and is disabled when `APP_ENV` is `prod`. In Production a startup check fails the application if a `TEST`-role row or an `ADMIN` account with a `.local` address exists. The container image sets `APP_ENV_REQUIRED=true`, so a container started without `APP_ENV` fails at startup instead of running as dev; local `mvnw` runs default to `dev`.
 
 ## Running the backend on Windows
 
@@ -73,11 +69,11 @@ Scoring the recorded answers needs no network access. `--misses <rule>` lists th
 
 ## Local stage pipeline
 
-Admin backfill and patient rechecks always use the persisted stage queues. No cutover flag is required. A leftover `PIPELINE_STAGES_ENABLED` variable is ignored; the owner can remove it from production after the cleanup merges. The stage concurrency settings, polling intervals, and `PIPELINE_YOUTUBE_RESERVE_UNITS` remain supported. The sequential drain quota setting is removed.
+Admin backfill and patient rechecks always use the persisted stage queues, with no cutover flag. The stage concurrency settings, polling intervals, and `PIPELINE_YOUTUBE_RESERVE_UNITS` are supported; a leftover `PIPELINE_STAGES_ENABLED` variable is ignored and can be removed. The admin queue page is `/admin/backfill-queue`.
 
-The admin queue page is `/admin/backfill-queue`. The old `/admin/catalog-backlog` route and the catalog-seeding status and drain endpoints are removed. Enqueue still uses the stage pipeline. Historical `pending_imports` data and provisional and patient years remain available without a schema migration.
+## Management port
 
-For a local startup smoke check, run core in WSL with `PIPELINE_STAGES_ENABLED` unset after loading the local environment. A successful startup must create the stage worker, completion service, HTTP client, and scheduler without the removed sequential-drain beans. Keep all startup checks on the local databases.
+Core serves Actuator, including `/actuator/prometheus`, on `management.server.port` (`MANAGEMENT_SERVER_PORT`, default 8081), which is not public and needs no login. The public port 8080 serves only the health and probe endpoints. Startup fails if the two ports are equal.
 
 ## Running the Playwright end-to-end suite
 
@@ -144,7 +140,7 @@ playtest with voice, put both services behind one HTTPS origin:
 that value with the `X-Forwarded-For` client address, but only when the
 request arrives from one of the valve's default trusted proxies (loopback and
 private ranges). This assumes the Azure Container Apps ingress connects from a
-private address, which has not been checked against the deployed app.
+private address, which has not been checked against the deployed app (open item in TASKS.md).
 
 After a deploy, confirm it in both directions:
 

@@ -136,7 +136,7 @@ None of these have a story in `PROJECT_STATE.md`. They remain ideas rather than 
 
 ## Group permissions and identifiers
 
-Chat and voice belong to the group and remain available between games. Each player has a personal timeline. The admin can remove another member while the group is open; removal prevents that account from rejoining the same group and closes its sockets after commit. Admin transfer is separate from removal. Group join codes have four uppercase letters; playlist invite codes have eight uppercase letters, with older stored formats possible.
+Chat and voice belong to the group and remain available between games. Each player has a personal timeline. The admin can remove another member while the group is open; removal prevents that account from rejoining the same group and closes its sockets after commit. Admin transfer is separate from removal.
 
 A skip-betting vote is available only to eligible bettors. The betting window closes early once every eligible bettor has bet or skipped; an arbitrary member cannot end it alone. Shared-song edits require an editable status, UNVERIFIED or MANUAL_ENTRY, and write access to every playlist containing that song.
 

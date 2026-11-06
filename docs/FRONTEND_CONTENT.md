@@ -75,7 +75,7 @@ Data: each voice member as a per-group avatar with name, a microphone speaking r
 
 ### Text chat overlay
 
-Data: message history for the group (sender's per-group display name, message body, timestamp), loaded on join, rendered oldest-first with the newest message at the bottom, times on a 24-hour clock, and one stable avatar color per sender. The panel scrolls to the newest message when it opens and when a message arrives, and holds the reader's position once they have scrolled up. Explicit history recovery for chat events missed during reconnect remains in TASKS.md. Actions: send a message (500-character limit, rate-limited to 5 per 10 seconds, story 13), toggle the overlay open/closed.
+Data: message history for the group (sender's per-group display name, message body, timestamp), loaded on join, rendered oldest-first with the newest message at the bottom, times on a 24-hour clock, and one stable avatar color per sender. The panel scrolls to the newest message when it opens and when a message arrives, and holds the reader's position once they have scrolled up. A reconnect refetches the chat history. Actions: send a message (500-character limit, rate-limited to 5 per 10 seconds, story 13), toggle the overlay open/closed.
 
 ### Turn notification
 
@@ -103,11 +103,11 @@ The Songs tab shows title, artists, video ID, batch, seven stage chips, actual f
 
 Each stage page shows its state and totals, response average, request interval, drain estimate, and paged jobs with lane, queued time, attempts, retry time, priority, and real errors. Filters distinguish In progress, Waiting, Retrying, Failed, and Done today. Retry all failed requires confirmation and applies only to the displayed stage. Pause and Resume operate on that stage. The pace chart collects one response-average sample per minute while the page is open, keeping the latest 20 samples. It shows a collecting state before the first sample and never invents historical data.
 
-Embedding progress comes from the existing executor. Its retained queue has no done-today history, lane, enqueue time, or hard attempt limit. Unknown figures are labeled Unknown or Unavailable. Metadata runs have no separate embedding job. Queue data refreshes every 15 seconds. Loading, empty, retryable error, pending mutation, and failure-toast states are explicit. Successful mutations invalidate admin queries.
+Embedding progress comes from the existing executor. Its retained queue has no done-today history, lane, enqueue time, or hard attempt limit. Unknown figures are labeled Unknown or Unavailable. Metadata runs have no separate embedding job. Queue data refreshes every 5 seconds. Loading, empty, retryable error, pending mutation, and failure-toast states are explicit. Successful mutations invalidate admin queries.
 
 ### Dashboard (story 51)
 
-The dashboard shows catalog counts, queue totals, YouTube units against the daily limit with the midnight Pacific reset, and DeepInfra and OpenAI calls, tokens, and estimated costs for today and the month. The YouTube card shows the configured user-import reserve and whether backfill is waiting for quota. A rejected-key banner names the affected stage, shows its stored reason, and offers Resume. The queue table shows all seven stages in pipeline order, including state, waiting, in-progress and failed counts, pace, and links to stage pages. Figures refresh every 30 seconds. No per-lane usage split is shown because the usage API does not provide one.
+The dashboard shows catalog counts, queue totals, YouTube units against the daily limit with the midnight Pacific reset, and DeepInfra and OpenAI calls, tokens, and estimated costs for today and the month. The YouTube card shows the configured user-import reserve and whether backfill is waiting for quota. A rejected-key banner names the affected stage, shows its stored reason, and offers Resume. The queue table shows all seven stages in pipeline order, including state, waiting, in-progress and failed counts, pace, and links to stage pages. Figures refresh every 10 seconds. No per-lane usage split is shown because the usage API does not provide one.
 
 ### Song catalog (story 51)
 
@@ -131,8 +131,8 @@ The list shows the account's completed games, wins, win rate, and paginated summ
 
 ### Account settings (`/settings`)
 
-Authenticated and user-scoped. The route presents three primary cards:
-- **Profile and credentials**: displays the current username and email address, allowing in-place editing with `PATCH /api/users/me`. Input validation matches backend constraints (username between 3 and 20 characters, valid email format). Shows inline validation errors, server error feedback, and a success notification on update.
+Authenticated and user-scoped. The route presents four cards:
+- **Profile and credentials**: displays the current username and email address, allowing in-place editing with `PATCH /api/users/me`. Input validation matches backend constraints (username between 3 and 20 characters, valid email format). Shows inline validation errors, server error feedback, and a success notification on update. Changing the email asks for the current password and takes effect only after the link mailed to the new address is opened; Google accounts cannot change email.
 - **Personal data export**: allows the user to download a structured JSON file containing their account profile, owned playlists, contributed songs, and game history via `GET /api/users/me/export`. The download is initiated directly as a JSON file attachment named `hittiguess-data-export-YYYY-MM-DD.json`.
 - **Two-factor authentication**: displays active or disabled status. When disabled, users can start setup to view a provisioning QR code and manual secret, enter a 6-digit confirmation code, and receive one-time backup codes with copy and download options. When active, disabling requires proof via the current account password or an authentication code.
 - **Delete account**: placed in a danger zone card. Initiates account deletion (`DELETE /api/users/me`) only after explicit typed confirmation of the user's username. On successful deletion, active query caches and auth session cookies are cleared, and the user is redirected to the public landing page.
@@ -141,6 +141,6 @@ Authenticated and user-scoped. The route presents three primary cards:
 
 Colors, typography, spacing, component styling, and layout are story 28's scope, not this one's. Where a screen's exact copy (button labels, error message text, empty-state wording) isn't already fixed by a decision in `DECISIONS.md` or `GAME_DESIGN.md`, it's left to be written during story 28's design and implementation passes rather than guessed at here.
 
-## Deferred account and legal views
+## Deferred legal views
 
-Profile/settings account controls and privacy/terms routes remain deferred. Their future copy must reflect the actual providers, stored data, retention, and export scope. History and summary statistics are already implemented and are not placeholder data.
+The privacy, terms, legal index, copyright and contact routes are not built yet (Release 1 and 2 in TASKS.md). Their copy must reflect the actual providers, stored data, retention, and export scope in `docs/legal`.
