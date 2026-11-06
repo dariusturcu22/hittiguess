@@ -416,6 +416,24 @@ public class PipelineJobRepository {
                 timestamp(throughputWindowStart), timestamp(durationWindowStart));
     }
 
+    public int deleteTerminalRunsOlderThan(Instant cutoff) {
+        return core.update("""
+                DELETE FROM pipeline_runs
+                WHERE status IN ('DONE', 'FAILED', 'CANCELLED')
+                  AND finished_at IS NOT NULL
+                  AND finished_at < ?
+                """, timestamp(cutoff));
+    }
+
+    public int deleteTerminalJobsOlderThan(Instant cutoff) {
+        return core.update("""
+                DELETE FROM pipeline_jobs
+                WHERE status IN ('DONE', 'FAILED', 'SKIPPED', 'CANCELLED')
+                  AND finished_at IS NOT NULL
+                  AND finished_at < ?
+                """, timestamp(cutoff));
+    }
+
     private long insertReturningId(String sql, Object... arguments) {
         KeyHolder keyHolder = new GeneratedKeyHolder();
         core.update(connection -> {

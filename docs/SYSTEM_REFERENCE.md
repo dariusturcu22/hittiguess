@@ -321,6 +321,16 @@ analytics_events
 
 `AnalyticsEventType` values: `GAME_SESSION_STARTED`, `GAME_SESSION_ENDED`, `LOGIN`, `PLAYLIST_CREATED`, `SONG_SUBMITTED`, `RATE_LIMIT_EXCEEDED`, `REPORT_SUBMITTED`, `FAILED_LOGIN_ATTEMPT`, each with its own payload record in the same package. `AnalyticsEventRecorder.recordEvent(AnalyticsEventType, Object)` is the write API; nothing calls it yet, story 34 instruments the real event-producing call sites. `AnalyticsRetentionService.purgeExpiredEvents()`, swept daily by `AnalyticsRetentionSweeper`, deletes events older than `analytics.retention.days` (365 by default).
 
+### Data retention and sweepers
+
+Data retention is enforced by background sweepers:
+
+- `AccountRetentionSweeper`: Runs daily (`fixedRate = 86_400_000`), invoking `AccountRetentionService.purgeUnverifiedAccounts()`. Purges unverified accounts (`email_verified = false`) where `created_at` is older than `retention.unverified-accounts-days` (default 7 days), along with their associated tokens.
+- `TokenRetentionSweeper`: Runs hourly (`fixedRate = 3_600_000`), invoking `TokenRetentionService.purgeExpiredTokens()`. Deletes expired refresh tokens (`expires_at < now()`), expired or used password reset tokens (`expires_at < now() OR used = true`), and expired email verification tokens (`expires_at < now()`).
+- `PipelineRetentionSweeper`: Runs daily (`fixedRate = 86_400_000`), invoking `PipelineRetentionService.purgeTerminalPipelineRunsAndJobs()`. Deletes terminal pipeline runs (`status IN ('DONE', 'FAILED', 'CANCELLED')` with `finished_at` older than `retention.pipeline-jobs-days`, default 30 days) and cascades to their jobs, as well as terminal pipeline jobs completed before the cutoff.
+- `AnalyticsRetentionSweeper`: Runs daily (`fixedRate = 86_400_000`), invoking `AnalyticsRetentionService.purgeExpiredEvents()`. Deletes events and observations older than `analytics.retention.days` (default 365 days).
+- `GroupExpirySweeper`: Runs every 60 seconds (`fixedRate = 60_000`), invoking `GroupService.deleteExpiredGroups()`. Deletes expired groups and cascades deletion to all group chat messages. Runs every 20 seconds to drop stale voice presence.
+
 ## State diagrams
 
 ### Song verification status (stories 18, 23)

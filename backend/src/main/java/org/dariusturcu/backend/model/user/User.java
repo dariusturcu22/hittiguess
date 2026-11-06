@@ -55,4 +55,7 @@ public class User {
     private int failedLoginAttempts = 0;
 
     private Instant loginLockedUntil;
+
+    @Column(name = "created_at", nullable = false)
+    private Instant createdAt = Instant.now();
 }

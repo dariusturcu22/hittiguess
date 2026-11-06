@@ -88,6 +88,16 @@ Admin enqueue creates a batch and a backfill run per new video ID. The stage pip
 
 A successful single-song preview is remembered in memory for ten minutes, keyed by authenticated user and submitted YouTube ID. Confirmation can reuse that result when the submitted title, main artists, and year still match. Expired or missing previews require another lookup. This cache does not delay verified catalog insertion, share results between users, or implement the dropped global pipeline cache.
 
+### Data retention and background sweepers
+
+Data retention is enforced by periodic Spring `@Scheduled` background sweepers:
+
+- `AccountRetentionSweeper`: Runs daily, deleting unverified user accounts (`email_verified = false`) that are older than `retention.unverified-accounts-days` (default 7 days). Cascades to associated verification, password reset, and refresh tokens.
+- `TokenRetentionSweeper`: Runs hourly, purging expired refresh tokens (`expires_at < now()`), expired or used password-reset tokens (`expires_at < now() OR used = true`), and expired email verification tokens (`expires_at < now()`).
+- `PipelineRetentionSweeper`: Runs daily, purging completed, failed, or cancelled pipeline runs older than `retention.pipeline-jobs-days` (default 30 days) and cascading to their stage jobs, as well as standalone terminal stage jobs.
+- `AnalyticsRetentionSweeper`: Runs daily, purging analytics events and song play observations older than `analytics.retention.days` (default 365 days).
+- `GroupExpirySweeper`: Runs every 60 seconds, purging groups that reached their `expires_at` deadline. Foreign key cascades automatically remove all group chat messages and memberships. Runs every 20 seconds to drop stale voice presence.
+
 ### Group (core service)
 
 A group is the persistent wrapper a game session lives inside. Anyone can create one, whoever does becomes its admin. Membership is invite-link based, capped at 8 members, and a user can belong to at most one group at a time.
