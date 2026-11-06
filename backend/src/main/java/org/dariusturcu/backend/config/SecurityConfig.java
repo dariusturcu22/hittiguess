@@ -43,6 +43,30 @@ import java.util.List;
 
 public class SecurityConfig {
 
+    public static final List<String> AUTHENTICATED_AUTH_ENDPOINTS = List.of(
+            "/auth/2fa/setup",
+            "/auth/2fa/confirm",
+            "/auth/2fa/disable"
+    );
+
+    public static final List<String> PUBLIC_ALLOW_LIST = List.of(
+            "/auth/**",
+            "/oauth2/**",
+            "/login/oauth2/**",
+            "/swagger-ui/**",
+            "/swagger-ui.html",
+            "/v3/api-docs/**",
+            "/v3/api-docs",
+            "/api/enums/**",
+            "/api/playlists/invites/*/preview",
+            "/api/groups/invites/*/preview",
+            "/api/users/*/avatar",
+            "/api/ground-truth/**",
+            "/actuator/health/**",
+            "/health",
+            "/error"
+    );
+
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
     private final RateLimitingFilter rateLimitingFilter;
     private final UserDetailsService userDetailsService;
@@ -122,28 +146,10 @@ public class SecurityConfig {
                 )
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers(
-                                "/auth/2fa/setup",
-                                "/auth/2fa/confirm",
-                                "/auth/2fa/disable"
-                        ).authenticated()
+                        .requestMatchers(AUTHENTICATED_AUTH_ENDPOINTS.toArray(String[]::new)).authenticated()
+                        .requestMatchers("/api/admin/**").hasRole("ADMIN")
                         .requestMatchers(request -> request.getLocalPort() == managementServerPort).permitAll()
-                        .requestMatchers(
-                                "/auth/**",
-                                "/oauth2/**",
-                                "/login/oauth2/**",
-                                "/swagger-ui/**",
-                                "/swagger-ui.html",
-                                "/v3/api-docs/**",
-                                "/v3/api-docs",
-                                "/api/enums/**",
-                                "/api/playlists/invites/*/preview",
-                                "/api/groups/invites/*/preview",
-                                "/api/users/*/avatar",
-                                "/api/ground-truth/**",
-                                "/actuator/health/**",
-                                "/error"
-                        ).permitAll()
+                        .requestMatchers(PUBLIC_ALLOW_LIST.toArray(String[]::new)).permitAll()
                         .anyRequest().authenticated()
                 )
                 .sessionManagement(session -> session
