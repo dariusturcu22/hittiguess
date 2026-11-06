@@ -181,7 +181,7 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(AUTHENTICATED_AUTH_ENDPOINTS.toArray(String[]::new)).authenticated()
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
-                        .requestMatchers(request -> request.getLocalPort() == managementServerPort).permitAll()
+                        .requestMatchers(request -> managementServerPort > 0 && request.getLocalPort() == managementServerPort).permitAll()
                         .requestMatchers(PUBLIC_ALLOW_LIST.toArray(String[]::new)).permitAll()
                         .anyRequest().authenticated()
                 )
