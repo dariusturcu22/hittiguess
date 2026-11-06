@@ -1590,3 +1590,12 @@ Why: maintaining complete parity between standalone source artboards and the pub
 Decision: a repeatable load testing tool is established in `scripts/loadtest` (`run_loadtest.py`) to simulate N concurrent games of 4 to 8 players across the full game lifecycle: registration, group invite joins, STOMP over WebSocket connections, WebRTC voice and song mesh signaling, pre-game audio check, active player card placements, and betting. Core enforces an active-game admission limit via `game.session.max-active-games` (default 50, environment variable `MAX_ACTIVE_GAMES`). When active sessions reach capacity, new session starts (both at audio check initiation and game start) return HTTP 503 Service Unavailable with the body message "Server is at maximum game capacity. Please try again shortly.". Container resource allocations in `scripts/azure/create-container-apps.ps1` are confirmed at 1.0 vCPU and 2.0 GiB RAM for core, and 0.5 vCPU and 1.0 GiB RAM for AI.
 
 Why: core manages process-local game session state, timer tasks, and STOMP message brokering. Establishing an explicit admission ceiling of 50 concurrent active games keeps peak memory utilization safely below 1.5 GiB, preventing garbage-collection pauses from disrupting real-time round timers and WebRTC signaling. An immediate HTTP 503 response informs users clearly of temporary server capacity constraints rather than degrading existing matches.
+
+
+---
+
+## 2026-10-31 | Default tiered JIT compilation and always-on Azure Container App replicas
+
+Decision: core retains default Tiered Compilation (C1 + C2) by removing `-XX:TieredStopAtLevel=1` from `backend/Dockerfile`, and `scripts/azure/create-container-apps.ps1` sets `$MinReplicas = 1` for both core and AI services.
+
+Why: both Azure Container Apps run one always-on replica because core game and STOMP session states are process-local. With an always-on replica, startup time is incurred once at deployment rather than on user request. Under load testing across concurrent games, C2 optimizes hot execution paths (STOMP routing, Jackson serialization, JWT authentication), delivering lower p95/p99 action latencies and reduced CPU consumption compared to C1-only compilation, while total heap and metaspace memory remain safely within the 2.0 GiB container budget.
