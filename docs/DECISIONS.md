@@ -1599,3 +1599,12 @@ Why: core manages process-local game session state, timer tasks, and STOMP messa
 Decision: core retains default Tiered Compilation (C1 + C2) by removing `-XX:TieredStopAtLevel=1` from `backend/Dockerfile`, and `scripts/azure/create-container-apps.ps1` sets `$MinReplicas = 1` for both core and AI services.
 
 Why: both Azure Container Apps run one always-on replica because core game and STOMP session states are process-local. With an always-on replica, startup time is incurred once at deployment rather than on user request. Under load testing across concurrent games, C2 optimizes hot execution paths (STOMP routing, Jackson serialization, JWT authentication), delivering lower p95/p99 action latencies and reduced CPU consumption compared to C1-only compilation, while total heap and metaspace memory remain safely within the 2.0 GiB container budget.
+
+
+---
+
+## 2026-10-31 | Production deployment smoke test script and AI reachability check
+
+Decision: a deployment smoke test script `scripts/smoke-test-production.sh` is created to verify production environment health across both hosting tiers. It tests Core unauthenticated health probes (`/actuator/health`, `/actuator/health/liveness`, `/actuator/health/readiness`), public HTTPS API routes (`/api/enums/countries`), TLS WebSocket upgrade and STOMP handshake on `/ws`, frontend protected-route proxy redirection (`/playlists` returning HTTP 307 to `/login` without a `session_hint` cookie and passing through with HTTP 200 when present), and Core to AI service reachability via `AiServiceHealthIndicator`. Running the script against production (`https://api.hittiguess.com` and `https://www.hittiguess.com`) passed all checks with zero failures.
+
+Why: post-deployment verification requires automated validation of the entire network path: DNS resolution, edge TLS termination, CORS and origin policy, frontend middleware routing, and internal inter-service communication between Container Apps. Consolidating these checks into a repeatable script provides immediate confirmation following releases.
