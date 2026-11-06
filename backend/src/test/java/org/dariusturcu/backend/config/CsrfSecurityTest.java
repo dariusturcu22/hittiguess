@@ -1,5 +1,6 @@
 package org.dariusturcu.backend.config;
 
+import org.dariusturcu.backend.ratelimit.RateLimitTestSupport;
 import jakarta.servlet.http.Cookie;
 import org.dariusturcu.backend.ratelimit.RateLimitingFilter;
 import org.dariusturcu.backend.security.JwtAuthenticationFilter;
@@ -209,7 +210,7 @@ class CsrfSecurityTest {
     // The auth endpoints share one per-IP bucket, which the parameterized cases would exhaust.
     @BeforeEach
     void resetRateLimits() {
-        rateLimitingFilter.resetForTesting();
+        RateLimitTestSupport.reset(rateLimitingFilter);
     }
 
     private static String freshCsrfToken() {

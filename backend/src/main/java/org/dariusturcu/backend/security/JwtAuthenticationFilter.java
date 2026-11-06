@@ -9,6 +9,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.dariusturcu.backend.security.util.JwtUtil;
 import org.dariusturcu.backend.util.CookieUtil;
+import org.dariusturcu.backend.util.RequestPaths;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -49,7 +50,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
-        String path = request.getRequestURI();
+        String path = RequestPaths.normalizedPath(request);
         return path.startsWith("/auth/") && !AUTHENTICATED_AUTH_PATHS.contains(path);
     }
 
