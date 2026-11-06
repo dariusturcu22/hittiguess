@@ -132,9 +132,62 @@ class StompSubscriptionAuthorizationInterceptorTest {
     }
 
     @Test
-    void framesOtherThanSubscribePassThrough() {
+    void aSendToAnApplicationDestinationPassesThrough() {
+        Message<byte[]> message = frame(StompCommand.SEND, GroupDestinations.chatDestination(GROUP_ID), subscriber);
+
+        assertThat(interceptor.preSend(message, channel)).isSameAs(message);
+    }
+
+    @Test
+    void aSendToAnApplicationDestinationPassesThroughWithoutAUser() {
         Message<byte[]> message = frame(StompCommand.SEND, GroupDestinations.chatDestination(GROUP_ID), null);
 
         assertThat(interceptor.preSend(message, channel)).isSameAs(message);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {
+            "/topic/groups/7/chat",
+            "/topic/sessions/3/round",
+            "/queue/groups/7/voice-signal-usersession1",
+            "/user/someone/queue/groups/7/voice-signal",
+            "/user/queue/sessions/3/song-signal",
+            "/app",
+            "/application/groups/7/chat",
+            "/other"
+    })
+    void aSendOutsideTheApplicationPrefixIsRefused(String destination) {
+        assertThatThrownBy(() -> interceptor.preSend(frame(StompCommand.SEND, destination, subscriber), channel))
+                .isInstanceOf(MessagingException.class);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"/topic/groups/7/chat", "/user/someone/queue/groups/7/voice-signal"})
+    void aForgedMessageFrameOutsideTheApplicationPrefixIsRefused(String destination) {
+        assertThatThrownBy(() -> interceptor.preSend(frame(StompCommand.MESSAGE, destination, subscriber), channel))
+                .isInstanceOf(MessagingException.class);
+    }
+
+    @Test
+    void aSendWithoutADestinationIsRefused() {
+        assertThatThrownBy(() -> interceptor.preSend(frame(StompCommand.SEND, null, subscriber), channel))
+                .isInstanceOf(MessagingException.class);
+    }
+
+    @Test
+    void aSendFrameDoesNotConsultMembershipRepositories() {
+        interceptor.preSend(frame(StompCommand.SEND, GroupDestinations.chatDestination(GROUP_ID), subscriber), channel);
+
+        verify(memberRepository, never()).existsByGroupIdAndUserId(anyLong(), anyLong());
+        verify(playerRepository, never()).existsBySessionIdAndUserId(anyLong(), anyLong());
+    }
+
+    @Test
+    void connectAndDisconnectFramesPassThrough() {
+        Message<byte[]> connect = frame(StompCommand.CONNECT, null, null);
+        Message<byte[]> disconnect = frame(StompCommand.DISCONNECT, null, subscriber);
+
+        assertThat(interceptor.preSend(connect, channel)).isSameAs(connect);
+        assertThat(interceptor.preSend(disconnect, channel)).isSameAs(disconnect);
     }
 }
