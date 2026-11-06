@@ -4,7 +4,7 @@
 
 ## Where the project stands
 
-The game, the catalog pipeline with its admin console, voice and text chat, game history, and the production deployment (Vercel, Azure Container Apps, Neon) are built and live. The app is open to anyone. Three playtests have been fixed. The remaining work falls into four groups, in this order.
+The game, the pre-game audio check, the catalog pipeline with its admin console, voice and text chat, game history, account settings with two-factor authentication, and the production deployment (Vercel, Azure Container Apps, Neon) are built and live. The app is open to anyone. The remaining work falls into three groups, in this order.
 
 ## Release milestone
 
@@ -12,12 +12,11 @@ The next milestone is the public launch: the owner announces hittiguess publicly
 
 ## Order
 
-1. Finish the two branches in progress: the pre-game audio check (`feature/audio-check`, story 52) and the whole-catalog recheck page (`feature/recheck-whole-catalog`, story 55).
-2. Catalog accuracy (story 55): bulk acceptance of proposed years, the production recheck, merging the known duplicate songs, and the uniqueness constraints.
-3. Gameplay fixes (story 57): reconnect recovery, the import-job 404, and browser coverage of the game screens.
-4. Frontend completion (stories 28 and 47): account settings with data export and deletion, the two-factor screens, the desktop visual pass, and the landing page on mobile.
-5. Production operations (stories 7, 8, 38): cost alerts and shutdown, the load test and active-game admission limit, the deployment smoke test, Neon backups and restore, metrics and uptime monitoring, and the move to one Hetzner server before the Azure trial credit ends.
-6. Release 1 to 6 (story 56): legal pages and compliance, site basics, the security audit, reliability and operations, product polish, and the launch tasks. The Release sections are ordered; the legal rewrite waits on the owner's decisions, and the launch tasks come last.
+1. Catalog accuracy (story 55): the production recheck and acceptance of proposed years, merging the known duplicate songs, and the uniqueness constraints.
+2. Production operations (stories 7, 8): cost alerts and shutdown, Neon backups and restore, the owner's two-window and TURN checks, and the decision on the move to Hetzner.
+3. Release 1 to 6 (story 56): legal pages and compliance, site basics, the security audit (input validation, secrets, scanning, remaining security headers and WebSocket items, moderation, admin hardening, the ZAP scan), reliability and operations, product polish, and the launch tasks. The Release sections are ordered; the legal rewrite waits on the owner's decisions, and the launch tasks come last.
+
+The audit follow-ups under "Deferred from the Nov 2026 audit" in TASKS.md are scheduled with the Release 3 and 4 work.
 
 ## After the launch
 

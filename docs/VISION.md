@@ -14,9 +14,9 @@ Friend groups. The game is built around playing with people you know, not with s
 
 This isn't a product for sale, and there's no monetization plan, not now, not later. Built for friends and family, not to compete for users or ad revenue. Reaching the ~100-200 user scale of that group is a complete win, not a disappointing ceiling. The owner is also planning a public announcement, so the app is held to the standard of a public product (legal pages, security review, monitoring) while staying free, open source, and without ads or trackers.
 
-No ads, no third-party trackers, no selling user data, ever. First-party analytics (see stories 33 and 34 in `PROJECT_STATE.md`) are fine and wanted, they're for improving the product for the people actually playing it, not for anyone else's benefit.
+No ads, no third-party trackers, no selling user data, ever. First-party analytics (story 34 in `PROJECT_STATE.md`) are fine and wanted, for improving the product for the people actually playing it.
 
-Cost stays low deliberately, not as an afterthought. The whole deployment, every service combined, targets $0/month and tolerates up to roughly $20/month total if there's a genuinely good reason (a real skills investment, not convenience). That ceiling is shared across every service, backend, AI microservice, frontend, database, observability, everything, not $20 per piece. If real usage ever outgrows what free or near-free infrastructure can handle, the answer is to balance the game, cap concurrent sessions, queue players, something that keeps it playable within the budget, not to pay for more infrastructure to keep up with growth.
+Cost stays low deliberately. The whole deployment, every service combined, targets $0/month and tolerates up to roughly $20/month total if there is a genuinely good reason. If real usage outgrows that, the answer is to balance the game, cap concurrent sessions, or queue players, not to pay for more infrastructure.
 
 ## What does "done" look like?
 
@@ -41,10 +41,8 @@ A working multiplayer game where:
 
 ## Built to a professional standard, not just a working one
 
-Every external dependency uses official APIs and respects licenses. The product includes privacy and terms pages, GDPR controls, and production-focused observability through stories 37 and 38. The production deployment is live; the privacy and terms pages, the GDPR account controls in the interface, and monitoring alerts are release tasks (story 56 in `PROJECT_STATE.md`) that the public launch waits on.
+Every external dependency uses official APIs and respects licenses. The product has privacy and terms drafts, GDPR account controls (settings, data export, deletion), and production observability. Publishing the legal pages, the remaining security audit items, and monitoring alerts are release tasks (story 56 in `PROJECT_STATE.md`) that the public launch waits on.
 
-## Groups are the lobby, game sessions are the round
+## Groups and game sessions
 
-A group is the persistent space friends share: created with an invite link or a join code, capped at 8 members, chat and voice live from the moment it's created. The admin configures game settings; a group can run any number of game sessions over its lifetime without anyone needing a new invite. A group that sits idle too long, or finishes a game session without starting another, gets deleted, see `GAME_DESIGN.md` for the exact timers.
-
-A game session is the round-by-round play itself, created only when the group's admin starts one. It's fully ephemeral: rounds, guesses, and bets are purged once it ends, except for a downloadable results export. Everyone in the group is a full player, there's no spectating and no joining a session already in progress. See `ARCHITECTURE.md` and `GAME_DESIGN.md` for the full shape of both.
+A group is the persistent space friends share; a game session is the round-by-round play inside it, ephemeral except for a results export. Everyone in the group is a full player, with no spectating and no joining a session in progress. See `GAME_DESIGN.md` for the rules and timers and `ARCHITECTURE.md` for the shape of both.
