@@ -1,15 +1,23 @@
 package org.dariusturcu.backend.service;
 
+import org.dariusturcu.backend.model.group.ChatMessage;
+import org.dariusturcu.backend.model.group.Group;
+import org.dariusturcu.backend.model.group.GroupStatus;
+import org.dariusturcu.backend.model.group.Member;
 import org.dariusturcu.backend.model.mapper.PlaylistMapper;
 import org.dariusturcu.backend.model.mapper.SongMapper;
 import org.dariusturcu.backend.model.mapper.UserMapper;
 import org.dariusturcu.backend.model.playlist.PlaylistDetailDTO;
 import org.dariusturcu.backend.model.song.CreateSongRequest;
 import org.dariusturcu.backend.model.song.SongDTO;
-import org.dariusturcu.backend.model.user.AuthProvider;
+import org.dariusturcu.backend.model.user.ChatMessageExportDTO;
+import org.dariusturcu.backend.model.user.GroupMembershipExportDTO;
 import org.dariusturcu.backend.model.user.PersonalDataExportDTO;
 import org.dariusturcu.backend.model.user.Role;
 import org.dariusturcu.backend.model.user.User;
+import org.dariusturcu.backend.repository.ChatMessageRepository;
+import org.dariusturcu.backend.repository.GroupRepository;
+import org.dariusturcu.backend.repository.MemberRepository;
 import org.dariusturcu.backend.repository.PendingImportRepository;
 import org.dariusturcu.backend.repository.PlaylistBanRepository;
 import org.dariusturcu.backend.repository.PlaylistMembershipRepository;
@@ -36,23 +44,18 @@ import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
+import java.time.Instant;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * Exercises the GDPR personal-data export endpoint's backing service against a real Postgres
- * database: the returned payload carries the requesting user's own account fields, every
- * playlist they belong to with its membership details, and every song they've submitted.
- *
- * Uses a minimal JPA-only context (JpaTestConfig below), the same reasoning as
- * PlaylistMembershipLifecycleIntegrationTest: this project's OAuth2 client and AI-service
- * RestClient beans both build a java.net.http.HttpClient, which this sandbox's JDK can't
- * construct.
- */
 @Testcontainers
 @SpringBootTest(classes = PersonalDataExportIntegrationTest.JpaTestConfig.class)
 class PersonalDataExportIntegrationTest {
+
+    private static final int DEFAULT_RELEASE_YEAR = 2000;
+    private static final String YOUTUBE_VIDEO_ID = "dQw4w9WgXcQ";
+    private static final String HEX_COLOR = "abcdef";
 
     @Configuration
     @EnableAutoConfiguration(exclude = OAuth2ClientAutoConfiguration.class)
@@ -81,12 +84,18 @@ class PersonalDataExportIntegrationTest {
 
         @Bean
         CatalogSeedingService catalogSeedingService(PendingImportRepository pendingImportRepository) {
-            return new CatalogSeedingService(pendingImportRepository, null, null, null, org.mockito.Mockito.mock(org.dariusturcu.backend.pipeline.PipelineJobService.class));
+            return new CatalogSeedingService(
+                    pendingImportRepository,
+                    null,
+                    null,
+                    null,
+                    org.mockito.Mockito.mock(org.dariusturcu.backend.pipeline.PipelineJobService.class));
         }
 
         @Bean
-        SongCatalogService songCatalogService(SongRepository songRepository,
-                                              org.dariusturcu.backend.repository.AlternateYoutubeIdRepository alternateYoutubeIdRepository) {
+        SongCatalogService songCatalogService(
+                SongRepository songRepository,
+                org.dariusturcu.backend.repository.AlternateYoutubeIdRepository alternateYoutubeIdRepository) {
             return new SongCatalogService(songRepository, alternateYoutubeIdRepository);
         }
 
@@ -117,8 +126,16 @@ class PersonalDataExportIntegrationTest {
                 PlaylistBanRepository playlistBanRepository,
                 SongRepository songRepository,
                 SavedPlaylistRepository savedPlaylistRepository) {
-            return new UserService(userRepository, playlistRepository, userMapper, playlistMapper,
-                    playlistMembershipRepository, playlistBanRepository, songRepository, savedPlaylistRepository, org.mockito.Mockito.mock(org.springframework.context.ApplicationEventPublisher.class));
+            return new UserService(
+                    userRepository,
+                    playlistRepository,
+                    userMapper,
+                    playlistMapper,
+                    playlistMembershipRepository,
+                    playlistBanRepository,
+                    songRepository,
+                    savedPlaylistRepository,
+                    org.mockito.Mockito.mock(org.springframework.context.ApplicationEventPublisher.class));
         }
 
         @Bean
@@ -126,8 +143,18 @@ class PersonalDataExportIntegrationTest {
                 UserRepository userRepository,
                 PlaylistMembershipRepository playlistMembershipRepository,
                 SongRepository songRepository,
-                SongMapper songMapper) {
-            return new PersonalDataExportService(userRepository, playlistMembershipRepository, songRepository, songMapper, org.mockito.Mockito.mock(org.dariusturcu.backend.history.GameHistoryService.class), org.mockito.Mockito.mock(org.dariusturcu.backend.research.SongResearchService.class));
+                SongMapper songMapper,
+                MemberRepository memberRepository,
+                ChatMessageRepository chatMessageRepository) {
+            return new PersonalDataExportService(
+                    userRepository,
+                    playlistMembershipRepository,
+                    songRepository,
+                    songMapper,
+                    memberRepository,
+                    chatMessageRepository,
+                    org.mockito.Mockito.mock(org.dariusturcu.backend.history.GameHistoryService.class),
+                    org.mockito.Mockito.mock(org.dariusturcu.backend.research.SongResearchService.class));
         }
     }
 
@@ -148,6 +175,12 @@ class PersonalDataExportIntegrationTest {
     @Autowired
     private PlaylistService playlistService;
     @Autowired
+    private GroupRepository groupRepository;
+    @Autowired
+    private MemberRepository memberRepository;
+    @Autowired
+    private ChatMessageRepository chatMessageRepository;
+    @Autowired
     private PersonalDataExportService personalDataExportService;
 
     @AfterEach
@@ -159,7 +192,7 @@ class PersonalDataExportIntegrationTest {
         User user = new User();
         user.setUsername(username);
         user.setEmail(username + "@example.com");
-        user.setAuthProvider(AuthProvider.LOCAL);
+        user.setAuthProvider(org.dariusturcu.backend.model.user.AuthProvider.LOCAL);
         user.setRole(Role.USER);
         return userRepository.save(user);
     }
@@ -173,29 +206,79 @@ class PersonalDataExportIntegrationTest {
         return new CreateSongRequest(
                 "Artist",
                 title,
-                2000,
-                "dQw4w9WgXcQ",
-                "abcdef",
+                DEFAULT_RELEASE_YEAR,
+                YOUTUBE_VIDEO_ID,
+                HEX_COLOR,
                 null);
     }
 
     @Test
-    void exportReturnsTheAccountEveryPlaylistMembershipAndEverySubmittedSong() {
+    void exportReturnsAllPromisedCategoriesIncludingAccountPlaylistsSongsGroupAndChat() {
         User exportingUser = persistUser("exporter-" + UUID.randomUUID());
+        byte[] testAvatarBytes = new byte[]{9, 8, 7, 6};
+        exportingUser.setAvatarImage(testAvatarBytes);
+        exportingUser.setTwoFactorEnabled(true);
+        userRepository.save(exportingUser);
+
         actAs(exportingUser);
 
         PlaylistDetailDTO ownedPlaylist = userService.createPlaylist();
         SongDTO submittedSong = playlistService.createSong(ownedPlaylist.id(), anySongRequest("Exported Title"));
+
+        Group group = new Group();
+        group.setInviteCode(UUID.randomUUID().toString().substring(0, 8));
+        group.setJoinCode("5678");
+        group.setStatus(GroupStatus.OPEN);
+        group.setDjMode(org.dariusturcu.backend.model.group.DjMode.ROTATING);
+        group.setWinConditionCardCount(10);
+        group.setCreatedAt(Instant.now());
+        Group savedGroup = groupRepository.save(group);
+
+        Member member = new Member();
+        member.setGroup(savedGroup);
+        member.setUser(exportingUser);
+        member.setDisplayName(exportingUser.getUsername());
+        member.setJoinedAt(Instant.now());
+        member.setAdmin(true);
+        member.setConnected(true);
+        member.setInVoice(false);
+        memberRepository.save(member);
+
+        ChatMessage chatMessage = new ChatMessage();
+        chatMessage.setGroup(savedGroup);
+        chatMessage.setSender(exportingUser);
+        chatMessage.setContent("Exported chat content");
+        chatMessage.setCreatedAt(Instant.now());
+        chatMessageRepository.save(chatMessage);
 
         PersonalDataExportDTO export = personalDataExportService.exportCurrentUser();
 
         assertThat(export.id()).isEqualTo(exportingUser.getId());
         assertThat(export.username()).isEqualTo(exportingUser.getUsername());
         assertThat(export.email()).isEqualTo(exportingUser.getEmail());
-        assertThat(export.authProvider()).isEqualTo(AuthProvider.LOCAL.name());
+        assertThat(export.authProvider()).isEqualTo(org.dariusturcu.backend.model.user.AuthProvider.LOCAL.name());
+        assertThat(export.avatarImage()).isEqualTo(testAvatarBytes);
+        assertThat(export.twoFactorEnabled()).isTrue();
+        assertThat(export.createdAt()).isNotNull();
+
         assertThat(export.playlists()).hasSize(1);
         assertThat(export.playlists().getFirst().playlistId()).isEqualTo(ownedPlaylist.id());
         assertThat(export.playlists().getFirst().owner()).isTrue();
+
         assertThat(export.submittedSongs()).extracting(SongDTO::id).containsExactly(submittedSong.id());
+
+        GroupMembershipExportDTO activeGroup = export.activeGroup();
+        assertThat(activeGroup).isNotNull();
+        assertThat(activeGroup.groupId()).isEqualTo(savedGroup.getId());
+        assertThat(activeGroup.isAdmin()).isTrue();
+        assertThat(activeGroup.displayName()).isEqualTo(exportingUser.getUsername());
+
+        assertThat(export.chatMessages()).hasSize(1);
+        ChatMessageExportDTO exportedMessage = export.chatMessages().getFirst();
+        assertThat(exportedMessage.groupId()).isEqualTo(savedGroup.getId());
+        assertThat(exportedMessage.content()).isEqualTo("Exported chat content");
+
+        assertThat(export.gameHistory()).isNotNull();
+        assertThat(export.researchObservations()).isNotNull();
     }
 }

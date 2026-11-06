@@ -1,5 +1,10 @@
 package org.dariusturcu.backend.service;
 
+import org.dariusturcu.backend.model.TwoFactorBackupCode;
+import org.dariusturcu.backend.model.group.ChatMessage;
+import org.dariusturcu.backend.model.group.Group;
+import org.dariusturcu.backend.model.group.GroupStatus;
+import org.dariusturcu.backend.model.group.Member;
 import org.dariusturcu.backend.model.mapper.PlaylistMapper;
 import org.dariusturcu.backend.model.mapper.SongMapper;
 import org.dariusturcu.backend.model.mapper.UserMapper;
@@ -10,12 +15,19 @@ import org.dariusturcu.backend.model.song.SongDTO;
 import org.dariusturcu.backend.model.user.AuthProvider;
 import org.dariusturcu.backend.model.user.Role;
 import org.dariusturcu.backend.model.user.User;
+import org.dariusturcu.backend.repository.ChatMessageRepository;
+import org.dariusturcu.backend.repository.EmailVerificationTokenRepository;
+import org.dariusturcu.backend.repository.GroupRepository;
+import org.dariusturcu.backend.repository.MemberRepository;
+import org.dariusturcu.backend.repository.PasswordResetTokenRepository;
 import org.dariusturcu.backend.repository.PendingImportRepository;
 import org.dariusturcu.backend.repository.PlaylistBanRepository;
 import org.dariusturcu.backend.repository.PlaylistMembershipRepository;
 import org.dariusturcu.backend.repository.PlaylistRepository;
+import org.dariusturcu.backend.repository.RefreshTokenRepository;
 import org.dariusturcu.backend.repository.SavedPlaylistRepository;
 import org.dariusturcu.backend.repository.SongRepository;
+import org.dariusturcu.backend.repository.TwoFactorBackupCodeRepository;
 import org.dariusturcu.backend.repository.UserRepository;
 import org.dariusturcu.backend.security.UserPrincipal;
 import org.junit.jupiter.api.AfterEach;
@@ -36,27 +48,24 @@ import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
+import java.time.Instant;
 import java.util.Optional;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * Exercises the full account-deletion path against a real Postgres database: a submitted song's
- * attribution surviving the submitter's own deletion, a solely-owned playlist being deleted
- * alongside the account, and a shared playlist's ownership passing to another member instead of
- * being orphaned or deleted out from under them.
- *
- * Uses a minimal JPA-only context (JpaTestConfig below), the same reasoning as
- * PlaylistMembershipLifecycleIntegrationTest: this project's OAuth2 client and AI-service
- * RestClient beans both build a java.net.http.HttpClient, which this sandbox's JDK can't
- * construct.
- */
 @Testcontainers
 @SpringBootTest(classes = UserAccountDeletionIntegrationTest.JpaTestConfig.class)
 class UserAccountDeletionIntegrationTest {
 
-    @org.springframework.context.annotation.Import({org.dariusturcu.backend.history.HistoryDataSourceConfig.class, org.dariusturcu.backend.history.GameHistoryService.class})
+    private static final int DEFAULT_RELEASE_YEAR = 2000;
+    private static final String YOUTUBE_VIDEO_ID = "dQw4w9WgXcQ";
+    private static final String HEX_COLOR = "abcdef";
+
+    @org.springframework.context.annotation.Import({
+            org.dariusturcu.backend.history.HistoryDataSourceConfig.class,
+            org.dariusturcu.backend.history.GameHistoryService.class
+    })
     @Configuration
     @EnableAutoConfiguration(exclude = OAuth2ClientAutoConfiguration.class)
     @EntityScan("org.dariusturcu.backend.model")
@@ -84,12 +93,18 @@ class UserAccountDeletionIntegrationTest {
 
         @Bean
         CatalogSeedingService catalogSeedingService(PendingImportRepository pendingImportRepository) {
-            return new CatalogSeedingService(pendingImportRepository, null, null, null, org.mockito.Mockito.mock(org.dariusturcu.backend.pipeline.PipelineJobService.class));
+            return new CatalogSeedingService(
+                    pendingImportRepository,
+                    null,
+                    null,
+                    null,
+                    org.mockito.Mockito.mock(org.dariusturcu.backend.pipeline.PipelineJobService.class));
         }
 
         @Bean
-        SongCatalogService songCatalogService(SongRepository songRepository,
-                                              org.dariusturcu.backend.repository.AlternateYoutubeIdRepository alternateYoutubeIdRepository) {
+        SongCatalogService songCatalogService(
+                SongRepository songRepository,
+                org.dariusturcu.backend.repository.AlternateYoutubeIdRepository alternateYoutubeIdRepository) {
             return new SongCatalogService(songRepository, alternateYoutubeIdRepository);
         }
 
@@ -119,9 +134,20 @@ class UserAccountDeletionIntegrationTest {
                 PlaylistMembershipRepository playlistMembershipRepository,
                 PlaylistBanRepository playlistBanRepository,
                 SongRepository songRepository,
-                SavedPlaylistRepository savedPlaylistRepository, org.springframework.context.ApplicationEventPublisher eventPublisher) {
+                SavedPlaylistRepository savedPlaylistRepository,
+                MemberRepository memberRepository,
+                GroupRepository groupRepository,
+                ChatMessageRepository chatMessageRepository,
+                TwoFactorBackupCodeRepository twoFactorBackupCodeRepository,
+                RefreshTokenRepository refreshTokenRepository,
+                PasswordResetTokenRepository passwordResetTokenRepository,
+                EmailVerificationTokenRepository emailVerificationTokenRepository,
+                org.springframework.context.ApplicationEventPublisher eventPublisher) {
             return new UserService(userRepository, playlistRepository, userMapper, playlistMapper,
-                    playlistMembershipRepository, playlistBanRepository, songRepository, savedPlaylistRepository, eventPublisher);
+                    playlistMembershipRepository, playlistBanRepository, songRepository, savedPlaylistRepository,
+                    memberRepository, groupRepository, chatMessageRepository, twoFactorBackupCodeRepository,
+                    refreshTokenRepository, passwordResetTokenRepository, emailVerificationTokenRepository,
+                    eventPublisher);
         }
     }
 
@@ -143,6 +169,16 @@ class UserAccountDeletionIntegrationTest {
     private PlaylistMembershipRepository playlistMembershipRepository;
     @Autowired
     private SongRepository songRepository;
+    @Autowired
+    private SavedPlaylistRepository savedPlaylistRepository;
+    @Autowired
+    private GroupRepository groupRepository;
+    @Autowired
+    private MemberRepository memberRepository;
+    @Autowired
+    private ChatMessageRepository chatMessageRepository;
+    @Autowired
+    private TwoFactorBackupCodeRepository twoFactorBackupCodeRepository;
     @Autowired
     @org.springframework.beans.factory.annotation.Qualifier("coreJdbcTemplate")
     private org.springframework.jdbc.core.JdbcTemplate core;
@@ -176,9 +212,9 @@ class UserAccountDeletionIntegrationTest {
         return new CreateSongRequest(
                 "Artist",
                 title,
-                2000,
-                "dQw4w9WgXcQ",
-                "abcdef",
+                DEFAULT_RELEASE_YEAR,
+                YOUTUBE_VIDEO_ID,
+                HEX_COLOR,
                 null);
     }
 
@@ -236,5 +272,78 @@ class UserAccountDeletionIntegrationTest {
         userService.deleteUser();
         assertThat(history.export(deletingUser.getId())).isEmpty();
         assertThat(history.export(remainingUser.getId()).getFirst().participants()).anyMatch(participant -> participant.userId() == null && participant.displayName().equals("Deleted player"));
+    }
+
+    @Test
+    void deletingAUserRemovesAllPersonalDataAcrossPlaylistsGroupsChatHistoryTwoFactorAndAvatar() {
+        User deletingUser = persistUser("complete-user-" + UUID.randomUUID());
+        byte[] testAvatarBytes = new byte[]{1, 2, 3, 4};
+        deletingUser.setAvatarImage(testAvatarBytes);
+        deletingUser.setTotpSecret("JBSWY3DPEHPK3PXP");
+        deletingUser.setTwoFactorEnabled(true);
+        userRepository.save(deletingUser);
+
+        TwoFactorBackupCode backupCode = new TwoFactorBackupCode();
+        backupCode.setUser(deletingUser);
+        backupCode.setCodeHash("hashed-backup-code");
+        backupCode.setUsed(false);
+        twoFactorBackupCodeRepository.save(backupCode);
+
+        User playlistOwner = persistUser("playlist-owner-" + UUID.randomUUID());
+        actAs(playlistOwner);
+        PlaylistDetailDTO publicPlaylist = userService.createPlaylist();
+        Playlist playlist = playlistRepository.findById(publicPlaylist.id()).orElseThrow();
+        playlist.setPublic(true);
+        playlistRepository.save(playlist);
+        actAs(deletingUser);
+        playlistService.savePlaylist(playlist.getId());
+
+        PlaylistDetailDTO solePlaylist = userService.createPlaylist();
+        SongDTO submittedSong = playlistService.createSong(solePlaylist.id(), anySongRequest("Personal Song"));
+
+        Group group = new Group();
+        group.setInviteCode(UUID.randomUUID().toString().substring(0, 8));
+        group.setJoinCode("1234");
+        group.setStatus(GroupStatus.OPEN);
+        group.setDjMode(org.dariusturcu.backend.model.group.DjMode.ROTATING);
+        group.setWinConditionCardCount(10);
+        group.setCreatedAt(Instant.now());
+        Group savedGroup = groupRepository.save(group);
+
+        Member member = new Member();
+        member.setGroup(savedGroup);
+        member.setUser(deletingUser);
+        member.setDisplayName(deletingUser.getUsername());
+        member.setJoinedAt(Instant.now());
+        member.setAdmin(true);
+        member.setConnected(true);
+        member.setInVoice(false);
+        memberRepository.save(member);
+
+        ChatMessage chatMessage = new ChatMessage();
+        chatMessage.setGroup(savedGroup);
+        chatMessage.setSender(deletingUser);
+        chatMessage.setContent("Hello group from deleting user");
+        chatMessage.setCreatedAt(Instant.now());
+        chatMessageRepository.save(chatMessage);
+
+        long originalSessionId = 202L;
+        Long summaryId = core.queryForObject(
+                "INSERT INTO game_summaries(source_session_id, group_name, started_at, ended_at, mode, win_target_cards, participant_count, turns_played, ending_reason, rules_version) VALUES (?, 'Group Full', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'CUSTOM', 8, 1, 2, 'TARGET_REACHED', 'full-pass-v1') RETURNING id",
+                Long.class, originalSessionId);
+        core.update("INSERT INTO game_participant_summaries(game_summary_id, user_id, display_name, participation_status, final_card_count, card_rank, artist_rank, title_rank, is_winner, placement_attempts, correct_placements, title_attempts, correct_titles, artist_attempts, correct_artists, bets_placed, bets_won) VALUES (?, ?, ?, 'FINISHED', 8, 1, 1, 1, true, 5, 5, 2, 2, 2, 2, 0, 0)",
+                summaryId, deletingUser.getId(), deletingUser.getUsername());
+
+        userService.deleteUser();
+
+        assertThat(userRepository.findById(deletingUser.getId())).isEmpty();
+        assertThat(twoFactorBackupCodeRepository.findByUserAndUsedFalse(deletingUser)).isEmpty();
+        assertThat(savedPlaylistRepository.findByUserId(deletingUser.getId())).isEmpty();
+        assertThat(memberRepository.findByUser(deletingUser)).isEmpty();
+        assertThat(chatMessageRepository.findBySenderIdOrderByCreatedAtAsc(deletingUser.getId())).isEmpty();
+        assertThat(playlistRepository.findById(solePlaylist.id())).isEmpty();
+        assertThat(songRepository.findById(submittedSong.id()))
+                .hasValueSatisfying(song -> assertThat(song.getAddedBy()).isNull());
+        assertThat(history.export(deletingUser.getId())).isEmpty();
     }
 }

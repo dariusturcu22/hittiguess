@@ -2,6 +2,7 @@ package org.dariusturcu.backend.model.user;
 
 import org.dariusturcu.backend.model.song.SongDTO;
 
+import java.time.Instant;
 import java.util.List;
 
 // The full personal-data dump for the GDPR export endpoint: every field this project holds
@@ -11,10 +12,15 @@ public record PersonalDataExportDTO(
         String username,
         String email,
         String imageUrl,
+        byte[] avatarImage,
+        boolean twoFactorEnabled,
         String authProvider,
         String authProviderId,
+        Instant createdAt,
         List<PlaylistMembershipExportDTO> playlists,
         List<SongDTO> submittedSongs,
+        GroupMembershipExportDTO activeGroup,
+        List<ChatMessageExportDTO> chatMessages,
         List<org.dariusturcu.backend.history.GameSummary> gameHistory,
         List<org.dariusturcu.backend.research.SongPlayObservation> researchObservations
 ) {
