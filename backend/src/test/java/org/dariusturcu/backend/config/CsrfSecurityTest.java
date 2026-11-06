@@ -9,6 +9,7 @@ import org.dariusturcu.backend.security.oauth2.OAuth2AuthenticationFailureHandle
 import org.dariusturcu.backend.security.oauth2.OAuth2AuthenticationSuccessHandler;
 import org.dariusturcu.backend.security.oauth2.ReturnToOAuth2AuthorizationRequestResolver;
 import org.dariusturcu.backend.util.CookieUtil;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -201,6 +202,15 @@ class CsrfSecurityTest {
 
     @Autowired
     private MockMvc mockMvc;
+
+    @Autowired
+    private RateLimitingFilter rateLimitingFilter;
+
+    // The auth endpoints share one per-IP bucket, which the parameterized cases would exhaust.
+    @BeforeEach
+    void resetRateLimits() {
+        rateLimitingFilter.resetForTesting();
+    }
 
     private static String freshCsrfToken() {
         CsrfToken token = CookieCsrfTokenRepository.withHttpOnlyFalse()
