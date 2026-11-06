@@ -4,9 +4,12 @@ import { ThemeToggle } from "@/components/theme-toggle";
 import { PublicFooter, GITHUB_REPOSITORY_URL } from "@/components/public-footer";
 
 export const metadata = {
-  title: "About | hittiguess",
+  title: "About",
   description:
     "Learn about hittiguess, how rounds work, our open-source philosophy, and who builds the game.",
+  alternates: {
+    canonical: "/about",
+  },
 };
 
 const LOGO_BAR_WIDTH_PIXELS = 4;

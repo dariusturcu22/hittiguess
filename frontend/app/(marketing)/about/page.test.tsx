@@ -4,7 +4,8 @@ import AboutPage, { metadata } from "./page";
 
 describe("AboutPage", () => {
   it("exports correct document metadata", () => {
-    expect(metadata.title).toBe("About | hittiguess");
+    expect(metadata.title).toBe("About");
+    expect(metadata.alternates.canonical).toBe("/about");
     expect(metadata.description).toContain("Learn about hittiguess");
   });
 
