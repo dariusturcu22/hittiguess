@@ -1558,3 +1558,11 @@ Why: users require a clear, guided setup flow with visual QR scanning and manual
 Decision: the Joined tab in `frontend/app/(app)/playlists/page.tsx` renders the "Join playlist" end tile as designed in `YourPlaylistsJoinedDark.dc.html` and `YourPlaylistsJoinedLight.dc.html`, and provides distinct empty-state messages for empty search queries and empty library filters.
 
 Why: the playlist library requires distinct feedback when a filter has no items versus when a search query yields no matches. Maintaining the clean "Join playlist" card keeps the Joined tab consistent with the Owned and Saved end tiles without visual clutter.
+
+---
+
+## 2026-10-31 | Desktop 1440x900 theme and mockup audit reconciliation
+
+Decision: all primary application routes and states at 1440x900 in both dark (Catppuccin Mocha) and light (Catppuccin Latte) themes conform to the design board specifications, including user identity and truncation rules, popup placement and dismiss behavior, playlist action menus, difficulty tier and custom playlist selection, playlist import flows, gameplay phase countdowns and lock-ins, results podium and export actions, admin consoles and review drawers, and game history views. The Explore playlist card container radius aligns to `rounded-2xl` (16px) matching the library card standard.
+
+Why: maintaining visual consistency across themes and screens prevents styling regressions and ensures that interactive dialogs, status badges, and layout anchors match the approved design board across desktop viewports.
