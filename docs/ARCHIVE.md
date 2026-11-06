@@ -2788,3 +2788,14 @@ Round transitions run as check-then-act on `round.status` in separate transactio
   - Tests: unit tests that a disconnect is skipped while another socket is registered and a reconnect is skipped once none is.
 - [x] Pick the winning bet deterministically when equal release years make several gaps correct: the earliest accepted bet on a correct gap wins. Document it in `GAME_DESIGN.md`.
   - Tests: unit test with two bets on two correct gaps that the earlier bet wins whatever order the repository returns them in.
+
+## Rate limiter and probe follow-ups
+
+- [x] Separate per-endpoint auth rate limit buckets sized for shared networks, keeping brute-force protection (`RateLimitingFilter`).
+- [x] Match the decoded, normalized path in `RateLimitingFilter` and `JwtAuthenticationFilter`, with encoded-path tests.
+- [x] Point the report and metadata limits at the real routes and methods, and use those routes in the tests.
+- [x] Key IPv6 clients on the /64 prefix, expire idle buckets in `RateLimiterRegistry`, and remove the production `resetForTesting` hooks.
+- [x] Fail startup when `management.server.port` equals `server.port`, and replace `ManagementPortSecurityTest` with a MockMvc test on both ports.
+- [x] Liveness a constant 200, readiness database-only with a five-second cache, no AI call on public paths (`PublicHealthController`).
+- [x] Make `RequestPacerTest` independent of scheduler jitter.
+- [x] Document the client-address trust assumption behind `server.forward-headers-strategy=native` and how to verify it after deploy (`docs/DEV_SETUP.md`).

@@ -29,6 +29,7 @@ class PlaylistMapperTest {
 
     private static final Long OWNER_ID = 10L;
     private static final Long MEMBER_ID = 20L;
+    private static final Long STRANGER_ID = 30L;
 
     private final PlaylistMapper playlistMapper = new PlaylistMapper(new SongMapper());
 
@@ -41,6 +42,46 @@ class PlaylistMapperTest {
         membership.setCanDelete(true);
         membership.setJoinedAt(Instant.now());
         return membership;
+    }
+
+    private Playlist playlistWithOwnerAndMember() {
+        User owner = new User();
+        owner.setId(OWNER_ID);
+        owner.setUsername("owner-user");
+        User member = new User();
+        member.setId(MEMBER_ID);
+        member.setUsername("member-user");
+        Playlist playlist = new Playlist();
+        playlist.setOwner(owner);
+        playlist.setInviteCode("ABCDEFGH");
+        playlist.addMembership(membershipFor(owner, "Owner"));
+        playlist.addMembership(membershipFor(member, "Member"));
+        return playlist;
+    }
+
+    @Test
+    void detailForAMemberKeepsTheInviteCodeAndTheMemberList() {
+        PlaylistDetailDTO detail = playlistMapper.toDetailDTOForViewer(playlistWithOwnerAndMember(), MEMBER_ID);
+
+        assertThat(detail.inviteCode()).isEqualTo("ABCDEFGH");
+        assertThat(detail.members()).hasSize(2);
+    }
+
+    @Test
+    void detailForTheOwnerKeepsTheInviteCodeAndTheMemberList() {
+        PlaylistDetailDTO detail = playlistMapper.toDetailDTOForViewer(playlistWithOwnerAndMember(), OWNER_ID);
+
+        assertThat(detail.inviteCode()).isEqualTo("ABCDEFGH");
+        assertThat(detail.members()).hasSize(2);
+    }
+
+    @Test
+    void detailForAStrangerHidesTheInviteCodeAndListsOnlyTheOwner() {
+        PlaylistDetailDTO detail = playlistMapper.toDetailDTOForViewer(playlistWithOwnerAndMember(), STRANGER_ID);
+
+        assertThat(detail.inviteCode()).isNull();
+        assertThat(detail.members()).hasSize(1);
+        assertThat(detail.members()).allMatch(memberDto -> memberDto.owner());
     }
 
     @Test

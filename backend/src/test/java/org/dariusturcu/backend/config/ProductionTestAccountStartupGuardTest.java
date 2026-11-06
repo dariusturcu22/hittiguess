@@ -28,8 +28,20 @@ class ProductionTestAccountStartupGuardTest {
     }
 
     @Test
+    void startupFailsWhenAnAdminWithALocalAddressExistsInProduction() {
+        when(userRepository.existsUserByRole(Role.TEST)).thenReturn(false);
+        when(userRepository.existsUserByRoleAndEmailEndingWithIgnoreCase(Role.ADMIN, ".local")).thenReturn(true);
+        ProductionTestAccountStartupGuard startupGuard = new ProductionTestAccountStartupGuard(userRepository);
+
+        assertThatThrownBy(() -> startupGuard.run(new DefaultApplicationArguments()))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining(".local");
+    }
+
+    @Test
     void startupSucceedsWhenNoTestRoleRowExists() {
         when(userRepository.existsUserByRole(Role.TEST)).thenReturn(false);
+        when(userRepository.existsUserByRoleAndEmailEndingWithIgnoreCase(Role.ADMIN, ".local")).thenReturn(false);
         ProductionTestAccountStartupGuard startupGuard = new ProductionTestAccountStartupGuard(userRepository);
 
         assertThatCode(() -> startupGuard.run(new DefaultApplicationArguments()))

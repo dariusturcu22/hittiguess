@@ -8,68 +8,147 @@ import org.dariusturcu.backend.security.oauth2.HttpCookieOAuth2AuthorizationRequ
 import org.dariusturcu.backend.security.oauth2.OAuth2AuthenticationFailureHandler;
 import org.dariusturcu.backend.security.oauth2.OAuth2AuthenticationSuccessHandler;
 import org.dariusturcu.backend.security.oauth2.ReturnToOAuth2AuthorizationRequestResolver;
+import org.dariusturcu.backend.util.CookieUtil;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.mock.web.MockHttpServletRequest;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.security.oauth2.client.autoconfigure.OAuth2ClientAutoConfiguration;
+import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Import;
+import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.core.userdetails.UserDetailsService;
-import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.oauth2.client.registration.ClientRegistrationRepository;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.request.RequestPostProcessor;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RestController;
 import tools.jackson.databind.ObjectMapper;
 
 import java.util.List;
 
-import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-@ExtendWith(MockitoExtension.class)
+@WebMvcTest(
+        controllers = ManagementPortSecurityTest.ProbeController.class,
+        excludeAutoConfiguration = OAuth2ClientAutoConfiguration.class)
+@Import({ManagementPortSecurityTest.SecurityTestConfig.class, SecurityConfig.class})
 class ManagementPortSecurityTest {
 
     private static final int MANAGEMENT_PORT = 8081;
     private static final int APPLICATION_PORT = 8080;
-    private static final List<String> ALLOWED_ORIGINS = List.of("http://localhost:3000");
+    private static final String METRICS_PATH = "/actuator/prometheus";
 
-    @Mock
-    private JwtAuthenticationFilter jwtAuthenticationFilter;
+    @RestController
+    static class ProbeController {
+        @GetMapping(METRICS_PATH)
+        String metrics() {
+            return "metrics";
+        }
+    }
 
-    @Mock
-    private RateLimitingFilter rateLimitingFilter;
+    @Configuration
+    @EnableWebSecurity
+    static class SecurityTestConfig {
+        @Bean
+        ProbeController probeController() {
+            return new ProbeController();
+        }
 
-    @Mock
-    private UserDetailsService userDetailsService;
+        @Bean
+        JwtAuthenticationFilter jwtAuthenticationFilter() {
+            return new JwtAuthenticationFilter(
+                    mock(org.dariusturcu.backend.security.util.JwtUtil.class),
+                    new CookieUtil(),
+                    mock(UserDetailsService.class));
+        }
 
-    @Mock
-    private CustomOAuth2UserService customOAuth2UserService;
+        @Bean
+        RateLimitingFilter rateLimitingFilter(ObjectMapper objectMapper) {
+            return new RateLimitingFilter(objectMapper);
+        }
 
-    @Mock
-    private OAuth2AuthenticationSuccessHandler successHandler;
+        @Bean
+        SecurityConfig securityConfig(
+                JwtAuthenticationFilter jwtAuthenticationFilter,
+                RateLimitingFilter rateLimitingFilter,
+                ObjectMapper objectMapper) {
+            return new SecurityConfig(
+                    jwtAuthenticationFilter,
+                    rateLimitingFilter,
+                    mock(UserDetailsService.class),
+                    mock(CustomOAuth2UserService.class),
+                    mock(OAuth2AuthenticationSuccessHandler.class),
+                    mock(OAuth2AuthenticationFailureHandler.class),
+                    mock(HttpCookieOAuth2AuthorizationRequestRepository.class),
+                    mock(ReturnToOAuth2AuthorizationRequestResolver.class),
+                    objectMapper,
+                    List.of("http://localhost:3000"),
+                    MANAGEMENT_PORT);
+        }
 
-    @Mock
-    private OAuth2AuthenticationFailureHandler failureHandler;
+        @Bean
+        UserDetailsService userDetailsService() {
+            return mock(UserDetailsService.class);
+        }
 
-    @Mock
-    private HttpCookieOAuth2AuthorizationRequestRepository requestRepository;
+        @Bean
+        CustomOAuth2UserService customOAuth2UserService() {
+            return mock(CustomOAuth2UserService.class);
+        }
 
-    @Mock
-    private ReturnToOAuth2AuthorizationRequestResolver requestResolver;
+        @Bean
+        OAuth2AuthenticationSuccessHandler successHandler() {
+            return mock(OAuth2AuthenticationSuccessHandler.class);
+        }
 
-    @Mock
-    private ObjectMapper objectMapper;
+        @Bean
+        OAuth2AuthenticationFailureHandler failureHandler() {
+            return mock(OAuth2AuthenticationFailureHandler.class);
+        }
+
+        @Bean
+        HttpCookieOAuth2AuthorizationRequestRepository authorizationRequestRepository() {
+            return mock(HttpCookieOAuth2AuthorizationRequestRepository.class);
+        }
+
+        @Bean
+        ReturnToOAuth2AuthorizationRequestResolver returnToAuthorizationRequestResolver() {
+            return mock(ReturnToOAuth2AuthorizationRequestResolver.class);
+        }
+
+        @Bean
+        ClientRegistrationRepository clientRegistrationRepository() {
+            return mock(ClientRegistrationRepository.class);
+        }
+
+        @Bean
+        ObjectMapper objectMapper() {
+            return new ObjectMapper();
+        }
+    }
+
+    @Autowired
+    private MockMvc mockMvc;
+
+    private static RequestPostProcessor arrivingOnPort(int localPort) {
+        return request -> {
+            request.setLocalPort(localPort);
+            return request;
+        };
+    }
 
     @Test
-    void managementPortMatchesRequestCorrectly() {
-        MockHttpServletRequest managementRequest = new MockHttpServletRequest();
-        managementRequest.setServerPort(MANAGEMENT_PORT);
-        managementRequest.setLocalPort(MANAGEMENT_PORT);
-        managementRequest.setRequestURI("/actuator/prometheus");
+    void metricsRequestOnTheApplicationPortIsUnauthorized() throws Exception {
+        mockMvc.perform(get(METRICS_PATH).with(arrivingOnPort(APPLICATION_PORT)))
+                .andExpect(status().isUnauthorized());
+    }
 
-        MockHttpServletRequest applicationRequest = new MockHttpServletRequest();
-        applicationRequest.setServerPort(APPLICATION_PORT);
-        applicationRequest.setLocalPort(APPLICATION_PORT);
-        applicationRequest.setRequestURI("/actuator/prometheus");
-
-        assertThat(managementRequest.getLocalPort()).isEqualTo(MANAGEMENT_PORT);
-        assertThat(applicationRequest.getLocalPort()).isEqualTo(APPLICATION_PORT);
-        assertThat(managementRequest.getLocalPort() == MANAGEMENT_PORT).isTrue();
-        assertThat(applicationRequest.getLocalPort() == MANAGEMENT_PORT).isFalse();
+    @Test
+    void metricsRequestOnTheManagementPortIsAllowed() throws Exception {
+        mockMvc.perform(get(METRICS_PATH).with(arrivingOnPort(MANAGEMENT_PORT)))
+                .andExpect(status().isOk());
     }
 }

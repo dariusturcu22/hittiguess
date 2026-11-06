@@ -444,7 +444,7 @@ class AuthHardeningFlowIntegrationTest {
         mockMvc.perform(post("/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(loginRequestBody(email, "password123")))
-                .andExpect(status().isTooManyRequests());
+                .andExpect(status().isUnauthorized());
     }
 
     @Test
@@ -463,6 +463,6 @@ class AuthHardeningFlowIntegrationTest {
         mockMvc.perform(post("/auth/2fa/verify")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(verifyRequestBody(pendingToken, nextStepCode(secret))))
-                .andExpect(status().isTooManyRequests());
+                .andExpect(status().isUnauthorized());
     }
 }

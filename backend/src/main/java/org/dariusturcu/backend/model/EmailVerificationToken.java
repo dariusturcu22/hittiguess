@@ -24,6 +24,11 @@ public class EmailVerificationToken {
     @Column(nullable = false)
     private Instant expiresAt;
 
+    // Set when the token confirms an email change: the address only replaces the account's
+    // current one once this token is redeemed.
+    @Column(name = "pending_email")
+    private String pendingEmail;
+
     public boolean isExpired() {
         return Instant.now().isAfter(expiresAt);
     }

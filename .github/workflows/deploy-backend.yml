@@ -86,15 +86,15 @@ jobs:
           client-id: ${{ vars.AZURE_CLIENT_ID }}
           tenant-id: ${{ vars.AZURE_TENANT_ID }}
           subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
-      - name: Deploy the AI service
-        run: >
-          az containerapp update
-          --name "$AI_APP_NAME"
-          --resource-group "$AZURE_RESOURCE_GROUP"
-          --image "$AI_IMAGE:${{ github.sha }}"
       - name: Deploy the core service
         run: >
           az containerapp update
           --name "$CORE_APP_NAME"
           --resource-group "$AZURE_RESOURCE_GROUP"
           --image "$CORE_IMAGE:${{ github.sha }}"
+      - name: Deploy the AI service
+        run: >
+          az containerapp update
+          --name "$AI_APP_NAME"
+          --resource-group "$AZURE_RESOURCE_GROUP"
+          --image "$AI_IMAGE:${{ github.sha }}"

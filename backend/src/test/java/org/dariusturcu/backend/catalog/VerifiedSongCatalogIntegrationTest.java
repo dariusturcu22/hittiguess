@@ -19,6 +19,7 @@ import org.dariusturcu.backend.security.UserPrincipal;
 import org.dariusturcu.backend.service.CatalogSeedingService;
 import org.dariusturcu.backend.service.PlaylistAccessService;
 import org.dariusturcu.backend.service.PlaylistService;
+import org.dariusturcu.backend.service.PlaylistRemovalService;
 import org.dariusturcu.backend.service.SongCatalogService;
 import org.dariusturcu.backend.service.SongMetadataService;
 import org.dariusturcu.backend.service.SongResolutionService;
@@ -92,7 +93,7 @@ class VerifiedSongCatalogIntegrationTest {
     @EntityScan("org.dariusturcu.backend.model")
     @EnableJpaRepositories(basePackageClasses = SongRepository.class)
     @Import({SongCatalogService.class, SongMetadataService.class, SongResolutionService.class,
-            PlaylistService.class, PlaylistAccessService.class, SongMapper.class, PlaylistMapper.class})
+            PlaylistService.class, PlaylistRemovalService.class, PlaylistAccessService.class, SongMapper.class, PlaylistMapper.class})
     static class CatalogTestConfig {
         @Bean
         RestClient.Builder restClientBuilder() {

@@ -248,7 +248,7 @@ export default function PlaylistContent({
   }
 
   const handleCopyLink = async () => {
-    if (!playlist) return;
+    if (!playlist?.inviteCode) return;
     const inviteLink = `${window.location.origin}/playlists/join/${playlist.inviteCode}`;
     const copied = await copyText(inviteLink);
     if (!copied) {
@@ -260,7 +260,7 @@ export default function PlaylistContent({
   };
 
   const handleCopyCode = async () => {
-    if (!playlist) return;
+    if (!playlist?.inviteCode) return;
     const copied = await copyText(playlist.inviteCode);
     if (!copied) {
       toast.error("Couldn't copy the code. Try again.");
@@ -355,38 +355,40 @@ export default function PlaylistContent({
                 </Link>
               </Button>
 
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    className="size-[46px] rounded-[13px]"
-                    title="Invite"
-                  >
-                    <UserPlus className="size-4" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="start">
-                  <DropdownMenuLabel>Invite people</DropdownMenuLabel>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem onSelect={handleCopyLink}>
-                    {linkCopied ? (
-                      <Check className="size-4 text-primary" />
-                    ) : (
-                      <Link2 className="size-4" />
-                    )}
-                    {linkCopied ? "Link copied" : "Copy invite link"}
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onSelect={handleCopyCode}>
-                    {codeCopied ? (
-                      <Check className="size-4 text-primary" />
-                    ) : (
-                      <Hash className="size-4" />
-                    )}
-                    {codeCopied ? "Code copied" : "Copy invite code"}
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+              {playlist.inviteCode && (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      className="size-[46px] rounded-[13px]"
+                      title="Invite"
+                    >
+                      <UserPlus className="size-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start">
+                    <DropdownMenuLabel>Invite people</DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onSelect={handleCopyLink}>
+                      {linkCopied ? (
+                        <Check className="size-4 text-primary" />
+                      ) : (
+                        <Link2 className="size-4" />
+                      )}
+                      {linkCopied ? "Link copied" : "Copy invite link"}
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onSelect={handleCopyCode}>
+                      {codeCopied ? (
+                        <Check className="size-4 text-primary" />
+                      ) : (
+                        <Hash className="size-4" />
+                      )}
+                      {codeCopied ? "Code copied" : "Copy invite code"}
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
 
               <AlertDialog open={isExportOpen} onOpenChange={setIsExportOpen}>
                 <Button

@@ -76,6 +76,8 @@ class PlaylistServiceTest {
     @Mock
     private SavedPlaylistRepository savedPlaylistRepository;
     @Mock
+    private PlaylistRemovalService playlistRemovalService;
+    @Mock
     private CatalogSeedingService catalogSeedingService;
     @Mock
     private SongMetadataService songMetadataService;
@@ -357,10 +359,7 @@ class PlaylistServiceTest {
         playlistService.deletePlaylist(PLAYLIST_ID);
 
         verify(playlistAccessService).requireOwner(playlist, currentUser);
-        verify(playlistRepository).deleteGroupPlaylistLinks(PLAYLIST_ID);
-        verify(savedPlaylistRepository).deleteByPlaylistId(PLAYLIST_ID);
-        verify(playlistBanRepository).deleteByPlaylistId(PLAYLIST_ID);
-        verify(playlistRepository).delete(playlist);
+        verify(playlistRemovalService).deleteWithDependents(playlist);
     }
 
     @Test

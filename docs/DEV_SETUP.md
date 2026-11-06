@@ -2,7 +2,7 @@
 
 ## Test accounts
 
-The core service seeds three reusable accounts on every startup outside Production, so a multiplayer round (one DJ, one active player, one other player) can be tested with three genuinely separate logged-in sessions instead of one account reused across tabs. Account 1 is an `ADMIN`, so it also opens the admin pages (backfill queue, song catalog, report queue); accounts 2 and 3 have the `TEST` role.
+The core service seeds three reusable accounts on every startup when `DEV_SEED_TEST_ACCOUNTS=true` is set (it is in `backend/.env.example`; add it to an existing `backend/.env`) and the environment is not Production, so a multiplayer round (one DJ, one active player, one other player) can be tested with three genuinely separate logged-in sessions instead of one account reused across tabs. Account 1 is an `ADMIN`, so it also opens the admin pages (backfill queue, song catalog, report queue); accounts 2 and 3 have the `TEST` role.
 
 Credentials:
 
@@ -12,7 +12,7 @@ Credentials:
 
 The seed mechanism is idempotent per account. Running the application again with an account already present never creates a duplicate or errors; it only corrects the account's role if it differs, which is how an account 1 seeded before it became the admin gets promoted.
 
-This account never exists in Production. The seeder itself is disabled by a Spring profile condition when `APP_ENV` is `prod`, and a separate startup check fails the application if a `TEST`-role row is ever found while running against Production, regardless of how it got there.
+The seeder is off unless `dev.seed-test-accounts` is true, so an environment with missing configuration never gets accounts with published credentials. It is also disabled by a Spring profile condition when `APP_ENV` is `prod`. In Production a startup check fails the application if a `TEST`-role row or an `ADMIN` account with a `.local` address exists. The container image sets `APP_ENV_REQUIRED=true`, so a container started without `APP_ENV` fails at startup instead of running as dev; local `mvnw` runs default to `dev`.
 
 `CONTRIBUTING.md` links to this setup guide for the local-stack commands and test-account details.
 
@@ -136,3 +136,22 @@ playtest with voice, put both services behind one HTTPS origin:
 4. Everyone opens `https://<address>:3443` and accepts the certificate
    warning once. API calls and sockets go through the same origin, so there
    is no second warning. Allow Node.js through the firewall for port 3443.
+
+## Client address behind Azure Container Apps
+
+`RateLimitingFilter` keys on `request.getRemoteAddr()`. In production
+`server.forward-headers-strategy=native` makes Tomcat's `RemoteIpValve` replace
+that value with the `X-Forwarded-For` client address, but only when the
+request arrives from one of the valve's default trusted proxies (loopback and
+private ranges). This assumes the Azure Container Apps ingress connects from a
+private address, which has not been checked against the deployed app.
+
+After a deploy, confirm it in both directions:
+
+1. Send a request through the public hostname and check that the client
+   address in the core logs or a debug log of `getRemoteAddr()` is the
+   caller's public address, not an ingress or internal address. If every
+   caller shows the same internal address, all players share one rate limit
+   bucket and the ingress range needs adding to `server.tomcat.remoteip.internal-proxies`.
+2. Send a request with a forged `X-Forwarded-For` header and check that the
+   recorded address is still the caller's real one, not the forged value.

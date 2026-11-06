@@ -60,6 +60,10 @@ class UserServiceTest {
     @Mock
     private SavedPlaylistRepository savedPlaylistRepository;
     @Mock
+    private PlaylistRemovalService playlistRemovalService;
+    @Mock
+    private org.dariusturcu.backend.repository.PlayerRepository playerRepository;
+    @Mock
     private org.springframework.context.ApplicationEventPublisher eventPublisher;
 
     @InjectMocks
@@ -148,7 +152,7 @@ class UserServiceTest {
         assertThat(membership.getAvatarUrl()).isEqualTo("https://example.com/account-avatar.png");
         assertThat(membership.isCanRead()).isTrue();
         assertThat(membership.isCanWrite()).isTrue();
-        assertThat(membership.isCanDelete()).isTrue();
+        assertThat(membership.isCanDelete()).isFalse();
     }
 
     @Test
@@ -177,7 +181,7 @@ class UserServiceTest {
 
         userService.leavePlaylist(PLAYLIST_ID);
 
-        verify(playlistRepository).delete(playlist);
+        verify(playlistRemovalService).deleteWithDependents(playlist);
         verify(playlistRepository, never()).save(any());
     }
 
@@ -283,9 +287,20 @@ class UserServiceTest {
 
         userService.deleteUser();
 
-        verify(playlistRepository).delete(playlist);
+        verify(playlistRemovalService).deleteWithDependents(playlist);
         verify(playlistRepository, never()).save(any());
         verify(userRepository).delete(currentUser);
+    }
+
+    @Test
+    void deleteUserIsRejectedWhileTheUserIsAPlayerInAnActiveGameSession() {
+        when(playerRepository.existsByUserId(USER_ID)).thenReturn(true);
+
+        assertThatThrownBy(() -> userService.deleteUser())
+                .isInstanceOf(ConflictException.class);
+
+        verify(userRepository, never()).delete(any());
+        verify(songRepository, never()).saveAll(any());
     }
 
     @Test
@@ -311,7 +326,7 @@ class UserServiceTest {
         assertThat(playlist.getOwner()).isEqualTo(remainingMember);
         assertThat(playlist.getMemberships()).containsExactly(remainingMembership);
         verify(playlistRepository).save(playlist);
-        verify(playlistRepository, never()).delete(any());
+        verify(playlistRemovalService, never()).deleteWithDependents(any());
         verify(userRepository).delete(currentUser);
     }
 }
