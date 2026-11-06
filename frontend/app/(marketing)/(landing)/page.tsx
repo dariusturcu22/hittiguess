@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Button } from "@/components/shadcn/button";
-import { LogoBars } from "@/components/logo";
+import { PublicFooter } from "@/components/public-footer";
 import { LandingHeader } from "./landing-header";
 import { LandingAuthRedirect } from "./landing-auth-redirect";
 import "./landing.css";
@@ -61,14 +61,7 @@ export default function LandingPage() {
         <div className="ready-circle" aria-hidden="true" /><div className="ready-square" aria-hidden="true" />
         <div className="ready-card"><h2 className="section-title">Ready?</h2><p>Start a session and find out who actually knows their music.</p><StartAction /></div>
       </section>
-      <footer className="landing-footer">
-        <div className="footer-brand"><div><LogoBars barWidthPx={4} colorClassName="bg-icon-muted" containerClassName="h-[18px]" /><span>hittiguess</span></div><p>No ads. No tracking. Free, always.<span className="desktop-only"> Built for friends, not for profit.</span></p></div>
-        <div className="footer-columns">
-          <div><h3>Product</h3><Link href="#how-it-works">How it works</Link><Link className="desktop-only" href="/playlists">Playlists</Link><Link href="/login">Sign in</Link></div>
-          <div><h3>Legal</h3><span>Privacy Policy</span><span className="desktop-only">Terms of Service</span><span className="mobile-only">Terms</span><span className="desktop-only">Data &amp; GDPR</span><span className="mobile-only">GDPR</span></div>
-          <div><h3><span className="desktop-only">Community</span><span className="mobile-only">More</span></h3><span>GitHub</span><span className="desktop-only">Report an issue</span></div>
-        </div>
-      </footer>
+      <PublicFooter />
     </div>
   );
 }

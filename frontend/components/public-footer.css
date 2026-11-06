@@ -1,0 +1,112 @@
+:root {
+  --landing-soft: #6c6f85;
+}
+.dark {
+  --landing-soft: #a6adc8;
+}
+
+.public-footer {
+  position: relative;
+  padding: 56px 64px 40px;
+  display: flex;
+  gap: 80px;
+  border-top: 2px solid var(--sidebar-border);
+  background: var(--background);
+}
+
+.public-footer .footer-brand {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  max-width: 280px;
+}
+
+.public-footer .footer-brand > div {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.public-footer .footer-brand > div > span {
+  font-family: var(--font-baloo-2), sans-serif;
+  font-weight: 800;
+  font-size: 17px;
+  color: var(--landing-soft);
+}
+
+.public-footer .footer-brand p {
+  font-size: 13px;
+  color: var(--icon-muted);
+  line-height: 1.5;
+}
+
+.public-footer .footer-columns {
+  display: flex;
+  gap: 80px;
+}
+
+.public-footer .footer-columns h3 {
+  font-size: 12px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--icon-muted);
+  margin-bottom: 12px;
+  font-weight: 600;
+}
+
+.public-footer .footer-columns > div > a,
+.public-footer .footer-columns > div > span {
+  display: block;
+  font-size: 14px;
+  color: var(--landing-soft);
+  margin-bottom: 10px;
+}
+
+.public-footer .footer-columns a:hover {
+  color: var(--marketing-accent);
+}
+
+.public-footer .mobile-only {
+  display: none;
+}
+
+@media (max-width: 1100px) and (min-width: 768px) {
+  .public-footer,
+  .public-footer .footer-columns {
+    gap: 32px;
+  }
+}
+
+@media (max-width: 767px) {
+  .public-footer {
+    padding: 36px 24px 32px;
+    flex-direction: column;
+    gap: 26px;
+  }
+  .public-footer .footer-brand {
+    gap: 12px;
+    max-width: none;
+  }
+  .public-footer .footer-brand p {
+    font-size: 12px;
+  }
+  .public-footer .footer-columns {
+    gap: 36px;
+    flex-wrap: wrap;
+  }
+  .public-footer .footer-columns h3 {
+    font-size: 11px;
+    margin-bottom: 10px;
+  }
+  .public-footer .footer-columns > div > a,
+  .public-footer .footer-columns > div > span {
+    font-size: 13px;
+    margin-bottom: 9px;
+  }
+  .public-footer .desktop-only {
+    display: none;
+  }
+  .public-footer .mobile-only {
+    display: block;
+  }
+}

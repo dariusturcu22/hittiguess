@@ -11,6 +11,13 @@ const PUBLIC_ROUTES_WITHOUT_A_SESSION = [
   "/reset-password",
   "/verify-email",
   "/oauth2/redirect",
+  "/privacy",
+  "/terms",
+  "/copyright",
+  "/credits",
+  "/about",
+  "/contact",
+  "/legal",
   "/playlists/join/abc123",
   "/groups/join/abc123",
 ];

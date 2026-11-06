@@ -7,6 +7,13 @@ const PUBLIC_ROUTES = [
   "/reset-password",
   "/verify-email",
   "/oauth2/redirect",
+  "/privacy",
+  "/terms",
+  "/copyright",
+  "/credits",
+  "/about",
+  "/contact",
+  "/legal",
 ];
 
 // Invite links carry their own context and render a logged-out state with a
