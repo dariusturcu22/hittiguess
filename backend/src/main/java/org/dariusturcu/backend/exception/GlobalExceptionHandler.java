@@ -2,6 +2,7 @@ package org.dariusturcu.backend.exception;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
@@ -9,8 +10,10 @@ import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.server.ResponseStatusException;
 import lombok.extern.slf4j.Slf4j;
+import org.dariusturcu.backend.security.RequestBodySizeLimitFilter;
 
 import java.time.LocalDateTime;
 import java.util.HashMap;
@@ -20,6 +23,7 @@ import java.util.Map;
 @Slf4j
 public class GlobalExceptionHandler {
     private static final String UNEXPECTED_ERROR_MESSAGE = "Something went wrong. Please try again.";
+    private static final String UPLOAD_TOO_LARGE_MESSAGE = "The upload exceeds the size limit";
     @ExceptionHandler(ResourceNotFoundException.class)
     public ResponseEntity<ErrorResponse> handleResourceNotFound(ResourceNotFoundException exception) {
         ErrorResponse errorResponse = new ErrorResponse(
@@ -130,6 +134,32 @@ public class GlobalExceptionHandler {
                 LocalDateTime.now()
         );
         return ResponseEntity.status(exception.getStatusCode()).body(error);
+    }
+
+    @ExceptionHandler(MaxUploadSizeExceededException.class)
+    public ResponseEntity<ErrorResponse> handleMaxUploadSizeExceeded(MaxUploadSizeExceededException exception) {
+        return payloadTooLarge(UPLOAD_TOO_LARGE_MESSAGE);
+    }
+
+    // A body without a declared length is cut off by RequestBodySizeLimitFilter while the
+    // message converter reads it; any other unreadable body keeps the generic handling.
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ResponseEntity<ErrorResponse> handleMessageNotReadable(HttpMessageNotReadableException exception) {
+        for (Throwable cause = exception; cause != null; cause = cause.getCause()) {
+            if (cause instanceof RequestBodySizeLimitFilter.RequestBodyTooLargeException tooLarge) {
+                return payloadTooLarge(tooLarge.getMessage());
+            }
+        }
+        return handleRuntimeException(exception);
+    }
+
+    private ResponseEntity<ErrorResponse> payloadTooLarge(String message) {
+        ErrorResponse error = new ErrorResponse(
+                HttpStatus.PAYLOAD_TOO_LARGE.value(),
+                message,
+                LocalDateTime.now()
+        );
+        return ResponseEntity.status(HttpStatus.PAYLOAD_TOO_LARGE).body(error);
     }
 
     @ExceptionHandler(RuntimeException.class)
