@@ -8,6 +8,7 @@ import org.dariusturcu.backend.model.ai.PlaylistVideoIdsResponse;
 import org.dariusturcu.backend.model.ai.VideoInfoItem;
 import org.dariusturcu.backend.model.ai.VideoInfoRequest;
 import org.dariusturcu.backend.model.ai.VideoInfoResponse;
+import org.dariusturcu.backend.util.YoutubeLinkParser;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
 
@@ -15,6 +16,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -37,10 +39,18 @@ public class PlaylistExpansionService {
     private final RestClient aiServiceRestClient;
 
     public List<String> expandPlaylist(String playlistUrlOrId) {
+        if (playlistUrlOrId == null || playlistUrlOrId.isBlank()) {
+            throw new PlaylistImportException("A playlist link or ID is required");
+        }
+        Optional<String> parsedPlaylistId = YoutubeLinkParser.parsePlaylistId(playlistUrlOrId);
+        if (parsedPlaylistId.isEmpty()) {
+            throw new PlaylistImportException("Not a valid YouTube playlist link or id: " + playlistUrlOrId);
+        }
+        String cleanPlaylistId = parsedPlaylistId.get();
         try {
             PlaylistVideoIdsResponse response = aiServiceRestClient.post()
                     .uri(PLAYLIST_VIDEO_IDS_ENDPOINT)
-                    .body(new PlaylistVideoIdsRequest(playlistUrlOrId))
+                    .body(new PlaylistVideoIdsRequest(cleanPlaylistId))
                     .retrieve()
                     .body(PlaylistVideoIdsResponse.class);
 
@@ -82,7 +92,7 @@ public class PlaylistExpansionService {
      * feeds a still-processing row's display text, not the resolution pipeline.
      */
     public Map<String, VideoInfoItem> fetchVideoInfo(List<String> videoIds) {
-        if (videoIds.isEmpty()) {
+        if (videoIds.isEmpty() || aiServiceRestClient == null) {
             return Map.of();
         }
         try {

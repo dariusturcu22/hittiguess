@@ -1,6 +1,7 @@
+import ipaddress
 import re
 import unicodedata
-from urllib.parse import quote
+from urllib.parse import parse_qs, quote, urlsplit
 
 # MusicBrainz, Wikidata, and Wikipedia all require a descriptive User-Agent
 # identifying the application and a contact point; an unidentified or
@@ -22,8 +23,21 @@ YOUTUBE_PLAYLIST_ID_MAX_LENGTH = 64
 YOUTUBE_PLAYLIST_ID_PATTERN = re.compile(
     rf"^[a-zA-Z0-9_-]{{{YOUTUBE_PLAYLIST_ID_MIN_LENGTH},{YOUTUBE_PLAYLIST_ID_MAX_LENGTH}}}$"
 )
-PLAYLIST_LIST_QUERY_PARAM_PATTERN = re.compile(r"[?&]list=(?P<playlist_id>[a-zA-Z0-9_-]+)")
-YOUTUBE_HOST_MARKERS = ("youtube.com", "youtu.be")
+ALLOWED_YOUTUBE_HOSTS = {
+    "youtube.com",
+    "www.youtube.com",
+    "m.youtube.com",
+    "music.youtube.com",
+    "youtu.be",
+}
+RESERVED_INTERNAL_HOSTS = {
+    "localhost",
+    "loopback",
+    "local",
+    "internal",
+}
+RESERVED_INTERNAL_HOST_SUFFIXES = (".localhost", ".local", ".internal")
+ALLOWED_URL_SCHEMES = ("http", "https")
 
 YOUTUBE_PLAYLIST_ITEMS_PAGE_SIZE = 50
 # YouTube's videos.list endpoint accepts at most 50 comma-separated ids per call.
@@ -38,29 +52,73 @@ SECONDS_PER_HOUR = 3600
 SECONDS_PER_MINUTE = 60
 
 
+def is_internal_address_or_host(host_name: str | None) -> bool:
+    if not host_name:
+        return True
+    normalized_host = host_name.strip().lower()
+    if normalized_host in RESERVED_INTERNAL_HOSTS or normalized_host.endswith(
+        RESERVED_INTERNAL_HOST_SUFFIXES
+    ):
+        return True
+    try:
+        parsed_ip = ipaddress.ip_address(normalized_host)
+        return (
+            parsed_ip.is_loopback
+            or parsed_ip.is_private
+            or parsed_ip.is_link_local
+            or parsed_ip.is_unspecified
+            or parsed_ip.is_multicast
+        )
+    except ValueError:
+        return False
+
+
 def extract_youtube_video_id(url: str | None) -> str | None:
     if not url:
         return None
 
-    url = url.strip()
-    candidate: str | None = None
+    cleaned_url = url.strip()
+    if is_internal_address_or_host(cleaned_url):
+        return None
 
-    if "youtu.be/" in url:
-        candidate = url.rsplit("/", 1)[-1].split("?")[0].split("&")[0].split("#")[0]
-    elif "youtube.com/watch" in url:
-        v_index = url.find("v=")
-        if v_index != -1:
-            candidate = url[v_index + 2 :].split("&")[0]
-    elif "youtube.com/embed/" in url:
-        candidate = url.split("/embed/", 1)[1].split("?")[0].split("&")[0].split("#")[0]
-    elif "youtube.com/v/" in url:
-        candidate = url.split("/v/", 1)[1].split("?")[0].split("&")[0].split("#")[0]
-    elif "youtube.com/shorts/" in url:
-        candidate = url.split("/shorts/", 1)[1].split("?")[0].split("&")[0].split("#")[0]
-    else:
-        candidate = url
+    if (
+        "://" in cleaned_url
+        or cleaned_url.startswith("//")
+        or "/" in cleaned_url
+        or "?" in cleaned_url
+    ):
+        try:
+            parsed_uri = urlsplit(cleaned_url)
+            if parsed_uri.scheme.lower() not in ALLOWED_URL_SCHEMES:
+                return None
+            host_name = parsed_uri.hostname
+            if not host_name or is_internal_address_or_host(host_name):
+                return None
+            normalized_host = host_name.lower()
+            if normalized_host not in ALLOWED_YOUTUBE_HOSTS:
+                return None
 
-    return candidate if candidate and YOUTUBE_ID_PATTERN.match(candidate) else None
+            candidate: str | None = None
+            if normalized_host == "youtu.be":
+                path_segments = parsed_uri.path.lstrip("/").split("/")
+                candidate = path_segments[0] if path_segments else None
+            else:
+                query_parameters = parse_qs(parsed_uri.query)
+                watch_values = query_parameters.get("v")
+                if watch_values:
+                    candidate = watch_values[0]
+                elif parsed_uri.path.startswith("/embed/"):
+                    candidate = parsed_uri.path[len("/embed/") :].split("/")[0]
+                elif parsed_uri.path.startswith("/v/"):
+                    candidate = parsed_uri.path[len("/v/") :].split("/")[0]
+                elif parsed_uri.path.startswith("/shorts/"):
+                    candidate = parsed_uri.path[len("/shorts/") :].split("/")[0]
+
+            return candidate if candidate and YOUTUBE_ID_PATTERN.match(candidate) else None
+        except ValueError:
+            return None
+
+    return cleaned_url if YOUTUBE_ID_PATTERN.match(cleaned_url) else None
 
 
 def extract_youtube_playlist_id(url_or_id: str | None) -> str | None:
@@ -71,13 +129,38 @@ def extract_youtube_playlist_id(url_or_id: str | None) -> str | None:
         return None
 
     candidate = url_or_id.strip()
-
-    list_param_match = PLAYLIST_LIST_QUERY_PARAM_PATTERN.search(candidate)
-    if list_param_match:
-        return list_param_match.group("playlist_id")
-
-    if any(host_marker in candidate for host_marker in YOUTUBE_HOST_MARKERS):
+    if is_internal_address_or_host(candidate):
         return None
+
+    if (
+        "://" in candidate
+        or candidate.startswith("//")
+        or "/" in candidate
+        or "?" in candidate
+    ):
+        try:
+            parsed_uri = urlsplit(candidate)
+            if parsed_uri.scheme.lower() not in ALLOWED_URL_SCHEMES:
+                return None
+            host_name = parsed_uri.hostname
+            if not host_name or is_internal_address_or_host(host_name):
+                return None
+            normalized_host = host_name.lower()
+            if normalized_host not in ALLOWED_YOUTUBE_HOSTS:
+                return None
+
+            query_parameters = parse_qs(parsed_uri.query)
+            playlist_values = query_parameters.get("list")
+            if playlist_values:
+                playlist_id_candidate = playlist_values[0]
+                return (
+                    playlist_id_candidate
+                    if YOUTUBE_PLAYLIST_ID_PATTERN.match(playlist_id_candidate)
+                    else None
+                )
+            return None
+        except ValueError:
+            return None
 
     return candidate if YOUTUBE_PLAYLIST_ID_PATTERN.match(candidate) else None
 
@@ -89,7 +172,7 @@ def clean_youtube_text(text: str | None) -> str:
     cleaned = re.sub(r"(?i)\[.*official.*?]", "", cleaned)
     cleaned = re.sub(r"(?i)(official|video|audio|lyric|lyrics|hd|4k|hq)", "", cleaned)
     cleaned = re.sub(r"(?i)(feat\.|ft\.|featuring).*", "", cleaned)
-    cleaned = re.sub(r"[–—]", "-", cleaned)
+    cleaned = re.sub(r"[\u2013\u2014]", "-", cleaned)
     cleaned = re.sub(r"[()\[\]!?]", " ", cleaned)
     cleaned = cleaned.strip()
     cleaned = re.sub(r"\s{2,}", " ", cleaned)

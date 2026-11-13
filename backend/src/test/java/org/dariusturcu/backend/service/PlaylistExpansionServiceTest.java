@@ -3,6 +3,8 @@ package org.dariusturcu.backend.service;
 import org.dariusturcu.backend.exception.PlaylistImportException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.client.MockRestServiceServer;
 import org.springframework.web.client.RestClient;
@@ -68,6 +70,22 @@ class PlaylistExpansionServiceTest {
         assertThatThrownBy(() -> playlistExpansionService.expandPlaylist(PLAYLIST_LINK))
                 .isInstanceOf(PlaylistImportException.class);
         mockServer.verify();
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {
+            "http://localhost:8080/playlist?list=PL123",
+            "http://127.0.0.1:8080/playlist?list=PL123",
+            "http://169.254.169.254/?list=PL123",
+            "http://10.0.0.1/?list=PL123",
+            "http://attacker.com/playlist?list=PL123",
+            "file:///etc/passwd",
+            "localhost",
+            "internal"
+    })
+    void expandPlaylistRejectsInternalAddressesAndNonYoutubeHosts(String invalidLink) {
+        assertThatThrownBy(() -> playlistExpansionService.expandPlaylist(invalidLink))
+                .isInstanceOf(PlaylistImportException.class);
     }
 
     @Test
