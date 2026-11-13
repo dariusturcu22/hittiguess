@@ -12,6 +12,8 @@ YouTube videos.list costs one quota unit per batch. Refreshing N distinct videos
 
 Every rate-limited request the core service rejects, whichever limiter caught it, returns 429 with the same body every other error response uses: `ErrorResponse` (`status`, `message`, `timestamp`), never Spring's default `ProblemDetail`. `RateLimitingFilter` keys on the authenticated user where one exists and on the client address otherwise (IPv6 on the /64 prefix), matches the decoded, normalized path, and applies one-minute buckets: login 10; registration 5; resend-verification 3; password-reset request 3; password-reset confirm, verify-email and `/auth/2fa/verify` 10 each; song additions and imports 10; song reports and confirmations 5; avatar upload 5; every other request 60. The full list of limits, including STOMP, is in `ARCHITECTURE.md` under Security and limits.
 
+Request limits: `RequestBodySizeLimitFilter` runs before security and answers any request body over 1 MB with 413 and an `ErrorResponse`; a body sent without a declared length is cut off at the same size. Multipart uploads are capped by `spring.servlet.multipart` (512 KB per file, 1 MB per request) and also answer 413. Every request record with constraints is validated with `@Valid`, and a constraint failure returns 400 with a map of field to message. Text fields carry maximum lengths (emails 255, passwords 128, tokens 512, codes 32, links 2000, song title and artist 255, playlist name 255, report message and sources 2000) and every list of ids or links has a maximum size. STOMP payloads skip `@Valid`, so the chat length and the 255-character guess length are enforced in `ChatService` and `GameSessionService`. Video and playlist links are accepted only as `http` or `https` on `youtube.com`, `www.youtube.com`, `m.youtube.com`, `music.youtube.com` or `youtu.be`, and internal or private addresses are refused, in core (`YoutubeLinkParser`) and in the AI service (`app/metadata/sources/util.py`).
+
 ### Core service (Spring Boot)
 
 | Method | Path | Controller |
@@ -51,7 +53,7 @@ Every rate-limited request the core service rejects, whichever limiter caught it
 | POST | `/api/playlists/{playlistId}/save` | `PlaylistController`, any authenticated user, saves a public playlist into the caller's own library without creating a membership, rejects a non-public playlist, the caller's own playlist, or an already-saved playlist, story 30 |
 | DELETE | `/api/playlists/{playlistId}/save` | `PlaylistController`, any authenticated user, unsaves a previously saved playlist, story 30 |
 | GET | `/api/metadata/song` | `SongMetadataController`, one-in-flight-request-per-user limit plus the song-and-import rate-limit bucket (10 requests per minute), see story 27 |
-| GET | `/api/songs/search` | `SongController`, any authenticated user, required `query` param, searches the song catalog by artist or title keyword or by YouTube link or ID |
+| GET | `/api/songs/search` | `SongController`, any authenticated user, required `query` param of at most 200 characters, searches the song catalog by artist or title keyword or by YouTube link or ID; a keyword needs at least 2 characters, `%` and `_` match literally, and at most 50 songs are returned |
 | GET | `/api/songs/recommended` | `SongController`, any authenticated user, the newest verified catalog songs, paged by `page` (default 0) and `size` (default 20, capped at 50) |
 | GET | `/api/users/me` | `UserController` |
 | GET | `/api/users/{userId}` | `UserController` |
@@ -63,9 +65,9 @@ Every rate-limited request the core service rejects, whichever limiter caught it
 | POST | `/api/users/me/playlists/{playlistInviteCode}` | `UserController`, optional body carries a per-playlist display name and avatar, rejects a banned user, story 46 |
 | DELETE | `/api/users/me/playlists/{playlistId}` | `UserController`, the owner can leave at any time, leadership passes to the earliest-joined remaining member, story 46 |
 | GET | `/api/users/me/saved-playlists` | `UserController`, the current user's saved public playlists, distinct from `/api/users/me/playlists`, story 30 |
-| PUT | `/api/users/me/avatar` | `PixelArtImageController`, multipart upload, pixelizes and stores the image as PNG bytes on `User.avatarImage`, story 47 |
+| PUT | `/api/users/me/avatar` | `PixelArtImageController`, multipart upload of a PNG, JPEG or WebP of at most 256 KB and 64 by 64 pixels (400 otherwise, 413 over the multipart cap), pixelizes and stores the image as PNG bytes on `User.avatarImage`, story 47 |
 | GET | `/api/users/{userId}/avatar` | `PixelArtImageController`, returns the stored avatar PNG bytes, story 47 |
-| PUT | `/api/playlists/{playlistId}/cover` | `PixelArtImageController`, multipart upload, owner only, pixelizes and stores the image as PNG bytes on `Playlist.coverImage`, story 47 |
+| PUT | `/api/playlists/{playlistId}/cover` | `PixelArtImageController`, multipart upload with the same type, size and dimension rules as the avatar, owner only, pixelizes and stores the image as PNG bytes on `Playlist.coverImage`, story 47 |
 | GET | `/api/playlists/{playlistId}/cover` | `PixelArtImageController`, returns the stored cover PNG bytes, story 47 |
 | POST | `/api/playlists/{playlistId}/import-jobs` | `PlaylistImportJobController`, starts a background YouTube import into the playlist and returns the job id immediately, story 47 |
 | GET | `/api/playlists/{playlistId}/import-jobs/{importJobId}` | `PlaylistImportJobController`, one import job of the playlist, running or finished, with per-video results; needs read access to the playlist. The import screen reads a finished job's final results through it |
