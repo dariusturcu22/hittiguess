@@ -12,11 +12,13 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Limit;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
+import java.util.stream.IntStream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -44,7 +46,7 @@ class SongServiceTest {
     @Test
     void searchByKeywordQueriesTitleAndArtistNotYoutubeId() {
         Song matchingSong = new Song();
-        when(songRepository.searchByTitleOrArtistKeyword(KEYWORD)).thenReturn(List.of(matchingSong));
+        when(songRepository.searchByTitleOrArtistKeyword(KEYWORD, Limit.of(SongService.MAXIMUM_SEARCH_RESULTS))).thenReturn(List.of(matchingSong));
 
         List<SongDTO> results = songService.searchCatalog(KEYWORD);
 
@@ -62,7 +64,7 @@ class SongServiceTest {
 
         assertThat(results).hasSize(1);
         verify(songMapper).toDTO(matchingSong);
-        verify(songRepository, never()).searchByTitleOrArtistKeyword(any());
+        verify(songRepository, never()).searchByTitleOrArtistKeyword(any(), any());
     }
 
     @Test
@@ -72,7 +74,7 @@ class SongServiceTest {
         songService.searchCatalog(YOUTUBE_VIDEO_ID);
 
         verify(songRepository).findByYoutubeId(YOUTUBE_VIDEO_ID);
-        verify(songRepository, never()).searchByTitleOrArtistKeyword(any());
+        verify(songRepository, never()).searchByTitleOrArtistKeyword(any(), any());
     }
 
     @Test
@@ -81,7 +83,53 @@ class SongServiceTest {
                 .isInstanceOf(ResponseStatusException.class);
 
         verify(songRepository, never()).findByYoutubeId(any());
-        verify(songRepository, never()).searchByTitleOrArtistKeyword(any());
+        verify(songRepository, never()).searchByTitleOrArtistKeyword(any(), any());
+    }
+
+    @Test
+    void searchEscapesLikeWildcardsSoTheyMatchLiterally() {
+        when(songRepository.searchByTitleOrArtistKeyword(any(), any())).thenReturn(List.of());
+
+        songService.searchCatalog("100%_hits!");
+
+        verify(songRepository).searchByTitleOrArtistKeyword(
+                "100!%!_hits!!", Limit.of(SongService.MAXIMUM_SEARCH_RESULTS));
+    }
+
+    @Test
+    void aWildcardOnlyQueryCannotListTheWholeCatalog() {
+        assertThatThrownBy(() -> songService.searchCatalog("%"))
+                .isInstanceOf(ResponseStatusException.class);
+
+        verify(songRepository, never()).searchByTitleOrArtistKeyword(any(), any());
+    }
+
+    @Test
+    void rejectsAKeywordShorterThanTheMinimum() {
+        assertThatThrownBy(() -> songService.searchCatalog("a"))
+                .isInstanceOf(ResponseStatusException.class);
+
+        verify(songRepository, never()).searchByTitleOrArtistKeyword(any(), any());
+    }
+
+    @Test
+    void rejectsAQueryLongerThanTheMaximum() {
+        assertThatThrownBy(() -> songService.searchCatalog("a".repeat(SongService.MAXIMUM_QUERY_LENGTH + 1)))
+                .isInstanceOf(ResponseStatusException.class);
+
+        verify(songRepository, never()).searchByTitleOrArtistKeyword(any(), any());
+    }
+
+    @Test
+    void searchResultsAreCappedEvenWhenTheRepositoryReturnsMore() {
+        List<Song> manyMatches = IntStream.range(0, SongService.MAXIMUM_SEARCH_RESULTS + 1)
+                .mapToObj(songIndex -> new Song())
+                .toList();
+        when(songRepository.findByYoutubeId(YOUTUBE_VIDEO_ID)).thenReturn(manyMatches);
+
+        List<SongDTO> results = songService.searchCatalog(YOUTUBE_VIDEO_ID);
+
+        assertThat(results).hasSize(SongService.MAXIMUM_SEARCH_RESULTS);
     }
 
     @Test

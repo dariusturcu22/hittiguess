@@ -7,6 +7,7 @@ import org.dariusturcu.backend.model.song.RecommendedSongsDTO;
 import org.dariusturcu.backend.model.song.VerificationStatus;
 import org.dariusturcu.backend.repository.SongRepository;
 import org.dariusturcu.backend.util.YoutubeLinkParser;
+import org.springframework.data.domain.Limit;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
@@ -26,6 +27,13 @@ public class SongService {
     private final SongRepository songRepository;
     private final SongMapper songMapper;
 
+    static final int MINIMUM_KEYWORD_LENGTH = 2;
+    static final int MAXIMUM_QUERY_LENGTH = 200;
+    static final int MAXIMUM_SEARCH_RESULTS = 50;
+    private static final String LIKE_ESCAPE_CHARACTER = "!";
+    private static final String LIKE_ANY_CHARACTERS = "%";
+    private static final String LIKE_ANY_SINGLE_CHARACTER = "_";
+
     static final int DEFAULT_RECOMMENDATION_SIZE = 20;
     static final int MAXIMUM_RECOMMENDATION_SIZE = 50;
 
@@ -33,7 +41,8 @@ public class SongService {
      * Searches the whole song catalog, not any one playlist, so a song already
      * resolved elsewhere isn't resubmitted as a near-duplicate. A query that
      * parses as a YouTube link or bare video ID matches by that ID exactly;
-     * anything else is matched as a keyword against title and artist name.
+     * anything else is matched as a keyword against title and artist name, with LIKE
+     * wildcards in the keyword matched literally and the result count capped.
      */
     public List<SongDTO> searchCatalog(String query) {
         if (query == null || query.isBlank()) {
@@ -41,11 +50,31 @@ public class SongService {
         }
 
         String trimmedQuery = query.trim();
+        if (trimmedQuery.length() > MAXIMUM_QUERY_LENGTH) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Search query must be at most " + MAXIMUM_QUERY_LENGTH + " characters");
+        }
         List<Song> matches = YoutubeLinkParser.parseVideoId(trimmedQuery)
                 .map(songRepository::findByYoutubeId)
-                .orElseGet(() -> songRepository.searchByTitleOrArtistKeyword(trimmedQuery));
+                .orElseGet(() -> searchByKeyword(trimmedQuery));
 
-        return matches.stream().map(songMapper::toDTO).toList();
+        return matches.stream().limit(MAXIMUM_SEARCH_RESULTS).map(songMapper::toDTO).toList();
+    }
+
+    private List<Song> searchByKeyword(String keyword) {
+        if (keyword.length() < MINIMUM_KEYWORD_LENGTH) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Search keyword must be at least " + MINIMUM_KEYWORD_LENGTH + " characters");
+        }
+        return songRepository.searchByTitleOrArtistKeyword(
+                escapeLikeWildcards(keyword), Limit.of(MAXIMUM_SEARCH_RESULTS));
+    }
+
+    static String escapeLikeWildcards(String keyword) {
+        return keyword
+                .replace(LIKE_ESCAPE_CHARACTER, LIKE_ESCAPE_CHARACTER + LIKE_ESCAPE_CHARACTER)
+                .replace(LIKE_ANY_CHARACTERS, LIKE_ESCAPE_CHARACTER + LIKE_ANY_CHARACTERS)
+                .replace(LIKE_ANY_SINGLE_CHARACTER, LIKE_ESCAPE_CHARACTER + LIKE_ANY_SINGLE_CHARACTER);
     }
 
     /**
