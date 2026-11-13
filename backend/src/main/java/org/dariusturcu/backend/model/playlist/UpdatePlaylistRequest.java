@@ -4,6 +4,7 @@ import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
 public record UpdatePlaylistRequest(
+        @Size(max = 255, message = "Playlist name must be at most 255 characters")
         String name,
 
         @Pattern(regexp = "(?i)^(cba6f7|fab387|a6e3a1|89b4fa|f5c2e7|f9e2af)$", message = "Must be an approved playlist color")

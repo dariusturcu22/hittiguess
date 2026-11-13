@@ -3,7 +3,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { ReactNode } from "react";
 import { describe, expect, it, vi } from "vitest";
 
-import SessionResultsPage, { csvCell } from "./page";
+import SessionResultsPage, { csvCell, escapeHtml } from "./page";
 
 const RESULTS_PARAMS = Promise.resolve({ sessionId: "9" });
 const RESULTS_SEARCH_PARAMS = Promise.resolve({ group: "4" });
@@ -60,6 +60,12 @@ describe("SessionResultsPage download options", () => {
     expect(csvCell("-1")).toBe("\"'-1\"");
     expect(csvCell("@value")).toBe("\"'@value\"");
     expect(csvCell("Alex")).toBe("\"Alex\"");
+  });
+
+  it("escapes markup and attribute quotes for the print view", () => {
+    expect(escapeHtml(`<img src=x onerror="alert('x')">&`)).toBe(
+      "&lt;img src=x onerror=&quot;alert(&#39;x&#39;)&quot;&gt;&amp;",
+    );
   });
 
   it("offers PDF, text, and CSV actions", async () => {

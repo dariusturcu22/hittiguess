@@ -1,5 +1,6 @@
 package org.dariusturcu.backend.model.song;
 
+import jakarta.validation.constraints.Size;
 import java.util.List;
 
 /**
@@ -9,6 +10,9 @@ import java.util.List;
  * any IDs or links submitted alongside it are merged in, deduplicated.
  */
 public record AdminCatalogSeedingRequest(
+        @Size(max = 2000, message = "Playlist link must be at most 2000 characters")
         String playlistLink,
-        List<String> youtubeIds) {
+
+        @Size(max = 1000, message = "At most 1000 video IDs can be submitted")
+        List<@Size(max = 2000, message = "YouTube ID or link must be at most 2000 characters") String> youtubeIds) {
 }

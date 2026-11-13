@@ -8,7 +8,7 @@ public final class MemberIdentityConstraints {
     public static final int DISPLAY_NAME_MAX_LENGTH = 30;
     // \p{Cc} rather than Java's \p{Cntrl}, so the pattern published in the OpenAPI spec also
     // compiles as a JavaScript regular expression in the generated client schemas.
-    public static final String DISPLAY_NAME_PATTERN = "[^\\p{Cc}]*\\S[^\\p{Cc}]*";
+    public static final String DISPLAY_NAME_PATTERN = "[^\\p{Cc}]*[^\\p{Cc}\\s][^\\p{Cc}]*";
     public static final String DISPLAY_NAME_MESSAGE =
             "Display name must be 1 to 30 characters with no control characters";
 

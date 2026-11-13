@@ -2,6 +2,7 @@ package org.dariusturcu.backend.controller;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import org.dariusturcu.backend.model.admin.PipelineControlResultDTO;
 import org.dariusturcu.backend.model.admin.PipelineRunDTO;
 import org.dariusturcu.backend.model.admin.ProposalBatchRequest;
@@ -25,7 +26,7 @@ public class AdminSongPipelineController {
 
     @PostMapping("/recheck")
     @Operation(summary = "Queue low-priority recheck runs for songs, skipping those in active games")
-    public PipelineControlResultDTO recheckSongs(@RequestBody RecheckSongsRequest request) {
+    public PipelineControlResultDTO recheckSongs(@Valid @RequestBody RecheckSongsRequest request) {
         access.requireAdmin();
         return songs.recheck(request);
     }
@@ -36,20 +37,20 @@ public class AdminSongPipelineController {
 
     @PutMapping("/{id}")
     @Operation(summary = "Set the release year or verification status of a catalog song")
-    public PipelineControlResultDTO updateCatalogSong(@PathVariable long id, @RequestBody UpdateCatalogSongRequest request) {
+    public PipelineControlResultDTO updateCatalogSong(@PathVariable long id, @Valid @RequestBody UpdateCatalogSongRequest request) {
         access.requireAdmin(); return songs.update(id, request);
     }
 
     @PostMapping("/proposals/accept")
     @Operation(summary = "Accept the proposed release years of several songs, skipping songs without a proposal or in active games")
-    public ProposalBatchResultDTO acceptProposals(@RequestBody ProposalBatchRequest request) {
+    public ProposalBatchResultDTO acceptProposals(@Valid @RequestBody ProposalBatchRequest request) {
         access.requireAdmin();
         return songs.acceptProposals(request);
     }
 
     @PostMapping("/proposals/dismiss")
     @Operation(summary = "Dismiss the proposed release years of several songs without changing their years")
-    public ProposalBatchResultDTO dismissProposals(@RequestBody ProposalBatchRequest request) {
+    public ProposalBatchResultDTO dismissProposals(@Valid @RequestBody ProposalBatchRequest request) {
         access.requireAdmin();
         return songs.dismissProposals(request);
     }

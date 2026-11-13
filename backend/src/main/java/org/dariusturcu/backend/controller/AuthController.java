@@ -146,7 +146,7 @@ public class AuthController {
 
     @Operation(summary = "Disable two-factor authentication, requires the current password or a valid code")
     @PostMapping("/2fa/disable")
-    public ResponseEntity<Void> disableTwoFactor(@RequestBody TwoFactorDisableRequest request) {
+    public ResponseEntity<Void> disableTwoFactor(@Valid @RequestBody TwoFactorDisableRequest request) {
         User currentUser = SecurityUtils.getCurrentUser();
         twoFactorService.disable(currentUser, request.currentPassword(), request.code());
         return ResponseEntity.ok().build();

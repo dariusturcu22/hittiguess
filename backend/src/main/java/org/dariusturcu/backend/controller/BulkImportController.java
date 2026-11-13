@@ -2,6 +2,7 @@ package org.dariusturcu.backend.controller;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.dariusturcu.backend.model.song.BulkImportRequest;
 import org.dariusturcu.backend.model.song.BulkImportResultDTO;
@@ -28,13 +29,13 @@ public class BulkImportController {
     @Operation(summary = "Import a list of YouTube video IDs or links immediately, optionally linking every "
             + "resolved or already-known song into a target playlist")
     @PostMapping
-    public ResponseEntity<BulkImportResultDTO> importImmediately(@RequestBody BulkImportRequest request) {
+    public ResponseEntity<BulkImportResultDTO> importImmediately(@Valid @RequestBody BulkImportRequest request) {
         return ResponseEntity.ok(bulkImportService.importImmediately(request));
     }
 
     @Operation(summary = "Expand a YouTube playlist link or id into its video ids for review before importing")
     @PostMapping("/expand")
-    public ResponseEntity<List<String>> expandPlaylist(@RequestBody ExpandPlaylistLinkRequest request) {
+    public ResponseEntity<List<String>> expandPlaylist(@Valid @RequestBody ExpandPlaylistLinkRequest request) {
         return ResponseEntity.ok(playlistExpansionService.expandPlaylist(request.playlistLink()));
     }
 }

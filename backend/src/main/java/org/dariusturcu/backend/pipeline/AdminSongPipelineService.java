@@ -32,7 +32,7 @@ import java.util.stream.Stream;
 public class AdminSongPipelineService {
     public record Findings(List<SourceFindingDTO> sources, String reviewReason) { }
     static final int MINIMUM_YEAR = 1000;
-    static final int MAXIMUM_PROPOSAL_BATCH_SIZE = 500;
+    static final int MAXIMUM_PROPOSAL_BATCH_SIZE = ProposalBatchRequest.MAX_SONG_IDS;
     private static final String SONG_LOCK_PREFIX = "song-youtube-id:";
     private final JdbcTemplate core;
     private final PipelineJobRepository jobs;

@@ -2,6 +2,7 @@ package org.dariusturcu.backend.repository;
 
 import org.dariusturcu.backend.model.song.Song;
 import org.dariusturcu.backend.model.song.VerificationStatus;
+import org.springframework.data.domain.Limit;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -71,14 +72,17 @@ public interface SongRepository extends JpaRepository<Song, Long> {
     @Query("select distinct song from Song song left join fetch song.artists where song.normalizedKey is null")
     List<Song> findWithoutNormalizedKey();
 
+    // The keyword arrives with its LIKE wildcards already escaped with '!', see
+    // SongService.escapeLikeWildcards.
     @Query("""
             select distinct song
             from Song song
             left join song.artists artist
-            where lower(song.title) like lower(concat('%', :keyword, '%'))
-               or lower(artist.name) like lower(concat('%', :keyword, '%'))
+            where lower(song.title) like lower(concat('%', :keyword, '%')) escape '!'
+               or lower(artist.name) like lower(concat('%', :keyword, '%')) escape '!'
+            order by song.id
             """)
-    List<Song> searchByTitleOrArtistKeyword(@Param("keyword") String keyword);
+    List<Song> searchByTitleOrArtistKeyword(@Param("keyword") String keyword, Limit limit);
 
     // A direct exists query against the join table, rather than loading a song's full playlists
     // collection into memory just to check membership in one of them.

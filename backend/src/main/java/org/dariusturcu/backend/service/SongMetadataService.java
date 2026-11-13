@@ -16,8 +16,10 @@ import org.dariusturcu.backend.model.user.User;
 import org.dariusturcu.backend.security.util.SecurityUtils;
 import org.dariusturcu.backend.util.RequestPacer;
 import org.dariusturcu.backend.util.YoutubeLinkParser;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -56,17 +58,28 @@ public class SongMetadataService {
     private static final String ERROR_STATUS = "ERROR";
 
     public AiResponse fetchMetadata(String youtubeUrl) {
+        if (youtubeUrl == null || youtubeUrl.isBlank()) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST, "YouTube URL or ID is required");
+        }
+        Optional<String> parsedVideoId = YoutubeLinkParser.parseVideoId(youtubeUrl);
+        if (parsedVideoId.isEmpty()) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST, "Invalid YouTube video URL or ID");
+        }
+        String youtubeId = parsedVideoId.get();
         Long userId = SecurityUtils.getCurrentUserId();
         if (!usersWithRequestInFlight.add(userId)) {
             throw new RateLimitExceededException("A metadata request is already in progress");
         }
 
         try {
-            AiResponse response = resolve(youtubeUrl);
-            Optional<String> youtubeId = YoutubeLinkParser.parseVideoId(youtubeUrl);
-            youtubeId.ifPresent(videoId -> persistVerifiedResult(videoId, response, SecurityUtils.getCurrentUser()));
-            if (SUCCESS_STATUS.equals(response.status()) && response.content() != null && youtubeId.isPresent()) {
-                previewMetadataByKey.put(new PreviewCacheKey(userId, youtubeId.get()), new CachedPreview(response, Instant.now()));
+            String canonicalWatchUrl = YoutubeLinkParser.buildWatchUrl(youtubeId);
+            AiResponse response = resolve(canonicalWatchUrl);
+
+            persistVerifiedResult(youtubeId, response, SecurityUtils.getCurrentUser());
+            if (SUCCESS_STATUS.equals(response.status()) && response.content() != null) {
+                previewMetadataByKey.put(new PreviewCacheKey(userId, youtubeId), new CachedPreview(response, Instant.now()));
             }
             return response;
         } finally {

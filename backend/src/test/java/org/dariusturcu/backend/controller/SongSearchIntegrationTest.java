@@ -183,6 +183,25 @@ class SongSearchIntegrationTest {
     }
 
     @Test
+    void likeWildcardsInTheKeywordMatchOnlyLiterally() throws Exception {
+        addSongToANewPlaylistTheSearchingUserIsNotAMemberOf("100% Pure", "Some Artist", "wildcard001");
+        addSongToANewPlaylistTheSearchingUserIsNotAMemberOf("1000 Pure", "Other Artist", "wildcard002");
+
+        mockMvc.perform(get("/api/songs/search")
+                        .param("query", "100%")
+                        .with(user("searching-user")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(1))
+                .andExpect(jsonPath("$[0].title").value("100% Pure"));
+
+        mockMvc.perform(get("/api/songs/search")
+                        .param("query", "__")
+                        .with(user("searching-user")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(0));
+    }
+
+    @Test
     void unauthenticatedSearchRequestIsRejected() throws Exception {
         mockMvc.perform(get("/api/songs/search").param("query", "bohemian"))
                 .andExpect(status().isUnauthorized());

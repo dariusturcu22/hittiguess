@@ -90,13 +90,13 @@ public class AdminPipelineController {
 
     @PostMapping("/pipeline/enqueue")
     @Operation(summary = "Add a playlist or video IDs to a batch and report skipped known or queued videos")
-    public EnqueueResultDTO enqueuePipeline(@RequestBody AdminCatalogSeedingRequest request) {
+    public EnqueueResultDTO enqueuePipeline(@jakarta.validation.Valid @RequestBody AdminCatalogSeedingRequest request) {
         access.requireAdmin(); return pipeline.enqueue(request);
     }
 
     @PostMapping("/pipeline/run-now")
     @Operation(summary = "Queue one video at the highest backfill priority")
-    public PipelineRunDTO runPipelineNow(@RequestBody RunNowRequest request) {
+    public PipelineRunDTO runPipelineNow(@jakarta.validation.Valid @RequestBody RunNowRequest request) {
         access.requireAdmin(); return pipeline.runNow(request.youtubeId());
     }
 

@@ -1,7 +1,6 @@
 package org.dariusturcu.backend.model.user;
 
 import jakarta.validation.constraints.Email;
-import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
 public record UpdateUserRequest(
@@ -9,6 +8,7 @@ public record UpdateUserRequest(
         String username,
 
         @Email(message = "Email must be valid")
+        @Size(max = 255, message = "Email must be at most 255 characters")
         String email,
 
         @Size(max = 128, message = "Password must be at most 128 characters long")

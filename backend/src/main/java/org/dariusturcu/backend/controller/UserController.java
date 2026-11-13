@@ -98,7 +98,7 @@ public class UserController {
     @PostMapping("/me/playlists/{playlistInviteCode}")
     public ResponseEntity<PlaylistSummaryDTO> joinPlaylist(
             @PathVariable String playlistInviteCode,
-            @RequestBody(required = false) JoinPlaylistRequest request) {
+            @Valid @RequestBody(required = false) JoinPlaylistRequest request) {
         PlaylistSummaryDTO joinedPlaylist = userService.joinPlaylist(playlistInviteCode, request);
         return ResponseEntity.ok(joinedPlaylist);
     }
