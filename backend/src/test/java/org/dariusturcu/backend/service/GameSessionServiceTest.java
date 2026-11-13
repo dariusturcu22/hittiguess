@@ -1629,6 +1629,28 @@ class GameSessionServiceTest {
     }
 
     @Test
+    void aGuessLongerThanTheLimitIsRefusedWithoutBeingRecorded() {
+        GameSession session = session(DjMode.ROTATING, 10);
+        Player active = player(session, 1L, 0, PlayerStatus.ACTIVE);
+        Player dj = player(session, 2L, 1, PlayerStatus.ACTIVE);
+        Player bystander = player(session, 3L, 2, PlayerStatus.ACTIVE);
+        Song roundSong = song(200, "Bohemian Rhapsody", 1975, artist("Queen", ArtistRole.MAIN, 0));
+        round(session, 10L, 1, active, dj, roundSong);
+        String overlongGuess = "a".repeat(TitleArtistGuessRequest.MAX_GUESS_LENGTH + 1);
+
+        assertThatThrownBy(() -> gameSessionService.submitTitleArtistGuess(session.getId(), bystander.getUser().getId(),
+                new TitleArtistGuessRequest(null, overlongGuess)))
+                .isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> gameSessionService.submitTitleArtistGuess(session.getId(), bystander.getUser().getId(),
+                new TitleArtistGuessRequest(overlongGuess, null)))
+                .isInstanceOf(IllegalArgumentException.class);
+
+        gameSessionService.submitTitleArtistGuess(session.getId(), bystander.getUser().getId(),
+                new TitleArtistGuessRequest(null, "Bohemian Rhapsody"));
+        assertThat(bystander.getTotalTitlesGuessed()).isEqualTo(1);
+    }
+
+    @Test
     void anArtistAndTheTitleGuessedSeparatelyBothCount() {
         GameSession session = session(DjMode.ROTATING, 10);
         Player active = player(session, 1L, 0, PlayerStatus.ACTIVE);

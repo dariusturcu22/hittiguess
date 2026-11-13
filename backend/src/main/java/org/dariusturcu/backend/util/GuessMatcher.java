@@ -37,6 +37,11 @@ public final class GuessMatcher {
         if (normalizedGuess.isEmpty()) {
             return false;
         }
+        // The edit distance is never smaller than the length difference, so a guess this far
+        // off in length is refused without building the distance matrix.
+        if (Math.abs(normalizedGuess.length() - normalizedAnswer.length()) > EDIT_DISTANCE_BUDGET) {
+            return false;
+        }
         return damerauLevenshteinDistance(normalizedGuess, normalizedAnswer) <= EDIT_DISTANCE_BUDGET;
     }
 

@@ -988,6 +988,10 @@ public class GameSessionService {
         if (!hasArtistGuess && !hasTitleGuess) {
             throw new IllegalArgumentException("A guess needs an artist or a title");
         }
+        if (exceedsGuessLength(request.guessedArtist()) || exceedsGuessLength(request.guessedTitle())) {
+            throw new IllegalArgumentException(
+                    "A guess can be at most " + TitleArtistGuessRequest.MAX_GUESS_LENGTH + " characters");
+        }
 
         List<Guess> earlierGuessesThisRound = playerGuesses(round, player);
         GuessStateDTO stateBefore = guessState(round, earlierGuessesThisRound, player);
@@ -1108,6 +1112,10 @@ public class GameSessionService {
 
     private boolean isNonBlank(String value) {
         return value != null && !value.isBlank();
+    }
+
+    private static boolean exceedsGuessLength(String guessText) {
+        return guessText != null && guessText.length() > TitleArtistGuessRequest.MAX_GUESS_LENGTH;
     }
 
     // --- Round rotation -------------------------------------------------------

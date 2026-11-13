@@ -26,6 +26,13 @@ class GuessMatcherTest {
     }
 
     @Test
+    void aGuessWhoseLengthDiffersByMoreThanTheBudgetNeverMatches() {
+        assertThat(GuessMatcher.matches("Queen" + "x".repeat(10_000), "Queen")).isFalse();
+        assertThat(GuessMatcher.matches("Quee", "Queen")).isTrue();
+        assertThat(GuessMatcher.matches("Que", "Queen")).isFalse();
+    }
+
+    @Test
     void twoEditsAwayFallsOutsideTheBudget() {
         // Two substitutions ("s"->"f" and "o"->"a"): distance 2, past the flat budget of 1.
         assertThat(GuessMatcher.matches("Bohemian Rhapfady", "Bohemian Rhapsody")).isFalse();
