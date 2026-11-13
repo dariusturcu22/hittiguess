@@ -97,7 +97,7 @@ Release work (the `Release 1` to `Release 6` sections of `docs/TASKS.md`) follow
 - Stories and their status: [docs/PROJECT_STATE.md](docs/PROJECT_STATE.md)
 - What to actually work on: [docs/TASKS.md](docs/TASKS.md)
 - Privacy policy and terms of service drafts, published as pages by the release tasks: [docs/legal](docs/legal)
-- Decision history and reasoning: [docs/DECISIONS.md](docs/DECISIONS.md), append-only, never edit or delete past entries
+- Decision history and reasoning: [docs/DECISIONS.md](docs/DECISIONS.md) holds the decisions still in force; add new entries, never rewrite a past entry. Superseded or obsolete decisions move unchanged to [docs/ARCHIVE.md](docs/ARCHIVE.md)
 - Completed stories: [docs/ARCHIVE.md](docs/ARCHIVE.md)
 - Sequential implementation order for remaining stories: [docs/ROADMAP.md](docs/ROADMAP.md)
 - API contracts, entity model, and state diagrams: [docs/SYSTEM_REFERENCE.md](docs/SYSTEM_REFERENCE.md)
