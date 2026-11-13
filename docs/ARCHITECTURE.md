@@ -239,7 +239,7 @@ The planned host is a single Hetzner Cloud virtual server (CPX31: 4 vCPU, 8 GiB 
    - `caddy`: reverse proxy (Caddy 2.9) listening on public ports 80 and 443 (TCP and UDP for HTTP/3). Manages automatic TLS certificates via Let's Encrypt / ZeroSSL for `api.hittiguess.com`. Proxies API and WebSocket requests (`/ws`) to Core. Blocks external access to `/actuator/prometheus` with HTTP 403. Exposes local `/caddy-health` for health monitoring.
    - `core`: Spring Boot backend container. Binds only to `internal_network` on port 8080 (no published host ports). Limits capped at 2.0 vCPU and 2048 MiB RAM. Reaches AI service at `http://ai:8000`. Connects to external Neon transactional and analytics databases over TLS.
    - `ai`: FastAPI microservice container. Binds only to `internal_network` on port 8000 (no published host ports). Limits capped at 1.0 vCPU and 1024 MiB RAM. Reaches external Neon transactional database over TLS.
-   - `alloy`: Grafana Alloy metrics agent. Binds to `internal_network`, scrapes `core:8080/actuator/prometheus` and `ai:8000/metrics` (with `X-Internal-Api-Key`), and remote-writes metrics to Grafana Cloud Prometheus.
+   - `alloy`: Grafana Alloy metrics agent. Binds to `internal_network`, scrapes `core:8081/actuator/prometheus` and `ai:8000/metrics` (with `X-Internal-Api-Key`), and remote-writes metrics to Grafana Cloud Prometheus.
    - Network isolation: an internal bridge network (`internal_network`) connects all four containers. Only Caddy binds to host network interfaces.
 
 2. Configuration and secrets:
@@ -257,7 +257,7 @@ The planned host is a single Hetzner Cloud virtual server (CPX31: 4 vCPU, 8 GiB 
    - Step 3: transfer repository and deploy stack using `scripts/hetzner/deploy.sh` with production `.env.hetzner`.
    - Step 4: verify local health on the server via `curl -H "Host: api.hittiguess.com" http://localhost/actuator/health/readiness`.
    - Step 5: update DNS A (IPv4) and AAAA (IPv6) records for `api.hittiguess.com` to point to the Hetzner server public IP addresses. Caddy immediately provisions Let's Encrypt TLS certificates upon receiving the first external HTTPS handshake.
-   - Step 6: execute `scripts/smoke-test-production.sh` against the production domain to verify health probes, HTTPS API, WebSocket STOMP handshake, session hint proxy redirect, and AI reachability.
+   - Step 6: execute `scripts/smoke-test-production.sh` against the production domain to verify health probes, HTTPS API, WebSocket STOMP handshake, and session hint proxy redirect. The script's core-reaches-AI check does not test AI reachability, because the public health endpoint covers the database only and returns no `aiService` component.
    - Step 7 (T+24 hours): restore DNS TTL to normal values. Maintain Azure Container Apps as an idle hot standby for 48 hours before deprovisioning Azure resources.
 
 5. Rollback runbook:

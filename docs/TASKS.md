@@ -12,7 +12,7 @@ Feature work requires a Ready story and tasks checked against current code. Stor
 
 ## Story 55: Catalog accuracy
 
-- [x] Bulk accept proposed release years. A verified song whose rerun finds a different year keeps its year and stores `proposedReleaseYear` and `proposedAt` (`SongCatalogService.java`, around lines 77 to 88), and today an admin accepts each one separately with `PUT /api/admin/songs/{id}` or dismisses it with `DELETE /api/admin/songs/{id}/proposal` (`AdminSongPipelineController`, `AdminSongPipelineService`). After a whole-catalog recheck that is hundreds of single clicks.
+- [x] Bulk accept proposed release years. A verified song whose rerun finds a different year keeps its year and stores `proposedReleaseYear` and `proposedAt` (`SongCatalogService.java`, around lines 77 to 88), and before this task an admin accepted each one separately with `PUT /api/admin/songs/{id}` or dismissed it with `DELETE /api/admin/songs/{id}/proposal` (`AdminSongPipelineController`, `AdminSongPipelineService`). After a whole-catalog recheck that meant hundreds of single clicks.
   - Where: `AdminSongPipelineController`, `AdminSongPipelineService`, the admin songs page `frontend/app/(app)/admin/songs/page.tsx` and its detail drawer, the generated API client in `frontend/hooks/generated`.
   - Backend: `POST /api/admin/songs/proposals/accept` taking `songIds`, which in one transaction sets each song's release year to its proposed year and clears the proposal; songs without a proposal and songs in an active game are skipped and reported by id; a matching dismiss endpoint clears proposals without changing years. Admin only.
   - Frontend: a "Proposed year" filter on the song catalog showing current and proposed year side by side, a checkbox per row, select all on the page, "Accept selected" and "Dismiss selected" with a confirmation that states the count, and a toast with accepted and skipped counts.
@@ -62,7 +62,7 @@ Azure Container Apps hosts core and AI in one EU environment. Vercel hosts the f
 - [x] Verify Vercel root frontend, production branch main, domain, API origin, and shared auth cookies
 - [ ] Owner: confirm password-reset email arrives in production from the real sender domain (Google login, signup, verification, login, and the Resend domain and sender are working)
 - [x] Add HTTP liveness/readiness probes to both apps
-- [x] Deployment smoke test script `scripts/smoke-test-production.sh` that checks the health endpoints, the HTTPS API, a WSS STOMP connect, the protected-route `session_hint` redirect, and that core reaches AI; run it against production and record the result
+- [x] Deployment smoke test script `scripts/smoke-test-production.sh` that checks the health endpoints, the HTTPS API, a WSS STOMP connect, and the protected-route `session_hint` redirect; run it against production and record the result. Its core-reaches-AI check no longer tests AI reachability, see the deferred audit task below
 - [ ] Owner: production two-device acceptance of login, import, a full game, reconnect, voice, DJ audio, and results; do it after the audio check merges
 - [x] Plan the move to one Hetzner server: write the deployment (compose file, reverse proxy with TLS, secrets) into `docs/ARCHITECTURE.md` and `scripts`, rehearse it in isolation, and prepare DNS cutover and rollback. Owner: the Hetzner account and the cutover date
 - [ ] Owner: decide whether the move to Hetzner still happens now that the Azure subscription is pay-as-you-go, and if it does, finish it before the public launch so the launch runs on its final host
@@ -213,6 +213,7 @@ Findings from the November 2026 audit that are not fixed yet. Each needs a task 
 - [ ] The realtime hook triggers three GET requests per round event
 - [ ] A first-load session error that is not a 404 still says the game ended
 - [ ] The password check on `PATCH /api/users/me` has no dedicated rate limit
+- [ ] Replace the smoke test AI-reachability check (public health no longer calls AI)
 - [ ] Regenerate the API client after PR #404
 - [ ] The email-change and settings UI is untested
 - [ ] Verify Azure client-IP trust (Tomcat trusted proxies) after deploy; see the client-address note in `docs/DEV_SETUP.md`
