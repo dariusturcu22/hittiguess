@@ -3,13 +3,16 @@ package org.dariusturcu.backend.model.song;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.Size;
 import org.dariusturcu.backend.validation.NotFutureYear;
 
 public record CreateSongRequest(
         @NotBlank(message = "Artist name is required")
+        @Size(max = 255, message = "Artist name must be at most 255 characters")
         String artist,
 
         @NotBlank(message = "Song title is required")
+        @Size(max = 255, message = "Song title must be at most 255 characters")
         String title,
 
         @Min(value = 1000, message = "Release year must be 1000 or later")

@@ -8,14 +8,20 @@ import jakarta.validation.constraints.Size;
 // defaulting to the joining user's account values. When replaceCurrentGroup is true,
 // an existing active membership is left as part of the same transaction.
 public record JoinGroupRequest(
+        @Size(max = 64, message = "Invite code must be at most 64 characters")
         String inviteCode,
+
+        @Size(max = 64, message = "Join code must be at most 64 characters")
         String joinCode,
+
         @Size(max = MemberIdentityConstraints.DISPLAY_NAME_MAX_LENGTH, message = MemberIdentityConstraints.DISPLAY_NAME_MESSAGE)
         @Pattern(regexp = MemberIdentityConstraints.DISPLAY_NAME_PATTERN, message = MemberIdentityConstraints.DISPLAY_NAME_MESSAGE)
         String displayName,
+
         @Size(max = MemberIdentityConstraints.AVATAR_URL_MAX_LENGTH, message = MemberIdentityConstraints.AVATAR_URL_MESSAGE)
         @Pattern(regexp = MemberIdentityConstraints.AVATAR_URL_PATTERN, message = MemberIdentityConstraints.AVATAR_URL_MESSAGE)
         String avatarUrl,
+
         Boolean replaceCurrentGroup) {
 
     public JoinGroupRequest(String inviteCode, String joinCode, String displayName, String avatarUrl) {

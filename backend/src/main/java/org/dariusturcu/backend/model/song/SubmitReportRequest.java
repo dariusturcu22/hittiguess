@@ -2,6 +2,7 @@ package org.dariusturcu.backend.model.song;
 
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
 import org.dariusturcu.backend.validation.NotFutureYear;
 
 /**
@@ -11,11 +12,13 @@ import org.dariusturcu.backend.validation.NotFutureYear;
  */
 public record SubmitReportRequest(
         @NotBlank(message = "A report message is required")
+        @Size(max = 2000, message = "Report message must be at most 2000 characters")
         String message,
 
         @Min(value = 1000, message = "Suggested year must be 1000 or later")
         @NotFutureYear
         Integer suggestedCorrectYear,
 
+        @Size(max = 2000, message = "Sources must be at most 2000 characters")
         String sources) {
 }

@@ -2,6 +2,7 @@ package org.dariusturcu.backend.controller;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.dariusturcu.backend.model.playlist.PlaylistImportJobDTO;
 import org.dariusturcu.backend.model.playlist.StartPlaylistImportRequest;
@@ -29,7 +30,7 @@ public class PlaylistImportJobController {
     @PostMapping("/{playlistId}/import-jobs")
     public ResponseEntity<Map<String, String>> startImport(
             @PathVariable Long playlistId,
-            @RequestBody StartPlaylistImportRequest request) {
+            @Valid @RequestBody StartPlaylistImportRequest request) {
         String jobId = playlistImportJobService.startImport(playlistId, request);
         return ResponseEntity.status(HttpStatus.ACCEPTED).body(Map.of("importJobId", jobId));
     }
