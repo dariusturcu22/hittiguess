@@ -4,11 +4,11 @@ Only unfinished work belongs here. [PROJECT_STATE.md](PROJECT_STATE.md) defines 
 
 ## How to pick the next task
 
-Read the sections top to bottom. The next task is the first unticked `- [ ]` item that is not skipped. Skip every item that starts with `Owner:` (it needs a decision, an account, or a manual step from the project owner), every section whose heading starts with `In progress` (another session owns that branch), and any item whose `Depends on:` line names work that is still unticked. Tick the item in the same pull request as the work. Sections run in dependency order: the in-progress branches, catalog accuracy, gameplay fixes, the frontend completion, production operations, and finally the Release sections that gate the public launch.
+Read the sections top to bottom. The next task is the first unticked `- [ ]` item that is not skipped. Skip every item that starts with `Owner:` (it needs a decision, an account, or a manual step from the project owner), every section whose heading starts with `In progress` (another session owns that branch), and any item whose `Depends on:` line names work that is still unticked. Tick the item in the same pull request as the work. Sections run in dependency order: catalog accuracy, gameplay checks, production operations, and finally the Release sections that gate the public launch.
 
 Sub-bullets (`Where`, `Done when`, `Depends on`, `Tests`) belong to their task and are not separate tasks. Every task is meant to be doable by one agent alone from its text; when it is not, fix the text first.
 
-Frontend implementation and tests belong to story 28. Feature work requires a Ready story and tasks checked against current code. Story 34 replaces the existing abuse-event log stubs with analytics writes; it does not change enforcement.
+Feature work requires a Ready story and tasks checked against current code. Story 34 replaces the existing abuse-event log stubs with analytics writes; it does not change enforcement.
 
 ## Story 55: Catalog accuracy
 
@@ -17,10 +17,10 @@ Frontend implementation and tests belong to story 28. Feature work requires a Re
   - Backend: `POST /api/admin/songs/proposals/accept` taking `songIds`, which in one transaction sets each song's release year to its proposed year and clears the proposal; songs without a proposal and songs in an active game are skipped and reported by id; a matching dismiss endpoint clears proposals without changing years. Admin only.
   - Frontend: a "Proposed year" filter on the song catalog showing current and proposed year side by side, a checkbox per row, select all on the page, "Accept selected" and "Dismiss selected" with a confirmation that states the count, and a toast with accepted and skipped counts.
   - Tests: service unit tests (accept, skip without proposal, skip in active game), MockMvc admin and non-admin access, a real-row integration test that years change and proposals clear, and frontend tests for selection, confirmation and the toast.
-  - Depends on: nothing. Most useful after `feature/recheck-whole-catalog` merges.
-- [ ] Owner: after the recheck branch merges, run the whole-catalog recheck in production, then bulk accept the proposals that are correct and fix the remaining wrong years from the year audit by hand in the song drawer
+  - Depends on: nothing.
+- [ ] Owner: run the whole-catalog recheck in production (the recheck page is at `/admin/songs/recheck`), then bulk accept the proposals that are correct and fix the remaining wrong years from the year audit by hand in the song drawer
 - [ ] Owner: merge the 12 known duplicate song pairs in production with `POST /api/admin/songs/{keepId}/merge/{dropId}` (the endpoint exists; the duplicate list is in the admin catalog)
-- [ ] Add the uniqueness constraints once the duplicates are merged: a unique index on `songs(youtube_id)` and a partial unique index on `pending_imports(youtube_id)` for rows still pending or processing, in a new Flyway migration after V52
+- [ ] Add the uniqueness constraints once the duplicates are merged: a unique index on `songs(youtube_id)` and a partial unique index on `pending_imports(youtube_id)` for rows still pending or processing, in a new Flyway migration after V59
   - Where: `backend/src/main/resources/db/migration`, `PendingImportStatus`, `SongCatalogService`, the import services that catch constraint violations.
   - Done when: the migration applies on a database with no duplicates, a concurrent double insert fails with a handled conflict instead of a 500, and an integration test proves that cleanup keeps playlist and alternate-ID links and that the indexes reject concurrent duplicates.
   - Depends on: the Owner merge task above, since the migration fails on a database that still has duplicate pairs.
@@ -52,7 +52,7 @@ Frontend implementation and tests belong to story 28. Feature work requires a Re
 
 ## Story 7: Production hosting
 
-Azure Container Apps hosts core and AI in one EU environment. Vercel hosts the frontend. Core stays single-replica because game and STOMP state are process-local. The whole-deployment ceiling is $20/month.
+Azure Container Apps hosts core and AI in one EU environment. Vercel hosts the frontend. Core stays single-replica because game and STOMP state are process-local. The whole-deployment ceiling is $20/month. The Azure subscription moved from the free trial to pay-as-you-go on 2026-11-06 after the trial subscription was disabled and both apps stopped; they recovered and the production smoke test passes.
 
 - [x] Restrict the new YouTube API key to the YouTube Data API; the exposed key is deleted
 - [ ] Owner: add Azure cost anomaly alerts and a $12 shutdown Action Group that stops both Container Apps; the Log Analytics daily cap (0.25 GB, 30-day retention) and the $20 budget with email alerts are in place. An agent can write the script in `scripts/azure` once the Owner confirms what the action group does
@@ -64,14 +64,15 @@ Azure Container Apps hosts core and AI in one EU environment. Vercel hosts the f
 - [x] Add HTTP liveness/readiness probes to both apps
 - [x] Deployment smoke test script `scripts/smoke-test-production.sh` that checks the health endpoints, the HTTPS API, a WSS STOMP connect, the protected-route `session_hint` redirect, and that core reaches AI; run it against production and record the result
 - [ ] Owner: production two-device acceptance of login, import, a full game, reconnect, voice, DJ audio, and results; do it after the audio check merges
-- [x] Plan the move to one Hetzner server before the Azure trial credit ends: write the deployment (compose file, reverse proxy with TLS, secrets) into `docs/ARCHITECTURE.md` and `scripts`, rehearse it in isolation, and prepare DNS cutover and rollback. Owner: the Hetzner account and the cutover date. Finish it before the public launch so the launch runs on its final host
+- [x] Plan the move to one Hetzner server: write the deployment (compose file, reverse proxy with TLS, secrets) into `docs/ARCHITECTURE.md` and `scripts`, rehearse it in isolation, and prepare DNS cutover and rollback. Owner: the Hetzner account and the cutover date
+- [ ] Owner: decide whether the move to Hetzner still happens now that the Azure subscription is pay-as-you-go, and if it does, finish it before the public launch so the launch runs on its final host
 - [ ] Owner: decide whether production deployments require GitHub environment reviewers
 
 ## Story 8: Production databases
 
 Both Neon projects are provisioned. Core owns schema migrations; AI connects only to the transactional database.
 
-- [x] Inspect both production Flyway histories (core ends at V52 in the repo), core pgvector and indexes, and the analytics tables, and record any drift
+- [x] Inspect both production Flyway histories (core ends at V59 in the repo), core pgvector and indexes, and the analytics tables, and record any drift
 - [x] Verify intended TLS URLs and service boundaries, including deployed AI access to core and no browser credentials or AI access to analytics
 - [x] Measure the first request after Neon's idle suspend and change pool settings only if the wake time breaks a request
 - [ ] Owner: configure Neon storage and compute notifications. Then document the backup export (point-in-time restore window, a scheduled logical dump) in `docs/DEV_SETUP.md` and rehearse restoring both databases into an isolated project; this is the restore test the Release 3 sign-off refers to
@@ -79,7 +80,7 @@ Both Neon projects are provisioned. Core owns schema migrations; AI connects onl
 
 ## Release 1: Legal and compliance
 
-Story 56 covers the six Release sections, which hold everything the public launch needs before the first announcement. The app is already open to anyone (the closed-beta gate was removed, see `DECISIONS.md`), so these items are launch blockers for marketing, not for access. Drafts live in `docs/legal`; they describe the app as of 2026-09-12 and are out of date (they name Supabase as the database and omit voice, chat, game history, analytics tables, error reporting, email and the LLM providers). None of this is legal advice; the Owner items need a person to decide or sign off.
+Story 56 covers the six Release sections, which hold everything the public launch needs before the first announcement. The app is already open to anyone (the closed-beta gate was removed, see `DECISIONS.md`), so these items are launch blockers for marketing, not for access. Drafts live in `docs/legal`; they describe the app as of 2026-10-31 and stay drafts until the Owner decisions below are made. None of this is legal advice; the Owner items need a person to decide or sign off.
 
 - [ ] Owner: decide the legal basics the other tasks in this section depend on and record them in `DECISIONS.md`: the person or entity named as data controller, a contact mailbox on the project's own domain (the drafts use a personal address), the minimum age (13 or 16, 16 being the EU default), the governing law, and whether a lawyer reviews the final texts
 - [ ] Rewrite `docs/legal/privacy-policy.md` to match what the app does today, as plain statements of fact.
@@ -123,32 +124,32 @@ Story 56 covers the six Release sections, which hold everything the public launc
 
 ## Release 3: Security audit
 
-Existing protections to build on: JWT cookie authentication (`JwtAuthenticationFilter`), CSRF tokens with a double-submit cookie, an IP and user rate limiter (`RateLimitingFilter`), `AdminAccessGuard`, STOMP channel and subscription interceptors, a Content-Security-Policy and Referrer-Policy on the frontend, and production start-up guards. The tasks below check each one, add what is missing, and leave a test behind.
+Existing protections to build on: JWT cookie authentication (`JwtAuthenticationFilter`), CSRF tokens with a double-submit cookie, per-endpoint rate limit buckets (`RateLimitingFilter`), `AdminAccessGuard`, STOMP channel, subscription and SEND-destination interceptors, the frontend security headers in `frontend/next.config.ts`, and production start-up guards. The tasks below check each one, add what is missing, and leave a test behind.
 
 - [x] Endpoint authorization matrix: a generated test that walks every mapping in the Spring handler registry and asserts that each route outside the public allow-list in `SecurityConfig` answers 401 without a session, that every `/api/admin/**` route answers 403 for a normal user, and that the public allow-list is exactly the intended list; plus ownership tests (a user cannot read or change another user's playlists, groups, sessions, songs, exports or avatars by changing an id). Fix every gap. Where: `backend/src/test`, `SecurityConfig`, `AdminAccessGuard`, the services.
 - [x] CSRF and cookie review: re-read the `ignoringRequestMatchers` list in `SecurityConfig` (refresh and password-reset are exempt), confirm each exempt route is safe without a token, confirm the production cookies are `Secure`, `HttpOnly` where possible, and `SameSite` as intended with the right domain, and add an integration test that a state-changing request without the token is rejected on a sample of routes.
 - [x] CORS: production allowed origins are exactly the production frontend origins, no wildcard with credentials, and the preflight answer lists only the methods and headers used. Test the configured origin list against a foreign origin.
 - [x] Rate limiting review: confirm the limiter keys on the real client address behind Azure's proxy (forwarded header handling and spoofing), and add or tighten limits for registration, login, password reset and verification mail sends, song submission and import, reports, chat messages, STOMP sends (chat, drag preview, signaling), and the avatar upload. Tests: each limit returns 429 after the threshold and recovers.
 - [x] Auth and playlist access fixes: hide the invite code and member list from non-members of a public playlist, invite joins grant read and write only, verified email change through a pending address, case-insensitive email and username uniqueness, generic response for locked accounts, Google `email_verified` and duplicate-email handling, opt-in test-account seeding with a fail-closed `APP_ENV` in the container image. Tests: mapper, service, guard and seeder unit tests.
-- [ ] Input validation and injection: every request DTO has bean validation with length and format limits; the avatar upload checks type, size and dimensions; names and chat text are rendered as text only (search the frontend for raw HTML insertion); native SQL uses parameters; the URL and playlist import paths cannot be pointed at internal addresses. Add tests for the limits found missing.
+- [ ] Input validation and injection (in progress as uncommitted local work, not merged): every request DTO has bean validation with length and format limits; the avatar upload checks type, size and dimensions; names and chat text are rendered as text only (search the frontend for raw HTML insertion); native SQL uses parameters; the URL and playlist import paths cannot be pointed at internal addresses. Add tests for the limits found missing.
 - [ ] Secrets handling: scan the full git history with a secret scanner, rotate anything found, confirm `.env` files are untracked and `.env.example` holds placeholders, turn on GitHub secret scanning and push protection, and list every production secret with where it is stored and who can rotate it in `docs/DEV_SETUP.md`. Owner: perform the key rotations in the provider consoles.
 - [ ] Dependency vulnerability scans in CI and a clean first run: `npm audit` for the frontend, a Maven dependency check (OWASP dependency-check or the GitHub dependency graph) for core, and `uv` with `pip-audit` for the AI service; add `.github/dependabot.yml` for all three ecosystems and GitHub code scanning; fail the PR check on high or critical findings and fix or document every current one.
-- [ ] Security headers: the frontend sends only a CSP and Referrer-Policy (`frontend/next.config.ts`). Add `Strict-Transport-Security`, `X-Content-Type-Options`, `Permissions-Policy` (microphone and display capture for the site only), and `Cross-Origin-Opener-Policy`, check what the API answers, and replace `'unsafe-inline'` in `script-src` with nonces if Next allows it. Verify with an online header scanner and keep voice, screen share and the noise filter working. Tests: header values asserted in a config test.
-- [ ] WebSocket security: confirm the handshake rejects unauthenticated and foreign-origin connections, that every subscription and send destination checks session or group membership (`StompSubscriptionAuthorizationInterceptor`, `StompAuthenticationChannelInterceptor`, the signaling controllers), that message sizes are bounded, and that a removed member's sockets close (`UserSocketCloser`). Tests: a non-member cannot subscribe to or send on another group's or session's destinations.
+- [ ] Security headers: the frontend now sends a CSP, Referrer-Policy, `X-Content-Type-Options`, `Permissions-Policy` (microphone for the site only), `Cross-Origin-Opener-Policy` and, in production, `Strict-Transport-Security` (`frontend/next.config.ts`). Still open: check what the API answers, replace `'unsafe-inline'` in `script-src` with nonces if Next allows it, verify with an online header scanner while voice, screen share and the noise filter keep working, and assert the header values in a config test (none exists).
+- [ ] WebSocket security: subscription authorization, the SEND destination guard (a client SEND to `/topic`, `/queue` or `/user` is refused), allowed handshake origins and `UserSocketCloser` exist (`StompSubscriptionAuthorizationInterceptor`, `StompAuthenticationChannelInterceptor`, `WebSocketConfig`). Still open: bound STOMP message sizes (no limit is configured), and tests that the handshake rejects unauthenticated and foreign-origin connections and that a non-member cannot subscribe to or send on another group's or session's destinations.
 - [ ] Moderation of user content: chat messages, display names, group and playlist names, public playlists on Explore, and avatars can carry abuse. Add a report action for playlists, users and chat messages (songs already have reports: `SongReportController`, `AdminSongReportController`), an admin review queue for them, the ability for an admin to suspend an account or hide a public playlist, and per-player mute of chat. Owner decision first on the policy (what is removed, response time); record it in `DECISIONS.md`. Depends on: the Owner decision in Release 1 for the contact route.
-- [ ] Admin hardening: require two-factor for admin accounts, add an audit log of admin actions (pipeline controls, merges, year changes, deletions, suspensions) with an admin view, and confirm the admin routes are not indexed or linked for normal users. Depends on: the two-factor screens in Story 28.
+- [ ] Admin hardening: require two-factor for admin accounts, add an audit log of admin actions (pipeline controls, merges, year changes, deletions, suspensions) with an admin view, and confirm the admin routes are not indexed or linked for normal users. The two-factor screens exist in `/settings`.
 - [ ] Dynamic scan: run OWASP ZAP baseline against a staging or local full stack, triage the findings, and keep the report summary in the PR description. Depends on: the other tasks in this section.
 - [ ] Owner: backups and restore are tracked under Story 8 (the Neon export and isolated restore rehearsal); sign off here that the restore worked and the recovery targets are acceptable before launch
 
 ## Release 4: Reliability and operations
 
-Story 7 holds the cost alerts, load test and active-game admission limit, and Story 38 holds metrics and delivery checks. The tasks below add what a public launch needs on top of them.
+Story 7 holds the cost alerts and the cost-control test; the load test, admission limit, metrics and delivery checks are built. The tasks below add what a public launch needs on top of them.
 
-- [ ] Alert rules and an uptime monitor: after Story 38, define alerts for 5xx rate, p95 latency, core or AI container restarts, database connection failures, a stalled pipeline stage, YouTube quota near the daily limit, and LLM spend, plus external uptime checks for the site, the API health endpoint, and a WebSocket connect. Owner: create the monitoring account and the notification route (email or phone), then an agent configures the rules as code or documents them in `docs/ARCHITECTURE.md`.
+- [ ] Alert rules and an uptime monitor: define alerts for 5xx rate, p95 latency, core or AI container restarts, database connection failures, a stalled pipeline stage, YouTube quota near the daily limit, and LLM spend, plus external uptime checks for the site, the API health endpoint, and a WebSocket connect. Owner: create the monitoring account and the notification route (email or phone), then an agent configures the rules as code or documents them in `docs/ARCHITECTURE.md`.
 - [ ] Error tracking verified end to end for the frontend, core, and AI: release tagging, source maps uploaded for the frontend, personal data scrubbing (no default PII, no tokens, no chat text), sampling rates, and one alert rule per service. Test by triggering one error per service in a non-production environment.
 - [ ] Log hygiene and retention: grep the logs of a full game for emails, tokens, cookies, IP addresses and chat text, remove or mask what appears, and set and document retention for application logs and traces. Test: a log-capture test on login, password reset and chat asserts none of those values is written.
 - [ ] LLM and third-party spend limits: the pipeline tracks LLM cost but has no ceiling. Add configurable daily and monthly cost ceilings in core that pause the LLM stages and raise the dashboard banner when reached, with tests; document the YouTube, Resend, Cloudflare TURN and Neon plan limits and what happens at each. Owner: set hard monthly caps in the DeepInfra, OpenAI, Cloudflare and Resend consoles.
-- [ ] Signup spike safeguards: confirm what happens when many accounts register at once (email send limits, database connections on the Neon plan, single-replica core) and add a switch that turns registration into a waitlist message without a deploy. Depends on: the Story 7 load test.
+- [ ] Signup spike safeguards: confirm what happens when many accounts register at once (email send limits, database connections on the Neon plan, single-replica core) and add a switch that turns registration into a waitlist message without a deploy. The Story 7 load test is done.
 - [ ] Incident runbook `docs/RUNBOOK.md`: restart a service, roll back a deploy, pause the pipeline, rotate each secret, restore a database, disable registration, and where each dashboard lives. Depends on: the tasks above and the rollback task in Release 6.
 - [ ] Owner: decide whether a public status page is wanted; if yes, an agent wires it to the uptime checks
 
@@ -158,7 +159,7 @@ Story 7 holds the cost alerts, load test and active-game admission limit, and St
 - [ ] Implement the mobile decision: either a notice shown on phone-sized screens when entering the app or a lobby, with the supported browsers, or responsive lobby and gameplay layouts for the chosen screens with mockups first. Depends on: the Owner decision above.
 - [ ] Onboarding: a "How to play" screen reachable from the landing page and the lobby that explains a round, tokens and betting, the DJ role and the audio check, plus a first-run prompt for new accounts that opens it once. Needs a mockup and copy in `FRONTEND_CONTENT.md` first. Tests: the prompt appears once per account and can be dismissed.
 - [ ] Empty, loading, and error states: audit every list and page (playlists, explore, search, history, groups, import, admin) for all three states using `phantom-empty-state` and the shared alert style, and fix those missing. Tests: each page renders its empty and error state.
-- [ ] Accessibility pass: keyboard-only play-through of sign-up, playlist creation, lobby, a full game and results; a keyboard alternative for dragging a card onto the timeline; focus trapping and return in dialogs; live regions for phase changes, countdowns and results; AA contrast in both themes; reduced-motion respected everywhere; names and roles on icon-only buttons. Add axe checks to the Playwright specs for every route and fix findings. Replaces the older contrast and keyboard task in Story 28.
+- [ ] Accessibility pass: keyboard-only play-through of sign-up, playlist creation, lobby, a full game and results; a keyboard alternative for dragging a card onto the timeline; focus trapping and return in dialogs; live regions for phase changes, countdowns and results; AA contrast in both themes; reduced-motion respected everywhere; names and roles on icon-only buttons. Add axe checks to the Playwright specs for every route and fix findings. 
 - [ ] Performance budget: record Lighthouse results for the landing page and the lobby on a throttled mobile profile and desktop, set targets (landing LCP under 2.5 s, no layout shift, a JavaScript budget per route), lazy-load the noise filter WebAssembly and the Sentry replay code if not already, and add a bundle-size check to the frontend build in CI. Tests: the CI check fails when a budget is exceeded.
 - [ ] Browser support notice: detect unsupported browsers for voice and screen share (Safari, Firefox, phones) and show the same kind of dismissible note the audio warning uses on sign-up and the lobby, with the supported list from `GAME_DESIGN.md`. Depends on: the mobile decision.
 
@@ -168,10 +169,10 @@ Story 7 holds the cost alerts, load test and active-game admission limit, and St
 - [ ] Catalog readiness: a launch needs enough verified songs for new groups. Set the target per tier (for example 300 songs each at Easy, Medium and Hard) with the Owner, import and verify until the counts are met, accept the proposed years, and check that the Explore page has at least a handful of good public playlists. Owner: curate the starter playlists. Depends on: the Catalog accuracy section.
 - [ ] Landing page copy and structure: hero, how it works in three steps, screenshots, a short FAQ (free, ads, accounts, supported browsers, where the music plays), and calls to action to register, matching the design board. Mobile layout is already in scope for this page. Needs copy in `FRONTEND_CONTENT.md` first. Depends on: the onboarding and mobile tasks.
 - [ ] Privacy-friendly analytics: Owner decides the tool (a cookieless hosted service or a self-hosted one) and the account; an agent then adds the script with the CSP updated in `frontend/next.config.ts`, records only page views and sign-up and game-start events, honours Do Not Track, and updates the privacy policy and credits. No consent banner may be needed. Depends on: the cookie audit in Release 1.
-- [ ] Marketing assets in a `docs/launch` folder or the owner's own storage: screenshots at 1440x900 in both themes (lobby, round, reveal, results), a 30 to 60 second demo video script and shot list, and the logo kit from `logo-export/`. Owner: record and edit the video. Depends on: the visual pass in Story 28.
+- [ ] Marketing assets in a `docs/launch` folder or the owner's own storage: screenshots at 1440x900 in both themes (lobby, round, reveal, results), a 30 to 60 second demo video script and shot list, and the logo kit from `logo-export/`. Owner: record and edit the video. Depends on: the desktop and mobile landing visual pass, which is done.
 - [ ] LinkedIn post and launch copy: draft the post, a short announcement for other channels, and a one-paragraph project description in `docs/launch/announcement.md`, in the plain style of the repo. Owner: edit and publish. Depends on: the marketing assets task.
 - [ ] Pre-launch checklist `docs/launch/checklist.md`: one line for every task in Releases 1 to 5 with its proof (page URL, test name, or console screenshot), the production smoke test (health, HTTPS API, WSS, login, import, full two-device game with voice and DJ audio, results), a mobile check of the landing page, and a final read-through of the legal pages. Depends on: all other tasks above.
-- [ ] Rollback plan in `docs/RUNBOOK.md`: how to return core and AI to the previous Azure Container Apps revision, how to promote the previous Vercel deployment, why Flyway migrations are forward-only and the rule that a migration shipped in the launch release must be backward compatible with the previous app version, a database backup taken immediately before launch, and who decides to roll back. Rehearse the backend and frontend rollback once in the isolated environment. Depends on: the Story 7 Hetzner plan, which changes where the backend runs.
+- [ ] Rollback plan in `docs/RUNBOOK.md`: how to return core and AI to the previous Azure Container Apps revision, how to promote the previous Vercel deployment, why Flyway migrations are forward-only and the rule that a migration shipped in the launch release must be backward compatible with the previous app version, a database backup taken immediately before launch, and who decides to roll back. Rehearse the backend and frontend rollback once in the isolated environment. Depends on: the Story 7 Hetzner decision, which changes where the backend runs.
 - [ ] Launch-day watch: a short written plan for the first 48 hours (who watches which dashboard, alert thresholds, the registration switch, where feedback arrives) added to the runbook. Owner: staff the watch.
 - [ ] Owner: after launch, review the feedback channel and the issue templates in `.github/ISSUE_TEMPLATE` and decide what goes into the next roadmap round
 
@@ -195,30 +196,26 @@ Core participant history/statistics and analytics difficulty research already ex
 
 Genre enrichment and automatic Topic-upload upgrades are dropped. Pattern-based user moderation remains an unscoped future idea after usage/abuse data exists.
 
-## Story 52: Live playtest fixes
+## Deferred from the Nov 2026 audit
 
-A Chrome and Firefox playtest on the production site found that DJ audio never reached the other players, a player cannot leave a running session, and several voice and layout problems. Voice chat, playlists, and song adding worked.
+Findings from the November 2026 audit that are not fixed yet. Each needs a task breakdown before work starts.
 
-DJ audio (the most important batch):
-
-- [x] Confirm in a two-Chrome production run that the DJ's shared audio reaches the other players (the third playtest found audio working end to end)
-- [x] Share once per match: a DJ who has not yet shared is asked for the screen share with system audio first, and only then does the Open on YouTube button appear; the share stays alive for the rest of the match, so later rounds do not ask again
-- [x] Share the DJ's audio only during that player's own DJ turn: outside it the captured audio is not mixed into the voice stream and nobody receives it, and the audio stops when the DJ locks in; only the current DJ's audio is sent to the other players, never to the DJ; unit tests for the gating
-- [x] Detect browsers that cannot capture audio (Firefox, Safari), report the capability to the server when a player joins, and skip those players in DJ rotation; they still play and guess, and see a short notice explaining why; a rotation with no capable player shows the group a clear message; unit and backend integration tests
-- [x] Open the YouTube link in a new tab of the same browser window, not a popup window
-- [x] The card's sound wave moves for every player from the DJ's audio and ignores voice chat; the DJ's own wave follows the shared audio
-
-Leaving and ending:
-
-- [x] A player can leave a running session while the game continues without them: Leave game also leaves the group, because a member of a locked group is sent back into its game
-- [x] The voice indicator shows a player in voice only after they joined; find and fix the state that marks a player as in voice without joining; unit test
-- [x] A player whose tab closed or whose connection dropped is removed from voice after 2 minutes; backend scheduler and integration test
-
-Voice controls:
-
-- [x] Volume sliders for the microphone and the speaker next to the device pickers; the microphone level meter and the speaker test tone already existed
-
-Visual:
-
-- [x] Card colors that are too dark on the dark theme get a readable variant; check every song color
-- [x] Investigated the `wss://api.hittiguess.com/ws` closed-before-established message: it appears when a page unmounts its socket while connecting and needs no change
+- [ ] TOTP secret encryption at rest, and lockout on repeated wrong codes when confirming or disabling two-factor
+- [ ] JWT subject is the email and tokens cannot be revoked; move to the user id as subject plus a per-user token version
+- [ ] Multi-session refresh tokens; the current single stored token races when two tabs or devices refresh at once
+- [ ] Origin check on `/auth/refresh`
+- [ ] CI scanning (dependency, secret and code scanning), SHA-pinned actions, Dependabot, a protected production environment, and required status checks on `main` (none are required today)
+- [ ] Group join code strength and a per-IP limit on joining
+- [ ] The export, TURN and public-playlist endpoints are heavy and unpaginated
+- [ ] A shared four-thread scheduler runs game timers and the sweepers; separate them
+- [ ] Fast-tier AI errors read as "no answer" instead of an error
+- [ ] `leavePlayer` can overwrite a locked-in placement; needs a game-design decision first
+- [ ] The realtime hook triggers three GET requests per round event
+- [ ] A first-load session error that is not a 404 still says the game ended
+- [ ] The password check on `PATCH /api/users/me` has no dedicated rate limit
+- [ ] Regenerate the API client after PR #404
+- [ ] The email-change and settings UI is untested
+- [ ] Verify Azure client-IP trust (Tomcat trusted proxies) after deploy; see the client-address note in `docs/DEV_SETUP.md`
+- [ ] Owner: update the privacy-policy retention text to match the retention sweepers
+- [ ] Owner: set a billing and budget alert on the pay-as-you-go Azure subscription
+- [ ] Input validation and injection task: in progress as uncommitted local work, tracked in Release 3
