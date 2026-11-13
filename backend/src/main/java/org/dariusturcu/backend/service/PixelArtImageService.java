@@ -32,8 +32,8 @@ import java.util.Iterator;
 @Transactional
 public class PixelArtImageService {
 
-    static final int MAX_IMAGE_DIMENSION_PIXELS = 64;
-    static final int MAX_UPLOAD_BYTES = 256_000;
+    public static final int MAX_IMAGE_DIMENSION_PIXELS = 64;
+    public static final int MAX_UPLOAD_BYTES = 256_000;
     private static final String PNG_FORMAT = "png";
     private static final int FIRST_IMAGE_INDEX = 0;
 
@@ -108,8 +108,12 @@ public class PixelArtImageService {
             ImageReader reader = readers.next();
             try {
                 reader.setInput(imageInput, true, true);
-                if (reader.getWidth(FIRST_IMAGE_INDEX) > MAX_IMAGE_DIMENSION_PIXELS
-                        || reader.getHeight(FIRST_IMAGE_INDEX) > MAX_IMAGE_DIMENSION_PIXELS) {
+                int width = reader.getWidth(FIRST_IMAGE_INDEX);
+                int height = reader.getHeight(FIRST_IMAGE_INDEX);
+                if (width <= 0 || height <= 0) {
+                    throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Image has invalid dimensions");
+                }
+                if (width > MAX_IMAGE_DIMENSION_PIXELS || height > MAX_IMAGE_DIMENSION_PIXELS) {
                     throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Image exceeds the pixel-art size");
                 }
                 return reader.read(FIRST_IMAGE_INDEX);
